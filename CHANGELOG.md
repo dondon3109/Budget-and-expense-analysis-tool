@@ -28,6 +28,9 @@ All notable product changes are documented here.
 
 - Assistant answers can no longer state a peso amount that cannot be traced to your own data, in any
   formatting.
+- A question that needs several kinds of lookup (budget, categories, trends) is now answered from your
+  own records even when the provider skips one of them, instead of returning a refusal that asks you to
+  rephrase or narrow the date range.
 - An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
 - Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
 

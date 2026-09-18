@@ -34,6 +34,26 @@ const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   calculate_savings_goal: "savings_projection",
 };
 
+/**
+ * The read that satisfies each required group when the model has not made it.
+ * Every name maps back to its own group. Both projections stay absent because
+ * their inputs are the user's to choose: a payoff needs a strategy, and a
+ * savings goal needs either a goal name or hypothetical amounts the harness
+ * would otherwise have to invent.
+ */
+const TOOL_FOR_GROUP: Record<RequiredToolGroup, string | null> = {
+  account_balance: "get_account_balances",
+  period_summary: "get_period_summary",
+  category_spending: "get_spending_by_category",
+  budget_comparison: "get_budget_vs_actual",
+  transaction_detail: "list_transactions",
+  category_list: "list_categories",
+  recurring: "detect_recurring_charges",
+  anomaly: "detect_spending_anomalies",
+  debt_projection: null,
+  savings_projection: null,
+};
+
 const PERIOD_TOOL_NAMES = new Set([
   "get_period_summary",
   "get_spending_by_category",
@@ -136,6 +156,38 @@ export function validateToolArguments(
     return "untrusted_current_date";
   }
   return null;
+}
+
+/**
+ * The tool call that satisfies a required group from the trusted policy alone,
+ * or null when the tool needs a user choice (a payoff strategy) or a trusted
+ * date the policy does not carry. Used to close groups the model never called,
+ * so the backend reads the records itself instead of refusing a question it can
+ * answer.
+ */
+export function requiredGroupToolCall(
+  group: RequiredToolGroup,
+  policy: AssistantTurnPolicy,
+): { name: string; arguments: Record<string, unknown> } | null {
+  const name = TOOL_FOR_GROUP[group];
+  if (!name) return null;
+  const period = policy.resolvedPeriod;
+  switch (name) {
+    case "get_account_balances":
+    case "list_categories":
+      return { name, arguments: {} };
+    case "get_period_summary":
+    case "get_spending_by_category":
+    case "get_budget_vs_actual":
+    case "detect_spending_anomalies":
+    case "list_transactions":
+      // validateToolArguments fails closed unless these carry the trusted period.
+      return period ? { name, arguments: { from: period.from, to: period.to } } : null;
+    case "detect_recurring_charges":
+      return { name, arguments: { through: policy.currentDate } };
+    default:
+      return null;
+  }
 }
 
 function isEnvelope(value: unknown): value is AssistantToolResultEnvelope<unknown> {

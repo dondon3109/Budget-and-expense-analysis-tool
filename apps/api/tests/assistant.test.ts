@@ -198,6 +198,105 @@ describe("assistant orchestration", () => {
     expect(requests[0]?.messages[0]?.content).toContain('"assistantName":"Aster"');
   });
 
+  it("reads every required group itself when the model answers without tools", async () => {
+    const requests: ProviderCompletionRequest[] = [];
+    const provider: AssistantProvider = {
+      complete: vi.fn(
+        async (_env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> => {
+          requests.push(structuredClone(request));
+          return {
+            model: "deepseek-v4-flash",
+            finishReason: "stop",
+            message: {
+              role: "assistant",
+              content: "Your recorded expenses were PHP 12,450.00 across 4 transactions.",
+            },
+          };
+        },
+      ),
+    };
+    const reader = createReader();
+    const orchestrator = createAssistantOrchestrator(provider, reader);
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "Why did I overspend in July 2026?",
+      identity,
+      {
+        ...policy,
+        requiredToolGroups: ["period_summary", "budget_comparison", "category_spending"],
+      },
+      "",
+    );
+
+    // Without the backend reads the draft would be refused on the unmet groups.
+    expect(answer.finishReason).toBe("stop");
+    expect(answer.audit.validationStatus).toBe("passed");
+    expect(answer.audit.toolCalls.map((call) => call.toolName)).toEqual([
+      "get_period_summary",
+      "get_budget_vs_actual",
+      "get_spending_by_category",
+    ]);
+    expect(answer.responseMetadata.sources).toHaveLength(3);
+    expect(provider.complete).toHaveBeenCalledTimes(2);
+    // The records have to reach the model as data for the retry to be grounded.
+    expect(requests[1]?.messages.at(-1)).toMatchObject({ role: "user" });
+    expect(JSON.stringify(requests[1]?.messages)).toContain("PHP 12,450.00");
+    expect(requests[1]?.toolChoice).toBe("auto");
+  });
+
+  it("reads a required group before the final provider call", async () => {
+    let calls = 0;
+    const provider: AssistantProvider = {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        calls += 1;
+        if (calls < 4) {
+          return {
+            model: "deepseek-v4-flash",
+            finishReason: "tool_calls",
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: `call-${calls}`,
+                  type: "function",
+                  function: { name: "list_categories", arguments: "{}" },
+                },
+              ],
+            },
+          };
+        }
+        return {
+          model: "deepseek-v4-flash",
+          finishReason: "stop",
+          message: {
+            role: "assistant",
+            content: "Your recorded expenses were PHP 12,450.00 across 4 transactions.",
+          },
+        };
+      }),
+    };
+    const reader = createReader();
+    const orchestrator = createAssistantOrchestrator(provider, reader);
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "How much did I spend in July 2026?",
+      identity,
+      policy,
+      "",
+    );
+
+    expect(answer.audit.validationStatus).toBe("passed");
+    expect(provider.complete).toHaveBeenCalledTimes(4);
+    expect(reader.getPeriodSummary).toHaveBeenCalledTimes(1);
+  });
+
   it("retries once when a draft uses an unverified peso format", async () => {
     let calls = 0;
     const provider: AssistantProvider = {

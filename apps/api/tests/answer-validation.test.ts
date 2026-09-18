@@ -4,12 +4,14 @@ import {
   canonicalizePesoAmounts,
   correctivePrompt,
   deterministicPeriodSummaryAnswer,
+  requiredGroupToolCall,
   sanitizedAuditJson,
+  toolGroupForName,
   validateAssistantAnswer,
   validateToolArguments,
 } from "../src/assistant/answer-validation";
 import type { AssistantToolExecution } from "../src/assistant/tools";
-import type { AssistantTurnPolicy } from "../src/assistant/turn-policy";
+import type { AssistantTurnPolicy, RequiredToolGroup } from "../src/assistant/turn-policy";
 
 const policy: AssistantTurnPolicy = {
   currentDate: "2026-08-02",
@@ -165,5 +167,47 @@ describe("assistant answer validation", () => {
       },
     };
     expect(deterministicPeriodSummaryAnswer(policy, [insufficient], satisfied)).toBeNull();
+  });
+
+  it("derives only trusted arguments the tool contract accepts for every required group", () => {
+    const groups: RequiredToolGroup[] = [
+      "account_balance",
+      "period_summary",
+      "category_spending",
+      "budget_comparison",
+      "transaction_detail",
+      "category_list",
+      "recurring",
+      "anomaly",
+      "debt_projection",
+      "savings_projection",
+    ];
+
+    for (const group of groups) {
+      const call = requiredGroupToolCall(group, policy);
+      if (!call) continue;
+      expect(toolGroupForName(call.name), group).toBe(group);
+      expect(validateToolArguments(call.name, call.arguments, policy), group).toBeNull();
+    }
+
+    expect(requiredGroupToolCall("budget_comparison", policy)).toEqual({
+      name: "get_budget_vs_actual",
+      arguments: { from: "2026-07-01", to: "2026-07-31" },
+    });
+    expect(requiredGroupToolCall("recurring", policy)).toEqual({
+      name: "detect_recurring_charges",
+      arguments: { through: "2026-08-02" },
+    });
+    expect(requiredGroupToolCall("category_list", policy)).toEqual({
+      name: "list_categories",
+      arguments: {},
+    });
+    // A projection needs the strategy or goal the user chose, and a period tool
+    // cannot run without the trusted period.
+    expect(requiredGroupToolCall("debt_projection", policy)).toBeNull();
+    expect(requiredGroupToolCall("savings_projection", policy)).toBeNull();
+    expect(
+      requiredGroupToolCall("period_summary", { ...policy, resolvedPeriod: undefined }),
+    ).toBeNull();
   });
 });
