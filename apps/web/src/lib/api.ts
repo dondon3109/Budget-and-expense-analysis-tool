@@ -63,7 +63,6 @@ import type {
   PublicCustomerReview,
   ProviderConfig,
   ProviderConfigAudit,
-  ProviderCredential,
   ProviderCredentialWithUsage,
   ProviderService,
   SubscriptionInput,

@@ -65,7 +65,7 @@ export function resamplePcmInt16(data: ArrayBuffer, fromRate: number, toRate = 1
     const s1 = i0 + 1 < input.length ? input[i0 + 1]! : s0;
     output[i] = Math.round(s0 + (s1 - s0) * frac);
   }
-  return output.buffer as ArrayBuffer;
+  return output.buffer;
 }
 
 export interface MobileVoiceStreamSession {
@@ -170,7 +170,7 @@ export async function startMobileVoiceStream(
   // Fast path: no native streaming support — let batch recorder handle it
   if (typeof AudioModule?.AudioStream !== "function") {
     return {
-      stop: async () => null,
+      stop: () => Promise.resolve(null),
       cancel: () => {},
       live: false,
     };
@@ -269,7 +269,7 @@ export async function startMobileVoiceStream(
       sampleRate: 16000,
       channels: 1,
       encoding: "int16",
-    } as never);
+    });
 
     const silenceMsTarget = options.silenceMs ?? MOBILE_VOICE_SILENCE_MS;
     const minRecordMs = options.minRecordMs ?? MOBILE_VOICE_MIN_RECORD_MS;
@@ -490,7 +490,7 @@ export async function startMobileVoiceStream(
     }
     // Return no-op so batch fallback can proceed without throwing
     return {
-      stop: async () => latestTranscript,
+      stop: () => Promise.resolve(latestTranscript),
       cancel: () => cleanup(),
       live: false,
     };

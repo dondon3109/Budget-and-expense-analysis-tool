@@ -254,7 +254,7 @@ export async function startLiveTranscriptionSession(
       source.connect(workletNode);
       // Worklet does not need to be connected to destination to tick
       workletReady = true;
-    } catch (err) {
+    } catch {
       // Worklet failed (e.g. CSP, old browser), fall through to ScriptProcessor
       try {
         workletNode?.disconnect();

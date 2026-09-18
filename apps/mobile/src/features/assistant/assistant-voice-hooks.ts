@@ -183,9 +183,7 @@ export function useVoiceRecorder<Result>({
     setLiveStatus("idle");
 
     let streamTranscript: string | null = null;
-    let streamWasActive = false;
     if (liveStreamRef.current) {
-      streamWasActive = true;
       try {
         streamTranscript = await liveStreamRef.current.stop();
       } catch {}

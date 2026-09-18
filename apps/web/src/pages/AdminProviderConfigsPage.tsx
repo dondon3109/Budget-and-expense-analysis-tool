@@ -13,7 +13,6 @@ import {
   Pencil,
   Eye,
   EyeOff,
-  CheckCircle2,
   Zap,
   Check,
   Info,
@@ -283,54 +282,6 @@ export function AdminProviderConfigsPage() {
     onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Reorder failed."),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (input: {
-      service: ProviderService;
-      provider: string;
-      model: string;
-      displayName: string;
-      credentialId?: string | null;
-    }) => createProviderConfig(workspace, input),
-    onSuccess: (created) => {
-      setFeedback(`Added ${created.service} → ${created.displayName}`);
-      setErrorMsg(undefined);
-      setAddFor(null);
-      setAddProvider("");
-      setAddModel("");
-      setAddDisplayName("");
-      setAddCredentialId("");
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
-    },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Create failed."),
-  });
-
-  const updateConfigMutation = useMutation({
-    mutationFn: (input: { id: string; displayName?: string; credentialId?: string | null }) =>
-      updateProviderConfig(workspace, input.id, {
-        displayName: input.displayName,
-        credentialId: input.credentialId,
-      }),
-    onSuccess: (updated) => {
-      setFeedback(`Updated configuration: ${updated.displayName}`);
-      setErrorMsg(undefined);
-      setEditConfig(null);
-      setEditConfigDisplayName("");
-      setEditConfigCredentialId("");
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
-    },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Update configuration failed."),
-  });
-
   const deleteConfigMutation = useMutation({
     mutationFn: (id: string) => deleteProviderConfig(workspace, id),
     onSuccess: (deleted) => {
@@ -589,16 +540,7 @@ export function AdminProviderConfigsPage() {
       ProviderService,
       { hasCredential: boolean; details: string; apiKeyLast4?: string | null; source?: string }
     >();
-    for (const h of healthQuery.data?.health ?? [])
-      map.set(
-        h.service,
-        h as unknown as {
-          hasCredential: boolean;
-          details: string;
-          apiKeyLast4?: string | null;
-          source?: string;
-        },
-      );
+    for (const h of healthQuery.data?.health ?? []) map.set(h.service, h);
     return map;
   }, [healthQuery.data?.health]);
 
@@ -607,9 +549,7 @@ export function AdminProviderConfigsPage() {
   }
 
   function availableModels(service: ProviderService, provider: string): string[] {
-    const models = (providerAllowlist[service] as Record<string, readonly string[]> | undefined)?.[
-      provider
-    ] as readonly string[] | undefined;
+    const models = providerAllowlist[service]?.[provider];
     return models ? [...models] : [];
   }
 
@@ -1633,7 +1573,6 @@ export function AdminProviderConfigsPage() {
                     const credsForProvider = credentialsByProvider.get(addProvider) ?? [];
                     const isCloudflare = addProvider === "cloudflare_workers_ai";
                     const isGoogle = addProvider === "google";
-                    const requiresCred = !isCloudflare && !isGoogle;
                     return (
                       <>
                         <p>

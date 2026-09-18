@@ -1,4 +1,5 @@
 import eslint from "@eslint/js";
+import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -21,9 +22,25 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: {
+      "react-hooks": reactHooks,
+    },
     rules: {
       "@typescript-eslint/consistent-type-imports": "error",
       "@typescript-eslint/no-misused-promises": ["error", { checksVoidReturn: false }],
+      // A leading underscore marks an intentionally unused argument, variable, or caught error.
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+      // Stream and transport teardown paths swallow expected errors on purpose.
+      "no-empty": ["error", { allowEmptyCatch: true }],
     },
   },
   {
@@ -64,6 +81,7 @@ export default tseslint.config(
       "apps/mobile/plugins/**/*.js",
       "apps/web/public/**/*.js",
       "apps/web/src/lib/pcm-worklet.js",
+      "eslint.config.mjs",
       "release.config.mjs",
     ],
     languageOptions: {
@@ -129,32 +147,6 @@ export default tseslint.config(
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/no-unsafe-function-type": "off",
       "no-empty": "off",
-    },
-  },
-  {
-    ...tseslint.configs.disableTypeChecked,
-    files: ["apps/mobile/src/api/voice-stream.ts"],
-    rules: {
-      ...tseslint.configs.disableTypeChecked.rules,
-      "no-empty": "off",
-      "@typescript-eslint/no-unused-vars": "off",
-      "@typescript-eslint/no-explicit-any": "off",
-      "@typescript-eslint/no-unsafe-assignment": "off",
-      "@typescript-eslint/no-unsafe-call": "off",
-    },
-  },
-  {
-    files: [
-      "apps/web/src/lib/api.ts",
-      "apps/web/src/lib/voiceStream.ts",
-      "apps/web/src/pages/AdminProviderConfigsPage.tsx",
-      "apps/mobile/src/features/assistant/assistant-voice-hooks.ts",
-    ],
-    rules: {
-      "@typescript-eslint/no-unused-vars": "off",
-      "no-empty": "off",
-      "@typescript-eslint/no-unnecessary-type-assertion": "off",
-      "@typescript-eslint/ban-ts-comment": "off",
     },
   },
 );

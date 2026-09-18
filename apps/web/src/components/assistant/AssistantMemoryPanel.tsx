@@ -82,8 +82,6 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
   useRootLock(open);
   const handleKeyDown = useFocusTrap(dialogRef, { onEscape: onClose });
 
-  if (!open) return null;
-
   const preferenceMutation = useMutation({
     mutationFn: (debtStrategy: "avalanche" | "snowball" | null) =>
       updateAssistantMemoryPreferences(workspace, { debtStrategy }),
@@ -162,6 +160,10 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
     onError: (cause) =>
       setError(cause instanceof Error ? cause.message : "Memory could not be cleared."),
   });
+
+  // The panel can be rendered closed, so this return has to sit below every hook in the
+  // component: a conditional return above them changes the hook order when `open` flips.
+  if (!open) return null;
 
   const currentStrategy = preferences.data?.debtStrategy ?? null;
   // Only facts are editable here; payoff preference rows belong to the control above.
