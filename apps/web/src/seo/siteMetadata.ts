@@ -268,7 +268,7 @@ function installPageStructuredData(): StructuredDataGraph {
       name: "Download Zoption Beta for Android",
       description: "Download the official Zoption Beta Android APK from the Zoption website.",
       url,
-      dateModified: ANDROID_RELEASE.releaseDate,
+      dateModified: INSTALL_LAST_MODIFIED,
       inLanguage: "en",
       isPartOf: { "@id": WEBSITE_ID },
       mainEntity: { "@id": applicationId },
@@ -297,8 +297,8 @@ function installPageStructuredData(): StructuredDataGraph {
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-09-16";
-const PRICING_LAST_MODIFIED = "2026-09-13";
-const GUIDES_LAST_MODIFIED = "2026-09-16";
+const PRICING_LAST_MODIFIED = "2026-09-18";
+const GUIDES_LAST_MODIFIED = "2026-09-18";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -332,11 +332,14 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
 const FAQ_LAST_MODIFIED = "2026-09-13";
 const CHANGELOG_LAST_MODIFIED = "2026-09-17";
 const TERMS_LAST_MODIFIED = "2026-08-12";
-const PRIVACY_LAST_MODIFIED = "2026-09-17";
-const COOKIE_POLICY_LAST_MODIFIED = "2026-09-16";
-const IMPORT_LAST_MODIFIED = "2026-08-31";
+const PRIVACY_LAST_MODIFIED = "2026-09-18";
+const COOKIE_POLICY_LAST_MODIFIED = "2026-09-18";
+const IMPORT_LAST_MODIFIED = "2026-09-18";
 const TOOLS_LAST_MODIFIED = "2026-09-18";
-const TUTORIALS_LAST_MODIFIED = "2026-09-13";
+// The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
+// SoftwareApplication nodes; this drives the page's <lastmod> and WebPage dateModified.
+const INSTALL_LAST_MODIFIED = "2026-09-18";
+const TUTORIALS_LAST_MODIFIED = "2026-09-18";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -572,7 +575,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     robots: "index,follow",
     structuredData: installPageStructuredData(),
     sitemap: {
-      lastModified: ANDROID_RELEASE.releaseDate,
+      lastModified: INSTALL_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,
     },
