@@ -5,6 +5,7 @@ import {
   type SubscriptionBillingCycle,
   type SubscriptionInput,
   type SubscriptionMonthSummary,
+  type SubscriptionRenewalReason,
   type SubscriptionRecord,
   type SubscriptionStatusUpdate,
   type SubscriptionUpdate,
@@ -44,6 +45,11 @@ export interface SubscriptionRepository {
     renewal: DueSubscriptionRenewal,
     nextBillingDate: string,
   ): Promise<boolean>;
+  markRenewalBlocked(
+    env: Bindings,
+    renewal: DueSubscriptionRenewal,
+    reason: SubscriptionRenewalReason,
+  ): Promise<void>;
   createRenewalNotification(
     env: Bindings,
     notice: SubscriptionRenewalNotification,
@@ -204,6 +210,7 @@ async function findSubscription(
       billingCycle: subscriptions.billingCycle,
       nextBillingDate: subscriptions.nextBillingDate,
       status: subscriptions.status,
+      renewalBlockedReason: subscriptions.renewalBlockedReason,
       categoryId: categories.id,
       categoryName: categories.name,
       categoryColor: categories.color,
@@ -250,8 +257,6 @@ export interface DueSubscriptionRenewal {
   charged: boolean;
 }
 
-export type SubscriptionRenewalReason = "insufficient_balance" | "account_archived";
-
 export interface SubscriptionRenewalNotification {
   id: string;
   tenantId: string;
@@ -280,7 +285,8 @@ function advanceScheduleStatement(
 ) {
   return env.DB.prepare(
     `UPDATE subscriptions
-     SET next_billing_date = ?, last_charged_date = ?, updated_at = datetime('now')
+     SET next_billing_date = ?, last_charged_date = ?, renewal_blocked_reason = NULL,
+         updated_at = datetime('now')
      WHERE id = ? AND tenant_id = ? AND status = 'active' AND next_billing_date = ?`,
   ).bind(
     nextBillingDate,
@@ -329,6 +335,7 @@ export const subscriptionRepository: SubscriptionRepository = {
         billingCycle: subscriptions.billingCycle,
         nextBillingDate: subscriptions.nextBillingDate,
         status: subscriptions.status,
+        renewalBlockedReason: subscriptions.renewalBlockedReason,
         categoryId: categories.id,
         categoryName: categories.name,
         categoryColor: categories.color,
@@ -529,6 +536,17 @@ export const subscriptionRepository: SubscriptionRepository = {
       releaseSettledChargesStatement(env, renewal),
     ]);
     return (results[1]?.meta.changes ?? 0) === 1;
+  },
+
+  async markRenewalBlocked(env, renewal, reason) {
+    // Only on a change, so the five minute sweep does not rewrite and republish the row every pass.
+    await env.DB.prepare(
+      `UPDATE subscriptions SET renewal_blocked_reason = ?, updated_at = datetime('now')
+       WHERE id = ? AND tenant_id = ? AND status = 'active'
+         AND (renewal_blocked_reason IS NULL OR renewal_blocked_reason != ?)`,
+    )
+      .bind(reason, renewal.id, renewal.tenantId, reason)
+      .run();
   },
 
   async advanceRenewalSchedule(env, renewal, nextBillingDate) {

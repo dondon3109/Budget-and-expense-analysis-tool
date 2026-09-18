@@ -334,6 +334,14 @@ describe("subscription renewals", () => {
       subject: "Your Rent subscription could not be renewed",
     });
     expect(sent[0]?.text).toContain("PHP 1,500.00");
+    // The app reads this to say why the cycle is held back, so it has to be recorded.
+    expect(
+      database
+        .prepare(
+          "SELECT renewal_blocked_reason AS reason FROM subscriptions WHERE id = 'subscription-1'",
+        )
+        .get(),
+    ).toEqual({ reason: "insufficient_balance" });
 
     // The retry the next run makes stays silent, and the due date is untouched.
     await expect(service.runDueRenewals(env)).resolves.toMatchObject({
@@ -354,6 +362,14 @@ describe("subscription renewals", () => {
        ) VALUES ('top-up', 'tenant-1', 'account-1', 'category-1', '2026-09-25', 'Top up', 100000, 'PHP', 'income')`,
     );
     await expect(service.runDueRenewals(env)).resolves.toMatchObject({ charged: 1, uncovered: 0 });
+    // Settling the cycle clears the blocked state.
+    expect(
+      database
+        .prepare(
+          "SELECT renewal_blocked_reason AS reason FROM subscriptions WHERE id = 'subscription-1'",
+        )
+        .get(),
+    ).toEqual({ reason: null });
     expect(
       database
         .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")
@@ -389,6 +405,16 @@ describe("subscription renewals", () => {
     expect(
       database.prepare("SELECT status, reason FROM subscription_renewal_notifications").get(),
     ).toEqual({ status: "sent", reason: "account_archived" });
+    expect(
+      database
+        .prepare(
+          "SELECT renewal_blocked_reason AS reason FROM subscriptions WHERE id = 'subscription-1'",
+        )
+        .get(),
+    ).toEqual({ reason: "account_archived" });
+    // And the subscriptions list surfaces it, which is what the app renders.
+    const listed = await subscriptionRepository.list(env, "tenant-1", "2026-09-01");
+    expect(listed.items[0]?.renewalBlockedReason).toBe("account_archived");
     expect(
       database
         .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")

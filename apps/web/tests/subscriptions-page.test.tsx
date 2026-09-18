@@ -60,6 +60,7 @@ const record: SubscriptionRecord = {
   billingCycle: "monthly",
   nextBillingDate: "2026-07-25",
   status: "active",
+  renewalBlockedReason: null,
   categoryId: category.id,
   categoryName: category.name,
   categoryColor: category.color,
@@ -101,6 +102,44 @@ describe("SubscriptionsPage", () => {
     vi.mocked(setSubscriptionStatus).mockResolvedValue({ ...record, status: "canceled" });
     vi.mocked(updateSubscription).mockResolvedValue({ ...record, name: "Music streaming Plus" });
     vi.mocked(deleteSubscription).mockResolvedValue(undefined);
+  });
+
+  it("says why a due subscription is not being renewed", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [
+        {
+          ...record,
+          renewalBlockedReason: "insufficient_balance",
+          billingDate: "2026-07-25",
+          monthlyCostMinor: 199_00,
+        },
+      ],
+    });
+    renderPage();
+
+    expect(await screen.findByText("Not renewed: not enough balance")).toBeInTheDocument();
+  });
+
+  it("says when a due subscription is paid from a removed account", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [
+        {
+          ...record,
+          renewalBlockedReason: "account_archived",
+          billingDate: "2026-07-25",
+          monthlyCostMinor: 199_00,
+        },
+      ],
+    });
+    renderPage();
+
+    expect(await screen.findByText("Not renewed: account removed")).toBeInTheDocument();
   });
 
   it("renders the summary and exact five-column subscription table", async () => {

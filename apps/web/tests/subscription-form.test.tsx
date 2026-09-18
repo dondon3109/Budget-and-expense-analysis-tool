@@ -171,6 +171,7 @@ describe("SubscriptionForm", () => {
           billingCycle: "monthly",
           nextBillingDate: "2026-07-25",
           status: "active",
+          renewalBlockedReason: null,
           categoryId: "entertainment",
           categoryName: "Entertainment",
           categoryColor: "#7363a6",

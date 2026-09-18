@@ -1,4 +1,8 @@
-import type { SubscriptionMonthItem, SubscriptionStatus } from "@zoption/shared";
+import type {
+  SubscriptionMonthItem,
+  SubscriptionRenewalReason,
+  SubscriptionStatus,
+} from "@zoption/shared";
 import { HelpCircle, Pencil, Trash2 } from "lucide-react";
 
 import { formatMoney } from "../../lib/formatters";
@@ -20,6 +24,13 @@ function formatBillingDate(value: string): string {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
+}
+
+/** Why a due cycle is not being charged, in the same terms the reminder email uses. */
+function renewalBlockedNote(reason: SubscriptionRenewalReason): string {
+  return reason === "account_archived"
+    ? "Not renewed: account removed"
+    : "Not renewed: not enough balance";
 }
 
 export function SubscriptionTable({
@@ -80,9 +91,16 @@ export function SubscriptionTable({
                 </td>
                 <td data-label="Status">
                   <div className="subscription-status-cell">
-                    <span className={`subscription-status-badge ${item.status}`}>
-                      {item.status === "active" ? "Active" : "Canceled"}
-                    </span>
+                    <div className="subscription-status-stack">
+                      <span className={`subscription-status-badge ${item.status}`}>
+                        {item.status === "active" ? "Active" : "Canceled"}
+                      </span>
+                      {item.status === "active" && item.renewalBlockedReason ? (
+                        <span className="subscription-renewal-blocked">
+                          {renewalBlockedNote(item.renewalBlockedReason)}
+                        </span>
+                      ) : null}
+                    </div>
                     <button
                       className="subscription-status-action"
                       type="button"

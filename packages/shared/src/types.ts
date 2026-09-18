@@ -141,6 +141,9 @@ export type SubscriptionBillingCycle = (typeof subscriptionBillingCycles)[number
 export const subscriptionStatuses = ["active", "canceled"] as const;
 export type SubscriptionStatus = (typeof subscriptionStatuses)[number];
 
+export const subscriptionRenewalReasons = ["insufficient_balance", "account_archived"] as const;
+export type SubscriptionRenewalReason = (typeof subscriptionRenewalReasons)[number];
+
 export interface SubscriptionRecord {
   id: string;
   name: string;
@@ -149,6 +152,8 @@ export interface SubscriptionRecord {
   billingCycle: SubscriptionBillingCycle;
   nextBillingDate: string;
   status: SubscriptionStatus;
+  /** Set while the current cycle is not being charged, with the reason it is held back. */
+  renewalBlockedReason?: SubscriptionRenewalReason | null;
   categoryId: string;
   categoryName: string;
   categoryColor: string;

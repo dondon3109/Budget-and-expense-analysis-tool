@@ -1,10 +1,9 @@
-import { nextSubscriptionBillingDate } from "@zoption/shared";
+import { nextSubscriptionBillingDate, type SubscriptionRenewalReason } from "@zoption/shared";
 
 import {
   subscriptionRepository,
   type DueSubscriptionRenewal,
   type SubscriptionRenewalNotification,
-  type SubscriptionRenewalReason,
   type SubscriptionRepository,
 } from "../db/subscriptions";
 import { enqueueJob } from "../jobs";
@@ -288,9 +287,11 @@ export function createSubscriptionRenewalService(
           else if (outcome === "rolled") result.rolled += 1;
           else if (outcome === "uncovered") {
             result.uncovered += 1;
+            await repository.markRenewalBlocked(env, renewal, "insufficient_balance");
             if (await notifyBlocked(env, renewal, "insufficient_balance")) result.notified += 1;
           } else if (outcome === "archived") {
             result.archived += 1;
+            await repository.markRenewalBlocked(env, renewal, "account_archived");
             if (await notifyBlocked(env, renewal, "account_archived")) result.notified += 1;
           }
         } catch (error) {

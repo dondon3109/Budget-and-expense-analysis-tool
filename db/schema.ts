@@ -366,6 +366,9 @@ export const subscriptions = sqliteTable(
     billingCycle: text("billing_cycle", { enum: ["monthly", "yearly"] }).notNull(),
     nextBillingDate: text("next_billing_date").notNull(),
     lastChargedDate: text("last_charged_date"),
+    renewalBlockedReason: text("renewal_blocked_reason", {
+      enum: ["insufficient_balance", "account_archived"],
+    }),
     status: text("status", { enum: ["active", "canceled"] })
       .notNull()
       .default("active"),

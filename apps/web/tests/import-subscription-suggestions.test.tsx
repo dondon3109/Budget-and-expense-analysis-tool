@@ -242,6 +242,7 @@ describe("Import auto-detection of recurring charges", () => {
           billingCycle: "monthly",
           nextBillingDate: "2026-08-15",
           status: "active",
+          renewalBlockedReason: null,
           categoryId: "entertainment",
           categoryName: "Entertainment",
           categoryColor: "#7363a6",
