@@ -4,6 +4,12 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.37.0 — 2026-09-18
+
+### Added
+
+- A subscription whose renewal is being held back now says so in the list, beside its status: not enough balance, or the paying account was removed. Until now that was only visible in the reminder email.
+
 ## 2.36.0 — 2026-09-17
 
 ### Added
