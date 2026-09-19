@@ -754,7 +754,7 @@ background-task scheduling on real hardware.
   same flow was driven on the Android emulator — Chrome Custom Tab opens the
   authorize URL, the session stays open, the account email was typed and
   Google's password screen was reached. iOS and Android now both sit at
-  Google's password step for `trading.leonard3109@gmail.com` awaiting the
+  Google's password step for the dedicated Google test account awaiting the
   owner's manual login. (Android note: the dev-client intercepts cold-start
   deep links with its launcher, so callback-URL delivery on Android will be
   re-verified with a preview/release build; a transient react-native-screens

@@ -1,6 +1,7 @@
 node_modules/
 .pnpm-store/
 dist/
+dist-ssr/
 coverage/
 .wrangler/
 .hermes/
@@ -40,3 +41,21 @@ apps/ads/out/
 
 # Client build handoff for prerender (build-time only, outside the deployed dist)
 apps/web/.zoption-build/
+
+# Local-only agent settings. Shared project agent config stays tracked.
+.claude/settings.local.json
+
+# Credential material that must never be committed
+*.pem
+*.key
+.npmrc
+.netrc
+
+# Local databases and tooling state
+*.sqlite
+*.sqlite3
+*.db
+.idea/
+.vercel/
+.turbo/
+.expo/
