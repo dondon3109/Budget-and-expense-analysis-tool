@@ -1,5 +1,6 @@
 import {
   accountTypes,
+  cashflowWindowStart,
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
@@ -344,10 +345,20 @@ export interface LocalReferenceData {
 }
 
 export interface LocalDashboardData {
+  /** Transactions inside the dashboard window, newest first. */
   transactions: TransactionRecord[];
+  /**
+   * The newest transactions overall, for the recent activity card. Read
+   * separately because that card must show the latest entries even when the
+   * ledger has been dormant for longer than the dashboard window.
+   */
+  recentTransactions: TransactionRecord[];
   accounts: AccountRecord[];
   budgets: BudgetRecord[];
 }
+
+/** Rows the recent activity card renders. */
+const RECENT_ACTIVITY_LIMIT = 3;
 
 const dashboardTransactionRowSchema = z.object({
   id: z.string(),
@@ -442,6 +453,52 @@ LEFT JOIN transactions peer
   AND peer.deleted_at IS NULL
 LEFT JOIN accounts destination
   ON destination.id = peer.account_id AND destination.deleted_at IS NULL`;
+
+/**
+ * Dashboard projection. The same statement serves both the bounded window and
+ * the unlimited recent activity read; only the tail differs.
+ */
+const dashboardTransactionSelect = `SELECT
+  t.id,
+  t.date,
+  t.description,
+  t.amount_minor,
+  t.currency,
+  t.kind,
+  t.category_id,
+  c.name AS category_name,
+  c.color AS category_color,
+  c.icon_emoji AS category_icon_emoji,
+  COALESCE(a.name, 'Unassigned') AS account_name
+FROM transactions t
+INNER JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
+LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
+WHERE t.deleted_at IS NULL`;
+
+/** Newest first; rowid breaks a same-date tie by local insert order. */
+const dashboardTransactionOrder = "ORDER BY t.date DESC, t.rowid DESC";
+
+function decodeDashboardTransaction(row: unknown): TransactionRecord {
+  const decoded = dashboardTransactionRowSchema.parse(row);
+  return {
+    id: decoded.id,
+    date: decoded.date,
+    description: decoded.description,
+    amountMinor: decoded.amount_minor,
+    currency: decoded.currency,
+    kind: decoded.kind,
+    categoryId: decoded.category_id,
+    categoryName: decoded.category_name,
+    categoryColor: decoded.category_color,
+    categoryIconEmoji:
+      resolveCategoryEmoji({
+        name: decoded.category_name,
+        iconEmoji: decoded.category_icon_emoji,
+        kind: decoded.kind,
+      }) ?? null,
+    accountName: decoded.account_name,
+  };
+}
 
 function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
   return z
@@ -762,27 +819,18 @@ LIMIT ?`;
     };
   }
 
-  async getDashboardData(): Promise<LocalDashboardData> {
-    const transactionRows = await this.database.getAllAsync(`
-      SELECT
-        t.id,
-        t.date,
-        t.description,
-        t.amount_minor,
-        t.currency,
-        t.kind,
-        t.category_id,
-        c.name AS category_name,
-        c.color AS category_color,
-        c.icon_emoji AS category_icon_emoji,
-        COALESCE(a.name, 'Unassigned') AS account_name
-      FROM transactions t
-      INNER JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
-      LEFT JOIN accounts a ON a.id = t.account_id AND a.deleted_at IS NULL
-      WHERE t.deleted_at IS NULL
-      -- Newest first; rowid breaks a same-date tie by local insert order.
-      ORDER BY t.date DESC, t.rowid DESC
-    `);
+  async getDashboardData(anchorDate: string): Promise<LocalDashboardData> {
+    // The dashboard aggregates over a bounded window rather than the whole
+    // ledger: the summary reads the current month and the chart the widest
+    // view, both of which sit inside `cashflowWindowStart`. Recent activity
+    // is a separate three row read so it is not clipped by that window.
+    const transactionRows = await this.database.getAllAsync(
+      `${dashboardTransactionSelect} AND t.date >= ? ${dashboardTransactionOrder}`,
+      cashflowWindowStart(anchorDate),
+    );
+    const recentRows = await this.database.getAllAsync(
+      `${dashboardTransactionSelect} ${dashboardTransactionOrder} LIMIT ${RECENT_ACTIVITY_LIMIT}`,
+    );
 
     const accountRows = await this.database.getAllAsync(`
       SELECT
@@ -822,27 +870,8 @@ LIMIT ?`;
     `);
 
     return {
-      transactions: transactionRows.map((row) => {
-        const decoded = dashboardTransactionRowSchema.parse(row);
-        return {
-          id: decoded.id,
-          date: decoded.date,
-          description: decoded.description,
-          amountMinor: decoded.amount_minor,
-          currency: decoded.currency,
-          kind: decoded.kind,
-          categoryId: decoded.category_id,
-          categoryName: decoded.category_name,
-          categoryColor: decoded.category_color,
-          categoryIconEmoji:
-            resolveCategoryEmoji({
-              name: decoded.category_name,
-              iconEmoji: decoded.category_icon_emoji,
-              kind: decoded.kind,
-            }) ?? null,
-          accountName: decoded.account_name,
-        };
-      }),
+      transactions: transactionRows.map(decodeDashboardTransaction),
+      recentTransactions: recentRows.map(decodeDashboardTransaction),
       accounts: accountRows.map((row) => {
         const decoded = dashboardAccountRowSchema.parse(row);
         const balancesByCurrency = {

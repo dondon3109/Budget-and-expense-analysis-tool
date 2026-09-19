@@ -1,6 +1,7 @@
 import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "expo-sqlite";
 
 import { snapshotMobileSync } from "@/api/mobile-sync";
+import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { isDummyDevelopmentSubject, seedDummyWorkspaceData } from "./demo-seed";
 import {
   getOrCreateWorkspaceKey,
@@ -124,16 +125,21 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
   const generation = await getWorkspaceGeneration(alias);
   const name = databaseNameForGeneration(alias, generation);
   const key = await getOrCreateWorkspaceKey(alias);
+  markStartupPhase("workspace:key");
   await ensureLocalDataBackupProtection();
   const database = await openDatabaseAsync(name, {
     enableChangeListener: true,
     useNewConnection: true,
   });
   try {
+    // Between `workspace:key` and here sit the SQLCipher key derivation and
+    // the first page read, which is the part of the unlock we cannot see.
     await configureEncryptedDatabase(database, key);
+    markStartupPhase("workspace:opened");
     let schemaVersion: number;
     try {
       schemaVersion = await applyLocalMigrations(asMigrationDatabase(database));
+      markStartupPhase("workspace:migrations");
       await assertWorkspaceSubject(database, subject);
       if (isDummyDevelopmentSubject(subject)) {
         const existing = await database.getFirstAsync<{ count: number }>(

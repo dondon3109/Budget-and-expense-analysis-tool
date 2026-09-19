@@ -4,6 +4,22 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Performance
+
+- Android cold start no longer paints three separate spinner screens. The native splash stays up
+  until the stored session resolves and is released on the route that session selects, with a
+  timeout so a stalled restore cannot strand it. Module evaluation is deferred to first use,
+  and icons are preloaded, so the first frame no longer flashes the wrong theme or pops its
+  icons in a moment later.
+- The Home screen reads only the window its cards display instead of the whole transaction
+  ledger, and recent activity is a separate three-row read. A long ledger no longer costs a
+  full-table read, a per-row decode, and a full-ledger aggregation every time the dashboard
+  loads.
+- A synchronization pull no longer re-runs every open query once per applied row. All screens
+  share one local change subscription and coalesce their refreshes, so a page of changes costs
+  one refresh rather than one per row.
+- The app bundles one icon font instead of sixteen. The unused families were 2.6 MB of assets.
+
 ### Added
 
 - Prepared Android Beta 0.2.31 (versionCode 20331) mobile release and refreshed in-app patch notes.

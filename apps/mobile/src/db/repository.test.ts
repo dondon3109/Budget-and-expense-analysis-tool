@@ -1,3 +1,5 @@
+import { cashflowWindowStart } from "@zoption/shared";
+
 import { LocalWorkspaceRepository } from "./repository";
 
 describe("encrypted local workspace repository", () => {
@@ -133,9 +135,27 @@ describe("encrypted local workspace repository", () => {
     const [listSql] = getAllAsync.mock.calls[0] as [string, ...Array<string | number>];
     expect(listSql).toContain("ORDER BY transaction_row.date DESC, transaction_row.rowid DESC");
 
-    await repository.getDashboardData();
+    await repository.getDashboardData("2026-08-14");
+    // Call 0 is the transaction list above; the dashboard window read is next.
     const [dashboardSql] = getAllAsync.mock.calls[1] as [string, ...Array<string | number>];
     expect(dashboardSql).toContain("ORDER BY t.date DESC, t.rowid DESC");
+  });
+
+  it("bounds the dashboard ledger read to the chart window and reads recent activity on its own", async () => {
+    const getAllAsync = jest.fn().mockResolvedValue([]);
+    const repository = new LocalWorkspaceRepository({ getAllAsync } as never);
+
+    await repository.getDashboardData("2026-08-14");
+
+    const [windowSql, windowStart] = getAllAsync.mock.calls[0] as [string, string];
+    expect(windowSql).toContain("AND t.date >= ?");
+    expect(windowStart).toBe(cashflowWindowStart("2026-08-14"));
+
+    // Recent activity must keep showing the newest rows from any date, so it
+    // is the one dashboard read that is not bounded by the window.
+    const [recentSql] = getAllAsync.mock.calls[1] as [string];
+    expect(recentSql).not.toContain("t.date >=");
+    expect(recentSql).toContain("LIMIT 3");
   });
 
   it("decodes native account and category setup rows without financial state in memory stores", async () => {
@@ -384,6 +404,20 @@ describe("encrypted local workspace repository", () => {
         ])
         .mockResolvedValueOnce([
           {
+            id: "transaction-1",
+            date: "2026-08-10",
+            description: "Lunch",
+            amount_minor: -25_000,
+            currency: "PHP",
+            kind: "expense",
+            category_id: "category-1",
+            category_name: "Dining",
+            category_color: "#123456",
+            account_name: "Wallet",
+          },
+        ])
+        .mockResolvedValueOnce([
+          {
             id: "account-1",
             name: "Wallet",
             type: "cash",
@@ -411,7 +445,10 @@ describe("encrypted local workspace repository", () => {
         ]),
     };
 
-    const result = await new LocalWorkspaceRepository(database as never).getDashboardData();
+    const result = await new LocalWorkspaceRepository(database as never).getDashboardData(
+      "2026-08-14",
+    );
+    expect(result.recentTransactions).toHaveLength(1);
     expect(result.transactions).toEqual([
       {
         id: "transaction-1",

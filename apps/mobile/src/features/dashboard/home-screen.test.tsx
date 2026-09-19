@@ -58,6 +58,7 @@ describe("HomeScreen", () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
         transactions: [],
+        recentTransactions: [],
         accounts: [],
         budgets: [],
       },
@@ -89,6 +90,7 @@ describe("HomeScreen", () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
         transactions: [],
+        recentTransactions: [],
         accounts: [],
         budgets: [],
       },
@@ -116,6 +118,21 @@ describe("HomeScreen", () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
         transactions: [
+          {
+            id: "tx-1",
+            date: today,
+            description: "Salary deposit",
+            amountMinor: 75_000_00,
+            currency: "PHP",
+            kind: "income",
+            categoryId: "cat-income",
+            categoryName: "Income",
+            categoryColor: "#08776d",
+            categoryIconEmoji: "💰",
+            accountName: "Main Bank",
+          },
+        ],
+        recentTransactions: [
           {
             id: "tx-1",
             date: today,
@@ -206,6 +223,34 @@ describe("HomeScreen", () => {
             accountName: "Main Bank",
           },
         ],
+        recentTransactions: [
+          {
+            id: "tx-1",
+            date: today,
+            description: "Salary deposit",
+            amountMinor: 75_000_00,
+            currency: "PHP",
+            kind: "income",
+            categoryId: "cat-income",
+            categoryName: "Income",
+            categoryColor: "#08776d",
+            categoryIconEmoji: "💰",
+            accountName: "Main Bank",
+          },
+          {
+            id: "tx-2",
+            date: today,
+            description: "Supermarket groceries",
+            amountMinor: -4_500_00,
+            currency: "PHP",
+            kind: "expense",
+            categoryId: "cat-groceries",
+            categoryName: "Groceries",
+            categoryColor: "#2f65c8",
+            categoryIconEmoji: "🛒",
+            accountName: "Main Bank",
+          },
+        ],
         accounts: [
           {
             id: "acc-1",
@@ -259,6 +304,7 @@ describe("HomeScreen", () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
         transactions: [],
+        recentTransactions: [],
         accounts: [],
         budgets: [],
       },

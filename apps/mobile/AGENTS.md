@@ -42,6 +42,9 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - Screens and components use PascalCase `*Screen.tsx`; pure logic modules and their tests use kebab case.
 - Tests are colocated as `<module>.test.ts(x)`. Jest matches `src/**` and `plugins/**/*.test.js` only, so nothing under `app/` is collected.
 - Read through `useLocalWorkspace()` hooks and repositories. Reach the network only through `src/api/*` and `apiRequest`.
+- Subscribe to SQLite changes through `subscribeToLocalChanges`, never `addDatabaseChangeListener` directly. One native listener per open database is shared by every hook and each subscriber's refresh is coalesced, so a sync page that writes N rows costs one re-query rather than N.
+- `useDashboardData(anchorDate)` bounds its ledger read to `cashflowWindowStart(anchorDate)`, the widest cashflow view, and reads the three newest transactions separately for recent activity. Pass the same local date to `buildDashboardView` so the chart cannot read a window the query never loaded.
+- Import icons from `@expo/vector-icons/MaterialCommunityIcons`, never the `@expo/vector-icons` barrel. The barrel registers all 16 font families as bundled assets (2.6 MB), of which the app uses one.
 - Keep financial rows out of Zustand. Stores hold UI state only.
 - Parse money with the shared `parseAmountToMinor` and format only through `formatMoneyMinor` or `MoneyValue`. Amounts are integer minor units with SQLite CHECK constraints.
 - Read `process.env.EXPO_PUBLIC_*` with a literal key. A dynamic read is dropped from the release bundle.
@@ -58,6 +61,8 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - Never add SMS or notification read permissions. SMS entry is clipboard paste parsed by the shared `parseSmsNotification`.
 - `SYSTEM_ALERT_WINDOW` must not ship and predictive back stays disabled; both are enforced in `app.config.ts`.
 - `package.json` version is the only version name, and `android.versionCode` in `app.config.ts` is the one hand picked number.
+- `metro.config.cjs` enables `inlineRequires`, so module evaluation is deferred to first use. Keep bare side-effect imports (`react-native-gesture-handler`, `@/styles/global.css`, the module-scope `TaskManager.defineTask`) as they are: they have no binding to inline and must still run eagerly.
+- Cold start phases are recorded with `markStartupPhase` from `src/diagnostics/startup-timing.ts`, which is `__DEV__`-gated and never ships. Add a phase there instead of a bare `console.log`.
 - The colocated Jest suites run in CI and in `pnpm verify` through `pnpm test:mobile`. The root `pnpm test` is Vitest and collects only `apps/**/tests/**`, `packages/**/tests/**`, and `scripts/**`, so a mobile test is only run when it sits beside its source. CI does typecheck this workspace through the root `pnpm typecheck`, but `pnpm -r build` skips it because there is no build script.
 
 ## Related specs

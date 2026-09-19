@@ -157,6 +157,15 @@ function bucketKeyFor(granularity: "day" | "month", isoDate: string): string {
   return granularity === "day" ? isoDate : monthStart(isoDate);
 }
 
+/**
+ * Earliest date any cashflow view can display. A dashboard read bounds itself
+ * to this date instead of loading the whole ledger, so the SQL bound and the
+ * chart windows are derived from one rule rather than two that can drift.
+ */
+export function cashflowWindowStart(anchorDate: string): string {
+  return cashflowPoints("sixMonth", anchorDate).range.from;
+}
+
 export function buildCashflowTrend(
   transactions: readonly Pick<TransactionRecord, "date" | "kind" | "amountMinor">[],
   view: CashflowTrend["view"],

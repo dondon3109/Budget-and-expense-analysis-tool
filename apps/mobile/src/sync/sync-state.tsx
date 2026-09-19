@@ -45,6 +45,13 @@ const SyncContext = createContext<SyncSnapshot>({
   retry: () => undefined,
 });
 
+/**
+ * Delay before a launch's first push and pull. The sync work itself is
+ * unchanged: this only keeps it from competing with the first screen's read
+ * for the JS thread and the serialized local writer.
+ */
+const INITIAL_SYNC_DELAY_MS = 400;
+
 async function pullWithTimeout(
   accessToken: string,
   cursor: string | null,
@@ -200,6 +207,7 @@ export function SyncProvider({
     };
     setSnapshot({ status: "syncing", message: null });
     const run = async (): Promise<void> => {
+      if (controller.signal.aborted) return;
       try {
         let accessToken = await session.getAccessToken(false);
         let refreshed = false;
@@ -378,8 +386,9 @@ export function SyncProvider({
       }
     };
 
-    void run();
+    const startTimer = setTimeout(() => void run(), INITIAL_SYNC_DELAY_MS);
     return () => {
+      clearTimeout(startTimer);
       controller.abort();
       if (retryTimer) clearTimeout(retryTimer);
     };

@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as WebBrowser from "expo-web-browser";
 import type { BillingInterval, BillingSummary } from "@zoption/shared";
 import { useCallback, useEffect, useState } from "react";

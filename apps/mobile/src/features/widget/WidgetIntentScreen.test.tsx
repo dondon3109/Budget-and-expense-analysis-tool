@@ -95,6 +95,7 @@ function expenseFormData(): TransactionFormData {
 function dashboardWithBalance(balanceMinor: number | null): LocalDashboardData {
   return {
     transactions: [],
+    recentTransactions: [],
     budgets: [],
     accounts: [
       {
