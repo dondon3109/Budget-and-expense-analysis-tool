@@ -10,6 +10,7 @@ describe("current release notes", () => {
       "Signing out on Android ends the session on the server",
       "Steadier assistant amounts, savings interest, and profile photos",
       "Assistant memory that stays until you delete it",
+      "A rebuilt Memory & Preferences panel",
       "Android Beta 0.2.32",
     ]);
 

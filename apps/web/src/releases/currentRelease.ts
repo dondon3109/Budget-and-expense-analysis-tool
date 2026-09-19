@@ -39,6 +39,11 @@ export const currentRelease: ProductRelease = {
         "Remembered facts and your debt payoff preference no longer expire after 90 days; they are kept until you delete a fact, clear memory, or delete your account. Conversations and their sanitized audit snapshots still expire 90 days after the last message in a chat, and the assistant asks you to review the updated data-sharing notice once.",
     },
     {
+      title: "A rebuilt Memory & Preferences panel",
+      description:
+        "The Memory panel keeps its title, close button, and Clear memory action in place while the list scrolls, lets you set response detail and coaching tone beside the debt payoff strategy instead of only on the planning page, marks the chosen strategy with a check as well as a colour, and waits for your memory to load instead of claiming it is empty.",
+    },
+    {
       title: "Android Beta 0.2.32",
       description:
         "The official Android Beta keeps remembered facts until you delete them, with the updated assistant consent notice, the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
