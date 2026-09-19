@@ -3,8 +3,17 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { consumeSocialAuthDestination } from "../auth/socialAuthDestination";
-import { InlineLoader } from "../components/layout/InlineLoader";
 import { AuthLayout } from "../components/auth/AuthLayout";
+import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatus";
+
+/**
+ * How long the sign-in handoff stays on screen once the provider has answered.
+ *
+ * The session is already restored when this elapses; it exists so the branded
+ * loading surface is actually seen, and it is the only artificial delay in the
+ * app. A failed exchange skips it entirely.
+ */
+export const SIGN_IN_HANDOFF_MS = 2000;
 
 function safeNext(value: string | null): string {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/app";
@@ -31,14 +40,25 @@ export function AuthCallbackPage() {
     }
 
     const requestedDestination = searchParams.get("next") ?? consumeSocialAuthDestination();
-    void exchangeCodeForSession(code)
-      .then((isPasswordRecovery) => {
+    let cancelled = false;
+    const hold = new Promise((resolve) => window.setTimeout(resolve, SIGN_IN_HANDOFF_MS));
+
+    void Promise.all([exchangeCodeForSession(code), hold])
+      .then(([isPasswordRecovery]) => {
+        if (cancelled) return;
         const destination = isPasswordRecovery
           ? "/update-password"
           : safeNext(requestedDestination);
         void navigate(destination, { replace: true });
       })
-      .catch(() => setError(true));
+      .catch(() => {
+        if (cancelled) return;
+        setError(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [exchangeCodeForSession, navigate, searchParams]);
 
   if (error) {
@@ -63,8 +83,11 @@ export function AuthCallbackPage() {
   }
 
   return (
-    <div className="full-page-status">
-      <InlineLoader label="Completing secure sign-in" />
-    </div>
+    <FullPageLoadingStatus
+      title="Completing secure sign-in"
+      description="Handing over from your provider and opening your workspace."
+      phase="session"
+      progress={1}
+    />
   );
 }

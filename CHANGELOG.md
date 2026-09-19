@@ -34,6 +34,9 @@ All notable product changes are documented here.
   is restored and the workspace has loaded, and its rail reflects those real steps instead of an
   invented percentage. Its mark is now a single rising rule that the Zoption monogram draws itself
   onto before both clear and the loop repeats.
+- Signing in through a provider link, a magic link, or a password reset now ends on that loading
+  screen for two seconds while the handoff finishes, so the workspace no longer appears to jump
+  straight from the provider. A sign-in that fails still reports the failure immediately.
 
 ### Security
 

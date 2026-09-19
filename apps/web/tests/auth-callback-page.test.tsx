@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -36,11 +36,12 @@ vi.mock("../src/components/auth/AuthLayout", () => ({
   ),
 }));
 
-import { AuthCallbackPage } from "../src/pages/AuthCallbackPage";
+import { AuthCallbackPage, SIGN_IN_HANDOFF_MS } from "../src/pages/AuthCallbackPage";
 
+/** A span, not an <output>: that element carries an implicit "status" role. */
 function CurrentLocation() {
   const location = useLocation();
-  return <output data-testid="current-location">{`${location.pathname}${location.search}`}</output>;
+  return <span data-testid="current-location">{`${location.pathname}${location.search}`}</span>;
 }
 
 function renderCallback(initialEntry: string) {
@@ -52,42 +53,75 @@ function renderCallback(initialEntry: string) {
   );
 }
 
-describe("AuthCallbackPage", () => {
-  afterEach(cleanup);
+/** Let the exchange settle and the handoff hold elapse. */
+async function completeHandoff() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(SIGN_IN_HANDOFF_MS);
+  });
+}
 
+describe("AuthCallbackPage", () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     authState.exchangeCodeForSession.mockReset().mockResolvedValue(false);
     sessionStorage.clear();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("shows the branded loading surface while the handoff runs", () => {
+    renderCallback("/auth/callback?code=confirmation-code");
+
+    expect(screen.getByText("Completing secure sign-in")).toBeInTheDocument();
+    expect(screen.getByText("Zoption Platform")).toBeInTheDocument();
+    // Sign-in has a known next step, so the rail reports it rather than guessing.
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getByText("Checking your session")).toBeInTheDocument();
+  });
+
+  it("holds the loading surface for the full handoff before leaving", async () => {
+    renderCallback("/auth/callback?code=confirmation-code&next=%2Fapp%2Fsettings");
+
+    // The session is already exchanged here; only the hold is outstanding.
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId("current-location")).not.toHaveTextContent("/app/settings");
+
+    await completeHandoff();
+
+    expect(screen.getByTestId("current-location")).toHaveTextContent("/app/settings");
   });
 
   it("routes recovery codes to the password form even without a next parameter", async () => {
     authState.exchangeCodeForSession.mockResolvedValue(true);
     renderCallback("/auth/callback?code=recovery-code");
 
-    await waitFor(() =>
-      expect(authState.exchangeCodeForSession).toHaveBeenCalledWith("recovery-code"),
-    );
-    await waitFor(() =>
-      expect(screen.getByTestId("current-location")).toHaveTextContent("/update-password"),
-    );
+    await completeHandoff();
+
+    expect(authState.exchangeCodeForSession).toHaveBeenCalledWith("recovery-code");
+    expect(screen.getByTestId("current-location")).toHaveTextContent("/update-password");
   });
 
   it("uses a safe requested destination for non-recovery account links", async () => {
     renderCallback("/auth/callback?code=confirmation-code&next=%2Fapp%2Fsettings");
 
-    await waitFor(() =>
-      expect(screen.getByTestId("current-location")).toHaveTextContent("/app/settings"),
-    );
+    await completeHandoff();
+
+    expect(screen.getByTestId("current-location")).toHaveTextContent("/app/settings");
   });
 
   it("restores a social sign-in destination without changing the allow-listed callback URL", async () => {
     sessionStorage.setItem("zoption-social-auth-destination", "/app/settings?section=billing");
     renderCallback("/auth/callback?code=social-code");
 
-    await waitFor(() =>
-      expect(screen.getByTestId("current-location")).toHaveTextContent(
-        "/app/settings?section=billing",
-      ),
+    await completeHandoff();
+
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?section=billing",
     );
     expect(sessionStorage.getItem("zoption-social-auth-destination")).toBeNull();
   });
@@ -97,16 +131,16 @@ describe("AuthCallbackPage", () => {
     async (next) => {
       renderCallback(`/auth/callback?code=confirmation-code&next=${next}`);
 
-      await waitFor(() => expect(screen.getByTestId("current-location")).toHaveTextContent("/app"));
+      await completeHandoff();
+
+      expect(screen.getByTestId("current-location")).toHaveTextContent("/app");
     },
   );
 
-  it("offers a new reset link when the recovery callback has no code", async () => {
+  it("offers a new reset link when the recovery callback has no code", () => {
     renderCallback("/auth/callback?next=%2Fupdate-password");
 
-    expect(
-      await screen.findByRole("heading", { name: "Request a new reset link" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Request a new reset link" })).toBeInTheDocument();
     expect(screen.getByText(/invalid, expired, or has already been used/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Send a new reset link" })).toHaveAttribute(
       "href",
@@ -114,34 +148,35 @@ describe("AuthCallbackPage", () => {
     );
   });
 
-  it("hides provider details when code exchange fails", async () => {
+  it("shows a failed exchange without holding the loader", async () => {
     authState.exchangeCodeForSession.mockRejectedValue(new Error("provider detail"));
     renderCallback("/auth/callback?code=expired&next=%2Fupdate-password");
 
-    expect(
-      await screen.findByRole("heading", { name: "Request a new reset link" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("provider detail")).not.toBeInTheDocument();
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByRole("heading", { name: "Request a new reset link" })).toBeInTheDocument();
+    expect(screen.queryByText("Completing secure sign-in")).not.toBeInTheDocument();
+    expect(screen.queryByText(/provider detail/i)).not.toBeInTheDocument();
   });
 
-  it("handles provider-declared callback errors", async () => {
+  it("handles provider-declared callback errors", () => {
     renderCallback(
       "/auth/callback?error=access_denied&error_description=Link%20expired&next=%2Fupdate-password",
     );
 
-    expect(
-      await screen.findByRole("heading", { name: "Request a new reset link" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Request a new reset link" })).toBeInTheDocument();
     expect(authState.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
-  it("offers a retry without exposing social-provider callback details", async () => {
+  it("offers a retry without exposing social-provider callback details", () => {
     renderCallback(
       "/auth/callback?error=access_denied&error_description=Private%20provider%20detail",
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Sign-in could not be completed" }),
+      screen.getByRole("heading", { name: "Sign-in could not be completed" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Return to sign in" })).toHaveAttribute(
       "href",
