@@ -8,6 +8,9 @@ All notable product changes are documented here.
 
 - Prepared Android Beta 0.2.31 (versionCode 20331) mobile release and refreshed in-app patch notes.
 - Prepared Android Beta 0.2.32 (versionCode 20332) mobile release and refreshed in-app patch notes.
+- The assistant Memory panel now edits response detail and coaching tone next to the debt payoff
+  strategy. Both were previously shown there as read-only text and could only be changed from the
+  planning page.
 
 ### Changed
 
@@ -37,6 +40,12 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- The assistant Memory panel keeps its title, close control, and Clear memory/Close actions pinned
+  while the memory list scrolls, so they stay reachable however many facts are remembered. It no
+  longer shows "No preference" or "No remembered facts yet" while it is still loading, says so with a
+  retry when that load fails, marks the chosen payoff strategy with a check as well as a colour, and
+  keeps the three payoff cards' titles and descriptions aligned at every width, including a single
+  stacked column on a phone.
 - Assistant answers can no longer state a peso amount that cannot be traced to your own data, in any
   formatting.
 - A question that needs several kinds of lookup (budget, categories, trends) is now answered from your

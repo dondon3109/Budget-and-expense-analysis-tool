@@ -1958,20 +1958,59 @@ main:has(.assistant-page) > .legal-footer,
 /* ============================================================
    MEMORY PANEL
    ============================================================ */
+/* Fixed chrome around a scrolling body: the title, the close control, and both footer
+   actions stay reachable however many facts the assistant has remembered. */
 .assistant-memory-panel {
   width: min(620px, 100%);
-  max-height: 90vh;
+  max-height: min(90vh, 780px);
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.assistant-memory-header {
+  padding: 22px 24px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.assistant-memory-body {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: 16px 24px 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+.assistant-memory-body::-webkit-scrollbar {
+  width: 10px;
+}
+
+.assistant-memory-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.assistant-memory-body::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+  background-color: var(--line-strong);
+}
+
+.assistant-memory-footer {
+  padding: 12px 24px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
 }
 
 .assistant-memory-trust-banner {
-  margin-top: 14px;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--surface-soft);
 }
 
@@ -1979,9 +2018,9 @@ main:has(.assistant-page) > .legal-footer,
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
   background: var(--selection-soft);
   color: var(--action);
   flex-shrink: 0;
@@ -1989,20 +2028,56 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-memory-trust-banner .trust-text-wrap {
   display: grid;
-  gap: 3px;
+  gap: 2px;
 }
 
 .assistant-memory-trust-banner .trust-text-wrap strong {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: var(--ink);
 }
 
 .assistant-memory-trust-banner .trust-text-wrap p {
   margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.45;
   color: var(--muted);
+}
+
+.assistant-memory-load-error {
+  margin-top: 14px;
+  padding: 11px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 32%, var(--line));
+  border-radius: 10px;
+  background: var(--danger-soft);
+}
+
+.assistant-memory-load-error p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+/* Placeholder while a query resolves. It reserves the height of the content it replaces so
+   opening the panel does not jump as the answers arrive. */
+.assistant-memory-pending {
+  margin: 0;
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11.5px;
+  text-align: center;
 }
 
 .assistant-memory-section {
@@ -2011,14 +2086,18 @@ main:has(.assistant-page) > .legal-footer,
   gap: 10px;
 }
 
+/* The help text is an annotation, so it wraps to its own line rather than squeezing the
+   section title into two words per line on a narrow panel. */
 .assistant-memory-section .section-title-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 2px 8px;
 }
 
 .assistant-memory-section .section-title-row > strong {
+  flex: 0 0 auto;
   color: var(--ink);
   font-size: 13px;
   font-weight: 700;
@@ -2055,7 +2134,7 @@ main:has(.assistant-page) > .legal-footer,
   flex-direction: column;
   align-items: flex-start;
   text-align: left;
-  padding: 12px;
+  padding: 12px 13px;
   border: 1px solid var(--line);
   border-radius: 12px;
   background: var(--surface);
@@ -2072,6 +2151,9 @@ main:has(.assistant-page) > .legal-footer,
 
 .strategy-card.current {
   border-color: var(--action);
+  /* An inset ring marks the choice without changing the border box, so the grid
+     does not shift by a pixel when the selection moves. */
+  box-shadow: inset 0 0 0 1px var(--action);
   background: var(--selection-soft);
 }
 
@@ -2080,22 +2162,32 @@ main:has(.assistant-page) > .legal-footer,
   cursor: not-allowed;
 }
 
+/* The title owns its own row so the pill can never squeeze it into a second line,
+   which is what left the three descriptions starting at different heights. */
 .strategy-card-header {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 6px;
-  margin-bottom: 6px;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.strategy-card-header svg {
+  flex: 0 0 auto;
+  color: var(--action);
 }
 
 .strategy-title {
   font-size: 13px;
   font-weight: 750;
+  line-height: 1.25;
   color: var(--ink);
 }
 
 .strategy-pill {
+  align-self: flex-start;
+  margin-bottom: 7px;
   font-size: 10px;
   font-weight: 700;
   padding: 2px 7px;
@@ -2103,6 +2195,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--selection-soft);
   color: var(--action);
   border: 1px solid var(--action);
+  white-space: nowrap;
 }
 
 .strategy-pill.neutral {
@@ -2119,37 +2212,79 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-memory-style-card {
-  display: flex;
-  align-items: center;
-  padding: 10px 14px;
+  display: grid;
+  gap: 9px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--surface-soft);
-  gap: 14px;
 }
 
-.style-item {
+.style-choice-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
 }
 
-.style-label {
+.style-choice-label {
+  flex: 0 0 auto;
+  min-width: 92px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 650;
   color: var(--muted);
 }
 
-.style-value {
+.style-choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.style-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font: inherit;
   font-size: 11.5px;
   font-weight: 650;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.style-choice:hover:not(:disabled) {
+  border-color: var(--line-strong);
   color: var(--ink);
 }
 
-.style-divider {
-  width: 1px;
-  height: 14px;
-  background: var(--line);
+.style-choice.current {
+  border-color: var(--action);
+  background: var(--selection-soft);
+  color: var(--action);
+}
+
+.style-choice:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.style-choice small {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--subtle);
+}
+
+.style-choice.current small {
+  color: color-mix(in srgb, var(--action) 80%, var(--ink));
 }
 
 .assistant-memory-empty-card {
@@ -2157,45 +2292,45 @@ main:has(.assistant-page) > .legal-footer,
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 22px 18px;
+  padding: 18px 16px;
   border: 1px dashed var(--line-strong);
   border-radius: 12px;
   background: var(--surface-soft);
-  gap: 6px;
+  gap: 5px;
 }
 
 .assistant-memory-empty-card .empty-icon-wrap {
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 9px;
   background: var(--selection-soft);
   color: var(--action);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .assistant-memory-empty-card h4 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--ink);
 }
 
 .assistant-memory-empty-card p {
   margin: 0;
-  max-width: 420px;
-  font-size: 12px;
-  line-height: 1.5;
+  max-width: 400px;
+  font-size: 11.5px;
+  line-height: 1.45;
   color: var(--muted);
 }
 
 .empty-examples {
-  margin-top: 10px;
+  margin-top: 8px;
   width: 100%;
-  max-width: 440px;
-  padding: 10px 14px;
+  max-width: 420px;
+  padding: 9px 12px;
   border-radius: 8px;
   background: var(--surface);
   border: 1px solid var(--line);
@@ -2203,22 +2338,22 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .empty-examples .examples-header {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: var(--ink);
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .empty-examples ul {
   margin: 0;
   padding-left: 16px;
   display: grid;
-  gap: 4px;
+  gap: 3px;
 }
 
 .empty-examples li {
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--muted);
   line-height: 1.4;
 }
@@ -2248,9 +2383,12 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .fact-source-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 10.5px;
   font-weight: 650;
-  padding: 2px 7px;
+  padding: 3px 7px;
   border-radius: 6px;
 }
 
@@ -2306,28 +2444,39 @@ main:has(.assistant-page) > .legal-footer,
   gap: 8px;
 }
 
+.assistant-memory-footer .form-error {
+  margin: 0 0 10px;
+}
+
 .assistant-memory-actions {
-  margin-top: 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
 }
 
+/* Destructive, so it stays quiet next to the primary Close action until it is hovered. */
 .assistant-memory-clear-btn {
-  min-height: 36px;
-  padding: 0 12px;
+  min-height: 32px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   color: var(--danger);
-  border: 1px solid color-mix(in srgb, var(--danger) 32%, var(--line));
-  border-radius: 999px;
-  background: var(--danger-soft);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   font-size: 11.5px;
-  font-weight: 750;
+  font-weight: 650;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.assistant-memory-clear-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--danger) 32%, var(--line));
+  background: var(--danger-soft);
 }
 
 .assistant-memory-clear-btn:disabled {
@@ -2336,7 +2485,6 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-memory-clear-confirm {
-  margin-top: 20px;
   padding: 14px;
   border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
   border-radius: 12px;
@@ -2385,13 +2533,15 @@ main:has(.assistant-page) > .legal-footer,
 
 /* Touch targets. Measured (not guessed): send 38x38, voice 38x38, composer
    textarea 40px, Memory 32px, sidebar New chat/Voice 38px, History edit 30px,
-   Clear memory 36px, memory-panel close (icon-button.compact) 36px. */
+   Clear memory 32px, response-style chips 30px, memory-panel close
+   (icon-button.compact) 36px. */
 @media (hover: none), (pointer: coarse) {
   .assistant-new-chat,
   .assistant-new-voice-chat,
   .assistant-history-edit,
   .assistant-memory-trigger,
   .assistant-memory-clear-btn,
+  .assistant-memory-panel .style-choice,
   .assistant-memory-panel .icon-button.compact {
     min-height: 44px;
   }
@@ -2408,6 +2558,28 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-composer textarea {
     min-height: 44px;
+  }
+}
+
+/* The panel is 620px wide until the viewport is narrower than that, so below this the three
+   strategy cards stack rather than orphaning the third one on a row of its own. */
+@media (max-width: 620px) {
+  .assistant-memory-strategy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .assistant-memory-header {
+    padding: 18px 18px 14px;
+  }
+
+  .assistant-memory-body {
+    padding: 14px 18px 4px;
+  }
+
+  .assistant-memory-footer {
+    padding: 12px 18px 20px;
   }
 }
 

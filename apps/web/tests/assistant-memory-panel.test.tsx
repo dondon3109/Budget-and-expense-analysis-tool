@@ -12,6 +12,7 @@ const apiMocks = vi.hoisted(() => ({
   getAssistantMemory: vi.fn(),
   getAssistantMemoryPreferences: vi.fn(),
   updateAssistantMemoryPreferences: vi.fn(),
+  updateAssistantResponsePreferences: vi.fn(),
   updateAssistantMemory: vi.fn(),
   deleteAssistantMemory: vi.fn(),
 }));
@@ -90,6 +91,15 @@ describe("AssistantMemoryPanel", () => {
       responseDetail: "concise",
       coachingStyle: "gentle",
     });
+    apiMocks.updateAssistantResponsePreferences.mockReset().mockResolvedValue({
+      consentedAt: "2026-07-27T10:00:00.000Z",
+      consentVersion: 1,
+      retentionDays: 90,
+      assistantName: "Zoption Assistant",
+      userPreferredName: null,
+      responseDetail: "concise",
+      coachingStyle: "direct",
+    });
   });
 
   it("renders the trust banner, strategy cards, and response style overview", async () => {
@@ -98,12 +108,39 @@ describe("AssistantMemoryPanel", () => {
     expect(await screen.findByText("Memory & Preferences")).toBeInTheDocument();
     expect(screen.getByText("Private & Read-Only")).toBeInTheDocument();
     expect(screen.getByText("Debt payoff preference")).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /Avalanche/ })).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /Avalanche/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Snowball/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /No preference/ })).toBeInTheDocument();
 
     expect(await screen.findByText(/Concise/)).toBeInTheDocument();
     expect(screen.getByText(/Gentle/)).toBeInTheDocument();
+  });
+
+  it("does not claim an empty memory or a chosen payoff strategy before the data arrives", async () => {
+    apiMocks.getAssistantMemory.mockReturnValue(new Promise<never>(() => {}));
+    apiMocks.getAssistantMemoryPreferences.mockReturnValue(new Promise<never>(() => {}));
+
+    renderPanel();
+
+    expect(await screen.findByText("Memory & Preferences")).toBeInTheDocument();
+    expect(screen.getByText("Loading what your assistant remembers…")).toBeInTheDocument();
+    expect(screen.queryByText("No remembered facts yet")).not.toBeInTheDocument();
+    // Rendering "No preference" as checked here would state a choice the user never made.
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+  });
+
+  it("saves the response style preferences the planning page also owns", async () => {
+    renderPanel();
+
+    expect(await screen.findByRole("radio", { name: /Gentle/ })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: /Direct/ }));
+
+    await waitFor(() => {
+      expect(apiMocks.updateAssistantResponsePreferences).toHaveBeenCalledWith(mockWorkspace, {
+        responseDetail: "concise",
+        coachingStyle: "direct",
+      });
+    });
   });
 
   it("updates debt strategy preference when clicking a strategy card", async () => {
@@ -145,8 +182,8 @@ describe("AssistantMemoryPanel", () => {
 
     expect(await screen.findByText("Emergency fund target is ₱100,000")).toBeInTheDocument();
     expect(screen.getByText("Rent is due on the 5th of every month")).toBeInTheDocument();
-    expect(screen.getByText("💬 You shared this")).toBeInTheDocument();
-    expect(screen.getByText("🧠 Learned from context")).toBeInTheDocument();
+    expect(screen.getByText("You shared this")).toBeInTheDocument();
+    expect(screen.getByText("Learned from context")).toBeInTheDocument();
   });
 
   it("shows rich empty state with example prompts when no facts are remembered", async () => {
