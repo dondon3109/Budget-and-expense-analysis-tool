@@ -34,9 +34,14 @@ export const currentRelease: ProductRelease = {
         "Assistant answers can no longer state a peso amount that cannot be traced to your own records, an overdrawn savings account no longer earns interest, and profile photo changes appear within a minute instead of staying cached.",
     },
     {
-      title: "Android Beta 0.2.31",
+      title: "Assistant memory that stays until you delete it",
       description:
-        "The official Android Beta adds the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
+        "Remembered facts and your debt payoff preference no longer expire after 90 days; they are kept until you delete a fact, clear memory, or delete your account. Conversations and their sanitized audit snapshots still expire 90 days after the last message in a chat, and the assistant asks you to review the updated data-sharing notice once.",
+    },
+    {
+      title: "Android Beta 0.2.32",
+      description:
+        "The official Android Beta keeps remembered facts until you delete them, with the updated assistant consent notice, the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
     },
   ],
 };

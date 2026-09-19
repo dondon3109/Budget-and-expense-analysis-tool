@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - Prepared Android Beta 0.2.31 (versionCode 20331) mobile release and refreshed in-app patch notes.
+- Prepared Android Beta 0.2.32 (versionCode 20332) mobile release and refreshed in-app patch notes.
 
 ### Changed
 
