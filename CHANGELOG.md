@@ -30,6 +30,10 @@ All notable product changes are documented here.
 - Deleting every chat removes the conversations and their summaries only. Remembered facts and your
   payoff preference stay until you delete them individually or clear memory. Previously, deleting all
   chats also discarded remembered facts.
+- The startup screen no longer holds you for a fixed three seconds. It leaves as soon as your session
+  is restored and the workspace has loaded, its rail reflects those real steps instead of an invented
+  percentage, and its mark is a single continuous stroke that morphs between the Zoption monogram, an
+  ascending chart, a coin and a banknote.
 
 ### Security
 

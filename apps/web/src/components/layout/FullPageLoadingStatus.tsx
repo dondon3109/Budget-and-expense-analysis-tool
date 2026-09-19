@@ -1,238 +1,140 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
+import {
+  MORPH_HOLD_MS,
+  MORPH_PATHS,
+  MORPH_TRANSITION_MS,
+  easeInOutCubic,
+  morphPathAt,
+} from "./loadingMark";
 
 import "./FullPageLoadingStatus.css";
+
+export type LoadingPhase = "session" | "workspace" | "summary";
 
 type FullPageLoadingStatusProps = {
   title: string;
   description: string;
-  /** Full load duration in milliseconds. Defaults to 3000ms. */
-  durationMs?: number;
-  /** Fired once the load animation reaches 100%. */
+  /** Which real step the app is on. Unknown work reports "session". */
+  phase?: LoadingPhase;
+  /** Steps finished so far. Omit when the caller cannot count them. */
+  progress?: number;
+  /** Fired when the loading surface has shown its exit and the app can take over. */
   onComplete?: () => void;
 };
 
-const DEFAULT_DURATION_MS = 3000;
+const PHASE_TEXT: Record<LoadingPhase, string> = {
+  session: "Checking your session",
+  workspace: "Loading your workspace",
+  summary: "Fetching this month's summary",
+};
 
-function easeOutCubic(t: number): number {
-  return 1 - Math.pow(1 - t, 3);
-}
-
-const MILESTONES = [
-  { threshold: 0, text: "Securing encrypted session" },
-  { threshold: 24, text: "Calibrating real-time ledgers" },
-  { threshold: 52, text: "Synthesizing cashflow models" },
-  { threshold: 78, text: "Aligning workspace horizons" },
-  { threshold: 100, text: "Workspace ready" },
-];
+const PHASE_COUNT = Object.keys(PHASE_TEXT).length;
+const EXIT_MS = 260;
 
 export function FullPageLoadingStatus({
   title,
   description,
-  durationMs = DEFAULT_DURATION_MS,
+  phase = "session",
+  progress,
   onComplete,
 }: FullPageLoadingStatusProps) {
   const reduceMotion = useReducedMotion();
-  const [percent, setPercent] = useState(reduceMotion ? 100 : 0);
-  const completedRef = useRef(false);
-  const onCompleteRef = useRef(onComplete);
-  onCompleteRef.current = onComplete;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const markRef = useRef<SVGPathElement>(null);
+  const completeRef = useRef(onComplete);
+  completeRef.current = onComplete;
+  const requestedRef = useRef(false);
 
+  // The mark is written straight to the DOM: a morph per frame through React
+  // state would re-render this whole surface sixty times a second.
+  useEffect(() => {
+    const mark = markRef.current;
+    if (!mark || reduceMotion) return;
+    const cycle = MORPH_HOLD_MS + MORPH_TRANSITION_MS;
+    const started = performance.now();
+    let frame = requestAnimationFrame(function tick(now) {
+      const elapsed = now - started;
+      const shape = Math.floor(elapsed / cycle);
+      const within = elapsed - shape * cycle;
+      const blend = within < MORPH_HOLD_MS ? 0 : (within - MORPH_HOLD_MS) / MORPH_TRANSITION_MS;
+      mark.setAttribute("d", morphPathAt(shape, easeInOutCubic(blend)));
+      frame = requestAnimationFrame(tick);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [reduceMotion]);
+
+  // The caller signals readiness on the same frame it prepares to unmount this
+  // surface, so holding the completion back by the exit length keeps the fade
+  // from being cut off. Reduced motion has no exit to wait out.
   useEffect(() => {
     if (reduceMotion) {
-      setPercent(100);
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onCompleteRef.current?.();
-      }
+      if (requestedRef.current) return;
+      requestedRef.current = true;
+      completeRef.current?.();
       return;
     }
-
-    const start = performance.now();
-    let raf = 0;
-    const readyAt = durationMs * 0.92; // Settle the counter smoothly right before the bar finishes
-
-    const tick = (now: number) => {
-      const elapsed = now - start;
-      const t = Math.min(elapsed / durationMs, 1);
-      const eased = easeOutCubic(t);
-      const pct = Math.max(eased, Math.min(elapsed / readyAt, 1));
-      setPercent(Math.round(pct * 100));
-
-      if (t < 1) {
-        raf = requestAnimationFrame(tick);
-      } else {
-        setPercent(100);
-        if (!completedRef.current) {
-          completedRef.current = true;
-          onCompleteRef.current?.();
-        }
-      }
+    const finish = () => {
+      if (requestedRef.current) return;
+      requestedRef.current = true;
+      completeRef.current?.();
     };
-
-    raf = requestAnimationFrame(tick);
-
-    // Guaranteed fallback timeout in case RAF is throttled in a background tab
-    const fallbackTimer = window.setTimeout(() => {
-      setPercent(100);
-      if (!completedRef.current) {
-        completedRef.current = true;
-        onCompleteRef.current?.();
-      }
-    }, durationMs + 100);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      window.clearTimeout(fallbackTimer);
-    };
-  }, [durationMs, reduceMotion]);
-
-  const activePhaseText = useMemo(() => {
-    let current = "Securing encrypted session";
-    for (const m of MILESTONES) {
-      if (percent >= m.threshold) {
-        current = m.text;
-      }
+    const animation = rootRef.current?.animate?.([{ opacity: 1 }, { opacity: 0 }], {
+      duration: EXIT_MS,
+      easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+    });
+    if (!animation) {
+      finish();
+      return;
     }
-    return current;
-  }, [percent]);
+    animation.finished.then(finish).catch(finish);
+  }, [reduceMotion]);
 
   return (
     <div
+      ref={rootRef}
       className="full-page-status full-page-loading-status"
       data-reduced-motion={reduceMotion || undefined}
       role="status"
       aria-live="polite"
+      aria-atomic="true"
       aria-busy="true"
     >
       <div className="full-page-loading-stage" aria-hidden="true">
-        {/* Ambient atmospheric aura & subtle luminous core */}
         <div className="full-page-loading-aura" />
-        <div className="full-page-loading-core-bloom" />
-
-        {/* Central kinetic emblem: Financial Astrolabe */}
-        <div className="full-page-loading-status-mark">
-          {/* Geometric Reticle & Laser-Drawn Monogram */}
-          <svg
-            className="full-page-loading-svg"
-            viewBox="0 0 200 200"
-            fill="none"
-            aria-hidden="true"
-          >
-            <defs>
-              <linearGradient id="zoption-laser-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="var(--income)" stopOpacity="0.95" />
-                <stop offset="50%" stopColor="var(--brand)" stopOpacity="1" />
-                <stop offset="100%" stopColor="var(--brand-strong)" stopOpacity="0.9" />
-              </linearGradient>
-              <filter id="zoption-glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3.5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-
-            {/* Outer harmonic reticle & cardinal ticks */}
-            <circle className="full-page-loading-reticle-outer" cx="100" cy="100" r="90" />
-            <circle className="full-page-loading-reticle-inner" cx="100" cy="100" r="68" />
-
-            {/* Cardinal calibration pips */}
-            <line x1="100" y1="4" x2="100" y2="12" className="full-page-loading-tick" />
-            <line x1="100" y1="188" x2="100" y2="196" className="full-page-loading-tick" />
-            <line x1="4" y1="100" x2="12" y2="100" className="full-page-loading-tick" />
-            <line x1="188" y1="100" x2="196" y2="100" className="full-page-loading-tick" />
-
-            {/* Corner micro-crosshairs */}
-            <circle cx="36" cy="36" r="1.5" className="full-page-loading-dot-pip" />
-            <circle cx="164" cy="36" r="1.5" className="full-page-loading-dot-pip" />
-            <circle cx="36" cy="164" r="1.5" className="full-page-loading-dot-pip" />
-            <circle cx="164" cy="164" r="1.5" className="full-page-loading-dot-pip" />
-
-            {/* Z Monogram — Underlying guide track */}
-            <path className="full-page-loading-z-track" d="M 68 74 H 132 L 68 126 H 132" />
-
-            {/* Z Monogram — Precision drawing stroke */}
-            <path
-              className="full-page-loading-status-z"
-              pathLength={1}
-              d="M 68 74 H 132 L 68 126 H 132"
-            />
-
-            {/* Z Monogram — Traveling photon beam */}
-            <path
-              className="full-page-loading-z-gleam"
-              pathLength={1}
-              d="M 68 74 H 132 L 68 126 H 132"
-              filter="url(#zoption-glow)"
-            />
-
-            {/* Vertex Node Jewels */}
-            <circle cx="68" cy="74" r="4" className="full-page-loading-vertex vertex-1" />
-            <circle cx="132" cy="74" r="4" className="full-page-loading-vertex vertex-2" />
-            <circle cx="68" cy="126" r="4" className="full-page-loading-vertex vertex-3" />
-            <circle cx="132" cy="126" r="4" className="full-page-loading-vertex vertex-4" />
-          </svg>
-
-          {/* 3D Multi-plane orbital satellites */}
-          <div className="full-page-loading-orbit-system" aria-hidden="true">
-            <div className="full-page-loading-orbit-plane orbit-plane-income">
-              <span className="full-page-loading-satellite sat-income">
-                <i className="full-page-loading-satellite-core" />
-                <i className="full-page-loading-satellite-halo" />
-              </span>
-            </div>
-            <div className="full-page-loading-orbit-plane orbit-plane-amber">
-              <span className="full-page-loading-satellite sat-amber">
-                <i className="full-page-loading-satellite-core" />
-                <i className="full-page-loading-satellite-halo" />
-              </span>
-            </div>
-            <div className="full-page-loading-orbit-plane orbit-plane-brand">
-              <span className="full-page-loading-satellite sat-brand">
-                <i className="full-page-loading-satellite-core" />
-                <i className="full-page-loading-satellite-halo" />
-              </span>
-            </div>
-          </div>
-        </div>
+        <svg className="full-page-loading-svg" viewBox="0 0 80 80" fill="none">
+          <circle className="full-page-loading-reticle" cx="40" cy="40" r="37" />
+          <path ref={markRef} className="full-page-loading-mark" d={MORPH_PATHS[0]} />
+        </svg>
       </div>
 
-      {/* Editorial Identity & Typography */}
-      <div className="full-page-loading-status-copy">
-        <div className="full-page-loading-status-badge">
-          <span className="full-page-loading-status-beacon" aria-hidden="true" />
-          <span className="full-page-loading-status-brand">Zoption Platform</span>
-        </div>
+      <div className="full-page-loading-copy">
+        <span className="full-page-loading-brand">Zoption Platform</span>
         <strong>{title}</strong>
         <p>{description}</p>
       </div>
 
-      {/* Precision Financial Telemetry & Progress Gauge */}
-      <div className="full-page-loading-status-progress">
-        <div className="full-page-loading-status-track" aria-hidden="true">
+      <div className="full-page-loading-progress">
+        {progress !== undefined && (
           <div
-            className="full-page-loading-status-fill"
-            style={{ transform: `scaleX(${percent / 100})` }}
-          />
-          <span className="full-page-loading-status-cursor" style={{ left: `${percent}%` }} />
-          {/* Milestone demarcation notches */}
-          <span className="full-page-loading-notch notch-25" />
-          <span className="full-page-loading-notch notch-50" />
-          <span className="full-page-loading-notch notch-75" />
-        </div>
-
-        <div className="full-page-loading-status-telemetry">
-          <div className="full-page-loading-status-counter" aria-hidden="true">
-            <span className="full-page-loading-status-pct">{percent}</span>
-            <span className="full-page-loading-status-pct-symbol">%</span>
+            className="full-page-loading-track"
+            role="progressbar"
+            aria-label="Workspace setup progress"
+            aria-valuemin={0}
+            aria-valuemax={PHASE_COUNT}
+            aria-valuenow={progress}
+            aria-valuetext={PHASE_TEXT[phase]}
+          >
+            <span
+              className="full-page-loading-fill"
+              style={{ transform: `scaleX(${Math.min(progress / PHASE_COUNT, 1)})` }}
+            />
           </div>
-          <span className="full-page-loading-status-phase" aria-hidden="true">
-            {activePhaseText}
-          </span>
-        </div>
+        )}
+        <span className="full-page-loading-status-phase" aria-live="off">
+          {PHASE_TEXT[phase]}
+        </span>
       </div>
     </div>
   );

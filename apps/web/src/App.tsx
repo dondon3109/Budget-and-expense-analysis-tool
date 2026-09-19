@@ -153,6 +153,8 @@ export function App() {
           <FullPageLoadingStatus
             title="Loading Zoption"
             description="Bringing your workspace into view."
+            phase="workspace"
+            progress={1}
           />
         }
       >

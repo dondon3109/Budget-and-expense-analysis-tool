@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
@@ -14,10 +15,11 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { useInitialDashboardExperience } from "../dashboard/InitialDashboardExperienceProvider";
 
-import { FullPageLoadingStatus } from "./FullPageLoadingStatus";
+import { FullPageLoadingStatus, type LoadingPhase } from "./FullPageLoadingStatus";
 import { InlineLoader } from "./InlineLoader";
 
-const PRIVATE_STARTUP_DURATION_MS = 3000;
+/** Last resort so a stalled session restore, chunk fetch, or summary query cannot trap the app. */
+const PRIVATE_STARTUP_SAFEGUARD_MS = 4000;
 
 const noop = () => undefined;
 
@@ -51,20 +53,21 @@ export function PrivateAppStartupGate() {
   const location = useLocation();
   const { hasCompletedInitialDashboardExperience, completeInitialDashboardExperience } =
     useInitialDashboardExperience();
-  const [minimumDurationElapsed, setMinimumDurationElapsed] = useState(false);
   const [committedLocationKey, setCommittedLocationKey] = useState<string>();
   const [dashboardSettled, setDashboardSettled] = useState(false);
+  const safeguardRef = useRef<number>(undefined);
 
   const startupActive = !hasCompletedInitialDashboardExperience;
   const isDashboardRoute = location.pathname === "/app" || location.pathname === "/app/";
   const routeCommitted = committedLocationKey === location.key;
   const routeReady = routeCommitted && (!isDashboardRoute || dashboardSettled);
 
-  useBodyScrollLock(startupActive);
+  // The loader reports the work it is actually waiting on, so the bar reflects
+  // real steps instead of a timer.
+  const startupPhase: LoadingPhase = loading ? "session" : routeCommitted ? "summary" : "workspace";
+  const startupProgress = 1 + (routeCommitted ? 1 : 0);
 
-  const handleMinimumDurationComplete = useCallback(() => {
-    setMinimumDurationElapsed(true);
-  }, []);
+  useBodyScrollLock(startupActive);
 
   const reportDashboardSettled = useCallback((settled: boolean) => {
     setDashboardSettled(settled);
@@ -78,19 +81,20 @@ export function PrivateAppStartupGate() {
   }, [loading, user]);
 
   useEffect(() => {
-    if (!startupActive || !user || !minimumDurationElapsed || !routeReady) return;
+    if (!startupActive || !user || !routeReady) return;
     completeInitialDashboardExperience();
-  }, [completeInitialDashboardExperience, minimumDurationElapsed, routeReady, startupActive, user]);
+  }, [completeInitialDashboardExperience, routeReady, startupActive, user]);
 
-  // Safeguard: Once the minimum duration has elapsed, do not hold the splash indefinitely
-  // if dashboard queries or route commits take abnormally long or stall.
+  // Safeguard: the loader leaves as soon as the route and its data are ready.
+  // If either stalls, do not hold the workspace behind the splash forever.
   useEffect(() => {
-    if (!startupActive || !user || !minimumDurationElapsed) return;
-    const safeguardTimer = window.setTimeout(() => {
-      completeInitialDashboardExperience();
-    }, 1200);
-    return () => window.clearTimeout(safeguardTimer);
-  }, [completeInitialDashboardExperience, minimumDurationElapsed, startupActive, user]);
+    if (!startupActive || !user) return;
+    safeguardRef.current = window.setTimeout(
+      completeInitialDashboardExperience,
+      PRIVATE_STARTUP_SAFEGUARD_MS,
+    );
+    return () => window.clearTimeout(safeguardRef.current);
+  }, [completeInitialDashboardExperience, startupActive, user]);
 
   const readinessValue = useMemo(() => reportDashboardSettled, [reportDashboardSettled]);
   const handleRouteCommit = useCallback((locationKey: string) => {
@@ -127,8 +131,8 @@ export function PrivateAppStartupGate() {
         <FullPageLoadingStatus
           title="Restoring your workspace"
           description="Checking your secure session and preferences."
-          durationMs={PRIVATE_STARTUP_DURATION_MS}
-          onComplete={handleMinimumDurationComplete}
+          phase={startupPhase}
+          progress={startupProgress}
         />
       )}
     </PrivateAppStartupReadinessContext.Provider>

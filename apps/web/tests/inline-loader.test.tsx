@@ -88,13 +88,7 @@ describe("loading surface craft floor", () => {
     expect(stripComments(fullPageCss)).not.toMatch(/gradient\(/);
   });
 
-  it("progresses the full-page gauge with transform, not width, and no bounce easing", () => {
-    const source = stripComments(fullPageCss);
-    expect(source).not.toMatch(/transition:\s*width/);
-    expect(source).not.toContain("cubic-bezier(0.34, 1.56, 0.64, 1)");
-
-    const fill = ruleBodies(fullPageCss, ".full-page-loading-status-fill").join("\n");
-    expect(fill).toMatch(/transform:\s*scaleX\(/);
-    expect(fill).not.toMatch(/(^|\s)width\s*:/);
+  it("uses no bounce easing on the loading surfaces", () => {
+    expect(stripComments(fullPageCss)).not.toContain("cubic-bezier(0.34, 1.56, 0.64, 1)");
   });
 });

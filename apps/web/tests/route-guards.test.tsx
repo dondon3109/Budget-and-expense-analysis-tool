@@ -53,7 +53,9 @@ describe("auth route guards", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Checking your session")).toBeInTheDocument();
+    // "Checking your session" is both the heading and the step label here.
+    expect(screen.getByRole("status")).toHaveTextContent("Checking your session");
+    expect(screen.getByRole("status")).toHaveTextContent("Getting your secure sign-in ready.");
     expect(screen.queryByText("Login form")).not.toBeInTheDocument();
   });
 

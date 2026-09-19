@@ -83,8 +83,8 @@ were fixed — worth knowing when judging whether the list is complete.
 
 Earlier rounds of this work produced false results. The audit now:
 
-- waits for the startup splash to clear (it holds the app `inert` + `aria-hidden` for ~3s on every
-  `/app` route, and reading the page before then measures the splash)
+- waits for the startup splash to clear (it holds the app `inert` + `aria-hidden` while the session
+  restores and the first route data loads, and reading the page before then measures the splash)
 - refuses to analyse when `#root` or the startup content is `inert`, rather than reporting a clean
   pass over a page it never saw
 - scopes axe to the viewport and scroll-steps, because off-screen elements fabricated 1.26:1

@@ -1,22 +1,16 @@
 /* ============================================================
-   ZOPTION FULL-PAGE LOADING EXPERIENCE
+   ZOPTION FULL-PAGE LOADING
    ------------------------------------------------------------
-   Award-winning kinetic loading environment for Zoption Financial OS.
-   Built with subpixel SVG reticle geometry, multi-plane 3D orbital
-   constellations, dynamic vertex illumination, laser photon beams,
-   editorial typography, and segmented precision telemetry.
+   One authored moment: a single continuous stroke that morphs
+   between the Zoption monogram and three financial silhouettes,
+   held inside a slow calibration reticle. Everything else stays
+   still so the mark is the only thing moving.
 
-   Sections:
-     1. Staging & atmospheric depth
-     2. Central Financial Astrolabe & Monogram
-     3. 3D Multi-plane orbital satellites
-     4. Editorial typography & live beacon badge
-     5. Precision gauge & monospace telemetry
-     6. Keyframe choreography & spring dynamics
-     7. Reduced motion accessibility
+   The load is indeterminate, so nothing here claims a percentage.
+   When the caller can count real phases, a determinate rail
+   appears instead of an invented one.
    ============================================================ */
 
-/* ---------- 1. STAGING & ATMOSPHERIC DEPTH ---------- */
 .full-page-status.full-page-loading-status {
   isolation: isolate;
   position: fixed;
@@ -26,7 +20,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(24px, 4.5vh, 40px);
+  gap: clamp(26px, 4.5vh, 44px);
   padding: clamp(24px, 5vw, 64px);
   text-align: center;
   background: var(--page);
@@ -36,44 +30,23 @@
   -webkit-user-select: none;
 }
 
+/* ---------- Stage ---------- */
 .full-page-loading-stage {
   position: relative;
   display: grid;
   place-items: center;
-  perspective: 1000px;
+  width: clamp(168px, 30vmin, 216px);
+  aspect-ratio: 1 / 1;
 }
 
-/* Subtle organic resonance aura (breathing ambient depth).
-   Flat token surface — no background gradients. */
+/* Flat token surface, no gradient: a quiet disc behind the mark. */
 .full-page-loading-aura {
   position: absolute;
-  width: clamp(240px, 46vmin, 340px);
-  height: clamp(240px, 46vmin, 340px);
-  border: 1px solid color-mix(in srgb, var(--brand) 14%, transparent);
+  inset: -6%;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--brand) 5%, transparent);
-  pointer-events: none;
+  border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent);
+  background: color-mix(in srgb, var(--brand) 4%, transparent);
   will-change: transform, opacity;
-}
-
-.full-page-loading-core-bloom {
-  position: absolute;
-  width: clamp(120px, 24vmin, 180px);
-  height: clamp(120px, 24vmin, 180px);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--income) 9%, transparent);
-  filter: blur(8px);
-  pointer-events: none;
-  will-change: transform, opacity;
-}
-
-/* ---------- 2. CENTRAL ASTROLABE & MONOGRAM ---------- */
-.full-page-loading-status-mark {
-  position: relative;
-  width: clamp(160px, 30vmin, 216px);
-  aspect-ratio: 1 / 1;
-  display: grid;
-  place-items: center;
 }
 
 .full-page-loading-svg {
@@ -84,165 +57,27 @@
   overflow: visible;
 }
 
-/* Outer & inner reticle circles */
-.full-page-loading-reticle-outer {
+/* Calibration reticle: the only other moving thing, and barely. */
+.full-page-loading-reticle {
   fill: none;
-  stroke: color-mix(in srgb, var(--brand) 16%, transparent);
-  stroke-width: 1px;
-  stroke-dasharray: 2 6;
+  stroke: color-mix(in srgb, var(--brand) 26%, transparent);
+  stroke-width: 1;
+  stroke-dasharray: 1 7;
+  stroke-linecap: round;
   transform-origin: center;
 }
 
-.full-page-loading-reticle-inner {
-  fill: none;
-  stroke: color-mix(in srgb, var(--brand) 22%, transparent);
-  stroke-width: 1px;
-  stroke-dasharray: 4 10;
-  transform-origin: center;
-}
-
-/* Reticle ticks & calibration pips */
-.full-page-loading-tick {
-  stroke: color-mix(in srgb, var(--brand) 38%, transparent);
-  stroke-width: 1.5px;
-  stroke-linecap: round;
-}
-
-.full-page-loading-dot-pip {
-  fill: color-mix(in srgb, var(--brand) 32%, transparent);
-}
-
-/* Z Monogram — Guide track (static soft background line) */
-.full-page-loading-z-track {
-  fill: none;
-  stroke: color-mix(in srgb, var(--brand) 12%, transparent);
-  stroke-width: 13px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* Z Monogram — Main kinetic drawing stroke */
-.full-page-loading-status-z {
+/* The morphing mark. */
+.full-page-loading-mark {
   fill: none;
   stroke: var(--brand);
-  stroke-width: 13px;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: 1;
-  will-change: stroke-dashoffset, stroke;
 }
 
-/* Z Monogram — Traveling photon beam */
-.full-page-loading-z-gleam {
-  fill: none;
-  stroke: var(--income);
-  stroke-width: 9px;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 0.18 0.82;
-  stroke-dashoffset: 1;
-  opacity: 0.88;
-  will-change: stroke-dashoffset;
-}
-
-/* Monogram Vertex Node Jewels */
-.full-page-loading-vertex {
-  fill: var(--brand-strong);
-  stroke: var(--income);
-  stroke-width: 1.5px;
-  transform-origin: center;
-  will-change: transform, opacity;
-}
-
-/* ---------- 3. 3D MULTI-PLANE ORBITAL SATELLITES ---------- */
-.full-page-loading-orbit-system {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-  pointer-events: none;
-}
-
-.full-page-loading-orbit-plane {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  transform-style: preserve-3d;
-}
-
-.orbit-plane-income {
-  transform: rotateX(62deg) rotateY(16deg);
-}
-
-.orbit-plane-amber {
-  transform: rotateX(54deg) rotateY(-24deg);
-}
-
-.orbit-plane-brand {
-  transform: rotateX(38deg) rotateY(44deg);
-}
-
-.full-page-loading-satellite {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  display: grid;
-  place-items: center;
-}
-
-.full-page-loading-satellite-core {
-  display: block;
-  border-radius: 50%;
-}
-
-.full-page-loading-satellite-halo {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  opacity: 0.45;
-  filter: blur(3px);
-}
-
-/* Satellite Specific Colors & Radii */
-.sat-income .full-page-loading-satellite-core {
-  width: 10px;
-  height: 10px;
-  background: var(--income);
-  box-shadow:
-    0 0 16px var(--income),
-    0 0 4px var(--income);
-}
-.sat-income .full-page-loading-satellite-halo {
-  background: var(--income);
-}
-
-.sat-amber .full-page-loading-satellite-core {
-  width: 7.5px;
-  height: 7.5px;
-  background: var(--amber);
-  box-shadow:
-    0 0 14px var(--amber),
-    0 0 3px var(--amber);
-}
-.sat-amber .full-page-loading-satellite-halo {
-  background: var(--amber);
-}
-
-.sat-brand .full-page-loading-satellite-core {
-  width: 9px;
-  height: 9px;
-  background: var(--brand);
-  box-shadow:
-    0 0 14px var(--brand),
-    0 0 3px var(--brand);
-}
-.sat-brand .full-page-loading-satellite-halo {
-  background: var(--brand);
-}
-
-/* ---------- 4. EDITORIAL TYPOGRAPHY & COPY ---------- */
-.full-page-loading-status-copy {
+/* ---------- Copy ---------- */
+.full-page-loading-copy {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -250,54 +85,29 @@
   max-width: 32rem;
 }
 
-.full-page-loading-status-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+.full-page-loading-brand {
   padding: 4px 12px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--brand) 7%, transparent);
-  border: 1px solid color-mix(in srgb, var(--brand) 16%, transparent);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-}
-
-.full-page-loading-status-beacon {
-  position: relative;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--income);
-  box-shadow: 0 0 8px var(--income);
-}
-
-.full-page-loading-status-beacon::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 1px solid var(--income);
-  opacity: 0.8;
-  animation: zoption-beacon-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-.full-page-loading-status-brand {
-  color: var(--brand);
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, transparent);
+  background: var(--surface);
+  color: var(--brand-strong);
   font-size: 0.72rem;
   font-weight: 750;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-.full-page-loading-status-copy strong {
+.full-page-loading-copy strong {
   color: var(--ink);
   font-family: var(--font-display);
   font-size: clamp(1.75rem, 4.5vw, 2.5rem);
   font-weight: 500;
   letter-spacing: -0.025em;
   line-height: 1.12;
+  text-wrap: balance;
 }
 
-.full-page-loading-status-copy p {
+.full-page-loading-copy p {
   margin: 0;
   color: var(--muted);
   font-size: 13.5px;
@@ -306,216 +116,95 @@
   line-height: 1.55;
 }
 
-/* ---------- 5. PRECISION GAUGE & TELEMETRY ---------- */
-.full-page-loading-status-progress {
-  width: min(340px, 78vw);
+/* ---------- Real progress, only when the caller can count it ---------- */
+.full-page-loading-progress {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  width: min(340px, 78vw);
 }
 
-.full-page-loading-status-track {
+.full-page-loading-track {
   position: relative;
   width: 100%;
-  height: 2px;
+  height: 3px;
+  border-radius: 3px;
   background: color-mix(in srgb, var(--ink) 12%, transparent);
-  border-radius: 2px;
 }
 
-.full-page-loading-status-fill {
+/* transform (not width) so the rail never triggers layout. */
+.full-page-loading-fill {
   position: absolute;
   inset: 0;
+  border-radius: 3px;
   background: var(--brand);
-  border-radius: 2px;
   transform: scaleX(0);
   transform-origin: left;
-  /* transform (not width) so the progress bar never triggers layout. */
-  transition: transform 100ms linear;
-}
-
-/* Leading luminous photon cursor. A sibling of the fill (not a child) so the
-   fill's scaleX transform cannot squash it; its left edge tracks progress.
-   --paper flips with the theme so the dot stays visible on --brand everywhere
-   (it used to be hardcoded white). */
-.full-page-loading-status-cursor {
-  position: absolute;
-  top: 50%;
-  margin-left: -3px;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--paper);
-  box-shadow:
-    0 0 8px var(--income),
-    0 0 2px var(--income);
-}
-
-/* Milestone demarcation notches */
-.full-page-loading-notch {
-  position: absolute;
-  top: -2px;
-  width: 1px;
-  height: 6px;
-  background: color-mix(in srgb, var(--ink) 22%, transparent);
-  pointer-events: none;
-}
-
-.notch-25 {
-  left: 25%;
-}
-.notch-50 {
-  left: 50%;
-}
-.notch-75 {
-  left: 75%;
-}
-
-.full-page-loading-status-telemetry {
-  width: 100%;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.full-page-loading-status-counter {
-  display: inline-flex;
-  align-items: baseline;
-  font-family: var(--font-mono);
-  color: var(--brand-strong);
-}
-
-.full-page-loading-status-pct {
-  font-size: 1.25rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-}
-
-.full-page-loading-status-pct-symbol {
-  font-size: 0.8rem;
-  font-weight: 500;
-  opacity: 0.72;
-  margin-left: 2px;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .full-page-loading-status-phase {
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--muted);
-  text-align: right;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-align: center;
 }
 
-/* ---------- 6. ANIMATIONS (MOTION OK) ---------- */
+/* ---------- Motion ---------- */
 @media (prefers-reduced-motion: no-preference) {
-  /* Entrance */
   .full-page-loading-status {
-    animation: zoption-stage-fade-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: zoption-stage-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
-  /* Core atmospheric breathing */
   .full-page-loading-aura {
-    animation: zoption-aura-pulse 5.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+    animation: zoption-aura-breathe 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
   }
 
-  .full-page-loading-core-bloom {
-    animation: zoption-bloom-pulse 4.2s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  .full-page-loading-reticle {
+    animation: zoption-reticle-turn 90s linear infinite;
   }
 
-  /* Reticle continuous rotation */
-  .full-page-loading-reticle-outer {
-    animation: zoption-spin-cw 44s linear infinite;
-  }
-
-  .full-page-loading-reticle-inner {
-    animation: zoption-spin-ccw 36s linear infinite;
-  }
-
-  /* Drawing the Z monogram */
-  .full-page-loading-status-z {
-    animation:
-      zoption-z-draw 1.35s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards,
-      zoption-z-breathe 4s ease-in-out 1.5s infinite;
-  }
-
-  /* Photon gleam traveling along Z */
-  .full-page-loading-z-gleam {
-    animation: zoption-gleam-loop 3.2s cubic-bezier(0.45, 0, 0.55, 1) 1.2s infinite;
-  }
-
-  /* Vertex jewels sequential illumination */
-  .vertex-1 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.15s backwards;
-  }
-  .vertex-2 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.45s backwards;
-  }
-  .vertex-3 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.85s backwards;
-  }
-  .vertex-4 {
-    animation: zoption-vertex-pop 0.6s cubic-bezier(0.16, 1, 0.3, 1) 1.2s backwards;
-  }
-
-  /* 3D Multi-plane orbital rotations */
-  .orbit-plane-income {
-    animation: zoption-orbit-3d-cw 8.5s linear infinite;
-  }
-
-  .orbit-plane-amber {
-    animation: zoption-orbit-3d-ccw 11s linear infinite;
-  }
-
-  .orbit-plane-brand {
-    animation: zoption-orbit-3d-cw 13.5s linear infinite;
+  /* The step label is the one piece of text that changes while this surface is
+     up, so it is also the one piece that fades rather than snapping. */
+  .full-page-loading-status-phase {
+    animation: zoption-phase-swap 220ms ease-out both;
   }
 }
 
-/* ---------- KEYFRAMES ---------- */
-@keyframes zoption-stage-fade-in {
+/* Reduced motion keeps the finished monogram and drops all movement. */
+@media (prefers-reduced-motion: reduce) {
+  .full-page-loading-aura,
+  .full-page-loading-reticle {
+    animation: none;
+  }
+}
+
+@keyframes zoption-stage-enter {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 }
 
-@keyframes zoption-aura-pulse {
+@keyframes zoption-aura-breathe {
   0%,
   100% {
-    transform: scale(0.95);
-    opacity: 0.7;
+    transform: scale(0.985);
+    opacity: 0.75;
   }
   50% {
-    transform: scale(1.08);
+    transform: scale(1.015);
     opacity: 1;
   }
 }
 
-@keyframes zoption-bloom-pulse {
-  0%,
-  100% {
-    transform: scale(0.9);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 0.95;
-  }
-}
-
-@keyframes zoption-spin-cw {
+@keyframes zoption-reticle-turn {
   from {
     transform: rotate(0deg);
   }
@@ -524,121 +213,11 @@
   }
 }
 
-@keyframes zoption-spin-ccw {
+@keyframes zoption-phase-swap {
   from {
-    transform: rotate(0deg);
+    opacity: 0;
   }
   to {
-    transform: rotate(-360deg);
-  }
-}
-
-@keyframes zoption-z-draw {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes zoption-z-breathe {
-  0%,
-  100% {
-    stroke-width: 13px;
-    stroke: var(--brand);
-  }
-  50% {
-    stroke-width: 15px;
-    stroke: color-mix(in srgb, var(--brand) 85%, var(--income));
-  }
-}
-
-@keyframes zoption-gleam-loop {
-  0% {
-    stroke-dashoffset: 1;
-    opacity: 0;
-  }
-  15% {
-    opacity: 0.9;
-  }
-  85% {
-    opacity: 0.9;
-  }
-  100% {
-    stroke-dashoffset: -1;
-    opacity: 0;
-  }
-}
-
-@keyframes zoption-vertex-pop {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.35);
     opacity: 1;
   }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes zoption-orbit-3d-cw {
-  from {
-    transform: rotateX(62deg) rotateY(16deg) rotateZ(0deg);
-  }
-  to {
-    transform: rotateX(62deg) rotateY(16deg) rotateZ(360deg);
-  }
-}
-
-@keyframes zoption-orbit-3d-ccw {
-  from {
-    transform: rotateX(54deg) rotateY(-24deg) rotateZ(0deg);
-  }
-  to {
-    transform: rotateX(54deg) rotateY(-24deg) rotateZ(-360deg);
-  }
-}
-
-@keyframes zoption-beacon-ping {
-  0% {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-  80%,
-  100% {
-    transform: scale(2.6);
-    opacity: 0;
-  }
-}
-
-/* ---------- 7. REDUCED MOTION ---------- */
-.full-page-loading-status[data-reduced-motion] {
-  animation: none;
-}
-
-.full-page-loading-status[data-reduced-motion] .full-page-loading-status-z {
-  stroke-dashoffset: 0;
-  stroke: var(--brand);
-  animation: none;
-}
-
-.full-page-loading-status[data-reduced-motion] .full-page-loading-z-gleam {
-  display: none;
-}
-
-.full-page-loading-status[data-reduced-motion] .full-page-loading-aura,
-.full-page-loading-status[data-reduced-motion] .full-page-loading-core-bloom,
-.full-page-loading-status[data-reduced-motion] .full-page-loading-reticle-outer,
-.full-page-loading-status[data-reduced-motion] .full-page-loading-reticle-inner,
-.full-page-loading-status[data-reduced-motion] .orbit-plane-income,
-.full-page-loading-status[data-reduced-motion] .orbit-plane-amber,
-.full-page-loading-status[data-reduced-motion] .orbit-plane-brand,
-.full-page-loading-status[data-reduced-motion] .vertex-1,
-.full-page-loading-status[data-reduced-motion] .vertex-2,
-.full-page-loading-status[data-reduced-motion] .vertex-3,
-.full-page-loading-status[data-reduced-motion] .vertex-4,
-.full-page-loading-status[data-reduced-motion] .full-page-loading-status-beacon::after {
-  animation: none;
 }
