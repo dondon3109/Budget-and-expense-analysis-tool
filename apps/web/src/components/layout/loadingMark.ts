@@ -77,11 +77,12 @@ const STEP = "linear";
 
 const between = (from: number, to: number, at: number) => from + (to - from) * at;
 
-/** Where the line has finished drawing, and where the monogram starts. */
+/** The line's draw-in eases off across two offsets before the rise finishes. */
 const RULE_DRAWN_AT = 0.08;
 const SLOPE_COMMITTED_AT = 0.2;
-const MARK_DRAWN_AT = 0.26;
-const MARK_COMMITTED_AT = MARK_DRAW_FROM_FRACTION;
+
+/** The monogram waits a beat, then starts drawing from the top-left corner. */
+const MARK_WAITS_UNTIL_AT = 0.26;
 
 /** Where both have cleared and the frame is empty before the next cycle. */
 const CLEARED_AT = 0.85;
@@ -118,10 +119,10 @@ export function monogramKeyframes(): Keyframe[] {
   const hidden = MONOGRAM_LENGTH;
   return [
     { strokeDashoffset: hidden, opacity: 0, offset: 0 },
-    { strokeDashoffset: hidden, opacity: 0, offset: MARK_DRAWN_AT },
+    { strokeDashoffset: hidden, opacity: 0, offset: MARK_WAITS_UNTIL_AT },
     // The rule is already at full length here, so the mark draws onto a finished
     // line and the pair then holds still together.
-    { strokeDashoffset: between(hidden, 0, 0.8), opacity: 1, offset: MARK_COMMITTED_AT },
+    { strokeDashoffset: between(hidden, 0, 0.8), opacity: 1, offset: MARK_DRAW_FROM_FRACTION },
     { strokeDashoffset: 0, opacity: 1, offset: RISE_FRACTION },
     { strokeDashoffset: 0, opacity: 1, offset: HOLD_FRACTION },
     { strokeDashoffset: 0, opacity: 0.4, offset: 0.79 },
