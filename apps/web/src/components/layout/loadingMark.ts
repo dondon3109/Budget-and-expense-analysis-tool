@@ -1,227 +1,143 @@
 /**
- * Zoption loading mark: one continuous 2px stroke that morphs between four
- * financial silhouettes — monogram, ascending bars, coin, banknote — then loops.
+ * Zoption loading mark.
  *
- * Every silhouette is authored as a point list and resampled to a shared vertex
- * count, so any state interpolates into any other without a jump. Path strings
- * and the frames between them are produced once per pair and cached; the loading
- * surface only reads one string per animation frame.
+ * One idea: an ascender line rises across the frame and the Zoption monogram
+ * draws itself over it, then both clear and the cycle repeats. Two elements,
+ * one direction of travel, and no frame where the viewer cannot read the mark.
+ *
+ * Both are single strokes revealed with a dash offset rather than path morphs,
+ * so the loop holds in every theme and at every size without shipping a picture
+ * of it, and the two elements can never fall out of step.
  */
 
-const TENSION = 0.35;
-const SAMPLES = 48;
-const MORPH_FRAMES = 48;
+/** View box the mark is authored in. */
+export const MARK_VIEW_BOX = "0 0 80 80";
 
-export type Point = readonly [number, number];
+/** The rule the monogram is set against. It rises 9 units across the frame. */
+export const ASCENDER_PATH = "M4 61 L76 52";
 
-/** Index that must exist: shapes are authored, so an out-of-range read is a bug. */
-function at<T>(list: readonly T[], index: number): T {
-  const value = list[index];
-  if (value === undefined) throw new Error(`loadingMark: missing index ${index}`);
-  return value;
-}
+/** The monogram, in the same monoline the app already uses for its Z. */
+export const MONOGRAM_PATH = "M25 31 H55 L25 52 H55";
 
-const norm = (v: Point): Point => {
-  const m = Math.hypot(v[0], v[1]) || 1;
-  return [v[0] / m, v[1] / m];
+type Point = readonly [number, number];
+
+const perimeter = (points: readonly Point[]): number => {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const from = points[i - 1] as Point;
+    const to = points[i] as Point;
+    total += Math.hypot(to[0] - from[0], to[1] - from[1]);
+  }
+  return total;
 };
 
-/** Closed outline around an open monoline polyline: one side out, the other back. */
-function glyphOutline(centerline: readonly Point[], weight: number): Point[] {
-  const half = weight / 2;
-  const last = centerline.length - 1;
-  const normals: Point[] = [];
-  for (let i = 0; i < last; i++) {
-    const from = at(centerline, i);
-    const to = at(centerline, i + 1);
-    const segment = norm([to[0] - from[0], to[1] - from[1]]);
-    normals.push([-segment[1], segment[0]]);
-  }
-  const miterAt = (i: number): Point => {
-    const before = i === 0 ? at(normals, 0) : at(normals, i - 1);
-    const after = i === last ? at(normals, last - 1) : at(normals, i);
-    const miter = norm([before[0] + after[0], before[1] + after[1]]);
-    const cos = Math.max(0.35, miter[0] * before[0] + miter[1] * before[1]);
-    return [(miter[0] * half) / cos, (miter[1] * half) / cos];
-  };
-  const left: Point[] = [];
-  const right: Point[] = [];
-  for (let i = 0; i <= last; i++) {
-    const point = at(centerline, i);
-    const m = miterAt(i);
-    left.push([point[0] + m[0], point[1] + m[1]]);
-    right.push([point[0] - m[0], point[1] - m[1]]);
-  }
-  return [...left, ...right.reverse()];
-}
+export const ASCENDER_LENGTH = perimeter([
+  [4, 61],
+  [76, 52],
+]);
 
-/** Authored silhouettes in the order the loader cycles through them. */
-const SHAPES: readonly (readonly Point[])[] = [
-  glyphOutline(
-    [
-      [22, 22],
-      [58, 22],
-      [22, 58],
-      [58, 58],
-    ],
-    7,
-  ),
-  [
-    [14, 74],
-    [14, 50],
-    [24, 50],
-    [24, 74],
-    [30, 74],
-    [32, 34],
-    [42, 34],
-    [42, 74],
-    [48, 74],
-    [50, 22],
-    [60, 22],
-    [60, 74],
-  ],
-  Array.from({ length: 16 }, (_, index) => {
-    const angle = (index / 16) * Math.PI * 2 - Math.PI / 2;
-    return [40 + 27 * Math.cos(angle), 40 + 27 * Math.sin(angle)] as Point;
-  }),
-  [
-    [9, 24],
-    [71, 24],
-    [71, 56],
-    [9, 56],
-    [9, 50],
-    [13, 50],
-    [13, 30],
-    [9, 30],
-  ],
-];
+export const MONOGRAM_LENGTH = perimeter([
+  [25, 31],
+  [55, 31],
+  [25, 52],
+  [55, 52],
+]);
 
-const distance = (a: Point, b: Point) => Math.hypot(b[0] - a[0], b[1] - a[1]);
-const round = (value: number) => Math.round(value * 100) / 100;
-const pair = (a: number, b: number) => `${round(a)} ${round(b)}`;
-
-/** Uniform arc-length resample so every silhouette shares one vertex count. */
-function resample(points: readonly Point[], count: number): Point[] {
-  const ring: Point[] = [...points, at(points, 0)];
-  const spans = ring.slice(1).map((point, index) => distance(at(ring, index), point));
-  const total = spans.reduce((sum, span) => sum + span, 0);
-  const out: Point[] = [];
-  let span = 0;
-  let walked = 0;
-  for (let i = 0; i < count; i++) {
-    const target = (i / count) * total;
-    while (span < spans.length - 1 && walked + at(spans, span) < target) {
-      walked += at(spans, span);
-      span += 1;
-    }
-    const start = at(ring, span);
-    const end = at(ring, span + 1);
-    const current = at(spans, span);
-    const t = current === 0 ? 0 : (target - walked) / current;
-    out.push([start[0] + (end[0] - start[0]) * t, start[1] + (end[1] - start[1]) * t]);
-  }
-  return out;
-}
-
-/** Cubic path through the samples: authored vertices stay sharp, the rest stays smooth. */
-function buildPath(points: readonly Point[]): string {
-  const sampled = resample(points, SAMPLES);
-  const corners = new Set<number>();
-  for (const corner of points) {
-    let closest = 0;
-    let closestDistance = Number.POSITIVE_INFINITY;
-    sampled.forEach((point, index) => {
-      const span = distance(point, corner);
-      if (span < closestDistance) {
-        closestDistance = span;
-        closest = index;
-      }
-    });
-    corners.add(closest);
-  }
-  const count = sampled.length;
-  const [firstX, firstY] = at(sampled, 0);
-  let d = `M${pair(firstX, firstY)}`;
-  for (let i = 0; i < count; i++) {
-    const [previousX, previousY] = at(sampled, (i - 1 + count) % count);
-    const [currentX, currentY] = at(sampled, i);
-    const [nextX, nextY] = at(sampled, (i + 1) % count);
-    const [followingX, followingY] = at(sampled, (i + 2) % count);
-    const sharp = corners.has(i) || corners.has((i + 1) % count);
-    // At an authored vertex both handles stay on the span, which is exactly the
-    // line segment needed to keep it sharp.
-    const control1X = sharp
-      ? currentX + (nextX - currentX) / 3
-      : currentX + (nextX - previousX) * (TENSION / 3);
-    const control1Y = sharp
-      ? currentY + (nextY - currentY) / 3
-      : currentY + (nextY - previousY) * (TENSION / 3);
-    const control2X = sharp
-      ? nextX - (nextX - currentX) / 3
-      : nextX - (followingX - currentX) * (TENSION / 3);
-    const control2Y = sharp
-      ? nextY - (nextY - currentY) / 3
-      : nextY - (followingY - currentY) * (TENSION / 3);
-    d += `C${pair(control1X, control1Y)} ${pair(control2X, control2Y)} ${pair(nextX, nextY)}`;
-  }
-  return `${d}Z`;
-}
-
-/** One path string per silhouette. */
-export const MORPH_PATHS: readonly string[] = SHAPES.map(buildPath);
-
-/** Structural path tokens: each command letter or number, in a stable order. */
-const tokenize = (d: string): string[] => d.match(/[MCZ]|-?\d+(?:\.\d+)?/g) ?? [];
-
-const TOKENS = MORPH_PATHS.map(tokenize);
-const morphCache = new Map<number, string[]>();
-
-function morphFrames(fromIndex: number, toIndex: number): string[] {
-  const cacheKey = fromIndex * MORPH_PATHS.length + toIndex;
-  const cached = morphCache.get(cacheKey);
-  if (cached) return cached;
-  const from = at(TOKENS, fromIndex);
-  const to = at(TOKENS, toIndex);
-  const frames: string[] = [];
-  for (let frame = 0; frame < MORPH_FRAMES; frame++) {
-    const t = frame / (MORPH_FRAMES - 1);
-    frames.push(
-      from
-        .map((token, index) => {
-          const target = to[index];
-          if (target === undefined || token === target) return token;
-          const start = Number(token);
-          const end = Number(target);
-          if (Number.isNaN(start) || Number.isNaN(end)) return t < 0.5 ? token : target;
-          return String(round(start + (end - start) * t));
-        })
-        .join(" "),
-    );
-  }
-  morphCache.set(cacheKey, frames);
-  return frames;
-}
-
-/** Ease in and out of each silhouette so the loop reads as deliberate, not mechanical. */
-export const easeInOutCubic = (t: number): number =>
-  t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+/** Hollow dash: reveal the whole stroke by moving the gap past it. */
+export const MONOGRAM_DASH = `${MONOGRAM_LENGTH} ${MONOGRAM_LENGTH}`;
 
 /**
- * Path for one moment of the loop. A blend of 0 holds the silhouette exactly;
- * values above 0 interpolate toward the next one.
+ * Zero offset shows the whole stroke. A still frame has no motion to explain a
+ * partly drawn mark, so the reduced-motion frame is simply the finished one.
  */
-export function morphPathAt(shapeIndex: number, blend: number): string {
-  const count = MORPH_PATHS.length;
-  const current = ((shapeIndex % count) + count) % count;
-  if (blend <= 0) return at(MORPH_PATHS, current);
-  const frames = morphFrames(current, (current + 1) % count);
-  const index = Math.min(frames.length - 1, Math.round(blend * (frames.length - 1)));
-  return at(frames, index);
+export const MONOGRAM_RESTING_OFFSET = 0;
+
+/** One full cycle: the line rises, the mark draws, the pair holds, both clear. */
+export const CYCLE_MS = 2000;
+
+/**
+ * Fractions of the cycle, in order: the line rises and finishes well before the
+ * monogram starts drawing, so the mark lands on a completed rule; then the pair
+ * holds still, and only then do both clear.
+ */
+export const LINE_COMPLETE_FRACTION = 0.08;
+export const RISE_FRACTION = 0.4;
+export const MARK_DRAW_FROM_FRACTION = 0.34;
+
+/** Fraction of the cycle the line and the drawn mark sit still together. */
+export const HOLD_FRACTION = 0.72;
+
+/**
+ * Between one keyframe and the next the value moves at a constant rate. Any
+ * other easing here is applied to *every* segment, which compresses the whole
+ * schedule into the first fraction of the cycle. The acceleration lives in the
+ * offsets instead, where it can be read off directly.
+ */
+const STEP = "linear";
+
+const between = (from: number, to: number, at: number) => from + (to - from) * at;
+
+/** Where the line has finished drawing, and where the monogram starts. */
+const RULE_DRAWN_AT = 0.08;
+const SLOPE_COMMITTED_AT = 0.2;
+const MARK_DRAWN_AT = 0.26;
+const MARK_COMMITTED_AT = MARK_DRAW_FROM_FRACTION;
+
+/** Where both have cleared and the frame is empty before the next cycle. */
+const CLEARED_AT = 0.85;
+
+/**
+ * The line draws itself from the left: a dash twice its length, offset from
+ * "fully before the start" to "fully past the end".
+ */
+export function ascenderKeyframes(): Keyframe[] {
+  const travel = ASCENDER_LENGTH * 2;
+  const carried = -travel;
+  return [
+    { strokeDashoffset: travel, opacity: 0, offset: 0 },
+    {
+      strokeDashoffset: between(travel, carried, 0.86),
+      opacity: 1,
+      offset: RULE_DRAWN_AT,
+    },
+    {
+      strokeDashoffset: between(travel, carried, 0.97),
+      opacity: 1,
+      offset: SLOPE_COMMITTED_AT,
+    },
+    { strokeDashoffset: carried, opacity: 1, offset: RISE_FRACTION },
+    { strokeDashoffset: carried, opacity: 1, offset: HOLD_FRACTION },
+    { strokeDashoffset: carried, opacity: 0.4, offset: 0.79 },
+    { strokeDashoffset: carried, opacity: 0, offset: CLEARED_AT },
+    { strokeDashoffset: carried, opacity: 0, offset: 1 },
+  ];
 }
 
-/** How many silhouettes the loop passes through. */
-export const MORPH_SHAPE_COUNT = MORPH_PATHS.length;
+/** The monogram draws on, holds while the line settles, then clears. */
+export function monogramKeyframes(): Keyframe[] {
+  const hidden = MONOGRAM_LENGTH;
+  return [
+    { strokeDashoffset: hidden, opacity: 0, offset: 0 },
+    { strokeDashoffset: hidden, opacity: 0, offset: MARK_DRAWN_AT },
+    // The rule is already at full length here, so the mark draws onto a finished
+    // line and the pair then holds still together.
+    { strokeDashoffset: between(hidden, 0, 0.8), opacity: 1, offset: MARK_COMMITTED_AT },
+    { strokeDashoffset: 0, opacity: 1, offset: RISE_FRACTION },
+    { strokeDashoffset: 0, opacity: 1, offset: HOLD_FRACTION },
+    { strokeDashoffset: 0, opacity: 0.4, offset: 0.79 },
+    { strokeDashoffset: 0, opacity: 0, offset: CLEARED_AT },
+    { strokeDashoffset: 0, opacity: 0, offset: 1 },
+  ];
+}
 
-/** How long one silhouette holds, and how long a morph between two of them takes. */
-export const MORPH_HOLD_MS = 1200;
-export const MORPH_TRANSITION_MS = 620;
+export const ASCENDER_TIMING: KeyframeAnimationOptions = {
+  duration: CYCLE_MS,
+  iterations: Number.POSITIVE_INFINITY,
+  easing: STEP,
+};
+
+export const MONOGRAM_TIMING: KeyframeAnimationOptions = {
+  duration: CYCLE_MS,
+  iterations: Number.POSITIVE_INFINITY,
+  easing: STEP,
+};

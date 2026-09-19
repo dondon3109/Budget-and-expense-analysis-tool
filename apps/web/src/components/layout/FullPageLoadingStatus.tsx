@@ -2,11 +2,17 @@ import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import {
-  MORPH_HOLD_MS,
-  MORPH_PATHS,
-  MORPH_TRANSITION_MS,
-  easeInOutCubic,
-  morphPathAt,
+  ASCENDER_LENGTH,
+  ASCENDER_PATH,
+  ASCENDER_TIMING,
+  MARK_VIEW_BOX,
+  MONOGRAM_DASH,
+  MONOGRAM_LENGTH,
+  MONOGRAM_PATH,
+  MONOGRAM_RESTING_OFFSET,
+  MONOGRAM_TIMING,
+  ascenderKeyframes,
+  monogramKeyframes,
 } from "./loadingMark";
 
 import "./FullPageLoadingStatus.css";
@@ -31,7 +37,7 @@ const PHASE_TEXT: Record<LoadingPhase, string> = {
 };
 
 const PHASE_COUNT = Object.keys(PHASE_TEXT).length;
-const EXIT_MS = 260;
+const EXIT_MS = 240;
 
 export function FullPageLoadingStatus({
   title,
@@ -42,32 +48,32 @@ export function FullPageLoadingStatus({
 }: FullPageLoadingStatusProps) {
   const reduceMotion = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
+  const lineRef = useRef<SVGPathElement>(null);
   const markRef = useRef<SVGPathElement>(null);
   const completeRef = useRef(onComplete);
   completeRef.current = onComplete;
   const requestedRef = useRef(false);
 
-  // The mark is written straight to the DOM: a morph per frame through React
-  // state would re-render this whole surface sixty times a second.
+  // Both elements animate themselves on the compositor. Declarative keyframes
+  // rather than per-frame writes: this loop has to be exact, and it must not
+  // touch React state while the app is still starting up.
   useEffect(() => {
+    if (reduceMotion) return;
+    const line = lineRef.current;
     const mark = markRef.current;
-    if (!mark || reduceMotion) return;
-    const cycle = MORPH_HOLD_MS + MORPH_TRANSITION_MS;
-    const started = performance.now();
-    let frame = requestAnimationFrame(function tick(now) {
-      const elapsed = now - started;
-      const shape = Math.floor(elapsed / cycle);
-      const within = elapsed - shape * cycle;
-      const blend = within < MORPH_HOLD_MS ? 0 : (within - MORPH_HOLD_MS) / MORPH_TRANSITION_MS;
-      mark.setAttribute("d", morphPathAt(shape, easeInOutCubic(blend)));
-      frame = requestAnimationFrame(tick);
-    });
-    return () => cancelAnimationFrame(frame);
+    if (!line || !mark || typeof line.animate !== "function") return;
+    const animations = [
+      line.animate(ascenderKeyframes(), ASCENDER_TIMING),
+      mark.animate(monogramKeyframes(), MONOGRAM_TIMING),
+    ];
+    return () => {
+      for (const animation of animations) animation.cancel();
+    };
   }, [reduceMotion]);
 
   // The caller signals readiness on the same frame it prepares to unmount this
-  // surface, so holding the completion back by the exit length keeps the fade
-  // from being cut off. Reduced motion has no exit to wait out.
+  // surface, so holding completion back by the exit keeps the fade from being
+  // cut off. Reduced motion has no exit to wait out.
   useEffect(() => {
     if (reduceMotion) {
       if (requestedRef.current) return;
@@ -101,13 +107,29 @@ export function FullPageLoadingStatus({
       aria-atomic="true"
       aria-busy="true"
     >
-      <div className="full-page-loading-stage" aria-hidden="true">
-        <div className="full-page-loading-aura" />
-        <svg className="full-page-loading-svg" viewBox="0 0 80 80" fill="none">
-          <circle className="full-page-loading-reticle" cx="40" cy="40" r="37" />
-          <path ref={markRef} className="full-page-loading-mark" d={MORPH_PATHS[0]} />
-        </svg>
-      </div>
+      <svg
+        className="full-page-loading-mark"
+        viewBox={MARK_VIEW_BOX}
+        fill="none"
+        aria-hidden="true"
+      >
+        {!reduceMotion && (
+          <path
+            ref={lineRef}
+            className="full-page-loading-line"
+            d={ASCENDER_PATH}
+            strokeDasharray={ASCENDER_LENGTH * 2}
+            strokeDashoffset={ASCENDER_LENGTH * 2}
+          />
+        )}
+        <path
+          ref={markRef}
+          className="full-page-loading-monogram"
+          d={MONOGRAM_PATH}
+          strokeDasharray={MONOGRAM_DASH}
+          strokeDashoffset={reduceMotion ? MONOGRAM_RESTING_OFFSET : MONOGRAM_LENGTH}
+        />
+      </svg>
 
       <div className="full-page-loading-copy">
         <span className="full-page-loading-brand">Zoption Platform</span>

@@ -1,10 +1,9 @@
 /* ============================================================
    ZOPTION FULL-PAGE LOADING
    ------------------------------------------------------------
-   One authored moment: a single continuous stroke that morphs
-   between the Zoption monogram and three financial silhouettes,
-   held inside a slow calibration reticle. Everything else stays
-   still so the mark is the only thing moving.
+   One authored moment: an ascender line rises across the frame
+   and the Zoption monogram draws itself onto it, then both clear
+   and the cycle repeats. Two elements, one direction of travel.
 
    The load is indeterminate, so nothing here claims a percentage.
    When the caller can count real phases, a determinate rail
@@ -20,7 +19,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(26px, 4.5vh, 44px);
+  gap: clamp(28px, 5vh, 48px);
   padding: clamp(24px, 5vw, 64px);
   text-align: center;
   background: var(--page);
@@ -30,48 +29,22 @@
   -webkit-user-select: none;
 }
 
-/* ---------- Stage ---------- */
-.full-page-loading-stage {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: clamp(168px, 30vmin, 216px);
-  aspect-ratio: 1 / 1;
-}
-
-/* Flat token surface, no gradient: a quiet disc behind the mark. */
-.full-page-loading-aura {
-  position: absolute;
-  inset: -6%;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--brand) 12%, transparent);
-  background: color-mix(in srgb, var(--brand) 4%, transparent);
-  will-change: transform, opacity;
-}
-
-.full-page-loading-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+/* ---------- The mark ---------- */
+.full-page-loading-mark {
+  width: clamp(180px, 32vmin, 240px);
+  height: auto;
   overflow: visible;
 }
 
-/* Calibration reticle: the only other moving thing, and barely. */
-.full-page-loading-reticle {
-  fill: none;
-  stroke: color-mix(in srgb, var(--brand) 26%, transparent);
-  stroke-width: 1;
-  stroke-dasharray: 1 7;
+.full-page-loading-line {
+  stroke: color-mix(in srgb, var(--brand) 50%, transparent);
+  stroke-width: 1.5;
   stroke-linecap: round;
-  transform-origin: center;
 }
 
-/* The morphing mark. */
-.full-page-loading-mark {
-  fill: none;
+.full-page-loading-monogram {
   stroke: var(--brand);
-  stroke-width: 2;
+  stroke-width: 2.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -122,7 +95,7 @@
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  width: min(340px, 78vw);
+  width: min(320px, 78vw);
 }
 
 .full-page-loading-track {
@@ -157,15 +130,7 @@
 /* ---------- Motion ---------- */
 @media (prefers-reduced-motion: no-preference) {
   .full-page-loading-status {
-    animation: zoption-stage-enter 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  .full-page-loading-aura {
-    animation: zoption-aura-breathe 6s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-  }
-
-  .full-page-loading-reticle {
-    animation: zoption-reticle-turn 90s linear infinite;
+    animation: zoption-stage-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
   /* The step label is the one piece of text that changes while this surface is
@@ -175,11 +140,10 @@
   }
 }
 
-/* Reduced motion keeps the finished monogram and drops all movement. */
 @media (prefers-reduced-motion: reduce) {
-  .full-page-loading-aura,
-  .full-page-loading-reticle {
-    animation: none;
+  /* The mark's resting frame is set by the component; nothing else moves. */
+  .full-page-loading-track {
+    transition: none;
   }
 }
 
@@ -189,27 +153,6 @@
   }
   to {
     opacity: 1;
-  }
-}
-
-@keyframes zoption-aura-breathe {
-  0%,
-  100% {
-    transform: scale(0.985);
-    opacity: 0.75;
-  }
-  50% {
-    transform: scale(1.015);
-    opacity: 1;
-  }
-}
-
-@keyframes zoption-reticle-turn {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
   }
 }
 

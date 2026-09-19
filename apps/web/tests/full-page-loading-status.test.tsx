@@ -13,46 +13,98 @@ vi.mock("../src/hooks/useReducedMotion", () => ({
 
 import { FullPageLoadingStatus } from "../src/components/layout/FullPageLoadingStatus";
 import {
-  MORPH_HOLD_MS,
-  MORPH_PATHS,
-  MORPH_SHAPE_COUNT,
-  MORPH_TRANSITION_MS,
-  easeInOutCubic,
-  morphPathAt,
+  ASCENDER_LENGTH,
+  HOLD_FRACTION,
+  LINE_COMPLETE_FRACTION,
+  MARK_DRAW_FROM_FRACTION,
+  MONOGRAM_DASH,
+  MONOGRAM_LENGTH,
+  MONOGRAM_RESTING_OFFSET,
+  RISE_FRACTION,
+  ascenderKeyframes,
+  monogramKeyframes,
 } from "../src/components/layout/loadingMark";
 
+const offsets = (frames: Keyframe[]) => frames.map((frame) => Number(frame.offset));
+
 describe("loadingMark", () => {
-  it("closes every silhouette so any state can morph into any other", () => {
-    expect(MORPH_PATHS).toHaveLength(4);
-    for (const d of MORPH_PATHS) {
-      expect(d.startsWith("M")).toBe(true);
-      expect(d.endsWith("Z")).toBe(true);
-      expect(d).not.toMatch(/NaN|undefined/);
+  it("draws the line as a dash twice its own length", () => {
+    const frames = ascenderKeyframes();
+    expect(frames[0]?.strokeDashoffset).toBe(ASCENDER_LENGTH * 2);
+    expect(frames.at(-1)?.strokeDashoffset).toBe(-ASCENDER_LENGTH * 2);
+  });
+
+  it("runs every keyframe track in strict time order", () => {
+    for (const frames of [ascenderKeyframes(), monogramKeyframes()]) {
+      const track = offsets(frames);
+      expect(track[0]).toBe(0);
+      expect(track.at(-1)).toBe(1);
+      for (let i = 1; i < track.length; i++) {
+        expect(track[i]!).toBeGreaterThan(track[i - 1]!);
+      }
     }
   });
 
-  it("gives every silhouette the same structure so the morph never jumps", () => {
-    const structure = (d: string) => d.replace(/-?\d+(\.\d+)?/g, "#");
-    for (const d of MORPH_PATHS) {
-      expect(structure(d)).toBe(structure(MORPH_PATHS[0]!));
-    }
+  it("starts the monogram hidden and finishes it fully drawn", () => {
+    const frames = monogramKeyframes();
+    expect(frames[0]?.strokeDashoffset).toBe(MONOGRAM_LENGTH);
+    const drawn = frames.filter((frame) => frame.strokeDashoffset === 0 && frame.opacity === 1);
+    expect(drawn.length).toBeGreaterThan(0);
   });
 
-  it("produces an in-between path that is neither of the two silhouettes", () => {
-    const between = morphPathAt(0, 0.5);
-    expect(between).not.toBe(MORPH_PATHS[0]);
-    expect(between).not.toBe(MORPH_PATHS[1]);
-    expect(between).not.toMatch(/NaN|undefined/);
+  it("sequences the line before the mark, inside one cycle", () => {
+    const line = ascenderKeyframes();
+    const mark = monogramKeyframes();
+    expect(LINE_COMPLETE_FRACTION).toBeLessThan(MARK_DRAW_FROM_FRACTION);
+    expect(MARK_DRAW_FROM_FRACTION).toBeLessThan(RISE_FRACTION);
+    expect(RISE_FRACTION).toBeLessThan(HOLD_FRACTION);
   });
 
-  it("holds the exact silhouette at the start of each step", () => {
-    for (let index = 0; index < MORPH_SHAPE_COUNT; index++) {
-      expect(morphPathAt(index, 0)).toBe(MORPH_PATHS[index]);
-    }
-    // The loop wraps: the last silhouette morphs back into the first.
-    expect(morphPathAt(MORPH_SHAPE_COUNT, 0)).toBe(MORPH_PATHS[0]);
+  it("never leaves the frame empty for long enough to read as a blink", () => {
+    const line = ascenderKeyframes();
+    const mark = monogramKeyframes();
+    const hidden = (frames: Keyframe[]) =>
+      frames.filter((frame) => frame.opacity === 0).map((frame) => Number(frame.offset));
+    const visibleFrom = (frames: Keyframe[]) =>
+      Math.min(...frames.filter((frame) => frame.opacity === 1).map((f) => Number(f.offset)));
+    const visibleUntil = (frames: Keyframe[]) =>
+      Math.max(...frames.filter((frame) => frame.opacity === 1).map((f) => Number(f.offset)));
+
+    // Each element is only hidden while it re-forms, at the very start or end.
+    expect(Math.max(...hidden(line))).toBeGreaterThanOrEqual(0.85);
+    expect(Math.min(...hidden(line))).toBeLessThanOrEqual(0.05);
+    // The mark is fully drawn exactly while the rule is at full length, so the
+    // composed frame is never both empty and still.
+    expect(visibleFrom(mark)).toBeLessThanOrEqual(RISE_FRACTION);
+    expect(visibleUntil(mark)).toBeGreaterThanOrEqual(HOLD_FRACTION);
+    expect(visibleFrom(line)).toBeLessThanOrEqual(LINE_COMPLETE_FRACTION);
+    expect(visibleUntil(line)).toBeGreaterThanOrEqual(HOLD_FRACTION);
+  });
+
+  it("keeps a readable resting frame for reduced motion", () => {
+    // The whole stroke, because a still frame has no motion to explain a
+    // partially drawn mark.
+    expect(MONOGRAM_RESTING_OFFSET).toBe(0);
+    // A hollow dash reveals the stroke; a shorter dash would only ever show a stub.
+    const [dash, gap] = MONOGRAM_DASH.split(" ").map(Number);
+    expect(dash).toBe(MONOGRAM_LENGTH);
+    expect(gap).toBeGreaterThanOrEqual(MONOGRAM_LENGTH);
   });
 });
+
+/** jsdom ships no Web Animations, so stand one up and keep the real prototype. */
+function stubAnimate() {
+  const original = Object.getOwnPropertyDescriptor(SVGElement.prototype, "animate");
+  const animate = vi.fn(() => ({ cancel: vi.fn() }) as unknown as Animation);
+  Object.defineProperty(SVGElement.prototype, "animate", { value: animate, configurable: true });
+  return {
+    animate,
+    restore: () => {
+      if (original) Object.defineProperty(SVGElement.prototype, "animate", original);
+      else Reflect.deleteProperty(SVGElement.prototype, "animate");
+    },
+  };
+}
 
 describe("FullPageLoadingStatus", () => {
   beforeEach(() => {
@@ -62,7 +114,6 @@ describe("FullPageLoadingStatus", () => {
   afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
-    vi.useRealTimers();
   });
 
   it("announces visible workspace preparation copy", () => {
@@ -78,6 +129,53 @@ describe("FullPageLoadingStatus", () => {
     expect(status).toHaveTextContent("Preparing your workspace");
     expect(status).toHaveTextContent("Loading your latest budget details.");
     expect(status).toHaveTextContent("Zoption Platform");
+  });
+
+  it("draws two elements instead of cross-fading several shapes", () => {
+    const { container } = render(
+      <FullPageLoadingStatus title="Restoring your workspace" description="Checking." />,
+    );
+
+    // A mark that changes identity mid-animation is the thing this replaced.
+    const paths = container.querySelectorAll("svg path");
+    expect(paths).toHaveLength(2);
+    expect(container.querySelectorAll(".full-page-loading-line")).toHaveLength(1);
+    expect(container.querySelectorAll(".full-page-loading-monogram")).toHaveLength(1);
+    expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("animates both elements with declarative keyframes", () => {
+    const stub = stubAnimate();
+    render(<FullPageLoadingStatus title="Restoring your workspace" description="Checking." />);
+
+    expect(stub.animate).toHaveBeenCalledTimes(2);
+    const calls = stub.animate.mock.calls as unknown as [Keyframe[], KeyframeAnimationOptions][];
+    const [lineFrames, lineTiming] = calls[0] as [Keyframe[], KeyframeAnimationOptions];
+    const [markFrames, markTiming] = calls[1] as [Keyframe[], KeyframeAnimationOptions];
+    expect(lineFrames).toEqual(ascenderKeyframes());
+    expect(markFrames).toEqual(monogramKeyframes());
+    expect(lineTiming.iterations).toBe(Number.POSITIVE_INFINITY);
+    expect(markTiming.iterations).toBe(Number.POSITIVE_INFINITY);
+    expect(lineTiming.duration).toBe(markTiming.duration);
+
+    cleanup();
+    stub.restore();
+  });
+
+  it("cancels both animations when the surface goes away", () => {
+    const cancel = vi.fn();
+    const original = Object.getOwnPropertyDescriptor(SVGElement.prototype, "animate");
+    Object.defineProperty(SVGElement.prototype, "animate", {
+      value: vi.fn(() => ({ cancel }) as unknown as Animation),
+      configurable: true,
+    });
+
+    render(<FullPageLoadingStatus title="Restoring your workspace" description="Checking." />);
+    cleanup();
+    expect(cancel).toHaveBeenCalledTimes(2);
+
+    if (original) Object.defineProperty(SVGElement.prototype, "animate", original);
+    else Reflect.deleteProperty(SVGElement.prototype, "animate");
   });
 
   it("reports only the phases the app can actually observe", () => {
@@ -118,55 +216,31 @@ describe("FullPageLoadingStatus", () => {
     expect(fill?.style.transform).toBe("scaleX(0.3333333333333333)");
   });
 
-  it("morphs the mark on the animation frame clock", () => {
-    let callback: FrameRequestCallback | undefined;
-    const cancel = vi.spyOn(window, "cancelAnimationFrame");
-    // Stable origin so the frame timestamps below land where the test expects.
-    vi.spyOn(performance, "now").mockReturnValue(0);
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation((next) => {
-      callback = next;
-      return 7;
-    });
-
-    render(<FullPageLoadingStatus title="Restoring your workspace" description="Checking." />);
-
-    const mark = document.querySelector<SVGPathElement>(".full-page-loading-mark");
-    expect(mark?.getAttribute("d")).toBe(MORPH_PATHS[0]);
-
-    // Halfway through the first morph: 1200ms of hold, then half of 620ms.
-    act(() => {
-      callback?.(MORPH_HOLD_MS + MORPH_TRANSITION_MS / 2);
-    });
-
-    expect(mark?.getAttribute("d")).not.toBe(MORPH_PATHS[0]);
-    // React reserializes the attribute with its own spacing, and the loader
-    // eases the blend before it asks for a frame.
-    const normalize = (d: string | null | undefined) => d?.replace(/\s+/g, "");
-    expect(normalize(mark?.getAttribute("d"))).toBe(normalize(morphPathAt(0, easeInOutCubic(0.5))));
-
-    cleanup();
-    expect(cancel).toHaveBeenCalledWith(7);
-  });
-
-  it("keeps the mark still when motion is reduced", () => {
+  it("holds a still, readable mark when motion is reduced", () => {
     motionState.reduceMotion = true;
-    const frames = vi.spyOn(window, "requestAnimationFrame");
+    const stub = stubAnimate();
 
     render(<FullPageLoadingStatus title="Restoring your workspace" description="Checking." />);
 
     expect(screen.getByRole("status")).toHaveAttribute("data-reduced-motion");
-    expect(frames).not.toHaveBeenCalled();
-    expect(document.querySelector(".full-page-loading-mark")?.getAttribute("d")).toBe(
-      MORPH_PATHS[0],
+    expect(stub.animate).not.toHaveBeenCalled();
+    // The line is omitted entirely and the monogram keeps its resting frame.
+    expect(document.querySelector(".full-page-loading-line")).toBeNull();
+    expect(document.querySelector(".full-page-loading-monogram")).toHaveAttribute(
+      "stroke-dashoffset",
+      String(MONOGRAM_RESTING_OFFSET),
     );
+
+    stub.restore();
   });
 
   it("hands over to the app once its exit has played", async () => {
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
-    // jsdom ships no Web Animations, so stand one up to observe the handover.
+    const stub = stubAnimate();
     const original = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
-    const animate = vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation);
-    Object.defineProperty(Element.prototype, "animate", { value: animate, configurable: true });
+    Object.defineProperty(Element.prototype, "animate", {
+      value: vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation),
+      configurable: true,
+    });
     const onComplete = vi.fn();
 
     render(
@@ -178,23 +252,19 @@ describe("FullPageLoadingStatus", () => {
     );
 
     expect(onComplete).not.toHaveBeenCalled();
-    expect(animate).toHaveBeenCalledWith([{ opacity: 1 }, { opacity: 0 }], expect.anything());
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
     });
     expect(onComplete).toHaveBeenCalledTimes(1);
 
+    stub.restore();
     if (original) Object.defineProperty(Element.prototype, "animate", original);
     else Reflect.deleteProperty(Element.prototype, "animate");
   });
 
   it("still hands over when the exit cannot animate", () => {
-    vi.spyOn(window, "requestAnimationFrame").mockImplementation(() => 1);
-    // jsdom has no Element.animate, which is the same path a reduced-capability
-    // browser takes: hand over rather than hold the workspace behind the splash.
-    const original = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
-    Object.defineProperty(Element.prototype, "animate", { value: undefined, configurable: true });
+    const stub = stubAnimate();
     const onComplete = vi.fn();
 
     render(
@@ -206,13 +276,12 @@ describe("FullPageLoadingStatus", () => {
     );
 
     expect(onComplete).toHaveBeenCalledTimes(1);
-
-    if (original) Object.defineProperty(Element.prototype, "animate", original);
-    else Reflect.deleteProperty(Element.prototype, "animate");
+    stub.restore();
   });
 
   it("completes immediately under reduced motion", () => {
     motionState.reduceMotion = true;
+    const stub = stubAnimate();
     const onComplete = vi.fn();
 
     render(
@@ -224,5 +293,6 @@ describe("FullPageLoadingStatus", () => {
     );
 
     expect(onComplete).toHaveBeenCalledTimes(1);
+    stub.restore();
   });
 });

@@ -31,9 +31,9 @@ All notable product changes are documented here.
   payoff preference stay until you delete them individually or clear memory. Previously, deleting all
   chats also discarded remembered facts.
 - The startup screen no longer holds you for a fixed three seconds. It leaves as soon as your session
-  is restored and the workspace has loaded, its rail reflects those real steps instead of an invented
-  percentage, and its mark is a single continuous stroke that morphs between the Zoption monogram, an
-  ascending chart, a coin and a banknote.
+  is restored and the workspace has loaded, and its rail reflects those real steps instead of an
+  invented percentage. Its mark is now a single rising rule that the Zoption monogram draws itself
+  onto before both clear and the loop repeats.
 
 ### Security
 
