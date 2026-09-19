@@ -1286,8 +1286,9 @@ export function AssistantScreen() {
             Clear all conversations
           </Button>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Conversations, audit snapshots and assistant memory are retained for up to{" "}
-            {preferences?.retentionDays ?? 90} days.
+            Conversations and audit snapshots are retained for up to{" "}
+            {preferences?.retentionDays ?? 90} days. Remembered facts and your payoff preference are
+            kept until you delete them.
           </Text>
         </View>
       </BottomSheet>

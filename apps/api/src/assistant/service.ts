@@ -216,8 +216,8 @@ export function createAssistantService(
       (memory) =>
         (memory.kind === "fact" || memory.kind === "preference") &&
         // A stored key outside the canonical allowlist is a legacy model-invented
-        // channel, so it stops reaching the prompt immediately and the row expires
-        // on its own retention instead of needing a data migration.
+        // channel. It stops reaching the prompt immediately, and permanent memory
+        // means the row now stays stored but unused until the user deletes it.
         isCanonicalMemoryKey(memory.key),
     );
     const threadSummary = threadSummaryMemory?.value ?? null;
@@ -309,8 +309,8 @@ export function createAssistantService(
       }
     }
     // Storage cap with oldest-first eviction, applied after every writer so a model
-    // pass cannot leave the tenant over the cap until a later turn. Preferences are
-    // never evicted.
+    // pass cannot leave the tenant over the cap until a later turn. Preferences and
+    // user-stated facts are never evicted.
     const storedFacts = await repository.countFacts(env, tenantId);
     if (storedFacts > MAX_MEMORY_FACTS_STORED) {
       await repository.compactFacts(env, tenantId, MAX_MEMORY_FACTS_STORED);

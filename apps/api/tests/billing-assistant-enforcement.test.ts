@@ -1,9 +1,10 @@
-import type {
-  AssistantMemory,
-  AssistantMessage,
-  AssistantMessageInput,
-  AssistantPreferences,
-  AssistantThread,
+import {
+  CURRENT_ASSISTANT_CONSENT_VERSION,
+  type AssistantMemory,
+  type AssistantMessage,
+  type AssistantMessageInput,
+  type AssistantPreferences,
+  type AssistantThread,
 } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
@@ -27,7 +28,7 @@ const INPUT: AssistantMessageInput = {
 
 const PREFERENCES: AssistantPreferences = {
   consentedAt: "2026-07-27T00:00:00.000Z",
-  consentVersion: 5,
+  consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
   retentionDays: 90,
   assistantName: "Aster",
   userPreferredName: "Sam",

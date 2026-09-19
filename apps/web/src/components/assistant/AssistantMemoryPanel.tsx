@@ -204,7 +204,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
             <strong>Private & Read-Only</strong>
             <p>
               Your assistant remembers key facts across conversations so you don't have to repeat
-              yourself. Data is private to this workspace, retained for up to 90 days, and never
+              yourself. Data is private to this workspace, kept until you delete it, and never
               alters your transactions or accounts. You can edit or remove what it remembers below.
             </p>
           </div>

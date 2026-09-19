@@ -1,7 +1,6 @@
-import type { AssistantPreferences } from "@zoption/shared";
+import { CURRENT_ASSISTANT_CONSENT_VERSION, type AssistantPreferences } from "@zoption/shared";
 
 import {
-  CURRENT_CONSENT_VERSION,
   formatThreadTime,
   MAX_ASSISTANT_MESSAGE_LENGTH,
   requiresAssistantConsent,
@@ -16,7 +15,7 @@ import {
 function preferences(overrides: Partial<AssistantPreferences> = {}): AssistantPreferences {
   return {
     consentedAt: "2026-05-01T08:00:00.000Z",
-    consentVersion: CURRENT_CONSENT_VERSION,
+    consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
     retentionDays: 90,
     assistantName: "Zoe",
     userPreferredName: "Don",

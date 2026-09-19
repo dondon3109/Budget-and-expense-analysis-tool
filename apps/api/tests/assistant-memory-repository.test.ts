@@ -28,6 +28,20 @@ afterEach(() => {
   for (const database of databases.splice(0)) database.close();
 });
 
+/** A stored chat; pass an expiry in the past to reach cleanupExpired's memory sweep. */
+function insertThread(
+  database: ReturnType<typeof createD1TestDatabase>["database"],
+  expiry: string,
+) {
+  database
+    .prepare(
+      `INSERT INTO assistant_threads
+       (id, tenant_id, title, last_message_at, retention_expires_at, created_at, updated_at)
+       VALUES (?, ?, 'Old chat', ?, ?, ?, ?)`,
+    )
+    .run(THREAD_ID, TENANT_A, expiry, expiry, expiry, expiry);
+}
+
 describe("assistantRepository memory writes", () => {
   it("updates a fact for the owning tenant", async () => {
     const { env } = environment();
@@ -225,5 +239,227 @@ describe("assistantRepository memory writes", () => {
     await expect(
       assistantRepository.getMemory(env, TENANT_A, "preference", "debt_strategy"),
     ).resolves.not.toBeNull();
+  });
+
+  it("keeps permanent memory past the retention window and through the cron sweep", async () => {
+    const { env, database } = environment();
+    await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "fact",
+      key: "payday_schedule",
+      value: "Paid every 15th",
+      source: "deterministic",
+    });
+    await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "preference",
+      key: "debt_strategy",
+      value: "avalanche",
+      source: "user_stated",
+    });
+
+    const permanent = database
+      .prepare("SELECT COUNT(*) AS count FROM assistant_memories WHERE expires_at IS NULL")
+      .get() as { count: number };
+    expect(permanent.count).toBe(2);
+
+    // Age both rows past the 90 days the old write path armed.
+    const aged = new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString();
+    database
+      .prepare("UPDATE assistant_memories SET created_at = ?, updated_at = ?")
+      .run(aged, aged);
+
+    // listMemories is the query the prompt context loads, so surviving it means both
+    // still reach the model and the Memory panel.
+    const listed = await assistantRepository.listMemories(env, TENANT_A);
+    expect(listed.map((memory) => memory.key).sort()).toEqual(["debt_strategy", "payday_schedule"]);
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "fact", "payday_schedule"),
+    ).resolves.toMatchObject({ value: "Paid every 15th" });
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "preference", "debt_strategy"),
+    ).resolves.toMatchObject({ value: "avalanche" });
+
+    insertThread(database, aged);
+    await expect(assistantRepository.cleanupExpired(env, TENANT_A)).resolves.toBe(1);
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "fact", "payday_schedule"),
+    ).resolves.not.toBeNull();
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "preference", "debt_strategy"),
+    ).resolves.not.toBeNull();
+  });
+
+  it("keeps thread summaries on the retention clock", async () => {
+    const { env, database } = environment();
+    const summary = await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "summary",
+      key: `thread:${THREAD_ID}`,
+      value: "Earlier in this chat",
+      source: "deterministic",
+    });
+    const armed = database
+      .prepare("SELECT expires_at FROM assistant_memories WHERE id = ?")
+      .get(summary.id) as { expires_at: string | null };
+    expect(armed.expires_at).not.toBeNull();
+
+    const lapsed = new Date(Date.now() - 60_000).toISOString();
+    database
+      .prepare("UPDATE assistant_memories SET expires_at = ? WHERE id = ?")
+      .run(lapsed, summary.id);
+    insertThread(database, lapsed);
+
+    await expect(assistantRepository.cleanupExpired(env, TENANT_A)).resolves.toBe(1);
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "summary", summary.key),
+    ).resolves.toBeNull();
+  });
+
+  it("never counts or evicts a fact the user stated", async () => {
+    const { env, database } = environment();
+    const age = database.prepare("UPDATE assistant_memories SET updated_at = ? WHERE id = ?");
+    for (let index = 0; index < 3; index += 1) {
+      const stated = await assistantRepository.upsertMemory(env, TENANT_A, {
+        kind: "fact",
+        key: `stated_${index}`,
+        value: `User fact ${index}`,
+        source: "user_stated",
+      });
+      age.run(`2026-01-0${index + 1}T00:00:00.000Z`, stated.id);
+    }
+    for (let index = 0; index < 3; index += 1) {
+      const learned = await assistantRepository.upsertMemory(env, TENANT_A, {
+        kind: "fact",
+        key: `learned_${index}`,
+        value: `Learned fact ${index}`,
+        source: "deterministic",
+      });
+      age.run(`2026-02-0${index + 1}T00:00:00.000Z`, learned.id);
+    }
+
+    // Only evictable facts count, so the overflow math cannot chase rows it can never delete.
+    await expect(assistantRepository.countFacts(env, TENANT_A)).resolves.toBe(3);
+    await expect(assistantRepository.compactFacts(env, TENANT_A, 1)).resolves.toBe(2);
+    await expect(assistantRepository.countFacts(env, TENANT_A)).resolves.toBe(1);
+
+    const remaining = await assistantRepository.listMemories(env, TENANT_A, "fact");
+    expect(remaining.map((memory) => memory.key).sort()).toEqual([
+      "learned_2",
+      "stated_0",
+      "stated_1",
+      "stated_2",
+    ]);
+  });
+
+  it("keeps facts and preferences when every chat is deleted", async () => {
+    const { env, database } = environment();
+    insertThread(database, new Date().toISOString());
+    await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "fact",
+      key: "payday_schedule",
+      value: "Paid every 15th",
+      source: "deterministic",
+    });
+    await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "preference",
+      key: "debt_strategy",
+      value: "avalanche",
+      source: "user_stated",
+    });
+    await assistantRepository.upsertMemory(env, TENANT_A, {
+      kind: "summary",
+      key: `thread:${THREAD_ID}`,
+      value: "Earlier in this chat",
+      source: "deterministic",
+    });
+
+    // "Delete all chats" is history cleanup: permanent memory survives it, while the
+    // summary that embeds chat text goes with the thread.
+    await assistantRepository.deleteAllThreads(env, TENANT_A);
+
+    const remaining = await assistantRepository.listMemories(env, TENANT_A);
+    expect(remaining.map((memory) => memory.key).sort()).toEqual([
+      "debt_strategy",
+      "payday_schedule",
+    ]);
+    await expect(
+      assistantRepository.getMemory(env, TENANT_A, "summary", `thread:${THREAD_ID}`),
+    ).resolves.toBeNull();
+  });
+});
+
+describe("assistant memory permanent backfill", () => {
+  it("clears only expiries that have not already lapsed", () => {
+    const lapsed = "2020-01-01T00:00:00.000Z";
+    const live = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { database } = createD1TestDatabase({
+      beforeMigration: ({ database: migrating, name }) => {
+        if (name !== "0060_assistant_permanent_memory.sql") return;
+        migrating
+          .prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'Tenant A')")
+          .run(TENANT_A);
+        const insert = migrating.prepare(
+          `INSERT INTO assistant_memories
+           (id, tenant_id, kind, key, value, source, created_at, updated_at, expires_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        );
+        insert.run(
+          "lapsed-fact",
+          TENANT_A,
+          "fact",
+          "payday_schedule",
+          "Paid every 15th",
+          "deterministic",
+          lapsed,
+          lapsed,
+          lapsed,
+        );
+        insert.run(
+          "live-fact",
+          TENANT_A,
+          "fact",
+          "monthly_budget_cap",
+          "Monthly budget PHP 20,000",
+          "deterministic",
+          lapsed,
+          lapsed,
+          live,
+        );
+        insert.run(
+          "lapsed-preference",
+          TENANT_A,
+          "preference",
+          "debt_strategy",
+          "avalanche",
+          "user_stated",
+          lapsed,
+          lapsed,
+          lapsed,
+        );
+        insert.run(
+          "live-summary",
+          TENANT_A,
+          "summary",
+          "thread:1",
+          "Earlier in this chat",
+          "deterministic",
+          lapsed,
+          lapsed,
+          live,
+        );
+      },
+    });
+    databases.push(database);
+
+    const expiry = (id: string) =>
+      (
+        database.prepare("SELECT expires_at FROM assistant_memories WHERE id = ?").get(id) as {
+          expires_at: string | null;
+        }
+      ).expires_at;
+
+    // A row that lapsed before the backfill ran stays expired instead of being resurrected.
+    expect(expiry("lapsed-fact")).toBe(lapsed);
+    expect(expiry("lapsed-preference")).toBe(lapsed);
+    expect(expiry("live-fact")).toBeNull();
+    expect(expiry("live-summary")).toBe(live);
   });
 });

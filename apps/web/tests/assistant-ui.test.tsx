@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState, type ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
+import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
@@ -118,7 +119,7 @@ describe("assistant UI", () => {
     });
     apiMocks.getAssistantPreferences.mockReset().mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 5,
+      consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",
@@ -179,7 +180,9 @@ describe("assistant UI", () => {
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
     expect(screen.getByText(/PostHog receives operational metadata only/i)).toBeInTheDocument();
     expect(screen.getByText(/PostHog receives model, latency, token-count/i)).toBeInTheDocument();
-    expect(screen.getByText(/assistant memory are kept/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/payoff preference are kept until you delete them/i),
+    ).toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
@@ -663,7 +666,7 @@ describe("assistant UI", () => {
   it("requires assistant and user names after consent, then displays the saved assistant name", async () => {
     apiMocks.getAssistantPreferences.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 5,
+      consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
       retentionDays: 90,
       assistantName: null,
       userPreferredName: null,
@@ -672,7 +675,7 @@ describe("assistant UI", () => {
     });
     apiMocks.updateAssistantIdentity.mockResolvedValue({
       consentedAt: "2026-07-27T10:00:00.000Z",
-      consentVersion: 5,
+      consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",

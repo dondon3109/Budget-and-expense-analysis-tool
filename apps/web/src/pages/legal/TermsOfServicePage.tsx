@@ -5,7 +5,7 @@ export function TermsOfServicePage() {
     <LegalPageLayout
       title="Terms of Service"
       summary="These terms explain the rules for using Zoption, including its Free and Pro plans, personal-finance workspace, file imports, exports, and optional AI assistant."
-      lastUpdated="August 12, 2026"
+      lastUpdated="September 19, 2026"
     >
       <section>
         <h2>1. Who operates Zoption</h2>
@@ -95,7 +95,9 @@ export function TermsOfServicePage() {
           accounting, legal, retirement-allocation, or insurance advice. Verify important decisions
           and consult an appropriately qualified professional when needed. Zoption assistant
           conversations and their compact sanitized audit snapshots are designed to expire together
-          after the thread&apos;s 90-day retention window, subject to the Privacy Policy.
+          after the thread&apos;s 90-day retention window, while remembered assistant facts and your
+          payoff preference are kept until you delete them or delete your account, subject to the
+          Privacy Policy.
         </p>
       </section>
 

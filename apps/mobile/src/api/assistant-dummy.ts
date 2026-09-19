@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import {
+  CURRENT_ASSISTANT_CONSENT_VERSION,
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
   type AssistantMemory,
   type AssistantMemoryPreferences,
@@ -22,8 +23,6 @@ import type {
   AssistantWireMessagePage,
   AssistantWireTurnResult,
 } from "./assistant";
-
-export const CURRENT_CONSENT_VERSION = 5;
 
 export function isDummyAssistantToken(accessToken: string): boolean {
   if (process.env.EXPO_PUBLIC_DEV_USE_REAL_API === "true") {
@@ -55,7 +54,7 @@ function generateUuid(): string {
 // 1. In-memory dummy state for development mode
 let dummyPreferences: AssistantPreferences = {
   consentedAt: "2026-08-01T00:00:00.000Z",
-  consentVersion: CURRENT_CONSENT_VERSION,
+  consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
   retentionDays: 90,
   assistantName: "Nova",
   userPreferredName: "Don",
@@ -254,7 +253,7 @@ export function updateDummyAssistantPreferences(
     dummyPreferences = {
       ...dummyPreferences,
       consentedAt: new Date().toISOString(),
-      consentVersion: CURRENT_CONSENT_VERSION,
+      consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
     };
   } else if ("assistantName" in update && "userPreferredName" in update) {
     dummyPreferences = {

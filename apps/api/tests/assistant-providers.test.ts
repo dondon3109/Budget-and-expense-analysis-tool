@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { providerAllowlist } from "@zoption/shared";
+import { CURRENT_ASSISTANT_CONSENT_VERSION, providerAllowlist } from "@zoption/shared";
 import { AnthropicProvider } from "../src/assistant/anthropic";
 import {
   ASSISTANT_DEFAULT_MODELS,
@@ -653,7 +653,7 @@ describe("assistant service maps new-provider failures like DeepSeek", () => {
     const repository = {
       getPreferences: vi.fn(async () => ({
         consentedAt: "2026-07-27T00:00:00.000Z",
-        consentVersion: 5,
+        consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
         retentionDays: 90,
         assistantName: "Aster",
         userPreferredName: "Sam",

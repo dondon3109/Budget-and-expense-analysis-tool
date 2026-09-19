@@ -2,13 +2,10 @@ import * as Crypto from "expo-crypto";
 import {
   assistantIdentityNameSchema,
   assistantMessageInputSchema,
+  CURRENT_ASSISTANT_CONSENT_VERSION,
   type AssistantPreferences,
   type AssistantThreadKind,
 } from "@zoption/shared";
-
-// Mirrors the server's consent gate: the Worker refuses turns until consent is
-// granted at the current version, so the client surfaces the same gate first.
-export const CURRENT_CONSENT_VERSION = 5;
 
 export const MAX_ASSISTANT_MESSAGE_LENGTH = 2000;
 export const MAX_IDENTITY_NAME_LENGTH = 80;
@@ -17,7 +14,9 @@ export function requiresAssistantConsent(preferences: AssistantPreferences | nul
   return (
     preferences === null ||
     preferences.consentedAt === null ||
-    preferences.consentVersion !== CURRENT_CONSENT_VERSION
+    // Mirrors the server's consent gate: the Worker refuses turns until consent is
+    // granted at the current version, so the client surfaces the same gate first.
+    preferences.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION
   );
 }
 

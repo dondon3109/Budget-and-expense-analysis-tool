@@ -1,3 +1,4 @@
+import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 
@@ -102,7 +103,7 @@ describe("assistant screen multi-select", () => {
     jest.clearAllMocks();
     api.getAssistantPreferences.mockResolvedValue({
       consentedAt: "2026-08-12T10:00:00.000Z",
-      consentVersion: 5,
+      consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
       retentionDays: 90,
       assistantName: "Aster",
       userPreferredName: "Sam",

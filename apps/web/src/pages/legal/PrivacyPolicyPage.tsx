@@ -7,7 +7,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, assistant, consent, and operational information."
-      lastUpdated="September 16, 2026"
+      lastUpdated="September 19, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -269,6 +269,9 @@ export function PrivacyPolicyPage() {
           tenant-scoped financial information needed to answer a question. Saved goals and
           debt-planning records may be used for deterministic projections. Zoption assistant
           conversations and their sanitized audit snapshots share a 90-day thread-retention window.
+          The assistant may also remember durable facts you share and the debt payoff preference you
+          set in its Memory panel; those memories are kept until you delete them individually, clear
+          assistant memory, or delete your account.
         </p>
         <p>
           For a provider-backed request, the configured AI provider may receive the current
@@ -343,22 +346,24 @@ export function PrivacyPolicyPage() {
           Each assistant thread has a 90-day retention window measured from its latest completed
           turn. The thread, messages, response metadata, assistant run, and sanitized tool-call
           snapshots are deleted together when the thread expires or when you delete that chat, all
-          chats, or your account. Account deletion purges the tenant&apos;s active D1 financial
-          records, goals, debts, chats, and assistant audits. Avatar or identity cleanup can remain
-          pending and be retried if a provider step is temporarily unavailable; a minimal deletion
-          tombstone is retained to stop an unexpired token from recreating the workspace. Specific
-          records may be retained longer where required by law or reasonably necessary for security,
-          fraud prevention, dispute resolution, or legal claims. Deleted information may remain
-          temporarily in provider recovery copies according to provider backup lifecycles and is not
-          ordinarily available for individual restoration. Provider-side retention of information
-          sent to the configured AI provider is governed by that provider&apos;s practices as
-          described above. Voice recordings and generated audio are not stored in Zoption&apos;s D1;
-          information processed by Cloudflare Workers AI, your browser&apos;s speech service, and
-          Fish Audio remains subject to their provider practices. Metadata-only PostHog AI
-          observability events are subject to the project&apos;s current 12-month event-retention
-          plan. PostHog controls provider-side retention enforcement and deletion timing, so these
-          events do not disappear when the related Zoption chat is deleted and may remain through
-          that provider retention period.
+          chats, or your account. Remembered assistant facts and the payoff preference you set are
+          not on that clock; they are kept until you delete them individually, clear assistant
+          memory, or delete your account. Account deletion purges the tenant&apos;s active D1
+          financial records, goals, debts, chats, and assistant audits. Avatar or identity cleanup
+          can remain pending and be retried if a provider step is temporarily unavailable; a minimal
+          deletion tombstone is retained to stop an unexpired token from recreating the workspace.
+          Specific records may be retained longer where required by law or reasonably necessary for
+          security, fraud prevention, dispute resolution, or legal claims. Deleted information may
+          remain temporarily in provider recovery copies according to provider backup lifecycles and
+          is not ordinarily available for individual restoration. Provider-side retention of
+          information sent to the configured AI provider is governed by that provider&apos;s
+          practices as described above. Voice recordings and generated audio are not stored in
+          Zoption&apos;s D1; information processed by Cloudflare Workers AI, your browser&apos;s
+          speech service, and Fish Audio remains subject to their provider practices. Metadata-only
+          PostHog AI observability events are subject to the project&apos;s current 12-month
+          event-retention plan. PostHog controls provider-side retention enforcement and deletion
+          timing, so these events do not disappear when the related Zoption chat is deleted and may
+          remain through that provider retention period.
         </p>
         <p>
           Selected customer reviews remain available while the account is active unless you remove

@@ -158,7 +158,7 @@ export function AssistantConsentCard({
     "Your credentials and sessions stay private; only your question and the financial data needed to answer it are sent to the AI provider.",
     "Audit snapshots of what the assistant read are sanitized and kept only for review.",
     "Operational monitoring is metadata-only — never your transaction descriptions.",
-    "Assistant memory carries across chats and can be cleared anytime.",
+    "Assistant memory is kept until you delete it, and can be cleared anytime.",
   ];
   return (
     <Card>
@@ -183,8 +183,9 @@ export function AssistantConsentCard({
           ))}
         </View>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Assistant conversations, audit snapshots and memory are retained for up to {retentionDays}{" "}
-          days. Educational budgeting information only — not personalized investment, tax or
+          Assistant conversations and audit snapshots are retained for up to {retentionDays} days.
+          Remembered facts and your debt payoff preference are kept until you delete them or your
+          account. Educational budgeting information only — not personalized investment, tax or
           insurance advice.
         </Text>
         <Button loading={accepting} onPress={onAccept}>
@@ -639,7 +640,7 @@ export function MemoryPreferencesBlock({
         </View>
       ) : (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Nothing remembered yet. The assistant only keeps short-term memory across chats.
+          Nothing remembered yet. The assistant remembers facts you share until you delete them.
         </Text>
       )}
       {facts.length > 0 ? (

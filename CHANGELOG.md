@@ -16,6 +16,16 @@ All notable product changes are documented here.
   transaction voice entry were Pro-only; they are now available to Free tenants through the same pool,
   and the 14-day assistant question cycle is gone. Live streaming voice stays Pro: a live
   platform-funded socket has no per-request boundary to meter.
+- Assistant memory no longer expires. Remembered facts and your debt payoff preference are kept until
+  you delete them, clear memory, or delete your account, while conversations and their sanitized
+  audit snapshots still expire 90 days after the last message in that chat. Facts you state or edit
+  are now exempt from the 50-fact storage cap, so a learned fact can no longer push them out. The
+  assistant data-sharing consent is now version 6, so every existing user reviews and accepts the
+  updated notice before their next assistant question, and the notice now states these retention
+  terms plainly.
+- Deleting every chat removes the conversations and their summaries only. Remembered facts and your
+  payoff preference stay until you delete them individually or clear memory. Previously, deleting all
+  chats also discarded remembered facts.
 
 ### Security
 

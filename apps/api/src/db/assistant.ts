@@ -745,8 +745,11 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   async deleteAllThreads(env, tenantId) {
     await env.DB.batch([
       env.DB.prepare(`DELETE FROM assistant_threads WHERE tenant_id = ?`).bind(tenantId),
+      // A summary embeds its thread's chat text, so it goes with the thread. Facts and
+      // preferences are permanent memory and are deleted only through the Memory panel
+      // controls or an explicit "forget everything", exactly as with a single chat.
       env.DB.prepare(
-        `DELETE FROM assistant_memories WHERE tenant_id = ? AND kind IN ('fact', 'summary')`,
+        `DELETE FROM assistant_memories WHERE tenant_id = ? AND kind = 'summary'`,
       ).bind(tenantId),
     ]);
   },
@@ -800,12 +803,13 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
 
   async updateMemoryValue(env, tenantId, id, value) {
     const now = new Date().toISOString();
-    const expiresAt = addDays(now, DEFAULT_RETENTION_DAYS);
+    // A user edit makes the row permanent and marks it user_stated, which also
+    // exempts it from the fact cap.
     const updated = await env.DB.prepare(
-      `UPDATE assistant_memories SET value = ?, source = 'user_stated', updated_at = ?, expires_at = ?
+      `UPDATE assistant_memories SET value = ?, source = 'user_stated', updated_at = ?, expires_at = NULL
        WHERE tenant_id = ? AND id = ? AND kind IN ('fact', 'preference')`,
     )
-      .bind(value, now, expiresAt, tenantId, id)
+      .bind(value, now, tenantId, id)
       .run();
     if ((updated.meta?.changes ?? 0) === 0) return null;
     return this.getMemoryById(env, tenantId, id);
@@ -820,8 +824,12 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async countFacts(env, tenantId) {
+    // Only evictable facts count toward the cap. User-stated facts are exempt, so
+    // including them would make the compaction loop chase an overflow no eviction
+    // can clear.
     const row = await env.DB.prepare(
-      `SELECT COUNT(*) AS count FROM assistant_memories WHERE tenant_id = ? AND kind = 'fact'`,
+      `SELECT COUNT(*) AS count FROM assistant_memories
+       WHERE tenant_id = ? AND kind = 'fact' AND source != 'user_stated'`,
     )
       .bind(tenantId)
       .first<{ count: number }>();
@@ -829,9 +837,9 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async compactFacts(env, tenantId, retain) {
-    // Delete the oldest facts beyond the cap in bounded batches until the tenant is
-    // back under it. Preferences are never evicted: the user set them explicitly in
-    // the assistant Memory panel.
+    // Delete the oldest evictable facts beyond the cap in bounded batches until the
+    // tenant is back under it. Preferences and user-stated facts are never evicted:
+    // the user set or edited them explicitly in the assistant Memory panel.
     let removed = 0;
     for (let pass = 0; pass < 20; pass += 1) {
       const count = await this.countFacts(env, tenantId);
@@ -839,7 +847,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
       if (overflow === 0) return removed;
       const victims = await env.DB.prepare(
         `SELECT id FROM assistant_memories
-         WHERE tenant_id = ? AND kind = 'fact'
+         WHERE tenant_id = ? AND kind = 'fact' AND source != 'user_stated'
          ORDER BY updated_at ASC, created_at ASC, id ASC LIMIT ?`,
       )
         .bind(tenantId, Math.min(overflow, 25))
@@ -860,7 +868,10 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
 
   async upsertMemory(env, tenantId, input) {
     const now = new Date().toISOString();
-    const expiresAt = addDays(now, DEFAULT_RETENTION_DAYS);
+    // Facts and preferences are permanent until the user deletes them. Only thread
+    // summaries keep a retention clock: they embed raw chat text and belong to a
+    // thread that expires on its own schedule.
+    const expiresAt = input.kind === "summary" ? addDays(now, DEFAULT_RETENTION_DAYS) : null;
     await env.DB.prepare(
       `INSERT INTO assistant_memories
        (id, tenant_id, kind, key, value, thread_id, source, created_at, updated_at, expires_at)
@@ -909,6 +920,8 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
   },
 
   async cleanupExpired(env, tenantId) {
+    // The sweep below compares with `<`, so a NULL expires_at (permanent fact or
+    // preference) never matches and needs no special case.
     const now = new Date().toISOString();
     const threads = tenantId
       ? await env.DB.prepare(

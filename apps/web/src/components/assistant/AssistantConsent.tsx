@@ -72,7 +72,7 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
         <article className="memory-point">
           <Brain size={18} aria-hidden="true" />
           <div>
-            <strong>Short-term memory across chats</strong>
+            <strong>Memory that stays until you delete it</strong>
             <p>
               Zoption may remember durable preferences and facts you share, such as which debt to
               pay first or a savings target, so you do not have to repeat them in new chats.
@@ -81,13 +81,13 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
         </article>
       </div>
       <p className="assistant-consent-retention">
-        Chats, sanitized audit snapshots, and assistant memory are kept in your private Zoption
-        history for up to 90 days and are deleted with the conversation. Metadata-only PostHog
-        events are retained separately under the current 12-month event-retention plan. PostHog
-        controls provider-side deletion timing, so these events do not disappear when a chat is
-        deleted and may remain through that retention period. You can clear assistant memory anytime
-        from the Memory panel. AI-generated wording can still be wrong, so verify consequential
-        decisions.
+        Remembered facts and your payoff preference are kept until you delete them or delete your
+        account, and you can clear assistant memory anytime from the Memory panel. Conversations and
+        their sanitized audit snapshots still expire 90 days after the last message in that chat.
+        Metadata-only PostHog events are retained separately under the current 12-month
+        event-retention plan. PostHog controls provider-side deletion timing, so these events do not
+        disappear when a chat is deleted and may remain through that retention period. AI-generated
+        wording can still be wrong, so verify consequential decisions.
       </p>
       <p className="assistant-consent-scope">
         Educational budgeting information only. Zoption does not provide personalized financial,

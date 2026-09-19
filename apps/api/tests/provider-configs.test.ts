@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createAdminProviderConfigRoutes } from "../src/routes/admin-provider-configs";
 import { createApp } from "../src/app";
-import type { ProviderConfig } from "@zoption/shared";
+import { CURRENT_ASSISTANT_CONSENT_VERSION, type ProviderConfig } from "@zoption/shared";
 import { providerConfigRepository } from "../src/db/provider-configs";
 import { providerRegistry } from "../src/provider-registry";
 import { createTestApp } from "./helpers/test-app";
@@ -308,7 +308,7 @@ describe("admin provider-configs authorization", () => {
     const repo = {
       getPreferences: vi.fn(async () => ({
         consentedAt: "2026-01-01T00:00:00.000Z",
-        consentVersion: 5,
+        consentVersion: CURRENT_ASSISTANT_CONSENT_VERSION,
       })),
       getVoiceConsent: vi.fn(async () => ({
         consentedAt: "2026-01-01T00:00:00.000Z",
