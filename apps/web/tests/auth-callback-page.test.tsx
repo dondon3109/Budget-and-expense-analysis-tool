@@ -63,13 +63,17 @@ async function completeHandoff() {
 describe("AuthCallbackPage", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    authState.exchangeCodeForSession.mockReset().mockResolvedValue(false);
+    authState.exchangeCodeForSession
+      .mockReset()
+      .mockResolvedValue({ status: "signed_in", isPasswordRecovery: false });
     sessionStorage.clear();
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
+    vi.restoreAllMocks();
+    window.history.replaceState({}, "", "/");
   });
 
   it("shows the branded loading surface while the handoff runs", () => {
@@ -97,7 +101,10 @@ describe("AuthCallbackPage", () => {
   });
 
   it("routes recovery codes to the password form even without a next parameter", async () => {
-    authState.exchangeCodeForSession.mockResolvedValue(true);
+    authState.exchangeCodeForSession.mockResolvedValue({
+      status: "signed_in",
+      isPasswordRecovery: true,
+    });
     renderCallback("/auth/callback?code=recovery-code");
 
     await completeHandoff();
@@ -148,17 +155,63 @@ describe("AuthCallbackPage", () => {
     );
   });
 
-  it("shows a failed exchange without holding the loader", async () => {
-    authState.exchangeCodeForSession.mockRejectedValue(new Error("provider detail"));
-    renderCallback("/auth/callback?code=expired&next=%2Fupdate-password");
+  it.each(["reported", "thrown"] as const)(
+    "shows a %s exchange failure without holding the loader",
+    async (failureKind) => {
+      const report = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const failure = new Error("provider detail");
+      if (failureKind === "reported") {
+        authState.exchangeCodeForSession.mockResolvedValue({ status: "failed", error: failure });
+      } else {
+        authState.exchangeCodeForSession.mockRejectedValue(failure);
+      }
+      renderCallback("/auth/callback?code=expired&next=%2Fupdate-password");
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(screen.getByRole("heading", { name: "Request a new reset link" })).toBeInTheDocument();
+      expect(screen.queryByText("Completing secure sign-in")).not.toBeInTheDocument();
+      expect(screen.queryByText(/provider detail/i)).not.toBeInTheDocument();
+      // The page stays generic, so the reported cause has to reach the console.
+      expect(report).toHaveBeenCalledWith("Sign-in code exchange failed.", failure);
+    },
+  );
+
+  it("enters the app when the code was spent and the session is still live", async () => {
+    authState.exchangeCodeForSession.mockResolvedValue({ status: "already_signed_in" });
+    sessionStorage.setItem("zoption-social-auth-destination", "/app/settings?section=billing");
+    renderCallback("/auth/callback?code=spent-code");
+
+    await completeHandoff();
+
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?section=billing",
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the unusable-link report for a spent reset code even when a session is live", async () => {
+    authState.exchangeCodeForSession.mockResolvedValue({ status: "already_signed_in" });
+    renderCallback("/auth/callback?code=spent-code&next=%2Fupdate-password");
+
+    await completeHandoff();
 
     expect(screen.getByRole("heading", { name: "Request a new reset link" })).toBeInTheDocument();
-    expect(screen.queryByText("Completing secure sign-in")).not.toBeInTheDocument();
-    expect(screen.queryByText(/provider detail/i)).not.toBeInTheDocument();
+  });
+
+  it("drops the single-use code from the address bar before the handoff ends", () => {
+    // MemoryRouter does not own the browser URL, so seed it to prove what the
+    // callback leaves behind for a reload or a restored tab.
+    window.history.replaceState({}, "", "/auth/callback?code=secret-code&next=%2Fapp%2Fsettings");
+    renderCallback("/auth/callback?code=secret-code&next=%2Fapp%2Fsettings");
+
+    expect(window.location.pathname).toBe("/auth/callback");
+    expect(window.location.search).not.toContain("secret-code");
+    expect(window.location.search).toContain("next=%2Fapp%2Fsettings");
   });
 
   it("handles provider-declared callback errors", () => {

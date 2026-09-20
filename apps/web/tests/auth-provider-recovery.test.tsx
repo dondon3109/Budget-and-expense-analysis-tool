@@ -44,8 +44,11 @@ function RecoveryOperations() {
       <button
         type="button"
         onClick={() =>
-          void exchangeCodeForSession("recovery-code").then((isPasswordRecovery) => {
-            document.body.dataset.passwordRecovery = String(isPasswordRecovery);
+          void exchangeCodeForSession("recovery-code").then((outcome) => {
+            document.body.dataset.exchangeStatus = outcome.status;
+            document.body.dataset.passwordRecovery = String(
+              outcome.status === "signed_in" && outcome.isPasswordRecovery,
+            );
           })
         }
       >
@@ -87,6 +90,7 @@ describe("AuthProvider password recovery", () => {
         return { data: { subscription: { unsubscribe: vi.fn() } } };
       });
     delete document.body.dataset.passwordRecovery;
+    delete document.body.dataset.exchangeStatus;
   });
 
   it("sends reset emails back through the update-password callback", async () => {
@@ -110,5 +114,46 @@ describe("AuthProvider password recovery", () => {
       expect(supabaseMocks.exchangeCodeForSession).toHaveBeenCalledWith("recovery-code"),
     );
     await waitFor(() => expect(document.body.dataset.passwordRecovery).toBe("true"));
+  });
+});
+
+describe("AuthProvider callback code exchange", () => {
+  afterEach(cleanup);
+
+  beforeEach(() => {
+    supabaseMocks.getSession.mockReset().mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+    supabaseMocks.exchangeCodeForSession.mockReset().mockResolvedValue({
+      data: { user: null, session: null },
+      error: { code: "pkce_code_verifier_not_found" },
+    });
+    supabaseMocks.onAuthStateChange.mockReset().mockReturnValue({
+      data: { subscription: { unsubscribe: vi.fn() } },
+    });
+    delete document.body.dataset.exchangeStatus;
+  });
+
+  it("reports an already signed-in outcome when a spent code still has a live session", async () => {
+    supabaseMocks.getSession.mockResolvedValue({
+      data: {
+        session: { access_token: "token", user: { id: "user-1", user_metadata: {} } },
+      },
+      error: null,
+    });
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("already_signed_in"));
+  });
+
+  it("keeps reporting a failed exchange when no session survived it", async () => {
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("failed"));
   });
 });

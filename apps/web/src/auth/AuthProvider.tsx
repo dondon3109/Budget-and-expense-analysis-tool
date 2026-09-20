@@ -23,6 +23,20 @@ import { deleteCurrentAccount, deleteProfileAvatarObject, uploadProfileAvatar } 
 import { getSupabaseClient, isSupabaseConfigured, supabase } from "../lib/supabase";
 import { userWorkspace } from "../lib/workspace";
 
+/**
+ * What a sign-in callback produced.
+ *
+ * A callback URL is replayable: a reload, a restored tab, or a second tab runs
+ * the callback again with a code the first run already spent, and the provider
+ * then reports a missing PKCE verifier. That is only a failed sign-in when no
+ * session survived it, which is why this reports the session rather than an
+ * error on its own.
+ */
+export type CodeExchangeOutcome =
+  | { status: "signed_in"; isPasswordRecovery: boolean }
+  | { status: "already_signed_in" }
+  | { status: "failed"; error: unknown };
+
 interface AuthContextValue {
   session: Session | null;
   user: User | null;
@@ -40,7 +54,7 @@ interface AuthContextValue {
   verifyCurrentPassword: (password: string) => Promise<void>;
   updatePassword: (password: string) => Promise<void>;
   deleteAccount: (password: string) => Promise<{ status: "deleted" | "cleanup_pending" }>;
-  exchangeCodeForSession: (code: string) => Promise<boolean>;
+  exchangeCodeForSession: (code: string) => Promise<CodeExchangeOutcome>;
 }
 
 export type SocialAuthProvider = "google";
@@ -294,16 +308,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient, session?.user],
   );
 
-  const exchangeCodeForSession = useCallback(async (code: string) => {
+  const exchangeCodeForSession = useCallback(async (code: string): Promise<CodeExchangeOutcome> => {
     passwordRecoveryRef.current = false;
-    const { error } = await getSupabaseClient().auth.exchangeCodeForSession(code);
+    const client = getSupabaseClient();
+    const { error } = await client.auth.exchangeCodeForSession(code);
     if (error) {
       passwordRecoveryRef.current = false;
-      throw error;
+      // Ask the SDK, not React state: the session restore runs in parallel
+      // with this exchange, and a live session proves an earlier run of the
+      // callback already signed the user in with this code.
+      const { data } = await client.auth.getSession();
+      if (data.session) return { status: "already_signed_in" };
+      return { status: "failed", error };
     }
     const isPasswordRecovery = passwordRecoveryRef.current;
     passwordRecoveryRef.current = false;
-    return isPasswordRecovery;
+    return { status: "signed_in", isPasswordRecovery };
   }, []);
 
   const value = useMemo<AuthContextValue>(

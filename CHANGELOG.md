@@ -4,6 +4,13 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Signing in no longer fails when the callback page runs a second time, such as after a reload, a
+  restored tab, or a second tab during the handoff. The callback drops the single-use code from the
+  address bar as soon as it is exchanged, and a session that is already live opens the workspace
+  instead of a dead end. A password reset link that cannot be exchanged still reports an unusable link.
+
 ## 2.40.0 — 2026-09-20
 
 ### Changed

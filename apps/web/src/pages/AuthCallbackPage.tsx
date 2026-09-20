@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthProvider";
+import { useAuth, type CodeExchangeOutcome } from "../auth/AuthProvider";
 import { consumeSocialAuthDestination } from "../auth/socialAuthDestination";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatus";
@@ -17,6 +17,32 @@ export const SIGN_IN_HANDOFF_MS = 2000;
 
 function safeNext(value: string | null): string {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/app";
+}
+
+/**
+ * Drop the single-use code from the address bar before exchanging it.
+ *
+ * The provider hands the code back in the URL and it is spent the moment the
+ * exchange lands, but React Router only replaces that URL once the handoff hold
+ * finishes. Leaving it there lets any later run of this page — a reload, a
+ * restored tab, a second tab — replay a dead callback. `replaceState` keeps the
+ * history entry and stays outside the router, so it cannot re-run this effect
+ * through its own dependencies.
+ */
+function dropCodeFromUrl(): void {
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has("code")) return;
+  url.searchParams.delete("code");
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+/** The failure page stays deliberately generic, so leave the reported cause in the console. */
+function reportExchangeFailure(error: unknown): void {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? (error as { code?: unknown }).code
+      : undefined;
+  console.error("Sign-in code exchange failed.", code ?? error);
 }
 
 export function AuthCallbackPage() {
@@ -39,27 +65,48 @@ export function AuthCallbackPage() {
       return;
     }
 
+    dropCodeFromUrl();
+
     const requestedDestination = searchParams.get("next") ?? consumeSocialAuthDestination();
     let cancelled = false;
     const hold = new Promise((resolve) => window.setTimeout(resolve, SIGN_IN_HANDOFF_MS));
 
-    void Promise.all([exchangeCodeForSession(code), hold])
-      .then(([isPasswordRecovery]) => {
+    void exchangeCodeForSession(code)
+      .catch((unexpected: unknown): CodeExchangeOutcome => ({
+        status: "failed",
+        error: unexpected,
+      }))
+      .then(async (outcome) => {
         if (cancelled) return;
-        const destination = isPasswordRecovery
-          ? "/update-password"
-          : safeNext(requestedDestination);
+
+        if (outcome.status === "failed") {
+          reportExchangeFailure(outcome.error);
+          setError(true);
+          return;
+        }
+
+        // Only a fresh exchange proves a reset link is usable, so a spent code
+        // still reports an unusable link even when a session is live.
+        if (outcome.status === "already_signed_in" && recoveryRequested) {
+          setError(true);
+          return;
+        }
+
+        // The hold only delays a sign-in that worked. A failure above reports at
+        // once instead of holding the loading surface over a dead end.
+        await hold;
+        if (cancelled) return;
+        const destination =
+          outcome.status === "signed_in" && outcome.isPasswordRecovery
+            ? "/update-password"
+            : safeNext(requestedDestination);
         void navigate(destination, { replace: true });
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setError(true);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [exchangeCodeForSession, navigate, searchParams]);
+  }, [exchangeCodeForSession, navigate, recoveryRequested, searchParams]);
 
   if (error) {
     return (
