@@ -325,7 +325,9 @@ Do these outside the repository before enabling `Production Release`; the workfl
    ```
 
    - **main integrity - no rewrite, no delete** (`23728450`): refuses deletion and non-fast-forward pushes on `refs/heads/main`, with no bypass actors.
-   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main`, with `required_approving_review_count` 0 and no bypass actors. Every change, including one an agent pushes with the maintainer's credentials, therefore arrives through a pull request, and a direct push is refused rather than logged as a bypass. `require_extra_approval_for_unattributed_changes` and `dismiss_stale_reviews_on_push` stay enabled.
+   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main` with one approving review. The maintainer's user (`dondon3109`) is its only bypass actor, in `always` mode, so a direct push from that account is permitted and logged as a bypass, while a pull request needs an approval its own author cannot give.
+
+   The bypass and the count of one are deliberate. On 2026-09-21, with no bypass and `required_approving_review_count` 0, reopening PR #22 — the `zoption-bug-automation` app's own proof that it could not merge itself — reported `mergeable MERGEABLE` and no review decision, so `require_extra_approval_for_unattributed_changes` alone does not keep an app-authored pull request behind a human. One required approval plus the maintainer bypass is what does.
 
    Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. Neither it nor the rulesets require a passing status check before merge: `Production Release` refuses a red `main` push instead, because it only runs from a successful `CI` result. Requiring `verify` is the next tightening if the merge button itself should block.
 
