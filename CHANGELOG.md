@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.41.2 — 2026-09-20
+
 ### Fixed
 
 - Signing in with Google no longer ends on "Sign-in could not be completed" while the account is
