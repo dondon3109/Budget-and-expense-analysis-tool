@@ -287,6 +287,11 @@ pnpm test:e2e:stub   # against the auth stub; refuses to start without it
 pnpm test:e2e        # every project; set the four E2E_* variables for the authenticated half
 ```
 
+Playwright reads those four variables from the process environment only. Nothing in the repository
+loads a `.env` file for the test runner, so an entry in `.env` or `apps/web/.env.local` does
+nothing for them: put them on the command line, export them, or let `pnpm test:e2e:stub` supply
+them as it does above. Without them the authenticated half skips and the run still exits 0.
+
 `pnpm test:e2e` first applies the local D1 migrations (`pnpm test:e2e:prepare`),
 then runs every Playwright project. The authenticated pass covers, per route:
 

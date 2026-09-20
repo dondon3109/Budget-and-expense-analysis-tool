@@ -150,11 +150,11 @@ export async function dismissOverlays(page: Page) {
 /**
  * Waits for the startup splash to clear.
  *
- * PrivateAppStartupGate covers every /app route for a minimum of three seconds and holds the real
- * content `inert` + `aria-hidden` underneath. Reading the page before it clears sees the splash,
- * not the route — which is how /app/assistant looked like it had no h1 when it in fact had not
- * rendered yet. The same overlay would let a scan report a clean pass over a hidden page, so this
- * waits, and then fails loudly rather than measuring the wrong thing.
+ * PrivateAppStartupGate covers every /app route until the route has committed and its data has
+ * settled, and holds the real content `inert` + `aria-hidden` underneath. Reading the page before
+ * it clears sees the splash, not the route — which is how /app/assistant looked like it had no h1
+ * when it in fact had not rendered yet. The same overlay would let a scan report a clean pass over
+ * a hidden page, so this waits, and then fails loudly rather than measuring the wrong thing.
  */
 export async function waitForAppReady(page: Page, route: string): Promise<void> {
   const isHidden = () =>
