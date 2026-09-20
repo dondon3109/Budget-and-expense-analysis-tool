@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.41.0 — 2026-09-20
+
 ### Performance
 
 - Android cold start no longer paints three separate spinner screens. The native splash stays up
