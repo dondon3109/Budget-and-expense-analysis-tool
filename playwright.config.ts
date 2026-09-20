@@ -21,8 +21,20 @@ try {
 // nothing, so a file that exists is no proof it configured anything. When the file was read at
 // all, the effective values in process.env are what count, and anything unusable fails here rather
 // than letting the authenticated half skip to a green run.
+//
+// Read exactly as e2e/fixtures/authenticated.ts reads them, or this guard would accept a value the
+// fixtures then treat as absent: an email is trimmed, so a quoted blank counts as unset, while a
+// password is taken as written.
+const unset = (key: string) => {
+  const value = process.env[key];
+  return key.endsWith("EMAIL") ? !value?.trim() : !value;
+};
+
+// No suite collects this file (vitest.config.ts takes apps/**, packages/**, and scripts/**), so
+// these refusals are verified by hand: `pnpm exec playwright test --list` against a malformed
+// .env.e2e, against no file at all, and with the pair exported instead of written.
 if (envFileLoaded) {
-  const missingRequired = ["E2E_EMAIL", "E2E_PASSWORD"].filter((key) => !process.env[key]);
+  const missingRequired = ["E2E_EMAIL", "E2E_PASSWORD"].filter(unset);
   if (missingRequired.length > 0) {
     throw new Error(
       `.env.e2e is present but leaves ${missingRequired.join(" and ")} unset, so the authenticated ` +
@@ -33,9 +45,7 @@ if (envFileLoaded) {
 
   // The empty-workspace pair is optional — those checks skip when it is unset — but a half pair
   // can never sign in, so it is refused rather than silently skipped.
-  const missingOptional = ["E2E_EMPTY_EMAIL", "E2E_EMPTY_PASSWORD"].filter(
-    (key) => !process.env[key],
-  );
+  const missingOptional = ["E2E_EMPTY_EMAIL", "E2E_EMPTY_PASSWORD"].filter(unset);
   if (missingOptional.length === 1) {
     throw new Error(
       `.env.e2e sets one of E2E_EMPTY_EMAIL and E2E_EMPTY_PASSWORD but leaves ` +
