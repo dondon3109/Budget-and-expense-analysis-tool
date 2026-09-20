@@ -279,7 +279,7 @@ Public canonical URLs do not use trailing slashes. The three legal trailing-slas
 
 ## Automated production release
 
-CI validates every pull request and push to `main`. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main`, rejects stale CI results, and asks semantic-release whether the unreleased Conventional Commits require a release. A non-releasing change stops without touching production.
+CI validates every pull request and push to `main`. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main`, rejects stale CI results, and asks semantic-release whether the unreleased Conventional Commits require a release. A non-releasing change stops without touching production. The workflow's only job runs in the `production` environment, which requires a reviewer, so a push to `main` records the commit but performs no migration, deploy, or publication until a human approves that run.
 
 For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
 
@@ -330,6 +330,15 @@ Do these outside the repository before enabling `Production Release`; the workfl
    The bypass and the count of one are deliberate. On 2026-09-21, with no bypass and `required_approving_review_count` 0, reopening PR #22 — the `zoption-bug-automation` app's own proof that it could not merge itself — reported `mergeable MERGEABLE` and no review decision, so `require_extra_approval_for_unattributed_changes` alone does not keep an app-authored pull request behind a human. One required approval plus the maintainer bypass is what does.
 
    Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. Neither it nor the rulesets require a passing status check before merge: `Production Release` refuses a red `main` push instead, because it only runs from a successful `CI` result. Requiring `verify` is the next tightening if the merge button itself should block.
+
+7. Require a reviewer on the `production` environment. It is what keeps a push to `main` — from any identity, including the maintainer's own bypass — from reaching production without a human click. It is external state, so read it back:
+
+   ```bash
+   gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments \
+     --jq '.environments[] | {name, protection_rules}'
+   ```
+
+   Leave "Prevent self-review" off. The maintainer is the only human and is the actor on his own merges, so enabling it would leave every production deployment unapprovable.
 
 The Pages build derives its public Supabase URL and publishable key from the existing tracked production Wrangler configuration. Do not add service-role keys, provider API keys, or other Worker runtime secrets to GitHub.
 
@@ -390,7 +399,7 @@ Before publishing the legal routes, business and legal reviewers must resolve ev
 
 ## Production release
 
-After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run automatically starts `Production Release`; operators should monitor that workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site` and `www.zoption.site`.
+After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`, which then waits for `production` environment approval before it migrates, deploys, or publishes; operators approve and monitor that workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site` and `www.zoption.site`.
 
 The following commands are emergency recovery references only. Disable or wait for the Actions deployment before running them; never use them concurrently with `Production Release` or while Cloudflare's old Git deployment is enabled.
 

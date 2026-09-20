@@ -21,6 +21,11 @@ jobs:
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # This job holds every production action: D1 migration, Worker and Pages deploys, and the
+    # semantic-release publication. The production environment requires a reviewer, so a push to
+    # main records the commit but cannot reach production until a human approves the run. Keep
+    # "Prevent self-review" off; the maintainer is the only human and acts on his own merges.
+    environment: production
     permissions:
       contents: write
       deployments: write
