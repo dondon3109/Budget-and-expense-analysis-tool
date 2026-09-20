@@ -287,10 +287,22 @@ pnpm test:e2e:stub   # against the auth stub; refuses to start without it
 pnpm test:e2e        # every project; set the four E2E_* variables for the authenticated half
 ```
 
-Playwright reads those four variables from the process environment only. Nothing in the repository
-loads a `.env` file for the test runner, so an entry in `.env` or `apps/web/.env.local` does
-nothing for them: put them on the command line, export them, or let `pnpm test:e2e:stub` supply
-them as it does above. Without them the authenticated half skips and the run still exits 0.
+Playwright reads those four variables from the process environment, and
+`playwright.config.ts` loads an optional `.env.e2e` beside itself for exactly that reason.
+A variable already exported wins over the file, and the file is gitignored:
+
+```
+E2E_EMAIL=audit@example.com
+E2E_PASSWORD=Audit-Pass-1234!
+E2E_EMPTY_EMAIL=empty@example.com
+E2E_EMPTY_PASSWORD=Empty-Pass-1234!
+```
+
+Those are the local accounts above. `.env` and `apps/web/.env.local` are not read for them, so
+put them on the command line, export them, write `.env.e2e`, or let `pnpm test:e2e:stub` supply
+them as it does already. Whichever you choose, the credentials have to match the auth provider the
+checkout points at: `audit@example.com` exists on the local stack and on the stub, never in
+production. Without them the authenticated half skips and the run still exits 0.
 
 `pnpm test:e2e` first applies the local D1 migrations (`pnpm test:e2e:prepare`),
 then runs every Playwright project. The authenticated pass covers, per route:

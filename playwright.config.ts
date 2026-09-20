@@ -1,4 +1,16 @@
+import { fileURLToPath } from "node:url";
+
 import { defineConfig, devices } from "@playwright/test";
+
+// The authenticated half needs four E2E_* variables and Playwright loads no .env file of its own,
+// so an optional, gitignored .env.e2e beside this file is read here. A variable already set in the
+// environment wins over the file, and a missing file is not an error: the authenticated tests skip,
+// exactly as they did before the file existed.
+try {
+  process.loadEnvFile(fileURLToPath(new URL(".env.e2e", import.meta.url)));
+} catch {
+  // No local credentials configured.
+}
 
 export default defineConfig({
   testDir: "./e2e",
