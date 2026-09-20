@@ -25,6 +25,7 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "A startup screen that no longer flickers",
       "A faster welcome into your workspace",
       "Safe-to-spend guidance on the web dashboard",
       "A cash-flow forecast that shows its shape",
@@ -36,6 +37,7 @@ describe("current release notes", () => {
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
+    expect(copy).toMatch(/a single handover rather than a flash/i);
     expect(copy).toMatch(/no longer holds you for a fixed three seconds/i);
     expect(copy).toMatch(/as soon as your session is restored/i);
     expect(copy).toMatch(/password reset/i);
