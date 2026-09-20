@@ -10,7 +10,7 @@ All notable product changes are documented here.
   exit fade the moment it mounted rather than at handover, and that fade stopped applying once it
   ended, so the splash went fully transparent early in startup and snapped back opaque a frame
   later. The exit now waits until the route and its data are ready and holds clear until the
-  workspace takes over, so startup is one fade in, one hold, and one fade out.
+  workspace takes over, so the private startup gate is one fade in, one hold, and one fade out.
 
 ## 2.41.2 — 2026-09-20
 
