@@ -11,8 +11,13 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 18, 2026",
+  releasedOn: "September 20, 2026",
   changes: [
+    {
+      title: "A faster welcome into your workspace",
+      description:
+        "The screen that appears while your private workspace prepares no longer holds you for a fixed three seconds. It leaves as soon as your session is restored and your workspace has loaded, its progress bar counts those real steps, and signing in through a provider link, a magic link, or a password reset now ends on it for a moment so the workspace no longer appears to jump straight from your provider.",
+    },
     {
       title: "One shared AI allowance for every AI feature",
       description:

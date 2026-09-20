@@ -3,8 +3,9 @@ import { describe, expect, it } from "vitest";
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
 describe("current release notes", () => {
-  it("highlights permanent assistant memory, the shared AI allowance, reversed payments, Android sign-out, and Android Beta 0.2.32", () => {
+  it("highlights the reworked loading surface, permanent assistant memory, the shared AI allowance, reversed payments, Android sign-out, and Android Beta 0.2.32", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "A faster welcome into your workspace",
       "One shared AI allowance for every AI feature",
       "Reversed payments now end Pro",
       "Signing out on Android ends the session on the server",
@@ -17,6 +18,8 @@ describe("current release notes", () => {
     const notes = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
+    expect(notes).toMatch(/no longer holds you for a fixed three seconds/i);
+    expect(notes).toMatch(/as soon as your session is restored/i);
     expect(notes).toMatch(/500 actions on Free/i);
     expect(notes).toMatch(/2,000 on Pro/i);
     expect(notes).toMatch(/chargeback/i);
