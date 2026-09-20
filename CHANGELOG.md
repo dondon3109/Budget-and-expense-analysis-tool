@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.41.3 — 2026-09-20
+
 ### Fixed
 
 - The startup loading screen no longer flashes the workspace and then covers it again. It played its
