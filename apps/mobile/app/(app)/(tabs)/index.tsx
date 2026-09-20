@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
@@ -680,10 +680,10 @@ function BudgetCard({ summary }: { summary: DashboardSummary }) {
   );
 }
 
-function RecentActivityCard({ transactions }: { transactions: TransactionRecord[] }) {
+// `recent` is the dashboard's separate newest-first read, already limited to
+// the rows this card renders.
+function RecentActivityCard({ recent }: { recent: TransactionRecord[] }) {
   const theme = useZoptionTheme();
-  // The dashboard read already returns transactions newest first.
-  const recent = transactions.slice(0, 3);
 
   if (recent.length === 0) return null;
 
@@ -920,22 +920,22 @@ function HomeEmptyView({ syncing }: { syncing: boolean }) {
 }
 
 export default function HomeScreen() {
-  const dashboard = useDashboardData();
+  // One local date for both the query window and the aggregation, so the
+  // chart can never read a window the query did not load.
+  const today = localIsoDate(new Date());
+  const dashboard = useDashboardData(today);
   const subscriptions = useSubscriptions();
   const sync = useSyncState();
   const planState = usePlan();
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
-    () =>
-      dashboard.data
-        ? buildDashboardView(dashboard.data, localIsoDate(new Date()), cashflowView)
-        : null,
-    [dashboard.data, cashflowView],
+    () => (dashboard.data ? buildDashboardView(dashboard.data, today, cashflowView) : null),
+    [dashboard.data, today, cashflowView],
   );
   const hasTransactions = Boolean(
     view &&
     (view.summary.monthlyTrend.length > 0 ||
-      (dashboard.data?.transactions.length ?? 0) > 0 ||
+      (dashboard.data?.recentTransactions.length ?? 0) > 0 ||
       (dashboard.data?.accounts.length ?? 0) > 0),
   );
   const isPro = planState.plan === "zoption_pro";
@@ -1006,7 +1006,7 @@ export default function HomeScreen() {
               />
               <RemittanceCalculatorCard />
               <BudgetCard summary={view.summary} />
-              <RecentActivityCard transactions={dashboard.data?.transactions ?? []} />
+              <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
             </>
           ) : (
             <HomeEmptyView syncing={sync.status === "syncing"} />

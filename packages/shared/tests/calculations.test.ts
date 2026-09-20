@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCashflowTrend,
   buildCashflowTrendFromDayTotals,
+  cashflowWindowStart,
   buildDashboardSummary,
   buildTransferFeeInsight,
   summarizeAccountBalances,
@@ -133,6 +134,13 @@ describe("cashflow trend calculations", () => {
       "2026-01-01",
       "2026-02-01",
     ]);
+  });
+
+  it("starts the dashboard window at the widest view so the bound matches the chart", () => {
+    // A bounded dashboard read uses this date, so it has to cover every view
+    // the chart can switch to without re-querying.
+    expect(cashflowWindowStart("2026-08-14")).toBe("2026-03-01");
+    expect(cashflowWindowStart("2026-02-12")).toBe("2025-09-01");
   });
 
   it("folds per-day SQL totals into the same buckets as raw transactions", () => {

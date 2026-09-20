@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { CANCELLATION_GUIDES, findCancellationGuide } from "@zoption/shared";
 import { useMemo } from "react";
 import { Linking, StyleSheet, Text, View } from "react-native";

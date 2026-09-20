@@ -66,6 +66,14 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
 ## Data access rules
 
 - Financial screens query SQLite first and subscribe to repository invalidation.
+- Change subscriptions go through `subscribeToLocalChanges`, which keeps one native
+  `onDatabaseChange` listener per open database and coalesces each subscriber's refresh. A
+  pull page writes many rows in one transaction, so a listener per hook would re-run every
+  mounted query once per applied row.
+- `useDashboardData(anchorDate)` bounds its ledger read to `cashflowWindowStart(anchorDate)`,
+  the widest cashflow view, and reads the three newest transactions separately. The caller
+  passes the same local date to `buildDashboardView`, so the chart can never read a window the
+  query did not load. Account balances still aggregate the whole ledger in SQL.
 - A mutation validates, writes the local record and outbox transaction atomically, then updates the UI.
 - Sync acknowledgement changes local sync metadata; NetInfo never marks work synchronized.
 - API payloads and persisted rows are decoded with Zod before use.
@@ -84,6 +92,22 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
 - Local financial mutation, outbox state transitions, push acknowledgement, and pull application share
   one serialized writer around that keyed connection. The UI renders only after the durable local
   transaction completes; an in-flight idempotency payload cannot be edited into a different request.
+
+## Cold start
+
+- `app/_layout.tsx` holds the native splash from module scope and releases it once the stored
+  session resolves, so the route that session selects is the first thing painted. A timeout
+  releases it anyway, and the root error boundary releases it too.
+- `ZoptionThemeProvider` hydrates the stored theme preference before rendering children. It
+  renders nothing until hydration settles, which is also what happens when the stored value
+  cannot be read and the store keeps its default.
+- The MaterialCommunityIcons font is loaded at module scope. `@expo/vector-icons` paints an
+  empty glyph until its font resolves, so starting earlier is what keeps the first frame from
+  popping icons in afterwards.
+- `metro.config.cjs` enables `inlineRequires`, so a cold start evaluates only the modules the
+  first screen touches. Side-effect imports stay eager because they have no binding to inline.
+- `src/diagnostics/startup-timing.ts` records dev-only phase marks. It is gated on `__DEV__`,
+  never ships, and stays out of the sanitized telemetry pipeline.
 
 ## Development-build requirement
 

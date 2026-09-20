@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as Crypto from "expo-crypto";
 import type { BugReport, BugReportDraft } from "@zoption/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

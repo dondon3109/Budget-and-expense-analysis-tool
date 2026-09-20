@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Text, View } from "react-native";
@@ -10,6 +10,7 @@ import {
   useLocalWorkspace,
   useTransactionFormData,
 } from "@/db/local-workspace-state";
+import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, ErrorState, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -392,7 +393,7 @@ function ReconcileConfirm({
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const formData = useTransactionFormData();
-  const dashboard = useDashboardData();
+  const dashboard = useDashboardData(localIsoDate(new Date()));
   const [accountId, setAccountId] = useState<string | null>(null);
   const [targetAmountInput, setTargetAmountInput] = useState(() =>
     formatMinorForInput(newBalanceMinor),

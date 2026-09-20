@@ -147,7 +147,7 @@ describe("SubscriptionsScreen cancellation wiring", () => {
       retry: jest.fn(),
     });
     jest.mocked(useDashboardData).mockReturnValue({
-      data: { transactions: [], accounts: [], budgets: [] },
+      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
       error: null,
       retry: jest.fn(),
     });

@@ -10,6 +10,8 @@ import {
 } from "react";
 import { addDatabaseChangeListener } from "expo-sqlite";
 
+import { markStartupPhase } from "@/diagnostics/startup-timing";
+
 import {
   closeLocalWorkspace,
   describeWorkspaceOpenFailure,
@@ -53,6 +55,67 @@ interface LocalWorkspaceSnapshot {
 
 const LocalWorkspaceContext = createContext<LocalWorkspaceSnapshot | null>(null);
 
+interface LocalChangeSubscriber {
+  tables: Set<string>;
+  refresh: () => void;
+  timer: ReturnType<typeof setTimeout> | null;
+}
+
+interface LocalChangeStream {
+  subscription: ReturnType<typeof addDatabaseChangeListener>;
+  subscribers: Set<LocalChangeSubscriber>;
+}
+
+// A sync pull applies a whole page inside one SQLite transaction, so one row
+// change event arrives per applied row. Coalescing gives each subscriber a
+// single refresh for the burst instead of one full re-query per row.
+const CHANGE_COALESCE_MS = 50;
+
+const localChangeStreams = new Map<string, LocalChangeStream>();
+
+function createLocalChangeStream(databaseName: string): LocalChangeStream {
+  const subscribers = new Set<LocalChangeSubscriber>();
+  const subscription = addDatabaseChangeListener((event) => {
+    if (!event.databaseFilePath.endsWith(databaseName)) return;
+    for (const subscriber of subscribers) {
+      if (!subscriber.tables.has(event.tableName)) continue;
+      if (subscriber.timer) clearTimeout(subscriber.timer);
+      subscriber.timer = setTimeout(() => {
+        subscriber.timer = null;
+        subscriber.refresh();
+      }, CHANGE_COALESCE_MS);
+    }
+  });
+  const stream: LocalChangeStream = { subscription, subscribers };
+  localChangeStreams.set(databaseName, stream);
+  return stream;
+}
+
+/**
+ * Subscribes `refresh` to changes in `tables` on one workspace database. All
+ * hooks share a single native subscription per database, and the returned
+ * unsubscribe cancels a coalesced refresh that has not fired yet so an
+ * unmounted hook cannot set state.
+ */
+function subscribeToLocalChanges(
+  databaseName: string,
+  tables: readonly string[],
+  refresh: () => void,
+): () => void {
+  const stream = localChangeStreams.get(databaseName) ?? createLocalChangeStream(databaseName);
+  const subscriber: LocalChangeSubscriber = { tables: new Set(tables), refresh, timer: null };
+  stream.subscribers.add(subscriber);
+  return () => {
+    if (subscriber.timer) clearTimeout(subscriber.timer);
+    subscriber.timer = null;
+    stream.subscribers.delete(subscriber);
+    if (stream.subscribers.size === 0) {
+      stream.subscription.remove();
+      localChangeStreams.delete(databaseName);
+    }
+  };
+}
+
 export function LocalWorkspaceProvider({
   subject,
   children,
@@ -72,6 +135,7 @@ export function LocalWorkspaceProvider({
     void openLocalWorkspace(subject)
       .then((workspace) => {
         if (requestRef.current === requestId) {
+          markStartupPhase("workspace:ready");
           setSnapshot({ status: "ready", workspace, message: null });
         }
       })
@@ -134,26 +198,27 @@ export function useLocalWorkspaceStats(): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["accounts", "categories", "transactions", "sync_outbox", "sync_conflicts"].includes(
-          event.tableName,
-        )
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["accounts", "categories", "transactions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [workspace]);
 
   return { stats, error };
 }
 
-export function useDashboardData(): {
+/**
+ * Dashboard read. `anchorDate` is the caller's local ISO date: it bounds the
+ * transaction window to the widest cashflow view and must match the date the
+ * caller passes to `buildDashboardView`, or the chart would read a window the
+ * query never loaded.
+ */
+export function useDashboardData(anchorDate: string): {
   data: LocalDashboardData | null;
   error: string | null;
   retry: () => void;
@@ -172,9 +237,10 @@ export function useDashboardData(): {
     let active = true;
     const refresh = (): void => {
       void workspace.repository
-        .getDashboardData()
+        .getDashboardData(anchorDate)
         .then((next) => {
           if (active) {
+            markStartupPhase("dashboard:data");
             setData(next);
             setError(null);
           }
@@ -184,19 +250,17 @@ export function useDashboardData(): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["accounts", "categories", "transactions"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["accounts", "categories", "transactions"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
-  }, [attempt, workspace]);
+    // A local day rollover moves the dashboard window, so it is a dependency.
+  }, [anchorDate, attempt, workspace]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   return { data, error, retry };
@@ -233,17 +297,14 @@ export function useBudgetMonth(month: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["budgets", "categories", "transactions"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["budgets", "categories", "transactions"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, month, workspace]);
 
@@ -290,17 +351,14 @@ export function useGoals(): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["financial_goals", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, workspace]);
 
@@ -347,17 +405,14 @@ export function useGoal(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["financial_goals", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -404,17 +459,14 @@ export function useBudgetConflict(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["budgets", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["budgets", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -461,17 +513,14 @@ export function useGoalConflict(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["financial_goals", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["financial_goals", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -518,17 +567,14 @@ export function useDebts(): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["debts", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["debts", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, workspace]);
 
@@ -575,17 +621,14 @@ export function useDebt(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["debts", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["debts", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -632,17 +675,14 @@ export function useDebtConflict(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["debts", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["debts", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -689,17 +729,14 @@ export function useSubscriptions(): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["subscriptions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["subscriptions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, workspace]);
 
@@ -746,17 +783,14 @@ export function useSubscription(id?: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["subscriptions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["subscriptions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -805,17 +839,14 @@ export function useSubscriptionConflict(id?: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["subscriptions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["subscriptions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -862,17 +893,14 @@ export function useCalendarEvents(month: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["calendar_events", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["calendar_events", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, month, workspace]);
 
@@ -919,17 +947,14 @@ export function useCalendarEvent(id?: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["calendar_events", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["calendar_events", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -978,17 +1003,14 @@ export function useEventConflict(id?: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["calendar_events", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["calendar_events", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -1035,17 +1057,14 @@ export function useAccountModeling(id?: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["accounts", "transactions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["accounts", "transactions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -1092,23 +1111,14 @@ export function useCalendarMonth(month: string): {
         });
     };
     refresh();
-    const listener = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        [
-          "calendar_events",
-          "subscriptions",
-          "transactions",
-          "sync_outbox",
-          "sync_conflicts",
-        ].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["calendar_events", "subscriptions", "transactions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      listener.remove();
+      unsubscribe();
     };
   }, [attempt, month, workspace]);
 
@@ -1151,17 +1161,14 @@ export function useLocalTransactions(
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["accounts", "categories", "transactions"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["accounts", "categories", "transactions"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, workspace, search, kind, month]);
 
@@ -1200,17 +1207,14 @@ export function useLocalReferenceData(): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["accounts", "categories", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["accounts", "categories", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, workspace]);
 
@@ -1251,17 +1255,14 @@ export function useTransactionFormData(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["accounts", "categories", "transactions", "sync_outbox"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["accounts", "categories", "transactions", "sync_outbox"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -1308,17 +1309,14 @@ export function useTransactionConflict(id?: string): {
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        ["transactions", "sync_outbox", "sync_conflicts"].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      ["transactions", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, id, workspace]);
 
@@ -1368,21 +1366,14 @@ export function useReferenceConflict(
         });
     };
     refresh();
-    const subscription = addDatabaseChangeListener((event) => {
-      if (
-        event.databaseFilePath.endsWith(workspace.databaseName) &&
-        [
-          entityType === "account" ? "accounts" : "categories",
-          "sync_outbox",
-          "sync_conflicts",
-        ].includes(event.tableName)
-      ) {
-        refresh();
-      }
-    });
+    const unsubscribe = subscribeToLocalChanges(
+      workspace.databaseName,
+      [entityType === "account" ? "accounts" : "categories", "sync_outbox", "sync_conflicts"],
+      refresh,
+    );
     return () => {
       active = false;
-      subscription.remove();
+      unsubscribe();
     };
   }, [attempt, entityType, id, workspace]);
 

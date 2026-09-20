@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useState, type ComponentProps, type PropsWithChildren } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 

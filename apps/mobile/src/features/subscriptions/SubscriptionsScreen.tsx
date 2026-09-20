@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -13,6 +13,7 @@ import {
 } from "@/db/local-workspace-state";
 import type { LocalSubscriptionItem } from "@/db/repository";
 import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
+import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import { CancellationGuideSheet } from "./CancellationGuideSheet";
 import {
@@ -33,7 +34,7 @@ type SubscriptionFilter = "all" | "active" | "canceled";
 export function SubscriptionsScreen() {
   const local = useLocalWorkspace();
   const state = useSubscriptions();
-  const dashboard = useDashboardData();
+  const dashboard = useDashboardData(localIsoDate(new Date()));
   const reference = useLocalReferenceData();
   const [filter, setFilter] = useState<SubscriptionFilter>("all");
   const [guideSubscription, setGuideSubscription] = useState<LocalSubscriptionItem | null>(null);

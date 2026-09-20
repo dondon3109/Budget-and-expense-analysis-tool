@@ -1,4 +1,4 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { getDocumentAsync } from "expo-document-picker";
 import { File } from "expo-file-system";
 import { router, useLocalSearchParams } from "expo-router";

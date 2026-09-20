@@ -40,7 +40,13 @@ const expense = {
 };
 
 function data(overrides: Partial<LocalDashboardData> = {}): LocalDashboardData {
-  return { transactions: [income, expense], accounts: [account], budgets: [], ...overrides };
+  return {
+    transactions: [income, expense],
+    recentTransactions: [income, expense],
+    accounts: [account],
+    budgets: [],
+    ...overrides,
+  };
 }
 
 describe("buildDashboardView", () => {
