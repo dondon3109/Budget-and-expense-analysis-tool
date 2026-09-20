@@ -302,7 +302,11 @@ Those are the local accounts above. `.env` and `apps/web/.env.local` are not rea
 put them on the command line, export them, write `.env.e2e`, or let `pnpm test:e2e:stub` supply
 them as it does already. Whichever you choose, the credentials have to match the auth provider the
 checkout points at: `audit@example.com` exists on the local stack and on the stub, never in
-production. Without them the authenticated half skips and the run still exits 0.
+production. Without them the authenticated half skips and the run still exits 0, so read the test
+count rather than the exit code. A `.env.e2e` that exists but leaves `E2E_EMAIL` or
+`E2E_PASSWORD` unset is refused instead, and so is a lone `E2E_EMPTY_EMAIL` or
+`E2E_EMPTY_PASSWORD`: a mistyped line in that file would otherwise skip the authenticated half
+behind a green run.
 
 `pnpm test:e2e` first applies the local D1 migrations (`pnpm test:e2e:prepare`),
 then runs every Playwright project. The authenticated pass covers, per route:
