@@ -2,6 +2,9 @@
 
 .remittance-calculator-section {
   margin-top: 24px;
+  /* Clear the fixed header on narrow screens when this section is a #remittance-calculator target,
+     matching the other anchored sections. */
+  scroll-margin-top: 84px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -296,6 +299,40 @@
   font-family: var(--font-mono);
 }
 
+/* A rejected field makes every figure below a guess, so the results column says it is
+   waiting instead of reporting a zero with the same weight as a real answer. */
+.results-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: auto;
+  padding: 16px 18px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.results-pending svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--muted);
+}
+
+.results-pending strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.results-pending p {
+  margin: 0;
+  color: var(--subtle);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .results-breakdown-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -485,6 +522,15 @@
 
 .spread-zero {
   color: var(--subtle);
+}
+
+/* The waiting row keeps the table frame and its column headers in place, so the section
+   does not change height when the send amount is fixed. */
+.comparison-table td.comparison-pending-cell {
+  padding: 26px 16px;
+  color: var(--subtle);
+  font-size: 12.5px;
+  text-align: center;
 }
 
 .received-amount {

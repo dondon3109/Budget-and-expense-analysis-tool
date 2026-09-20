@@ -90,36 +90,102 @@
   border-color: var(--focus);
 }
 
-.forecast-horizon-toggle {
+.forecast-horizon-tiles {
   display: flex;
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: 2px;
+  gap: 6px;
 }
 
-.horizon-btn {
-  border: none;
-  background: transparent;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  border-radius: calc(var(--radius-sm) - 2px);
+.horizon-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 104px;
+  padding: 7px 12px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
   cursor: pointer;
   transition:
     background-color 0.15s ease,
-    color 0.15s ease;
+    border-color 0.15s ease;
 }
 
-.horizon-btn:hover {
+.horizon-tile:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+
+.horizon-tile.active {
+  border-color: var(--sage);
+  background: var(--surface);
+  box-shadow: 0 1px 3px var(--shadow);
+}
+
+.horizon-tile-days {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.horizon-tile.active .horizon-tile-days {
+  color: var(--sage);
+}
+
+.horizon-tile-balance {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
   color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
-.horizon-btn.active {
+.horizon-tile-balance.negative {
+  color: var(--danger);
+}
+
+/* The safety buffer is a peso amount, so it borrows the money input shape used across the app. */
+.forecast-money-input {
+  position: relative;
+}
+
+.forecast-money-input b {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  z-index: 1;
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateY(-50%);
+}
+
+.forecast-money-input input {
+  height: 36px;
+  width: 148px;
+  padding: 0 12px 0 29px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 1px 3px var(--shadow);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+.forecast-money-input input:focus {
+  border-color: var(--focus);
+}
+
+.forecast-money-input input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.forecast-control-hint {
+  font-size: 10.5px;
+  color: var(--muted);
 }
 
 /* 2. Proactive Alert Banners */
@@ -295,8 +361,10 @@
 
 .projection-legend {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 6px 16px;
+  margin-bottom: 10px;
 }
 
 .legend-item {
@@ -308,22 +376,26 @@
   color: var(--muted);
 }
 
-.legend-dot {
-  width: 10px;
+.legend-swatch {
+  width: 16px;
   height: 10px;
-  border-radius: 50%;
+  border-radius: 2px;
 }
 
-.legend-dot.normal {
+.legend-line {
+  height: 3px;
   background: var(--sage);
 }
 
-.legend-dot.dip {
-  background: var(--amber);
+.legend-buffer {
+  height: 0;
+  border-top: 2px dashed var(--amber);
+  border-radius: 0;
 }
 
-.legend-dot.deficit {
-  background: var(--danger);
+.legend-deficit {
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
 }
 
 .projection-chart-container {
@@ -332,85 +404,94 @@
   gap: 16px;
 }
 
-.projection-timeline-bars {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 140px;
-  padding: 12px 4px 28px 4px;
-  border-bottom: 1px solid var(--line);
-  overflow-x: auto;
-  position: relative;
-}
-
-.timeline-bar-col {
-  flex: 1;
-  min-width: 8px;
-  height: 100%;
+.projection-chart {
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
+}
+
+.projection-chart-frame {
   position: relative;
-  cursor: pointer;
 }
 
-.bar-track {
+.projection-chart-svg {
+  display: block;
   width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: flex-end;
-  background: var(--surface-soft);
-  border-radius: 3px;
+  height: auto;
+  /* The lowest-point label may sit just above the plot; never clip it. */
+  overflow: visible;
 }
 
-.bar-fill {
-  width: 100%;
-  height: 100%;
-  border-radius: 3px;
-  transform-origin: bottom;
-  transition:
-    transform 0.2s ease,
-    opacity 0.15s ease;
+.projection-day-hit {
+  cursor: crosshair;
 }
 
-.timeline-bar-col.bar-safe .bar-fill {
-  background: var(--sage);
-  opacity: 0.85;
-}
-
-.timeline-bar-col.bar-dip .bar-fill {
-  background: var(--amber);
-  opacity: 0.9;
-}
-
-.timeline-bar-col.bar-deficit .bar-fill {
-  background: var(--danger);
-  opacity: 0.95;
-}
-
-.timeline-bar-col:hover .bar-fill {
-  opacity: 1;
-  filter: brightness(1.1);
-}
-
-.bar-bill-marker {
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--ink);
-  position: absolute;
-  top: -8px;
-}
-
-.bar-label {
-  position: absolute;
-  bottom: -22px;
-  font-size: 10px;
-  font-family: var(--font-mono);
-  color: var(--muted);
-  white-space: nowrap;
+/* Decoration must not swallow the per-day hover targets layered above it. */
+.projection-line,
+.projection-area,
+.projection-bill-dot,
+.projection-zero-line,
+.projection-minimum {
   pointer-events: none;
+}
+
+.projection-callout {
+  position: absolute;
+  top: 4px;
+  z-index: 2;
+  transform: translateX(-50%);
+  min-width: 184px;
+  max-width: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+  color: var(--ink);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.projection-callout strong {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.projection-callout-balance {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.projection-callout-bills {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.projection-callout-bills li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.projection-callout-bills li span:last-child {
+  font-family: var(--font-mono);
+  color: var(--expense-text);
+}
+
+.projection-callout-note {
+  color: var(--muted);
 }
 
 .projection-summary-footer {
@@ -624,11 +705,24 @@
   max-width: 400px;
 }
 
-/* Touch targets: the horizon toggle and account select sit below 44px on touch. */
+/* Touch targets: the tiles, the account select, and the buffer input sit below 44px on touch. */
 @media (max-width: 760px) {
   .forecast-select,
-  .horizon-btn {
+  .forecast-money-input input,
+  .horizon-tile {
     min-height: 44px;
+  }
+
+  /* Stack the controls so three tiles, a select, and a money input stay tappable on a phone. */
+  .forecast-control-group,
+  .forecast-horizon-tiles,
+  .forecast-money-input input {
+    width: 100%;
+  }
+
+  .horizon-tile {
+    flex: 1;
+    min-width: 0;
   }
 }
 

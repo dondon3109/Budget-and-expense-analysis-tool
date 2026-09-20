@@ -54,6 +54,21 @@ export const currentRelease: ProductRelease = {
         "The dashboard now answers what you can safely spend this week: your remaining monthly budget, or your balance when the month has no budget plan, paced across the days left and capped so an upcoming renewal cannot push your projected balance below zero, with a link straight to your renewals.",
     },
     {
+      title: "A cash-flow forecast that shows its shape",
+      description:
+        "The subscriptions forecast now draws your projected balance as a line instead of a strip of bars, marks the lowest point and the day it lands on, and puts the 30, 60, and 90 day endings side by side so you can pick a horizon without losing the others. Your safety buffer is now an amount you set, drawn on the chart as a threshold, instead of a fixed zero.",
+    },
+    {
+      title: "Dashboard shortcuts to the forecast and the remittance calculator",
+      description:
+        "The dashboard now carries a card for each. The forecast card reads your lowest projected balance over the next 30 days and how many renewals fall inside that window; the remittance card shows the mid-market benchmark rate. Both open the full tool in one click, with the forecast link landing straight on the forecast view.",
+    },
+    {
+      title: "Honest amounts in the remittance calculator",
+      description:
+        "The calculator no longer prints a received amount, a savings figure, or a Best Value badge while the amount, the fee, or the exchange rate you typed cannot be read. It says what it is waiting for, names the field that needs fixing, and returns to the real figures as soon as the field is valid.",
+    },
+    {
       title: "Android Beta 0.2.32",
       description:
         "The official Android Beta keeps remembered facts until you delete them, with the updated assistant consent notice, the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",

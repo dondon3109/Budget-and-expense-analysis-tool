@@ -611,10 +611,12 @@ export function FinancialPlanPage() {
                 </div>
               ) : null}
             </section>
-
-            <RemittanceCalculatorSection />
           </>
         )}
+
+        {/* The remittance calculator is a self-contained FX tool, so a goals or debts failure above
+            must not take it down with the rest of the plan. */}
+        <RemittanceCalculatorSection />
 
         {mutationError && (
           <p className="page-error" role="alert">

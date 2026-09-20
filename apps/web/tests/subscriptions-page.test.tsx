@@ -6,7 +6,7 @@ import type { CategoryRecord, SubscriptionMonthSummary, SubscriptionRecord } fro
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -68,12 +68,34 @@ const record: SubscriptionRecord = {
   accountName: "Bank",
 };
 
-function renderPage() {
+/** Publishes the current URL so tests can assert what the view toggles navigated to. */
+function LocationProbe() {
+  const location = useLocation();
+  return <span data-location={`${location.pathname}${location.search}`} />;
+}
+
+/** Offers a back button so a test can prove the toggles do not fill the history stack. */
+function BackProbe() {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => void navigate(-1)}>
+      History back
+    </button>
+  );
+}
+
+function currentLocation(): string | null {
+  return document.querySelector("[data-location]")?.getAttribute("data-location") ?? null;
+}
+
+function renderPage(initialEntries: string[] = ["/app/subscriptions"]) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <ThemeProvider>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <QueryClientProvider client={queryClient}>
+          <LocationProbe />
+          <BackProbe />
           <SubscriptionsPage />
         </QueryClientProvider>
       </MemoryRouter>
@@ -416,5 +438,90 @@ describe("SubscriptionsPage", () => {
       screen.getByRole("heading", { level: 2, name: "Upcoming Balance & Obligation Forecast" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Forecast horizon" })).toBeInTheDocument();
+  });
+
+  it("opens the view named by the ?view search param", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    });
+    renderPage(["/app/subscriptions?view=forecast"]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Upcoming Balance & Obligation Forecast" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cashflow Forecast" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(currentLocation()).toBe("/app/subscriptions?view=forecast");
+  });
+
+  it("falls back to the table view for a missing or unknown view param", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    });
+    renderPage(["/app/subscriptions?view=timeline"]);
+
+    expect(await screen.findByRole("table", { name: "Subscription renewals" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("writes the selected view to the URL and replaces history instead of growing it", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 199_00,
+      items: [{ ...record, billingDate: "2026-07-25", monthlyCostMinor: 199_00 }],
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Renewal calendar" }));
+    expect(currentLocation()).toBe("/app/subscriptions?view=calendar");
+
+    await user.click(screen.getByRole("button", { name: "Cashflow Forecast" }));
+    expect(currentLocation()).toBe("/app/subscriptions?view=forecast");
+
+    await user.click(screen.getByRole("button", { name: "Table" }));
+    expect(currentLocation()).toBe("/app/subscriptions");
+
+    // Every toggle replaced its entry, so there is nothing to go back to.
+    await user.click(screen.getByRole("button", { name: "History back" }));
+    expect(currentLocation()).toBe("/app/subscriptions");
+  });
+
+  it("keeps the empty state for the calendar view when the month has no subscriptions", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [],
+    });
+    renderPage(["/app/subscriptions?view=calendar"]);
+
+    expect(await screen.findByText("Start with your recurring charges")).toBeInTheDocument();
+    expect(screen.queryByRole("grid", { name: /^Renewals in/ })).not.toBeInTheDocument();
+  });
+
+  it("renders the forecast from a deep link even when the month has no subscriptions", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [],
+    });
+    renderPage(["/app/subscriptions?view=forecast"]);
+
+    expect(
+      await screen.findByRole("heading", { name: "Upcoming Balance & Obligation Forecast" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No upcoming bills in this period")).toBeInTheDocument();
+    expect(screen.queryByText("Start with your recurring charges")).not.toBeInTheDocument();
   });
 });

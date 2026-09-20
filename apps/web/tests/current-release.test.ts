@@ -13,6 +13,9 @@ describe("current release notes", () => {
       "Assistant memory that stays until you delete it",
       "A rebuilt Memory & Preferences panel",
       "Safe-to-spend guidance on the web dashboard",
+      "A cash-flow forecast that shows its shape",
+      "Dashboard shortcuts to the forecast and the remittance calculator",
+      "Honest amounts in the remittance calculator",
       "Android Beta 0.2.32",
     ]);
 
@@ -27,6 +30,9 @@ describe("current release notes", () => {
     expect(notes).toMatch(/revokes the session/i);
     expect(notes).toMatch(/kept until you delete a fact, clear memory/i);
     expect(notes).toMatch(/safely spend this week/i);
+    expect(notes).toMatch(/your safety buffer is now an amount you set/i);
+    expect(notes).toMatch(/mid-market benchmark rate/i);
+    expect(notes).toMatch(/cannot be read/i);
     expect(notes).toMatch(/Android Beta 0\.2\.32/);
   });
 

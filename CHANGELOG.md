@@ -11,6 +11,10 @@ All notable product changes are documented here.
 - The assistant Memory panel now edits response detail and coaching tone next to the debt payoff
   strategy. Both were previously shown there as read-only text and could only be changed from the
   planning page.
+- The dashboard now carries a card for the cash-flow forecast and one for the remittance calculator, so
+  both tools are one click from the home screen instead of buried on their own pages. The forecast card
+  reads the lowest projected balance over the next 30 days and the renewals inside that window; the
+  remittance card reads the stored mid-market US dollar benchmark rate.
 - The web dashboard now answers what is safe to spend this week. It paces your remaining monthly
   budget across the days left, or your balance when the month holds no budget plan, then caps the
   figure so a renewal cannot push your projected balance below zero. This is the guidance the mobile
@@ -41,6 +45,10 @@ All notable product changes are documented here.
 - Signing in through a provider link, a magic link, or a password reset now ends on that loading
   screen for two seconds while the handoff finishes, so the workspace no longer appears to jump
   straight from the provider. A sign-in that fails still reports the failure immediately.
+- The subscriptions cash-flow forecast draws the projected balance as a chart with a marked low point
+  instead of a strip of bars, shows the 30, 60, and 90 day endings side by side, and takes a safety
+  buffer amount from you instead of holding it at zero. The forecast view is now a link target
+  (`/app/subscriptions?view=forecast`).
 
 ### Security
 
@@ -65,7 +73,16 @@ All notable product changes are documented here.
 - The cashflow forecast on the subscriptions page stays reachable when the month has no
   subscriptions. Previously the empty state replaced it even after you selected the forecast view.
 - The remittance calculator reads its amount and fee fields through the same two-decimal parser as
-  the rest of Zoption. A third decimal place is now reported instead of being rounded away.
+  the rest of Zoption. A third decimal place is now reported instead of being rounded away, and a
+  negative amount is refused rather than quietly counted as zero.
+- The remittance calculator no longer presents a confident result while an input is unusable: it shows
+  what it is waiting for instead of ₱0 received and a Best Value badge, and the custom exchange rate
+  rejects junk such as `12abc` rather than reading it as 12.
+- The remittance calculator stays available on the planning page when your goals or debts fail to load;
+  it needs none of that data.
+- In-page links to a section now land on it. A hash target that only mounts after a lazy route or a
+  hidden section renders, such as `/app/settings#plan-and-billing`, is scrolled to once it appears
+  instead of falling back to the top of the page.
 - An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
 - Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
 

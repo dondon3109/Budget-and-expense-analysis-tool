@@ -37,6 +37,7 @@ import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
+import { DashboardToolCards } from "../components/dashboard/DashboardToolCards";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
@@ -1252,6 +1253,7 @@ export function DashboardPage() {
                 }
               />
             )}
+            <DashboardToolCards workspace={workspace} startingBalanceMinor={overallBalanceMinor} />
             <div className="dashboard-grid">
               <SpendingByCategory
                 data={

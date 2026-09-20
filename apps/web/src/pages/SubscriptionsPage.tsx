@@ -8,6 +8,7 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
@@ -60,12 +61,16 @@ export function SubscriptionsPage() {
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [month, setMonth] = useState(currentMonth);
-  const [viewMode, setViewMode] = useState<"table" | "calendar" | "forecast">("table");
+  const [searchParams, setSearchParams] = useSearchParams();
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<SubscriptionRecord | null>(null);
   const [guideItem, setGuideItem] = useState<SubscriptionMonthItem | null>(null);
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<SubscriptionRecord | null>(null);
   const monthStart = `${month}-01`;
+  // The visible view lives in the URL so the dashboard can deep-link into the forecast.
+  const requestedView = searchParams.get("view");
+  const viewMode: "table" | "calendar" | "forecast" =
+    requestedView === "calendar" || requestedView === "forecast" ? requestedView : "table";
 
   const subscriptionsQuery = useQuery({
     queryKey: queryKeys.subscriptions(workspace, monthStart),
@@ -222,6 +227,30 @@ export function SubscriptionsPage() {
   const data = subscriptionsQuery.data;
   const categories = categoriesQuery.data ?? [];
   const accounts = accountsQuery.data ?? [];
+  // The forecast projects in pesos, so an account contributes its peso balance. Reading the
+  // account's own-currency balance second would add USD cents to pesos.
+  const phpBalanceMinor = (account: (typeof accounts)[number]) =>
+    account.balancesByCurrency?.PHP ?? account.balanceMinor ?? 0;
+  const totalBalanceMinor = accounts.reduce(
+    (total, account) => total + phpBalanceMinor(account),
+    0,
+  );
+
+  function selectView(next: "table" | "calendar" | "forecast") {
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current);
+        // The table is the default view, so it owns no query parameter.
+        if (next === "table") {
+          params.delete("view");
+        } else {
+          params.set("view", next);
+        }
+        return params;
+      },
+      { replace: true },
+    );
+  }
 
   function openForm() {
     createMutation.reset();
@@ -313,7 +342,7 @@ export function SubscriptionsPage() {
                     <button
                       className={`view-toggle-button ${viewMode === "table" ? "active" : ""}`}
                       type="button"
-                      onClick={() => setViewMode("table")}
+                      onClick={() => selectView("table")}
                       aria-pressed={viewMode === "table"}
                       title="Table view"
                     >
@@ -323,7 +352,7 @@ export function SubscriptionsPage() {
                     <button
                       className={`view-toggle-button ${viewMode === "calendar" ? "active" : ""}`}
                       type="button"
-                      onClick={() => setViewMode("calendar")}
+                      onClick={() => selectView("calendar")}
                       aria-pressed={viewMode === "calendar"}
                       title="Visual Renewal Calendar"
                     >
@@ -333,7 +362,7 @@ export function SubscriptionsPage() {
                     <button
                       className={`view-toggle-button ${viewMode === "forecast" ? "active" : ""}`}
                       type="button"
-                      onClick={() => setViewMode("forecast")}
+                      onClick={() => selectView("forecast")}
                       aria-pressed={viewMode === "forecast"}
                       title="Cashflow Forecast"
                     >
@@ -357,7 +386,15 @@ export function SubscriptionsPage() {
               </div>
 
               {viewMode === "forecast" ? (
-                <CashflowForecastSection items={data.items} accounts={accountsQuery.data} />
+                <CashflowForecastSection
+                  items={data.items}
+                  accounts={accounts.map((account) => ({
+                    id: account.id,
+                    name: account.name,
+                    balanceMinor: phpBalanceMinor(account),
+                  }))}
+                  totalBalanceMinor={totalBalanceMinor}
+                />
               ) : data.items.length === 0 ? (
                 <div className="empty-transactions subscriptions-empty">
                   <p className="eyebrow">A clean starting point</p>
