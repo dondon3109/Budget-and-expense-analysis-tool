@@ -2,36 +2,90 @@ import { describe, expect, it } from "vitest";
 
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
+/**
+ * Looked up by version rather than array position: a new release shifts every
+ * index, and a silently wrong index would assert the wrong notes. The leading
+ * entry is the live release, which the first test covers.
+ *
+ * Version-to-tag accuracy is covered for every entry by
+ * release-note-provenance.test.ts, so these tests pin the copy that users read.
+ */
+function release(version: string) {
+  const found = releaseHistory.slice(1).find((entry) => entry.version === version);
+  if (!found) throw new Error(`releaseHistory has no ${version} entry`);
+  return found;
+}
+
+const titles = (version: string) => release(version).changes.map((change) => change.title);
+const notes = (version: string) =>
+  release(version)
+    .changes.map((change) => `${change.title} ${change.description}`)
+    .join(" ");
+
 describe("current release notes", () => {
-  it("highlights the reworked loading surface, permanent assistant memory, the shared AI allowance, reversed payments, Android sign-out, and Android Beta 0.2.32", () => {
+  it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "A faster welcome into your workspace",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/no longer holds you for a fixed three seconds/i);
+    expect(copy).toMatch(/as soon as your session is restored/i);
+    expect(copy).toMatch(/password reset/i);
+  });
+
+  it("lists each shipped version once, newest first", () => {
+    expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.39.0",
+      "2.38.0",
+      "2.33.0",
+      "2.32.4",
+      "2.32.0",
+      "2.30.1",
+      "2.30.0",
+      "2.29.0",
+      "2.18.0",
+      "2.2.1",
+      "2.1.0",
+      "2.0.0",
+    ]);
+  });
+
+  it("keeps assistant memory and the rebuilt Memory panel as 2.39.0", () => {
+    expect(titles("2.39.0")).toEqual([
+      "Assistant memory that stays until you delete it",
+      "A rebuilt Memory & Preferences panel",
+      "A question that spans several records is answered from them",
+      "Android Beta 0.2.32",
+    ]);
+
+    const copy = notes("2.39.0");
+    expect(copy).toMatch(/kept until you delete a fact, clear memory/i);
+    expect(copy).toMatch(/Clear memory action in place while the list scrolls/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.32/);
+  });
+
+  it("keeps the shared AI allowance, reversed payments, and Android sign-out as 2.38.0", () => {
+    expect(titles("2.38.0")).toEqual([
       "One shared AI allowance for every AI feature",
       "Reversed payments now end Pro",
       "Signing out on Android ends the session on the server",
       "Steadier assistant amounts, savings interest, and profile photos",
-      "Assistant memory that stays until you delete it",
-      "A rebuilt Memory & Preferences panel",
-      "Android Beta 0.2.32",
+      "Android Beta 0.2.31",
     ]);
 
-    const notes = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
-    expect(notes).toMatch(/no longer holds you for a fixed three seconds/i);
-    expect(notes).toMatch(/as soon as your session is restored/i);
-    expect(notes).toMatch(/500 actions on Free/i);
-    expect(notes).toMatch(/2,000 on Pro/i);
-    expect(notes).toMatch(/chargeback/i);
-    expect(notes).toMatch(/revokes the session/i);
-    expect(notes).toMatch(/kept until you delete a fact, clear memory/i);
-    expect(notes).toMatch(/Android Beta 0\.2\.32/);
+    const copy = notes("2.38.0");
+    expect(copy).toMatch(/500 actions on Free/i);
+    expect(copy).toMatch(/2,000 on Pro/i);
+    expect(copy).toMatch(/chargeback/i);
+    expect(copy).toMatch(/revokes the session/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.31/);
   });
 
-  it("keeps cross-chat assistant memory, mobile navigation ergonomics, monthly Net totals, and Android Beta 0.2.29 as 2.33.0 release history", () => {
-    const prevRelease = releaseHistory[1];
-    expect(prevRelease?.version).toBe("2.33.0");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
+  it("keeps the cross-chat memory batch as 2.33.0", () => {
+    expect(titles("2.33.0")).toEqual([
       "Cross-chat assistant memory and editor",
       "Mobile navigation and UI ergonomics",
       "Monthly transaction Net totals",
@@ -39,157 +93,35 @@ describe("current release notes", () => {
       "Android Beta 0.2.29",
     ]);
 
-    const notes =
-      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
-    expect(notes).toMatch(/assistant memory/i);
-    expect(notes).toMatch(/navigation/i);
-    expect(notes).toMatch(/Net/i);
-    expect(notes).toMatch(/cookie consent/i);
-    expect(notes).toMatch(/Android Beta/i);
+    const copy = notes("2.33.0");
+    expect(copy).toMatch(/assistant memory/i);
+    expect(copy).toMatch(/navigation/i);
+    expect(copy).toMatch(/cookie consent/i);
   });
 
-  it("keeps the dashboard hotfix, spreadsheet migration, admin console, assistant multi-delete, and Android Beta 0.2.28 as 2.32.0 release history", () => {
-    const prevRelease = releaseHistory[2];
-    expect(prevRelease?.version).toBe("2.32.0");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
-      "Quick start guide and mobile dashboard fixes",
-      "Guided spreadsheet migration and full data portability",
-      "Platform admin console",
-      "Assistant chat history multi-delete",
-      "Android Beta 0.2.28",
-    ]);
+  it("rolls the pre-2.0 releases into the 2.0.0 tag that carries them", () => {
+    // Those versions reached users before the repository kept a tag per release,
+    // so 2.0.0 is the first release that can be verified from git.
+    expect(titles("2.0.0").length).toBeGreaterThan(20);
+    expect(titles("2.0.0")).toContain("A smoother welcome to your workspace");
+    expect(titles("2.0.0")).toContain("US dollar transactions");
 
-    const notes =
-      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
-    expect(notes).toMatch(/quick start guide/i);
-    expect(notes).toMatch(/spreadsheet migration/i);
-    expect(notes).toMatch(/admin console/i);
-    expect(notes).toMatch(/chat history/i);
-    expect(notes).toMatch(/Android Beta/i);
+    const copy = notes("2.0.0");
+    expect(copy).toMatch(/one polished loading experience/i);
   });
 
-  it("keeps safe-to-spend, voice draft auto-save, and calm plan guidance as 2.31.0 release history", () => {
-    const prevRelease = releaseHistory[3];
-    expect(prevRelease?.version).toBe("2.31.0");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
-      "Safe-to-spend guidance and cash-flow projection",
-      "Fast-path voice draft preview with auto-save",
-      "Calm plan guidance replacing over-budget alerts",
-    ]);
-
-    const notes =
-      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
-    expect(notes).toMatch(/safe-to-spend/i);
-    expect(notes).toMatch(/voice draft preview/i);
-    expect(notes).toMatch(/calm plan guidance/i);
-  });
-
-  it("keeps mic widget voice capture, spoken accounts, safer balance adjustments, and 0.2.24 beta as 2.30.1 release history", () => {
-    const prevRelease = releaseHistory[4];
-    expect(prevRelease?.version).toBe("2.30.1");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
-      "Resilient home-screen mic widget voice capture",
-      "Context-aware spoken accounts and categories",
-      "Safer balance adjustments from widget notes",
-      "Android Beta 0.2.24",
-    ]);
-
-    const notes =
-      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
-    expect(notes).toMatch(/mic widget voice capture/i);
-    expect(notes).toMatch(/spoken accounts/i);
-    expect(notes).toMatch(/balance adjustments/i);
-    expect(notes).toMatch(/Android Beta/i);
-  });
-
-  it("keeps tutorials, quick start guides, balance adjustments, budget controls, and 0.2.23 beta as 2.30.0 release history", () => {
-    const prevRelease = releaseHistory[5];
-    expect(prevRelease?.version).toBe("2.30.0");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
-      "Interactive user guides and tutorials page",
-      "Interactive Quick Start onboarding guides",
-      "One-click account balance adjustments",
-      "Responsive budget controls on compact screens",
-      "Android Beta 0.2.23",
-    ]);
-
-    const notes =
-      prevRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ?? "";
-    expect(notes).toMatch(/user guides and tutorials/i);
-    expect(notes).toMatch(/quick start onboarding/i);
-    expect(notes).toMatch(/balance adjustments/i);
-    expect(notes).toMatch(/budget controls/i);
-    expect(notes).toMatch(/Android Beta/i);
-  });
-
-  it("keeps voice entry, SMS quick-paste, mic widget, CSV import, and 0.2.22 beta as 2.29.0 release history", () => {
-    const prevRelease = releaseHistory[6];
-    expect(prevRelease?.version).toBe("2.29.0");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
-      "Fast-path voice transaction entry",
-      "Smart SMS notification quick-paste",
-      "Native Android home-screen mic widget",
-      "Day-1 CSV import and offline privacy mode",
-      "Android Beta 0.2.22",
-    ]);
-  });
-
-  it("keeps the renewal calendar and 0.2.20 beta as 2.27.0 release history", () => {
-    const prevRelease = releaseHistory[7];
-    expect(prevRelease?.version).toBe("2.27.0");
-    expect(prevRelease?.changes.map((change) => change.title)).toEqual([
-      "Visual Renewal Calendar for Subscriptions",
-      "Category emojis across web and mobile",
-      "Redesigned mobile transaction ledger",
-      "Android Beta 0.2.20",
-      "Focused budget limits",
-    ]);
-  });
-
-  it("keeps the touch-first cash flow and voice states as 2.2.1 release history", () => {
-    const mobileRelease = releaseHistory[8];
-    expect(mobileRelease?.version).toBe("2.2.1");
-    expect(mobileRelease?.changes.map((change) => change.title)).toEqual([
+  it("keeps the cash flow chart and receipt scanning together in 2.2.1", () => {
+    expect(titles("2.2.1")).toEqual([
       "Cash flow chart built for your phone",
       "Recording now looks like recording",
-    ]);
-
-    const notes =
-      mobileRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ??
-      "";
-    expect(notes).toMatch(/touch-first chart/i);
-    expect(notes).toMatch(/drag to scrub/i);
-    expect(notes).toMatch(/pulsing red recording state/i);
-    expect(notes).toMatch(/separate spinner/i);
-  });
-
-  it("keeps review-first receipt scanning as 2.2.0 release history", () => {
-    const receiptRelease = releaseHistory[9];
-    expect(receiptRelease?.version).toBe("2.2.0");
-    expect(receiptRelease?.changes.map((change) => change.title)).toEqual([
       "Turn a receipt photo into a transaction draft",
       "Review every field before saving",
       "Receipt photos are never stored",
     ]);
 
-    const notes =
-      receiptRelease?.changes.map((change) => `${change.title} ${change.description}`).join(" ") ??
-      "";
-    expect(notes).toMatch(/scan receipt/i);
-    expect(notes).toMatch(/merchant, date, amount, transaction type, and category/i);
-    expect(notes).toMatch(/nothing is added.+until you explicitly commit/i);
-    expect(notes).toMatch(/photo.+discarded immediately/i);
-  });
-
-  it("keeps the assistant voice implementation as 2.1.0 release history", () => {
-    const voiceRelease = releaseHistory[10];
-    expect(voiceRelease?.version).toBe("2.1.0");
-    expect(voiceRelease?.changes.map((change) => change.title)).toEqual([
-      "Talk naturally with your Financial Assistant",
-      "Recording stops when you finish",
-      "Choose how voice works for you",
-      "Clearer spoken answers",
-      "A more capable, easier-to-reach Zoption",
-    ]);
+    const copy = notes("2.2.1");
+    expect(copy).toMatch(/touch-first chart/i);
+    expect(copy).toMatch(/pulsing red recording state/i);
+    expect(copy).toMatch(/discarded immediately after extraction/i);
   });
 });

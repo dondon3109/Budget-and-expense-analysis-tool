@@ -18,41 +18,6 @@ export const currentRelease: ProductRelease = {
       description:
         "The screen that appears while your private workspace prepares no longer holds you for a fixed three seconds. It leaves as soon as your session is restored and your workspace has loaded, its progress bar counts those real steps, and signing in through a provider link, a magic link, or a password reset now ends on it for a moment so the workspace no longer appears to jump straight from your provider.",
     },
-    {
-      title: "One shared AI allowance for every AI feature",
-      description:
-        "AI usage now comes from a single monthly pool: 500 actions on Free and 2,000 on Pro, shared by the financial assistant, voice chat, receipt scanning, PDF statement entry, and voice transaction entry. Receipt scanning, voice entry, and PDF entry are included on Free, and live streaming voice chat stays a Pro feature.",
-    },
-    {
-      title: "Reversed payments now end Pro",
-      description:
-        "A refund, chargeback, or dispute ends Pro access for the period it reverses, instead of leaving the subscription active.",
-    },
-    {
-      title: "Signing out on Android ends the session on the server",
-      description:
-        "Signing out now revokes the session on the server instead of only clearing the device, and falls back to clearing the device when the phone is offline.",
-    },
-    {
-      title: "Steadier assistant amounts, savings interest, and profile photos",
-      description:
-        "Assistant answers can no longer state a peso amount that cannot be traced to your own records, an overdrawn savings account no longer earns interest, and profile photo changes appear within a minute instead of staying cached.",
-    },
-    {
-      title: "Assistant memory that stays until you delete it",
-      description:
-        "Remembered facts and your debt payoff preference no longer expire after 90 days; they are kept until you delete a fact, clear memory, or delete your account. Conversations and their sanitized audit snapshots still expire 90 days after the last message in a chat, and the assistant asks you to review the updated data-sharing notice once.",
-    },
-    {
-      title: "A rebuilt Memory & Preferences panel",
-      description:
-        "The Memory panel keeps its title, close button, and Clear memory action in place while the list scrolls, lets you set response detail and coaching tone beside the debt payoff strategy instead of only on the planning page, marks the chosen strategy with a check as well as a colour, and waits for your memory to load instead of claiming it is empty.",
-    },
-    {
-      title: "Android Beta 0.2.32",
-      description:
-        "The official Android Beta keeps remembered facts until you delete them, with the updated assistant consent notice, the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
-    },
   ],
 };
 
@@ -60,9 +25,69 @@ export const currentRelease: ProductRelease = {
  * Ordered most-recent-first. `currentRelease` is always the leading entry so the
  * footer “What’s new” view and the one-time acknowledgement stay in sync with the
  * shipped version, while also listing the most recent patch notes as history.
+ *
+ * Each entry's version and date are the release that actually shipped its notes,
+ * so a batch written ahead of a release is listed under the version that carried it.
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.39.0",
+    releasedOn: "September 19, 2026",
+    changes: [
+      {
+        title: "Assistant memory that stays until you delete it",
+        description:
+          "Remembered facts and your debt payoff preference no longer expire after 90 days; they are kept until you delete a fact, clear memory, or delete your account. Conversations and their sanitized audit snapshots still expire 90 days after the last message in a chat, and the assistant asks you to review the updated data-sharing notice once.",
+      },
+      {
+        title: "A rebuilt Memory & Preferences panel",
+        description:
+          "The Memory panel keeps its title, close button, and Clear memory action in place while the list scrolls, lets you set response detail and coaching tone beside the debt payoff strategy instead of only on the planning page, marks the chosen strategy with a check as well as a colour, and waits for your memory to load instead of claiming it is empty.",
+      },
+      {
+        title: "A question that spans several records is answered from them",
+        description:
+          "A question that needs several kinds of lookup, such as budget, categories, and trends together, is answered from your own records even when the provider skips one of them, instead of returning a refusal that asks you to rephrase or narrow the date range.",
+      },
+      {
+        title: "Android Beta 0.2.32",
+        description:
+          "The official Android Beta keeps remembered facts until you delete them, with the updated assistant consent notice, the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
+      },
+    ],
+  },
+  {
+    version: "2.38.0",
+    releasedOn: "September 18, 2026",
+    changes: [
+      {
+        title: "One shared AI allowance for every AI feature",
+        description:
+          "AI usage now comes from a single monthly pool: 500 actions on Free and 2,000 on Pro, shared by the financial assistant, voice chat, receipt scanning, PDF statement entry, and voice transaction entry. Receipt scanning, voice entry, and PDF entry are included on Free, and live streaming voice chat stays a Pro feature.",
+      },
+      {
+        title: "Reversed payments now end Pro",
+        description:
+          "A refund, chargeback, or dispute ends Pro access for the period it reverses, instead of leaving the subscription active.",
+      },
+      {
+        title: "Signing out on Android ends the session on the server",
+        description:
+          "Signing out now revokes the session on the server instead of only clearing the device, and falls back to clearing the device when the phone is offline.",
+      },
+      {
+        title: "Steadier assistant amounts, savings interest, and profile photos",
+        description:
+          "Assistant answers can no longer state a peso amount that cannot be traced to your own records, an overdrawn savings account no longer earns interest, and profile photo changes appear within a minute instead of staying cached.",
+      },
+      {
+        title: "Android Beta 0.2.31",
+        description:
+          "The official Android Beta carries the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",
+      },
+    ],
+  },
   {
     version: "2.33.0",
     releasedOn: "September 16, 2026",
@@ -95,8 +120,8 @@ export const releaseHistory: readonly ProductRelease[] = [
     ],
   },
   {
-    version: "2.32.0",
-    releasedOn: "September 13, 2026",
+    version: "2.32.4",
+    releasedOn: "September 15, 2026",
     changes: [
       {
         title: "Quick start guide and mobile dashboard fixes",
@@ -126,8 +151,8 @@ export const releaseHistory: readonly ProductRelease[] = [
     ],
   },
   {
-    version: "2.31.0",
-    releasedOn: "September 12, 2026",
+    version: "2.32.0",
+    releasedOn: "September 13, 2026",
     changes: [
       {
         title: "Safe-to-spend guidance and cash-flow projection",
@@ -235,8 +260,8 @@ export const releaseHistory: readonly ProductRelease[] = [
     ],
   },
   {
-    version: "2.27.0",
-    releasedOn: "September 6, 2026",
+    version: "2.18.0",
+    releasedOn: "August 26, 2026",
     changes: [
       {
         title: "Visual Renewal Calendar for Subscriptions",
@@ -279,12 +304,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "The microphone button shows a pulsing red recording state with a running timer while you speak, and a separate spinner while your voice is being transcribed. Recording and loading are no longer easy to confuse.",
       },
-    ],
-  },
-  {
-    version: "2.2.0",
-    releasedOn: "August 14, 2026",
-    changes: [
       {
         title: "Turn a receipt photo into a transaction draft",
         description:
@@ -334,7 +353,7 @@ export const releaseHistory: readonly ProductRelease[] = [
     ],
   },
   {
-    version: "1.2.4",
+    version: "2.0.0",
     releasedOn: "August 10, 2026",
     changes: [
       {
@@ -357,12 +376,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "A new brand mark now gives Zoption a clearer, more consistent identity across the landing page, sign-in, app navigation, browser tabs, and saved shortcuts.",
       },
-    ],
-  },
-  {
-    version: "1.2.3",
-    releasedOn: "August 9, 2026",
-    changes: [
       {
         title: "Goals and subscriptions at a glance",
         description:
@@ -373,23 +386,11 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "Setup, update, billing, and account dialogs now coordinate how they pause the page, preventing the dashboard from remaining unclickable or unscrollable after overlapping dialogs close.",
       },
-    ],
-  },
-  {
-    version: "1.2.2",
-    releasedOn: "August 9, 2026",
-    changes: [
       {
         title: "Refreshed dashboards and workflows",
         description:
           "The calendar, profile dashboard, import flow, and financial assistant now share a cleaner visual system with clearer hierarchy, refined controls, and self-hosted fonts.",
       },
-    ],
-  },
-  {
-    version: "1.2.1",
-    releasedOn: "August 8, 2026",
-    changes: [
       {
         title: "More reliable Pro billing",
         description:
@@ -410,12 +411,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "Google Analytics now loads only after you allow Analytics cookies on eligible public pages, and opting out removes its cookies from your browser.",
       },
-    ],
-  },
-  {
-    version: "1.2.0",
-    releasedOn: "August 6, 2026",
-    changes: [
       {
         title: "Automatic bank interest",
         description:
@@ -426,12 +421,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "Switch your built-in Bank account to Savings, then turn on automatic interest. The easy-access bank balance you already track can now earn interest the same way a dedicated savings account does.",
       },
-    ],
-  },
-  {
-    version: "1.1.7",
-    releasedOn: "August 6, 2026",
-    changes: [
       {
         title: "Subscriptions charge an account",
         description:
@@ -447,12 +436,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "When a transfer includes a fee, the form now shows exactly how much the receiving account will get after the fee is deducted.",
       },
-    ],
-  },
-  {
-    version: "1.1.5",
-    releasedOn: "August 6, 2026",
-    changes: [
       {
         title: "Transfer fee overview",
         description:
@@ -468,12 +451,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "Descriptions are now optional for quick transfers, so you can move money between accounts without typing extra details.",
       },
-    ],
-  },
-  {
-    version: "1.1.4",
-    releasedOn: "August 5, 2026",
-    changes: [
       {
         title: "US dollar transactions",
         description:
@@ -494,12 +471,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "What’s new starts with the latest update and lets you show or hide previous version notes.",
       },
-    ],
-  },
-  {
-    version: "1.1.3",
-    releasedOn: "August 4, 2026",
-    changes: [
       {
         title: "A full-screen assistant on mobile",
         description:
@@ -510,12 +481,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "The assistant’s privacy and memory points are rebalanced so the short-term memory card sits centered on its own row.",
       },
-    ],
-  },
-  {
-    version: "1.1.2",
-    releasedOn: "August 4, 2026",
-    changes: [
       {
         title: "PayPal for Zoption Pro",
         description:
@@ -554,12 +519,6 @@ export const releaseHistory: readonly ProductRelease[] = [
         description:
           "The AI assistant now remembers durable preferences and facts across chats, such as your debt payoff strategy or savings targets, with a Memory panel to review and clear them.",
       },
-    ],
-  },
-  {
-    version: "1.0.0",
-    releasedOn: "July 29, 2026",
-    changes: [
       {
         title: "Reliable transaction ordering",
         description:

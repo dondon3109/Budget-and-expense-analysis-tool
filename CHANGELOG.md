@@ -4,63 +4,6 @@ All notable product changes are documented here.
 
 ## Unreleased
 
-### Added
-
-- Prepared Android Beta 0.2.31 (versionCode 20331) mobile release and refreshed in-app patch notes.
-- Prepared Android Beta 0.2.32 (versionCode 20332) mobile release and refreshed in-app patch notes.
-- The assistant Memory panel now edits response detail and coaching tone next to the debt payoff
-  strategy. Both were previously shown there as read-only text and could only be changed from the
-  planning page.
-
-### Changed
-
-- AI features now draw on one shared monthly pool instead of separate per-feature allowances. Free
-  includes 500 AI actions per Manila calendar month and Pro 2,000, counted as one action per AI
-  operation however many provider calls it makes. Receipt scanning, voice transcription, spoken replies, PDF statement entry and
-  transaction voice entry were Pro-only; they are now available to Free tenants through the same pool,
-  and the 14-day assistant question cycle is gone. Live streaming voice stays Pro: a live
-  platform-funded socket has no per-request boundary to meter.
-- Assistant memory no longer expires. Remembered facts and your debt payoff preference are kept until
-  you delete them, clear memory, or delete your account, while conversations and their sanitized
-  audit snapshots still expire 90 days after the last message in that chat. Facts you state or edit
-  are now exempt from the 50-fact storage cap, so a learned fact can no longer push them out. The
-  assistant data-sharing consent is now version 6, so every existing user reviews and accepts the
-  updated notice before their next assistant question, and the notice now states these retention
-  terms plainly.
-- Deleting every chat removes the conversations and their summaries only. Remembered facts and your
-  payoff preference stay until you delete them individually or clear memory. Previously, deleting all
-  chats also discarded remembered facts.
-- The startup screen no longer holds you for a fixed three seconds. It leaves as soon as your session
-  is restored and the workspace has loaded, and its rail reflects those real steps instead of an
-  invented percentage. Its mark is now a single rising rule that the Zoption monogram draws itself
-  onto before both clear and the loop repeats.
-- Signing in through a provider link, a magic link, or a password reset now ends on that loading
-  screen for two seconds while the handoff finishes, so the workspace no longer appears to jump
-  straight from the provider. A sign-in that fails still reports the failure immediately.
-
-### Security
-
-- A refund, chargeback or dispute now ends Pro for the period it reverses. Previously only a
-  cancellation did, so a reversed payment left the subscription active.
-- Signing out on Android now revokes the session on the server, not just on the device. It falls back
-  to clearing the device when the phone is offline.
-
-### Fixed
-
-- The assistant Memory panel keeps its title, close control, and Clear memory/Close actions pinned
-  while the memory list scrolls, so they stay reachable however many facts are remembered. It no
-  longer shows "No preference" or "No remembered facts yet" while it is still loading, says so with a
-  retry when that load fails, marks the chosen payoff strategy with a check as well as a colour, and
-  keeps the three payoff cards' titles and descriptions aligned at every width, including a single
-  stacked column on a phone.
-- Assistant answers can no longer state a peso amount that cannot be traced to your own data, in any
-  formatting.
-- A question that needs several kinds of lookup (budget, categories, trends) is now answered from your
-  own records even when the provider skips one of them, instead of returning a refusal that asks you to
-  rephrase or narrow the date range.
-- An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
-- Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
-
 ## 2.40.0 — 2026-09-20
 
 ### Changed
@@ -75,6 +18,69 @@ All notable product changes are documented here.
 - Signing in through a provider link, a magic link, or a password reset now ends on the loading screen
   while the handoff finishes, so the workspace no longer appears to jump straight from the provider. A
   sign-in that fails still reports the failure immediately.
+
+## 2.39.0 — 2026-09-19
+
+### Added
+
+- Prepared Android Beta 0.2.32 (versionCode 20332) mobile release and refreshed in-app patch notes.
+- The assistant Memory panel now edits response detail and coaching tone next to the debt payoff
+  strategy. Both were previously shown there as read-only text and could only be changed from the
+  planning page.
+
+### Changed
+
+- Assistant memory no longer expires. Remembered facts and your debt payoff preference are kept until
+  you delete them, clear memory, or delete your account, while conversations and their sanitized
+  audit snapshots still expire 90 days after the last message in that chat. Facts you state or edit
+  are now exempt from the 50-fact storage cap, so a learned fact can no longer push them out. The
+  assistant data-sharing consent is now version 6, so every existing user reviews and accepts the
+  updated notice before their next assistant question, and the notice now states these retention
+  terms plainly.
+- Deleting every chat removes the conversations and their summaries only. Remembered facts and your
+  payoff preference stay until you delete them individually or clear memory. Previously, deleting all
+  chats also discarded remembered facts.
+
+### Fixed
+
+- The assistant Memory panel keeps its title, close control, and Clear memory/Close actions pinned
+  while the memory list scrolls, so they stay reachable however many facts are remembered. It no
+  longer shows "No preference" or "No remembered facts yet" while it is still loading, says so with a
+  retry when that load fails, marks the chosen payoff strategy with a check as well as a colour, and
+  keeps the three payoff cards' titles and descriptions aligned at every width, including a single
+  stacked column on a phone.
+- A question that needs several kinds of lookup (budget, categories, trends) is now answered from your
+  own records even when the provider skips one of them, instead of returning a refusal that asks you to
+  rephrase or narrow the date range.
+
+## 2.38.0 — 2026-09-18
+
+### Added
+
+- Prepared Android Beta 0.2.31 (versionCode 20331) mobile release and refreshed in-app patch notes.
+
+### Changed
+
+- AI features now draw on one shared monthly pool instead of separate per-feature allowances. Free
+  includes 500 AI actions per Manila calendar month and Pro 2,000, counted as one action per AI
+  operation however many provider calls it makes. Receipt scanning, voice transcription, spoken replies, PDF statement entry and
+  transaction voice entry were Pro-only; they are now available to Free tenants through the same pool,
+  and the 14-day assistant question cycle is gone. Live streaming voice stays Pro: a live
+  platform-funded socket has no per-request boundary to meter.
+
+### Security
+
+- A refund, chargeback or dispute now ends Pro for the period it reverses. Previously only a
+  cancellation did, so a reversed payment left the subscription active.
+- Signing out on Android now revokes the session on the server, not just on the device. It falls back
+  to clearing the device when the phone is offline.
+
+### Fixed
+
+- Assistant answers can no longer state a peso amount that cannot be traced to your own data, in any
+  formatting.
+- An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
+- Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
 
 ## 2.37.0 — 2026-09-18
 
