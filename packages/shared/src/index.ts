@@ -22,3 +22,4 @@ export * from "./categoryMatcher";
 export * from "./safeToSpend";
 export * from "./voiceCaption";
 export * from "./voiceLanguages";
+export * from "./redaction";

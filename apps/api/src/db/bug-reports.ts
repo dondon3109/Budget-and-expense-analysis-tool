@@ -71,6 +71,17 @@ const selectColumns = `
   created_at AS createdAt, updated_at AS updatedAt`;
 
 function toAdminReport(row: BugReportRow): AdminBugReport {
+  let diagnostics: AdminBugReport["diagnostics"] | null = null;
+  try {
+    const parsed = JSON.parse(row.diagnosticsJson) as unknown;
+    const result = bugReportDiagnosticsSchema.safeParse(parsed);
+    if (result.success) {
+      diagnostics = result.data;
+    }
+  } catch {
+    diagnostics = null;
+  }
+
   return {
     id: row.id,
     reference: row.reference,
@@ -83,7 +94,7 @@ function toAdminReport(row: BugReportRow): AdminBugReport {
     stepsToReproduce: row.stepsToReproduce,
     frequency: row.frequency,
     pageContext: row.pageContext,
-    diagnostics: bugReportDiagnosticsSchema.parse(JSON.parse(row.diagnosticsJson) as unknown),
+    diagnostics: diagnostics as unknown as AdminBugReport["diagnostics"],
     status: row.status,
     notificationStatus: row.notificationStatus,
     notificationAttempts: row.notificationAttempts,

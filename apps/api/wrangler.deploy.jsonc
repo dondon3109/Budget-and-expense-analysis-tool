@@ -65,6 +65,8 @@
         "PAYPAL_ENVIRONMENT": "production",
         "PAYPAL_PRO_MONTHLY_PLAN_ID": "P-4G649363YX2188455NJX75XQ",
         "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY",
+        // Secret placeholder: OPS_EGRESS_TOKEN must be provisioned via
+        // `wrangler secret put OPS_EGRESS_TOKEN --config wrangler.deploy.jsonc --env preview`
       },
     },
     "production": {
@@ -127,6 +129,8 @@
         "PAYPAL_ENVIRONMENT": "production",
         "PAYPAL_PRO_MONTHLY_PLAN_ID": "P-4G649363YX2188455NJX75XQ",
         "PAYPAL_PRO_ANNUAL_PLAN_ID": "P-0F968078YM1473345NJX75XY",
+        // Secret placeholder: OPS_EGRESS_TOKEN must be provisioned via
+        // `wrangler secret put OPS_EGRESS_TOKEN --config wrangler.deploy.jsonc --env production`
       },
     },
   },
