@@ -234,16 +234,14 @@ describe("FullPageLoadingStatus", () => {
     stub.restore();
   });
 
-  it("hands over to the app once its exit has played", async () => {
+  it("holds the surface until the app is ready, then hands over on its exit", async () => {
     const stub = stubAnimate();
     const original = Object.getOwnPropertyDescriptor(Element.prototype, "animate");
-    Object.defineProperty(Element.prototype, "animate", {
-      value: vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation),
-      configurable: true,
-    });
+    const exit = vi.fn(() => ({ finished: Promise.resolve() }) as unknown as Animation);
+    Object.defineProperty(Element.prototype, "animate", { value: exit, configurable: true });
     const onComplete = vi.fn();
 
-    render(
+    const { rerender } = render(
       <FullPageLoadingStatus
         title="Restoring your workspace"
         description="Checking."
@@ -251,7 +249,28 @@ describe("FullPageLoadingStatus", () => {
       />,
     );
 
+    // The surface mounts long before the workspace behind it can be shown. An exit
+    // fired here fades the app into view and then snaps the surface back, which is
+    // the flash the splash used to show on every startup.
+    expect(exit).not.toHaveBeenCalled();
     expect(onComplete).not.toHaveBeenCalled();
+
+    rerender(
+      <FullPageLoadingStatus
+        title="Restoring your workspace"
+        description="Checking."
+        ready
+        onComplete={onComplete}
+      />,
+    );
+
+    // Filled forwards, so the surface cannot reappear between the fade ending and
+    // the caller unmounting it.
+    expect(exit).toHaveBeenCalledWith([{ opacity: 1 }, { opacity: 0 }], {
+      duration: 240,
+      easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+      fill: "forwards",
+    });
     await act(async () => {
       await Promise.resolve();
       await Promise.resolve();
@@ -271,6 +290,7 @@ describe("FullPageLoadingStatus", () => {
       <FullPageLoadingStatus
         title="Restoring your workspace"
         description="Checking."
+        ready
         onComplete={onComplete}
       />,
     );
@@ -288,6 +308,7 @@ describe("FullPageLoadingStatus", () => {
       <FullPageLoadingStatus
         title="Restoring your workspace"
         description="Checking."
+        ready
         onComplete={onComplete}
       />,
     );

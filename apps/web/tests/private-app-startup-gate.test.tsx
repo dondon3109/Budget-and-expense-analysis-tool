@@ -21,14 +21,26 @@ vi.mock("../src/auth/AuthProvider", () => ({
 vi.mock("../src/analytics/funnel", () => funnel);
 
 vi.mock("../src/components/layout/FullPageLoadingStatus", () => ({
-  FullPageLoadingStatus: ({ title, onComplete }: { title: string; onComplete?: () => void }) => (
-    <section role="status" aria-label={title}>
-      <span>{title}</span>
-      <button type="button" onClick={onComplete}>
-        Finish minimum duration
-      </button>
-    </section>
-  ),
+  // Mirrors the real handover: the surface reports back once the caller says the
+  // app behind it is ready, and never before.
+  FullPageLoadingStatus: ({
+    title,
+    ready,
+    onComplete,
+  }: {
+    title: string;
+    ready?: boolean;
+    onComplete?: () => void;
+  }) => {
+    useEffect(() => {
+      if (ready) onComplete?.();
+    }, [ready, onComplete]);
+    return (
+      <section role="status" aria-label={title}>
+        <span>{title}</span>
+      </section>
+    );
+  },
 }));
 
 vi.mock("../src/components/layout/InlineLoader", () => ({
@@ -88,17 +100,16 @@ describe("PrivateAppStartupGate", () => {
 
   afterEach(cleanup);
 
-  it("keeps one loader mounted until the minimum duration and dashboard data settle", async () => {
+  it("keeps one loader mounted until the route commits and the dashboard data settles", async () => {
     renderPrivateRoutes();
 
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("status")).toHaveAccessibleName("Restoring your workspace");
+    // The route has committed by now, but the dashboard request has not settled,
+    // so the splash has nothing to hand over to yet.
     expect(
       screen.getByText("Dashboard content").closest(".private-app-startup-content"),
     ).toHaveAttribute("aria-hidden", "true");
-
-    fireEvent.click(screen.getByRole("button", { name: "Finish minimum duration" }));
-    expect(screen.getAllByRole("status")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Settle dashboard", hidden: true }));
 
@@ -139,8 +150,6 @@ describe("PrivateAppStartupGate", () => {
 
     renderPrivateRoutes(<LazySettings />, "/app/settings");
 
-    expect(screen.getAllByRole("status")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Finish minimum duration" }));
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.getByRole("status")).toHaveAccessibleName("Restoring your workspace");
 

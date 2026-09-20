@@ -26,6 +26,12 @@ type FullPageLoadingStatusProps = {
   phase?: LoadingPhase;
   /** Steps finished so far. Omit when the caller cannot count them. */
   progress?: number;
+  /**
+   * Set once the app behind this surface can be shown. The exit fade starts here,
+   * never at mount: starting it early reveals the workspace and then snaps the
+   * surface back when the animation ends, which is the flash it used to show.
+   */
+  ready?: boolean;
   /** Fired when the loading surface has shown its exit and the app can take over. */
   onComplete?: () => void;
 };
@@ -44,6 +50,7 @@ export function FullPageLoadingStatus({
   description,
   phase = "session",
   progress,
+  ready = false,
   onComplete,
 }: FullPageLoadingStatusProps) {
   const reduceMotion = useReducedMotion();
@@ -71,31 +78,32 @@ export function FullPageLoadingStatus({
     };
   }, [reduceMotion]);
 
-  // The caller signals readiness on the same frame it prepares to unmount this
-  // surface, so holding completion back by the exit keeps the fade from being
-  // cut off. Reduced motion has no exit to wait out.
+  // The exit belongs to the handover, so it waits for the caller to say the app
+  // behind can take over. It fills forwards, because an exit that stops applying
+  // when it ends puts the surface back on screen for the frame before unmount.
+  // Reduced motion has no exit to wait out.
   useEffect(() => {
-    if (reduceMotion) {
-      if (requestedRef.current) return;
-      requestedRef.current = true;
-      completeRef.current?.();
-      return;
-    }
+    if (!ready) return;
     const finish = () => {
       if (requestedRef.current) return;
       requestedRef.current = true;
       completeRef.current?.();
     };
+    if (reduceMotion) {
+      finish();
+      return;
+    }
     const animation = rootRef.current?.animate?.([{ opacity: 1 }, { opacity: 0 }], {
       duration: EXIT_MS,
       easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+      fill: "forwards",
     });
     if (!animation) {
       finish();
       return;
     }
     animation.finished.then(finish).catch(finish);
-  }, [reduceMotion]);
+  }, [ready, reduceMotion]);
 
   return (
     <div

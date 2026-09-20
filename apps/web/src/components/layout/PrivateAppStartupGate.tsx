@@ -80,11 +80,6 @@ export function PrivateAppStartupGate() {
     captureFunnelEvent("app_session_started", {});
   }, [loading, user]);
 
-  useEffect(() => {
-    if (!startupActive || !user || !routeReady) return;
-    completeInitialDashboardExperience();
-  }, [completeInitialDashboardExperience, routeReady, startupActive, user]);
-
   // Safeguard: the loader leaves as soon as the route and its data are ready.
   // If either stalls, do not hold the workspace behind the splash forever.
   useEffect(() => {
@@ -95,6 +90,10 @@ export function PrivateAppStartupGate() {
     );
     return () => window.clearTimeout(safeguardRef.current);
   }, [completeInitialDashboardExperience, startupActive, user]);
+
+  // The splash owns the handover: it plays its exit once the route and its data
+  // are ready, then reports back so the workspace underneath can be revealed.
+  const startupReady = Boolean(user) && routeReady;
 
   const readinessValue = useMemo(() => reportDashboardSettled, [reportDashboardSettled]);
   const handleRouteCommit = useCallback((locationKey: string) => {
@@ -133,6 +132,8 @@ export function PrivateAppStartupGate() {
           description="Checking your secure session and preferences."
           phase={startupPhase}
           progress={startupProgress}
+          ready={startupReady}
+          onComplete={completeInitialDashboardExperience}
         />
       )}
     </PrivateAppStartupReadinessContext.Provider>
