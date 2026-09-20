@@ -3,13 +3,15 @@ import { fileURLToPath } from "node:url";
 import { defineConfig, devices } from "@playwright/test";
 
 // The authenticated half needs four E2E_* variables and Playwright loads no .env file of its own,
-// so an optional, gitignored .env.e2e beside this file is read here. A variable already set in the
-// environment wins over the file, and a missing file is not an error: the authenticated tests skip,
-// exactly as they did before the file existed.
+// so an optional, gitignored .env.e2e beside this file is read here. Keep that file to E2E_* keys:
+// everything in it lands in process.env, which the dev servers this config starts inherit too. A
+// variable already set in the environment wins over the file, and an absent file is the normal
+// case, since CI has none. Any other failure means the file is there but unreadable, and quietly
+// skipping the authenticated half would let a green run mean nothing.
 try {
   process.loadEnvFile(fileURLToPath(new URL(".env.e2e", import.meta.url)));
-} catch {
-  // No local credentials configured.
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 }
 
 export default defineConfig({
