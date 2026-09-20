@@ -61,6 +61,21 @@ All notable product changes are documented here.
 - An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
 - Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
 
+## 2.40.0 — 2026-09-20
+
+### Changed
+
+- The startup screen no longer holds you for a fixed three seconds. It leaves as soon as your session
+  is restored and the workspace has loaded, and its rail reflects those real steps instead of an
+  invented percentage. Its mark is a single rising rule that the Zoption monogram draws itself onto,
+  replacing the previous shape-morphing animation.
+
+### Fixed
+
+- Signing in through a provider link, a magic link, or a password reset now ends on the loading screen
+  while the handoff finishes, so the workspace no longer appears to jump straight from the provider. A
+  sign-in that fails still reports the failure immediately.
+
 ## 2.37.0 — 2026-09-18
 
 ### Added
