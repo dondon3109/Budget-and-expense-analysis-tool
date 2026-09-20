@@ -109,7 +109,9 @@ describe("ShareBudgetSheet", () => {
     expect(decoded.payload?.envelopes.map((item) => item.categoryName)).toEqual(["Dining"]);
     expect(decoded.payload?.totalAllocatedMinor).toBe(50_000);
 
-    const tampered = `${tokenFromUrl(generatedUrl()).slice(0, -1)}0`;
+    const tampered = tokenFromUrl(generatedUrl()).replace(/.$/u, (character) =>
+      character === "0" ? "1" : "0",
+    );
     expect(decodeSharedBudgetToken(tampered)).toMatchObject({ valid: false });
   });
 
