@@ -215,12 +215,12 @@ function CashflowProjectionChart({ forecast, safetyBufferMinor }: CashflowProjec
   );
   const minimumX = xAt(minimumIndex);
   const minimumY = yAt(forecast.minProjectedBalanceMinor);
-  const minimumAnchor =
-    minimumX < CHART_PLOT.left + plotWidth * 0.25
-      ? "start"
-      : minimumX > CHART_PLOT.left + plotWidth * 0.75
-        ? "end"
-        : "middle";
+  // The low point sits on the near-vertical drop of the bill that caused it, so a label centred on
+  // the marker prints straight over that line. Place the text beside the marker instead, on the side
+  // that has room inside the frame.
+  const minimumLabelToTheRight = minimumX < CHART_PLOT.left + plotWidth * 0.72;
+  const minimumAnchor = minimumLabelToTheRight ? "start" : "end";
+  const minimumLabelX = minimumX + (minimumLabelToTheRight ? 9 : -9);
   // The lowest point sits near the bottom of the scale, so its label goes above it, clamped to the frame.
   const minimumLabelY = Math.max(CHART_PLOT.top + 14, minimumY - 30);
   const minimumFill =
@@ -408,15 +408,25 @@ function CashflowProjectionChart({ forecast, safetyBufferMinor }: CashflowProjec
               strokeWidth={2}
             />
             <text
-              x={minimumX}
+              x={minimumLabelX}
               y={minimumLabelY}
               textAnchor={minimumAnchor}
               fontSize={11}
               fontWeight={700}
               fill="var(--ink)"
+              // Halve the risk of the line running through the glyphs wherever the label lands.
+              stroke="var(--surface)"
+              strokeWidth={3}
+              paintOrder="stroke"
             >
-              <tspan x={minimumX}>{formatMoney(forecast.minProjectedBalanceMinor)}</tspan>
-              <tspan x={minimumX} dy={13} fontSize={10} fontWeight={500} fill="var(--chart-axis)">
+              <tspan x={minimumLabelX}>{formatMoney(forecast.minProjectedBalanceMinor)}</tspan>
+              <tspan
+                x={minimumLabelX}
+                dy={13}
+                fontSize={10}
+                fontWeight={500}
+                fill="var(--chart-axis)"
+              >
                 {formatDisplayDate(forecast.minBalanceDate)}
               </tspan>
             </text>
