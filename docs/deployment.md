@@ -317,7 +317,17 @@ Do these outside the repository before enabling `Production Release`; the workfl
 3. Add the GitHub Actions secret `CLOUDFLARE_API_TOKEN` with only the account permissions needed for Workers Scripts, Pages, and D1 production deployment. Existing Worker runtime secrets stay in Cloudflare and are neither copied to nor exposed by GitHub Actions.
 4. Add the GitHub Actions variable `CLOUDFLARE_ACCOUNT_ID`.
 5. After completing steps 1-4, add `CLOUDFLARE_PRODUCTION_GIT_DEPLOY_DISABLED=true`. The workflow refuses to deploy without this explicit operator acknowledgement.
-6. Allow the workflow's `GITHUB_TOKEN` to write contents and deployments, protect `main`, and require `verify` before merge. No repository protection was configured when this flow was implemented.
+6. Allow the workflow's `GITHUB_TOKEN` to write contents and deployments, and keep `main` protected. The rules are external state, so read them back rather than trusting this list:
+
+   ```bash
+   gh api repos/dondon3109/Budget-and-expense-analysis-tool/rulesets \
+     --jq '.[] | {id, name, enforcement, bypass_actors}'
+   ```
+
+   - **main integrity - no rewrite, no delete** (`23728450`): refuses deletion and non-fast-forward pushes on `refs/heads/main`, with no bypass actors.
+   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main`, with `required_approving_review_count` 0 and no bypass actors. Every change, including one an agent pushes with the maintainer's credentials, therefore arrives through a pull request, and a direct push is refused rather than logged as a bypass. `require_extra_approval_for_unattributed_changes` and `dismiss_stale_reviews_on_push` stay enabled.
+
+   Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. Neither it nor the rulesets require a passing status check before merge: `Production Release` refuses a red `main` push instead, because it only runs from a successful `CI` result. Requiring `verify` is the next tightening if the merge button itself should block.
 
 The Pages build derives its public Supabase URL and publishable key from the existing tracked production Wrangler configuration. Do not add service-role keys, provider API keys, or other Worker runtime secrets to GitHub.
 
