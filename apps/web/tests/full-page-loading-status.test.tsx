@@ -299,12 +299,23 @@ describe("FullPageLoadingStatus", () => {
     stub.restore();
   });
 
-  it("completes immediately under reduced motion", () => {
+  it("waits for readiness under reduced motion, then completes with no exit", () => {
     motionState.reduceMotion = true;
     const stub = stubAnimate();
     const onComplete = vi.fn();
 
-    render(
+    const { rerender } = render(
+      <FullPageLoadingStatus
+        title="Restoring your workspace"
+        description="Checking."
+        onComplete={onComplete}
+      />,
+    );
+    // Readiness gates the handover before reduced motion skips the exit, so this
+    // surface cannot vanish at mount for a reader who asked for less motion.
+    expect(onComplete).not.toHaveBeenCalled();
+
+    rerender(
       <FullPageLoadingStatus
         title="Restoring your workspace"
         description="Checking."

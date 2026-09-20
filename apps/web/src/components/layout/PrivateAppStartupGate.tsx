@@ -55,6 +55,7 @@ export function PrivateAppStartupGate() {
     useInitialDashboardExperience();
   const [committedLocationKey, setCommittedLocationKey] = useState<string>();
   const [dashboardSettled, setDashboardSettled] = useState(false);
+  const [safeguardUserId, setSafeguardUserId] = useState<string>();
   const safeguardRef = useRef<number>(undefined);
 
   const startupActive = !hasCompletedInitialDashboardExperience;
@@ -80,20 +81,23 @@ export function PrivateAppStartupGate() {
     captureFunnelEvent("app_session_started", {});
   }, [loading, user]);
 
-  // Safeguard: the loader leaves as soon as the route and its data are ready.
-  // If either stalls, do not hold the workspace behind the splash forever.
+  // Safeguard: the loader leaves as soon as the route and its data are ready. If
+  // either stalls, ask the splash to hand over anyway, so the exit still plays
+  // instead of the surface being cut mid fade. Keyed by user, so one account's
+  // safeguard cannot hand the next account's half loaded workspace over early.
   useEffect(() => {
     if (!startupActive || !user) return;
+    const userId = user.id;
     safeguardRef.current = window.setTimeout(
-      completeInitialDashboardExperience,
+      () => setSafeguardUserId(userId),
       PRIVATE_STARTUP_SAFEGUARD_MS,
     );
     return () => window.clearTimeout(safeguardRef.current);
-  }, [completeInitialDashboardExperience, startupActive, user]);
+  }, [startupActive, user]);
 
   // The splash owns the handover: it plays its exit once the route and its data
   // are ready, then reports back so the workspace underneath can be revealed.
-  const startupReady = Boolean(user) && routeReady;
+  const startupReady = Boolean(user) && (routeReady || safeguardUserId === user?.id);
 
   const readinessValue = useMemo(() => reportDashboardSettled, [reportDashboardSettled]);
   const handleRouteCommit = useCallback((locationKey: string) => {

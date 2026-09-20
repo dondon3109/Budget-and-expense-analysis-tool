@@ -30,6 +30,8 @@ type FullPageLoadingStatusProps = {
    * Set once the app behind this surface can be shown. The exit fade starts here,
    * never at mount: starting it early reveals the workspace and then snaps the
    * surface back when the animation ends, which is the flash it used to show.
+   * A caller that unmounts this surface itself gets no exit, so handing over
+   * through the fade means passing this together with `onComplete`.
    */
   ready?: boolean;
   /** Fired when the loading surface has shown its exit and the app can take over. */

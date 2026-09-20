@@ -14,6 +14,9 @@ const authState = vi.hoisted<{ loading: boolean; user: { id: string } | null }>(
 
 const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
 
+/** Every `ready` value the gate handed the splash, so a handover can be told from an unmount. */
+const splash = vi.hoisted(() => ({ readyCalls: [] as boolean[] }));
+
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => authState,
 }));
@@ -33,6 +36,7 @@ vi.mock("../src/components/layout/FullPageLoadingStatus", () => ({
     onComplete?: () => void;
   }) => {
     useEffect(() => {
+      splash.readyCalls.push(ready === true);
       if (ready) onComplete?.();
     }, [ready, onComplete]);
     return (
@@ -96,6 +100,7 @@ describe("PrivateAppStartupGate", () => {
     authState.loading = false;
     authState.user = { id: "user-1" };
     funnel.captureFunnelEvent.mockReset();
+    splash.readyCalls.length = 0;
   });
 
   afterEach(cleanup);
@@ -121,6 +126,33 @@ describe("PrivateAppStartupGate", () => {
     fireEvent.click(screen.getByRole("link", { name: "Settings" }));
     expect(await screen.findByText("Settings content")).toBeInTheDocument();
     expect(screen.queryByText("Restoring your workspace")).not.toBeInTheDocument();
+  });
+
+  it("hands over through the splash when the dashboard request stalls past the safeguard", async () => {
+    // Only the safeguard's own timer is faked, so React's scheduling is untouched.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      renderPrivateRoutes();
+
+      // The route commits and the dashboard request never settles, so the splash has
+      // nothing to hand over to. Unmounting it here would cut the exit mid fade.
+      expect(screen.getAllByRole("status")).toHaveLength(1);
+      expect(splash.readyCalls.at(-1)).toBe(false);
+
+      await act(async () => {
+        vi.advanceTimersByTime(4000);
+      });
+
+      // The safeguard asked the splash to hand over instead of unmounting it, which is
+      // the difference between a stalled startup fading out and being cut.
+      expect(splash.readyCalls.at(-1)).toBe(true);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Dashboard content").closest(".private-app-startup-content"),
+      ).not.toHaveAttribute("aria-hidden");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("records the first authenticated app bootstrap without identity detail", async () => {
