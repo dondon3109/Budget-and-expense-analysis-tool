@@ -157,6 +157,25 @@ describe("AuthProvider callback code exchange", () => {
     await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("failed"));
   });
 
+  it("answers a repeated exchange of the same code from the first attempt", async () => {
+    // The signed-in subtree remounts on an identity change, so the callback can ask twice
+    // for one single-use code. A second request would fail and misreport the link.
+    supabaseMocks.exchangeCodeForSession.mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    });
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("signed_in"));
+
+    delete document.body.dataset.exchangeStatus;
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("signed_in"));
+
+    expect(supabaseMocks.exchangeCodeForSession).toHaveBeenCalledTimes(1);
+  });
+
   it("treats a rejected exchange like a spent code when a session survived it", async () => {
     // The SDK saves the session before it notifies subscribers and re-throws a
     // failure from that notification, so a rejection can still mean "signed in".

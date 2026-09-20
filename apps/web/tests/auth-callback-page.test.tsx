@@ -3,8 +3,8 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
-import { MemoryRouter, useLocation } from "react-router-dom";
+import { useEffect, type ReactNode } from "react";
+import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -69,6 +69,15 @@ import { AuthCallbackPage, SIGN_IN_HANDOFF_MS } from "../src/pages/AuthCallbackP
 function CurrentLocation() {
   const location = useLocation();
   return <span data-testid="current-location">{`${location.pathname}${location.search}`}</span>;
+}
+
+/** Reports a new location while the callback's work is still in flight. */
+function ReportStrippedLocation() {
+  const navigate = useNavigate();
+  useEffect(() => {
+    void navigate("/auth/callback", { replace: true });
+  }, [navigate]);
+  return null;
 }
 
 function renderCallback(initialEntry: string) {
@@ -220,6 +229,31 @@ describe("AuthCallbackPage", () => {
     expect(
       screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("reports a failed exchange whose effect re-ran while it was in flight", async () => {
+    // A re-run is not an unmount: dropping the outcome here leaves the loading surface up
+    // forever with nothing left to finish the handoff.
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    authState.exchangeCodeForSession.mockResolvedValue({
+      status: "failed",
+      error: new Error("flow state not found"),
+    });
+    render(
+      <MemoryRouter initialEntries={["/auth/callback?code=slow-code"]}>
+        <AuthCallbackPage />
+        <ReportStrippedLocation />
+        <CurrentLocation />
+      </MemoryRouter>,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Sign-in could not be completed" }),
+    ).toBeInTheDocument();
   });
 
   it("opens the workspace when a session outlives the failed exchange", async () => {

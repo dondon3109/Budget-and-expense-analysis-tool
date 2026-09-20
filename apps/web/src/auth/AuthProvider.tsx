@@ -78,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const userIdRef = useRef<string | null>(null);
   const initializedRef = useRef(false);
   const passwordRecoveryRef = useRef(false);
+  const exchangesRef = useRef(new Map<string, Promise<CodeExchangeOutcome>>());
 
   const applySession = useCallback(
     (nextSession: Session | null) => {
@@ -308,33 +309,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [queryClient, session?.user],
   );
 
-  const exchangeCodeForSession = useCallback(async (code: string): Promise<CodeExchangeOutcome> => {
-    passwordRecoveryRef.current = false;
-    const client = getSupabaseClient();
+  const exchangeCodeForSession = useCallback((code: string): Promise<CodeExchangeOutcome> => {
+    // Public pages remount the signed-in subtree when the identity changes, which re-runs
+    // the callback page with the code it already spent. Answering from the first attempt
+    // keeps a remount from paying for a second exchange and from reporting a link this
+    // document just used as unusable: a code is single-use, an outcome is not.
+    const exchanges = exchangesRef.current;
+    const known = exchanges.get(code);
+    if (known) return known;
 
-    // The SDK saves the session before it notifies subscribers, and it re-throws a
-    // failure raised by that notification, so a rejected exchange is not proof the
-    // sign-in failed. Both outcomes fall through to the session check below.
-    let failure: unknown;
-    try {
-      const { error } = await client.auth.exchangeCodeForSession(code);
-      if (error) failure = error;
-    } catch (unexpected) {
-      failure = unexpected;
-    }
+    const exchange = (async (): Promise<CodeExchangeOutcome> => {
+      passwordRecoveryRef.current = false;
+      const client = getSupabaseClient();
 
-    const isPasswordRecovery = passwordRecoveryRef.current;
-    passwordRecoveryRef.current = false;
-    if (!failure) return { status: "signed_in", isPasswordRecovery };
+      // The SDK saves the session before it notifies subscribers, and it re-throws a
+      // failure raised by that notification, so a rejected exchange is not proof the
+      // sign-in failed. Both outcomes fall through to the session check below.
+      let failure: unknown;
+      try {
+        const { error } = await client.auth.exchangeCodeForSession(code);
+        if (error) failure = error;
+      } catch (unexpected) {
+        failure = unexpected;
+      }
 
-    // Ask the SDK, not React state: the session restore runs in parallel with this
-    // exchange, and a live session proves an earlier run of the callback already
-    // signed the user in with this code.
-    const session = await client.auth
-      .getSession()
-      .then(({ data }) => data.session)
-      .catch(() => null);
-    return session ? { status: "already_signed_in" } : { status: "failed", error: failure };
+      const isPasswordRecovery = passwordRecoveryRef.current;
+      passwordRecoveryRef.current = false;
+      if (!failure) return { status: "signed_in", isPasswordRecovery };
+
+      // Ask the SDK, not React state: the session restore runs in parallel with this
+      // exchange, and a live session proves an earlier run of the callback already
+      // signed the user in with this code.
+      const session = await client.auth
+        .getSession()
+        .then(({ data }) => data.session)
+        .catch(() => null);
+      return session ? { status: "already_signed_in" } : { status: "failed", error: failure };
+    })();
+
+    exchanges.set(code, exchange);
+    return exchange;
   }, []);
 
   const value = useMemo<AuthContextValue>(

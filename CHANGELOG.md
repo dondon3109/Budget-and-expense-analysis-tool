@@ -7,12 +7,16 @@ All notable product changes are documented here.
 ### Fixed
 
 - Signing in with Google no longer ends on "Sign-in could not be completed" while the account is
-  signed in. The callback now finishes against the live session instead of a single exchange
-  result: a session that arrives after the failure was reported, or that already existed when a
-  reload or a restored tab landed on the code-stripped callback URL, opens the workspace instead of
-  a dead end. A rejected exchange is treated the same as a reported one, so a session that survived
-  it still signs in. A failure that really left no session, and an unusable password reset link,
-  still report as before.
+  signed in. Signing in remounted the router, and the remounted callback page then read a URL the
+  exchange had already cleaned, so a sign-in that succeeded was reported as a failure and only the
+  "Return to sign in" link revealed the live session. The router now survives an identity change and
+  the callback finishes against the live session, so a session that arrives after the failure was
+  reported — or one that already existed when a reload or a restored tab landed on the code-stripped
+  callback URL — opens the workspace instead of a dead end. One code is exchanged once per page
+  load, so a remount cannot spend it twice or misreport a reset link it just used. A failure that
+  really left no session, and a genuinely unusable password reset link, still report as before.
+- A sign-in callback that re-ran while its exchange was still in flight no longer leaves the loading
+  screen up forever; its outcome now reaches the page.
 
 ## 2.41.0 — 2026-09-20
 

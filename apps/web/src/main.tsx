@@ -56,18 +56,21 @@ function BrowserApplication() {
           <CookieConsentProvider>
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
-                <InitialDashboardExperienceProvider>
-                  <AssistantSessionProvider>
-                    <ImportDraftProvider>
-                      <BrowserRouter>
-                        <AppErrorBoundary>
+                {/* The router stays outside the identity-keyed providers below: they reset
+                    themselves by remounting when the signed-in user changes, and restarting
+                    the router would discard the location that a sign-in callback is reading. */}
+                <BrowserRouter>
+                  <AppErrorBoundary>
+                    <InitialDashboardExperienceProvider>
+                      <AssistantSessionProvider>
+                        <ImportDraftProvider>
                           <App />
                           <ClientExperiences />
-                        </AppErrorBoundary>
-                      </BrowserRouter>
-                    </ImportDraftProvider>
-                  </AssistantSessionProvider>
-                </InitialDashboardExperienceProvider>
+                        </ImportDraftProvider>
+                      </AssistantSessionProvider>
+                    </InitialDashboardExperienceProvider>
+                  </AppErrorBoundary>
+                </BrowserRouter>
               </AuthProvider>
             </QueryClientProvider>
           </CookieConsentProvider>

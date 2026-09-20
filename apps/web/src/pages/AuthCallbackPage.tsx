@@ -50,9 +50,17 @@ export function AuthCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const started = useRef(false);
+  const mountedRef = useRef(true);
   const [error, setError] = useState(false);
   const [destination, setDestination] = useState<string | null>(null);
   const recoveryRequested = searchParams.get("next") === "/update-password";
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (started.current) return;
@@ -70,7 +78,6 @@ export function AuthCallbackPage() {
 
     dropCodeFromUrl();
 
-    let cancelled = false;
     const hold = new Promise((resolve) => window.setTimeout(resolve, SIGN_IN_HANDOFF_MS));
 
     void exchangeCodeForSession(code)
@@ -79,7 +86,10 @@ export function AuthCallbackPage() {
         error: unexpected,
       }))
       .then(async (outcome) => {
-        if (cancelled) return;
+        // Leaving the page is not the same as this effect re-running, and only leaving it
+        // makes the outcome irrelevant. Dropping it on a re-run would strand the loading
+        // surface with nothing left to finish the handoff.
+        if (!mountedRef.current) return;
 
         if (outcome.status === "failed") {
           reportExchangeFailure(outcome.error);
@@ -97,17 +107,13 @@ export function AuthCallbackPage() {
         // The hold only delays a sign-in that worked. A failure above reports at
         // once instead of holding the loading surface over a dead end.
         await hold;
-        if (cancelled) return;
+        if (!mountedRef.current) return;
         const destination =
           outcome.status === "signed_in" && outcome.isPasswordRecovery
             ? "/update-password"
             : safeNext(requestedDestination);
         void navigate(destination, { replace: true });
       });
-
-    return () => {
-      cancelled = true;
-    };
   }, [exchangeCodeForSession, navigate, recoveryRequested, searchParams]);
 
   // A failure is not final while a session is live. The single-use code can be spent
