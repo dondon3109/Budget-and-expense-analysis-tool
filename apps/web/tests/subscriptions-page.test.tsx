@@ -223,6 +223,25 @@ describe("SubscriptionsPage", () => {
     expect(screen.getByRole("dialog", { name: "Add subscription" })).toBeInTheDocument();
   });
 
+  it("renders the cashflow forecast even when there are no subscriptions", async () => {
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-07-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [],
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("Start with your recurring charges");
+    await user.click(screen.getByRole("button", { name: "Cashflow Forecast" }));
+
+    expect(
+      screen.getByRole("heading", { name: "Upcoming Balance & Obligation Forecast" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No upcoming bills in this period")).toBeInTheDocument();
+  });
+
   it("opens the edit form prefilled and saves the updated subscription", async () => {
     const summary: SubscriptionMonthSummary = {
       month: "2026-07-01",

@@ -41,6 +41,7 @@ import { DashboardTransactionHistory } from "../components/dashboard/DashboardTr
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
 import { QuickStartTutorial } from "../components/dashboard/QuickStartTutorial";
+import { SafeToSpendCard } from "../components/dashboard/SafeToSpendCard";
 import { SpreadsheetMigrationWizard } from "../components/onboarding/SpreadsheetMigrationWizard";
 import { useInitialDashboardExperience } from "../components/dashboard/InitialDashboardExperienceProvider";
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
@@ -1240,6 +1241,17 @@ export function DashboardPage() {
         ) : (
           <>
             <OverviewStatBar items={overviewItems} />
+            {summaryMonth === currentDashboardMonth && (
+              <SafeToSpendCard
+                workspace={workspace}
+                startingBalanceMinor={overallBalanceMinor}
+                remainingBudgetMinor={
+                  // No budget rows means no weekly envelope to pace; the card falls back to the
+                  // balance rather than reporting a plan the user never set.
+                  data.budgetProgress.length > 0 ? metrics.remainingBudgetMinor : undefined
+                }
+              />
+            )}
             <div className="dashboard-grid">
               <SpendingByCategory
                 data={

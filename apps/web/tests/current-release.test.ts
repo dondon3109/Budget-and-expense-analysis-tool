@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { currentRelease, releaseHistory } from "../src/releases/currentRelease";
 
 describe("current release notes", () => {
-  it("highlights the reworked loading surface, permanent assistant memory, the shared AI allowance, reversed payments, Android sign-out, and Android Beta 0.2.32", () => {
+  it("highlights the reworked loading surface, permanent assistant memory, the shared AI allowance, reversed payments, Android sign-out, web safe-to-spend guidance, and Android Beta 0.2.32", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "A faster welcome into your workspace",
       "One shared AI allowance for every AI feature",
@@ -12,6 +12,7 @@ describe("current release notes", () => {
       "Steadier assistant amounts, savings interest, and profile photos",
       "Assistant memory that stays until you delete it",
       "A rebuilt Memory & Preferences panel",
+      "Safe-to-spend guidance on the web dashboard",
       "Android Beta 0.2.32",
     ]);
 
@@ -25,6 +26,7 @@ describe("current release notes", () => {
     expect(notes).toMatch(/chargeback/i);
     expect(notes).toMatch(/revokes the session/i);
     expect(notes).toMatch(/kept until you delete a fact, clear memory/i);
+    expect(notes).toMatch(/safely spend this week/i);
     expect(notes).toMatch(/Android Beta 0\.2\.32/);
   });
 

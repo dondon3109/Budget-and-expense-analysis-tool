@@ -11,6 +11,10 @@ All notable product changes are documented here.
 - The assistant Memory panel now edits response detail and coaching tone next to the debt payoff
   strategy. Both were previously shown there as read-only text and could only be changed from the
   planning page.
+- The web dashboard now answers what is safe to spend this week. It paces your remaining monthly
+  budget across the days left, or your balance when the month holds no budget plan, then caps the
+  figure so a renewal cannot push your projected balance below zero. This is the guidance the mobile
+  app already shows on its home screen.
 
 ### Changed
 
@@ -58,6 +62,10 @@ All notable product changes are documented here.
 - A question that needs several kinds of lookup (budget, categories, trends) is now answered from your
   own records even when the provider skips one of them, instead of returning a refusal that asks you to
   rephrase or narrow the date range.
+- The cashflow forecast on the subscriptions page stays reachable when the month has no
+  subscriptions. Previously the empty state replaced it even after you selected the forecast view.
+- The remittance calculator reads its amount and fee fields through the same two-decimal parser as
+  the rest of Zoption. A third decimal place is now reported instead of being rounded away.
 - An overdrawn savings account no longer earns interest; interest is only credited on a positive balance.
 - Profile photo changes and removals now take effect within a minute instead of staying cached for a year.
 

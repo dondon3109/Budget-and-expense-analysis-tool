@@ -4,7 +4,9 @@ import {
   calculateRemittance,
   compareRemittanceProviders,
   DEFAULT_OFW_EXCHANGE_RATES,
+  MoneyParseError,
   OFW_CURRENCIES,
+  parseAmountToMinor,
   REMITTANCE_PROVIDERS,
 } from "@zoption/shared";
 import {
@@ -39,18 +41,38 @@ const PROVIDER_NAMES: Record<RemittanceProvider, string> = {
   bank_wire: "Traditional Bank Wire",
 };
 
+/**
+ * Resolves a typed amount into integer minor units through the shared parser, the same
+ * boundary the mobile calculator uses. Unparseable text carries the reason the field
+ * rejected it instead of being rounded to something the user did not type.
+ */
+function parseAmountField(value: string): { minor: number; error: string | null } {
+  const trimmed = value.trim();
+  if (trimmed === "") return { minor: 0, error: null };
+  try {
+    return { minor: Math.max(0, parseAmountToMinor(trimmed)), error: null };
+  } catch (error) {
+    return {
+      minor: 0,
+      error: error instanceof MoneyParseError ? error.message : "Enter a valid amount.",
+    };
+  }
+}
+
 export function RemittanceCalculatorSection() {
-  const [sendAmount, setSendAmount] = useState<number>(1000);
+  const [sendAmountText, setSendAmountText] = useState("1000");
   const [fromCurrency, setFromCurrency] = useState<OfwCurrency>("USD");
   const [selectedProvider, setSelectedProvider] = useState<RemittanceProvider>("wise");
-  const [transferFee, setTransferFee] = useState<number>(0);
+  const [transferFeeText, setTransferFeeText] = useState("");
   const [useCustomRate, setUseCustomRate] = useState<boolean>(false);
   const [customRate, setCustomRate] = useState<string>("");
 
   const benchmark = DEFAULT_OFW_EXCHANGE_RATES[fromCurrency];
   const parsedCustomRate = useCustomRate && customRate ? parseFloat(customRate) : undefined;
-  const sendAmountMinor = Math.round(Math.max(0, sendAmount || 0) * 100);
-  const transferFeeMinor = Math.round(Math.max(0, transferFee || 0) * 100);
+  const sendAmount = parseAmountField(sendAmountText);
+  const transferFee = parseAmountField(transferFeeText);
+  const sendAmountMinor = sendAmount.minor;
+  const transferFeeMinor = transferFee.minor;
 
   const singleResult = useMemo(() => {
     return calculateRemittance({
@@ -154,14 +176,20 @@ export function RemittanceCalculatorSection() {
               <span className="input-currency-prefix">{currentCurrencyInfo.symbol}</span>
               <input
                 id="remittance-send-amount"
-                type="number"
-                min="1"
-                step="any"
-                value={sendAmount || ""}
+                type="text"
+                inputMode="decimal"
+                value={sendAmountText}
                 placeholder="1000"
-                onChange={(e) => setSendAmount(parseFloat(e.target.value) || 0)}
+                aria-invalid={sendAmount.error !== null}
+                aria-describedby={sendAmount.error ? "remittance-send-amount-error" : undefined}
+                onChange={(e) => setSendAmountText(e.target.value)}
               />
             </div>
+            {sendAmount.error && (
+              <small className="field-error" id="remittance-send-amount-error">
+                {sendAmount.error}
+              </small>
+            )}
           </div>
 
           <div className="remittance-field">
@@ -190,14 +218,20 @@ export function RemittanceCalculatorSection() {
               <span className="input-currency-prefix">{currentCurrencyInfo.symbol}</span>
               <input
                 id="remittance-fee-input"
-                type="number"
-                min="0"
-                step="any"
-                value={transferFee || ""}
+                type="text"
+                inputMode="decimal"
+                value={transferFeeText}
                 placeholder="0.00"
-                onChange={(e) => setTransferFee(parseFloat(e.target.value) || 0)}
+                aria-invalid={transferFee.error !== null}
+                aria-describedby={transferFee.error ? "remittance-fee-input-error" : undefined}
+                onChange={(e) => setTransferFeeText(e.target.value)}
               />
             </div>
+            {transferFee.error && (
+              <small className="field-error" id="remittance-fee-input-error">
+                {transferFee.error}
+              </small>
+            )}
           </div>
 
           <div className="remittance-custom-rate-toggle">
@@ -315,8 +349,8 @@ export function RemittanceCalculatorSection() {
             <h3 className="remittance-card-title">Provider Spread & Value Comparison</h3>
             <p className="comparison-subtitle">
               Based on sending {currentCurrencyInfo.symbol}
-              {sendAmount.toLocaleString("en-US")} {fromCurrency} converted directly to Philippine
-              Pesos.
+              {(sendAmountMinor / 100).toLocaleString("en-US")} {fromCurrency} converted directly to
+              Philippine Pesos.
             </p>
           </div>
           <div className="best-provider-badge">

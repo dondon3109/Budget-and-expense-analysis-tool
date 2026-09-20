@@ -26,7 +26,7 @@ describe("RemittanceCalculatorSection", () => {
 
     // Default Send Amount is 1000
     const amountInput = screen.getByLabelText(/Send Amount/i);
-    expect(amountInput).toHaveValue(1000);
+    expect(amountInput).toHaveValue("1000");
 
     // Shows recipient received amount
     expect(screen.getByText("Recipient Receives in Philippines")).toBeInTheDocument();
@@ -102,6 +102,20 @@ describe("RemittanceCalculatorSection", () => {
 
     // 1000 USD * 60.00 = ₱60,000
     expect(screen.getAllByText("₱60,000").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("rejects a third decimal place instead of silently rounding it", async () => {
+    const user = userEvent.setup();
+    render(<RemittanceCalculatorSection />);
+
+    const amountInput = screen.getByLabelText(/Send Amount/i);
+    await user.clear(amountInput);
+    await user.type(amountInput, "10.555");
+
+    expect(
+      screen.getByText("Enter a valid amount with no more than two decimal places."),
+    ).toBeInTheDocument();
+    expect(amountInput).toHaveAttribute("aria-invalid", "true");
   });
 
   it("calculates upfront fee into total fee drag", async () => {

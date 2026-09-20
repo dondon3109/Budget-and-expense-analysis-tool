@@ -49,6 +49,11 @@ export const currentRelease: ProductRelease = {
         "The Memory panel keeps its title, close button, and Clear memory action in place while the list scrolls, lets you set response detail and coaching tone beside the debt payoff strategy instead of only on the planning page, marks the chosen strategy with a check as well as a colour, and waits for your memory to load instead of claiming it is empty.",
     },
     {
+      title: "Safe-to-spend guidance on the web dashboard",
+      description:
+        "The dashboard now answers what you can safely spend this week: your remaining monthly budget, or your balance when the month has no budget plan, paced across the days left and capped so an upcoming renewal cannot push your projected balance below zero, with a link straight to your renewals.",
+    },
+    {
       title: "Android Beta 0.2.32",
       description:
         "The official Android Beta keeps remembered facts until you delete them, with the updated assistant consent notice, the shared monthly AI allowance, server-side sign-out, and the assistant, savings interest, and profile photo fixes.",

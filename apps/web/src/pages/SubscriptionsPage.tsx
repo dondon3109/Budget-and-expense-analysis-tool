@@ -356,7 +356,9 @@ export function SubscriptionsPage() {
                 </div>
               </div>
 
-              {data.items.length === 0 ? (
+              {viewMode === "forecast" ? (
+                <CashflowForecastSection items={data.items} accounts={accountsQuery.data} />
+              ) : data.items.length === 0 ? (
                 <div className="empty-transactions subscriptions-empty">
                   <p className="eyebrow">A clean starting point</p>
                   <strong>Start with your recurring charges</strong>
@@ -375,8 +377,6 @@ export function SubscriptionsPage() {
                   onEdit={openEdit}
                   onShowCancellationGuide={(item) => setGuideItem(item)}
                 />
-              ) : viewMode === "forecast" ? (
-                <CashflowForecastSection items={data.items} accounts={accountsQuery.data} />
               ) : (
                 <SubscriptionTable
                   items={data.items}
