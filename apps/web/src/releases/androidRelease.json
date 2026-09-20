@@ -1,24 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.32-beta",
-  "versionCode": 20332,
-  "filename": "zoption-beta-0.2.32.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.32.apk",
-  "sha256": "fce32998d7ff1660352d848cafefeb1642a1a695a23e96361fce1ed6a1636602",
-  "sizeBytes": 139373594,
-  "sizeLabel": "139,373,594 bytes (132.92 MiB)",
-  "releaseDate": "2026-09-19",
-  "releaseDateLabel": "September 19, 2026",
+  "versionName": "0.2.33-beta",
+  "versionCode": 20333,
+  "filename": "zoption-beta-0.2.33.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.33.apk",
+  "sha256": "3bb327f42fbb7a8add34d270fe9e55d1ddd06c78a228696eb8d3a653f52131a1",
+  "sizeBytes": 137856174,
+  "sizeLabel": "137,856,174 bytes (131.47 MiB)",
+  "releaseDate": "2026-09-20",
+  "releaseDateLabel": "September 20, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Remembered facts and your payoff preference are now kept until you delete them",
-    "The assistant consent notice is updated; review it once before your next question",
-    "Shared monthly AI allowance: 500 actions on Free, 2,000 on Pro",
-    "Signing out now ends your session on the server",
-    "Refunds, chargebacks and disputes now end Pro access",
-    "Steadier assistant amounts, savings interest and profile photos"
+    "The app opens straight to your screen instead of three loading screens",
+    "Your saved theme is applied on the first frame, with no flash of the system theme",
+    "The dashboard reads only the transactions its charts display, so it opens faster",
+    "A sync that writes many rows now refreshes the screen once instead of once per row",
+    "The installed app bundles one icon font instead of sixteen"
   ]
 }
