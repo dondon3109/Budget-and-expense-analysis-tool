@@ -7,10 +7,10 @@ without a real account.
 
 This document describes the local-Supabase route: the real Supabase stack running
 in Docker, so the real sign-in, JWT, refresh and tenant-resolution paths are
-exercised with no application code changes. A real stack now runs on this machine,
-so **this is the primary path**. The auth stub near the end is a fallback for
-machines with no container runtime. Read the open identity issue below before
-treating an authenticated audit run as a pass.
+exercised with no application code changes. It is the more thorough of the two routes.
+The auth stub near the end runs the same audit with no container runtime, and it is the
+route this checkout uses, because Docker is not running here. The identity 500 that once
+made an authenticated run unreadable is fixed; see the note below.
 
 ## Why not the dummy dev token?
 
@@ -114,7 +114,14 @@ Removing the `credsStore` key fixes it. The original file is backed up at
    `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` for the API, plus
    `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` for the web app.
 
-   Three caveats:
+   Four caveats:
+
+   - `enable` needs `apps/api/.dev.vars` to exist before it can write the API pair.
+     That file is gitignored, so a fresh checkout has only
+     `apps/api/.dev.vars.example`, and `enable` exits non-zero
+     ("... is missing; cannot switch it.") rather than creating it. Copy
+     the example first: `cp apps/api/.dev.vars.example apps/api/.dev.vars`. Its provider
+     values are empty, so the live-credential check below still passes.
 
    - `enable` refuses to run while `apps/api/.dev.vars` still defines a live
      non-Supabase credential — `DEEPSEEK_API_KEY`, `FISH_AUDIO_API_KEY`,
@@ -127,9 +134,10 @@ Removing the `credsStore` key fixes it. The original file is backed up at
    - `enable` refuses to run while a backup exists, and that is deliberate: run
      `disable` first. Do **not** use `--force` — it overwrites the cloud backup with
      the local values, so the cloud configuration is lost.
-   - The API's publishable key matters as much as the URL. Without it the Worker falls
-     back to a placeholder key in `apps/api/wrangler.e2e.jsonc`, which a real GoTrue
-     rejects.
+   - The API's publishable key matters as much as the URL, and `apps/api/.dev.vars` is
+     what carries it. Without that key the Worker falls back to a placeholder in
+     `apps/api/wrangler.e2e.jsonc`, which a real GoTrue rejects: `POST /api/app/identity`
+     then answers 503 (`identity_verification_unavailable`), not 500.
 
 4. Restart both dev servers.
 
@@ -155,23 +163,18 @@ Removing the `credsStore` key fixes it. The original file is backed up at
      npx playwright test e2e/accessibility.spec.ts
    ```
 
-## Known issue: `POST /api/app/identity` returns 500
+## Fixed: `POST /api/app/identity` returned 500
 
-Against the real stack, every authenticated page load ends with
-`POST /api/app/identity` answering **HTTP 500**, so the authenticated routes
-currently fail the audit's "no failed requests" assertion. Sign-in and rendering
-are real, and the axe results still mean what they say — but that assertion is red for
-this reason, so an authenticated run cannot be read as a clean pass.
-
-Ruled out so far:
-
-- Upstream identity verification is fine: `GET /auth/v1/user` returns 200 with all
-  the fields the Worker needs.
-- The Worker sees both Supabase variables.
-- All D1 migrations are applied.
-
-The cause is still under investigation. **This is not fixed** — do not paper over it
-or assume the routes themselves regressed.
+`syncVerifiedIdentity` upserted with `ON CONFLICT(user_id)` while
+`app_user_identities` also carries a unique index on `verified_email`. When a stale
+row already owned the same email under a different user id, the insert raised
+`SQLITE_CONSTRAINT`, which is not an `HttpError` and so escaped as a bare **HTTP
+500** on every authenticated page load. Commit `b0fb418` releases that stale row
+before recording the identity, in the same transaction. The regression test is
+`apps/api/tests/platform-admin.test.ts` ("releases a stale row that owns the same email
+under another user id"), and `docs/a11y-remediation-review.md` holds the history and
+the re-verification against a real stack. A 500 here today is a regression, not a known
+state.
 
 ## Undo
 
@@ -199,28 +202,70 @@ Verify those as UI states only, not as live behaviour.
 
 ## Auditing without Docker: the auth stub
 
-This is the fallback when no container runtime is available, not the primary route.
 `scripts/fake-supabase-auth.mjs` serves just enough of the GoTrue surface for the
 web client to sign in and for the API to verify the token — the API already accepts a
 loopback Supabase and verifies through JWKS, so **no application code changes are
-involved**.
+involved**. It runs the same specs as the Docker route without a container runtime, and
+it is the route used in this checkout.
 
-```bash
-# 1. the stub, on the port the API's e2e config already targets
-pnpm audit:auth-stub -- --port 54321
+Run from the repo root:
 
-# 2. point the web app at it (backed up, reversible).
-#    the stub ignores the publishable key, so any non-empty value works.
-#    node scripts/local-supabase.mjs enable reads a real "supabase status", so it
-#    cannot configure the stub; see the fake-status-on-PATH technique in
-#    docs/a11y-remediation-review.md, or set VITE_SUPABASE_URL by hand.
+1. Put the stub's URL in `apps/web/.env.local`:
 
-# 3. give the stub's user a workspace
-node scripts/seed-local-workspace.mjs --user 08060c19-8a55-4046-a2e7-7384808dd81c
+   ```
+   VITE_SUPABASE_URL=http://127.0.0.1:54321
+   VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_local-test-key
+   ```
 
-# 4. run the authenticated audit
-E2E_EMAIL=audit@example.com E2E_PASSWORD=anything npx playwright test e2e/accessibility.spec.ts
-```
+   The stub ignores the key, so any non-empty value works. `.env.*` and `.dev.vars` are
+   gitignored (`.env.example` and `apps/web/.env.production` are not), so this file stays
+   local to your checkout. `node scripts/local-supabase.mjs enable` cannot write it: it
+   reads a real `supabase status`, which needs the container runtime this route avoids.
+
+2. Start the stub in its own terminal, with two identities:
+
+   ```bash
+   node scripts/fake-supabase-auth.mjs --port 54321 \
+     --user 08060c19-8a55-4046-a2e7-7384808dd81c \
+     --user-for empty@example.com=1f0e6a2c-3b4d-4e5f-8a90-1234567890ab
+   ```
+
+   `--user-for` is what gives the empty-workspace audits an account whose tenant holds no
+   data, and it only takes effect as a UUID different from `--user`. Leave this terminal
+   running.
+
+3. Apply the local D1 migrations:
+
+   ```bash
+   pnpm db:migrate:local
+   ```
+
+4. Seed the audited account's workspace:
+
+   ```bash
+   node scripts/seed-local-workspace.mjs --user 08060c19-8a55-4046-a2e7-7384808dd81c
+   ```
+
+5. Run the audit:
+
+   ```bash
+   pnpm test:e2e:stub                            # every spec
+   pnpm test:e2e:stub e2e/accessibility.spec.ts  # one spec
+   ```
+
+   `pnpm test:e2e:stub` (`scripts/local-audit.mjs`) supplies the four `E2E_*` variables
+   the fixtures read — `audit@example.com` / `Audit-Pass-1234!` and
+   `empty@example.com` / `Empty-Pass-1234!`, though the stub accepts any password —
+   passes extra arguments through to Playwright, exits with Playwright's exit code and
+   prints the screenshot path at the end. It **refuses to run** when the stub is not
+   answering `GET http://127.0.0.1:54321/auth/v1/health`, naming the command to start;
+   it refuses too when `apps/web/.env.local` is missing or does not point
+   `VITE_SUPABASE_URL` there, printing the exact file contents to write. That check is
+   the point: without the stub, Playwright skips every authenticated test and still exits
+   0, so a green run would otherwise mean nothing.
+
+On 2026-09-20 this sequence passed green end to end: 39 accessibility tests, 0 skipped,
+no blocking axe findings.
 
 The stub signs RS256 tokens with a keypair generated per process and publishes the
 matching JWKS, so the API's verification path is exercised for real. **It is a test
@@ -232,23 +277,25 @@ still belong to the local-Supabase run above. Nothing under `apps/` references i
 `e2e/accessibility.spec.ts` (desktop) and `e2e/accessibility.mobile.spec.ts` (phone
 width) run axe-core over the public routes always, and over the authenticated routes
 when a local session is available. The suite **skips** the authenticated portion rather
-than failing when Supabase is not running, so CI stays green without a stack.
+than failing when Supabase is not running, so CI stays green without a stack — which is
+why `pnpm test:e2e:stub` refuses to start without one.
 
 Run the full suite with:
 
 ```bash
-E2E_EMAIL=audit@example.com E2E_PASSWORD='Audit-Pass-1234!' pnpm test:e2e
+pnpm test:e2e:stub   # against the auth stub; refuses to start without it
+pnpm test:e2e        # every project; set the four E2E_* variables for the authenticated half
 ```
 
 `pnpm test:e2e` first applies the local D1 migrations (`pnpm test:e2e:prepare`),
 then runs every Playwright project. The authenticated pass covers, per route:
 
-| State           | Routes                  | Notes                                                                                                                                                                                                                                        |
-| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Settled         | all 11 `/app/*` routes  | Also asserts the route rendered an `h1`, made **no failed requests** and logged **no console errors** — a blank page, a redirect or a refused API call would otherwise pass a scan over nothing. The identity 500 above currently trips this |
-| Loading         | 5 representative routes | Every API call is left unanswered so the skeletons stay on screen; they cannot be scanned once data arrives                                                                                                                                  |
-| Failed          | 5 representative routes | Every API call is aborted, so the error panels render                                                                                                                                                                                        |
-| Empty workspace | 3 routes                | Needs a second, unseeded account: `E2E_EMPTY_EMAIL` / `E2E_EMPTY_PASSWORD`. Skips when unset                                                                                                                                                 |
+| State           | Routes                  | Notes                                                                                                                                                                                                                                                                  |
+| --------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settled         | all 11 `/app/*` routes  | Also asserts the route rendered an `h1`, made **no failed requests** and logged **no console errors** — a blank page, a redirect or a refused API call would otherwise pass a scan over nothing. The identity 500 that used to trip this is fixed — see the note above |
+| Loading         | 5 representative routes | Every API call is left unanswered so the skeletons stay on screen; they cannot be scanned once data arrives                                                                                                                                                            |
+| Failed          | 5 representative routes | Every API call is aborted, so the error panels render                                                                                                                                                                                                                  |
+| Empty workspace | 3 routes                | Needs a second, unseeded account: `E2E_EMPTY_EMAIL` / `E2E_EMPTY_PASSWORD`. Skips when unset                                                                                                                                                                           |
 
 Screenshots for the visual review pass are written to `test-results/app-audit/` (gitignored).
 Reading them is part of the verification: every purely visual defect found so far — overlapping

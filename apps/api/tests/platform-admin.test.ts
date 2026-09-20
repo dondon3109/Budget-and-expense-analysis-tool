@@ -89,6 +89,20 @@ describe("platform-admin identity verification", () => {
     });
   });
 
+  it("reports an unavailable identity provider instead of an unconfirmed email", async () => {
+    // Every non-ok upstream response is a provider outage, whatever status it carried. It is also
+    // the failure the client can do nothing about, so it must not be reported as a decision about
+    // the user's email.
+    const gateway = createVerifiedIdentityGateway(
+      async () => new Response("nope", { status: 401 }),
+    );
+
+    await expect(gateway.getVerifiedIdentity(env, "access-token")).rejects.toMatchObject({
+      status: 503,
+      code: "identity_verification_unavailable",
+    });
+  });
+
   it("rejects an unconfirmed email before it can enter the recipient directory", async () => {
     const gateway = createVerifiedIdentityGateway(async () =>
       Response.json({
