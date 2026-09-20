@@ -44,11 +44,23 @@ export interface BugReportCreateResult {
   created: boolean;
 }
 
+// The egress path reads only the fields that may cross the boundary. Reporter identity and
+// diagnostics are never loaded, so a malformed diagnostics_json cannot fail the read.
+export interface BugReportEgressCandidate {
+  id: string;
+  createdAt: string;
+  title: string;
+  actualBehavior: string;
+  expectedBehavior: string;
+  stepsToReproduce: string;
+}
+
 export interface BugReportRepository {
   create(env: Bindings, record: BugReportCreateRecord): Promise<BugReportCreateResult>;
   listForTenant(env: Bindings, tenantId: string, limit: number): Promise<BugReport[]>;
   findForTenant(env: Bindings, tenantId: string, id: string): Promise<BugReport | null>;
   listAll(env: Bindings, limit: number): Promise<AdminBugReport[]>;
+  listForEgress(env: Bindings, limit: number): Promise<BugReportEgressCandidate[]>;
   updateStatus(env: Bindings, id: string, status: BugReportStatus): Promise<AdminBugReport | null>;
   claimNotification(env: Bindings, id: string): Promise<AdminBugReport | null>;
   claimPendingNotifications(env: Bindings, limit: number): Promise<AdminBugReport[]>;
@@ -71,17 +83,6 @@ const selectColumns = `
   created_at AS createdAt, updated_at AS updatedAt`;
 
 function toAdminReport(row: BugReportRow): AdminBugReport {
-  let diagnostics: AdminBugReport["diagnostics"] | null = null;
-  try {
-    const parsed = JSON.parse(row.diagnosticsJson) as unknown;
-    const result = bugReportDiagnosticsSchema.safeParse(parsed);
-    if (result.success) {
-      diagnostics = result.data;
-    }
-  } catch {
-    diagnostics = null;
-  }
-
   return {
     id: row.id,
     reference: row.reference,
@@ -94,7 +95,7 @@ function toAdminReport(row: BugReportRow): AdminBugReport {
     stepsToReproduce: row.stepsToReproduce,
     frequency: row.frequency,
     pageContext: row.pageContext,
-    diagnostics: diagnostics as unknown as AdminBugReport["diagnostics"],
+    diagnostics: bugReportDiagnosticsSchema.parse(JSON.parse(row.diagnosticsJson) as unknown),
     status: row.status,
     notificationStatus: row.notificationStatus,
     notificationAttempts: row.notificationAttempts,
@@ -196,6 +197,17 @@ export const bugReportRepository: BugReportRepository = {
       .bind(limit)
       .all<BugReportRow>();
     return rows.results.map(toAdminReport);
+  },
+
+  async listForEgress(env, limit) {
+    const rows = await env.DB.prepare(
+      `SELECT id, created_at AS createdAt, title, actual_behavior AS actualBehavior,
+              expected_behavior AS expectedBehavior, steps_to_reproduce AS stepsToReproduce
+       FROM bug_reports ORDER BY created_at DESC LIMIT ?`,
+    )
+      .bind(limit)
+      .all<BugReportEgressCandidate>();
+    return rows.results;
   },
 
   async updateStatus(env, id, status) {

@@ -7,21 +7,15 @@
  * Do not point the outbound automation at the admin route under any circumstances.
  */
 
-import { redactBugReport, type BugReportFields } from "@zoption/shared";
+import { redactBugReport } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { BugReportEgressAuditRepository } from "../db/bug-report-egress-audit";
 import type { BugReportRepository } from "../db/bug-reports";
-import type { AdminBugReport } from "@zoption/shared";
 import type { AppEnvironment } from "../types";
 
-export interface BugReportEgressRouteDependencies {
-  bugReports: BugReportRepository;
-  egressAudit: BugReportEgressAuditRepository;
-  redact?: typeof redactBugReport;
-}
-
 const EGRESS_FIELDS = ["title", "actualBehavior", "expectedBehavior", "stepsToReproduce"] as const;
+const EGRESS_READ_LIMIT = 100;
 
 const DUMMY_SECRET = "ops_egress_dummy_constant_time_comparison_secret_token";
 
@@ -41,25 +35,10 @@ async function constantTimeCompare(provided: string, expected: string): Promise<
 }
 
 export function createBugReportEgressRoutes(
-  bugReportsOrDeps: BugReportRepository | BugReportEgressRouteDependencies,
-  auditRepo?: BugReportEgressAuditRepository,
-  injectedRedact?: typeof redactBugReport,
+  bugReports: BugReportRepository,
+  egressAudit: BugReportEgressAuditRepository,
+  redact: typeof redactBugReport = redactBugReport,
 ) {
-  let bugReports: BugReportRepository;
-  let egressAudit: BugReportEgressAuditRepository;
-  let redact = injectedRedact ?? redactBugReport;
-
-  if ("bugReports" in bugReportsOrDeps && "egressAudit" in bugReportsOrDeps) {
-    bugReports = bugReportsOrDeps.bugReports;
-    egressAudit = bugReportsOrDeps.egressAudit;
-    if (bugReportsOrDeps.redact) {
-      redact = bugReportsOrDeps.redact;
-    }
-  } else {
-    bugReports = bugReportsOrDeps;
-    egressAudit = auditRepo!;
-  }
-
   const routes = new Hono<AppEnvironment>();
 
   routes.use("*", async (context, next) => {
@@ -84,19 +63,7 @@ export function createBugReportEgressRoutes(
       return context.json({ error: "unauthorized" }, 401);
     }
 
-    let candidateReports: AdminBugReport[] = [];
-    if ("listAll" in bugReports && typeof bugReports.listAll === "function") {
-      candidateReports = await bugReports.listAll(context.env, 100);
-    } else if (
-      "listForAdmin" in bugReports &&
-      typeof (
-        bugReports as unknown as { listForAdmin: (env: unknown) => Promise<AdminBugReport[]> }
-      ).listForAdmin === "function"
-    ) {
-      candidateReports = await (
-        bugReports as unknown as { listForAdmin: (env: unknown) => Promise<AdminBugReport[]> }
-      ).listForAdmin(context.env);
-    }
+    const candidateReports = await bugReports.listForEgress(context.env, EGRESS_READ_LIMIT);
 
     const cleanReports: Array<{
       id: string;
@@ -114,14 +81,12 @@ export function createBugReportEgressRoutes(
 
     for (const report of candidateReports) {
       try {
-        const candidateFields: BugReportFields = {
-          title: report.title ?? "",
-          actualBehavior: report.actualBehavior ?? "",
-          expectedBehavior: report.expectedBehavior ?? "",
-          stepsToReproduce: report.stepsToReproduce ?? "",
-        };
-
-        const outcome = redact(candidateFields);
+        const outcome = redact({
+          title: report.title,
+          actualBehavior: report.actualBehavior,
+          expectedBehavior: report.expectedBehavior,
+          stepsToReproduce: report.stepsToReproduce,
+        });
 
         if (outcome.status === "clean" && typeof outcome.text === "string") {
           await egressAudit.record(context.env, {
