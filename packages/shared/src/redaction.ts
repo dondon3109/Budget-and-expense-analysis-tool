@@ -121,6 +121,9 @@ function parseWordsToNumber(matchStr: string): string {
   return String(total + current);
 }
 
+const UNICODE_DECIMAL_DIGITS = /\p{Nd}/gu;
+const UNICODE_DECIMAL_DIGIT = /\p{Nd}/u;
+
 export function normalizeText(input: string): string {
   if (!input) return "";
 
@@ -130,16 +133,28 @@ export function normalizeText(input: string): string {
   // 2. Fold Cyrillic lookalikes
   text = text.replace(/[\u0400-\u04FF]/g, (ch) => CYRILLIC_LOOKALIKES[ch] ?? ch);
 
-  // 3. Strip zero-width characters
+  // 3. Fold non-ASCII decimal digits to ASCII. Every detector matches ASCII \d, so an
+  // Arabic-Indic or Devanagari digit would otherwise cross undetected. Unicode decimal digit
+  // blocks are ten consecutive code points, so walking back to the block start yields the value.
+  text = text.replace(UNICODE_DECIMAL_DIGITS, (digit) => {
+    const codePoint = digit.codePointAt(0)!;
+    let blockStart = codePoint;
+    while (blockStart > 0 && UNICODE_DECIMAL_DIGIT.test(String.fromCodePoint(blockStart - 1))) {
+      blockStart -= 1;
+    }
+    return String(codePoint - blockStart);
+  });
+
+  // 4. Strip zero-width characters
   // Zero-width characters are stripped deliberately: a report can hide a card number behind
   // them, and the lint rule's "misleading" concern does not apply to an intentional removal.
   // eslint-disable-next-line no-misleading-character-class
   text = text.replace(/[\u200B\u200C\u200D\uFEFF]/g, "");
 
-  // 4. Collapse whitespace inside digit runs (including newlines)
+  // 5. Collapse whitespace inside digit runs (including newlines)
   text = text.replace(/(?<=\d)\s+(?=\d)/g, "");
 
-  // 5. Expand spelled-out numbers to numeric form
+  // 6. Expand spelled-out numbers to numeric form
   text = text.replace(SPELLED_NUMBER_RUN_REGEX, (match) => parseWordsToNumber(match));
 
   return text;
@@ -189,12 +204,18 @@ function countDigits(str: string): number {
   return count;
 }
 
+const VERSION_OR_ADDRESS_REGEX = /^\d{1,3}(?:\.\d{1,3}){2,3}$/;
+const GROUPED_THOUSANDS_REGEX = /^\d{1,3}(?:\.\d{3})+$/;
+
+// Dotted runs stay exempt only when they are shaped like a version (2.41.1) or an address
+// (192.168.1.1): every component 1-3 digits, at most four components, and few digits overall.
+// A card written with dots (4111.1111.1111.1111) has four-digit components, and a grouped
+// amount (1.299.000) stays redacted. A dotted amount whose components are all 1-3 digits
+// (12.999.00) is structurally identical to a version and remains a known gap.
 function isVersionString(str: string): boolean {
-  const dotCount = (str.match(/\./g) || []).length;
-  if (dotCount >= 2 && !/^\d{1,3}(?:\.\d{3})+$/.test(str)) {
-    return true;
-  }
-  return false;
+  if (!VERSION_OR_ADDRESS_REGEX.test(str)) return false;
+  if (GROUPED_THOUSANDS_REGEX.test(str)) return false;
+  return countDigits(str) <= 9;
 }
 
 export function redactText(input: string): RedactTextResult {

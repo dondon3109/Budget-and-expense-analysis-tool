@@ -525,3 +525,54 @@ describe("BUG 1 regression: formatted money and separator-aware digit runs", () 
     expect(detectSensitive("2026-09-20").length).toBeGreaterThan(0);
   });
 });
+
+describe("separator and digit-script bypasses", () => {
+  it("redacts a card number written with dots (4111.1111.1111.1111)", () => {
+    const raw = "Visa 4111.1111.1111.1111 was declined";
+    const redacted = redactText(raw);
+    expect(redacted.text).not.toContain("4111.1111.1111.1111");
+    expect(redacted.text).not.toContain("4111");
+    expect(detectSensitive(raw).length).toBeGreaterThan(0);
+  });
+
+  it("redacts an account number written with dots (1234.5678.9012.3456)", () => {
+    const raw = "Account 1234.5678.9012.3456 was charged twice";
+    expect(redactText(raw).text).not.toContain("1234.5678.9012.3456");
+    expect(detectSensitive(raw).length).toBeGreaterThan(0);
+  });
+
+  it("does not emit a dotted card number as clean report text", () => {
+    const outcome = redactBugReport({
+      title: "Card declined",
+      actualBehavior: "Visa 4111.1111.1111.1111 was declined twice",
+      expectedBehavior: "Charge the card once",
+      stepsToReproduce: "Submit the payment form",
+    });
+    expect(outcome.text ?? "").not.toContain("4111.1111.1111.1111");
+    if (outcome.text !== null) {
+      expect(outcome.text).toContain("[REDACTED]");
+    }
+  });
+
+  it("keeps versions and addresses exempt from the dotted-run rule", () => {
+    expect(redactText("App version 2.41.1").text).toContain("2.41.1");
+    expect(detectSensitive("2.41.1")).toEqual([]);
+    expect(redactText("Request to 192.168.1.1 timed out").text).toContain("192.168.1.1");
+  });
+
+  it("folds Arabic-Indic digits before detection and redaction", () => {
+    expect(normalizeText("١٢٣٤")).toBe("1234");
+    const raw = "Card ٤١١١ ١١١١ ١١١١ ١١١١ declined";
+    const redacted = redactText(raw);
+    expect(redacted.text).not.toContain("٤١١١");
+    expect(redacted.text).toContain("[REDACTED]");
+    expect(detectSensitive(raw).length).toBeGreaterThan(0);
+  });
+
+  it("folds Devanagari digits before detection and redaction", () => {
+    expect(normalizeText("१२३४५६७८")).toBe("12345678");
+    const raw = "Account १२३४५६७८ debited";
+    expect(redactText(raw).text).not.toContain("१२३४५६७८");
+    expect(detectSensitive(raw).length).toBeGreaterThan(0);
+  });
+});
