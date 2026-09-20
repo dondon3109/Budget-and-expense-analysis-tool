@@ -30,6 +30,7 @@ describe("current release notes", () => {
       "A cash-flow forecast that shows its shape",
       "Dashboard shortcuts to the forecast and the remittance calculator",
       "Honest amounts in the remittance calculator",
+      "Android Beta 0.2.33",
     ]);
 
     const copy = currentRelease.changes
@@ -42,6 +43,7 @@ describe("current release notes", () => {
     expect(copy).toMatch(/your safety buffer is now an amount you set/i);
     expect(copy).toMatch(/mid-market benchmark rate/i);
     expect(copy).toMatch(/cannot be read/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.33/);
   });
 
   it("lists each shipped version once, newest first", () => {

@@ -22,6 +22,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Prepared Android Beta 0.2.33 (versionCode 20333) mobile release and refreshed in-app patch notes.
 - The web dashboard now answers what is safe to spend this week. It paces your remaining monthly
   budget across the days left, or your balance when the month holds no budget plan, then caps the
   figure so a renewal cannot push your projected balance below zero. This is the guidance the mobile

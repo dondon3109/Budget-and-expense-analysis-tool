@@ -38,6 +38,11 @@ export const currentRelease: ProductRelease = {
       description:
         "The calculator no longer prints a received amount, a savings figure, or a Best Value badge while the amount, the fee, or the exchange rate you typed cannot be read. It says what it is waiting for, names the field that needs fixing, and returns to the real figures as soon as the field is valid.",
     },
+    {
+      title: "Android Beta 0.2.33",
+      description:
+        "The official Android Beta opens on the screen your session selects instead of three loading screens, applies your saved theme on the first frame, reads only the transactions the dashboard charts instead of your whole ledger, refreshes once for a sync that writes many rows, and bundles one icon font instead of sixteen.",
+    },
   ],
 };
 
