@@ -1,0 +1,94 @@
+/* Safe to spend card styles owned by SafeToSpendCard. */
+
+.safe-to-spend-panel .panel-heading p {
+  max-width: 46ch;
+  margin: 5px 0 0;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.safe-to-spend-amount-row {
+  margin-top: 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.safe-to-spend-amount {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.2vw, 40px);
+  font-weight: 500;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.safe-to-spend-meta {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.safe-to-spend-pill {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.safe-to-spend-renewals {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
+  border-radius: 999px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.safe-to-spend-renewals:hover {
+  border-color: color-mix(in srgb, var(--brand) 45%, transparent);
+}
+
+.safe-to-spend-renewals:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.safe-to-spend-guidance {
+  max-width: 62ch;
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+/* Stack the hero number above the days-left pill and the Renewals link on narrow
+   screens so the amount never collides with them. */
+@media (max-width: 620px) {
+  .safe-to-spend-amount-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .safe-to-spend-amount {
+    font-size: 30px;
+  }
+}

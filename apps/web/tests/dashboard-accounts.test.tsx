@@ -20,6 +20,7 @@ const apiMocks = vi.hoisted(() => ({
   updateAccountInterest: vi.fn(),
   deleteAccount: vi.fn(),
   getCategories: vi.fn(),
+  getSubscriptions: vi.fn(),
 }));
 const dashboardExperienceState = vi.hoisted(() => ({
   hasCompletedInitialDashboardExperience: true,
@@ -194,6 +195,12 @@ describe("Dashboard loading", () => {
       totalPages: 1,
     });
     apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
+    apiMocks.getSubscriptions.mockReset().mockResolvedValue({
+      month: "2026-09-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [],
+    });
   });
 
   afterEach(() => {
@@ -243,6 +250,12 @@ describe("Dashboard checkout intent", () => {
       totalPages: 1,
     });
     apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
+    apiMocks.getSubscriptions.mockReset().mockResolvedValue({
+      month: "2026-09-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [],
+    });
   });
 
   afterEach(cleanup);
@@ -296,6 +309,12 @@ describe("Profile dashboard account management", () => {
       totalPages: 1,
     });
     apiMocks.getTransferFeeInsight.mockReset().mockResolvedValue(transferFeeInsight);
+    apiMocks.getSubscriptions.mockReset().mockResolvedValue({
+      month: "2026-09-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [],
+    });
     apiMocks.createAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccountInterest.mockReset().mockResolvedValue({});
@@ -304,6 +323,38 @@ describe("Profile dashboard account management", () => {
   });
 
   afterEach(cleanup);
+
+  it("paces the account balance when the month carries no budget plan", async () => {
+    // Recorded activity keeps the dashboard out of its first-run empty state, where the
+    // card deliberately does not render.
+    apiMocks.getDashboard.mockResolvedValue({
+      ...dashboard,
+      metrics: { ...dashboard.metrics, moneyInMinor: 500_000 },
+    });
+    renderPage();
+
+    // The shared fixture has no budget rows, so the card must fall back to the balance
+    // instead of telling a funded workspace that nothing is safe to spend.
+    expect(
+      await screen.findByText(
+        "Forward guidance accounting for 0 active recurring bills and scheduled obligations.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("hides safe-to-spend guidance while a past month is selected", async () => {
+    apiMocks.getDashboard.mockResolvedValue({
+      ...dashboard,
+      metrics: { ...dashboard.metrics, moneyInMinor: 500_000 },
+    });
+    renderPage("/app?month=2026-07");
+
+    expect(await screen.findByRole("region", { name: "Account management" })).toBeInTheDocument();
+    // The card answers a question about this week, so a month-scoped leftover plan cannot feed it.
+    expect(
+      screen.queryByRole("region", { name: "Safe to spend this week" }),
+    ).not.toBeInTheDocument();
+  });
 
   it("offers a header action that opens the transaction form", async () => {
     renderPage();

@@ -55,7 +55,7 @@ Code in `apps/web/src/components/layout/`, `apps/web/src/components/theme/`, `ap
 
 ### E. Dashboard and money overview · existing
 
-Monthly totals, category spending, the six month trend, budget progress, the goals and subscriptions panel, and recent transactions.
+Monthly totals, category spending, the six month trend, safe-to-spend guidance for the week, shortcuts into the cash-flow forecast and the remittance calculator, budget progress, the goals and subscriptions panel, and recent transactions.
 Code in `apps/web/src/pages/DashboardPage.tsx`, `apps/web/src/components/dashboard/`
 
 ### F. Transactions and categories · existing

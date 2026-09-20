@@ -20,6 +20,7 @@
     "test:watch": "vitest",
     "test:e2e:prepare": "pnpm db:migrate:local",
     "test:e2e": "pnpm test:e2e:prepare && playwright test",
+    "test:e2e:stub": "node scripts/local-audit.mjs",
     "lighthouse": "lhci autorun",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run --no-ci",

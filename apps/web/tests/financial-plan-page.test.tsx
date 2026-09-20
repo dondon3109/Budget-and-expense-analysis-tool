@@ -134,6 +134,18 @@ describe("FinancialPlanPage", () => {
     );
   });
 
+  it("keeps the remittance calculator available when the plan data fails", async () => {
+    vi.mocked(getFinancialGoals).mockRejectedValue(new Error("offline"));
+    vi.mocked(getDebts).mockRejectedValue(new Error("offline"));
+    renderPage();
+
+    expect(await screen.findByText("Your plan could not be loaded.")).toBeInTheDocument();
+    // The FX tool needs none of the plan data, so the failure above must not take it down.
+    expect(
+      screen.getByRole("heading", { level: 2, name: "Remittance & FX Fee Calculator" }),
+    ).toBeInTheDocument();
+  });
+
   it("creates a goal with integer minor-unit amounts", async () => {
     const user = userEvent.setup();
     renderPage();

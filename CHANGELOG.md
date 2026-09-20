@@ -4,12 +4,44 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- The web dashboard now answers what is safe to spend this week. It paces your remaining monthly
+  budget across the days left, or your balance when the month holds no budget plan, then caps the
+  figure so a renewal cannot push your projected balance below zero. This is the guidance the mobile
+  app already shows on its home screen.
+- The dashboard now carries a card for the cash-flow forecast and one for the remittance calculator, so
+  both tools are one click from the home screen instead of buried on their own pages. The forecast card
+  reads the lowest projected balance over the next 30 days and the renewals inside that window; the
+  remittance card reads the stored mid-market US dollar benchmark rate.
+
+### Changed
+
+- The subscriptions cash-flow forecast draws the projected balance as a chart with a marked low point
+  instead of a strip of bars, shows the 30, 60, and 90 day endings side by side, and takes a safety
+  buffer amount from you instead of holding it at zero. The forecast view is now a link target
+  (`/app/subscriptions?view=forecast`).
+
 ### Fixed
 
 - Signing in no longer fails when the callback page runs a second time, such as after a reload, a
   restored tab, or a second tab during the handoff. The callback drops the single-use code from the
   address bar as soon as it is exchanged, and a session that is already live opens the workspace
   instead of a dead end. A password reset link that cannot be exchanged still reports an unusable link.
+
+- The cashflow forecast on the subscriptions page stays reachable when the month has no
+  subscriptions. Previously the empty state replaced it even after you selected the forecast view.
+- The remittance calculator reads its amount and fee fields through the same two-decimal parser as
+  the rest of Zoption. A third decimal place is now reported instead of being rounded away, and a
+  negative amount is refused rather than quietly counted as zero.
+- The remittance calculator no longer presents a confident result while an input is unusable: it shows
+  what it is waiting for instead of ₱0 received and a Best Value badge, and the custom exchange rate
+  rejects junk such as `12abc` rather than reading it as 12.
+- The remittance calculator stays available on the planning page when your goals or debts fail to load;
+  it needs none of that data.
+- In-page links to a section now land on it. A hash target that only mounts after a lazy route or a
+  hidden section renders, such as `/app/settings#plan-and-billing`, is scrolled to once it appears
+  instead of falling back to the top of the page.
 
 ## 2.40.0 — 2026-09-20
 

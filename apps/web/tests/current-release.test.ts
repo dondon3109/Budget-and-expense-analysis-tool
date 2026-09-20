@@ -26,6 +26,10 @@ describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "A faster welcome into your workspace",
+      "Safe-to-spend guidance on the web dashboard",
+      "A cash-flow forecast that shows its shape",
+      "Dashboard shortcuts to the forecast and the remittance calculator",
+      "Honest amounts in the remittance calculator",
     ]);
 
     const copy = currentRelease.changes
@@ -34,6 +38,10 @@ describe("current release notes", () => {
     expect(copy).toMatch(/no longer holds you for a fixed three seconds/i);
     expect(copy).toMatch(/as soon as your session is restored/i);
     expect(copy).toMatch(/password reset/i);
+    expect(copy).toMatch(/safely spend this week/i);
+    expect(copy).toMatch(/your safety buffer is now an amount you set/i);
+    expect(copy).toMatch(/mid-market benchmark rate/i);
+    expect(copy).toMatch(/cannot be read/i);
   });
 
   it("lists each shipped version once, newest first", () => {

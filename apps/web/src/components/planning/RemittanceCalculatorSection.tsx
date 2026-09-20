@@ -4,12 +4,15 @@ import {
   calculateRemittance,
   compareRemittanceProviders,
   DEFAULT_OFW_EXCHANGE_RATES,
+  MoneyParseError,
   OFW_CURRENCIES,
+  parseAmountToMinor,
   REMITTANCE_PROVIDERS,
 } from "@zoption/shared";
 import {
   Building2,
   CheckCircle2,
+  Clock,
   Coins,
   Globe,
   HelpCircle,
@@ -39,18 +42,86 @@ const PROVIDER_NAMES: Record<RemittanceProvider, string> = {
   bank_wire: "Traditional Bank Wire",
 };
 
+/**
+ * Resolves a typed amount into integer minor units through the shared parser, the same
+ * boundary the mobile calculator uses. Anything the parser rejects, including a negative
+ * amount, carries the reason instead of being quietly rounded or clamped to zero.
+ */
+function parseAmountField(value: string): { minor: number; error: string | null } {
+  const trimmed = value.trim();
+  if (trimmed === "") return { minor: 0, error: null };
+
+  let parsed: number;
+  try {
+    parsed = parseAmountToMinor(trimmed);
+  } catch (error) {
+    return {
+      minor: 0,
+      error: error instanceof MoneyParseError ? error.message : "Enter a valid amount.",
+    };
+  }
+
+  if (parsed < 0) return { minor: 0, error: "Enter an amount greater than zero." };
+  return { minor: parsed, error: null };
+}
+
+// A trailing separator is allowed because it is a keystroke on the way to a real rate, not a
+// different number: "60." and "60.0" both mean 60.
+const CUSTOM_RATE_PATTERN = /^(?:\d+(?:\.\d*)?|\.\d+)$/;
+
+/**
+ * An exchange rate is not money, so it keeps its own parser. It still has to be strict:
+ * parseFloat reads "12abc" as 12 and "-5" as -5, either of which would silently reprice
+ * every figure below. An empty or unusable rate falls back to the benchmark mid-market
+ * rate, the value the field is seeded with when the override is switched on.
+ */
+function parseCustomRateField(
+  value: string,
+  fallbackRate: number,
+): { rate: number; error: string | null } {
+  const trimmed = value.trim();
+  if (trimmed === "") return { rate: fallbackRate, error: null };
+
+  const rate = CUSTOM_RATE_PATTERN.test(trimmed) ? Number(trimmed) : Number.NaN;
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return {
+      rate: fallbackRate,
+      error: "Enter an exchange rate greater than zero, such as 56.50.",
+    };
+  }
+  return { rate, error: null };
+}
+
 export function RemittanceCalculatorSection() {
-  const [sendAmount, setSendAmount] = useState<number>(1000);
+  const [sendAmountText, setSendAmountText] = useState("1000");
   const [fromCurrency, setFromCurrency] = useState<OfwCurrency>("USD");
   const [selectedProvider, setSelectedProvider] = useState<RemittanceProvider>("wise");
-  const [transferFee, setTransferFee] = useState<number>(0);
+  const [transferFeeText, setTransferFeeText] = useState("");
   const [useCustomRate, setUseCustomRate] = useState<boolean>(false);
   const [customRate, setCustomRate] = useState<string>("");
 
   const benchmark = DEFAULT_OFW_EXCHANGE_RATES[fromCurrency];
-  const parsedCustomRate = useCustomRate && customRate ? parseFloat(customRate) : undefined;
-  const sendAmountMinor = Math.round(Math.max(0, sendAmount || 0) * 100);
-  const transferFeeMinor = Math.round(Math.max(0, transferFee || 0) * 100);
+  const customRateField = useCustomRate
+    ? parseCustomRateField(customRate, benchmark.midMarketRate)
+    : null;
+  const customExchangeRate = customRateField?.rate;
+  const customRateError = customRateField?.error ?? null;
+
+  const sendAmount = parseAmountField(sendAmountText);
+  const transferFee = parseAmountField(transferFeeText);
+  const sendAmountMinor = sendAmount.minor;
+  const transferFeeMinor = transferFee.minor;
+
+  // An amount the section cannot send with, an unreadable fee, or an unusable rate makes every
+  // figure the results column reports a guess, so it waits instead of showing a confident zero.
+  const hasBlockingError =
+    sendAmountMinor <= 0 ||
+    sendAmount.error !== null ||
+    transferFee.error !== null ||
+    customRateError !== null;
+  // The provider comparison prices the send amount alone: it ignores the fee and the custom rate,
+  // so a typo in either must not blank a table that is still correct.
+  const comparisonWaiting = sendAmountMinor <= 0 || sendAmount.error !== null;
 
   const singleResult = useMemo(() => {
     return calculateRemittance({
@@ -58,10 +129,9 @@ export function RemittanceCalculatorSection() {
       fromCurrency,
       provider: selectedProvider,
       transferFeeMinor,
-      customExchangeRate:
-        parsedCustomRate && !isNaN(parsedCustomRate) ? parsedCustomRate : undefined,
+      customExchangeRate,
     });
-  }, [sendAmountMinor, fromCurrency, selectedProvider, transferFeeMinor, parsedCustomRate]);
+  }, [sendAmountMinor, fromCurrency, selectedProvider, transferFeeMinor, customExchangeRate]);
 
   const providerComparison = useMemo(() => {
     return compareRemittanceProviders(sendAmountMinor, fromCurrency);
@@ -91,7 +161,11 @@ export function RemittanceCalculatorSection() {
   const currentCurrencyInfo = CURRENCY_LABELS[fromCurrency];
 
   return (
-    <section className="remittance-calculator-section" aria-labelledby="remittance-heading">
+    <section
+      id="remittance-calculator"
+      className="remittance-calculator-section"
+      aria-labelledby="remittance-heading"
+    >
       <div className="remittance-header">
         <div className="remittance-title-group">
           <div className="remittance-badge">
@@ -154,14 +228,20 @@ export function RemittanceCalculatorSection() {
               <span className="input-currency-prefix">{currentCurrencyInfo.symbol}</span>
               <input
                 id="remittance-send-amount"
-                type="number"
-                min="1"
-                step="any"
-                value={sendAmount || ""}
+                type="text"
+                inputMode="decimal"
+                value={sendAmountText}
                 placeholder="1000"
-                onChange={(e) => setSendAmount(parseFloat(e.target.value) || 0)}
+                aria-invalid={sendAmount.error !== null}
+                aria-describedby={sendAmount.error ? "remittance-send-amount-error" : undefined}
+                onChange={(e) => setSendAmountText(e.target.value)}
               />
             </div>
+            {sendAmount.error && (
+              <small className="field-error" id="remittance-send-amount-error">
+                {sendAmount.error}
+              </small>
+            )}
           </div>
 
           <div className="remittance-field">
@@ -190,14 +270,20 @@ export function RemittanceCalculatorSection() {
               <span className="input-currency-prefix">{currentCurrencyInfo.symbol}</span>
               <input
                 id="remittance-fee-input"
-                type="number"
-                min="0"
-                step="any"
-                value={transferFee || ""}
+                type="text"
+                inputMode="decimal"
+                value={transferFeeText}
                 placeholder="0.00"
-                onChange={(e) => setTransferFee(parseFloat(e.target.value) || 0)}
+                aria-invalid={transferFee.error !== null}
+                aria-describedby={transferFee.error ? "remittance-fee-input-error" : undefined}
+                onChange={(e) => setTransferFeeText(e.target.value)}
               />
             </div>
+            {transferFee.error && (
+              <small className="field-error" id="remittance-fee-input-error">
+                {transferFee.error}
+              </small>
+            )}
           </div>
 
           <div className="remittance-custom-rate-toggle">
@@ -217,14 +303,23 @@ export function RemittanceCalculatorSection() {
             {useCustomRate && (
               <div className="custom-rate-input-box">
                 <label htmlFor="remittance-custom-rate">Custom 1 {fromCurrency} in PHP</label>
+                {/* A number input drops "12abc" before the parser sees it, which would hide the
+                    rejection behind a silently empty field. */}
                 <input
                   id="remittance-custom-rate"
-                  type="number"
-                  step="0.0001"
+                  type="text"
+                  inputMode="decimal"
                   value={customRate}
                   placeholder={benchmark?.midMarketRate.toString() ?? "56.50"}
+                  aria-invalid={customRateError !== null}
+                  aria-describedby={customRateError ? "remittance-custom-rate-error" : undefined}
                   onChange={(e) => setCustomRate(e.target.value)}
                 />
+                {customRateError && (
+                  <small className="field-error" id="remittance-custom-rate-error">
+                    {customRateError}
+                  </small>
+                )}
               </div>
             )}
           </div>
@@ -237,73 +332,91 @@ export function RemittanceCalculatorSection() {
             <span className="provider-tag">{PROVIDER_NAMES[selectedProvider]}</span>
           </div>
 
-          <div className="results-highlight-box">
-            <span className="results-highlight-label">Recipient Receives in Philippines</span>
-            <strong className="results-highlight-amount">
-              {formatMoney(singleResult.netPhpReceivedMinor)}
-            </strong>
-            <div className="results-highlight-sub">
-              Effective exchange rate: 1 {fromCurrency} = ₱{singleResult.effectiveRate.toFixed(4)}
-            </div>
-          </div>
-
-          <div className="results-breakdown-grid">
-            <div className="breakdown-item">
-              <div className="breakdown-label">
-                <Coins size={15} aria-hidden="true" />
-                <span>Gross Value (Mid-Market)</span>
+          {hasBlockingError && (
+            <div className="results-pending" role="status">
+              <Clock size={18} aria-hidden="true" />
+              <div>
+                <strong>Waiting for a valid amount</strong>
+                <p>
+                  Fix the highlighted field to see the projected peso value, effective rate, and fee
+                  breakdown.
+                </p>
               </div>
-              <strong className="breakdown-value">
-                {formatMoney(singleResult.grossConvertedPhpMinor)}
-              </strong>
             </div>
+          )}
 
-            <div className="breakdown-item">
-              <div className="breakdown-label">
-                <TrendingDown size={15} aria-hidden="true" />
-                <span>Hidden FX Spread Loss</span>
+          {!hasBlockingError && (
+            <>
+              <div className="results-highlight-box">
+                <span className="results-highlight-label">Recipient Receives in Philippines</span>
+                <strong className="results-highlight-amount">
+                  {formatMoney(singleResult.netPhpReceivedMinor)}
+                </strong>
+                <div className="results-highlight-sub">
+                  Effective exchange rate: 1 {fromCurrency} = ₱
+                  {singleResult.effectiveRate.toFixed(4)}
+                </div>
               </div>
-              <strong
-                className={`breakdown-value ${singleResult.spreadLossPhpMinor > 0 ? "loss" : ""}`}
-              >
-                {singleResult.spreadLossPhpMinor > 0 ? "−" : ""}
-                {formatMoney(singleResult.spreadLossPhpMinor)}
-              </strong>
-            </div>
 
-            <div className="breakdown-item">
-              <div className="breakdown-label">
-                <Building2 size={15} aria-hidden="true" />
-                <span>Upfront Transfer Fee</span>
+              <div className="results-breakdown-grid">
+                <div className="breakdown-item">
+                  <div className="breakdown-label">
+                    <Coins size={15} aria-hidden="true" />
+                    <span>Gross Value (Mid-Market)</span>
+                  </div>
+                  <strong className="breakdown-value">
+                    {formatMoney(singleResult.grossConvertedPhpMinor)}
+                  </strong>
+                </div>
+
+                <div className="breakdown-item">
+                  <div className="breakdown-label">
+                    <TrendingDown size={15} aria-hidden="true" />
+                    <span>Hidden FX Spread Loss</span>
+                  </div>
+                  <strong
+                    className={`breakdown-value ${singleResult.spreadLossPhpMinor > 0 ? "loss" : ""}`}
+                  >
+                    {singleResult.spreadLossPhpMinor > 0 ? "−" : ""}
+                    {formatMoney(singleResult.spreadLossPhpMinor)}
+                  </strong>
+                </div>
+
+                <div className="breakdown-item">
+                  <div className="breakdown-label">
+                    <Building2 size={15} aria-hidden="true" />
+                    <span>Upfront Transfer Fee</span>
+                  </div>
+                  <strong
+                    className={`breakdown-value ${singleResult.transferFeeInPhpMinor > 0 ? "loss" : ""}`}
+                  >
+                    {singleResult.transferFeeInPhpMinor > 0 ? "−" : ""}
+                    {formatMoney(singleResult.transferFeeInPhpMinor)}
+                  </strong>
+                </div>
+
+                <div className="breakdown-item">
+                  <div className="breakdown-label">
+                    <Percent size={15} aria-hidden="true" />
+                    <span>Total Fee Drag (% Loss)</span>
+                  </div>
+                  <strong className="breakdown-value drag">
+                    {singleResult.effectiveLossPercent.toFixed(2)}%
+                  </strong>
+                </div>
               </div>
-              <strong
-                className={`breakdown-value ${singleResult.transferFeeInPhpMinor > 0 ? "loss" : ""}`}
-              >
-                {singleResult.transferFeeInPhpMinor > 0 ? "−" : ""}
-                {formatMoney(singleResult.transferFeeInPhpMinor)}
-              </strong>
-            </div>
 
-            <div className="breakdown-item">
-              <div className="breakdown-label">
-                <Percent size={15} aria-hidden="true" />
-                <span>Total Fee Drag (% Loss)</span>
-              </div>
-              <strong className="breakdown-value drag">
-                {singleResult.effectiveLossPercent.toFixed(2)}%
-              </strong>
-            </div>
-          </div>
-
-          {singleResult.spreadLossPhpMinor > 0 && (
-            <div className="remittance-loss-callout">
-              <HelpCircle size={16} aria-hidden="true" />
-              <p>
-                <strong>Hidden Markup Warning:</strong> You lose approximately{" "}
-                <strong>{formatMoney(singleResult.spreadLossPhpMinor)}</strong> in rate spread alone
-                compared to the true mid-market rate.
-              </p>
-            </div>
+              {singleResult.spreadLossPhpMinor > 0 && (
+                <div className="remittance-loss-callout">
+                  <HelpCircle size={16} aria-hidden="true" />
+                  <p>
+                    <strong>Hidden Markup Warning:</strong> You lose approximately{" "}
+                    <strong>{formatMoney(singleResult.spreadLossPhpMinor)}</strong> in rate spread
+                    alone compared to the true mid-market rate.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -313,16 +426,24 @@ export function RemittanceCalculatorSection() {
         <div className="comparison-header">
           <div>
             <h3 className="remittance-card-title">Provider Spread & Value Comparison</h3>
-            <p className="comparison-subtitle">
-              Based on sending {currentCurrencyInfo.symbol}
-              {sendAmount.toLocaleString("en-US")} {fromCurrency} converted directly to Philippine
-              Pesos.
-            </p>
+            {comparisonWaiting ? (
+              <p className="comparison-subtitle">
+                Provider spreads and net received value appear once a valid send amount is entered.
+              </p>
+            ) : (
+              <p className="comparison-subtitle">
+                Based on sending {currentCurrencyInfo.symbol}
+                {(sendAmountMinor / 100).toLocaleString("en-US")} {fromCurrency} converted directly
+                to Philippine Pesos.
+              </p>
+            )}
           </div>
-          <div className="best-provider-badge">
-            <CheckCircle2 size={15} aria-hidden="true" />
-            <span>Best Value: {PROVIDER_NAMES[bestProvider]}</span>
-          </div>
+          {!comparisonWaiting && (
+            <div className="best-provider-badge">
+              <CheckCircle2 size={15} aria-hidden="true" />
+              <span>Best Value: {PROVIDER_NAMES[bestProvider]}</span>
+            </div>
+          )}
         </div>
 
         {/* At narrow widths this table scrolls sideways, and a scroll container with no tab stop
@@ -349,47 +470,57 @@ export function RemittanceCalculatorSection() {
               </tr>
             </thead>
             <tbody>
-              {REMITTANCE_PROVIDERS.map((provider) => {
-                const res = providerComparison[provider];
-                if (!res) return null;
-                const isBest = provider === bestProvider;
-                const isMidMarket = provider === "mid_market";
+              {comparisonWaiting && (
+                <tr>
+                  <td className="comparison-pending-cell" colSpan={5}>
+                    Provider comparison is waiting for a valid send amount.
+                  </td>
+                </tr>
+              )}
+              {!comparisonWaiting &&
+                REMITTANCE_PROVIDERS.map((provider) => {
+                  const res = providerComparison[provider];
+                  if (!res) return null;
+                  const isBest = provider === bestProvider;
+                  const isMidMarket = provider === "mid_market";
 
-                return (
-                  <tr
-                    key={provider}
-                    className={`${isBest ? "row-best" : ""} ${isMidMarket ? "row-baseline" : ""}`}
-                  >
-                    <td className="provider-name-cell">
-                      <div className="provider-cell-content">
-                        <strong>{PROVIDER_NAMES[provider]}</strong>
-                        {isBest && <span className="tag-best">Recommended</span>}
-                        {isMidMarket && <span className="tag-baseline">Benchmark</span>}
-                      </div>
-                    </td>
-                    <td className="rate-cell">₱{res.effectiveRate.toFixed(4)}</td>
-                    <td className="spread-cell">
-                      {res.spreadLossPhpMinor > 0 ? (
-                        <span className="spread-loss">−{formatMoney(res.spreadLossPhpMinor)}</span>
-                      ) : (
-                        <span className="spread-zero">₱0 (0%)</span>
-                      )}
-                    </td>
-                    <td className="received-cell text-right">
-                      <strong className="received-amount">
-                        {formatMoney(res.netPhpReceivedMinor)}
-                      </strong>
-                    </td>
-                    <td className="drag-cell text-right">
-                      <span
-                        className={`drag-percent ${res.effectiveLossPercent > 2 ? "high-drag" : ""}`}
-                      >
-                        {res.effectiveLossPercent.toFixed(2)}%
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+                  return (
+                    <tr
+                      key={provider}
+                      className={`${isBest ? "row-best" : ""} ${isMidMarket ? "row-baseline" : ""}`}
+                    >
+                      <td className="provider-name-cell">
+                        <div className="provider-cell-content">
+                          <strong>{PROVIDER_NAMES[provider]}</strong>
+                          {isBest && <span className="tag-best">Recommended</span>}
+                          {isMidMarket && <span className="tag-baseline">Benchmark</span>}
+                        </div>
+                      </td>
+                      <td className="rate-cell">₱{res.effectiveRate.toFixed(4)}</td>
+                      <td className="spread-cell">
+                        {res.spreadLossPhpMinor > 0 ? (
+                          <span className="spread-loss">
+                            −{formatMoney(res.spreadLossPhpMinor)}
+                          </span>
+                        ) : (
+                          <span className="spread-zero">₱0 (0%)</span>
+                        )}
+                      </td>
+                      <td className="received-cell text-right">
+                        <strong className="received-amount">
+                          {formatMoney(res.netPhpReceivedMinor)}
+                        </strong>
+                      </td>
+                      <td className="drag-cell text-right">
+                        <span
+                          className={`drag-percent ${res.effectiveLossPercent > 2 ? "high-drag" : ""}`}
+                        >
+                          {res.effectiveLossPercent.toFixed(2)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
