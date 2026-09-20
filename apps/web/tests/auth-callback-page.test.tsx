@@ -7,13 +7,40 @@ import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const authState = vi.hoisted(() => ({
-  exchangeCodeForSession: vi.fn(),
-}));
+/**
+ * The auth context the page reads, as a subscribable snapshot: a session that lands
+ * after the failure was reported has to re-render the page exactly as the provider
+ * would.
+ */
+const authState = vi.hoisted(() => {
+  const exchangeCodeForSession = vi.fn();
+  const listeners = new Set<() => void>();
+  let snapshot: {
+    exchangeCodeForSession: typeof exchangeCodeForSession;
+    loading: boolean;
+    user: unknown;
+  } = { exchangeCodeForSession, loading: false, user: null };
 
-vi.mock("../src/auth/AuthProvider", () => ({
-  useAuth: () => authState,
-}));
+  return {
+    exchangeCodeForSession,
+    getSnapshot: () => snapshot,
+    set(patch: Partial<typeof snapshot>) {
+      snapshot = { ...snapshot, ...patch };
+      for (const listener of listeners) listener();
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+});
+
+vi.mock("../src/auth/AuthProvider", async () => {
+  const { useSyncExternalStore } = await import("react");
+  return { useAuth: () => useSyncExternalStore(authState.subscribe, authState.getSnapshot) };
+});
 
 vi.mock("../src/components/auth/AuthLayout", () => ({
   AuthLayout: ({
@@ -66,6 +93,7 @@ describe("AuthCallbackPage", () => {
     authState.exchangeCodeForSession
       .mockReset()
       .mockResolvedValue({ status: "signed_in", isPasswordRecovery: false });
+    authState.set({ loading: false, user: null });
     sessionStorage.clear();
   });
 
@@ -192,6 +220,99 @@ describe("AuthCallbackPage", () => {
     expect(
       screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("opens the workspace when a session outlives the failed exchange", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    authState.exchangeCodeForSession.mockResolvedValue({
+      status: "failed",
+      error: new Error("code already spent"),
+    });
+    authState.set({ user: { id: "user-1" } });
+    sessionStorage.setItem("zoption-social-auth-destination", "/app/settings?section=billing");
+    renderCallback("/auth/callback?code=raced-code");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("current-location")).toHaveTextContent(
+      "/app/settings?section=billing",
+    );
+    expect(
+      screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("leaves the failure behind when the session lands after it was reported", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    authState.exchangeCodeForSession.mockResolvedValue({
+      status: "failed",
+      error: new Error("code already spent"),
+    });
+    renderCallback("/auth/callback?code=raced-code");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByRole("heading", { name: "Sign-in could not be completed" }),
+    ).toBeInTheDocument();
+
+    act(() => authState.set({ user: { id: "user-1" } }));
+
+    expect(screen.getByTestId("current-location")).toHaveTextContent("/app");
+    expect(
+      screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("holds the failure back while the session restore is still settling", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    authState.exchangeCodeForSession.mockResolvedValue({
+      status: "failed",
+      error: new Error("code already spent"),
+    });
+    authState.set({ loading: true });
+    renderCallback("/auth/callback?code=raced-code");
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText("Completing secure sign-in")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Sign-in could not be completed" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("opens the workspace when the code is already gone and the session is live", () => {
+    // Every exchange leaves a code-stripped URL behind, so this is what a reload or a
+    // restored tab boots into after a sign-in that worked.
+    authState.set({ user: { id: "user-1" } });
+    renderCallback("/auth/callback");
+
+    expect(authState.exchangeCodeForSession).not.toHaveBeenCalled();
+    expect(screen.getByTestId("current-location")).toHaveTextContent("/app");
+  });
+
+  it("reports the dead end when the code is gone and no session exists", () => {
+    renderCallback("/auth/callback");
+
+    expect(
+      screen.getByRole("heading", { name: "Sign-in could not be completed" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Return to sign in" })).toHaveAttribute(
+      "href",
+      "/login",
+    );
+  });
+
+  it("keeps an unusable reset link unusable even when a session is live", () => {
+    authState.set({ user: { id: "user-1" } });
+    renderCallback("/auth/callback?next=%2Fupdate-password");
+
+    expect(screen.getByRole("heading", { name: "Request a new reset link" })).toBeInTheDocument();
   });
 
   it("keeps the unusable-link report for a spent reset code even when a session is live", async () => {

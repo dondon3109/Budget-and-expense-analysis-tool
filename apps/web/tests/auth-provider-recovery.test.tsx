@@ -156,4 +156,39 @@ describe("AuthProvider callback code exchange", () => {
 
     await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("failed"));
   });
+
+  it("treats a rejected exchange like a spent code when a session survived it", async () => {
+    // The SDK saves the session before it notifies subscribers and re-throws a
+    // failure from that notification, so a rejection can still mean "signed in".
+    supabaseMocks.exchangeCodeForSession.mockRejectedValue(new Error("auth notification failed"));
+    supabaseMocks.getSession.mockResolvedValue({
+      data: {
+        session: { access_token: "token", user: { id: "user-1", user_metadata: {} } },
+      },
+      error: null,
+    });
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("already_signed_in"));
+  });
+
+  it("keeps reporting a failure when a rejected exchange left no session", async () => {
+    supabaseMocks.exchangeCodeForSession.mockRejectedValue(new Error("storage unavailable"));
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("failed"));
+  });
+
+  it("keeps reporting a failure when the session cannot be read after the exchange", async () => {
+    supabaseMocks.getSession.mockRejectedValue(new Error("storage unavailable"));
+    renderProvider();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exchange code" }));
+
+    await waitFor(() => expect(document.body.dataset.exchangeStatus).toBe("failed"));
+  });
 });

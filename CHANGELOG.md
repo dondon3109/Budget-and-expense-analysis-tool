@@ -4,6 +4,16 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Signing in with Google no longer ends on "Sign-in could not be completed" while the account is
+  signed in. The callback now finishes against the live session instead of a single exchange
+  result: a session that arrives after the failure was reported, or that already existed when a
+  reload or a restored tab landed on the code-stripped callback URL, opens the workspace instead of
+  a dead end. A rejected exchange is treated the same as a reported one, so a session that survived
+  it still signs in. A failure that really left no session, and an unusable password reset link,
+  still report as before.
+
 ## 2.41.0 — 2026-09-20
 
 ### Performance

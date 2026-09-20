@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAuth, type CodeExchangeOutcome } from "../auth/AuthProvider";
 import { consumeSocialAuthDestination } from "../auth/socialAuthDestination";
@@ -46,11 +46,12 @@ function reportExchangeFailure(error: unknown): void {
 }
 
 export function AuthCallbackPage() {
-  const { exchangeCodeForSession } = useAuth();
+  const { exchangeCodeForSession, loading, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const started = useRef(false);
   const [error, setError] = useState(false);
+  const [destination, setDestination] = useState<string | null>(null);
   const recoveryRequested = searchParams.get("next") === "/update-password";
 
   useEffect(() => {
@@ -59,15 +60,16 @@ export function AuthCallbackPage() {
 
     const providerError = searchParams.get("error_description") ?? searchParams.get("error");
     const code = searchParams.get("code");
+    const requestedDestination = searchParams.get("next") ?? consumeSocialAuthDestination();
+    setDestination(requestedDestination);
+
     if (providerError || !code) {
-      consumeSocialAuthDestination();
       setError(true);
       return;
     }
 
     dropCodeFromUrl();
 
-    const requestedDestination = searchParams.get("next") ?? consumeSocialAuthDestination();
     let cancelled = false;
     const hold = new Promise((resolve) => window.setTimeout(resolve, SIGN_IN_HANDOFF_MS));
 
@@ -108,7 +110,17 @@ export function AuthCallbackPage() {
     };
   }, [exchangeCodeForSession, navigate, recoveryRequested, searchParams]);
 
-  if (error) {
+  // A failure is not final while a session is live. The single-use code can be spent
+  // by a run that won the race to it, and the session then arrives after this page has
+  // already given up; opening the workspace is the only honest ending for that. A reset
+  // link stays strict, because only a fresh exchange proves the link is usable.
+  if (error && !recoveryRequested && user) {
+    return <Navigate to={safeNext(destination)} replace />;
+  }
+
+  // Wait for the session restore to settle before reporting a failure, so a session
+  // this page does not know about yet cannot be turned into a dead end.
+  if (error && (recoveryRequested || !loading)) {
     return (
       <AuthLayout
         eyebrow={recoveryRequested ? "Account recovery" : "Secure sign-in"}

@@ -311,19 +311,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const exchangeCodeForSession = useCallback(async (code: string): Promise<CodeExchangeOutcome> => {
     passwordRecoveryRef.current = false;
     const client = getSupabaseClient();
-    const { error } = await client.auth.exchangeCodeForSession(code);
-    if (error) {
-      passwordRecoveryRef.current = false;
-      // Ask the SDK, not React state: the session restore runs in parallel
-      // with this exchange, and a live session proves an earlier run of the
-      // callback already signed the user in with this code.
-      const { data } = await client.auth.getSession();
-      if (data.session) return { status: "already_signed_in" };
-      return { status: "failed", error };
+
+    // The SDK saves the session before it notifies subscribers, and it re-throws a
+    // failure raised by that notification, so a rejected exchange is not proof the
+    // sign-in failed. Both outcomes fall through to the session check below.
+    let failure: unknown;
+    try {
+      const { error } = await client.auth.exchangeCodeForSession(code);
+      if (error) failure = error;
+    } catch (unexpected) {
+      failure = unexpected;
     }
+
     const isPasswordRecovery = passwordRecoveryRef.current;
     passwordRecoveryRef.current = false;
-    return { status: "signed_in", isPasswordRecovery };
+    if (!failure) return { status: "signed_in", isPasswordRecovery };
+
+    // Ask the SDK, not React state: the session restore runs in parallel with this
+    // exchange, and a live session proves an earlier run of the callback already
+    // signed the user in with this code.
+    const session = await client.auth
+      .getSession()
+      .then(({ data }) => data.session)
+      .catch(() => null);
+    return session ? { status: "already_signed_in" } : { status: "failed", error: failure };
   }, []);
 
   const value = useMemo<AuthContextValue>(
