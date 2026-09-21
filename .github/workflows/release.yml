@@ -25,8 +25,12 @@ jobs:
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # semantic-release's dry run still performs a real "git push --dry-run" auth check before it
+    # analyses a single commit, so the decision cannot run on a read only token: it fails with
+    # EGITNOPERMISSION and no release is ever owed. This job never publishes, persist-credentials
+    # is off, and the main ruleset refuses a push from github-actions[bot] regardless.
     permissions:
-      contents: read
+      contents: write
     outputs:
       release_needed: ${{ steps.next_release.outputs.release_needed }}
       version: ${{ steps.next_release.outputs.version }}
