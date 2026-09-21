@@ -6,6 +6,11 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- A read that stalls on a slow connection no longer fails outright. The API client waited 20 seconds
+  for a response and then gave up, so a lossy connection surfaced as "The request took too long. Try
+  again." even when the server was healthy and answered in milliseconds. A read now repeats once
+  after a short pause before it reports a timeout, while writes still fail immediately so a request
+  that may already have been applied is never sent twice.
 - Remaining budget no longer turns negative for categories that have no limit. Clearing a category's
   limit leaves its upsert-only budget row behind with a limit of zero, and the dashboard and the
   assistant counted that category's spending against a plan the user never set. A zero limit now

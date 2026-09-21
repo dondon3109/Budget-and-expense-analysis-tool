@@ -14,17 +14,17 @@ The browser product: a prerendered public site plus the signed in application un
 
 ## Key files
 
-| File                        | Owns                                                                                                |
-| --------------------------- | --------------------------------------------------------------------------------------------------- |
-| `src/App.tsx`               | Route table for the private app                                                                     |
-| `src/PublicRoutes.tsx`      | Public route elements built from the metadata manifest                                              |
-| `src/seo/siteMetadata.ts`   | `PublicRoutePath`, `PUBLIC_ROUTE_PATHS`, and per route metadata; the prerender list comes from here |
-| `src/lib/api.ts`            | Every authenticated HTTP call, bearer attachment, one refresh retry, and typed errors               |
-| `src/lib/queryKeys.ts`      | Workspace scoped query key roots                                                                    |
-| `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                              |
-| `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                   |
-| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, and `404.html`                  |
-| `tests/`                    | Flat Vitest suites for the whole app                                                                |
+| File                        | Owns                                                                                                               |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `src/App.tsx`               | Route table for the private app                                                                                    |
+| `src/PublicRoutes.tsx`      | Public route elements built from the metadata manifest                                                             |
+| `src/seo/siteMetadata.ts`   | `PublicRoutePath`, `PUBLIC_ROUTE_PATHS`, and per route metadata; the prerender list comes from here                |
+| `src/lib/api.ts`            | Every authenticated HTTP call, bearer attachment, one refresh retry, one timeout retry for reads, and typed errors |
+| `src/lib/queryKeys.ts`      | Workspace scoped query key roots                                                                                   |
+| `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                                             |
+| `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                                  |
+| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, and `404.html`                                 |
+| `tests/`                    | Flat Vitest suites for the whole app                                                                               |
 
 ## Commands
 

@@ -12,6 +12,8 @@ vi.mock("../src/lib/supabase", () => ({
 
 import {
   createAssistantThread,
+  deleteAssistantThread,
+  getBudgets,
   getDashboard,
   sendAssistantMessage,
   sendAuthenticatedSupportChat,
@@ -68,9 +70,9 @@ describe("API request timeouts", () => {
   });
 
   it("maps our own timeout abort to request_timeout instead of leaking AbortError", async () => {
-    vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) =>
-      abortableNever(init?.signal),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((_input, init) => abortableNever(init?.signal));
 
     const pending = getDashboard(userWorkspace, { ...dashboardArgs });
     const assertion = expect(pending).rejects.toMatchObject({
@@ -79,8 +81,44 @@ describe("API request timeouts", () => {
       code: "request_timeout",
       message: "The request took too long. Try again.",
     });
-    await vi.advanceTimersByTimeAsync(20_000);
+    // Two stalled attempts and the pause between them, so a read that never recovers still fails.
+    await vi.advanceTimersByTimeAsync(42_000);
     await assertion;
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("repeats a stalled read once and resolves when the repeat succeeds", async () => {
+    const plan = { month: "2026-07", categories: [] };
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce((_input, init) => abortableNever(init?.signal))
+      .mockImplementationOnce(() => Promise.resolve(jsonResponse(plan)));
+
+    const pending = getBudgets(userWorkspace, "2026-07");
+    await vi.advanceTimersByTimeAsync(21_000);
+    await expect(pending).resolves.toEqual(plan);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not repeat a write that times out", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((_input, init) => abortableNever(init?.signal));
+
+    const pending = deleteAssistantThread(userWorkspace, "thread-1");
+    const assertion = expect(pending).rejects.toMatchObject({ code: "request_timeout" });
+    await vi.advanceTimersByTimeAsync(21_000);
+    await assertion;
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not repeat a read that fails for a reason other than the timeout", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
+
+    await expect(getBudgets(userWorkspace, "2026-07")).rejects.toThrow("Failed to fetch");
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it("lets an assistant turn resolve after the old 20s ceiling", async () => {

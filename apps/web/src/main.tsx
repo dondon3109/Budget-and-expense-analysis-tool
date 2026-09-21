@@ -14,6 +14,7 @@ import { ReleaseNotesExperience } from "./components/releases/ReleaseNotesExperi
 import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
+import { isApiRequestError } from "./lib/api";
 import { InstallationProvider } from "./pwa/installation";
 import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
 import "./styles/foundation.css";
@@ -23,7 +24,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
-      retry: 1,
+      // The API client already repeats a timed-out read once with a pause, so retrying the same
+      // timeout here as well would only double how long the user waits before the error surfaces.
+      retry: (failureCount, error) =>
+        failureCount < 1 && !(isApiRequestError(error) && error.code === "request_timeout"),
       refetchOnWindowFocus: false,
     },
   },
