@@ -1,0 +1,191 @@
+name: Bugfix Draft
+
+# The draft job reads user text and holds the model key, so it runs on a read only token and
+# cannot push anywhere. The open-pr job holds the write token, runs no model, and reads no user
+# text. An artifact sits between them, and that artifact is also the shadow mode deliverable.
+on:
+  workflow_dispatch:
+    inputs:
+      bug_report_id:
+        description: "Bug report id to draft a fix for"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bugfix-${{ inputs.bug_report_id }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: Draft the fix
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Fetch the scrubbed report
+        env:
+          OPS_API_BASE_URL: ${{ vars.OPS_API_BASE_URL || 'https://api.zoption.site' }}
+          OPS_EGRESS_TOKEN: ${{ secrets.OPS_EGRESS_TOKEN }}
+          BUG_REPORT_ID: ${{ inputs.bug_report_id }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body --silent --show-error \
+            --header "Authorization: Bearer ${OPS_EGRESS_TOKEN}" \
+            "${OPS_API_BASE_URL}/api/ops/bug-reports?id=${BUG_REPORT_ID}" > report.json
+
+          # A blocked report is never drafted, and neither is an id the endpoint does not know.
+          if [ "$(jq '.reports | length' report.json)" != "1" ]; then
+            echo "::error::Report ${BUG_REPORT_ID} is not available for drafting"
+            jq -c '{counts, blocked}' report.json >&2
+            exit 1
+          fi
+
+          # The agent works inside the checkout, so the report has to be readable from there.
+          jq -r '.reports[0].text' report.json > .bugfix-report.txt
+          head -n 1 .bugfix-report.txt | cut -c1-90 > .bugfix-title.txt
+          rm report.json
+
+      - name: Draft the fix with dsh
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          set -euo pipefail
+          npm install --global @deepseek-ai/dsh
+          task="$(cat <<'TASK'
+          A user filed the bug report in .bugfix-report.txt. Identifiers and amounts in it are
+          already replaced with [REDACTED]; do not try to recover them.
+
+          Fix the underlying bug in this repository:
+          - Follow the conventions in AGENTS.md and in the nearest nested AGENTS.md.
+          - Reproduce the problem, find the root cause, and make the smallest change that fixes it.
+          - Add or update a focused test, run it with pnpm vitest run <paths>, and make it pass.
+            Do not run the end to end suite.
+          - Write the pull request body to .bugfix-pr-body.md in the repository root. Keep it
+            short: what broke, the root cause, what changed, how you verified it. Never quote the
+            report text.
+          - Do not create a branch, commit, push, or open a pull request.
+          TASK
+          )"
+          dsh --profile headless "$task"
+
+      - name: Collect the draft
+        env:
+          BUG_REPORT_ID: ${{ inputs.bug_report_id }}
+        run: |
+          set -euo pipefail
+          if [ ! -f .bugfix-pr-body.md ]; then
+            echo "::error::The agent did not write .bugfix-pr-body.md"
+            exit 1
+          fi
+
+          mkdir -p bugfix-artifact
+          mv .bugfix-pr-body.md bugfix-artifact/pr-body.md
+          report_title="$(cat .bugfix-title.txt)"
+          # Neither scratch file belongs in the draft.
+          rm -f .bugfix-report.txt .bugfix-title.txt
+
+          git add --all
+          git diff --cached --binary > bugfix-artifact/fix.patch
+          if [ ! -s bugfix-artifact/fix.patch ]; then
+            echo "::error::The agent produced no changes"
+            exit 1
+          fi
+          git diff --cached --stat
+
+          jq -n --arg id "${BUG_REPORT_ID}" --arg title "${report_title}" \
+            --arg sha "$(sha256sum bugfix-artifact/fix.patch | cut -d' ' -f1)" \
+            '{bugReportId: $id, title: $title, patchSha256: $sha}' > bugfix-artifact/meta.json
+
+      # Fail closed: the upload is the last step, so an artifact only exists for a draft that
+      # passed. The open-pr job therefore never applies a patch this check rejected.
+      - name: Check the draft for leaked identifiers
+        run: node scripts/bugfix-scrub.mjs bugfix-artifact/fix.patch bugfix-artifact/pr-body.md
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bugfix-draft
+          path: bugfix-artifact
+          if-no-files-found: error
+
+  open-pr:
+    name: Open the draft pull request
+    needs: draft
+    # Shadow mode: with this repository variable unset the draft stays an artifact you read.
+    if: vars.OPEN_BUGFIX_PRS == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: bugfix-draft
+          path: bugfix-artifact
+
+      - name: Verify the draft is the one the scrubber saw
+        run: |
+          set -euo pipefail
+          cd bugfix-artifact
+          echo "$(jq -r .patchSha256 meta.json)  fix.patch" | sha256sum --check --strict
+
+      - name: Refuse a draft that changes the automation itself
+        run: |
+          set -euo pipefail
+          changed="$(grep -hE '^(\+\+\+ b/|--- a/)' bugfix-artifact/fix.patch | sed -E 's|^(\+\+\+ b/|--- a/)||' | sort -u)"
+          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|scripts/|pnpm-lock\.yaml$|release\.config\.mjs$)' || true)"
+          if [ -n "${blocked}" ]; then
+            echo "::error::This draft changes files the automation may not change"
+            printf '%s\n' "${blocked}"
+            exit 1
+          fi
+
+      - name: Open the draft pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          report_id="$(jq -r .bugReportId bugfix-artifact/meta.json)"
+          title="$(jq -r .title bugfix-artifact/meta.json)"
+          if [ -z "${title}" ] || [ "${title}" = "null" ]; then
+            title="bug report ${report_id}"
+          fi
+          branch="bugfix/${report_id}"
+
+          git apply --check bugfix-artifact/fix.patch
+          git apply bugfix-artifact/fix.patch
+          git switch --create "${branch}"
+          git add --all
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit --message "fix: draft a fix for bug report ${report_id}"
+
+          # The run token is the only credential in this job, and it cannot reach main.
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --set-upstream origin "${branch}"
+
+          gh pr create --draft --title "fix: ${title}" \
+            --body-file bugfix-artifact/pr-body.md --head "${branch}"
+
+          # A pull request opened with the run token does not trigger pull_request workflows, so
+          # start CI explicitly. workflow_dispatch is the documented exception to that rule.
+          gh workflow run ci.yml --ref "${branch}"

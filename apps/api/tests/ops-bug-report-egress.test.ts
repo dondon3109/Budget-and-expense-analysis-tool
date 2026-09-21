@@ -557,4 +557,169 @@ describe("ops bug report egress endpoint (/api/ops/bug-reports)", () => {
     expect(body.counts.clean).toBe(2);
     expect(body.counts.blocked).toBe(0);
   });
+
+  it("9. a report that already crossed egress is not served again, for either outcome", async () => {
+    const { env, database } = setupTestEnvironment();
+
+    const { id: cleanId } = seedBugReport(database, {
+      title: "Clean report title",
+      actualBehavior: "User payment to Juan Dela Cruz completed",
+      expectedBehavior: "Show confirmation",
+      stepsToReproduce: "Submit form",
+    });
+
+    const { id: blockedId } = seedBugReport(database, {
+      title: "Blocked report title",
+      actualBehavior: "Error CANARYTOKEN1234567890ABCDEF occurred",
+      expectedBehavior: "No error",
+      stepsToReproduce: "Open app",
+    });
+
+    const app = createApp({
+      bugReports: bugReportRepository,
+      bugReportEgressAudit: bugReportEgressAuditRepository,
+    });
+
+    const first = await app.request(
+      "/api/ops/bug-reports",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(first.status).toBe(200);
+
+    const firstBody = (await first.json()) as {
+      reports: Array<{ id: string }>;
+      blocked: Array<{ id: string }>;
+    };
+    expect(firstBody.reports.some((report) => report.id === cleanId)).toBe(true);
+    expect(firstBody.blocked.some((report) => report.id === blockedId)).toBe(true);
+
+    const second = await app.request(
+      "/api/ops/bug-reports",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(second.status).toBe(200);
+
+    const secondBody = (await second.json()) as {
+      reports: Array<{ id: string }>;
+      blocked: Array<{ id: string }>;
+      counts: { clean: number; blocked: number };
+    };
+    expect(secondBody.reports).toEqual([]);
+    expect(secondBody.blocked).toEqual([]);
+    expect(secondBody.counts).toEqual({ clean: 0, blocked: 0 });
+  });
+
+  it("10. one report can still be read by id after it crossed, and stays redacted", async () => {
+    const { env, database } = setupTestEnvironment();
+
+    const { id: reportId } = seedBugReport(database, {
+      title: "Clean bug report with sensitive money and phone",
+      actualBehavior: "User sent to Juan Dela Cruz failed with ₱1,200.00 charge",
+      expectedBehavior: "Expected success receipt and SMS to 0917 123 4567",
+      stepsToReproduce: "Open transfer dialog and submit",
+    });
+
+    const app = createApp({
+      bugReports: bugReportRepository,
+      bugReportEgressAudit: bugReportEgressAuditRepository,
+    });
+
+    const claimed = await app.request(
+      "/api/ops/bug-reports",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(claimed.status).toBe(200);
+
+    const response = await app.request(
+      `/api/ops/bug-reports?id=${reportId}`,
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+
+    const rawBody = await response.text();
+    const body = JSON.parse(rawBody) as {
+      reports: Array<{ id: string; text: string }>;
+      blocked: Array<{ id: string }>;
+      counts: { clean: number; blocked: number };
+    };
+
+    expect(body.reports).toHaveLength(1);
+    expect(body.reports[0]!.id).toBe(reportId);
+    expect(body.reports[0]!.text).toContain("[REDACTED]");
+    expect(body.blocked).toHaveLength(0);
+    expect(body.counts).toEqual({ clean: 1, blocked: 0 });
+    expect(rawBody).not.toContain("₱1,200.00");
+    expect(rawBody).not.toContain("0917 123 4567");
+    expect(rawBody).not.toContain("Juan Dela Cruz");
+
+    // Reading the same report again is recorded too, so every crossing stays in the audit trail.
+    const auditRows = await bugReportEgressAuditRepository.listForReport(env, reportId);
+    expect(auditRows).toHaveLength(2);
+  });
+
+  it("11. an unknown report id is a 404 and a malformed one is a 400", async () => {
+    const { env } = setupTestEnvironment();
+
+    const app = createApp({
+      bugReports: bugReportRepository,
+      bugReportEgressAudit: bugReportEgressAuditRepository,
+    });
+
+    const missing = await app.request(
+      "/api/ops/bug-reports?id=00000000-0000-4000-8000-000000000000",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(missing.status).toBe(404);
+
+    const malformed = await app.request(
+      "/api/ops/bug-reports?id=not%20an%20identifier",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(malformed.status).toBe(400);
+  });
+
+  it("12. reading a blocked report by id never emits its text", async () => {
+    const { env, database } = setupTestEnvironment();
+
+    const canaryBlockedRaw = "CANARY_BLOCKED_BY_ID_CONTENT_9911";
+    const { id: blockedId } = seedBugReport(database, {
+      title: "Blocked by id report title",
+      actualBehavior: `Error CANARYTOKEN1234567890ABCDEF ${canaryBlockedRaw}`,
+      expectedBehavior: "No error",
+      stepsToReproduce: "Open app",
+    });
+
+    const app = createApp({
+      bugReports: bugReportRepository,
+      bugReportEgressAudit: bugReportEgressAuditRepository,
+    });
+
+    const response = await app.request(
+      `/api/ops/bug-reports?id=${blockedId}`,
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+
+    const rawBody = await response.text();
+    const body = JSON.parse(rawBody) as {
+      reports: Array<{ id: string }>;
+      blocked: Array<{ id: string; detectorHits: string[] }>;
+      counts: { clean: number; blocked: number };
+    };
+
+    expect(body.reports).toHaveLength(0);
+    expect(body.blocked).toHaveLength(1);
+    expect(body.blocked[0]!.id).toBe(blockedId);
+    expect(body.counts).toEqual({ clean: 0, blocked: 1 });
+    expect(rawBody).not.toContain(canaryBlockedRaw);
+  });
 });

@@ -7,12 +7,13 @@
  * Do not point the outbound automation at the admin route under any circumstances.
  */
 
-import { redactBugReport } from "@zoption/shared";
+import { redactBugReport, resourceIdSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { BugReportEgressAuditRepository } from "../db/bug-report-egress-audit";
-import type { BugReportRepository } from "../db/bug-reports";
-import type { AppEnvironment } from "../types";
+import type { BugReportEgressCandidate, BugReportRepository } from "../db/bug-reports";
+import { HttpError } from "../errors";
+import type { AppEnvironment, Bindings } from "../types";
 
 const EGRESS_FIELDS = ["title", "actualBehavior", "expectedBehavior", "stepsToReproduce"] as const;
 const EGRESS_READ_LIMIT = 100;
@@ -34,12 +35,112 @@ async function constantTimeCompare(provided: string, expected: string): Promise<
   return mismatch === 0;
 }
 
+interface CleanEgressReport {
+  id: string;
+  createdAt: string;
+  text: string;
+  fields: string[];
+  redactedClasses: string[];
+}
+
+interface BlockedEgressReport {
+  id: string;
+  createdAt: string;
+  detectorHits: string[];
+}
+
+// Exactly one side of a crossing is ever populated, so a caller reads the outcome from which
+// list the report appears in rather than from a separate status field.
+interface EgressCrossing {
+  clean: CleanEgressReport | null;
+  blocked: BlockedEgressReport | null;
+}
+
+function toResponseBody(crossings: EgressCrossing[]) {
+  const reports = crossings.flatMap((crossing) => (crossing.clean ? [crossing.clean] : []));
+  const blocked = crossings.flatMap((crossing) => (crossing.blocked ? [crossing.blocked] : []));
+  return { reports, blocked, counts: { clean: reports.length, blocked: blocked.length } };
+}
+
 export function createBugReportEgressRoutes(
   bugReports: BugReportRepository,
   egressAudit: BugReportEgressAuditRepository,
   redact: typeof redactBugReport = redactBugReport,
 ) {
   const routes = new Hono<AppEnvironment>();
+
+  // Redact one report, record the outcome, and return the entry the caller may see. A redaction
+  // error is a block, never a crash and never a pass.
+  async function crossReport(
+    env: Bindings,
+    report: BugReportEgressCandidate,
+  ): Promise<EgressCrossing> {
+    try {
+      const outcome = redact({
+        title: report.title,
+        actualBehavior: report.actualBehavior,
+        expectedBehavior: report.expectedBehavior,
+        stepsToReproduce: report.stepsToReproduce,
+      });
+
+      if (outcome.status === "clean" && typeof outcome.text === "string") {
+        await egressAudit.record(env, {
+          bugReportId: report.id,
+          outcome: "clean",
+          fieldsSent: EGRESS_FIELDS,
+          redactedClasses: outcome.redacted,
+          detectorHits: outcome.detectorHits,
+        });
+
+        return {
+          clean: {
+            id: report.id,
+            createdAt: report.createdAt,
+            text: outcome.text,
+            fields: [...EGRESS_FIELDS],
+            redactedClasses: outcome.redacted,
+          },
+          blocked: null,
+        };
+      }
+
+      const hits =
+        outcome.detectorHits && outcome.detectorHits.length > 0
+          ? outcome.detectorHits
+          : ["blocked"];
+
+      await egressAudit.record(env, {
+        bugReportId: report.id,
+        outcome: "blocked",
+        fieldsSent: [],
+        redactedClasses: outcome.redacted ?? [],
+        detectorHits: hits,
+      });
+
+      return {
+        clean: null,
+        blocked: { id: report.id, createdAt: report.createdAt, detectorHits: hits },
+      };
+    } catch {
+      const hits = ["error"];
+      try {
+        await egressAudit.record(env, {
+          bugReportId: report.id,
+          outcome: "blocked",
+          fieldsSent: [],
+          redactedClasses: [],
+          detectorHits: hits,
+        });
+      } catch {
+        // Prevent audit recording failure from crashing the endpoint
+      }
+
+      return {
+        clean: null,
+        blocked: { id: report.id, createdAt: report.createdAt, detectorHits: hits },
+      };
+    }
+  }
 
   routes.use("*", async (context, next) => {
     context.header("Cache-Control", "no-store");
@@ -63,98 +164,37 @@ export function createBugReportEgressRoutes(
       return context.json({ error: "unauthorized" }, 401);
     }
 
-    const candidateReports = await bugReports.listForEgress(context.env, EGRESS_READ_LIMIT);
-
-    const cleanReports: Array<{
-      id: string;
-      createdAt: string;
-      text: string;
-      fields: string[];
-      redactedClasses: string[];
-    }> = [];
-
-    const blockedReports: Array<{
-      id: string;
-      createdAt: string;
-      detectorHits: string[];
-    }> = [];
-
-    for (const report of candidateReports) {
-      try {
-        const outcome = redact({
-          title: report.title,
-          actualBehavior: report.actualBehavior,
-          expectedBehavior: report.expectedBehavior,
-          stepsToReproduce: report.stepsToReproduce,
-        });
-
-        if (outcome.status === "clean" && typeof outcome.text === "string") {
-          await egressAudit.record(context.env, {
-            bugReportId: report.id,
-            outcome: "clean",
-            fieldsSent: EGRESS_FIELDS,
-            redactedClasses: outcome.redacted,
-            detectorHits: outcome.detectorHits,
-          });
-
-          cleanReports.push({
-            id: report.id,
-            createdAt: report.createdAt,
-            text: outcome.text,
-            fields: [...EGRESS_FIELDS],
-            redactedClasses: outcome.redacted,
-          });
-        } else {
-          const hits =
-            outcome.detectorHits && outcome.detectorHits.length > 0
-              ? outcome.detectorHits
-              : ["blocked"];
-
-          await egressAudit.record(context.env, {
-            bugReportId: report.id,
-            outcome: "blocked",
-            fieldsSent: [],
-            redactedClasses: outcome.redacted ?? [],
-            detectorHits: hits,
-          });
-
-          blockedReports.push({
-            id: report.id,
-            createdAt: report.createdAt,
-            detectorHits: hits,
-          });
-        }
-      } catch {
-        // Redaction error or exception is a block, not a crash and not a pass
-        const hits = ["error"];
-        try {
-          await egressAudit.record(context.env, {
-            bugReportId: report.id,
-            outcome: "blocked",
-            fieldsSent: [],
-            redactedClasses: [],
-            detectorHits: hits,
-          });
-        } catch {
-          // Prevent audit recording failure from crashing the endpoint
-        }
-
-        blockedReports.push({
-          id: report.id,
-          createdAt: report.createdAt,
-          detectorHits: hits,
-        });
+    // Single report mode exists because the caller claims a report through the list, then a
+    // later step needs that same report by id. It re-runs redaction, so raw text still never
+    // leaves, and the response keeps the list shape with exactly one entry on one side.
+    const requestedId = context.req.query("id");
+    if (requestedId !== undefined) {
+      const parsed = resourceIdSchema.safeParse(requestedId);
+      if (!parsed.success) {
+        throw new HttpError(
+          400,
+          "invalid_request",
+          "Use a valid report identifier.",
+          parsed.error.flatten(),
+        );
       }
+
+      const report = await bugReports.findForEgress(context.env, parsed.data);
+      if (!report) {
+        return context.json({ error: "not_found" }, 404);
+      }
+
+      return context.json(toResponseBody([await crossReport(context.env, report)]));
     }
 
-    return context.json({
-      reports: cleanReports,
-      blocked: blockedReports,
-      counts: {
-        clean: cleanReports.length,
-        blocked: blockedReports.length,
-      },
-    });
+    const candidateReports = await bugReports.listForEgress(context.env, EGRESS_READ_LIMIT);
+
+    const crossings: EgressCrossing[] = [];
+    for (const report of candidateReports) {
+      crossings.push(await crossReport(context.env, report));
+    }
+
+    return context.json(toResponseBody(crossings));
   });
 
   return routes;

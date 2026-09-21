@@ -61,6 +61,7 @@ export interface BugReportRepository {
   findForTenant(env: Bindings, tenantId: string, id: string): Promise<BugReport | null>;
   listAll(env: Bindings, limit: number): Promise<AdminBugReport[]>;
   listForEgress(env: Bindings, limit: number): Promise<BugReportEgressCandidate[]>;
+  findForEgress(env: Bindings, id: string): Promise<BugReportEgressCandidate | null>;
   updateStatus(env: Bindings, id: string, status: BugReportStatus): Promise<AdminBugReport | null>;
   claimNotification(env: Bindings, id: string): Promise<AdminBugReport | null>;
   claimPendingNotifications(env: Bindings, limit: number): Promise<AdminBugReport[]>;
@@ -81,6 +82,11 @@ const selectColumns = `
   notification_status AS notificationStatus,
   notification_attempts AS notificationAttempts, notified_at AS notifiedAt,
   created_at AS createdAt, updated_at AS updatedAt`;
+
+// Both egress reads project the same fields, and neither loads reporter identity or diagnostics.
+const egressColumns = `
+  id, created_at AS createdAt, title, actual_behavior AS actualBehavior,
+  expected_behavior AS expectedBehavior, steps_to_reproduce AS stepsToReproduce`;
 
 function toAdminReport(row: BugReportRow): AdminBugReport {
   return {
@@ -199,15 +205,28 @@ export const bugReportRepository: BugReportRepository = {
     return rows.results.map(toAdminReport);
   },
 
+  // A report that already crossed has an audit row, so this filter is what makes the list
+  // exactly once: the caller holds no record of what it handled and a retry is safe.
   async listForEgress(env, limit) {
     const rows = await env.DB.prepare(
-      `SELECT id, created_at AS createdAt, title, actual_behavior AS actualBehavior,
-              expected_behavior AS expectedBehavior, steps_to_reproduce AS stepsToReproduce
-       FROM bug_reports ORDER BY created_at DESC LIMIT ?`,
+      `SELECT ${egressColumns} FROM bug_reports
+       WHERE NOT EXISTS (
+         SELECT 1 FROM bug_report_egress_audit audit WHERE audit.bug_report_id = bug_reports.id
+       )
+       ORDER BY bug_reports.created_at DESC LIMIT ?`,
     )
       .bind(limit)
       .all<BugReportEgressCandidate>();
     return rows.results;
+  },
+
+  // Single report read for a caller that already claimed the report through the list above.
+  // Redaction still runs on this path, so it never returns raw text.
+  async findForEgress(env, id) {
+    const row = await env.DB.prepare(`SELECT ${egressColumns} FROM bug_reports WHERE id = ?`)
+      .bind(id)
+      .first<BugReportEgressCandidate>();
+    return row ?? null;
   },
 
   async updateStatus(env, id, status) {

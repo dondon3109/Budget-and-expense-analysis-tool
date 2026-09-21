@@ -381,6 +381,35 @@ export function detectSensitive(input: string): string[] {
   return Array.from(hits);
 }
 
+/**
+ * Identifier classes that must never appear in output that becomes public, such as a pull
+ * request body or a diff. Narrower than detectSensitive on purpose: that function is tuned for
+ * free text and flags any "@" or any four digit run, which every source diff contains.
+ *
+ * This catches accidental inclusion. It is not a defence against a determined exfiltration,
+ * which could encode the value instead.
+ */
+export function detectIdentifierLeaks(input: string): string[] {
+  if (!input || typeof input !== "string") {
+    return [];
+  }
+
+  const hits = new Set<string>();
+
+  // EMAIL_REGEX is global, so its cursor has to be reset before every test.
+  EMAIL_REGEX.lastIndex = 0;
+  if (EMAIL_REGEX.test(input)) {
+    hits.add("email");
+  }
+  EMAIL_REGEX.lastIndex = 0;
+
+  if (DETECT_PHONE_REGEX.test(input)) {
+    hits.add("phone");
+  }
+
+  return Array.from(hits);
+}
+
 function isLegacyBlockedReport(fields: BugReportFields): boolean {
   if (
     fields.title === "Bug paying ₱1,299.00 to merchant" &&

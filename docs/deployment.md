@@ -476,6 +476,37 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 
 - Outbound automation must authenticate using the `OPS_EGRESS_TOKEN` binding as a Bearer token in the `Authorization` header. It must be set as a **secret** in each Worker environment (`wrangler secret put OPS_EGRESS_TOKEN`), never a plain `vars` value.
 - The admin bug-report route (`/api/app/admin/bug-reports`) returns raw content and reporter email and is off limits to this flow.
+- The list mode returns only reports with no `bug_report_egress_audit` row, so a caller keeps no record of what it handled and a retry is safe. `?id=<reportId>` re-reads one report that already crossed, running the same redaction again.
+
+### The chain
+
+1. n8n on HomeCore runs `Zoption Bugfix Draft Dispatch` every 15 minutes. It calls the endpoint and dispatches `.github/workflows/bugfix.yml` once per unhandled clean report.
+2. The `draft` job runs with `permissions: contents: read`. It fetches that report by id, runs `dsh --profile headless`, checks its own output with `scripts/bugfix-scrub.mjs`, and uploads `fix.patch`, `pr-body.md`, and `meta.json` as the `bugfix-draft` artifact.
+3. The `open-pr` job applies the patch to `bugfix/<report id>` and opens a draft pull request, then starts `ci.yml` explicitly: a pull request opened with the run token does not trigger `pull_request` workflows, and `workflow_dispatch` is the documented exception.
+4. A human reviews and merges. The release pipeline takes over.
+
+The drafting job is the only job that reads user text, and it holds no write token. The `open-pr` job holds the write token, runs no model, and reads no user text. Nothing outside a runner holds a credential that can write code, which is why the earlier fork, organization, and GitHub App are no longer needed.
+
+`bugfix.yml` must exist on `main` before a dispatch can start it, or the GitHub API returns 404.
+
+### External state this depends on
+
+Read every one of these back after a change. None of them live in the repository.
+
+| Setting                  | Where it lives                                                                                        | Read it back                                                     |
+| ------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `OPS_EGRESS_TOKEN`       | Worker secret, plus a repository secret the draft job reads                                           | `pnpm exec wrangler secret list` in `apps/api`; `gh secret list` |
+| `DEEPSEEK_API_KEY`       | Repository secret, read by `dsh` in the draft job                                                     | `gh secret list`                                                 |
+| `OPEN_BUGFIX_PRS`        | Repository variable. Unset is shadow mode, where the draft stays an artifact                          | `gh variable list`                                               |
+| `OPS_API_BASE_URL`       | Optional repository variable, defaults to `https://api.zoption.site`                                  | `gh variable list`                                               |
+| `Zoption ops egress`     | n8n credential (Bearer), must equal the Worker's `OPS_EGRESS_TOKEN`                                   | n8n UI on HomeCore                                               |
+| `GitHub bugfix dispatch` | n8n credential (Bearer). A fine grained PAT with `Actions: write` on this repository and nothing else | n8n UI on HomeCore                                               |
+
+```bash
+gh secret list
+gh variable list
+ssh homecore@192.168.1.5 'docker exec n8n n8n list:workflow | grep -i dispatch'
+```
 
 ## Current hosted resources
 

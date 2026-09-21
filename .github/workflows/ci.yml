@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A pull request the bugfix automation opens uses the run token, which does not trigger
+  # pull_request workflows. workflow_dispatch is the documented exception, so that workflow
+  # starts this one explicitly on the draft branch.
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -46,11 +46,14 @@ function environment(): { env: Bindings; database: DatabaseSync } {
   databases.push(database);
   database.exec("PRAGMA foreign_keys = ON; CREATE TABLE tenants (id text PRIMARY KEY NOT NULL);");
   database.prepare("INSERT INTO tenants (id) VALUES (?)").run(TENANT_ID);
-  const migration = readFileSync(
-    new URL("../../../db/migrations/0030_bug_reports.sql", import.meta.url),
-    "utf8",
-  ).replaceAll("--> statement-breakpoint", "");
-  database.exec(migration);
+  // The egress read excludes reports that already crossed, so it needs the audit table too.
+  for (const migrationFile of ["0030_bug_reports.sql", "0061_bug_report_egress_audit.sql"]) {
+    const migration = readFileSync(
+      new URL(`../../../db/migrations/${migrationFile}`, import.meta.url),
+      "utf8",
+    ).replaceAll("--> statement-breakpoint", "");
+    database.exec(migration);
+  }
   return {
     env: {
       DB: d1For(database),

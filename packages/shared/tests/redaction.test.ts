@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  detectIdentifierLeaks,
   detectSensitive,
   normalizeText,
   redactBugReport,
@@ -574,5 +575,22 @@ describe("separator and digit-script bypasses", () => {
     const raw = "Account १२३४५६७८ debited";
     expect(redactText(raw).text).not.toContain("१२३४५६७८");
     expect(detectSensitive(raw).length).toBeGreaterThan(0);
+  });
+});
+
+describe("detectIdentifierLeaks", () => {
+  it("flags an email address and a Philippine mobile number", () => {
+    expect(detectIdentifierLeaks('const owner = "person@example.com";')).toEqual(["email"]);
+    expect(detectIdentifierLeaks("// reachable at 0917 123 4567 during the test")).toEqual([
+      "phone",
+    ]);
+  });
+
+  it("ignores the source patterns a diff is full of", () => {
+    // Package scopes, JSDoc tags, and four digit literals are not identifiers, and
+    // detectSensitive would flag all three.
+    expect(detectIdentifierLeaks('import { x } from "@zoption/shared";')).toEqual([]);
+    expect(detectIdentifierLeaks(" * @param total the amount in minor units")).toEqual([]);
+    expect(detectIdentifierLeaks("const timeoutMs = 1299;")).toEqual([]);
   });
 });
