@@ -560,6 +560,20 @@ def guard_only_run_ids(failed_jobs):
     }
 
 
+def release_run_has_skipped_job(release_jobs):
+    """True when a release run's jobs include one that was skipped.
+
+    The release workflow only skips a job after it has decided no release is
+    owed, so a success run with a skipped job published nothing. Keyed on job
+    conclusions, never job names, so renaming or splitting the gated deploy job
+    cannot hide the no-op.
+    """
+    return any(
+        isinstance(job, dict) and str(job.get("conclusion") or "") == "skipped"
+        for job in (release_jobs or [])
+    )
+
+
 def get_repo_mobile_identity():
     """Extract mobile version and versionCode from local repository files if present."""
     version = None
@@ -596,11 +610,13 @@ def recommend_actions(
     expect_android_version=None,
     expect_android_version_code=None,
     repo_mobile_identity=None,
+    release_jobs=None,
 ):
     """Decide watcher actions from one snapshot of track states.
 
     `tracks` maps track name -> latest summarized run (or None when the
-    workflow has no run for the watched SHA yet).
+    workflow has no run for the watched SHA yet). `release_jobs` is the
+    release run's jobs list when it is a terminal-success no-op candidate.
     """
     actions = []
     ci = tracks.get("ci")
@@ -692,7 +708,13 @@ def recommend_actions(
             actions.append("verify_android_production")
 
     if release is not None and release["conclusion"] == "success" and not mobile_in_flight and not mobile_pending_publish:
-        if expect_version:
+        if release_run_has_skipped_job(release_jobs):
+            # Green run with a skipped job: the gated deploy job never ran, so
+            # nothing shipped. That is the correct no-op (or a guard trip to
+            # check), never a release - even when --expect-version asks for a
+            # version this run could not have published.
+            actions.append("check_release_needed")
+        elif expect_version:
             live_version = live_markers.get("web_app_version")
             if live_version != expect_version:
                 actions.append("verify_production")
@@ -740,6 +762,22 @@ def collect_snapshot(args):
             diagnosable_runs.append(raw_latest)
 
     failed_jobs = failed_jobs_for_runs(repo, diagnosable_runs)
+
+    # A terminal-success release run is invisible to failed_jobs_for_runs (it
+    # only collects failures), yet it can still be a no-op: the gated deploy
+    # job is skipped when no release is owed, leaving the run green with
+    # nothing published. One extra jobs fetch, scoped to that run, tells the
+    # two apart without adding per-poll fetches for every track.
+    release_run = tracks.get("release")
+    release_jobs = []
+    if (
+        release_run is not None
+        and release_run["terminal"]
+        and release_run["conclusion"] == "success"
+        and release_run["run_id"] not in (None, "")
+    ):
+        release_jobs = get_jobs_for_run(repo, release_run["run_id"])
+
     live_markers = collect_live_markers()
     repo_mobile_identity = get_repo_mobile_identity()
 
@@ -757,6 +795,7 @@ def collect_snapshot(args):
         expect_android_version=getattr(args, "expect_android_version", None),
         expect_android_version_code=getattr(args, "expect_android_version_code", None),
         repo_mobile_identity=repo_mobile_identity,
+        release_jobs=release_jobs,
     )
 
     state["repo"] = repo

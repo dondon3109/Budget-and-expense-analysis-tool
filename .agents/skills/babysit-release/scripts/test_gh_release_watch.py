@@ -89,6 +89,59 @@ class RecommendActionsTest(unittest.TestCase):
         )
         self.assertEqual(actions, ["stop_released"])
 
+    def test_success_run_with_skipped_job_is_a_noop_not_a_release(self):
+        # The workflow split: preflight succeeds, the gated deploy job is
+        # skipped, the run ends success with nothing published. Both the
+        # default watch and --expect-version must stop for one agent check.
+        tracks = {
+            "ci": sample_run("CI", run_id=11),
+            "release": sample_run("Production Release", run_id=12),
+            "android": None,
+        }
+        jobs = [
+            {"id": 121, "name": "preflight", "conclusion": "success"},
+            {"id": 122, "name": "deploy-and-release", "conclusion": "skipped"},
+        ]
+        actions = gh_release_watch.recommend_actions(
+            tracks, [], live_markers(), 0, 3, release_jobs=jobs
+        )
+        self.assertEqual(actions, ["check_release_needed"])
+        lagging = gh_release_watch.recommend_actions(
+            tracks,
+            [],
+            live_markers(app_version="2.2.1"),
+            0,
+            3,
+            expect_version="2.2.2",
+            release_jobs=jobs,
+        )
+        self.assertEqual(lagging, ["check_release_needed"])
+
+    def test_success_run_with_no_skipped_job_still_stops(self):
+        tracks = {
+            "ci": sample_run("CI", run_id=11),
+            "release": sample_run("Production Release", run_id=12),
+            "android": None,
+        }
+        jobs = [
+            {"id": 121, "name": "preflight", "conclusion": "success"},
+            {"id": 122, "name": "deploy-and-release", "conclusion": "success"},
+        ]
+        actions = gh_release_watch.recommend_actions(
+            tracks, [], live_markers(), 0, 3, release_jobs=jobs
+        )
+        self.assertEqual(actions, ["stop_released"])
+        lagging = gh_release_watch.recommend_actions(
+            tracks,
+            [],
+            live_markers(app_version="2.2.1"),
+            0,
+            3,
+            expect_version="2.2.2",
+            release_jobs=jobs,
+        )
+        self.assertEqual(lagging, ["verify_production"])
+
     def test_in_flight_android_blocks_stop(self):
         tracks = {
             "ci": sample_run("CI", run_id=11),
@@ -217,6 +270,47 @@ class CollectSnapshotTest(unittest.TestCase):
             "repos/owner/repo/actions/jobs/555/logs",
         )
         self.assertEqual(snapshot["actions"], ["diagnose_ci_failure", "retry_failed_checks"])
+
+    def test_success_release_run_fetches_jobs_once_for_the_noop_check(self):
+        # A terminal-success release run never reaches failed_jobs_for_runs, so
+        # the no-op check fetches its jobs itself - exactly once, for that run.
+        release_run = {
+            "id": 1200,
+            "name": "Production Release",
+            "head_sha": SHA,
+            "status": "completed",
+            "conclusion": "success",
+            "html_url": "https://example.test/runs/1200",
+        }
+        jobs = [
+            {"id": 1201, "name": "preflight", "conclusion": "success"},
+            {"id": 1202, "name": "deploy-and-release", "conclusion": "skipped"},
+        ]
+
+        def fake_runs(repo, workflow_file, head_sha=None):
+            return [release_run] if workflow_file == "release.yml" else []
+
+        with tempfile.TemporaryDirectory() as tmp:
+            args = argparse.Namespace(
+                sha=SHA,
+                repo="owner/repo",
+                state_file=str(Path(tmp) / "state.json"),
+                expect_version=None,
+                max_flaky_retries=3,
+            )
+            with (
+                mock.patch.object(gh_release_watch, "resolve_repo", return_value="owner/repo"),
+                mock.patch.object(gh_release_watch, "resolve_sha", return_value=SHA),
+                mock.patch.object(gh_release_watch, "get_workflow_runs", side_effect=fake_runs),
+                mock.patch.object(
+                    gh_release_watch, "get_jobs_for_run", return_value=jobs
+                ) as mock_jobs,
+                mock.patch.object(gh_release_watch, "collect_live_markers", return_value={}),
+            ):
+                snapshot, _ = gh_release_watch.collect_snapshot(args)
+
+        mock_jobs.assert_called_once_with("owner/repo", 1200)
+        self.assertEqual(snapshot["actions"], ["check_release_needed"])
 
 
 class QuietWatchTest(unittest.TestCase):

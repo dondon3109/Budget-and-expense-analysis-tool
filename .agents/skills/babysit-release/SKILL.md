@@ -123,18 +123,22 @@ node scripts/refresh-android-release-snapshot.mjs
 Trigger: `workflow_run` on `CI` success for a `main` push. Concurrency group
 `production-release-main`, `cancel-in-progress: false`.
 
-Stage order: verify release source (stale-SHA + `vX.Y.Z` baseline tag) ->
-`scripts/next-semantic-release.mjs` decides `release_needed` -> deployment
+Stage order: the ungated `preflight` job runs verify release source
+(stale-SHA + `vX.Y.Z` baseline tag) -> `scripts/next-semantic-release.mjs`
+decides `release_needed`. Only when a release is owed does the gated
+`deploy-and-release` job (production environment approval) run deployment
 authority and config validation -> `github-production-deployment.mjs begin` ->
 D1 migrations -> Worker deploy -> stage worker -> Pages build/deploy
 (`clarity-budget`, commit `main`) -> stage pages ->
 `scripts/wait-for-production-release.mjs` -> `pnpm smoke:production` ->
 `github-production-deployment.mjs finish` -> `pnpm release` (semantic-release).
 
-Done means: GitHub Release/tag `vX.Y.Z` exists, deployment record is
-`success`, and production smoke passes at the expected version. If
-`release_needed` is `false` (only `docs:`/`test:`/`chore:`/`refactor:`/
-`style:`/`ci:`/`build:` commits), no deployment is the correct terminal state.
+Done means: the run is green *and* the gated deploy job actually ran - GitHub
+Release/tag `vX.Y.Z` exists, deployment record is `success`, and production
+smoke passes at the expected version. When `release_needed` is `false` (only
+`docs:`/`test:`/`chore:`/`refactor:`/`style:`/`ci:`/`build:` commits) the
+run also ends `success`, but the gated job is `skipped`: that skip, not the
+run conclusion, is the correct no-op terminal state.
 
 ## Android Track (`Android Beta Build`, `.github/workflows/android-beta.yml`)
 
@@ -213,13 +217,13 @@ republishing over the bad object.
 
 1. Run `--watch` and let it stream events. By default, `--watch` automatically reruns flaky checks up to 3 times without hanging.
 2. If the watcher emits a stop event with `diagnose_ci_failure` / `diagnose_release_failure` / `diagnose_android_failure`, retries are exhausted or auto-retry was disabled: fetch the failed job's logs from the snapshot's `logs_endpoint` and classify the failure. If source-related, patch code locally, test, commit using Conventional Commits, push forward to `main`, and relaunch `--watch` on wake. If flaky and retries were exhausted, report the persistent failure to Don.
-3. If `check_release_needed` is present (green CI, skipped release), run `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
+3. If `check_release_needed` is present (green CI, and the release run either skipped outright or ended green with a job skipped), run `node scripts/next-semantic-release.mjs` to decide no-op vs guard trip.
 4. If `check_release_source` is present (release failed only at the `Verify release source` gate), read that step's log line: a stale-SHA trip is benign — the newer commit retriggers the pipeline on its own, so keep watching and do not rerun; a missing-baseline-tag trip needs Don.
-5. If `verify_production` is present (release success, live version lagging), keep watching; run `pnpm smoke:production` for an independent check.
-6. If `recommend_android_dispatch` is present (web release completed or green, but mobile has an unreleased version bump in `apps/mobile/`), the watcher cleanly exits with this stop event so the agent is immediately awakened to dispatch `Android Beta Build` (or request Don's publish approval).
+5. If `verify_production` is present (release completed with every job run, live version lagging), keep watching; run `pnpm smoke:production` for an independent check.
+6. If `recommend_android_dispatch` is present (web track finished - released or a correct no-op - but mobile has an unreleased version bump in `apps/mobile/`), the watcher cleanly exits with this stop event so the agent is immediately awakened to dispatch `Android Beta Build` (or request Don's publish approval).
 7. If `verify_android_production` is present (Android workflow completed, live `android/latest.json` lagging behind), keep watching until the CDN updates.
 8. After any push, rerun, or re-dispatch, relaunch `--watch` yourself on wake; do not wait for Don to re-invoke the skill. A fix push is not a completion event.
-9. A live `--watch` that exits with `stop_released` confirms that the full pipeline (web tag + Worker/Pages deployment + smoke, and mobile release if applicable) is green.
+9. A live `--watch` that exits with `stop_released` confirms that the full pipeline ran (gated deploy job included: web tag + Worker/Pages deployment + smoke, and mobile release if applicable) and is green. An exit with `check_release_needed` instead means nothing was published: report it as a no-op (or a guard trip to check), never as a release.
 
 ## Polling Cadence
 
@@ -238,10 +242,14 @@ this cadence:
 
 Stop only when one of these is true:
 
-- All in-scope tracks terminal green (web tag + deployment + smoke;
-  Android build, plus public verifications when publishing was approved).
+- All in-scope tracks terminal green with the gated deploy job actually run
+  (web tag + deployment + smoke; Android build, plus public verifications when
+  publishing was approved). `stop_released` is the watcher action that
+  confirms this.
 - Correct no-op: web `release_needed` is `false` and Android was not
-  dispatched.
+  dispatched. The run still ends `success` but its gated deploy job is
+  `skipped`; the watcher stops with `check_release_needed`, not
+  `stop_released`.
 - A blocker above needs Don.
 
 Keep polling while runs are queued/running, while smoke or public
