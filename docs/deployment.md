@@ -502,6 +502,14 @@ Read every one of these back after a change. None of them live in the repository
 | `Zoption ops egress`     | n8n credential (Bearer), must equal the Worker's `OPS_EGRESS_TOKEN`                                   | n8n UI on HomeCore                                               |
 | `GitHub bugfix dispatch` | n8n credential (Bearer). A fine grained PAT with `Actions: write` on this repository and nothing else | n8n UI on HomeCore                                               |
 
+Arm all of it in one step:
+
+```bash
+bash scripts/arm-bugfix-automation.sh
+```
+
+From this repository it writes the two n8n credentials over SSH and sets the repository secrets with `gh`. On the homeserver it writes the credentials alone. Every prompt is optional, so paste only what you have, and running it again updates the same two credentials by id. The two empty `Zoption Bug Report Triage` shells can only be deleted from the n8n UI or with an n8n API key: n8n has no delete command, and this instance holds no API key.
+
 ```bash
 gh secret list
 gh variable list
