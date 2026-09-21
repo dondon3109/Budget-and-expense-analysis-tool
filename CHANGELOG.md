@@ -4,6 +4,19 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- The interest rate field in the debt form no longer draws a second focus ring across its "%"
+  suffix. The wrapper already marks focus with its own border and halo, and the input inside it
+  drew the global focus outline as well, which spilled outside the wrapper and sliced through the
+  suffix.
+
+### Changed
+
+- The debt form asks for "Interest rate (APR)" and says in one line that it is the yearly interest
+  the lender charges, with 0 for a debt that charges none. The field read "APR" alone before, and
+  the payoff note under the form said "APR" too.
+
 ## 2.41.3 — 2026-09-20
 
 ### Fixed

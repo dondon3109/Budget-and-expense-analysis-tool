@@ -484,9 +484,12 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
+/* The wrapper owns this field's border and focus ring, so the input must not draw the
+   global focus outline too: it overflows the wrapper and cuts through the "%" suffix. */
 .percentage-input input {
   min-width: 0;
   border: 0;
+  outline: none;
   box-shadow: none !important;
 }
 

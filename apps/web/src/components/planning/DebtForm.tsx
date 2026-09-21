@@ -177,9 +177,10 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
 
           <div className="form-row split planning-form-three">
             <label>
-              <span>APR</span>
+              <span>Interest rate (APR)</span>
               <div className="percentage-input">
                 <input
+                  aria-describedby="debt-apr-hint"
                   aria-label="Annual percentage rate"
                   inputMode="decimal"
                   value={aprPercent}
@@ -189,6 +190,9 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
                 />
                 <b>%</b>
               </div>
+              <small id="debt-apr-hint">
+                Yearly interest your lender charges. Enter 0 if there is none.
+              </small>
             </label>
             <label>
               <span>Balance as of</span>
@@ -212,8 +216,8 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
           </div>
 
           <p className="planning-form-note">
-            Payoff projections use this balance, APR, and minimum payment. Zoption does not contact
-            your lender.
+            Payoff projections use this balance, interest rate, and minimum payment. Zoption does
+            not contact your lender.
           </p>
 
           {(clientError || serverError) && (
