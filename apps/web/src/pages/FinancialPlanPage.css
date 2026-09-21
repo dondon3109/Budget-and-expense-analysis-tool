@@ -466,7 +466,9 @@
   margin-top: 22px;
 }
 
-.planning-form-three {
+/* .form-row.split sets two columns, so the row that holds three fields has to outrank it
+   rather than merely follow it. */
+.form-row.split.planning-form-three {
   grid-template-columns: 0.75fr 1.25fr 0.8fr;
 }
 
@@ -592,7 +594,8 @@
     grid-template-columns: 1fr;
   }
 
-  .planning-form-three {
+  /* Keeps the base rule's specificity so the narrow layout still wins. */
+  .form-row.split.planning-form-three {
     grid-template-columns: 1fr;
   }
 }

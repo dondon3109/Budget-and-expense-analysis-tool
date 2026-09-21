@@ -10,6 +10,9 @@ All notable product changes are documented here.
   suffix. The wrapper already marks focus with its own border and halo, and the input inside it
   drew the global focus outline as well, which spilled outside the wrapper and sliced through the
   suffix.
+- The debt form's interest rate, balance date, and status fields share one row again. The row asked
+  for three columns, but the shared two-column rule outranked it, so status wrapped onto a row of
+  its own.
 
 ### Changed
 
