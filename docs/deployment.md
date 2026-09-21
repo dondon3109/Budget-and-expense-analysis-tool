@@ -529,6 +529,14 @@ The intended production endpoints are:
 
 Preview endpoints are deployment-specific. Supply them through `PREVIEW_WEB_HOST` and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
 
+## Cloudflare dashboard and repository sync
+
+The API Worker's dashboard `vars` and `apps/api/wrangler.deploy.jsonc` carry the same set of names in both Preview and Production (25 each, checked 2026-09-21). A discrepancy in Cloudflare's "keep your Wrangler config in sync" prompt is not on its own evidence that the repository is behind.
+
+The dashboard renders its own copy of each value, and Workers AI model IDs are rewritten in that rendering: `RECEIPT_VISION_MODEL` (`@cf/meta/llama-3.2-11b-vision-instruct`) displays there with an `@file:`-prefixed form that is not the stored value. Do not transcribe dashboard values into the Wrangler config; change the config and let the release workflow deploy it.
+
+To re-verify, compare the dashboard's list of names against `apps/api/wrangler.deploy.jsonc`. The two name sets must match exactly. No value should appear as a plain `vars` entry for any name in `secretVariableNames` (`scripts/validate-deployment-config.mjs`); the validator fails a deployment if one does. `AI_ENTRY_PROVIDER_TIMEOUT_MS` is deliberately absent from both deployed environments: the code falls back to `DEFAULT_TIMEOUT_MS` (`30_000`), the same value the local config sets.
+
 ## Legacy origin cleanup
 
 The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://zoption.site` and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun the documented Production smoke command with the expected Supabase origin after deployment or routing changes.
