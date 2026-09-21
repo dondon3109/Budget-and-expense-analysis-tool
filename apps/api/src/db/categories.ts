@@ -53,12 +53,13 @@ function rethrowCategoryWriteError(error: unknown): never {
 }
 
 function toCategoryRecord(
-  category: Omit<CategoryRecord, "system" | "locked"> & { systemKey: string | null },
+  category: Omit<CategoryRecord, "system" | "locked" | "systemKey"> & { systemKey: string | null },
   hasPro: boolean,
 ): CategoryRecord {
   const { systemKey, ...record } = category;
   return {
     ...record,
+    systemKey,
     system: systemKey !== null,
     locked: record.requiredPlan === "zoption_pro" && !hasPro,
   };

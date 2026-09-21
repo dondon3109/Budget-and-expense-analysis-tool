@@ -1,5 +1,6 @@
 import {
   categoryIconEmojiSchema,
+  DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   type CategoryInput,
   type CategoryRecord,
   type TransactionKind,
@@ -41,6 +42,13 @@ const palette = [
 ];
 
 const emojiPalette = ["🍔", "🛒", "🏠", "🚗", "💡", "🎁", "💊", "✈️", "💼", "💰"];
+
+/** Product-owned categories cannot be renamed or archived; say what each one is holding up. */
+function systemCategoryNote(category: CategoryRecord): string {
+  if (!category.system) return "";
+  if (category.systemKey === DEBT_PAYMENT_CATEGORY_SYSTEM_KEY) return " · Used for debt payments";
+  return " · Required for imports";
+}
 
 function emojiValue(value: string): string | null | undefined {
   const trimmed = value.trim();
@@ -413,7 +421,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                     {category.origin === "starter" ? " · Included starter" : ""}
                     {category.origin === "custom" ? " · Custom" : ""}
                     {category.requiredPlan === "zoption_pro" ? " · Pro required" : ""}
-                    {category.system ? " · Required for imports" : ""}
+                    {systemCategoryNote(category)}
                   </span>
                 </div>
               )}

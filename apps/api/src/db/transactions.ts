@@ -17,7 +17,7 @@ export { buildTransferLegs } from "@zoption/shared";
 import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
-import { accounts, categories } from "../../../../db/schema";
+import { accounts, categories, debts } from "../../../../db/schema";
 import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -58,6 +58,8 @@ type TransactionRow = {
   accountId: string | null;
   accountName: string | null;
   notes: string | null;
+  debtId: string | null;
+  debtName: string | null;
   createdAt: string;
   transferFeeMinor: number | null;
   transferGroupId: string | null;
@@ -101,6 +103,8 @@ const LOGICAL_ROWS_SELECT = `SELECT
   t.account_id AS accountId,
   a.name AS accountName,
   t.notes AS notes,
+  t.debt_id AS debtId,
+  paid_debt.name AS debtName,
   t.created_at AS createdAt,
   t.transfer_group_id AS transferGroupId,
   peer.account_id AS toAccountId,
@@ -114,7 +118,8 @@ const LOGICAL_ROWS_FROM = `FROM transactions t
     AND peer.transfer_group_id = t.transfer_group_id
     AND peer.id != t.id
     AND peer.amount_minor > 0
-  LEFT JOIN accounts destination ON destination.id = peer.account_id AND destination.tenant_id = t.tenant_id`;
+  LEFT JOIN accounts destination ON destination.id = peer.account_id AND destination.tenant_id = t.tenant_id
+  LEFT JOIN debts paid_debt ON paid_debt.id = t.debt_id AND paid_debt.tenant_id = t.tenant_id`;
 
 type LogicalRowsSqlParts = {
   where: string;
@@ -263,6 +268,15 @@ export async function validateTransactionReferences(
   if (found.some((account) => !account || account.archived)) {
     throw new HttpError(400, "invalid_account", "Choose an active account.");
   }
+
+  if (input.kind === "expense" && input.debtId) {
+    const [debt] = await db
+      .select({ id: debts.id })
+      .from(debts)
+      .where(and(eq(debts.id, input.debtId), eq(debts.tenantId, tenantId)))
+      .limit(1);
+    if (!debt) throw new HttpError(400, "invalid_debt", "Choose a debt from this workspace.");
+  }
 }
 
 async function findTransaction(
@@ -295,14 +309,15 @@ function insertStatement(
     currency: Currency;
     kind: TransactionInput["kind"];
     notes?: string;
+    debtId?: string | null;
     transferGroupId?: string;
     transferFeeMinor?: number | null;
   },
 ) {
   return env.DB.prepare(
     `INSERT INTO transactions (
-      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
+      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, debt_id, transfer_group_id, transfer_fee_minor, source_kind
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
   ).bind(
     values.id,
     values.tenantId,
@@ -314,6 +329,7 @@ function insertStatement(
     values.currency,
     values.kind,
     values.notes || null,
+    values.debtId ?? null,
     values.transferGroupId ?? null,
     values.transferFeeMinor ?? null,
   );
@@ -446,6 +462,7 @@ export const transactionRepository: TransactionRepository = {
       currency: input.currency,
       kind: input.kind,
       notes: input.notes,
+      debtId: input.kind === "expense" ? input.debtId : null,
     }).run();
     const created = await findTransaction(env, tenantId, id);
     if (!created) throw new Error("Created transaction could not be read back.");
@@ -526,15 +543,24 @@ export const transactionRepository: TransactionRepository = {
         "Replace this historical transfer with a new transfer between two accounts.",
       );
     }
+    const nextKind = input.kind ?? current.kind;
+    // Only an expense carries a debt link, so switching the kind to income drops it.
+    const nextDebtId =
+      nextKind === "expense"
+        ? input.debtId === null
+          ? null
+          : (input.debtId ?? current.debtId)
+        : null;
     const parsed = transactionInputSchema.safeParse({
       date: input.date ?? current.date,
       description: input.description ?? current.description,
       amountMinor: input.amountMinor ?? Math.abs(current.amountMinor),
       currency: input.currency ?? current.currency,
-      kind: input.kind ?? current.kind,
+      kind: nextKind,
       categoryId: input.categoryId ?? current.categoryId,
       accountId: input.accountId ?? current.accountId,
       notes: input.notes !== undefined ? input.notes : (current.notes ?? undefined),
+      ...(nextDebtId ? { debtId: nextDebtId } : {}),
     });
     if (!parsed.success || parsed.data.kind === "transfer") {
       throw new HttpError(400, "invalid_transaction_update", "Provide valid transaction details.");
@@ -542,7 +568,7 @@ export const transactionRepository: TransactionRepository = {
     const transaction = parsed.data;
     await validateTransactionReferences(env, tenantId, transaction, current.categoryId);
     await env.DB.prepare(
-      `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = ?, notes = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
+      `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = ?, notes = ?, debt_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
     )
       .bind(
         transaction.accountId,
@@ -553,6 +579,7 @@ export const transactionRepository: TransactionRepository = {
         transaction.currency,
         transaction.kind,
         transaction.notes || null,
+        nextDebtId,
         id,
         tenantId,
       )

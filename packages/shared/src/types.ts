@@ -27,6 +27,9 @@ export interface TransactionRecord {
 export interface TransactionListItem extends TransactionRecord {
   accountId: string | null;
   notes: string | null;
+  /** The debt this payment was recorded against; null when no debt is linked. */
+  debtId?: string | null;
+  debtName?: string | null;
   /** Server `created_at`; ties same-date rows. Absent on rows built from local-only storage. */
   createdAt?: string;
   transferGroupId?: string | null;
@@ -122,6 +125,13 @@ export type CategoryOrigin = (typeof categoryOrigins)[number];
 export const categoryRequiredPlans = ["free", "zoption_pro"] as const;
 export type CategoryRequiredPlan = (typeof categoryRequiredPlans)[number];
 
+/**
+ * The product-owned category that marks money leaving an account as a debt payment.
+ * Behavior keys off this value rather than the category name, so renaming a workspace's
+ * copy never silently disables the feature.
+ */
+export const DEBT_PAYMENT_CATEGORY_SYSTEM_KEY = "debt:expense";
+
 export interface CategoryRecord {
   id: string;
   name: string;
@@ -130,6 +140,8 @@ export interface CategoryRecord {
   iconEmoji?: string | null;
   archived: boolean;
   system: boolean;
+  /** Set on categories the product owns; absent on rows from older deployments. */
+  systemKey?: string | null;
   origin: CategoryOrigin;
   requiredPlan: CategoryRequiredPlan;
   locked: boolean;

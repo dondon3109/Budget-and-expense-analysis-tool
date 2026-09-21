@@ -1,6 +1,7 @@
 import {
   currencies,
   currencyMetadata,
+  DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
@@ -8,6 +9,7 @@ import {
   type AccountRecord,
   type CategoryRecord,
   type Currency,
+  type Debt,
   type TransactionInput,
   type TransactionKind,
   type TransactionListItem,
@@ -35,6 +37,7 @@ export interface TransactionFormDraft {
   toAccountId?: string;
   notes?: string;
   currency?: Currency;
+  debtId?: string;
 }
 
 interface TransactionFormProps {
@@ -44,6 +47,7 @@ interface TransactionFormProps {
   initialDate?: string;
   categories: CategoryRecord[];
   accounts: AccountRecord[];
+  debts: Debt[];
   busy: boolean;
   serverError?: string;
   onSubmit: (input: TransactionInput) => Promise<void>;
@@ -61,6 +65,7 @@ export function TransactionForm({
   initialDate,
   categories,
   accounts,
+  debts,
   busy,
   serverError,
   onSubmit,
@@ -81,6 +86,7 @@ export function TransactionForm({
     initialDraft?.toAccountId ?? item?.toAccountId ?? "",
   );
   const [notes, setNotes] = useState(initialDraft?.notes ?? item?.notes ?? "");
+  const [debtId, setDebtId] = useState(initialDraft?.debtId ?? item?.debtId ?? "");
   const [transferFee, setTransferFee] = useState(
     item?.transferFeeMinor ? (item.transferFeeMinor / 100).toFixed(2) : "",
   );
@@ -121,6 +127,18 @@ export function TransactionForm({
         : undefined;
     return incomeSalary ?? selectableCategories[0];
   }, [kind, selectableCategories]);
+
+  /** The product-owned debt payment category is what turns on the "which debt" picker. */
+  const debtPaymentSelected =
+    availableCategories.find((category) => category.id === categoryId)?.systemKey ===
+    DEBT_PAYMENT_CATEGORY_SYSTEM_KEY;
+  /** A debt that was paid off after the fact stays selectable so an edit cannot relink it. */
+  const selectableDebts = useMemo(() => {
+    const open = debts.filter((debt) => debt.status === "active");
+    const linked = debts.find((debt) => debt.id === debtId);
+    return linked && !open.includes(linked) ? [linked, ...open] : open;
+  }, [debts, debtId]);
+  const missingDebtChoice = debtPaymentSelected && selectableDebts.length > 0 && !debtId;
 
   const transferNet = useMemo(() => {
     if (kind !== "transfer") return null;
@@ -202,7 +220,7 @@ export function TransactionForm({
     const parsed = transactionInputSchema.safeParse(
       kind === "transfer"
         ? { ...base, fromAccountId, toAccountId, transferFeeMinor }
-        : { ...base, accountId },
+        : { ...base, accountId, debtId: debtPaymentSelected && debtId ? debtId : null },
     );
     if (!parsed.success) {
       setClientError(parsed.error.issues[0]?.message ?? "Check the transaction details.");
@@ -443,6 +461,24 @@ export function TransactionForm({
               ))}
             </select>
           </label>
+          {debtPaymentSelected &&
+            (selectableDebts.length === 0 ? (
+              <p className="form-hint">
+                Add a debt in Goals &amp; debt to say which one this payment pays off.
+              </p>
+            ) : (
+              <label>
+                <span>Debt paid</span>
+                <select value={debtId} onChange={(event) => setDebtId(event.target.value)} required>
+                  <option value="">Choose a debt</option>
+                  {selectableDebts.map((debt) => (
+                    <option key={debt.id} value={debt.id}>
+                      {debt.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ))}
           <label>
             <span>
               Notes <small>Optional</small>
@@ -470,6 +506,7 @@ export function TransactionForm({
               disabled={
                 busy ||
                 !categoryId ||
+                missingDebtChoice ||
                 (kind === "transfer" ? !fromAccountId || !toAccountId : !accountId)
               }
             >

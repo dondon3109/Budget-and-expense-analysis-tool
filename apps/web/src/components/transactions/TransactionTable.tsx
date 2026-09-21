@@ -187,6 +187,7 @@ export function TransactionTable({
                   )}
                   {item.categoryName}
                 </span>
+                {item.debtName && <span className="category-debt"> · {item.debtName}</span>}
               </td>
               <td data-label="Type">
                 <span className={`kind-badge ${item.kind}`}>{kindLabel(item.kind)}</span>

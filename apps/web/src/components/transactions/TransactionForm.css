@@ -192,6 +192,13 @@
   text-transform: none;
 }
 
+.transaction-form .form-hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .transfer-net {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

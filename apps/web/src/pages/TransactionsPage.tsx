@@ -48,6 +48,7 @@ import {
   downloadTransactions,
   getCategories,
   getAccounts,
+  getDebts,
   getTransactions,
   isBillingEnforcementError,
   updateTransaction,
@@ -286,6 +287,10 @@ export function TransactionsPage() {
     queryKey: queryKeys.accounts(workspace),
     queryFn: () => getAccounts(workspace),
   });
+  const debtsQuery = useQuery({
+    queryKey: queryKeys.debts(workspace),
+    queryFn: () => getDebts(workspace),
+  });
   const transactionsQuery = useQuery({
     queryKey: queryKeys.transactions(workspace, query),
     queryFn: () => getTransactions(workspace, query),
@@ -406,6 +411,7 @@ export function TransactionsPage() {
         input,
         categoriesQuery.data ?? [],
         accountsQuery.data ?? [],
+        debtsQuery.data?.items ?? [],
         form?.createdAt,
       );
       const snapshot = await updateOptimistically<TransactionPage>(
@@ -527,6 +533,7 @@ export function TransactionsPage() {
 
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
   const accounts = accountsQuery.data ?? [];
+  const debts = debtsQuery.data?.items ?? [];
   const page = transactionsQuery.data;
   const hasFilters = Boolean(
     searchDraft.trim() ||
@@ -1194,6 +1201,7 @@ export function TransactionsPage() {
           initialDraft={formDraft}
           categories={categories}
           accounts={accounts}
+          debts={debts}
           busy={saveMutation.isPending}
           serverError={saveMutation.error?.message}
           onSubmit={async (input) => {

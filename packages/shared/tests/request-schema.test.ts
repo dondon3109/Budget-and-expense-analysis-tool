@@ -35,6 +35,27 @@ describe("API request boundary schemas", () => {
     ).toBe(false);
   });
 
+  it("links a debt to an expense and never to income", () => {
+    const expense = {
+      date: "2026-07-18",
+      description: "Card payment",
+      amountMinor: 50_000,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+      categoryId: "debt-payment",
+      accountId: "account-everyday",
+    };
+
+    expect(transactionInputSchema.safeParse({ ...expense, debtId: "debt-card" }).success).toBe(
+      true,
+    );
+    expect(transactionInputSchema.safeParse({ ...expense, debtId: null }).success).toBe(true);
+    expect(transactionInputSchema.safeParse(expense).success).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({ ...expense, kind: "income", debtId: "debt-card" }).success,
+    ).toBe(false);
+  });
+
   it("accepts an account update with an optional type", () => {
     expect(accountUpdateSchema.safeParse({ name: "Maya Wallet", type: "savings" }).success).toBe(
       true,

@@ -1,7 +1,7 @@
 # Mobile feature-parity matrix
 
 Baseline verified on 2026-08-13 at `origin/main` commit
-`c533706b84765d5dcaf1ac42bf969baa6ddc6c5d`; implementation status updated 2026-08-14.
+`c533706b84765d5dcaf1ac42bf969baa6ddc6c5d`; implementation status updated 2026-09-21.
 
 | Capability                      | Current authority                                | Mobile target                                               | Milestone | Discovery note                                                                                                                                                                                                                  |
 | ------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -43,3 +43,8 @@ The Worker exposes public health/support/review and PayPal-webhook routes plus a
 - Mobile is not a WebView or a screen-for-screen copy of the website.
 - The public marketing site, platform-admin review workflow, and PayPal webhook receiver do not need native equivalents for initial release readiness.
 - Transaction CSV export is a Pro web/API capability; a native share/export surface is deferred until privacy and file-lifecycle behavior are designed.
+- A debt payment's link to the debt it paid (`transactions.debt_id`) is stored and returned by the
+  Worker, and the shared expense schema accepts it, but only the web form offers the picker. Adding
+  the field to the mobile pull payload would break installed clients that validate a snapshot
+  strictly, so native editors record the "Debt payment" category without the link until a
+  capability negotiation lands.

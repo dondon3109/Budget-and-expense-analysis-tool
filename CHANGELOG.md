@@ -4,6 +4,15 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Paying a debt is now a transaction like any other. A "Debt payment" expense category ships with
+  every workspace, and choosing it asks which debt the money went to, from the debts already in
+  your workspace. The ledger and the CSV export name that debt beside the category, and the archive
+  export carries the link. Deleting a debt keeps its payment history and drops the link, and a
+  payment saved without a debt — including from the mobile app, which does not yet offer the
+  picker — still records normally.
+
 ### Fixed
 
 - A read that stalls on a slow connection no longer fails outright. The API client waited 20 seconds

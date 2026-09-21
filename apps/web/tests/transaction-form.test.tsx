@@ -2,7 +2,12 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { CategoryRecord, TransactionListItem } from "@zoption/shared";
+import {
+  DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+  type CategoryRecord,
+  type Debt,
+  type TransactionListItem,
+} from "@zoption/shared";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -62,6 +67,34 @@ const category: CategoryRecord = {
   locked: false,
 };
 
+const debtPaymentCategory: CategoryRecord = {
+  id: "debt-payment",
+  name: "Debt payment",
+  kind: "expense",
+  color: "#e34948",
+  archived: false,
+  system: true,
+  systemKey: DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+  origin: "system",
+  requiredPlan: "free",
+  locked: false,
+};
+
+const debts: Debt[] = [
+  {
+    id: "debt-card",
+    name: "Visa card",
+    type: "credit_card",
+    balanceMinor: 1_250_000,
+    aprBasisPoints: 2_400,
+    minimumPaymentMinor: 50_000,
+    balanceAsOf: "2026-07-01",
+    status: "active",
+    createdAt: "2026-07-01 00:00:00",
+    updatedAt: "2026-07-01 00:00:00",
+  },
+];
+
 afterEach(cleanup);
 
 const transaction: TransactionListItem = {
@@ -87,6 +120,7 @@ describe("TransactionForm", () => {
         workspace={workspace}
         categories={[category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -109,6 +143,7 @@ describe("TransactionForm", () => {
         initialDate="2026-08-12"
         categories={[category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={vi.fn(async () => undefined)}
         onClose={vi.fn()}
@@ -135,6 +170,7 @@ describe("TransactionForm", () => {
             archived: false,
           },
         ]}
+        debts={debts}
         busy={false}
         onSubmit={vi.fn(async () => undefined)}
         onClose={vi.fn()}
@@ -152,6 +188,7 @@ describe("TransactionForm", () => {
         initialDate="2026-08-12"
         categories={[category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={vi.fn(async () => undefined)}
         onClose={vi.fn()}
@@ -170,6 +207,7 @@ describe("TransactionForm", () => {
         item={transaction}
         categories={[category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -202,6 +240,7 @@ describe("TransactionForm", () => {
         workspace={workspace}
         categories={[category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -236,6 +275,7 @@ describe("TransactionForm", () => {
         workspace={workspace}
         categories={[lockedCategory, category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={vi.fn(async () => undefined)}
         onClose={vi.fn()}
@@ -265,6 +305,7 @@ describe("TransactionForm", () => {
         workspace={workspace}
         categories={[otherIncome, salaryCategory]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -293,6 +334,7 @@ describe("TransactionForm", () => {
         item={{ ...transaction, categoryId: lockedCategory.id, categoryName: lockedCategory.name }}
         categories={[lockedCategory]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -323,6 +365,7 @@ describe("TransactionForm", () => {
         workspace={workspace}
         categories={[transferCategory]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={vi.fn()}
@@ -357,6 +400,111 @@ describe("TransactionForm", () => {
       ),
     );
   });
+
+  it("asks which debt was paid once the debt payment category is chosen", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category, debtPaymentCategory]}
+        accounts={accounts}
+        debts={debts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Debt paid")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Description/), "Card payment");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "500");
+    await user.selectOptions(screen.getByLabelText("Category"), "debt-payment");
+
+    expect(screen.getByRole("button", { name: "Add transaction" })).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Debt paid"), "debt-card");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ categoryId: "debt-payment", debtId: "debt-card" }),
+      ),
+    );
+  });
+
+  it("sends no debt link for an ordinary expense", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category, debtPaymentCategory]}
+        accounts={accounts}
+        debts={debts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Description/), "Lunch");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "120");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ debtId: null })),
+    );
+  });
+
+  it("still records a debt payment when the workspace has no debts", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[debtPaymentCategory]}
+        accounts={accounts}
+        debts={[]}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Description/), "Card payment");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "500");
+
+    expect(screen.queryByLabelText("Debt paid")).not.toBeInTheDocument();
+    expect(screen.getByText(/Add a debt in Goals/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ debtId: null })),
+    );
+  });
+
+  it("prefills the linked debt when editing a debt payment", () => {
+    render(
+      <TransactionForm
+        workspace={workspace}
+        item={{
+          ...transaction,
+          categoryId: debtPaymentCategory.id,
+          categoryName: debtPaymentCategory.name,
+          debtId: "debt-card",
+          debtName: "Visa card",
+        }}
+        categories={[debtPaymentCategory]}
+        accounts={accounts}
+        debts={debts}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Debt paid")).toHaveValue("debt-card");
+  });
 });
 
 describe("TransactionForm keyboard and focus behaviour", () => {
@@ -368,6 +516,7 @@ describe("TransactionForm keyboard and focus behaviour", () => {
         workspace={workspace}
         categories={[category]}
         accounts={accounts}
+        debts={debts}
         busy={false}
         onSubmit={onSubmit}
         onClose={onClose}

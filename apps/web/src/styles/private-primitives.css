@@ -143,6 +143,13 @@
   line-height: 1;
 }
 
+/* The debt a payment row paid off, read after the category chip. */
+.category-debt {
+  color: var(--subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .kind-badge {
   min-height: 26px;
   padding: 0 8px;

@@ -23,10 +23,17 @@ describe("transaction CSV export", () => {
     const csv = buildTransactionCsv([transaction]);
     expect(csv).toContain("-1250.50,PHP,expense");
     expect(csv).toContain('"\'=SUM(1,2) ""market"""');
-    expect(csv).toContain('"Food, dining"');
+    expect(csv).toContain('"Food, dining",,Everyday account');
     expect(csv).toContain('"line one\nline two"');
     expect(csv.endsWith("\r\n")).toBe(true);
   });
+  it("names the debt a payment row paid off", () => {
+    const csv = buildTransactionCsv([
+      { ...transaction, debtId: "debt-card", debtName: "Visa card" },
+    ]);
+    expect(csv).toContain('"Food, dining",Visa card,Everyday account');
+  });
+
   it("includes an empty transfer fee for ordinary rows and a fee for transfers", () => {
     expect(buildTransactionCsv([transaction])).toContain(",Transfer fee,");
 

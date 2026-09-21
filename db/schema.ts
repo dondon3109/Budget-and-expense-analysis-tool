@@ -183,6 +183,8 @@ export const transactions = sqliteTable(
     notes: text("notes"),
     transferFeeMinor: integer("transfer_fee_minor"),
     subscriptionId: text("subscription_id"),
+    /** The debt a recorded payment went to; null when the expense is not a debt payment. */
+    debtId: text("debt_id").references(() => debts.id, { onDelete: "set null" }),
     revision: integer("revision").notNull().default(1),
     deletedAt: text("deleted_at"),
     ...timestamps,

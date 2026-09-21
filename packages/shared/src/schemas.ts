@@ -570,7 +570,14 @@ export type TransferInput = z.infer<typeof transferInputSchema>;
 
 export const transactionInputSchema = z.discriminatedUnion("kind", [
   transactionBaseSchema.extend({ kind: z.literal("income"), accountId: resourceIdSchema }),
-  transactionBaseSchema.extend({ kind: z.literal("expense"), accountId: resourceIdSchema }),
+  transactionBaseSchema.extend({
+    kind: z.literal("expense"),
+    accountId: resourceIdSchema,
+    // Optional because a native client that predates debt linking still creates a
+    // valid expense row for the debt payment category, just without the link. Null is
+    // an explicit "no debt", which is how an edit drops a link it no longer wants.
+    debtId: resourceIdSchema.nullable().optional(),
+  }),
   transferInputSchema,
 ]);
 
@@ -594,6 +601,8 @@ export const transactionUpdateSchema = z
     toAccountId: resourceIdSchema.optional(),
     transferFeeMinor: z.number().int().safe().min(0).optional(),
     notes: z.string().trim().max(500).optional(),
+    /** Null clears the link; omitting it leaves the stored debt untouched. */
+    debtId: resourceIdSchema.nullable().optional(),
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, "Provide at least one change.");

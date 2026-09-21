@@ -77,7 +77,7 @@ describe("tenant bootstrap", () => {
     });
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(16);
+    expect(batches[0]).toHaveLength(17);
 
     function findStatement(fragment: string): CapturedStatement {
       const match = captured.find((statement) => statement.sql.includes(fragment));
@@ -124,6 +124,19 @@ describe("tenant bootstrap", () => {
       "💼",
       null,
       "starter",
+    ]);
+    expect(
+      captured.find((statement) => statement.values.includes("user:user-1:category:debt-payment"))
+        ?.values,
+    ).toEqual([
+      "user:user-1:category:debt-payment",
+      "user:user-1",
+      "Debt payment",
+      "expense",
+      "#e34948",
+      "🏦",
+      "debt:expense",
+      "system",
     ]);
     expect(
       captured.find((statement) =>

@@ -1,6 +1,7 @@
 import type {
   AccountRecord,
   CategoryRecord,
+  Debt,
   TransactionInput,
   TransactionListItem,
   TransactionListQuery,
@@ -66,9 +67,12 @@ export function optimisticTransaction(
   input: TransactionInput,
   categories: readonly CategoryRecord[],
   accounts: readonly AccountRecord[],
+  debts: readonly Debt[],
   createdAt: string = pendingCreatedAt(),
 ): TransactionListItem {
   const category = categories.find((item) => item.id === input.categoryId);
+  const debtId = input.kind === "expense" ? (input.debtId ?? null) : null;
+  const debt = debts.find((item) => item.id === debtId);
   const account =
     "accountId" in input ? accounts.find((item) => item.id === input.accountId) : undefined;
   const fromAccount =
@@ -88,6 +92,8 @@ export function optimisticTransaction(
     categoryColor: category?.color ?? "#64748b",
     categoryIconEmoji: category?.iconEmoji ?? null,
     accountId: account?.id ?? null,
+    debtId,
+    debtName: debt?.name ?? null,
     accountName:
       account?.name ??
       (fromAccount && toAccount ? `${fromAccount.name} → ${toAccount.name}` : "Account"),

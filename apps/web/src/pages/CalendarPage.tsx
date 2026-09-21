@@ -27,6 +27,7 @@ import {
   getAccounts,
   getCalendarEvents,
   getCategories,
+  getDebts,
   getSubscriptions,
   getTransactionCalendar,
   updateCalendarEvent,
@@ -157,6 +158,10 @@ export function CalendarPage() {
     queryKey: queryKeys.accounts(workspace),
     queryFn: () => getAccounts(workspace),
   });
+  const debtsQuery = useQuery({
+    queryKey: queryKeys.debts(workspace),
+    queryFn: () => getDebts(workspace),
+  });
 
   const saveMutation = useMutation({
     mutationFn: (input: TransactionInput) => createTransaction(workspace, input),
@@ -167,6 +172,7 @@ export function CalendarPage() {
         input,
         categoriesQuery.data ?? [],
         accountsQuery.data ?? [],
+        debtsQuery.data?.items ?? [],
       );
       const key = queryKeys.transactionCalendar(workspace, monthStart(input.date.slice(0, 7)));
       const snapshot = await updateOptimistically<TransactionCalendarMonth>(
@@ -588,6 +594,7 @@ export function CalendarPage() {
           initialDate={selectedDate}
           categories={categoriesQuery.data ?? []}
           accounts={accountsQuery.data ?? []}
+          debts={debtsQuery.data?.items ?? []}
           busy={saveMutation.isPending}
           serverError={saveMutation.error?.message}
           onSubmit={async (input) => {

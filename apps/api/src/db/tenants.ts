@@ -1,3 +1,5 @@
+import { DEBT_PAYMENT_CATEGORY_SYSTEM_KEY } from "@zoption/shared";
+
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
 const SYSTEM_ACCOUNTS = [
@@ -60,6 +62,15 @@ const DEFAULT_CATEGORIES = [
     iconEmoji: "🎁",
     systemKey: null,
     origin: "starter",
+  },
+  {
+    key: "debt-payment",
+    name: "Debt payment",
+    kind: "expense",
+    color: "#e34948",
+    iconEmoji: "🏦",
+    systemKey: DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+    origin: "system",
   },
   {
     key: "savings-transfer",

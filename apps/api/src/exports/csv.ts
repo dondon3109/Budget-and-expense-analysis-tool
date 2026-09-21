@@ -23,6 +23,7 @@ export function buildTransactionCsv(rows: readonly TransactionListItem[]): strin
       "Currency",
       "Type",
       "Category",
+      "Debt",
       "Account",
       "From account",
       "To account",
@@ -36,6 +37,7 @@ export function buildTransactionCsv(rows: readonly TransactionListItem[]): strin
       row.currency,
       row.kind,
       safeText(row.categoryName),
+      safeText(row.debtName ?? ""),
       safeText(
         row.kind === "transfer" && row.fromAccountName && row.toAccountName
           ? `${row.fromAccountName} → ${row.toAccountName}`

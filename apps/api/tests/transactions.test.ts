@@ -84,8 +84,15 @@ function createSqliteEnvironment(): {
       transfer_group_id text,
       transfer_fee_minor integer,
       source_kind text NOT NULL DEFAULT 'manual',
+      debt_id text,
       created_at text NOT NULL DEFAULT (datetime('now')),
       updated_at text NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE debts (
+      id text PRIMARY KEY NOT NULL,
+      tenant_id text NOT NULL,
+      name text NOT NULL,
+      status text NOT NULL DEFAULT 'active'
     );
     CREATE TABLE effective_pro_entitlements (
       tenant_id text NOT NULL,
@@ -154,6 +161,9 @@ function seedTransactions(database: DatabaseSync): void {
       ('expense-1', 'tenant-1', 'Food', 'expense', '#ff0000'),
       ('transfer-1', 'tenant-1', 'Transfer', 'transfer', '#0000ff'),
       ('expense-2', 'tenant-2', 'Food', 'expense', '#ff0000');
+    INSERT INTO debts (id, tenant_id, name) VALUES
+      ('debt-card', 'tenant-1', 'Visa card'),
+      ('debt-other', 'tenant-2', 'Other card');
     INSERT INTO transactions (
       id, tenant_id, account_id, category_id, date, description, amount_minor,
       currency, kind, notes, transfer_group_id, transfer_fee_minor, created_at
@@ -341,6 +351,69 @@ describe("transactionRepository SQLite behavior", () => {
     expect(readback?.query).toContain("LIMIT 1");
     expect(readback?.query).not.toContain("ORDER BY");
     expect(readback?.bindings).toEqual(["tenant-1", created.id]);
+  });
+
+  it("records the debt a payment went to and reads its name back", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+
+    const created = await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Card payment",
+      amountMinor: 5_000,
+      currency: "PHP",
+      kind: "expense",
+      debtId: "debt-card",
+    });
+
+    expect(created).toMatchObject({
+      amountMinor: -5_000,
+      debtId: "debt-card",
+      debtName: "Visa card",
+    });
+  });
+
+  it("refuses a debt that belongs to another workspace", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+
+    await expect(
+      transactionRepository.create(env, "tenant-1", {
+        accountId: "cash-1",
+        categoryId: "expense-1",
+        date: "2026-07-05",
+        description: "Card payment",
+        amountMinor: 5_000,
+        currency: "PHP",
+        kind: "expense",
+        debtId: "debt-other",
+      }),
+    ).rejects.toMatchObject({ status: 400, code: "invalid_debt" });
+  });
+
+  it("sets and clears the debt link on an existing expense", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    const created = await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Card payment",
+      amountMinor: 5_000,
+      currency: "PHP",
+      kind: "expense",
+      debtId: "debt-card",
+    });
+
+    await expect(
+      transactionRepository.update(env, "tenant-1", created.id, { debtId: null }),
+    ).resolves.toMatchObject({ debtId: null, debtName: null });
+
+    await expect(
+      transactionRepository.update(env, "tenant-1", created.id, { debtId: "debt-card" }),
+    ).resolves.toMatchObject({ debtId: "debt-card", debtName: "Visa card" });
   });
 
   it("updates and reads a transfer canonically through either physical leg ID", async () => {
