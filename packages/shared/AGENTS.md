@@ -51,6 +51,7 @@ pnpm test                                # from the repo root
 - Deletes are tombstones with a null payload, and an upsert payload id must equal the entity id. The budget `entity_exists` conflict is the one deliberate exception.
 - Category `iconEmoji` defaults to null so older change log rows do not force a resync. Do not make it required.
 - Per entity money caps are written twice, in `sync.ts` and `schemas.ts`, and must stay in step.
+- A monthly budget row with a limit of zero means that category is not budgeted. Budget rows are upsert only, so clearing a limit leaves the row behind; filter `limitMinor > 0` before counting plan totals, remaining budget, or utilization (`docs/maintainability.md`).
 - Share tokens are unsigned and therefore public. Mask sensitive fields before encoding.
 - `workbook.ts` must stay out of the barrel: it lazily imports the SheetJS build from a CDN tarball and applies its own zip bomb limits.
 - `fingerprint.ts` needs `crypto.subtle` and `TextEncoder`; treat that as a platform requirement for any new consumer.

@@ -71,13 +71,12 @@ export function BudgetsPage() {
           const limits = new Map(input.items.map((item) => [item.categoryId, item.limitMinor]));
           const items = current.items.map((item) => {
             const limitMinor = limits.get(item.categoryId) ?? item.limitMinor;
-            const remainingMinor = limitMinor - item.spentMinor;
+            const hasLimit = limitMinor > 0;
             return {
               ...item,
               limitMinor,
-              remainingMinor,
-              usedPercent:
-                limitMinor > 0 ? Math.round((item.spentMinor / limitMinor) * 10_000) / 100 : 0,
+              remainingMinor: hasLimit ? limitMinor - item.spentMinor : 0,
+              usedPercent: hasLimit ? Math.round((item.spentMinor / limitMinor) * 10_000) / 100 : 0,
             };
           });
           const totalLimitMinor = items.reduce((total, item) => total + item.limitMinor, 0);

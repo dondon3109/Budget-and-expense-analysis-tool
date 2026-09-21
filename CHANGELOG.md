@@ -6,6 +6,11 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Remaining budget no longer turns negative for categories that have no limit. Clearing a category's
+  limit leaves its upsert-only budget row behind with a limit of zero, and the dashboard and the
+  assistant counted that category's spending against a plan the user never set. A zero limit now
+  means unbudgeted everywhere. The spending stays visible as spending, while plan totals, remaining
+  budget, and utilization stay at zero until a limit is set.
 - The interest rate field in the debt form no longer draws a second focus ring across its "%"
   suffix. The wrapper already marks focus with its own border and halo, and the input inside it
   drew the global focus outline as well, which spilled outside the wrapper and sliced through the

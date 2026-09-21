@@ -272,7 +272,12 @@ export function buildDashboardSummary(
   }
 
   const budgetMonth = period.from.slice(0, 7);
-  const currentBudgets = budgets.filter((budget) => budget.month.startsWith(budgetMonth));
+  // A row whose limit is zero means the category was never budgeted this month. Budget
+  // rows are upsert only, so clearing a limit leaves the row behind; every reader has to
+  // treat it as unbudgeted rather than as a plan of zero (docs/maintainability.md).
+  const currentBudgets = budgets.filter(
+    (budget) => budget.month.startsWith(budgetMonth) && budget.limitMinor > 0,
+  );
   const budgetLimitMinor = currentBudgets.reduce((sum, budget) => sum + budget.limitMinor, 0);
   const budgetedSpendingMinor = currentBudgets.reduce(
     (sum, budget) => sum + (spending.get(budget.categoryId)?.amountMinor ?? 0),
@@ -326,8 +331,7 @@ export function buildDashboardSummary(
         spentMinor,
         limitMinor: budget.limitMinor,
         remainingMinor: budget.limitMinor - spentMinor,
-        usedPercent:
-          budget.limitMinor === 0 ? 0 : clampRoundPercent((spentMinor / budget.limitMinor) * 100),
+        usedPercent: clampRoundPercent((spentMinor / budget.limitMinor) * 100),
       };
     }),
     insights: {

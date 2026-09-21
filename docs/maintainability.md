@@ -40,6 +40,7 @@ The UI-facing native facade remains
 | Invariant                            | Required evidence                                                                     |
 | ------------------------------------ | ------------------------------------------------------------------------------------- |
 | Tenant isolation                     | Repository/API tests plus the gated preview two-user flow                             |
+| Budget plan scope                    | Zero-limit exclusion tests in the shared dashboard summary and the assistant reader   |
 | Integer money and transfer balance   | Shared domain tests and atomic transfer persistence tests                             |
 | Local mutation plus outbox atomicity | Mobile SQLite tests using the real mobile migrations                                  |
 | Idempotency and revision conflicts   | Server sync repository tests using the complete D1 migration chain                    |
@@ -50,6 +51,16 @@ The UI-facing native facade remains
 Coverage percentage is not a release target. Critical invariants need realistic evidence, while
 provider and presentation seams may remain mocked. API persistence tests should use the shared
 SQLite-backed D1 harness and production migrations rather than hand-copied schemas.
+
+### Budget plan scope
+
+A monthly budget row with a zero or missing limit is not a plan. Its category spending still counts
+as spending, but it never enters plan totals, remaining budget, utilization, or over-budget state.
+Those stay at zero until the user sets a limit, and only then can they go negative. Budget rows are
+upsert only and have no delete, so clearing a limit leaves a zero-limit row behind rather than
+removing it. Every reader applies the rule: the Worker's `budgetRepository.list`, the shared
+`buildDashboardSummary`, the mobile budget month view, the web budget editor's optimistic update,
+and the assistant's budget-versus-actual reader.
 
 ## Change rules for one maintainer
 

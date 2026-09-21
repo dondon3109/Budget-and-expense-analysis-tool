@@ -134,15 +134,19 @@ const dashboardSummary: DashboardSummary = {
 };
 
 function createReader(
-  options: { accountItems?: AccountRecord[]; summary?: DashboardSummary } = {},
+  options: {
+    accountItems?: AccountRecord[];
+    summary?: DashboardSummary;
+    plan?: BudgetMonthPlan;
+  } = {},
 ) {
   const accounts: AccountRepository = {
     list: vi.fn(async () => options.accountItems ?? [savingsAccount, creditAccount]),
     setBalance: vi.fn(async () => savingsAccount),
   };
   const budgets: BudgetRepository = {
-    list: vi.fn(async () => budgetPlan),
-    upsert: vi.fn(async () => budgetPlan),
+    list: vi.fn(async () => options.plan ?? budgetPlan),
+    upsert: vi.fn(async () => options.plan ?? budgetPlan),
   };
   const categories: CategoryRepository = {
     list: vi.fn(async () => [category]),
@@ -260,6 +264,47 @@ describe("assistant financial reader money formatting", () => {
         expenses: "PHP 166.67",
         net: "PHP 166.67",
       },
+    });
+  });
+});
+
+describe("assistant financial reader budget plan scope", () => {
+  it("keeps the plan at zero when no category carries a limit", async () => {
+    const { reader } = createReader({
+      plan: {
+        ...budgetPlan,
+        totalLimitMinor: 0,
+        totalSpentMinor: 0,
+        remainingMinor: 0,
+        usedPercent: 0,
+        items: [
+          {
+            ...budgetPlan.items[0]!,
+            limitMinor: 0,
+            remainingMinor: 0,
+            usedPercent: 0,
+          },
+        ],
+      },
+    });
+
+    const budget = await reader.getBudgetStatus(context, "2026-07-01");
+
+    expect(budget.data).toMatchObject({
+      totalLimit: "PHP 0.00",
+      totalSpent: "PHP 696.00",
+      remaining: "PHP 0.00",
+      usedPercent: 0,
+      months: [
+        {
+          hasBudget: false,
+          limit: "PHP 0.00",
+          spent: "PHP 696.00",
+          remaining: "PHP 0.00",
+          usedPercent: 0,
+          items: [{ limit: "PHP 0.00", spent: "PHP 696.00", remaining: "PHP 0.00" }],
+        },
+      ],
     });
   });
 });

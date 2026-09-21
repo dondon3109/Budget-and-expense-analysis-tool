@@ -1293,8 +1293,8 @@ export function DashboardPage() {
               <p>
                 Income includes income transactions. Expenses include expense transactions only;
                 transfers move money between accounts and do not change your overall balance.
-                Remaining budget is that month’s category plan minus its recorded expenses and does
-                not carry over.
+                Remaining budget is that month’s category plan minus recorded expenses in the
+                categories that have a limit, and it does not carry over.
               </p>
             </details>
             <DashboardTransactionHistory

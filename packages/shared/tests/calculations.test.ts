@@ -296,6 +296,33 @@ describe("dashboard calculations", () => {
     expect(result.metrics.budgetUsedPercent).toBe(50);
   });
 
+  it("treats a zero limit as unbudgeted instead of a negative plan", () => {
+    const transactions: TransactionRecord[] = [
+      { ...baseTransaction, id: "food-expense", kind: "expense", amountMinor: -30_000 },
+    ];
+    // Clearing a category's limit keeps its upsert-only row behind with a zero limit.
+    const budgets: BudgetRecord[] = [
+      {
+        categoryId: "food",
+        categoryName: "Food",
+        categoryColor: "#a56f39",
+        month: "2026-07-01",
+        limitMinor: 0,
+      },
+    ];
+
+    const result = buildDashboardSummary(transactions, budgets, {
+      from: "2026-07-01",
+      to: "2026-07-31",
+    });
+
+    expect(result.metrics.moneyOutMinor).toBe(30_000);
+    expect(result.metrics.budgetLimitMinor).toBe(0);
+    expect(result.metrics.remainingBudgetMinor).toBe(0);
+    expect(result.metrics.budgetUsedPercent).toBe(0);
+    expect(result.budgetProgress).toEqual([]);
+  });
+
   it("returns stable empty-state totals", () => {
     const result = buildDashboardSummary([], [], { from: "2026-07-01", to: "2026-07-31" });
     expect(result.metrics.budgetUsedPercent).toBe(0);

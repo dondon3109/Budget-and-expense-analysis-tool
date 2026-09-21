@@ -516,6 +516,7 @@ export function createFinancialReader(
         analysisLoader(context, input.from, input.to),
         Promise.all(months.map((month) => budgets.list(context.env, context.tenantId, month))),
       ]);
+      let totalBudgetedSpentMinor = 0;
       const resultMonths = plans.map((plan) => {
         const monthKey = plan.month.slice(0, 7);
         const monthExpenses = analysis.filter(
@@ -528,29 +529,37 @@ export function createFinancialReader(
             (spending.get(item.categoryId) ?? 0) + Math.abs(item.amountMinor),
           );
         }
+        // A category with no limit is not budgeted: its spending stays visible as actual
+        // spending but never counts against the plan (docs/maintainability.md).
+        const limitMinor = plan.items.reduce((sum, item) => sum + item.limitMinor, 0);
+        const budgetedSpentMinor = plan.items.reduce(
+          (sum, item) => sum + (item.limitMinor > 0 ? (spending.get(item.categoryId) ?? 0) : 0),
+          0,
+        );
         const items = plan.items
           .map((item) => {
             const spentMinor = spending.get(item.categoryId) ?? 0;
+            const hasLimit = item.limitMinor > 0;
             return {
               name: item.categoryName,
               limit: formatMoney(item.limitMinor),
               spent: formatMoney(spentMinor),
-              remaining: formatMoney(item.limitMinor - spentMinor),
-              usedPercent:
-                item.limitMinor === 0 ? 0 : Math.round((spentMinor / item.limitMinor) * 1_000) / 10,
+              remaining: formatMoney(hasLimit ? item.limitMinor - spentMinor : 0),
+              usedPercent: hasLimit ? Math.round((spentMinor / item.limitMinor) * 1_000) / 10 : 0,
             };
           })
           .filter((item) => item.limit !== "PHP 0.00" || item.spent !== "PHP 0.00");
-        const limitMinor = plan.items.reduce((sum, item) => sum + item.limitMinor, 0);
         const spentMinor = monthExpenses.reduce((sum, item) => sum + Math.abs(item.amountMinor), 0);
         const fullMonth = input.from <= plan.month && input.to >= monthEnd(plan.month);
+        totalBudgetedSpentMinor += budgetedSpentMinor;
         return {
           month: plan.month,
           coverage: fullMonth ? "full_month" : "partial_month",
           limit: formatMoney(limitMinor),
           spent: formatMoney(spentMinor),
-          remaining: formatMoney(limitMinor - spentMinor),
-          usedPercent: limitMinor === 0 ? 0 : Math.round((spentMinor / limitMinor) * 1_000) / 10,
+          remaining: formatMoney(limitMinor - budgetedSpentMinor),
+          usedPercent:
+            limitMinor === 0 ? 0 : Math.round((budgetedSpentMinor / limitMinor) * 1_000) / 10,
           hasBudget: limitMinor > 0,
           items,
         };
@@ -567,11 +576,11 @@ export function createFinancialReader(
           period: input,
           totalLimit: formatMoney(totalLimitMinor),
           totalSpent: formatMoney(totalSpentMinor),
-          remaining: formatMoney(totalLimitMinor - totalSpentMinor),
+          remaining: formatMoney(totalLimitMinor - totalBudgetedSpentMinor),
           usedPercent:
             totalLimitMinor === 0
               ? 0
-              : Math.round((totalSpentMinor / totalLimitMinor) * 1_000) / 10,
+              : Math.round((totalBudgetedSpentMinor / totalLimitMinor) * 1_000) / 10,
           months: resultMonths,
         },
         "budgets",
