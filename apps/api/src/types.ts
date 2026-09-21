@@ -67,6 +67,7 @@ export interface Bindings {
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_WEBHOOK_ID?: string;
+  OPS_EGRESS_TOKEN?: string;
 }
 
 export interface AuthUser {

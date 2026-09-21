@@ -89,6 +89,24 @@ afterEach(() => {
 });
 
 describe("bug report persistence and delivery", () => {
+  it("keeps the admin read strict while the egress read tolerates malformed diagnostics", async () => {
+    const { env, database } = environment();
+    const send = vi.fn<EmailSender["send"]>().mockResolvedValue(undefined);
+    const email: EmailSender = { send };
+    const service = createBugReportService(bugReportRepository, email);
+    const created = await service.create(env, TENANT_ID, USER, input());
+
+    database
+      .prepare("UPDATE bug_reports SET diagnostics_json = ? WHERE id = ?")
+      .run(JSON.stringify({ route: "/app/calendar" }), created.id);
+
+    // The admin read must surface a malformed row instead of handing the UI a null it types as present.
+    await expect(bugReportRepository.listAll(env, 10)).rejects.toThrow();
+
+    // The egress read never loads diagnostics, so the same row cannot starve it.
+    await expect(bugReportRepository.listForEgress(env, 10)).resolves.toHaveLength(1);
+  });
+
   it("stores before email delivery and treats the client request ID as idempotent", async () => {
     const { env, database } = environment();
     const send = vi.fn<EmailSender["send"]>().mockResolvedValue(undefined);

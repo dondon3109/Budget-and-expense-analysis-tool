@@ -5,6 +5,7 @@ import {
   type CashflowTrendQuery,
   type DashboardSummary,
   type TransferFeeInsight,
+  type redactBugReport,
 } from "@zoption/shared";
 import { Hono, type Context, type MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -59,6 +60,10 @@ import { createImportRepository, type ImportRepository } from "./db/imports";
 import { mobileSyncRepository, type MobileSyncRepository } from "./db/mobile-sync";
 import { platformAdminRepository, type PlatformAdminRepository } from "./db/platform-admin";
 import { bugReportRepository, type BugReportRepository } from "./db/bug-reports";
+import {
+  bugReportEgressAuditRepository,
+  type BugReportEgressAuditRepository,
+} from "./db/bug-report-egress-audit";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
@@ -101,6 +106,7 @@ import {
   createSupportRoutes,
 } from "./routes/support";
 import { createBugReportService, type BugReportService } from "./support/bug-reports";
+import { createBugReportEgressRoutes } from "./routes/ops-bug-report-egress";
 import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
 
@@ -187,6 +193,8 @@ export interface AppOptions {
   platformAdminService?: PlatformAdminService;
   bugReports?: BugReportRepository;
   bugReportService?: BugReportService;
+  bugReportEgressAudit?: BugReportEgressAuditRepository;
+  bugReportEgressRedact?: typeof redactBugReport;
   customerReviews?: CustomerReviewRepository;
 }
 
@@ -325,8 +333,9 @@ export function createApp(options: AppOptions = {}) {
   const platformAdminStore = options.platformAdmins ?? platformAdminRepository;
   const platformAdminService =
     options.platformAdminService ?? createPlatformAdminService(platformAdminStore);
-  const bugReportService =
-    options.bugReportService ?? createBugReportService(options.bugReports ?? bugReportRepository);
+  const bugReportStore = options.bugReports ?? bugReportRepository;
+  const bugReportEgressAuditStore = options.bugReportEgressAudit ?? bugReportEgressAuditRepository;
+  const bugReportService = options.bugReportService ?? createBugReportService(bugReportStore);
   const customerReviews = options.customerReviews ?? customerReviewRepository;
   const accountDeletionService =
     options.accountDeletionService ??
@@ -721,6 +730,14 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/billing/paypal/webhook", createPayPalWebhookRoutes(billingStore));
   app.route("/api/support", createSupportRoutes(supportProvider));
   app.route("/api/reviews", createPublicCustomerReviewRoutes(customerReviews));
+  app.route(
+    "/api/ops/bug-reports",
+    createBugReportEgressRoutes(
+      bugReportStore,
+      bugReportEgressAuditStore,
+      options.bugReportEgressRedact,
+    ),
+  );
   app.route(
     "/api/app/admin/reviews",
     createAdminCustomerReviewRoutes(customerReviews, platformAdminService),

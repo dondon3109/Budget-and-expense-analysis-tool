@@ -165,6 +165,15 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
 15. Do not add `DEV_ACCESS_TOKEN_ENABLED` to any deployed environment. It gates the local `dummy-dev-access-token` shortcut, defaults off, and is deliberately absent from `apps/api/wrangler.deploy.jsonc`. It belongs only in the ignored `apps/api/.dev.vars` for local development, where the shortcut also requires a non-`production` `POSTHOG_AI_ENVIRONMENT` and an exact loopback request origin (`apps/api/src/auth.ts`), so no deployed origin configuration can arm it.
 
+16. Store `OPS_EGRESS_TOKEN` as a Worker secret in each environment:
+
+    ```bash
+    pnpm --filter @zoption/api exec wrangler secret put OPS_EGRESS_TOKEN --config wrangler.deploy.jsonc --env preview
+    pnpm --filter @zoption/api exec wrangler secret put OPS_EGRESS_TOKEN --config wrangler.deploy.jsonc --env production
+    ```
+
+    `OPS_EGRESS_TOKEN` authenticates outbound automation callers for `GET /api/ops/bug-reports`. It must be set as a **secret**, never a plain `vars` value. The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation may call. The admin bug-report route returns raw content and reporter email and is off limits to this flow.
+
 ### Optional PayPal Sandbox provisioning utility
 
 The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the ten-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.
@@ -460,6 +469,13 @@ After the apex redirect, public metadata, and production smoke checks pass:
 5. Inspect the rendered HTML and Search Console URL Inspection result for `/` and each legal page. Confirm the canonical points to `https://zoption.site`, Open Graph tags reference the social image, the structured-data graph is present, and the page is indexable.
 6. Confirm `/login`, `/auth/callback`, and `/app/*` return `X-Robots-Tag: noindex, nofollow`, do not emit managed JSON-LD, and do not enter the sitemap.
 7. Recheck the Coverage, Core Web Vitals, and Performance reports after new or materially updated public content is released.
+
+## Outbound bug report egress automation
+
+The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation may call.
+
+- Outbound automation must authenticate using the `OPS_EGRESS_TOKEN` binding as a Bearer token in the `Authorization` header. It must be set as a **secret** in each Worker environment (`wrangler secret put OPS_EGRESS_TOKEN`), never a plain `vars` value.
+- The admin bug-report route (`/api/app/admin/bug-reports`) returns raw content and reporter email and is off limits to this flow.
 
 ## Current hosted resources
 
