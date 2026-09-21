@@ -15,7 +15,7 @@ Use an imperative, concise summary and an optional scope when it adds useful con
 
 Do not manually edit product version numbers during normal development. Semantic-release determines the next Git tag and GitHub Release from commits after CI passes. Android and native mobile package versions remain separate release artifacts and should change only as part of their explicit signed-app release process.
 
-Do not deploy the production Worker or Pages app manually during normal development. The `Production Release` workflow owns D1 migration, Worker deployment, versioned Pages deployment, smoke verification, and semantic-release publication after CI. Manual production commands are emergency recovery operations and must never run concurrently with that workflow.
+Do not deploy the production Worker or Pages app manually during normal development. The `Production Release` workflow owns D1 migration, Worker deployment, versioned Pages deployment, smoke verification, and semantic-release publication after CI, and its deploy job waits for the `production` environment's required reviewer, so approving that run is the production deploy action. Manual production commands are emergency recovery operations and must never run concurrently with that workflow.
 
 Keep `CHANGELOG.md` current for every release. Record notable user-facing changes under `Unreleased` before release, then, after semantic-release succeeds, move those entries under the exact released version and date in a follow-up, non-releasing `docs:` commit. Do not guess the next version or mark a failed release as published.
 
