@@ -288,7 +288,7 @@ Public canonical URLs do not use trailing slashes. The three legal trailing-slas
 
 ## Automated production release
 
-CI validates every pull request and push to `main`. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main`, rejects stale CI results, and asks semantic-release whether the unreleased Conventional Commits require a release. A non-releasing change stops without touching production. The workflow's only job runs in the `production` environment, which requires a reviewer, so a push to `main` records the commit but performs no migration, deploy, or publication until a human approves that run.
+CI validates every pull request and push to `main`. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, Worker and Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
 
 For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
 
@@ -299,7 +299,7 @@ For a release-producing commit, the workflow uses one version and commit SHA thr
 5. Build Pages with that same version, deploy the output with the exact Git SHA, wait until the custom domain serves its versioned deployment marker, and run the non-mutating production smoke gate.
 6. Mark the GitHub deployment successful, then let semantic-release create the matching `v*` tag and GitHub Release.
 
-If semantic-release publication fails after a successful Cloudflare deployment, rerunning the failed workflow reuses the successful GitHub deployment record and does not deploy Worker or Pages again. Semantic-release is also idempotent once the tag exists.
+If semantic-release publication fails after a successful Cloudflare deployment, rerunning the failed workflow while that commit is still `main` reuses the successful GitHub deployment record and does not deploy Worker or Pages again. Semantic-release is also idempotent once the tag exists.
 
 Version selection remains:
 
@@ -408,7 +408,7 @@ Before publishing the legal routes, business and legal reviewers must resolve ev
 
 ## Production release
 
-After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`, which then waits for `production` environment approval before it migrates, deploys, or publishes; operators approve and monitor that workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site` and `www.zoption.site`.
+After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`: its ungated `preflight` job fails at `Verify release source` when `main` has moved on, and otherwise proceeds only when semantic-release finds a release owed, so a superseded or non-releasing commit never reaches `production` environment approval. Only when both hold does `deploy-and-release` run, and it waits for that approval before it migrates, deploys, or publishes. Operators approve and monitor the workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site` and `www.zoption.site`.
 
 The following commands are emergency recovery references only. Disable or wait for the Actions deployment before running them; never use them concurrently with `Production Release` or while Cloudflare's old Git deployment is enabled.
 

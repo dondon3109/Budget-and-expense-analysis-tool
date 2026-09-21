@@ -14,17 +14,73 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-and-release:
+  # Preflight is deliberately outside the production environment. It decides whether this CI
+  # result is still main and whether it owes a release, and a superseded result fails at the
+  # "Verify release source" guard below - before the gated job and its reviewer exist - so it
+  # never asks anyone to approve a run that could only do nothing.
+  preflight:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push' &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      release_needed: ${{ steps.next_release.outputs.release_needed }}
+      version: ${{ steps.next_release.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+          # Read-only job: it never leaves a push-capable credential in .git/config, and the
+          # anonymous "git ls-remote" below works because this repository is public.
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Byte-identical to the guard in deploy-and-release, including the step name: the
+      # babysit-release watcher keys on a failed "Verify release source" step to recognise a
+      # superseded CI result. The duplication is deliberate - this copy stops that race before
+      # the production environment gate, so the run never requests a reviewer, and the gated
+      # copy re-checks currency after approval.
+      - name: Verify release source
+        env:
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          remote_main="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [[ "$RELEASE_COMMIT" != "$remote_main" ]]; then
+            echo "::error::Skipping stale CI result for $RELEASE_COMMIT; current main is $remote_main."
+            exit 1
+          fi
+          if ! git tag --merged "$RELEASE_COMMIT" --list 'v[0-9]*' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::No semantic-release baseline tag is reachable from $RELEASE_COMMIT. Create the documented one-time v2.2.1 tag before enabling releases."
+            exit 1
+          fi
+      - name: Determine the next semantic release
+        id: next_release
+        run: node scripts/next-semantic-release.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # This job holds every production action: D1 migration, Worker and Pages deploys, and the
+  # semantic-release publication. The production environment requires a reviewer, so a release
+  # cannot reach production until a human approves the run. Keep "Prevent self-review" off; the
+  # maintainer is the only human and acts on his own merges. Only a current CI result that owes
+  # a release reaches this job, so no other run ever waits on that reviewer.
+  deploy-and-release:
+    needs: preflight
+    if: needs.preflight.outputs.release_needed == 'true'
+    runs-on: ubuntu-latest
     timeout-minutes: 30
-    # This job holds every production action: D1 migration, Worker and Pages deploys, and the
-    # semantic-release publication. The production environment requires a reviewer, so a push to
-    # main records the commit but cannot reach production until a human approves the run. Keep
-    # "Prevent self-review" off; the maintainer is the only human and acts on his own merges.
     environment: production
     permissions:
       contents: write
@@ -48,6 +104,9 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # First production step, after the same bootstrap as before: the CI result must still be
+      # refs/heads/main at deploy time, checked here again even though preflight already checked
+      # it, because approval happens between the two jobs.
       - name: Verify release source
         env:
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
@@ -61,13 +120,7 @@ jobs:
             echo "::error::No semantic-release baseline tag is reachable from $RELEASE_COMMIT. Create the documented one-time v2.2.1 tag before enabling releases."
             exit 1
           fi
-      - name: Determine the next semantic release
-        id: next_release
-        run: node scripts/next-semantic-release.mjs
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Verify deployment authority
-        if: steps.next_release.outputs.release_needed == 'true'
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -82,7 +135,6 @@ jobs:
             exit 1
           fi
       - name: Validate production deployment configuration
-        if: steps.next_release.outputs.release_needed == 'true'
         run: |
           node scripts/validate-deployment-config.mjs
           node scripts/export-production-deployment-env.mjs
@@ -92,7 +144,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Verify the credential master key is a production Worker secret
-        if: steps.next_release.outputs.release_needed == 'true'
         working-directory: apps/api
         run: |
           if ! secrets="$(./node_modules/.bin/wrangler secret list --config wrangler.deploy.jsonc --env production 2>&1)"; then
@@ -108,93 +159,74 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Start or resume the production deployment
-        if: steps.next_release.outputs.release_needed == 'true'
         id: deployment
         run: node scripts/github-production-deployment.mjs begin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
       - name: Apply production D1 migrations
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.worker_deployed != 'true'
+        if: steps.deployment.outputs.worker_deployed != 'true'
         working-directory: apps/api
         run: ./node_modules/.bin/wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env production
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Deploy production Worker
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.worker_deployed != 'true'
+        if: steps.deployment.outputs.worker_deployed != 'true'
         working-directory: apps/api
         run: >-
           ./node_modules/.bin/wrangler deploy --config wrangler.deploy.jsonc --env production
-          --strict --tag "v${{ steps.next_release.outputs.version }}"
+          --strict --tag "v${{ needs.preflight.outputs.version }}"
           --message "GitHub Actions release ${{ github.event.workflow_run.head_sha }}"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Checkpoint production Worker deployment
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.worker_deployed != 'true'
+        if: steps.deployment.outputs.worker_deployed != 'true'
         run: node scripts/github-production-deployment.mjs stage worker
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Build versioned production Pages app
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.pages_deployed != 'true'
+        if: steps.deployment.outputs.pages_deployed != 'true'
         run: pnpm --filter @zoption/web build
         env:
           CF_PAGES: "1"
           ZOPTION_DEPLOY_ENV: production
-          ZOPTION_RELEASE_VERSION: ${{ steps.next_release.outputs.version }}
+          ZOPTION_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: https://us.i.posthog.com
       - name: Deploy production Pages app
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.pages_deployed != 'true'
+        if: steps.deployment.outputs.pages_deployed != 'true'
         run: >-
           apps/api/node_modules/.bin/wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist"
           --project-name=clarity-budget --branch=main
           --commit-hash="${{ github.event.workflow_run.head_sha }}"
-          --commit-message="Release v${{ steps.next_release.outputs.version }}"
+          --commit-message="Release v${{ needs.preflight.outputs.version }}"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Checkpoint production Pages deployment
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.pages_deployed != 'true'
+        if: steps.deployment.outputs.pages_deployed != 'true'
         run: node scripts/github-production-deployment.mjs stage pages
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for production Pages propagation
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.skip_deploy != 'true'
+        if: steps.deployment.outputs.skip_deploy != 'true'
         run: node scripts/wait-for-production-release.mjs
         env:
-          EXPECTED_RELEASE_VERSION: ${{ steps.next_release.outputs.version }}
+          EXPECTED_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
           WEB_URL: https://zoption.site
       - name: Verify production
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.skip_deploy != 'true'
+        if: steps.deployment.outputs.skip_deploy != 'true'
         run: pnpm smoke:production
         env:
           WEB_URL: https://zoption.site
           API_URL: https://api.zoption.site
           EXPECTED_POSTHOG_HOST: https://us.i.posthog.com
       - name: Record successful production deployment
-        if: >-
-          steps.next_release.outputs.release_needed == 'true' &&
-          steps.deployment.outputs.skip_deploy != 'true'
+        if: steps.deployment.outputs.skip_deploy != 'true'
         run: node scripts/github-production-deployment.mjs finish success
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
@@ -209,7 +241,6 @@ jobs:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish semantic release
-        if: steps.next_release.outputs.release_needed == 'true'
         run: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
