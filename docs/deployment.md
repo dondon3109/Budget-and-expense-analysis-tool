@@ -477,6 +477,13 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 - Outbound automation must authenticate using the `OPS_EGRESS_TOKEN` binding as a Bearer token in the `Authorization` header. It must be set as a **secret** in each Worker environment (`wrangler secret put OPS_EGRESS_TOKEN`), never a plain `vars` value.
 - The admin bug-report route (`/api/app/admin/bug-reports`) returns raw content and reporter email and is off limits to this flow.
 
+## Outbound automation credential isolation
+
+A Worker-level refusal is not a git-level refusal. They are separate boundaries, and a credential that the API correctly rejects can still be accepted by `git`. Therefore the automation must run with only its own credential source reachable — either a cleared global git config, or an explicitly emptied credential helper followed by the single helper that mints the automation's own token.
+
+- An empty helper value resets the accumulated list. This is how a global helper is cleared, since git concatenates helpers in precedence order and a later empty entry clears everything before it.
+- Enumerate with `git config --show-origin --get-regexp 'credential'`, never `git config --get-all credential.helper`. The latter does not list URL-scoped helpers and returns clean when they exist — a false negative that reads as a pass. A credential enumeration that returns nothing while helpers are configured makes an unsafe setup look safe.
+
 ## Current hosted resources
 
 The intended production endpoints are:
