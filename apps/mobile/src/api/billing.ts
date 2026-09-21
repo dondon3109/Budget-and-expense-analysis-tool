@@ -67,6 +67,7 @@ export function reconcileBillingCheckout(
     body: options.abortPendingCheckout ? { abortPendingCheckout: true } : {},
     fallback: billingFallback,
     decode: (value) => billingReconciliationResponseSchema.parse(value),
+    timeoutMs: 60_000,
   });
 }
 

@@ -41,7 +41,7 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - Route files in `app/` stay one liners. Behavior belongs in `src/features/**`.
 - Screens and components use PascalCase `*Screen.tsx`; pure logic modules and their tests use kebab case.
 - Tests are colocated as `<module>.test.ts(x)`. Jest matches `src/**` and `plugins/**/*.test.js` only, so nothing under `app/` is collected.
-- Read through `useLocalWorkspace()` hooks and repositories. Reach the network only through `src/api/*` and `apiRequest`.
+- Read through `useLocalWorkspace()` hooks and repositories. Reach the network only through `src/api/*` and `apiRequest`, which bounds every request at 30 seconds; an operation that legitimately runs longer passes its own `timeoutMs`.
 - Subscribe to SQLite changes through `subscribeToLocalChanges`, never `addDatabaseChangeListener` directly. One native listener per open database is shared by every hook and each subscriber's refresh is coalesced, so a sync page that writes N rows costs one re-query rather than N.
 - `useDashboardData(anchorDate)` bounds its ledger read to `cashflowWindowStart(anchorDate)`, the widest cashflow view, and reads the three newest transactions separately for recent activity. Pass the same local date to `buildDashboardView` so the chart cannot read a window the query never loaded.
 - Import icons from `@expo/vector-icons/MaterialCommunityIcons`, never the `@expo/vector-icons` barrel. The barrel registers all 16 font families as bundled assets (2.6 MB), of which the app uses one.

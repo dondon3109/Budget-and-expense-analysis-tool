@@ -287,6 +287,7 @@ export async function createAssistantThreadTurn(
       fallback: assistantFallback,
       decode: (value) => assistantTurnResultSchema.parse(value),
       timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
+      timeoutFallback: "The assistant took too long. Try again.",
     });
   } catch (error) {
     if (error instanceof ApiTransportError && error.status > 0) {
@@ -313,6 +314,7 @@ export async function sendAssistantTurn(
       fallback: assistantFallback,
       decode: (value) => assistantTurnResultSchema.parse(value),
       timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
+      timeoutFallback: "The assistant took too long. Try again.",
     });
   } catch (error) {
     if (error instanceof ApiTransportError && error.status > 0) {

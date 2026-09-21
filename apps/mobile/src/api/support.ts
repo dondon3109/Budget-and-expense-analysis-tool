@@ -85,6 +85,7 @@ export async function completeSupportChat(
     body: input,
     fallback: supportFallback,
     decode: (value) => supportChatResponseSchema.parse(value),
+    timeoutMs: 120_000,
   });
 }
 

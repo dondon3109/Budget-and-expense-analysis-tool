@@ -118,6 +118,11 @@ export async function decodeJson(response: Response): Promise<unknown> {
   }
 }
 
+/** Ceiling for a request that does not ask for its own. Long operations raise it
+ *  (assistant turns 120s, voice and receipt extraction 45s). A stalled socket on
+ *  everything else must fail rather than leave a screen loading forever. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
 export async function apiRequest<T>({
   accessToken,
   path,
@@ -128,7 +133,8 @@ export async function apiRequest<T>({
   fetchImpl = fetch,
   decode,
   fallback,
-  timeoutMs,
+  timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+  timeoutFallback,
 }: {
   accessToken: string;
   path: string;
@@ -140,26 +146,23 @@ export async function apiRequest<T>({
   decode: (value: unknown) => T;
   fallback: string;
   timeoutMs?: number;
+  /** Copy for the timeout error when this request's own ceiling expires. */
+  timeoutFallback?: string;
 }): Promise<T> {
   let response: Response;
   const url = publicConfig.apiUrl + path;
-  // Long operations (assistant turns) opt into their own ceiling. Without it
-  // the request waits indefinitely; with it, our own timer maps to a friendly
-  // timeout error while caller-initiated aborts keep propagating untouched.
-  const controller = timeoutMs === undefined ? null : new AbortController();
+  // Every request gets a ceiling: the caller's timeoutMs or the default. Our own
+  // timer maps to a friendly timeout error while a caller-initiated abort keeps
+  // propagating untouched.
+  const controller = new AbortController();
   let timedOut = false;
-  const timer =
-    controller === null || timeoutMs === undefined
-      ? null
-      : setTimeout(() => {
-          timedOut = true;
-          controller.abort();
-        }, timeoutMs);
-  const forwardAbort = () => controller?.abort();
-  if (controller !== null) {
-    if (signal?.aborted) controller.abort();
-    else signal?.addEventListener("abort", forwardAbort, { once: true });
-  }
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const forwardAbort = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", forwardAbort, { once: true });
   try {
     response = await fetchImpl(url, {
       method,
@@ -169,12 +172,12 @@ export async function apiRequest<T>({
         ...headers,
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-      signal: controller?.signal ?? signal,
+      signal: controller.signal,
     });
   } catch (error) {
-    if (controller !== null && timedOut) {
+    if (timedOut) {
       throw new ApiTransportError(
-        "The assistant took too long. Try again.",
+        timeoutFallback ?? "Zoption did not respond in time. Try again.",
         "network",
         0,
         "request_timeout",
@@ -187,7 +190,7 @@ export async function apiRequest<T>({
       0,
     );
   } finally {
-    if (timer !== null) clearTimeout(timer);
+    clearTimeout(timer);
     signal?.removeEventListener("abort", forwardAbort);
   }
   if (!response.ok) {

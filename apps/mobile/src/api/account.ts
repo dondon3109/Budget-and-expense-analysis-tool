@@ -25,6 +25,7 @@ export async function requestAccountDeletion(
     body: input,
     fallback: "Account deletion could not be completed. Try again shortly.",
     decode: (value) => accountDeletionResponseSchema.parse(value),
+    timeoutMs: 60_000,
   });
   return result.status;
 }
@@ -41,6 +42,7 @@ export async function downloadAccountArchive(api: AccountApi): Promise<unknown> 
     method: "GET",
     fallback: "Account archive could not be downloaded. Try again shortly.",
     decode: (value) => value,
+    timeoutMs: 60_000,
   });
 }
 

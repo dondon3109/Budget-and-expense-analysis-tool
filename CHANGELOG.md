@@ -15,6 +15,12 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- The mobile app no longer leaves a screen loading forever when a request stalls. Most API calls had
+  no time limit at all, so a poor connection left billing, support, receipt settings, account
+  deletion and the assistant's own screens spinning with no error and no way out. They now give up
+  after 30 seconds, while the operations that legitimately take longer keep their own limits: an
+  assistant turn and support chat at two minutes, account deletion, the account archive and billing
+  reconciliation at one minute.
 - A read that stalls on a slow connection no longer fails outright. The API client waited 20 seconds
   for a response and then gave up, so a lossy connection surfaced as "The request took too long. Try
   again." even when the server was healthy and answered in milliseconds. A read now repeats once
