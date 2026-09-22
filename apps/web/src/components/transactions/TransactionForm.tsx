@@ -217,10 +217,14 @@ export function TransactionForm({
       categoryId,
       notes,
     };
+    // Only an expense carries a debt link. The strict schema rejects the key on income,
+    // so an income entry must leave it out rather than send an explicit null.
     const parsed = transactionInputSchema.safeParse(
       kind === "transfer"
         ? { ...base, fromAccountId, toAccountId, transferFeeMinor }
-        : { ...base, accountId, debtId: debtPaymentSelected && debtId ? debtId : null },
+        : kind === "income"
+          ? { ...base, accountId }
+          : { ...base, accountId, debtId: debtPaymentSelected && debtId ? debtId : null },
     );
     if (!parsed.success) {
       setClientError(parsed.error.issues[0]?.message ?? "Check the transaction details.");

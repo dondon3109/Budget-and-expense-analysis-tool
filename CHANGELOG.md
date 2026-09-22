@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - The chat assistant no longer renders a faint pulsing square around the avatar while checking records. The checking pulse animation now targets the message bubble directly instead of the outer message container.
+- Adding an income transaction in the browser works again. The form sent the debt link an expense can carry for every kind of entry, and an income refuses that field, so a correctly filled income entry was rejected before it ever reached the API.
 
 ## 2.42.0 — 2026-09-22
 

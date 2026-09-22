@@ -6,6 +6,7 @@ import {
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   type CategoryRecord,
   type Debt,
+  type TransactionInput,
   type TransactionListItem,
 } from "@zoption/shared";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -316,6 +317,45 @@ describe("TransactionForm", () => {
     await user.selectOptions(screen.getByLabelText("Transaction type"), "income");
 
     expect(screen.getByLabelText("Category")).toHaveValue("salary");
+  });
+
+  it("submits an income transaction without the expense-only debt link", async () => {
+    const salaryCategory: CategoryRecord = {
+      ...category,
+      id: "salary",
+      name: "Salary",
+      kind: "income",
+    };
+    const onSubmit = vi.fn<(input: TransactionInput) => Promise<void>>(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[salaryCategory, debtPaymentCategory]}
+        accounts={accounts}
+        debts={debts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    const user = userEvent.setup();
+    await user.selectOptions(screen.getByLabelText("Transaction type"), "income");
+    await user.type(screen.getByLabelText(/Description/), "September salary");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "25000");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "income",
+        accountId: "account-everyday",
+        categoryId: "salary",
+        amountMinor: 2_500_000,
+      }),
+    );
+    // The strict transaction schema rejects a debt link on income.
+    expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty("debtId");
   });
 
   it("keeps a locked historical category selected for non-category edits", async () => {
