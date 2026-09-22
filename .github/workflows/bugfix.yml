@@ -65,7 +65,9 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
           set -euo pipefail
-          npm install --global @deepseek-ai/dsh
+          # Pinned: this step holds the model key, so a floating version would run an unreviewed
+          # release beside it.
+          npm install --global @deepseek-ai/dsh@0.1.5-rc.1
           task="$(cat <<'TASK'
           A user filed the bug report in .bugfix-report.txt. Identifiers and amounts in it are
           already replaced with [REDACTED]; do not try to recover them.
@@ -114,7 +116,8 @@ jobs:
       # Fail closed: the upload is the last step, so an artifact only exists for a draft that
       # passed. The open-pr job therefore never applies a patch this check rejected.
       - name: Check the draft for leaked identifiers
-        run: node scripts/bugfix-scrub.mjs bugfix-artifact/fix.patch bugfix-artifact/pr-body.md
+        # meta.json carries the report title, which reaches the pull request title unchecked.
+        run: node scripts/bugfix-scrub.mjs bugfix-artifact/fix.patch bugfix-artifact/pr-body.md bugfix-artifact/meta.json
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -155,7 +158,9 @@ jobs:
           # which has no --- or +++ line, and a pure rename, which has no hunk at all. -z keeps a
           # path verbatim that git would otherwise quote.
           changed="$(git apply --numstat -z bugfix-artifact/fix.patch | tr '\000' '\n' | cut -f3 | sort -u)"
-          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|scripts/|pnpm-lock\.yaml$|release\.config\.mjs$)' || true)"
+          # A -diff attribute in .gitattributes makes git treat a file as binary, which hides the
+          # change from the human reading the pull request.
+          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|scripts/)|(^|/)(pnpm-lock\.yaml|release\.config\.mjs|\.gitattributes)$' || true)"
           if [ -n "${blocked}" ]; then
             echo "::error::This draft changes files the automation may not change"
             printf '%s\n' "${blocked}"
