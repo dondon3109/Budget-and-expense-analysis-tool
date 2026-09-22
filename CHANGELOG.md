@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.42.0 — 2026-09-22
+
 ### Added
 
 - Paying a debt is now a transaction like any other. A "Debt payment" expense category ships with
