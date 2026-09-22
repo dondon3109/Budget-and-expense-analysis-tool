@@ -178,13 +178,25 @@ jobs:
       - name: Deploy production Worker
         if: steps.deployment.outputs.worker_deployed != 'true'
         working-directory: apps/api
-        run: >-
-          ./node_modules/.bin/wrangler deploy --config wrangler.deploy.jsonc --env production
-          --strict --tag "v${{ needs.preflight.outputs.version }}"
-          --message "GitHub Actions release ${{ github.event.workflow_run.head_sha }}"
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # --strict aborts when the tracked config differs from what Cloudflare reports for the
+          # deployed Worker. That stays the default, because an unplanned override should stop a
+          # release. Set this repository variable to true only for a run that must write the
+          # tracked config over the remote one, and unset it afterwards. The deploy job still sits
+          # behind the production environment, so the override needs a human approval too.
+          WORKER_CONFIG_OVERRIDE: ${{ vars.CLOUDFLARE_WORKER_CONFIG_OVERRIDE }}
+        run: |
+          set -euo pipefail
+          args=(--config wrangler.deploy.jsonc --env production --strict)
+          if [[ "${WORKER_CONFIG_OVERRIDE:-}" == "true" ]]; then
+            echo "::warning::CLOUDFLARE_WORKER_CONFIG_OVERRIDE is true, deploying without --strict."
+            args=(--config wrangler.deploy.jsonc --env production)
+          fi
+          ./node_modules/.bin/wrangler deploy "${args[@]}" \
+            --tag "v${{ needs.preflight.outputs.version }}" \
+            --message "GitHub Actions release ${{ github.event.workflow_run.head_sha }}"
       - name: Checkpoint production Worker deployment
         if: steps.deployment.outputs.worker_deployed != 'true'
         run: node scripts/github-production-deployment.mjs stage worker
