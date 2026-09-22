@@ -151,7 +151,10 @@ jobs:
       - name: Refuse a draft that changes the automation itself
         run: |
           set -euo pipefail
-          changed="$(grep -hE '^(\+\+\+ b/|--- a/)' bugfix-artifact/fix.patch | sed -E 's|^(\+\+\+ b/|--- a/)||' | sort -u)"
+          # The paths come from the patch itself. Grepping the diff text misses a binary file,
+          # which has no --- or +++ line, and a pure rename, which has no hunk at all. -z keeps a
+          # path verbatim that git would otherwise quote.
+          changed="$(git apply --numstat -z bugfix-artifact/fix.patch | tr '\000' '\n' | cut -f3 | sort -u)"
           blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|scripts/|pnpm-lock\.yaml$|release\.config\.mjs$)' || true)"
           if [ -n "${blocked}" ]; then
             echo "::error::This draft changes files the automation may not change"
