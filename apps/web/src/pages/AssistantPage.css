@@ -1343,7 +1343,7 @@ main:has(.assistant-page) > .legal-footer,
   opacity: 0.75;
 }
 
-.assistant-message.checking {
+.assistant-message.checking > div {
   border-color: color-mix(in srgb, var(--action) 40%, var(--line));
   animation: assistant-checking-bubble-pulse 2.2s ease-in-out infinite;
 }
@@ -1426,11 +1426,15 @@ main:has(.assistant-page) > .legal-footer,
   0%,
   100% {
     border-color: color-mix(in srgb, var(--action) 25%, var(--line));
-    box-shadow: 0 0 0 0 transparent;
+    box-shadow:
+      0 1px 3px var(--shadow),
+      0 0 0 0 transparent;
   }
   50% {
     border-color: color-mix(in srgb, var(--action) 55%, var(--line));
-    box-shadow: 0 0 10px color-mix(in srgb, var(--action) 15%, transparent);
+    box-shadow:
+      0 1px 3px var(--shadow),
+      0 0 10px color-mix(in srgb, var(--action) 15%, transparent);
   }
 }
 
@@ -2926,7 +2930,9 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-empty-core-beacon,
   .assistant-empty > span,
   .assistant-thinking-dots i,
-  .assistant-message {
+  .assistant-message,
+  .assistant-message.checking > div,
+  .assistant-message.checking .assistant-message-avatar {
     animation: none;
   }
 

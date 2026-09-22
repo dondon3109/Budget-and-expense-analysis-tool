@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- The chat assistant no longer renders a faint pulsing square around the avatar while checking records. The checking pulse animation now targets the message bubble directly instead of the outer message container.
+
 ## 2.42.0 — 2026-09-22
 
 ### Added
