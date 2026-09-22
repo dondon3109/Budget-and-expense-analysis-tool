@@ -18,6 +18,10 @@ playwright-report/
 test-results/
 tmp/
 _tmp_*
+
+# Scratch directory the bugfix workflow builds its draft in. It sits inside the checkout while
+# that job runs, so it must stay out of both the generated patch and the pull request branch.
+bugfix-artifact/
 .lighthouseci/
 .DS_Store
 *.log
