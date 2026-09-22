@@ -477,10 +477,12 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 - Outbound automation must authenticate using the `OPS_EGRESS_TOKEN` binding as a Bearer token in the `Authorization` header. It must be set as a **secret** in each Worker environment (`wrangler secret put OPS_EGRESS_TOKEN`), never a plain `vars` value.
 - The admin bug-report route (`/api/app/admin/bug-reports`) returns raw content and reporter email and is off limits to this flow.
 - The list mode returns only reports with no `bug_report_egress_audit` row, so a caller keeps no record of what it handled and a retry is safe. `?id=<reportId>` re-reads one report that already crossed, running the same redaction again.
+- **Reading a report claims it.** The list writes an audit row for every report it returns, which is what makes it exactly once, so a caller must handle everything it receives and there is no way to look at the queue without consuming it.
+- `?limit=<1..100>` caps how many reports one poll claims. It is the caller's throttle: whatever it does not ask for stays unclaimed for the next poll. The default is 100.
 
 ### The chain
 
-1. n8n on HomeCore runs `Zoption Bugfix Draft Dispatch` every 15 minutes. It calls the endpoint and dispatches `.github/workflows/bugfix.yml` once per unhandled clean report.
+1. n8n on HomeCore runs `Zoption Bugfix Draft Dispatch` every 15 minutes. It calls the endpoint with `?limit=3` and dispatches `.github/workflows/bugfix.yml` once per unhandled clean report. The limit bounds the fan out: three reports per poll is three concurrent workflow runs, each of which runs a coding agent, so raise it deliberately rather than by default.
 2. The `draft` job runs with `permissions: contents: read`. It fetches that report by id, runs `dsh --profile headless`, checks its own output with `scripts/bugfix-scrub.mjs`, and uploads `fix.patch`, `pr-body.md`, and `meta.json` as the `bugfix-draft` artifact.
 3. The `open-pr` job applies the patch to `bugfix/<report id>` and opens a draft pull request, then starts `ci.yml` explicitly: a pull request opened with the run token does not trigger `pull_request` workflows, and `workflow_dispatch` is the documented exception.
 4. A human reviews and merges. The release pipeline takes over.

@@ -662,7 +662,51 @@ describe("ops bug report egress endpoint (/api/ops/bug-reports)", () => {
     expect(auditRows).toHaveLength(2);
   });
 
-  it("11. an unknown report id is a 404 and a malformed one is a 400", async () => {
+  it("11. a limit caps how many reports one poll claims, and anything else is a 400", async () => {
+    const { env, database } = setupTestEnvironment();
+
+    for (const index of [1, 2, 3]) {
+      seedBugReport(database, {
+        title: `Report ${index}`,
+        actualBehavior: "User payment to Juan Dela Cruz completed",
+        expectedBehavior: "Show confirmation",
+        stepsToReproduce: "Submit form",
+      });
+    }
+
+    const app = createApp({
+      bugReports: bugReportRepository,
+      bugReportEgressAudit: bugReportEgressAuditRepository,
+    });
+
+    const capped = await app.request(
+      "/api/ops/bug-reports?limit=1",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(capped.status).toBe(200);
+    expect(((await capped.json()) as { reports: unknown[] }).reports).toHaveLength(1);
+
+    // The remaining reports are still unclaimed, so the next poll picks them up.
+    const rest = await app.request(
+      "/api/ops/bug-reports",
+      { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+      env,
+    );
+    expect(rest.status).toBe(200);
+    expect(((await rest.json()) as { reports: unknown[] }).reports).toHaveLength(2);
+
+    for (const bad of ["0", "101", "abc", "1.5", "-1"]) {
+      const response = await app.request(
+        `/api/ops/bug-reports?limit=${bad}`,
+        { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+        env,
+      );
+      expect(response.status, `limit=${bad}`).toBe(400);
+    }
+  });
+
+  it("12. an unknown report id is a 404 and a malformed one is a 400", async () => {
     const { env } = setupTestEnvironment();
 
     const app = createApp({
@@ -685,7 +729,7 @@ describe("ops bug report egress endpoint (/api/ops/bug-reports)", () => {
     expect(malformed.status).toBe(400);
   });
 
-  it("12. reading a blocked report by id never emits its text", async () => {
+  it("13. reading a blocked report by id never emits its text", async () => {
     const { env, database } = setupTestEnvironment();
 
     const canaryBlockedRaw = "CANARY_BLOCKED_BY_ID_CONTENT_9911";

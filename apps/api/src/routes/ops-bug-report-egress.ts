@@ -17,6 +17,7 @@ import type { AppEnvironment, Bindings } from "../types";
 
 const EGRESS_FIELDS = ["title", "actualBehavior", "expectedBehavior", "stepsToReproduce"] as const;
 const EGRESS_READ_LIMIT = 100;
+const LIMIT_PATTERN = /^\d+$/;
 
 const DUMMY_SECRET = "ops_egress_dummy_constant_time_comparison_secret_token";
 
@@ -187,7 +188,23 @@ export function createBugReportEgressRoutes(
       return context.json(toResponseBody([await crossReport(context.env, report)]));
     }
 
-    const candidateReports = await bugReports.listForEgress(context.env, EGRESS_READ_LIMIT);
+    // The list claims every report it returns, so a caller that cannot handle them all in one go
+    // asks for fewer. Whatever it does not ask for stays unclaimed for the next poll.
+    const requestedLimit = context.req.query("limit");
+    let readLimit = EGRESS_READ_LIMIT;
+    if (requestedLimit !== undefined) {
+      const parsedLimit = LIMIT_PATTERN.test(requestedLimit) ? Number(requestedLimit) : Number.NaN;
+      if (!Number.isInteger(parsedLimit) || parsedLimit < 1 || parsedLimit > EGRESS_READ_LIMIT) {
+        throw new HttpError(
+          400,
+          "invalid_request",
+          `Use a limit between 1 and ${EGRESS_READ_LIMIT}.`,
+        );
+      }
+      readLimit = parsedLimit;
+    }
+
+    const candidateReports = await bugReports.listForEgress(context.env, readLimit);
 
     const crossings: EgressCrossing[] = [];
     for (const report of candidateReports) {
