@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.43.0 — 2026-09-23
+
 ### Added
 
 - Admins can change a configuration's model from its Edit dialog on the AI & Voice Models page, with a live model list from the linked key and a warning when the provider no longer offers the current model, so a retired model is replaced without a release.
@@ -16,9 +18,14 @@ All notable product changes are documented here.
   it, restores the old balance in the same write. Payments recorded before this release are
   applied to their debts when it ships, so a balance that was already wrong reads correctly.
 - The AI assistant now defaults to DeepSeek `deepseek-flash` (V4.1 Flash). DeepSeek retired `deepseek-v4-flash`, and existing configurations still on it move to the new model automatically.
+- On the AI & Voice Models admin page, a failed save in the edit-configuration, add-credential, or edit-credential dialog now shows its reason inside the dialog. It used to appear behind the dialog's backdrop, so the save looked like it did nothing.
+
+## 2.42.2 — 2026-09-23
+
+### Fixed
+
 - The chat assistant no longer renders a faint pulsing square around the avatar while checking records. The checking pulse animation now targets the message bubble directly instead of the outer message container.
 - Adding an income transaction in the browser works again. The form sent the debt link an expense can carry for every kind of entry, and an income refuses that field, so a correctly filled income entry was rejected before it ever reached the API.
-- On the AI & Voice Models admin page, a failed save in the edit-configuration, add-credential, or edit-credential dialog now shows its reason inside the dialog. It used to appear behind the dialog's backdrop, so the save looked like it did nothing.
 
 ## 2.42.0 — 2026-09-22
 
