@@ -4,12 +4,10 @@ name: Bugfix Draft
 # cannot push anywhere. The open-pr job holds the write token, runs no model, and reads no user
 # text. An artifact sits between them, and that artifact is also the shadow mode deliverable.
 on:
-  # The schedule claims at most one report per tick, so one tick is at most one coding agent run.
-  schedule:
-    - cron: "*/15 * * * *"
-  # A manual run without an id claims the next report, the same as a tick, so it still works when
-  # GitHub delays or drops the schedule. With an id it drafts that report, including one a failed
-  # run already claimed.
+  # The API Worker's cron dispatches this with no id when a report is waiting, and the claim job
+  # takes at most one, so one dispatch is at most one coding agent run. GitHub's own schedule never
+  # fired for this repository. With an id a run drafts that report, including one a failed run
+  # already claimed.
   workflow_dispatch:
     inputs:
       bug_report_id:

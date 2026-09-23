@@ -13,6 +13,7 @@ import { deleteExpiredRateLimits } from "./rate-limit";
 import { validateRequiredApiBindings } from "./readiness";
 import { subscriptionRenewalService } from "./subscriptions/renewals";
 import { bugReportService } from "./support/bug-reports";
+import { dispatchBugfixDraft } from "./support/bugfix-dispatch";
 import type { Bindings } from "./types";
 
 export { RateLimitDurableObject };
@@ -80,6 +81,14 @@ export default {
         console.log(
           JSON.stringify({ message: "Expired rate limit counters deleted", expiredCounters }),
         );
+      }
+      // Every third tick: a draft takes longer than five minutes, and a slower cadence keeps two
+      // runs from claiming the same report at once. Last, so a GitHub failure skips nothing above.
+      if (new Date(controller.scheduledTime).getUTCMinutes() % 15 === 0) {
+        const bugfix = await dispatchBugfixDraft(env);
+        if (bugfix === "dispatched") {
+          console.log(JSON.stringify({ message: "Bugfix draft workflow dispatched" }));
+        }
       }
       return;
     }

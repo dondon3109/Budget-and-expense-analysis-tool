@@ -10,6 +10,7 @@ const validateRequiredApiBindings = vi.hoisted(() => vi.fn());
 const retryPendingBugReportNotifications = vi.hoisted(() => vi.fn());
 const cleanupExpiredBugReports = vi.hoisted(() => vi.fn());
 const billingRepository = vi.hoisted(() => ({}));
+const dispatchBugfixDraft = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/app", () => ({ createApp: () => ({ fetch: vi.fn() }) }));
 vi.mock("../src/readiness", () => ({ validateRequiredApiBindings }));
@@ -34,6 +35,8 @@ vi.mock("../src/support/bug-reports", () => ({
   },
 }));
 
+vi.mock("../src/support/bugfix-dispatch", () => ({ dispatchBugfixDraft }));
+
 import worker from "../src/index";
 
 const environment = {
@@ -50,8 +53,8 @@ const environment = {
   },
 } as unknown as Bindings;
 
-function controller(cron: string): ScheduledController {
-  return { cron, scheduledTime: 0, noRetry: vi.fn() };
+function controller(cron: string, scheduledTime = 0): ScheduledController {
+  return { cron, scheduledTime, noRetry: vi.fn() };
 }
 
 beforeEach(() => {
@@ -68,6 +71,7 @@ beforeEach(() => {
   creditDueInterest.mockResolvedValue({ checked: 0, credited: 0, skipped: 0 });
   retryPendingBugReportNotifications.mockResolvedValue({ claimed: 0, sent: 0, failed: 0 });
   cleanupExpiredBugReports.mockResolvedValue(0);
+  dispatchBugfixDraft.mockResolvedValue("idle");
 });
 
 describe("scheduled worker handler", () => {
@@ -80,6 +84,15 @@ describe("scheduled worker handler", () => {
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();
+  });
+
+  it("checks for a waiting bug report on every third five-minute tick only", async () => {
+    await worker.scheduled(controller("*/5 * * * *", Date.UTC(2026, 8, 23, 14, 5)), environment);
+    await worker.scheduled(controller("*/5 * * * *", Date.UTC(2026, 8, 23, 14, 10)), environment);
+    expect(dispatchBugfixDraft).not.toHaveBeenCalled();
+
+    await worker.scheduled(controller("*/5 * * * *", Date.UTC(2026, 8, 23, 14, 15)), environment);
+    expect(dispatchBugfixDraft).toHaveBeenCalledExactlyOnceWith(environment);
   });
 
   it("runs daily maintenance without PayPal checkout recovery", async () => {
