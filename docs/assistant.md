@@ -8,7 +8,7 @@ Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness
 2. Existing Worker middleware verifies the JWT and resolves the user's D1 tenant.
 3. The Worker loads bounded tenant-owned chat history and creates a trusted turn policy. The policy classifies regulated topics, resolves dates in `Asia/Manila`, and identifies required tool groups.
 4. Ambiguous dates and personalized regulated-topic recommendation requests receive deterministic server responses without a provider call or AI-usage charge.
-5. Provider-backed turns call the active assistant configuration (DeepSeek `deepseek-v4-flash` by default) with the trusted policy, bounded history, approved tool definitions, and no tenant or user identifier.
+5. Provider-backed turns call the active assistant configuration (DeepSeek `deepseek-flash` by default) with the trusted policy, bounded history, approved tool definitions, and no tenant or user identifier.
 6. While required tool groups remain unsatisfied, the Worker requires tool use, and reads a still-missing group itself when the model stops asking or reaches its final call, handing those records back as data. It validates every argument against strict schemas and the server-resolved date range before running tenant-scoped reads or calculations.
 7. The Worker validates the final answer against successful tool output. Unsupported money, percentages, dates, counts, internal identifiers, unsafe formats, named-filter substitutions, and disallowed regulated recommendations are rejected. One corrective retry is allowed; otherwise Zoption returns a deterministic safe fallback.
 8. D1 stores the user message, final answer, structured response metadata, and a sanitized run/tool audit snapshot. Raw provider payloads, hidden reasoning, credentials, notes, secrets, tenant IDs, and user IDs are not stored in the audit trail.
@@ -181,7 +181,7 @@ Local development and CI can set `ASSISTANT_PROVIDER=stub` to route provider-bac
 Non-secret Worker variables:
 
 - `ASSISTANT_ENABLED=true`
-- `DEEPSEEK_MODEL=deepseek-v4-flash`
+- `DEEPSEEK_MODEL=deepseek-flash`
 - `ASSISTANT_TIME_ZONE=Asia/Manila`
 - `ASSISTANT_PROVIDER_TIMEOUT_MS=12000`
 - `ASSISTANT_OVERALL_TIMEOUT_MS=25000`
@@ -193,11 +193,13 @@ Non-secret Worker variables:
 - `POSTHOG_HOST=https://us.i.posthog.com`
 - `POSTHOG_AI_ENVIRONMENT=preview` or `production`
 
-Keep `DEEPSEEK_MODEL` on `deepseek-v4-flash`. The legacy `deepseek-chat` alias was retired by DeepSeek in July 2026. AI Observability is server-side only: `$ai_generation` events never go through the browser. The consent-gated browser PostHog client in `apps/web/src/analytics/` is a separate web-analytics channel (`docs/analytics.md`) and must never carry assistant content.
+`DEEPSEEK_MODEL` is only the fallback used when no active configuration can be read from D1; the active configuration in the admin UI is what serves traffic. Keep it on `deepseek-flash`, DeepSeek's moving alias for its current Flash release. `deepseek-chat` was retired in July 2026 and `deepseek-v4-flash` in September 2026, when V4.1 Flash shipped. The code default lives once, as `DEFAULT_ASSISTANT_MODEL` in `packages/shared/src/types.ts`. AI Observability is server-side only: `$ai_generation` events never go through the browser. The consent-gated browser PostHog client in `apps/web/src/analytics/` is a separate web-analytics channel (`docs/analytics.md`) and must never carry assistant content.
 
 The admin UI (`AI & Voice Models`) is the preferred way to test models: add a credential for `deepseek`, `openai`, `anthropic`, `gemini`, `meta`, or `muse_spark`, create a configuration with an allowlisted model, then activate it. Direct Worker secrets below remain as the legacy fallback for one release.
 
 To try a model outside the curated list, open Add configuration for the assistant service, enter the key (or pick a saved one), and choose Fetch live models. The key is used for one vendor listing call and never stored by the fetch. Pick the model from the merged list and save; assistant configs accept any model from a known provider, while voice services stay pinned to their allowlists. Only models that support tool/function calling work with the assistant loop — embeddings, TTS, and vision-only models from a live listing will fail turns, so prefer chat models.
+
+When a vendor retires a model, no deploy is needed. Open the active configuration's Edit dialog, choose Fetch live models (it warns when the provider no longer lists the current model), pick the replacement, and save. The change takes effect at once because saving invalidates the provider registry cache. To move to a different provider, add a configuration for that provider with its key, activate it, then delete the old one. Credentials are created, rotated, and deleted from the same page.
 
 Set the provider secrets separately for preview and production:
 

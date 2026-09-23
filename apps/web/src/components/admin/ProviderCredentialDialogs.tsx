@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { providerAllowlist } from "@zoption/shared";
 import type { ProviderCredentialWithUsage } from "@zoption/shared";
 import { useState } from "react";
 
@@ -7,16 +8,10 @@ import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { AdminProviderDialog, SecretField, errorMessage } from "./AdminProviderDialog";
 
+// Every allowlisted provider except the Workers AI binding, which never takes a key.
 const CREDENTIAL_PROVIDERS = [
-  "deepseek",
-  "openai",
-  "anthropic",
-  "gemini",
-  "meta",
-  "muse_spark",
-  "google",
-  "fish_audio",
-];
+  ...new Set(Object.values(providerAllowlist).flatMap((providers) => Object.keys(providers))),
+].filter((provider) => provider !== "cloudflare_workers_ai");
 
 interface AddCredentialDialogProps {
   workspace: AuthenticatedWorkspace;

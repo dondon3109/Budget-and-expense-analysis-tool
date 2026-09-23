@@ -378,6 +378,84 @@ describe("AdminProviderConfigsPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("replaces a retired assistant model in place from the edit dialog", async () => {
+    const retired = {
+      id: "cfg-deepseek",
+      service: "assistant",
+      provider: "deepseek",
+      model: "deepseek-v4-flash",
+      displayName: "deepseek / deepseek-v4-flash",
+      credentialId: "cred-deepseek-1",
+      enabled: true,
+      priority: 1,
+      isActive: true,
+      createdAt: "2026-08-27T00:00:00Z",
+      updatedAt: "2026-08-27T00:00:00Z",
+      updatedBy: null,
+    };
+    apiMocks.getProviderConfigs.mockResolvedValue({ configs: [retired] });
+    apiMocks.getProviderCredentials.mockResolvedValue({
+      credentials: [
+        {
+          id: "cred-deepseek-1",
+          provider: "deepseek",
+          name: "DeepSeek Key",
+          apiKeyLast4: "4321",
+          usedBy: [],
+          createdAt: "2026-08-27T00:00:00Z",
+          updatedAt: "2026-08-27T00:00:00Z",
+          updatedBy: null,
+        },
+      ],
+    });
+    apiMocks.listCredentialModels.mockResolvedValue({
+      provider: "deepseek",
+      models: ["deepseek-flash", "deepseek-v4-pro"],
+    });
+    apiMocks.updateProviderConfig.mockResolvedValue({
+      ...retired,
+      model: "deepseek-flash",
+      displayName: "deepseek / deepseek-flash",
+    });
+    renderPage();
+    await screen.findByText("AI Assistant");
+
+    const editBtn = screen
+      .getAllByRole("button", { name: /Edit/i })
+      .find((b) => b.getAttribute("title")?.includes("Edit display name"));
+    fireEvent.click(editBtn!);
+    const dialog = await screen.findByRole("dialog");
+
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: /Fetch live models/i }));
+    });
+    expect(apiMocks.listCredentialModels).toHaveBeenCalledWith(
+      expect.anything(),
+      "cred-deepseek-1",
+    );
+    expect(within(dialog).getByText(/no longer lists/i)).toBeInTheDocument();
+
+    fireEvent.change(within(dialog).getByLabelText(/^Model/i), {
+      target: { value: "deepseek-flash" },
+    });
+    expect(within(dialog).getByLabelText(/^Display name/i)).toHaveValue(
+      "deepseek / deepseek-flash",
+    );
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save configuration" }));
+    });
+
+    expect(apiMocks.updateProviderConfig).toHaveBeenCalledWith(
+      expect.anything(),
+      "cfg-deepseek",
+      expect.objectContaining({
+        model: "deepseek-flash",
+        displayName: "deepseek / deepseek-flash",
+        credentialId: "cred-deepseek-1",
+      }),
+    );
+  });
+
   it("allows entering a custom model ID when adding an assistant configuration", async () => {
     renderPage();
     await screen.findByText("AI Assistant");

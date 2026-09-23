@@ -37,8 +37,10 @@ const CUSTOM_MODEL_VALUE = "__custom";
 type CredentialMode = "existing" | "new" | "none";
 type CredentialsByProvider = Map<string, ProviderCredentialWithUsage[]>;
 
-function resolveAddModel(model: string, custom: string): string {
-  return model === CUSTOM_MODEL_VALUE ? custom.trim() : model;
+/** Keeps an auto-generated "provider / model" name in step with the model; a custom name stays. */
+function syncDisplayName(current: string, provider: string, model: string): string {
+  if (current.trim() && !current.startsWith(`${provider} /`)) return current;
+  return provider && model ? `${provider} / ${model}`.slice(0, 40) : "";
 }
 
 function availableProviders(service: ProviderService): string[] {
@@ -112,6 +114,148 @@ async function resolveCredentialId(
   return null;
 }
 
+interface ModelFieldProps {
+  service: ProviderService;
+  /** Curated models offered before any live listing. */
+  curated: readonly string[];
+  /** Models another configuration of this provider already uses. */
+  taken: ReadonlySet<string>;
+  model: string;
+  onChange: (model: string) => void;
+  /** Lists the models the linked or pasted key can reach; null until a key is available. */
+  listModels: (() => Promise<string[]>) | null;
+}
+
+/**
+ * Model picker shared by the add and edit dialogs. Assistant configurations can use any model
+ * the provider offers, so a retired default is replaced here at runtime instead of in code.
+ */
+function ModelField({ service, curated, taken, model, onChange, listModels }: ModelFieldProps) {
+  const [custom, setCustom] = useState(false);
+  const [customModel, setCustomModel] = useState("");
+  const [fetched, setFetched] = useState<string[] | null>(null);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string>();
+  const isAssistant = service === "assistant";
+  const options = [
+    ...new Set([...(model && !custom ? [model] : []), ...curated, ...(fetched ?? [])]),
+  ].filter((m) => m === model || !taken.has(m));
+  const retired =
+    fetched !== null && fetched.length > 0 && !custom && model && !fetched.includes(model);
+
+  async function handleFetch() {
+    if (!listModels || fetching) return;
+    setFetching(true);
+    setFetchError(undefined);
+    try {
+      const models = await listModels();
+      setFetched(models);
+      if (models.length === 0) setFetchError("The provider returned no models for this key.");
+    } catch (err) {
+      setFetchError(errorMessage(err, "Could not fetch models."));
+    } finally {
+      setFetching(false);
+    }
+  }
+
+  return (
+    <>
+      <label className="add-field">
+        <span>Model</span>
+        <select
+          value={custom ? CUSTOM_MODEL_VALUE : model}
+          onChange={(e) => {
+            const next = e.target.value;
+            setCustom(next === CUSTOM_MODEL_VALUE);
+            onChange(next === CUSTOM_MODEL_VALUE ? customModel.trim() : next);
+          }}
+        >
+          {options.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+          {isAssistant && <option value={CUSTOM_MODEL_VALUE}>Other (enter manually)…</option>}
+        </select>
+        {options.length === 0 && !custom && <small>No remaining models for this provider.</small>}
+      </label>
+      {isAssistant && custom && (
+        <label className="add-field">
+          <span>Custom model ID</span>
+          <input
+            value={customModel}
+            onChange={(e) => {
+              setCustomModel(e.target.value);
+              onChange(e.target.value.trim());
+            }}
+            placeholder="e.g. deepseek-flash"
+            maxLength={200}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <small className="field-hint">
+            Use the exact vendor model ID. It must support tool calling to work with the assistant.
+          </small>
+        </label>
+      )}
+      {isAssistant && (
+        <div className="add-field">
+          <button
+            type="button"
+            className="button secondary compact"
+            disabled={fetching || !listModels}
+            onClick={handleFetch}
+            title="List the models this key can access, then choose one"
+          >
+            <RefreshCw size={13} />
+            {fetching ? "Fetching models…" : "Fetch live models"}
+          </button>{" "}
+          <small className="field-hint">
+            {fetched
+              ? `${fetched.length} models available. Only models supporting tool calling work with the assistant.`
+              : "Enter a key (or pick a saved one), then fetch what it can access."}
+          </small>
+          {retired && (
+            <div className="admin-provider-feedback error" role="alert">
+              The provider no longer lists <code>{model}</code>. Choose a current model.
+            </div>
+          )}
+          {fetchError && (
+            <div className="admin-provider-feedback error" role="alert">
+              {fetchError}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Lists live models with a pasted key or a saved credential, or null when neither is ready. */
+function modelLister(
+  workspace: AuthenticatedWorkspace,
+  provider: string,
+  credMode: CredentialMode,
+  credentialId: string,
+  newSecret: string,
+): (() => Promise<string[]>) | null {
+  if (credMode === "new") {
+    if (newSecret.trim().length < 8) return null;
+    return async () =>
+      (await previewProviderModels(workspace, { provider, secret: newSecret.trim() })).models;
+  }
+  if (credMode === "existing" && credentialId) {
+    return async () => (await listCredentialModels(workspace, credentialId)).models;
+  }
+  return null;
+}
+
+function takenModels(existing: ProviderConfig[], provider: string, exceptId?: string) {
+  return new Set(
+    existing.filter((c) => c.provider === provider && c.id !== exceptId).map((c) => c.model),
+  );
+}
+
 interface AddConfigDialogProps {
   workspace: AuthenticatedWorkspace;
   service: ProviderService;
@@ -146,10 +290,6 @@ export function AddConfigDialog({
   const [newCredName, setNewCredName] = useState(defaultCredentialName(initial.provider));
   const [newCredSecret, setNewCredSecret] = useState("");
   const [activateImmediately, setActivateImmediately] = useState(true);
-  const [fetchedModels, setFetchedModels] = useState<string[] | null>(null);
-  const [fetchingModels, setFetchingModels] = useState(false);
-  const [fetchModelsError, setFetchModelsError] = useState<string>();
-  const [customModel, setCustomModel] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Errors render inside the dialog. It is a full-viewport scrim, so anything
   // routed to the page-level error is painted underneath and the save looks
@@ -157,7 +297,6 @@ export function AddConfigDialog({
   const [error, setError] = useState<string>();
 
   const providers = availableProviders(service);
-  const models = fetchedModels ?? (provider ? remainingModels(service, provider, existing) : []);
   // Assistant configs may use any live-fetched model, so the dialog
   // stays open even when every curated model is configured.
   const hasRemaining =
@@ -171,9 +310,6 @@ export function AddConfigDialog({
     const rem = remainingModels(service, p, existing);
     const creds = credentialsByProvider.get(p) ?? [];
     setProvider(p);
-    setFetchedModels(null);
-    setCustomModel("");
-    setFetchModelsError(undefined);
     setModel(rem[0] ?? "");
     setCredentialId(creds[0]?.id ?? "");
     setCredMode(p === "cloudflare_workers_ai" ? "none" : creds.length > 0 ? "existing" : "new");
@@ -182,41 +318,8 @@ export function AddConfigDialog({
     setDisplayName(p && rem[0] ? `${p} / ${rem[0]}` : "");
   }
 
-  async function handleFetchModels() {
-    if (!provider || fetchingModels) return;
-    setFetchingModels(true);
-    setFetchModelsError(undefined);
-    try {
-      const result =
-        credMode === "new"
-          ? await previewProviderModels(workspace, { provider, secret: newCredSecret.trim() })
-          : await listCredentialModels(workspace, credentialId);
-      const used = new Set(existing.filter((c) => c.provider === provider).map((c) => c.model));
-      const base = remainingModels(service, provider, existing);
-      const extras = result.models.filter((m) => !base.includes(m) && !used.has(m));
-      const all = [...base, ...extras];
-      setFetchedModels(all);
-      if (model && model !== CUSTOM_MODEL_VALUE && !all.includes(model)) {
-        const next = all[0] ?? "";
-        setModel(next);
-        setDisplayName(provider && next ? `${provider} / ${next}` : "");
-      } else if (!model && extras.length > 0 && base.length === 0) {
-        setModel(extras[0]!);
-        setDisplayName(`${provider} / ${extras[0]}`);
-      }
-      if (result.models.length === 0) {
-        setFetchModelsError("The provider returned no models for this key.");
-      }
-    } catch (err) {
-      setFetchModelsError(errorMessage(err, "Could not fetch models."));
-    } finally {
-      setFetchingModels(false);
-    }
-  }
-
   async function handleCreate() {
-    const effectiveModel = resolveAddModel(model, customModel);
-    if (!provider || !effectiveModel || !displayName.trim()) return;
+    if (!provider || !model || !displayName.trim()) return;
     setIsSubmitting(true);
     setError(undefined);
     try {
@@ -237,7 +340,7 @@ export function AddConfigDialog({
       const created = await createProviderConfig(workspace, {
         service,
         provider,
-        model: effectiveModel,
+        model,
         displayName: displayName.trim(),
         credentialId: linkedId,
       });
@@ -297,76 +400,18 @@ export function AddConfigDialog({
                 })}
               </select>
             </label>
-            <label className="add-field">
-              <span>Model</span>
-              <select value={model} onChange={(e) => setModel(e.target.value)}>
-                {models.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-                {service === "assistant" && (
-                  <option value={CUSTOM_MODEL_VALUE}>Other (enter manually)…</option>
-                )}
-              </select>
-              {models.length === 0 && model !== CUSTOM_MODEL_VALUE && (
-                <small>No remaining models for this provider.</small>
-              )}
-            </label>
-            {service === "assistant" && model === CUSTOM_MODEL_VALUE && (
-              <label className="add-field">
-                <span>Custom model ID</span>
-                <input
-                  value={customModel}
-                  onChange={(e) => {
-                    const next = e.target.value;
-                    setCustomModel(next);
-                    if (!displayName.trim() || displayName.startsWith(`${provider} /`)) {
-                      setDisplayName(provider && next.trim() ? `${provider} / ${next.trim()}` : "");
-                    }
-                  }}
-                  placeholder="e.g. muse-spark-1.3"
-                  maxLength={200}
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <small className="field-hint">
-                  Use the exact vendor model ID. It must support tool calling to work with the
-                  assistant.
-                </small>
-              </label>
-            )}
-            {service === "assistant" && (
-              <div className="add-field">
-                <button
-                  type="button"
-                  className="button secondary compact"
-                  disabled={
-                    fetchingModels ||
-                    (credMode === "new"
-                      ? newCredSecret.trim().length < 8
-                      : credMode === "existing"
-                        ? !credentialId
-                        : true)
-                  }
-                  onClick={handleFetchModels}
-                  title="List the models this key can access, then choose one"
-                >
-                  <RefreshCw size={13} />
-                  {fetchingModels ? "Fetching models…" : "Fetch live models"}
-                </button>{" "}
-                <small className="field-hint">
-                  {fetchedModels
-                    ? `${fetchedModels.length} models available (curated first). Only models supporting tool calling work with the assistant.`
-                    : "Enter a key above (or pick a saved one), then fetch what it can access."}
-                </small>
-                {fetchModelsError && (
-                  <div className="admin-provider-feedback error" role="alert">
-                    {fetchModelsError}
-                  </div>
-                )}
-              </div>
-            )}
+            <ModelField
+              key={provider}
+              service={service}
+              curated={remainingModels(service, provider, existing)}
+              taken={takenModels(existing, provider)}
+              model={model}
+              onChange={(next) => {
+                setModel(next);
+                setDisplayName((current) => syncDisplayName(current, provider, next));
+              }}
+              listModels={modelLister(workspace, provider, credMode, credentialId, newCredSecret)}
+            />
             <label className="add-field">
               <span>Display name</span>
               <input
@@ -508,7 +553,7 @@ export function AddConfigDialog({
                 className="button"
                 disabled={
                   !provider ||
-                  !resolveAddModel(model, customModel) ||
+                  !model ||
                   !displayName.trim() ||
                   isSubmitting ||
                   (!isCloudflare &&
@@ -538,6 +583,8 @@ export function AddConfigDialog({
 interface EditConfigDialogProps {
   workspace: AuthenticatedWorkspace;
   config: ProviderConfig;
+  /** Every configuration of the same service, used to keep model choices unique. */
+  existing: ProviderConfig[];
   credentialsByProvider: CredentialsByProvider;
   onClose: () => void;
   onSaved: (message: string) => void;
@@ -546,6 +593,7 @@ interface EditConfigDialogProps {
 export function EditConfigDialog({
   workspace,
   config,
+  existing,
   credentialsByProvider,
   onClose,
   onSaved,
@@ -555,6 +603,7 @@ export function EditConfigDialog({
   const isGoogle = config.provider === "google";
   const isCloudflare = config.provider === "cloudflare_workers_ai";
   const [displayName, setDisplayName] = useState(config.displayName);
+  const [model, setModel] = useState(config.model);
   const [credentialId, setCredentialId] = useState(config.credentialId ?? "");
   const [credMode, setCredMode] = useState<CredentialMode>(
     config.credentialId ? "existing" : isGoogle ? "none" : creds.length > 0 ? "existing" : "new",
@@ -565,7 +614,7 @@ export function EditConfigDialog({
   const [error, setError] = useState<string>();
 
   async function handleUpdate() {
-    if (!displayName.trim()) return;
+    if (!displayName.trim() || !model) return;
     setIsSubmitting(true);
     setError(undefined);
     try {
@@ -583,6 +632,7 @@ export function EditConfigDialog({
       const updated = await updateProviderConfig(workspace, config.id, {
         displayName: displayName.trim(),
         credentialId: linkedId,
+        ...(model !== config.model ? { model } : {}),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
@@ -610,6 +660,23 @@ export function EditConfigDialog({
             maxLength={40}
           />
         </label>
+        <ModelField
+          service={config.service}
+          curated={providerAllowlist[config.service]?.[config.provider] ?? []}
+          taken={takenModels(existing, config.provider, config.id)}
+          model={model}
+          onChange={(next) => {
+            setModel(next);
+            setDisplayName((current) => syncDisplayName(current, config.provider, next));
+          }}
+          listModels={modelLister(
+            workspace,
+            config.provider,
+            credMode,
+            credentialId,
+            newCredSecret,
+          )}
+        />
         {isCloudflare ? (
           <small>Workers AI binding is managed by Cloudflare configuration.</small>
         ) : (
@@ -701,6 +768,7 @@ export function EditConfigDialog({
             className="button"
             disabled={
               !displayName.trim() ||
+              !model ||
               isSubmitting ||
               (!isCloudflare &&
                 (credMode === "new"

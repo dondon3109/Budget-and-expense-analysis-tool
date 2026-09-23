@@ -769,7 +769,7 @@ export function AdminProviderConfigsPage() {
                                         type="button"
                                         className="button small secondary"
                                         onClick={() => setEditConfig(cfg)}
-                                        title="Edit display name or linked credential"
+                                        title="Edit display name, model, or linked credential"
                                       >
                                         <Pencil size={12} /> Edit
                                       </button>
@@ -940,6 +940,7 @@ export function AdminProviderConfigsPage() {
               <EditConfigDialog
                 workspace={workspace}
                 config={editConfig}
+                existing={configsByService.get(editConfig.service) ?? []}
                 credentialsByProvider={credentialsByProvider}
                 onClose={() => setEditConfig(null)}
                 onSaved={saved}
