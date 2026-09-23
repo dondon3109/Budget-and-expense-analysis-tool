@@ -16,7 +16,7 @@ fi
 
 secrets=(
   "OPS_EGRESS_TOKEN|Worker OPS_EGRESS_TOKEN"
-  "ANTHROPIC_API_KEY|Anthropic API key for the draft job"
+  "CLAUDE_CODE_OAUTH_TOKEN|Claude subscription token from claude setup-token"
   "TELEGRAM_BOT_TOKEN|Telegram bot token from @BotFather"
   "TELEGRAM_CHAT_ID|Telegram chat id (message.chat.id from getUpdates)"
 )

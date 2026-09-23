@@ -48,7 +48,7 @@ Decisions recorded here that are not obvious:
   email addresses and phone numbers. Addresses under the RFC 2606 reserved
   names (`example.com`, `.test`, and the like) pass, because test fixtures
   need them and no real user can own one.
-- Claude Code headless (`claude -p`, model `claude-opus-5`) is the harness,
+- Claude Code headless (`claude -p`, model `claude-opus-5-5`) is the harness,
   replacing `dsh` on 2026-09-23, limited to file tools and `pnpm vitest run`.
   Any harness that runs one task without a terminal, reads its key from the
   environment, and edits files in the working directory can replace it by
