@@ -42,7 +42,13 @@ const FEATURE_PAGE_SOURCES = [
  * releaseDate is the date /install already declares).
  */
 export const CONTENT_SOURCES: Record<string, readonly string[]> = {
-  "/": ["apps/web/src/pages/LandingPage.tsx"],
+  "/": [
+    "apps/web/src/pages/LandingPage.tsx",
+    "apps/web/src/components/landing/BudgetPlannerCalculator.tsx",
+    "apps/web/src/components/landing/CustomerReviews.tsx",
+    "apps/web/src/components/landing/FastEntrySpotlight.tsx",
+    "apps/web/src/components/landing/FeatureModules.tsx",
+  ],
   "/pricing": ["apps/web/src/pages/pricing/PricingPage.tsx"],
   "/terms-of-service": ["apps/web/src/pages/legal/TermsOfServicePage.tsx"],
   "/privacy-policy": ["apps/web/src/pages/legal/PrivacyPolicyPage.tsx"],
