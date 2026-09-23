@@ -482,7 +482,7 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 
 ### The chain
 
-1. n8n on HomeCore runs `Zoption Bugfix Draft Dispatch` every 15 minutes. It calls the endpoint with `?limit=3` and dispatches `.github/workflows/bugfix.yml` once per unhandled clean report. The limit bounds the fan out: three reports per poll is three concurrent workflow runs, each of which runs a coding agent, so raise it deliberately rather than by default.
+1. n8n on HomeCore runs `Zoption Bugfix Draft Dispatch` every 15 minutes. It calls the endpoint with `?limit=1` and dispatches `.github/workflows/bugfix.yml` once per unhandled clean report. The limit bounds the fan out: one report per poll is one workflow run, each of which runs a coding agent, so raise it deliberately rather than by default.
 2. The `draft` job runs with `permissions: contents: read`. It fetches that report by id, runs `dsh --profile headless`, checks its own output with `scripts/bugfix-scrub.mjs`, and uploads `fix.patch`, `pr-body.md`, and `meta.json` as the `bugfix-draft` artifact.
 3. The `open-pr` job applies the patch to `bugfix/<report id>` and opens a draft pull request, then starts `ci.yml` explicitly: a pull request opened with the run token does not trigger `pull_request` workflows, and `workflow_dispatch` is the documented exception.
 4. A human reviews and merges. The release pipeline takes over.
