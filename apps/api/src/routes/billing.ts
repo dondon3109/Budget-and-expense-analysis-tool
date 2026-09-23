@@ -1,7 +1,11 @@
 import { billingCheckoutRequestSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
-import { cancelDodoSubscription, createDodoCheckoutSession } from "../billing/dodo";
+import {
+  cancelDodoSubscription,
+  createDodoCheckoutSession,
+  getDodoCheckoutSessionPaymentId,
+} from "../billing/dodo";
 import {
   cancelPayPalSubscription,
   createPayPalSubscription,
@@ -45,7 +49,7 @@ export function createBillingRoutes(repository: BillingRepository) {
       throw new HttpError(400, "invalid_request", "Choose a valid billing interval.");
     }
     const tenantId = context.get("tenant").tenantId;
-    const checkout = await repository.createCheckoutReference(
+    let checkout = await repository.createCheckoutReference(
       context.env,
       tenantId,
       parsed.data.interval,
@@ -60,13 +64,23 @@ export function createBillingRoutes(repository: BillingRepository) {
     }
 
     if (checkout.provider === "dodo") {
-      // A session that already exists cannot be reopened, so a repeat request waits on it.
+      // Dodo cannot reopen a session, so a repeat request waits on a paid one and replaces an
+      // unpaid one. A superseded session paid later still links to its checkout and grants Pro.
       if (checkout.providerCheckoutId) {
-        throw new HttpError(
-          409,
-          "checkout_awaiting_confirmation",
-          "Payment confirmation is already in progress. Check Plan and billing for updates.",
-          { billingPath: "/app/settings#plan-and-billing" },
+        if (await getDodoCheckoutSessionPaymentId(context.env, checkout.providerCheckoutId)) {
+          throw new HttpError(
+            409,
+            "checkout_awaiting_confirmation",
+            "Payment confirmation is already in progress. Check Plan and billing for updates.",
+            { billingPath: "/app/settings#plan-and-billing" },
+          );
+        }
+        await repository.supersedePendingCheckout(context.env, tenantId, checkout.reference);
+        checkout = await repository.createCheckoutReference(
+          context.env,
+          tenantId,
+          parsed.data.interval,
+          "dodo",
         );
       }
       const session = await createDodoCheckoutSession(context.env, {

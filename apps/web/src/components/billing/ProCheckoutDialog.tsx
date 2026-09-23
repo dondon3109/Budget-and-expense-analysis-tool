@@ -294,7 +294,7 @@ function ProCheckoutDialogContent({
   const [providerConfig, setProviderConfig] = useState<BillingProviderConfig>();
   const canCheckout = summary.canCheckout && !summary.pendingCheckout;
   const checkoutUnavailable = summary.pendingCheckout
-    ? "Payment confirmation is already in progress. Check Plan and billing for the latest PayPal verification status."
+    ? "Payment confirmation is already in progress. Check Plan and billing for the latest payment status."
     : summary.canManageBilling
       ? "Review your existing subscription before starting another checkout."
       : "Checkout is temporarily unavailable for this account.";

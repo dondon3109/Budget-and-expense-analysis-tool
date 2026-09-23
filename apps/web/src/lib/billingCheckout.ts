@@ -40,7 +40,12 @@ export function redirectToPaypalCheckout(url: string): void {
   window.location.assign(url);
 }
 
-/** Dodo serves hosted checkout from dodopayments.com subdomains in test and live mode. */
+/**
+ * Dodo serves hosted checkout from dodopayments.com subdomains in test and live mode. Test mode
+ * is not refused here: Preview is a production build that uses it, and the Worker's
+ * DODO_PAYMENTS_ENVIRONMENT, which deployment validation pins to live_mode in Production,
+ * decides which mode a checkout uses.
+ */
 export function redirectToDodoCheckout(url: string): void {
   let target: URL;
   try {
@@ -50,9 +55,12 @@ export function redirectToDodoCheckout(url: string): void {
   }
 
   const host = target.hostname.toLowerCase();
-  const trustedHost =
-    host.endsWith(".dodopayments.com") && (!host.startsWith("test.") || !import.meta.env.PROD);
-  if (target.protocol !== "https:" || target.username || target.password || !trustedHost) {
+  if (
+    target.protocol !== "https:" ||
+    target.username ||
+    target.password ||
+    !host.endsWith(".dodopayments.com")
+  ) {
     throw new Error(DODO_CHECKOUT_OPEN_ERROR);
   }
 

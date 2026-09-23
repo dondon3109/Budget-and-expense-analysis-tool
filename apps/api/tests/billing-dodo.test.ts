@@ -59,6 +59,7 @@ function environment() {
   };
   return {
     env,
+    database,
     checkoutRow: () =>
       database
         .prepare(
@@ -197,13 +198,22 @@ describe("Dodo Payments webhook signatures", () => {
 
 describe("Dodo Payments subscriptions", () => {
   it("opens a hosted checkout session tagged with the checkout reference", async () => {
-    const { env, checkoutRow } = environment();
-    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
-      Response.json({
-        session_id: SESSION_ID,
-        checkout_url: "https://test.checkout.dodopayments.com/session/cks_session",
-      }),
-    );
+    const { env, checkoutRow, database } = environment();
+    let paidSessionId: string | null = null;
+    let sessions = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const path = new URL(String(input)).pathname;
+      if (init?.method !== "POST") {
+        const id = path.split("/").at(-1)!;
+        return Response.json({ id, payment_id: id === paidSessionId ? PAYMENT_ID : null });
+      }
+      sessions += 1;
+      const sessionId = sessions === 1 ? SESSION_ID : `${SESSION_ID}_${sessions}`;
+      return Response.json({
+        session_id: sessionId,
+        checkout_url: `https://test.checkout.dodopayments.com/session/${sessionId}`,
+      });
+    });
     vi.stubGlobal("fetch", fetchMock);
     const app = createTestApp({ tenant: { tenantId: TENANT_ID } as never, env });
     app.route("/billing", createBillingRoutes(billingRepository));
@@ -235,14 +245,34 @@ describe("Dodo Payments subscriptions", () => {
       provider: "dodo",
     });
 
-    await expect(
+    const checkoutAgain = () =>
       app.request("/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interval: "month", provider: "dodo" }),
-      }),
-    ).resolves.toHaveProperty("status", 409);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+      });
+
+    // An unpaid session cannot be reopened, so a repeat request replaces it.
+    const repeat = await checkoutAgain();
+    expect(repeat.status).toBe(201);
+    await expect(repeat.json()).resolves.toEqual({
+      approvalUrl: `https://test.checkout.dodopayments.com/session/${SESSION_ID}_2`,
+    });
+    const supersededCount = () =>
+      (
+        database
+          .prepare(
+            "SELECT COUNT(*) AS n FROM billing_checkout_references WHERE superseded_at IS NOT NULL",
+          )
+          .get() as { n: number }
+      ).n;
+    expect(supersededCount()).toBe(1);
+
+    // A paid session waits for confirmation instead of opening a second charge.
+    paidSessionId = `${SESSION_ID}_2`;
+    await expect(checkoutAgain()).resolves.toHaveProperty("status", 409);
+    expect(sessions).toBe(2);
+    expect(supersededCount()).toBe(1);
   });
 
   it("grants Pro once a paid checkout session's payment names its subscription", async () => {
