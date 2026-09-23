@@ -11,42 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 20, 2026",
+  releasedOn: "September 23, 2026",
   changes: [
     {
-      title: "A startup screen that no longer flickers",
+      title: "Debt payments that pay down the debt",
       description:
-        "The screen that prepares your private workspace used to fade itself away a quarter of a second after it appeared, showing the dashboard behind it before covering it again. It now holds until your session, your route, and this month's summary are ready, and then fades out once, so opening the app is a single handover rather than a flash.",
+        'A "Debt payment" expense category now ships with every workspace. Choosing it asks which debt the money went to, and recording the payment lowers that debt\'s balance, marking it paid when the balance reaches zero, so Goals & debt shows the balance after the payment. Editing or deleting the payment restores the old balance, and the ledger and CSV export name the debt beside the category.',
     },
     {
-      title: "A faster welcome into your workspace",
+      title: "Edits that stay edits",
       description:
-        "The screen that appears while your private workspace prepares no longer holds you for a fixed three seconds. It leaves as soon as your session is restored and your workspace has loaded, its progress bar counts those real steps, and signing in through a provider link, a magic link, or a password reset now ends on it for a moment so the workspace no longer appears to jump straight from your provider.",
+        "Saving a changed transaction in the browser, such as switching an expense to income, now updates that transaction instead of sometimes adding a second copy beside it. Adding an income entry works again too; the form had been sending a debt link that only expenses can carry.",
     },
     {
-      title: "Safe-to-spend guidance on the web dashboard",
+      title: "Categories without a limit stay out of your budget",
       description:
-        "The dashboard now answers what you can safely spend this week: your remaining monthly budget, or your balance when the month has no budget plan, paced across the days left and capped so an upcoming renewal cannot push your projected balance below zero, with a link straight to your renewals.",
+        "Clearing a category's limit used to leave a zero limit behind, and the dashboard and the assistant counted that spending against a plan you never set, so remaining budget could turn negative. A category without a limit now reads as unbudgeted everywhere: its spending stays visible, and your plan totals leave it out.",
     },
     {
-      title: "A cash-flow forecast that shows its shape",
+      title: "Steadier loading on a slow connection",
       description:
-        "The subscriptions forecast now draws your projected balance as a line instead of a strip of bars, marks the lowest point and the day it lands on, and puts the 30, 60, and 90 day endings side by side so you can pick a horizon without losing the others. Your safety buffer is now an amount you set, drawn on the chart as a threshold, instead of a fixed zero.",
+        'A page that stalls while loading on a lossy connection now asks once more before reporting a timeout, so a brief drop no longer shows "The request took too long" when the server answered fine. Saving still fails immediately, so a change that may already have been applied is never sent twice.',
     },
     {
-      title: "Dashboard shortcuts to the forecast and the remittance calculator",
+      title: "A clearer debt form",
       description:
-        "The dashboard now carries a card for each. The forecast card reads your lowest projected balance over the next 30 days and how many renewals fall inside that window; the remittance card shows the mid-market benchmark rate. Both open the full tool in one click, with the forecast link landing straight on the forecast view.",
-    },
-    {
-      title: "Honest amounts in the remittance calculator",
-      description:
-        "The calculator no longer prints a received amount, a savings figure, or a Best Value badge while the amount, the fee, or the exchange rate you typed cannot be read. It says what it is waiting for, names the field that needs fixing, and returns to the real figures as soon as the field is valid.",
-    },
-    {
-      title: "Android Beta 0.2.33",
-      description:
-        "The official Android Beta opens on the screen your session selects instead of three loading screens, applies your saved theme on the first frame, reads only the transactions the dashboard charts instead of your whole ledger, refreshes once for a sync that writes many rows, and bundles one icon font instead of sixteen.",
+        'The rate field now reads "Interest rate (APR)" and explains in one line that it is the yearly interest your lender charges. The rate, balance date, and status fields share one row again, and the rate field no longer draws a second focus ring across its % sign.',
     },
   ],
 };
@@ -61,6 +51,47 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.41.3",
+    releasedOn: "September 21, 2026",
+    changes: [
+      {
+        title: "A startup screen that no longer flickers",
+        description:
+          "The screen that prepares your private workspace used to fade itself away a quarter of a second after it appeared, showing the dashboard behind it before covering it again. It now holds until your session, your route, and this month's summary are ready, and then fades out once, so opening the app is a single handover rather than a flash.",
+      },
+      {
+        title: "A faster welcome into your workspace",
+        description:
+          "The screen that appears while your private workspace prepares no longer holds you for a fixed three seconds. It leaves as soon as your session is restored and your workspace has loaded, its progress bar counts those real steps, and signing in through a provider link, a magic link, or a password reset now ends on it for a moment so the workspace no longer appears to jump straight from your provider.",
+      },
+      {
+        title: "Safe-to-spend guidance on the web dashboard",
+        description:
+          "The dashboard now answers what you can safely spend this week: your remaining monthly budget, or your balance when the month has no budget plan, paced across the days left and capped so an upcoming renewal cannot push your projected balance below zero, with a link straight to your renewals.",
+      },
+      {
+        title: "A cash-flow forecast that shows its shape",
+        description:
+          "The subscriptions forecast now draws your projected balance as a line instead of a strip of bars, marks the lowest point and the day it lands on, and puts the 30, 60, and 90 day endings side by side so you can pick a horizon without losing the others. Your safety buffer is now an amount you set, drawn on the chart as a threshold, instead of a fixed zero.",
+      },
+      {
+        title: "Dashboard shortcuts to the forecast and the remittance calculator",
+        description:
+          "The dashboard now carries a card for each. The forecast card reads your lowest projected balance over the next 30 days and how many renewals fall inside that window; the remittance card shows the mid-market benchmark rate. Both open the full tool in one click, with the forecast link landing straight on the forecast view.",
+      },
+      {
+        title: "Honest amounts in the remittance calculator",
+        description:
+          "The calculator no longer prints a received amount, a savings figure, or a Best Value badge while the amount, the fee, or the exchange rate you typed cannot be read. It says what it is waiting for, names the field that needs fixing, and returns to the real figures as soon as the field is valid.",
+      },
+      {
+        title: "Android Beta 0.2.33",
+        description:
+          "The official Android Beta opens on the screen your session selects instead of three loading screens, applies your saved theme on the first frame, reads only the transactions the dashboard charts instead of your whole ledger, refreshes once for a sync that writes many rows, and bundles one icon font instead of sixteen.",
+      },
+    ],
+  },
   {
     version: "2.39.0",
     releasedOn: "September 19, 2026",
