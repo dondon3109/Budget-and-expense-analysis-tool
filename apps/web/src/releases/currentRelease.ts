@@ -11,42 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 20, 2026",
+  releasedOn: "September 24, 2026",
   changes: [
     {
-      title: "A startup screen that no longer flickers",
+      title: "Pay for Zoption Pro with Dodo Payments",
       description:
-        "The screen that prepares your private workspace used to fade itself away a quarter of a second after it appeared, showing the dashboard behind it before covering it again. It now holds until your session, your route, and this month's summary are ready, and then fades out once, so opening the app is a single handover rather than a flash.",
+        "The upgrade dialog on the web and Plan and billing on Android now offer Continue with Dodo Payments beside PayPal. It opens Dodo's secure checkout for the monthly or annual plan, Dodo Payments is the merchant of record for that purchase, and Pro starts once Zoption confirms the subscription. You can cancel renewal from Plan and billing and keep Pro until the end of the paid period.",
     },
     {
-      title: "A faster welcome into your workspace",
+      title: "Debt payments that pay down the debt",
       description:
-        "The screen that appears while your private workspace prepares no longer holds you for a fixed three seconds. It leaves as soon as your session is restored and your workspace has loaded, its progress bar counts those real steps, and signing in through a provider link, a magic link, or a password reset now ends on it for a moment so the workspace no longer appears to jump straight from your provider.",
+        "A Debt payment expense category now ships with every workspace. Choosing it asks which debt the money went to, the ledger and CSV export name that debt, and the debt's balance drops by the payment, marking it paid when it reaches zero. Editing or deleting the payment restores the old balance.",
     },
     {
-      title: "Safe-to-spend guidance on the web dashboard",
+      title: "Remaining budget that stays honest",
       description:
-        "The dashboard now answers what you can safely spend this week: your remaining monthly budget, or your balance when the month has no budget plan, paced across the days left and capped so an upcoming renewal cannot push your projected balance below zero, with a link straight to your renewals.",
+        "A category with no limit no longer turns your remaining budget negative. Its spending still shows as spending, while plan totals and remaining budget ignore it until you set a limit.",
     },
     {
-      title: "A cash-flow forecast that shows its shape",
+      title: "Income entries save again",
       description:
-        "The subscriptions forecast now draws your projected balance as a line instead of a strip of bars, marks the lowest point and the day it lands on, and puts the 30, 60, and 90 day endings side by side so you can pick a horizon without losing the others. Your safety buffer is now an amount you set, drawn on the chart as a threshold, instead of a fixed zero.",
+        "Adding an income transaction in the browser works again. The form no longer sends the debt link that only an expense can carry, which had made a correctly filled income entry fail.",
     },
     {
-      title: "Dashboard shortcuts to the forecast and the remittance calculator",
+      title: "Android Beta 0.2.34",
       description:
-        "The dashboard now carries a card for each. The forecast card reads your lowest projected balance over the next 30 days and how many renewals fall inside that window; the remittance card shows the mid-market benchmark rate. Both open the full tool in one click, with the forecast link landing straight on the forecast view.",
-    },
-    {
-      title: "Honest amounts in the remittance calculator",
-      description:
-        "The calculator no longer prints a received amount, a savings figure, or a Best Value badge while the amount, the fee, or the exchange rate you typed cannot be read. It says what it is waiting for, names the field that needs fixing, and returns to the real figures as soon as the field is valid.",
-    },
-    {
-      title: "Android Beta 0.2.33",
-      description:
-        "The official Android Beta opens on the screen your session selects instead of three loading screens, applies your saved theme on the first frame, reads only the transactions the dashboard charts instead of your whole ledger, refreshes once for a sync that writes many rows, and bundles one icon font instead of sixteen.",
+        "The official Android Beta can subscribe to Pro through Dodo Payments and shows Dodo subscriptions in Plan and billing. Screens no longer load forever when a request stalls: requests give up after 30 seconds, and a read on a slow connection tries once more before reporting a timeout.",
     },
   ],
 };
@@ -61,6 +51,47 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.41.3",
+    releasedOn: "September 21, 2026",
+    changes: [
+      {
+        title: "A startup screen that no longer flickers",
+        description:
+          "The screen that prepares your private workspace used to fade itself away a quarter of a second after it appeared, showing the dashboard behind it before covering it again. It now holds until your session, your route, and this month's summary are ready, and then fades out once, so opening the app is a single handover rather than a flash.",
+      },
+      {
+        title: "A faster welcome into your workspace",
+        description:
+          "The screen that appears while your private workspace prepares no longer holds you for a fixed three seconds. It leaves as soon as your session is restored and your workspace has loaded, its progress bar counts those real steps, and signing in through a provider link, a magic link, or a password reset now ends on it for a moment so the workspace no longer appears to jump straight from your provider.",
+      },
+      {
+        title: "Safe-to-spend guidance on the web dashboard",
+        description:
+          "The dashboard now answers what you can safely spend this week: your remaining monthly budget, or your balance when the month has no budget plan, paced across the days left and capped so an upcoming renewal cannot push your projected balance below zero, with a link straight to your renewals.",
+      },
+      {
+        title: "A cash-flow forecast that shows its shape",
+        description:
+          "The subscriptions forecast now draws your projected balance as a line instead of a strip of bars, marks the lowest point and the day it lands on, and puts the 30, 60, and 90 day endings side by side so you can pick a horizon without losing the others. Your safety buffer is now an amount you set, drawn on the chart as a threshold, instead of a fixed zero.",
+      },
+      {
+        title: "Dashboard shortcuts to the forecast and the remittance calculator",
+        description:
+          "The dashboard now carries a card for each. The forecast card reads your lowest projected balance over the next 30 days and how many renewals fall inside that window; the remittance card shows the mid-market benchmark rate. Both open the full tool in one click, with the forecast link landing straight on the forecast view.",
+      },
+      {
+        title: "Honest amounts in the remittance calculator",
+        description:
+          "The calculator no longer prints a received amount, a savings figure, or a Best Value badge while the amount, the fee, or the exchange rate you typed cannot be read. It says what it is waiting for, names the field that needs fixing, and returns to the real figures as soon as the field is valid.",
+      },
+      {
+        title: "Android Beta 0.2.33",
+        description:
+          "The official Android Beta opens on the screen your session selects instead of three loading screens, applies your saved theme on the first frame, reads only the transactions the dashboard charts instead of your whole ledger, refreshes once for a sync that writes many rows, and bundles one icon font instead of sixteen.",
+      },
+    ],
+  },
   {
     version: "2.39.0",
     releasedOn: "September 19, 2026",

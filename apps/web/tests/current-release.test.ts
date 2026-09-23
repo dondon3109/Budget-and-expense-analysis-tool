@@ -25,6 +25,23 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Pay for Zoption Pro with Dodo Payments",
+      "Debt payments that pay down the debt",
+      "Remaining budget that stays honest",
+      "Income entries save again",
+      "Android Beta 0.2.34",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/merchant of record/i);
+    expect(copy).toMatch(/balance drops by the payment/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.34/);
+  });
+
+  it("keeps the 2.41.3 notes as history", () => {
+    expect(titles("2.41.3")).toEqual([
       "A startup screen that no longer flickers",
       "A faster welcome into your workspace",
       "Safe-to-spend guidance on the web dashboard",
@@ -33,23 +50,12 @@ describe("current release notes", () => {
       "Honest amounts in the remittance calculator",
       "Android Beta 0.2.33",
     ]);
-
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
-    expect(copy).toMatch(/a single handover rather than a flash/i);
-    expect(copy).toMatch(/no longer holds you for a fixed three seconds/i);
-    expect(copy).toMatch(/as soon as your session is restored/i);
-    expect(copy).toMatch(/password reset/i);
-    expect(copy).toMatch(/safely spend this week/i);
-    expect(copy).toMatch(/your safety buffer is now an amount you set/i);
-    expect(copy).toMatch(/mid-market benchmark rate/i);
-    expect(copy).toMatch(/cannot be read/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.33/);
+    expect(notes("2.41.3")).toMatch(/a single handover rather than a flash/i);
   });
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.41.3",
       "2.39.0",
       "2.38.0",
       "2.33.0",
