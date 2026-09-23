@@ -72,7 +72,7 @@ function trackedFailureResponse(status: number, chunks: string[]) {
 
 describe("assistant multi-provider allowlist", () => {
   it("allowlist assistant providers and models for testing", () => {
-    expect(providerAllowlist.assistant.deepseek).toContain("deepseek-v4-flash");
+    expect(providerAllowlist.assistant.deepseek).toContain("deepseek-flash");
     expect(providerAllowlist.assistant.openai).toContain("gpt-4o-mini");
     expect(providerAllowlist.assistant.anthropic).toContain("claude-3-5-haiku-latest");
     expect(providerAllowlist.assistant.gemini).toContain("gemini-2.0-flash");
@@ -531,9 +531,9 @@ describe("createAssistantProviderForConfig", () => {
     expect(createAssistantProviderForConfig("muse_spark", "muse-spark-1.1", "k").providerName).toBe(
       "muse_spark",
     );
-    expect(
-      createAssistantProviderForConfig("deepseek", "deepseek-v4-flash", "k").providerName,
-    ).toBe("deepseek");
+    expect(createAssistantProviderForConfig("deepseek", "deepseek-flash", "k").providerName).toBe(
+      "deepseek",
+    );
     expect(
       createAssistantProviderForConfig("anthropic", "claude-3-5-haiku-latest", "k").providerName,
     ).toBe("anthropic");

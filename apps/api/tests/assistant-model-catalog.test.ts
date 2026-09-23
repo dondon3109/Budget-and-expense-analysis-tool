@@ -285,12 +285,12 @@ describe("provider-credential model routes", () => {
     };
     const app = modelsApp(repo);
     const realFetch = globalThis.fetch;
-    globalThis.fetch = (async () => openAiListResponse(["deepseek-v4-flash"])) as typeof fetch;
+    globalThis.fetch = (async () => openAiListResponse(["deepseek-flash"])) as typeof fetch;
     try {
       const res = await app.request("/cred-1/models", { method: "POST" });
       expect(res.status).toBe(200);
       const body = await res.json();
-      expect(body).toEqual({ provider: "deepseek", models: ["deepseek-v4-flash"] });
+      expect(body).toEqual({ provider: "deepseek", models: ["deepseek-flash"] });
       expect(JSON.stringify(body)).not.toContain(secret);
       expect(JSON.stringify(body)).not.toContain(enc);
     } finally {

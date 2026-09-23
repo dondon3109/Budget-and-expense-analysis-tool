@@ -148,7 +148,7 @@ function orchestrator(): AssistantOrchestrator {
     plan: vi.fn(async () => POLICY),
     answer: vi.fn(async () => ({
       content: ASSISTANT_MESSAGE.content,
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       finishReason: "stop",
       responseMetadata: RESPONSE_METADATA,
       audit: AUDIT,

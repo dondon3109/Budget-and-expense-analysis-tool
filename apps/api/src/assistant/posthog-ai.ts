@@ -1,3 +1,4 @@
+import { DEFAULT_ASSISTANT_MODEL } from "@zoption/shared";
 import type { Bindings } from "../types";
 import type { AssistantProvider, ProviderCompletion, ProviderCompletionRequest } from "./provider";
 import { AssistantProviderError } from "./provider-error";
@@ -98,7 +99,7 @@ export function createPostHogAiTelemetry(
         $ai_span_id: spanId,
         $ai_span_name: operation,
         $ai_provider: providerName,
-        $ai_model: providerEnv.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
+        $ai_model: providerEnv.DEEPSEEK_MODEL?.trim() || DEFAULT_ASSISTANT_MODEL,
         $ai_stream: false,
         $ai_temperature: 0.15,
         $ai_max_tokens: 800,

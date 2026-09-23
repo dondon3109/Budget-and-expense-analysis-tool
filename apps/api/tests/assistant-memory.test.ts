@@ -20,7 +20,7 @@ const env = { DB: {} as D1Database } satisfies Bindings;
 
 function providerWith(content: string): AssistantProvider {
   const completion: ProviderCompletion = {
-    model: "deepseek-v4-flash",
+    model: "deepseek-flash",
     finishReason: "stop",
     message: { role: "assistant", content },
   };

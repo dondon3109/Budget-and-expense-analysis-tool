@@ -1,5 +1,9 @@
 import type { ProviderConfig, ProviderService } from "@zoption/shared";
-import { providerAllowlist } from "@zoption/shared";
+import {
+  DEFAULT_ASSISTANT_MODEL,
+  DEFAULT_ASSISTANT_PROVIDER,
+  providerAllowlist,
+} from "@zoption/shared";
 
 import {
   createAssistantProviderForConfig,
@@ -389,7 +393,13 @@ export function createProviderRegistry(
               credentialSource: "none",
               details: "Local/CI stub — no external provider or credential is used",
             }
-          : build("assistant", assistantCfg, assistantCred, "deepseek", "deepseek-v4-flash"),
+          : build(
+              "assistant",
+              assistantCfg,
+              assistantCred,
+              DEFAULT_ASSISTANT_PROVIDER,
+              DEFAULT_ASSISTANT_MODEL,
+            ),
         build("stt", sttCfg, sttCred, "cloudflare_workers_ai", "@cf/openai/whisper-large-v3-turbo"),
         build("tts", ttsCfg, ttsCred, "fish_audio", "s2.1-pro-free"),
       ];
@@ -405,13 +415,13 @@ export function createProviderRegistry(
 function envFallback(service: ProviderService, env: Bindings): ProviderConfig | null {
   const nowIso = new Date().toISOString();
   if (service === "assistant") {
-    const model = env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash";
+    const model = env.DEEPSEEK_MODEL?.trim() || DEFAULT_ASSISTANT_MODEL;
     return {
       id: "env-fallback-assistant",
       service: "assistant",
-      provider: "deepseek",
+      provider: DEFAULT_ASSISTANT_PROVIDER,
       model,
-      displayName: `deepseek / ${model}`,
+      displayName: `${DEFAULT_ASSISTANT_PROVIDER} / ${model}`,
       credentialId: null,
       enabled: true,
       priority: 1,

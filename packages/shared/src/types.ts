@@ -677,9 +677,17 @@ export type TtsProviderName = (typeof ttsProviders)[number];
 
 export type ProviderName = AssistantProviderName | SttProviderName | TtsProviderName;
 
+/**
+ * The assistant model used when no active configuration can be read. DeepSeek's `deepseek-flash`
+ * is a moving alias for its current Flash release, so a new Flash version needs no change here.
+ * Admins switch models at runtime from the AI & Voice Models page; this is only the fallback.
+ */
+export const DEFAULT_ASSISTANT_PROVIDER = "deepseek";
+export const DEFAULT_ASSISTANT_MODEL = "deepseek-flash";
+
 export const providerAllowlist: Record<ProviderService, Record<string, readonly string[]>> = {
   assistant: {
-    deepseek: ["deepseek-v4-flash"] as const,
+    deepseek: [DEFAULT_ASSISTANT_MODEL] as const,
     openai: ["gpt-4o-mini", "gpt-4o"] as const,
     anthropic: ["claude-3-5-haiku-latest", "claude-sonnet-4-20250514"] as const,
     gemini: [

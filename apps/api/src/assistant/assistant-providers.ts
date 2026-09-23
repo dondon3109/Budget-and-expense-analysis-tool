@@ -1,3 +1,4 @@
+import { DEFAULT_ASSISTANT_MODEL } from "@zoption/shared";
 import type { Bindings } from "../types";
 import { AnthropicProvider } from "./anthropic";
 import { ChatCompletionsProvider } from "./chat-completions";
@@ -12,7 +13,7 @@ export const ASSISTANT_ENDPOINTS = {
 } as const;
 
 export const ASSISTANT_DEFAULT_MODELS: Record<string, string> = {
-  deepseek: "deepseek-v4-flash",
+  deepseek: DEFAULT_ASSISTANT_MODEL,
   openai: "gpt-4o-mini",
   anthropic: "claude-3-5-haiku-latest",
   gemini: "gemini-2.0-flash",
@@ -59,7 +60,8 @@ export function createAssistantProviderForConfig(
   env?: Bindings,
   fetcher: typeof fetch = fetch,
 ): AssistantProvider {
-  const resolvedModel = model?.trim() || ASSISTANT_DEFAULT_MODELS[provider] || "deepseek-v4-flash";
+  const resolvedModel =
+    model?.trim() || ASSISTANT_DEFAULT_MODELS[provider] || DEFAULT_ASSISTANT_MODEL;
   if (provider === "anthropic") {
     return new AnthropicProvider(
       resolvedModel,

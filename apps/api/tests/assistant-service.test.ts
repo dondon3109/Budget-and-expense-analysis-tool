@@ -236,7 +236,7 @@ function successfulOrchestrator(): AssistantOrchestrator {
     plan: vi.fn(async () => policy),
     answer: vi.fn(async () => ({
       content: assistantMessage.content,
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       finishReason: "stop",
       responseMetadata,
       audit,
@@ -345,7 +345,7 @@ describe("assistant service provider failures", () => {
       plan: vi.fn(async () => policy),
       answer: vi.fn(async () => ({
         content: assistantMessage.content,
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         finishReason: "stop",
         responseMetadata,
         audit,
@@ -371,7 +371,7 @@ describe("assistant service model-memory pass usage", () => {
   function provider(): AssistantProvider {
     return {
       complete: vi.fn(async () => ({
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         finishReason: "stop",
         message: {
           role: "assistant" as const,
@@ -452,7 +452,7 @@ describe("assistant service model-memory pass usage", () => {
     const repository = createRepository();
     const assistantProvider: AssistantProvider = {
       complete: vi.fn(async () => ({
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         finishReason: "stop",
         message: {
           role: "assistant" as const,
@@ -652,7 +652,7 @@ describe("assistant service AI observability lifecycle", () => {
     const orchestrator = successfulOrchestrator();
     vi.mocked(orchestrator.answer).mockResolvedValue({
       content: assistantMessage.content,
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       finishReason: "validation_fallback",
       responseMetadata,
       audit: { ...audit, validationStatus: "fallback" },

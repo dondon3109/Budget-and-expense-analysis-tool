@@ -34,7 +34,7 @@ function providerWith(
     ): Promise<ProviderCompletion> => {
       requests.push(request);
       return {
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         finishReason: "stop",
         message: { role: "assistant", content },
       };
@@ -266,7 +266,7 @@ function orchestratorCapturing(captured: string[]): AssistantOrchestrator {
       captured.push(memory);
       return {
         content: "Verified answer.",
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         finishReason: "stop",
         responseMetadata: {
           promptVersion: "expert-v2",

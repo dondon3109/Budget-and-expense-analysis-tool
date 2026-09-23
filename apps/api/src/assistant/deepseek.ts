@@ -1,3 +1,4 @@
+import { DEFAULT_ASSISTANT_MODEL } from "@zoption/shared";
 import type { Bindings } from "../types";
 import { ChatCompletionsProvider } from "./chat-completions";
 import type { AssistantProvider, ProviderCompletion, ProviderCompletionRequest } from "./provider";
@@ -51,7 +52,7 @@ export class DeepSeekProvider implements AssistantProvider {
       {
         provider: "deepseek",
         endpoint: DEEPSEEK_ENDPOINT,
-        model: this.modelOverride?.trim() || env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
+        model: this.modelOverride?.trim() || env.DEEPSEEK_MODEL?.trim() || DEFAULT_ASSISTANT_MODEL,
         apiKey: this.apiKeyOverride?.trim() || env.DEEPSEEK_API_KEY?.trim(),
         extraBody: { thinking: { type: "disabled" } },
       },

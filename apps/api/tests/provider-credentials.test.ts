@@ -395,7 +395,7 @@ describe("provider_credentials — encrypted reusable credentials", () => {
         id: cfgId,
         service: "assistant",
         provider: "deepseek",
-        model: "deepseek-v4-flash",
+        model: "deepseek-flash",
         displayName: "DeepSeek",
         credentialId: null,
         enabled: true,

@@ -11,12 +11,12 @@ import type { PlatformAdminService } from "../src/platform-admin";
 const env = {
   DB: {} as D1Database,
   ASSISTANT_ENABLED: "true",
-  DEEPSEEK_MODEL: "deepseek-v4-flash",
+  DEEPSEEK_MODEL: "deepseek-flash",
 } satisfies Bindings;
 
 function supportProvider(answer = "Open Import, choose your file, then review the preview.") {
   const complete = vi.fn<AssistantProvider["complete"]>().mockResolvedValue({
-    model: "deepseek-v4-flash",
+    model: "deepseek-flash",
     finishReason: "stop",
     message: { role: "assistant", content: answer },
   });
@@ -90,7 +90,7 @@ describe("product support chat", () => {
   it("turns a signed-in support conversation into a review-only bug-report draft", async () => {
     const provider = supportProvider();
     vi.mocked(provider.complete).mockResolvedValueOnce({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       finishReason: "tool_calls",
       message: {
         role: "assistant",

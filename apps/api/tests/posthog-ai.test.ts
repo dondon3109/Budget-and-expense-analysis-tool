@@ -7,7 +7,7 @@ import type { Bindings } from "../src/types";
 
 const env = {
   DB: {} as D1Database,
-  DEEPSEEK_MODEL: "deepseek-v4-flash",
+  DEEPSEEK_MODEL: "deepseek-flash",
   POSTHOG_AI_OBSERVABILITY_ENABLED: "true",
   POSTHOG_HOST: "https://us.i.posthog.com",
   POSTHOG_PROJECT_TOKEN: "phc_test-project-token",
@@ -34,7 +34,7 @@ const request: ProviderCompletionRequest = {
 function successfulProvider(): AssistantProvider {
   return {
     complete: vi.fn(async () => ({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       message: { role: "assistant" as const, content: sensitiveAnswer },
       finishReason: "stop",
       usage: { promptTokens: 42, completionTokens: 17 },
@@ -111,7 +111,7 @@ describe("PostHog AI Observability", () => {
         $ai_span_id: "span-uuid",
         $ai_span_name: "assistant_answer",
         $ai_provider: "deepseek",
-        $ai_model: "deepseek-v4-flash",
+        $ai_model: "deepseek-flash",
         $ai_input_tokens: 42,
         $ai_output_tokens: 17,
         $ai_latency: 1.5,

@@ -39,7 +39,7 @@ const mockConfig: ProviderConfig = {
   id: "a1a1a1a1-a1a1-4a1a-a1a1-a1a1a1a1a1a1",
   service: "assistant",
   provider: "deepseek",
-  model: "deepseek-v4-flash",
+  model: "deepseek-flash",
   displayName: "DeepSeek V4 Flash",
   credentialId: null,
   enabled: true,
@@ -128,7 +128,7 @@ describe("admin provider-configs authorization", () => {
       platformAdminService: platformAdminService as any,
       assistantProvider: {
         complete: vi.fn(async () => ({
-          model: "deepseek-v4-flash",
+          model: "deepseek-flash",
           message: { role: "assistant", content: "hi" },
           finishReason: "stop",
         })),
@@ -257,9 +257,9 @@ describe("admin provider-configs authorization", () => {
     const mockAssistantProvider = {
       complete: vi.fn(async (env: any, req: any) => {
         // Simulate that provider was created with active model
-        capturedModel.push(env.DEEPSEEK_MODEL || "deepseek-v4-flash");
+        capturedModel.push(env.DEEPSEEK_MODEL || "deepseek-flash");
         return {
-          model: "deepseek-v4-flash",
+          model: "deepseek-flash",
           message: { role: "assistant", content: "ok" },
           finishReason: "stop",
         };
@@ -268,7 +268,7 @@ describe("admin provider-configs authorization", () => {
     // Registry that returns custom active model
     const customConfig: ProviderConfig = {
       ...mockConfig,
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       provider: "deepseek",
     };
     const registry = {
@@ -297,10 +297,10 @@ describe("admin provider-configs authorization", () => {
       invalidate: vi.fn(),
       validateAllowlist: vi.fn((_service: string, _provider: string, _model: string) => true),
     };
-    expect(registry.validateAllowlist("assistant", "deepseek", "deepseek-v4-flash")).toBe(true);
+    expect(registry.validateAllowlist("assistant", "deepseek", "deepseek-flash")).toBe(true);
     const { provider } = await registry.getAssistantProvider({} as any);
     const result = await provider.complete({} as any, { messages: [], tools: [] } as any);
-    expect(result.model).toBe("deepseek-v4-flash");
+    expect(result.model).toBe("deepseek-flash");
   });
 
   it("voice preferences reflect active DB config", async () => {

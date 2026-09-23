@@ -1,3 +1,4 @@
+import { DEFAULT_ASSISTANT_MODEL } from "@zoption/shared";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import type {
@@ -250,7 +251,7 @@ export function createAssistantOrchestrator(
       const auditToolCalls: AssistantAuditToolCall[] = [];
       const totals: AssistantAnswer = {
         content: "",
-        model: env.DEEPSEEK_MODEL?.trim() || "deepseek-v4-flash",
+        model: env.DEEPSEEK_MODEL?.trim() || DEFAULT_ASSISTANT_MODEL,
         finishReason: "",
         responseMetadata: responseMetadataForPolicy(policy, [], ASSISTANT_PROMPT_VERSION),
         audit: auditForPolicy(policy, 0, "fallback", []),

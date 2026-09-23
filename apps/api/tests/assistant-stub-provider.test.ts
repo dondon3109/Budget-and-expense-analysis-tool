@@ -130,7 +130,7 @@ describe("assistant stub provider health", () => {
 
     expect(health.find((entry) => entry.service === "assistant")).toMatchObject({
       provider: "deepseek",
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       configId: "env-fallback-assistant",
     });
   });

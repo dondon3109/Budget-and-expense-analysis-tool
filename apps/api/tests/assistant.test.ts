@@ -18,7 +18,7 @@ import type { Bindings } from "../src/types";
 
 const env = {
   DB: {} as D1Database,
-  DEEPSEEK_MODEL: "deepseek-v4-flash",
+  DEEPSEEK_MODEL: "deepseek-flash",
   ASSISTANT_TIME_ZONE: "Asia/Manila",
 } satisfies Bindings;
 
@@ -82,7 +82,7 @@ function createReader(): FinancialReader {
 
 function toolCompletion(): ProviderCompletion {
   return {
-    model: "deepseek-v4-flash",
+    model: "deepseek-flash",
     finishReason: "tool_calls",
     message: {
       role: "assistant",
@@ -156,7 +156,7 @@ describe("assistant orchestration", () => {
           requests.push(structuredClone(request));
           if (requests.length === 1) return toolCompletion();
           return {
-            model: "deepseek-v4-flash",
+            model: "deepseek-flash",
             finishReason: "stop",
             message: {
               role: "assistant",
@@ -205,7 +205,7 @@ describe("assistant orchestration", () => {
         async (_env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> => {
           requests.push(structuredClone(request));
           return {
-            model: "deepseek-v4-flash",
+            model: "deepseek-flash",
             finishReason: "stop",
             message: {
               role: "assistant",
@@ -254,7 +254,7 @@ describe("assistant orchestration", () => {
         calls += 1;
         if (calls < 4) {
           return {
-            model: "deepseek-v4-flash",
+            model: "deepseek-flash",
             finishReason: "tool_calls",
             message: {
               role: "assistant",
@@ -270,7 +270,7 @@ describe("assistant orchestration", () => {
           };
         }
         return {
-          model: "deepseek-v4-flash",
+          model: "deepseek-flash",
           finishReason: "stop",
           message: {
             role: "assistant",
@@ -304,7 +304,7 @@ describe("assistant orchestration", () => {
         calls += 1;
         if (calls === 1) return toolCompletion();
         return {
-          model: "deepseek-v4-flash",
+          model: "deepseek-flash",
           finishReason: "stop",
           message: {
             role: "assistant",
@@ -339,7 +339,7 @@ describe("assistant orchestration", () => {
         calls += 1;
         if (calls === 1) return toolCompletion();
         return {
-          model: "deepseek-v4-flash",
+          model: "deepseek-flash",
           finishReason: "stop",
           message: { role: "assistant", content: "You spent ₱99,999.00." },
         };

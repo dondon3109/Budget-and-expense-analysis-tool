@@ -117,7 +117,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
    pnpm --filter @zoption/api exec wrangler secret put DEEPSEEK_API_KEY --config wrangler.deploy.jsonc --env production
    ```
 
-10. Keep `DEEPSEEK_MODEL=deepseek-v4-flash`, `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
+10. Keep `DEEPSEEK_MODEL=deepseek-flash` (the fallback when no active D1 configuration can be read), `ASSISTANT_TIME_ZONE=Asia/Manila`, and assistant timeout/feature settings in non-secret Worker variables. The tracked Wrangler files schedule daily expired-chat cleanup at 03:17 UTC.
 11. Create a dedicated PostHog US Cloud project for AI Observability, verify and disclose its actual event-retention plan, and leave `POSTHOG_AI_OBSERVABILITY_ENABLED=false` until Preview payloads are verified and the matching assistant consent version is deployed. The current project uses PostHog's 12-month event-retention plan; Session Replay's separate 30-day setting does not apply to `$ai_generation` events. Keep `POSTHOG_HOST=https://us.i.posthog.com` and the exact `POSTHOG_AI_ENVIRONMENT` (`preview` or `production`) in Worker `vars`. Store the project token only as a Worker secret:
 
     ```bash

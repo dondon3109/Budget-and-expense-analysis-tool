@@ -12,7 +12,7 @@ import type { Bindings } from "../src/types";
 const env = {
   DB: {} as D1Database,
   DEEPSEEK_API_KEY: "test-key",
-  DEEPSEEK_MODEL: "deepseek-v4-flash",
+  DEEPSEEK_MODEL: "deepseek-flash",
 } satisfies Bindings;
 
 const request: ProviderCompletionRequest = {
@@ -41,7 +41,7 @@ function completionResponse(
   finishReason = "stop",
 ): Response {
   return jsonResponse({
-    model: "deepseek-v4-flash",
+    model: "deepseek-flash",
     choices: [{ finish_reason: finishReason, message }],
     usage: { prompt_tokens: 12, completion_tokens: 4 },
   });
@@ -193,7 +193,7 @@ describe("DeepSeekProvider", () => {
     const provider = new DeepSeekProvider(fetcher);
 
     await expect(provider.complete(env, request)).resolves.toEqual({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       message: { role: "assistant", content: "Verified answer." },
       finishReason: "stop",
       usage: { promptTokens: 12, completionTokens: 4 },
@@ -202,7 +202,7 @@ describe("DeepSeekProvider", () => {
     expect(typeof requestBody).toBe("string");
     if (typeof requestBody !== "string") throw new Error("Expected a JSON request body.");
     expect(JSON.parse(requestBody)).toMatchObject({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       messages: request.messages,
       tools: request.tools,
       tool_choice: "auto",
@@ -234,7 +234,7 @@ describe("DeepSeekProvider", () => {
     const provider = new DeepSeekProvider(fetcher);
 
     await expect(provider.complete(env, request)).resolves.toEqual({
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       message: { role: "assistant", content: null, tool_calls: toolCalls },
       finishReason: "tool_calls",
       usage: { promptTokens: 12, completionTokens: 4 },

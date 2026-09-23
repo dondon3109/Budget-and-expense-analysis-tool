@@ -392,7 +392,7 @@ function assistantOrchestrator() {
     plan: vi.fn(async () => policy),
     answer: vi.fn(async () => ({
       content: MESSAGE.content,
-      model: "deepseek-v4-flash",
+      model: "deepseek-flash",
       finishReason: "stop",
       responseMetadata: { promptVersion: "expert-v1", compliance: policy.compliance, sources: [] },
       audit: {
