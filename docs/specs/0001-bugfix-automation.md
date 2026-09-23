@@ -44,14 +44,15 @@ Decisions recorded here that are not obvious:
 - The same endpoint answers `?id=<reportId>` for a single report even when it
   already crossed, because the workflow reads a report the poller already
   claimed. It re-runs the same redaction, so raw text still never leaves.
-- The patch is checked with `detectSensitive` on added lines only, and only
-  the `email`, `phone`, and `card` classes. `money`, `name`, and
-  `merchant` are excluded because this repository is a budgeting app whose own
-  tests are full of synthetic amounts and names, so those classes would block
-  every patch.
-- `dsh --profile headless` is the harness. Any harness that runs one task
-  without a terminal, reads its key from `DEEPSEEK_API_KEY`, and edits files
-  in the working directory can replace it by changing one step.
+- The patch is checked with `detectIdentifierLeaks` on added lines only, for
+  email addresses and phone numbers. Addresses under the RFC 2606 reserved
+  names (`example.com`, `.test`, and the like) pass, because test fixtures
+  need them and no real user can own one.
+- Claude Code headless (`claude -p`, model `claude-opus-5`) is the harness,
+  replacing `dsh` on 2026-09-23, limited to file tools and `pnpm vitest run`.
+  Any harness that runs one task without a terminal, reads its key from the
+  environment, and edits files in the working directory can replace it by
+  changing one step.
 - A pull request opened with the run token does not trigger `pull_request`
   workflows, so `ci.yml` gains a `workflow_dispatch` trigger and the
   `open-pr` job starts it. That trigger is the documented exception to the

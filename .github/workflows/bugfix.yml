@@ -104,15 +104,13 @@ jobs:
           head -n 1 .bugfix-report.txt | cut -c1-90 > .bugfix-title.txt
           rm report.json
 
-      - name: Draft the fix with dsh
+      - name: Draft the fix with Claude Code
         env:
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set -euo pipefail
-          # Pinned because this step holds the model key, and to rc.3 specifically: rc.1 and rc.2,
-          # which is npm's latest, both fail to resolve @deepseek-ai/dsh-sandbox-local, so the
-          # headless profile never loads its plugin tree and every run dies before drafting.
-          npm install --global @deepseek-ai/dsh@0.1.5-rc.3
+          # Pinned to the stable channel's release because this step holds the model key.
+          npm install --global @anthropic-ai/claude-code@2.1.267
           task="$(cat <<'TASK'
           A user filed the bug report in .bugfix-report.txt. Identifiers and amounts in it are
           already replaced with [REDACTED]; do not try to recover them.
@@ -122,13 +120,20 @@ jobs:
           - Reproduce the problem, find the root cause, and make the smallest change that fixes it.
           - Add or update a focused test, run it with pnpm vitest run <paths>, and make it pass.
             Do not run the end to end suite.
+          - Any email address a test needs uses example.com or a .test domain.
           - Write the pull request body to .bugfix-pr-body.md in the repository root. Keep it
             short: what broke, the root cause, what changed, how you verified it. Never quote the
             report text.
           - Do not create a branch, commit, push, or open a pull request.
           TASK
           )"
-          dsh --profile headless "$task"
+          # The agent reads user text and holds the model key, so it gets file tools and the
+          # focused test runner only, with no general shell and no network tool. A tool outside
+          # this list is refused, since no terminal can approve it. This narrows the exposure
+          # rather than closing it: a test the agent writes still runs with the key in its
+          # environment, so the key stays capped and disposable.
+          claude -p "$task" --model claude-opus-5 --permission-mode acceptEdits \
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(pnpm vitest run:*),Bash(git diff:*),Bash(git status:*)"
 
       - name: Collect the draft
         env:

@@ -580,7 +580,9 @@ describe("separator and digit-script bypasses", () => {
 
 describe("detectIdentifierLeaks", () => {
   it("flags an email address and a Philippine mobile number", () => {
-    expect(detectIdentifierLeaks('const owner = "person@example.com";')).toEqual(["email"]);
+    expect(detectIdentifierLeaks('const owner = "juan.delacruz@gmail.com";')).toEqual(["email"]);
+    // A reserved fixture address beside a real one still flags the real one.
+    expect(detectIdentifierLeaks('["person@example.com", "juan@zoption.site"]')).toEqual(["email"]);
     expect(detectIdentifierLeaks("// reachable at 0917 123 4567 during the test")).toEqual([
       "phone",
     ]);
@@ -592,5 +594,13 @@ describe("detectIdentifierLeaks", () => {
     expect(detectIdentifierLeaks('import { x } from "@zoption/shared";')).toEqual([]);
     expect(detectIdentifierLeaks(" * @param total the amount in minor units")).toEqual([]);
     expect(detectIdentifierLeaks("const timeoutMs = 1299;")).toEqual([]);
+  });
+
+  it("ignores addresses under reserved example and test domains", () => {
+    expect(detectIdentifierLeaks('const owner = "person@example.com";')).toEqual([]);
+    expect(detectIdentifierLeaks('email: "owner@mail.example.org",')).toEqual([]);
+    expect(detectIdentifierLeaks('email: "owner@zoption.test",')).toEqual([]);
+    // A reserved name must be the whole domain suffix, not a prefix of a real domain.
+    expect(detectIdentifierLeaks('email: "owner@example.com.ph",')).toEqual(["email"]);
   });
 });

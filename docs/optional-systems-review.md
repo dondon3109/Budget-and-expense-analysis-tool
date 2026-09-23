@@ -27,12 +27,12 @@ Last reviewed: 2026-09-23.
 
 ## Review before further investment
 
-| System                              | Flag   | Evidence needed                                                                                                                                                                                                                       |
-| ----------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Voice and PDF financial entry modes | Review | Per-mode preview-to-commit conversion, correction rate, extraction failures, privacy support burden, and overlap with receipt/import workflows. Keep review-before-commit mandatory while evaluating.                                 |
-| Customer reviews and administration | Review | Actual moderation frequency and acquisition value compared with its authenticated/admin surface and maintenance cost.                                                                                                                 |
-| Mobile crash/product telemetry      | Review | Demonstrated diagnostic value, retention/privacy burden, and a documented response workflow for collected events.                                                                                                                     |
-| Bug report to draft PR automation   | Review | Draft pull requests are live (`OPEN_BUGFIX_PRS=true` since 2026-09-23). Evidence: how many drafts get merged, the DeepSeek cost per report, and the upkeep of the pinned `dsh` harness. Spec: `docs/specs/0001-bugfix-automation.md`. |
+| System                              | Flag   | Evidence needed                                                                                                                                                                                                                           |
+| ----------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Voice and PDF financial entry modes | Review | Per-mode preview-to-commit conversion, correction rate, extraction failures, privacy support burden, and overlap with receipt/import workflows. Keep review-before-commit mandatory while evaluating.                                     |
+| Customer reviews and administration | Review | Actual moderation frequency and acquisition value compared with its authenticated/admin surface and maintenance cost.                                                                                                                     |
+| Mobile crash/product telemetry      | Review | Demonstrated diagnostic value, retention/privacy burden, and a documented response workflow for collected events.                                                                                                                         |
+| Bug report to draft PR automation   | Review | Draft pull requests are live (`OPEN_BUGFIX_PRS=true` since 2026-09-23). Evidence: how many drafts get merged, the Claude cost per report, and the upkeep of the pinned Claude Code version. Spec: `docs/specs/0001-bugfix-automation.md`. |
 
 ## Retire
 

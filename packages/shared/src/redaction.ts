@@ -183,6 +183,8 @@ const TRAILING_CURRENCY_REGEX =
 const SPELLED_CURRENCY_REGEX = new RegExp(`\\b(?:${WORD_NUM_KEYS}|[\\s-])+pesos?\\b`, "gi");
 
 const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+const RESERVED_EMAIL_DOMAIN_REGEX =
+  /@(?:[a-z0-9-]+\.)*(?:example\.(?:com|net|org)|[a-z0-9-]+\.(?:test|example|invalid|localhost))$/i;
 
 const PHONE_PATTERN =
   "(?:\\+?63[-\\s]?9\\d{2}[-\\s]?\\d{3}[-\\s]?\\d{4}|\\+?639\\d{9}|09\\d{2}[-\\s]?\\d{3}[-\\s]?\\d{4}|09\\d{9})\\b";
@@ -396,12 +398,12 @@ export function detectIdentifierLeaks(input: string): string[] {
 
   const hits = new Set<string>();
 
-  // EMAIL_REGEX is global, so its cursor has to be reset before every test.
-  EMAIL_REGEX.lastIndex = 0;
-  if (EMAIL_REGEX.test(input)) {
+  // RFC 2606 reserves these names, so no real user can own an address under them. Test fixtures
+  // use them constantly, and flagging them would block every fix that needs an address in a test.
+  const emails = input.match(EMAIL_REGEX) ?? [];
+  if (emails.some((email) => !RESERVED_EMAIL_DOMAIN_REGEX.test(email))) {
     hits.add("email");
   }
-  EMAIL_REGEX.lastIndex = 0;
 
   if (DETECT_PHONE_REGEX.test(input)) {
     hits.add("phone");
