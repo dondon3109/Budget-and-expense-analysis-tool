@@ -207,6 +207,8 @@ export function CalendarPage() {
         queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
+        // A saved debt payment moves the linked debt's balance, so the planning page reads it fresh.
+        queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) }),
       ]);
     },
   });

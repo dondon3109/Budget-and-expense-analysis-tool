@@ -92,7 +92,9 @@ function createSqliteEnvironment(): {
       id text PRIMARY KEY NOT NULL,
       tenant_id text NOT NULL,
       name text NOT NULL,
-      status text NOT NULL DEFAULT 'active'
+      balance_minor integer NOT NULL DEFAULT 0,
+      status text NOT NULL DEFAULT 'active',
+      updated_at text NOT NULL DEFAULT (datetime('now'))
     );
     CREATE TABLE effective_pro_entitlements (
       tenant_id text NOT NULL,
@@ -176,6 +178,12 @@ function seedTransactions(database: DatabaseSync): void {
     INSERT INTO transfer_groups (id, tenant_id, from_transaction_id, to_transaction_id)
     VALUES ('transfer-group-1', 'tenant-1', 'transfer-out', 'transfer-in');
   `);
+}
+
+function readDebtCard(database: DatabaseSync): { balanceMinor: number; status: string } {
+  return database
+    .prepare("SELECT balance_minor AS balanceMinor, status FROM debts WHERE id = 'debt-card'")
+    .get() as { balanceMinor: number; status: string };
 }
 
 afterEach(() => {
@@ -414,6 +422,70 @@ describe("transactionRepository SQLite behavior", () => {
     await expect(
       transactionRepository.update(env, "tenant-1", created.id, { debtId: "debt-card" }),
     ).resolves.toMatchObject({ debtId: "debt-card", debtName: "Visa card" });
+  });
+
+  it("reduces the linked debt's balance and marks it paid at zero", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+
+    const pay = (amountMinor: number, date: string) =>
+      transactionRepository.create(env, "tenant-1", {
+        accountId: "cash-1",
+        categoryId: "expense-1",
+        date,
+        description: "Card payment",
+        amountMinor,
+        currency: "PHP",
+        kind: "expense",
+        debtId: "debt-card",
+      });
+
+    await pay(2_000, "2026-07-05");
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 3_000, status: "active" });
+
+    await pay(3_000, "2026-07-06");
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 0, status: "paid" });
+  });
+
+  it("restores the debt balance when a payment is edited or deleted", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    const created = await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Card payment",
+      amountMinor: 2_000,
+      currency: "PHP",
+      kind: "expense",
+      debtId: "debt-card",
+    });
+
+    await transactionRepository.update(env, "tenant-1", created.id, { amountMinor: 1_000 });
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 4_000, status: "active" });
+
+    await transactionRepository.remove(env, "tenant-1", created.id);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+  });
+
+  it("leaves debts untouched for an expense without a debt link", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+
+    await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Lunch",
+      amountMinor: 2_000,
+      currency: "PHP",
+      kind: "expense",
+    });
+
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
   });
 
   it("updates and reads a transfer canonically through either physical leg ID", async () => {
