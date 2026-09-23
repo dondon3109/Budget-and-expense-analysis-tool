@@ -65,9 +65,10 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
           set -euo pipefail
-          # Pinned: this step holds the model key, so a floating version would run an unreviewed
-          # release beside it.
-          npm install --global @deepseek-ai/dsh@0.1.5-rc.1
+          # Pinned because this step holds the model key, and to rc.3 specifically: rc.1 and rc.2,
+          # which is npm's latest, both fail to resolve @deepseek-ai/dsh-sandbox-local, so the
+          # headless profile never loads its plugin tree and every run dies before drafting.
+          npm install --global @deepseek-ai/dsh@0.1.5-rc.3
           task="$(cat <<'TASK'
           A user filed the bug report in .bugfix-report.txt. Identifiers and amounts in it are
           already replaced with [REDACTED]; do not try to recover them.
