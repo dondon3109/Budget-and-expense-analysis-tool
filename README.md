@@ -31,11 +31,11 @@ The implementation includes:
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
 - Account balances calculated from recorded transaction ledgers, with explicit disclosure that they are not live bank balances and have no opening-balance snapshot.
 - A Goals & debt planning ledger with tenant-owned savings goals, debt inputs, deterministic target-date contributions, and avalanche/snowball projections.
-- A tenant-scoped, read-only AI Financial Assistant using DeepSeek v4 Flash, deterministic compliance/date policy, required backend tools, grounded-answer validation, versioned provider consent, response provenance, and 90-day chat plus sanitized-audit retention.
+- A tenant-scoped, read-only AI Financial Assistant on the admin-selected provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, and Muse Spark are allowlisted), deterministic compliance/date policy, required backend tools, grounded-answer validation, versioned provider consent, response provenance, and 90-day chat plus sanitized-audit retention.
 - Tenant-scoped rate limiting for authenticated writes, imports, and assistant generation.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.
 - Public Terms of Service, Privacy Policy, and Cookie Policy routes plus a shared legal footer.
-- Versioned, fail-closed browser consent with Necessary always on, optional Analytics/Marketing off by default, cross-tab synchronization, and no current analytics or marketing vendor.
+- Versioned, fail-closed browser consent with Necessary always on, optional Analytics/Marketing off by default, and cross-tab synchronization. Cookieless PostHog analytics runs only after Analytics consent; no marketing vendor is connected.
 
 ## Architecture
 
@@ -48,7 +48,7 @@ flowchart LR
   Worker --> R2["Cloudflare R2 avatars"]
   Worker --> Queue["Cloudflare Queue"]
   Worker --> RateLimit["Rate-limit Durable Object"]
-  Worker -->|Allowlisted read-only tools| DeepSeek["DeepSeek v4 Flash"]
+  Worker -->|Allowlisted read-only tools| AI["Active AI provider (DeepSeek default)"]
   Browser -. shared contracts .-> Shared["Shared Zod schemas and calculations"]
   Worker -. shared contracts .-> Shared
 ```
@@ -61,7 +61,7 @@ With the local app running, `pnpm capture:screenshots` captures repeatable landi
 
 ## Local setup
 
-Requirements: Node.js 24+ and pnpm 11.
+Requirements: Node.js 22+ (CI uses 24) and pnpm 11.
 
 1. In Supabase Auth URL configuration, add `http://localhost:5173/auth/callback` as an allowed redirect URL.
    Configure Google in the Supabase project before testing provider login. Provider credentials remain in the provider console and Supabase dashboard; see the [deployment runbook](docs/deployment.md#social-login-providers).
@@ -91,9 +91,7 @@ Open `http://localhost:5173`. The Worker API runs at `http://localhost:8787`. On
 ## Quality checks
 
 ```bash
-pnpm lint
-pnpm typecheck
-pnpm test
+pnpm verify      # workspace links, typecheck, lint, format, Vitest, and mobile Jest
 pnpm test:e2e
 pnpm build
 pnpm lighthouse
@@ -104,15 +102,18 @@ pnpm lighthouse
 ```text
 apps/web/          React/Vite frontend and authenticated UI
 apps/api/          Hono Cloudflare Worker and tenant-scoped API
+apps/mobile/       Expo (React Native) Android client with local workspace and sync outbox
+apps/ads/          Remotion marketing renderer (frozen)
+apps/stt-bridge/   Cloud Run Chirp 3 streaming bridge (not deployed)
 packages/shared/   Shared schemas, calculations, CSV, and domain types
 db/                Drizzle schema and forward-only migrations
 docs/              Architecture, testing, deployment, and product evidence
 e2e/               Desktop/mobile public and authentication journeys
-scripts/           Non-mutating smoke checks and screenshot capture
+scripts/           Release, deployment, smoke-check, and local tooling scripts
 ```
 
 ## Privacy and scope
 
-Authenticated financial records, user-managed goals/debts, assistant history, and sanitized assistant audit snapshots are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions, budgets, goals, or debts. Assistant questions require current versioned DeepSeek data-sharing consent, use allowlisted read-only tools, and expire with their sanitized audit snapshots after the thread's 90-day retention window, while remembered facts and the debt payoff preference are kept until the user deletes them or deletes their account. Browser tracking consent is separate: no Analytics or Marketing provider is currently enabled, and future optional integrations must remain blocked until their category is explicitly granted. Zoption does not connect to banks and does not provide personalized financial, tax, investment, legal, retirement-allocation, or insurance advice. Remaining provider-retention and legal-policy claims require business/legal confirmation before publication. See [AI Financial Assistant](docs/assistant.md).
+Authenticated financial records, user-managed goals/debts, assistant history, and sanitized assistant audit snapshots are stored in the user's isolated D1 tenant after the Worker verifies their Supabase token. New workspaces contain an account and starter categories but no transactions, budgets, goals, or debts. Assistant questions require current versioned AI-provider data-sharing consent, use allowlisted read-only tools, and expire with their sanitized audit snapshots after the thread's 90-day retention window, while remembered facts and the debt payoff preference are kept until the user deletes them or deletes their account. Browser tracking consent is separate: cookieless PostHog analytics loads only after the Analytics category is granted, no Marketing provider is enabled, and any future optional integration stays blocked until its category is granted. Zoption does not connect to banks and does not provide personalized financial, tax, investment, legal, retirement-allocation, or insurance advice. Remaining provider-retention and legal-policy claims require business/legal confirmation before publication. See [AI Financial Assistant](docs/assistant.md).
 
 Engineering evidence is summarized in the [test strategy](docs/test-strategy.md), [performance report](docs/performance.md), [deployment runbook](docs/deployment.md), and [case study](docs/case-study.md).

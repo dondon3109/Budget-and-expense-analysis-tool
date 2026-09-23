@@ -39,7 +39,7 @@ pnpm db:migrate:local                 # apply db/migrations to the local D1 data
 ## Conventions
 
 - Route modules export `createXRoutes(dependency)` and are mounted centrally in `src/app.ts`. Do not import a repository inside a route; pass it through the factory.
-- Validate at the boundary with a `@zoption/shared` zod schema, then `throw new HttpError(400, "invalid_request", <message>, parsed.error.flatten())`. Bodies go through `readJson`, path ids through `parsePathParameter`.
+- Validate at the boundary with a `@zoption/shared` zod schema through `parseInput(schema, value, <message>)` in `src/request.ts`, which answers `400 invalid_request` with the flattened field errors. Bodies go through `readJson`, path ids through `parsePathParameter`. Call `safeParse` directly only when a failure needs a different status, code, or detail.
 - Only `HttpError` carries a client visible message. An unexpected failure is logged as one structured JSON line and returned as a bare `500 internal_server_error`.
 - Every repository method takes `tenantId`. Handlers read it from `context.get("tenant").tenantId` and never from request input.
 - Tables use snake_case columns; TypeScript fields are camelCase.
@@ -48,6 +48,7 @@ pnpm db:migrate:local                 # apply db/migrations to the local D1 data
 ## Gotchas
 
 - Migrations run in file name order, so two files sharing a prefix sort by the rest of the name (`0034_mobile_sync_foundation.sql` before `0034_receipt_consent.sql`). Renaming a migration silently changes the order.
+- A migration must work with the Worker version already deployed. `Production Release` applies migrations before it deploys the new Worker, so the old code serves traffic against the new schema for the length of the deploy, and indefinitely if the deploy step fails or the Worker is rolled back. Add columns and tables first, stop reading an old one in a later release, and drop it only after that. The table rebuild pattern (create, copy, drop, rename) is fine when the rebuilt table keeps every column the deployed code reads.
 - Drizzle metadata is stale on purpose: `../../db/migrations/meta/` stops at `0015`, so `pnpm db:generate` would emit one migration covering everything since then. Write new migrations by hand.
 - Never insert into a view in tests. `effective_pro_entitlements` is dropped and recreated by migrations; seed the base tables instead.
 - Do not add fields to a mobile sync payload without an agreed client capability. Installed apps validate the whole pull response strictly and reject an unknown key. A data backfill migration must bump `revision`.

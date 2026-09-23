@@ -4,7 +4,7 @@ These flags reduce solo-maintainer load without silently deleting product capabi
 planning labels only: **keep** means maintain normally, **freeze** means security/correctness fixes
 only, and **review** means collect usage and operating-cost evidence before expanding or retiring it.
 
-Last reviewed: 2026-09-13.
+Last reviewed: 2026-09-23.
 
 ## Keep isolated
 
@@ -19,19 +19,20 @@ Last reviewed: 2026-09-13.
 
 ## Freeze
 
-| System                                           | Flag             | Reconsider when                                                                                                                                                                                                       |
-| ------------------------------------------------ | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Expo OTA publishing                              | Removed          | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                                                                                 |
-| `apps/ads` Remotion renderer and generated media | Freeze           | A concrete campaign requires refreshed product claims and assets. It stays outside runtime/release-critical ownership. Consider moving rendered outputs out of the main source tree in a separately approved cleanup. |
-| Cloud Run Chirp 3 STT bridge                     | Freeze unshipped | Workers AI Whisper remains the runtime transcription path. Do not deploy the Cloud Run bridge unless measured voice usage clearly beats Whisper on latency and cost.                                                  |
+| System                                           | Flag             | Reconsider when                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Expo OTA publishing                              | Removed          | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                                                                                                                                                                               |
+| `apps/ads` Remotion renderer and generated media | Freeze           | A concrete campaign requires refreshed product claims and assets. It stays outside runtime/release-critical ownership. Consider moving rendered outputs out of the main source tree in a separately approved cleanup.                                                                                               |
+| Cloud Run Chirp 3 STT bridge                     | Freeze unshipped | Not deployed: the tracked `wrangler.deploy.jsonc` sets no `STT_BRIDGE_URL`. Realtime transcription does not need it, because Gemini Live connects from the Worker directly (`docs/voice-live.md`). Deploy the bridge only if measured `chirp_3` usage beats Gemini Live and Workers AI Whisper on latency and cost. |
 
 ## Review before further investment
 
-| System                              | Flag   | Evidence needed                                                                                                                                                                                       |
-| ----------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Voice and PDF financial entry modes | Review | Per-mode preview-to-commit conversion, correction rate, extraction failures, privacy support burden, and overlap with receipt/import workflows. Keep review-before-commit mandatory while evaluating. |
-| Customer reviews and administration | Review | Actual moderation frequency and acquisition value compared with its authenticated/admin surface and maintenance cost.                                                                                 |
-| Mobile crash/product telemetry      | Review | Demonstrated diagnostic value, retention/privacy burden, and a documented response workflow for collected events.                                                                                     |
+| System                              | Flag   | Evidence needed                                                                                                                                                                                                                       |
+| ----------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Voice and PDF financial entry modes | Review | Per-mode preview-to-commit conversion, correction rate, extraction failures, privacy support burden, and overlap with receipt/import workflows. Keep review-before-commit mandatory while evaluating.                                 |
+| Customer reviews and administration | Review | Actual moderation frequency and acquisition value compared with its authenticated/admin surface and maintenance cost.                                                                                                                 |
+| Mobile crash/product telemetry      | Review | Demonstrated diagnostic value, retention/privacy burden, and a documented response workflow for collected events.                                                                                                                     |
+| Bug report to draft PR automation   | Review | Draft pull requests are live (`OPEN_BUGFIX_PRS=true` since 2026-09-23). Evidence: how many drafts get merged, the DeepSeek cost per report, and the upkeep of the pinned `dsh` harness. Spec: `docs/specs/0001-bugfix-automation.md`. |
 
 ## Retire
 

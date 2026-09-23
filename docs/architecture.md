@@ -29,13 +29,13 @@ The public landing page contains a static dashboard illustration only. It does n
 - Imported transactions use the authenticated tenant's deterministic default account.
 - Landing, legal, and feature routes are lazy-loaded; the dashboard chart bundle loads only for the private app.
 - Public legal routes are `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`, with a shared footer across public, authentication, legal, and private shells.
-- Browser consent is a versioned, fail-closed localStorage record. Necessary behavior is always enabled; Analytics and Marketing default off and no provider is currently connected. An imperative gate blocks future optional loaders and runs cleanup on revocation.
+- Browser consent is a versioned, fail-closed localStorage record. Necessary behavior is always enabled; Analytics and Marketing default off. PostHog is the only Analytics provider and loads only after Analytics consent (`docs/analytics.md`); no Marketing provider is connected. An imperative gate blocks optional loaders and runs cleanup on revocation.
 - Browser tracking consent remains separate from server-persisted DeepSeek assistant consent.
 - The pre-render theme bootstrap is a same-origin static script so the deployed `script-src 'self'` policy does not require inline-script exceptions.
 - Authenticated write, import, and assistant-generation throttles use the verified tenant as their client identity.
 - Account balances are calculated from recorded transaction ledger entries. They are not live bank balances and may omit activity before tracking began because there is no opening-balance snapshot.
-- The AI assistant calls DeepSeek directly from the Worker, exposes only fixed read-only financial tools, and retains messages plus sanitized run/tool audit snapshots with the thread for up to 90 days.
-- The first release is intentionally light-themed; a complete dark token set is a separate enhancement.
+- The AI assistant and the public support chat call the provider configuration a platform admin has activated at `/app/admin/provider-configs` (DeepSeek, OpenAI, Anthropic, Gemini, Meta, or Muse Spark; `providerAllowlist` in `packages/shared/src/types.ts`), resolved per request through `apps/api/src/provider-registry.ts` with a 30-second cache and the env-configured DeepSeek provider as fallback. The assistant exposes only fixed read-only financial tools and retains messages plus sanitized run/tool audit snapshots with the thread for up to 90 days.
+- The browser offers Light, Dark, and Coffee themes (`apps/web/src/components/theme/`). The pre-render bootstrap applies the saved choice before first paint.
 
 ## Data conventions
 
@@ -53,7 +53,7 @@ Public:
 - `GET /health` — verifies that the Worker can reach D1.
 - `GET /api/public/avatars/:userId/:file` — public profile picture bytes from R2, with a
   Supabase Storage fallback for objects uploaded before the R2 cutover.
-- `POST /api/support/chat` — bounded, rate-limited product help through the configured DeepSeek
+- `POST /api/support/chat` — bounded, rate-limited product help through the active assistant
   provider, without authentication, financial tools, tenant data, or server-side conversation
   storage.
 
@@ -73,6 +73,16 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV/Excel-derived preview and atomic commit with validated category overrides.
 - `GET/PUT /api/app/budgets` — monthly budget plans.
 - `GET /api/app/exports/transactions.csv` — tenant-scoped CSV export.
+
+Also mounted in `apps/api/src/app.ts`, each documented in its own runbook:
+
+- `/api/billing/paypal/webhook` (signature-verified PayPal events) and `/api/app/billing`.
+- `/api/reviews` (public) and `/api/app/reviews`, `/api/app/admin/reviews` (customer reviews).
+- `/api/ops/bug-reports` (bearer `OPS_EGRESS_TOKEN`, scrubbed reports for the bugfix automation) and `/api/app/admin/bug-reports`, `/api/app/support`.
+- `/api/app/admin/*`, `/api/app/identity` (platform administration and provider configuration).
+- `/api/app/assistant/voice/*` (transcription, ticketed live stream, and speech), `/api/app/entry` (AI entry), `/api/app/receipts`.
+- `/api/app/subscriptions`, `/api/app/events`, `/api/app/dashboard/*`.
+- `/api/app/sync/*` (mobile sync protocol, `docs/mobile/sync-protocol.md`).
 
 Browser origins are checked through the configured allow-list. CORS preflight allows `Authorization` before authentication middleware runs. Private responses use `Cache-Control: no-store`, and detailed unexpected failures remain server-side.
 

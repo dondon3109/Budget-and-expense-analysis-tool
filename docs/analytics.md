@@ -20,8 +20,9 @@ All telemetry is strictly bounded to protect financial privacy, avoid collecting
 
 ### 2.1 Public vs. Authenticated Web Surfaces
 
-- **Public Routes Only**: PostHog Web Analytics loads and captures events **strictly** on eligible public routes (`/`, `/terms-of-service`, `/privacy-policy`, `/cookie-policy`, `/faq`, and `/install`).
-- **Zero Tracking in Authenticated App**: PostHog is strictly disabled on `/app/*`, `/login`, `/signup`, `/forgot-password`, `/auth/*`, and any URL containing sensitive authentication query parameters or hash fragments (e.g., `?code=`, `#access_token=`).
+- **Consent first**: nothing is captured until the visitor grants the Analytics cookie category. Without that stored decision, or without a configured key, every capture is a silent no-op.
+- **Pageviews on public routes only**: `$pageview` fires only for routes in the public metadata manifest (`isEligiblePublicUrl` in `apps/web/src/seo/siteMetadata.ts`), and never for a URL carrying authentication query parameters or hash fragments (e.g., `?code=`, `#access_token=`).
+- **Six funnel events elsewhere**: the signup page and the signed-in app send only the closed set in `apps/web/src/analytics/funnel.ts` (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`). Their only properties are fixed enums, and the page-load events fire at most once per page load.
 - **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, account IDs, tenant IDs, or user IDs are ever captured or transmitted.
 
 ### 2.2 Client-Side Cookieless Web SDK Configuration

@@ -1,6 +1,10 @@
 # Realtime STT Bridge — Chirp 3 Streaming Architecture
 
-**Status:** Approved option (2) — Cloud Run bridge. REST `Recognize` kept as health-check only (`apps/api/src/assistant/google-stt.ts:1`).
+**Status:** Approved design, not deployed (frozen in `docs/optional-systems-review.md`). Gemini Live (`docs/voice-live.md`) is the realtime path that runs without this bridge. REST `Recognize` kept as health-check only (`apps/api/src/assistant/google-stt.ts`).
+
+## Why a bridge
+
+Chirp 3 streaming (`StreamingRecognize`) is gRPC bidirectional only, and the Worker runtime has no Node `http2` or `@grpc/grpc-js`, so the Worker cannot call it directly. A Cloud Run service speaks gRPC to Google and WebSocket to the Worker. Gemini Live needs no bridge because it is a plain WebSocket API.
 
 ## Authentication decision (correction 11)
 
@@ -8,9 +12,9 @@
 
 - Cloud Run service `stt-bridge` runs with attached GCP service account `stt-bridge@PROJECT.iam.gserviceaccount.com` having `roles/speech.client` (`speech.recognizers.recognize`, `speech.config.get`).
 - It authenticates to `speech.googleapis.com` via Application Default Credentials (ADC) — no SA JSON in D1, no secret forwarded `Worker → Run`.
-- **Why not forward admin credential:** Admin-managed `provider_credentials` for `google` (encrypted AES-256-GCM, `apps/api/src/provider-credentials/crypto.ts:40`) would require decrypting in Worker (`provider-registry.ts:81` `resolveCredential`) and forwarding SA JSON/token over `WSS` to Run. That increases exposure (plaintext in Worker memory twice, in transit, in Run logs risk) and couples UI credential rotation to Run redeploy. It does **not** satisfy the “switch production provider” requirement — switching is via `provider_configs.is_active` + `providerRegistry.invalidate()` (`apps/api/src/provider-registry.ts:298`), not SA rotation.
+- **Why not forward admin credential:** Admin-managed `provider_credentials` for `google` (encrypted AES-256-GCM, `encryptSecret` in `apps/api/src/provider-credentials/crypto.ts`) would require decrypting in Worker (`resolveCredential` in `apps/api/src/provider-registry.ts`) and forwarding SA JSON/token over `WSS` to Run. That increases exposure (plaintext in Worker memory twice, in transit, in Run logs risk) and couples UI credential rotation to Run redeploy. It does **not** satisfy the “switch production provider” requirement — switching is via `provider_configs.is_active` + `providerRegistry.invalidate()` (`apps/api/src/provider-registry.ts`), not SA rotation.
 - **Health check still uses admin credential optionally:** `POST /provider-credentials/:id/test` decrypts and does `GET /v2/projects/{id}/locations?pageSize=1` (`Authorization: Bearer`) — proves SA JSON validity with $0, but **not** used for realtime streaming. Realtime streaming uses Run ADC.
-- **Never exposed:** Plaintext/Google SA JSON never in browser, localStorage, React Query, URL, `provider_config_audits` (`apps/api/src/db/provider-configs.ts:85`), logs, PostHog.
+- **Never exposed:** Plaintext/Google SA JSON never in browser, localStorage, React Query, URL, `provider_config_audits` (`apps/api/src/db/provider-configs.ts`), logs, PostHog.
 
 If multi-project per credential is later required, add `provider_credentials` field `gcpProjectId` and forward _only projectId_ (not SA JSON) to Run; Run can assume impersonation via `gcloud auth impersonate` — still no SA JSON transit.
 
@@ -19,7 +23,7 @@ If multi-project per credential is later required, add `provider_credentials` fi
 ```
 Browser mic (MediaStream 16k PCM, AudioWorklet, 25KB chunks)
   --WSS (authenticated)--> Cloudflare Worker GET /api/app/assistant/voice/stream
-       auth: Supabase JWT (existing middleware `apps/api/src/app.ts:394`), rate-limit `tenant-assistant-voice-transcription:*`
+       auth: Supabase JWT (existing auth middleware, `apps/api/src/auth.ts`), rate-limit `tenant-assistant-voice-transcription:*`
        authorize: getActive stt config `providerRegistry.getActive(env,'stt')` — global, affects all users
        if provider !== google → fallback to existing POST /transcriptions (Whisper)
        else open WSS to Cloud Run `wss://stt-bridge-xxx.run.app/stream` with header `x-zoption-tenant: hash(tenantId)` (no PII)
@@ -30,7 +34,7 @@ Browser mic (MediaStream 16k PCM, AudioWorklet, 25KB chunks)
        <--Google interim {results:[{alternatives:[{transcript}], isFinal:false}]} 150-300ms
        <--Google final  {isFinal:true}
        → WSS back to Worker → browser {type:"partial"|"final", transcript, t_*}
-  --> Worker → existing voice flow (transcript → assistant tools, same as Whisper `assistant/voice-service.ts:223`)
+  --> Worker → existing voice flow (transcript → assistant tools, same as Whisper `transcribe` in `apps/api/src/assistant/voice-service.ts`)
 ```
 
 - **Streaming:** Browser sends `AudioWorklet` PCM every 100ms (not buffered file). Worker forwards immediately — **no buffering** until `final`. Interim `isFinal:false` rendered grey, `final` commits.
@@ -53,10 +57,10 @@ Comparison harness: same utterance recorded twice — once via `POST /transcript
 
 ## Components kept unchanged
 
-- `provider_credentials/provider_configs` separated, encrypted, reusable, `apiKeyLast4` only (`db/schema.ts:1003`). No change.
-- Manual `activate` → `registry.invalidate(service)` immediate (`provider-registry.ts:298`) — 30s TTL is fallback only.
-- Terminology `Credential/Secret` (`AdminProviderConfigsPage.tsx:1`).
-- Provider match enforcement `admin-provider-configs.ts:81`.
+- `provider_credentials/provider_configs` separated, encrypted, reusable, `apiKeyLast4` only (`providerCredentials` in `db/schema.ts`). No change.
+- Manual `activate` → `registry.invalidate(service)` immediate (`invalidate` in `apps/api/src/provider-registry.ts`) — 30s TTL is fallback only.
+- Terminology `Credential/Secret` (`apps/web/src/pages/AdminProviderConfigsPage.tsx`).
+- Provider match enforcement `credential_provider_mismatch` in `apps/api/src/routes/admin-provider-configs.ts`.
 - Gemini Live **not** in this phase (future `assistant.gemini-live` provider).
 
 ## Bridge skeleton (spike, not yet deployed)

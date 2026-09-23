@@ -288,7 +288,7 @@ Public canonical URLs do not use trailing slashes. The three legal trailing-slas
 
 ## Automated production release
 
-CI validates every pull request and push to `main`. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, Worker and Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
+CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck), `unit` (Vitest and mobile Jest), and `e2e` (shared, API, preview and production web builds, Playwright, then Lighthouse against the production build). The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, Worker and Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
 
 For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
 
@@ -338,7 +338,7 @@ Do these outside the repository before enabling `Production Release`; the workfl
 
    The bypass and the count of one are deliberate. On 2026-09-21, with no bypass and `required_approving_review_count` 0, reopening PR #22 — the `zoption-bug-automation` app's own proof that it could not merge itself — reported `mergeable MERGEABLE` and no review decision, so `require_extra_approval_for_unattributed_changes` alone does not keep an app-authored pull request behind a human. One required approval plus the maintainer bypass is what does.
 
-   Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. Neither it nor the rulesets require a passing status check before merge: `Production Release` refuses a red `main` push instead, because it only runs from a successful `CI` result. Requiring `verify` is the next tightening if the merge button itself should block.
+   Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. Neither it nor the rulesets require a passing status check before merge: `Production Release` refuses a red `main` push instead, because it only runs from a successful `CI` result. Requiring the `static`, `unit`, and `e2e` checks is the next tightening if the merge button itself should block.
 
 7. Require a reviewer on the `production` environment. It is what keeps a push to `main` — from any identity, including the maintainer's own bypass — from reaching production without a human click. It is external state, so read it back:
 
@@ -445,7 +445,7 @@ The normal workflow publishes semantic release metadata automatically only after
 
 - **Pages:** promote the previously verified frontend deployment.
 - **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
-- **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview.
+- **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
 - After rollback, rerun the documented environment-specific smoke command with `EXPECTED_SUPABASE_URL` (and any distinct `FORBIDDEN_SUPABASE_ORIGINS`) and verify unauthenticated `/api/app/*` requests still return `401`.
 
@@ -495,14 +495,14 @@ The drafting job is the only job that reads user text, and it holds no write tok
 
 Read every one of these back after a change. None of them live in the repository.
 
-| Setting                  | Where it lives                                                                                        | Read it back                                                     |
-| ------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `OPS_EGRESS_TOKEN`       | Worker secret, plus a repository secret the draft job reads                                           | `pnpm exec wrangler secret list` in `apps/api`; `gh secret list` |
-| `DEEPSEEK_API_KEY`       | Repository secret, read by `dsh` in the draft job                                                     | `gh secret list`                                                 |
-| `OPEN_BUGFIX_PRS`        | Repository variable. Unset is shadow mode, where the draft stays an artifact                          | `gh variable list`                                               |
-| `OPS_API_BASE_URL`       | Optional repository variable, defaults to `https://api.zoption.site`                                  | `gh variable list`                                               |
-| `Zoption ops egress`     | n8n credential (Bearer), must equal the Worker's `OPS_EGRESS_TOKEN`                                   | n8n UI on HomeCore                                               |
-| `GitHub bugfix dispatch` | n8n credential (Bearer). A fine grained PAT with `Actions: write` on this repository and nothing else | n8n UI on HomeCore                                               |
+| Setting                  | Where it lives                                                                                                         | Read it back                                                     |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `OPS_EGRESS_TOKEN`       | Worker secret, plus a repository secret the draft job reads                                                            | `pnpm exec wrangler secret list` in `apps/api`; `gh secret list` |
+| `DEEPSEEK_API_KEY`       | Repository secret, read by `dsh` in the draft job                                                                      | `gh secret list`                                                 |
+| `OPEN_BUGFIX_PRS`        | Repository variable, set to `true` (draft pull requests open). Unset is shadow mode, where the draft stays an artifact | `gh variable list`                                               |
+| `OPS_API_BASE_URL`       | Optional repository variable, defaults to `https://api.zoption.site`                                                   | `gh variable list`                                               |
+| `Zoption ops egress`     | n8n credential (Bearer), must equal the Worker's `OPS_EGRESS_TOKEN`                                                    | n8n UI on HomeCore                                               |
+| `GitHub bugfix dispatch` | n8n credential (Bearer). A fine grained PAT with `Actions: write` on this repository and nothing else                  | n8n UI on HomeCore                                               |
 
 Arm all of it in one step:
 
