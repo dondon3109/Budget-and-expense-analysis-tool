@@ -334,7 +334,7 @@ Do these outside the repository before enabling `Production Release`; the workfl
    ```
 
    - **main integrity - no rewrite, no delete** (`23728450`): refuses deletion and non-fast-forward pushes on `refs/heads/main`, with no bypass actors.
-   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main` with one approving review. The maintainer's user (`dondon3109`) is its only bypass actor, in `always` mode, so a direct push from that account is permitted and logged as a bypass, while a pull request needs an approval its own author cannot give.
+   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main` with one approving review and the `static`, `unit`, and `e2e` CI checks passing. The maintainer's user (`dondon3109`) is its only bypass actor, in `always` mode, so a direct push from that account is permitted and logged as a bypass, while a pull request needs an approval its own author cannot give.
 
    The bypass and the count of one are deliberate. On 2026-09-21, with no bypass and `required_approving_review_count` 0, reopening PR #22 — the `zoption-bug-automation` app's own proof that it could not merge itself — reported `mergeable MERGEABLE` and no review decision, so `require_extra_approval_for_unattributed_changes` alone does not keep an app-authored pull request behind a human. One required approval plus the maintainer bypass is what does.
 
@@ -486,7 +486,7 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 2. The `draft` job runs with `permissions: contents: read`. It fetches that report by id, runs `dsh --profile headless`, checks its own output with `scripts/bugfix-scrub.mjs`, and uploads `fix.patch`, `pr-body.md`, and `meta.json` as the `bugfix-draft` artifact.
 3. The `open-pr` job applies the patch to `bugfix/<report id>` and opens a draft pull request, then starts `ci.yml` explicitly: a pull request opened with the run token does not trigger `pull_request` workflows, and `workflow_dispatch` is the documented exception.
 4. The `notify` job sends a Telegram message with the pull request link, the shadow mode run link, or the failure. It carries status and links only, never report text, and does nothing while the Telegram secrets are unset. A tick that claims nothing sends nothing, and a failed `claim` job surfaces only as a failed scheduled run.
-5. A human reviews and merges. The `main review gate - PR required` ruleset requires one approving review. The release pipeline takes over.
+5. A human reviews and merges. The `main review gate - PR required` ruleset requires one approving review and passing CI. The release pipeline takes over.
 
 The drafting job is the only job that reads user text, and it holds no write token. The `open-pr` job holds the write token, runs no model, and reads no user text. No credential outside a runner can start or write anything, so n8n, the fine grained dispatch token, the fork, the organization, and the GitHub App are all gone.
 
