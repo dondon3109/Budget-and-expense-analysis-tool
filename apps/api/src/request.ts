@@ -23,3 +23,16 @@ export function parsePathParameter(
   }
   return parsed.data;
 }
+
+/** Validates a request value against its shared schema, answering 400 with the field errors. */
+export function parseInput<T extends z.ZodType>(
+  schema: T,
+  value: unknown,
+  message: string,
+): z.output<T> {
+  const parsed = schema.safeParse(value);
+  if (!parsed.success) {
+    throw new HttpError(400, "invalid_request", message, parsed.error.flatten());
+  }
+  return parsed.data;
+}

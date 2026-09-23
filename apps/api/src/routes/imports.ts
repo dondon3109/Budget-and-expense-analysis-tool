@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 import type { ImportRepository } from "../db/imports";
 import { HttpError } from "../errors";
-import { readJson } from "../request";
+import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createImportRoutes(repository: ImportRepository) {
@@ -11,17 +11,9 @@ export function createImportRoutes(repository: ImportRepository) {
 
   routes.post("/preview", async (context) => {
     const body = await readJson(context);
-    const parsed = importPreviewRequestSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the import details.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(importPreviewRequestSchema, body, "Check the import details.");
     return context.json(
-      await repository.preview(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.preview(context.env, context.get("tenant").tenantId, input),
     );
   });
 

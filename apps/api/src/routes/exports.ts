@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 import type { BillingRepository } from "../db/billing";
 import type { TransactionRepository } from "../db/transactions";
-import { HttpError } from "../errors";
+import { parseInput } from "../request";
 import { buildAccountArchive } from "../exports/archive";
 import { buildTransactionCsv } from "../exports/csv";
 import type { AppEnvironment } from "../types";
@@ -35,16 +35,12 @@ export function createExportRoutes(
 
   routes.get("/transactions.csv", async (context) => {
     await billing.requirePro(context.env, context.get("tenant").tenantId, "transaction_export");
-    const parsed = transactionExportQuerySchema.safeParse(context.req.query());
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the export filters.",
-        parsed.error.flatten(),
-      );
-    }
-    const rows = await repository.export(context.env, context.get("tenant").tenantId, parsed.data);
+    const input = parseInput(
+      transactionExportQuerySchema,
+      context.req.query(),
+      "Check the export filters.",
+    );
+    const rows = await repository.export(context.env, context.get("tenant").tenantId, input);
     context.header("Content-Type", "text/csv; charset=utf-8");
     context.header("Content-Disposition", 'attachment; filename="zoption-transactions.csv"');
     return context.body(buildTransactionCsv(rows));

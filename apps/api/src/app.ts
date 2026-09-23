@@ -69,6 +69,7 @@ import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
 import { createAiEntryService, type AiEntryService } from "./entry/ai-entry-service";
 import { HttpError } from "./errors";
+import { parseInput } from "./request";
 import { servePublicAvatar } from "./avatars";
 import { boundRateLimiter, type RateLimitPolicy, type RateLimiter } from "./rate-limit";
 import { createAvatarRoutes } from "./routes/avatars";
@@ -654,31 +655,21 @@ export function createApp(options: AppOptions = {}) {
   });
 
   app.get("/api/app/dashboard", async (context) => {
-    const parsed = dashboardQuerySchema.safeParse(context.req.query());
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Choose a valid dashboard date range.",
-        parsed.error.flatten(),
-      );
-    }
-    return context.json(
-      await dashboardLoader(context.env, context.get("tenant").tenantId, parsed.data),
+    const input = parseInput(
+      dashboardQuerySchema,
+      context.req.query(),
+      "Choose a valid dashboard date range.",
     );
+    return context.json(await dashboardLoader(context.env, context.get("tenant").tenantId, input));
   });
 
   app.get("/api/app/dashboard/cashflow-trend", async (context) => {
-    const parsed = cashflowTrendQuerySchema.safeParse(context.req.query());
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Choose a valid cashflow trend view.",
-        parsed.error.flatten(),
-      );
-    }
-    if (parsed.data.view !== "weekly") {
+    const input = parseInput(
+      cashflowTrendQuerySchema,
+      context.req.query(),
+      "Choose a valid cashflow trend view.",
+    );
+    if (input.view !== "weekly") {
       await billingStore.requirePro(
         context.env,
         context.get("tenant").tenantId,
@@ -686,7 +677,7 @@ export function createApp(options: AppOptions = {}) {
       );
     }
     return context.json(
-      await cashflowTrendLoader(context.env, context.get("tenant").tenantId, parsed.data),
+      await cashflowTrendLoader(context.env, context.get("tenant").tenantId, input),
     );
   });
 

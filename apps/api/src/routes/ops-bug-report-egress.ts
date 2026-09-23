@@ -13,6 +13,7 @@ import { Hono } from "hono";
 import type { BugReportEgressAuditRepository } from "../db/bug-report-egress-audit";
 import type { BugReportEgressCandidate, BugReportRepository } from "../db/bug-reports";
 import { HttpError } from "../errors";
+import { parseInput } from "../request";
 import type { AppEnvironment, Bindings } from "../types";
 
 const EGRESS_FIELDS = ["title", "actualBehavior", "expectedBehavior", "stepsToReproduce"] as const;
@@ -170,17 +171,9 @@ export function createBugReportEgressRoutes(
     // leaves, and the response keeps the list shape with exactly one entry on one side.
     const requestedId = context.req.query("id");
     if (requestedId !== undefined) {
-      const parsed = resourceIdSchema.safeParse(requestedId);
-      if (!parsed.success) {
-        throw new HttpError(
-          400,
-          "invalid_request",
-          "Use a valid report identifier.",
-          parsed.error.flatten(),
-        );
-      }
+      const input = parseInput(resourceIdSchema, requestedId, "Use a valid report identifier.");
 
-      const report = await bugReports.findForEgress(context.env, parsed.data);
+      const report = await bugReports.findForEgress(context.env, input);
       if (!report) {
         return context.json({ error: "not_found" }, 404);
       }

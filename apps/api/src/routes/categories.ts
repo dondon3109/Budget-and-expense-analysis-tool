@@ -7,7 +7,7 @@ import { Hono } from "hono";
 
 import type { CategoryRepository } from "../db/categories";
 import { HttpError } from "../errors";
-import { parsePathParameter, readJson } from "../request";
+import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createCategoryRoutes(repository: CategoryRepository) {
@@ -29,38 +29,22 @@ export function createCategoryRoutes(repository: CategoryRepository) {
 
   routes.post("/", async (context) => {
     const body = await readJson(context);
-    const parsed = categoryInputSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the category fields.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(categoryInputSchema, body, "Check the category fields.");
     return context.json(
-      await repository.create(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.create(context.env, context.get("tenant").tenantId, input),
       201,
     );
   });
 
   routes.patch("/:id", async (context) => {
     const body = await readJson(context);
-    const parsed = categoryUpdateSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the category fields.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(categoryUpdateSchema, body, "Check the category fields.");
     return context.json(
       await repository.update(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id")),
-        parsed.data,
+        input,
       ),
     );
   });

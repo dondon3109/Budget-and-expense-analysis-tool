@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 import type { BudgetRepository } from "../db/budgets";
 import { HttpError } from "../errors";
-import { readJson } from "../request";
+import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createBudgetRoutes(repository: BudgetRepository) {
@@ -21,17 +21,9 @@ export function createBudgetRoutes(repository: BudgetRepository) {
 
   routes.put("/", async (context) => {
     const body = await readJson(context);
-    const parsed = budgetUpsertSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the monthly budget values.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(budgetUpsertSchema, body, "Check the monthly budget values.");
     return context.json(
-      await repository.upsert(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.upsert(context.env, context.get("tenant").tenantId, input),
     );
   });
 

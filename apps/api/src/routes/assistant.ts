@@ -12,7 +12,7 @@ import { Hono, type Context } from "hono";
 
 import type { AssistantService, AssistantTurnExecution } from "../assistant/service";
 import { HttpError } from "../errors";
-import { parsePathParameter, readJson } from "../request";
+import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 function assistantTurnExecution(
@@ -41,17 +41,13 @@ export function createAssistantRoutes(service: AssistantService) {
   );
 
   routes.patch("/preferences", async (context) => {
-    const parsed = assistantPreferenceUpdateSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Provide valid assistant preferences.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      assistantPreferenceUpdateSchema,
+      await readJson(context),
+      "Provide valid assistant preferences.",
+    );
     return context.json(
-      await service.updatePreferences(context.env, context.get("tenant").tenantId, parsed.data),
+      await service.updatePreferences(context.env, context.get("tenant").tenantId, input),
     );
   });
 
@@ -64,21 +60,13 @@ export function createAssistantRoutes(service: AssistantService) {
   );
 
   routes.patch("/memory/preferences", async (context) => {
-    const parsed = assistantMemoryPreferencesUpdateSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Provide valid memory preferences.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      assistantMemoryPreferencesUpdateSchema,
+      await readJson(context),
+      "Provide valid memory preferences.",
+    );
     return context.json(
-      await service.updateMemoryPreferences(
-        context.env,
-        context.get("tenant").tenantId,
-        parsed.data,
-      ),
+      await service.updateMemoryPreferences(context.env, context.get("tenant").tenantId, input),
     );
   });
 
@@ -88,21 +76,17 @@ export function createAssistantRoutes(service: AssistantService) {
   });
 
   routes.patch("/memory/:id", async (context) => {
-    const parsed = assistantMemoryUpdateSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Provide a valid memory value.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      assistantMemoryUpdateSchema,
+      await readJson(context),
+      "Provide a valid memory value.",
+    );
     return context.json(
       await service.updateMemory(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id"), assistantMemoryIdSchema),
-        parsed.data.value,
+        input.value,
       ),
     );
   });
@@ -127,20 +111,16 @@ export function createAssistantRoutes(service: AssistantService) {
   });
 
   routes.post("/threads", async (context) => {
-    const parsed = assistantMessageInputSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Enter a message of 2,000 characters or fewer.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      assistantMessageInputSchema,
+      await readJson(context),
+      "Enter a message of 2,000 characters or fewer.",
+    );
     return context.json(
       await service.createThreadTurn(
         context.env,
         context.get("tenant").tenantId,
-        parsed.data,
+        input,
         assistantTurnExecution(context),
       ),
       201,
@@ -168,21 +148,17 @@ export function createAssistantRoutes(service: AssistantService) {
   });
 
   routes.post("/threads/:id/messages", async (context) => {
-    const parsed = assistantMessageInputSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Enter a message of 2,000 characters or fewer.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      assistantMessageInputSchema,
+      await readJson(context),
+      "Enter a message of 2,000 characters or fewer.",
+    );
     return context.json(
       await service.sendTurn(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id"), assistantThreadIdSchema),
-        parsed.data,
+        input,
         assistantTurnExecution(context),
       ),
     );

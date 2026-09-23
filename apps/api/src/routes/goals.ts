@@ -2,8 +2,7 @@ import { financialGoalInputSchema, financialGoalUpdateSchema } from "@zoption/sh
 import { Hono } from "hono";
 
 import type { FinancialGoalRepository } from "../db/goals";
-import { HttpError } from "../errors";
-import { parsePathParameter, readJson } from "../request";
+import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createFinancialGoalRoutes(repository: FinancialGoalRepository) {
@@ -14,27 +13,29 @@ export function createFinancialGoalRoutes(repository: FinancialGoalRepository) {
   );
 
   routes.post("/", async (context) => {
-    const parsed = financialGoalInputSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(400, "invalid_request", "Check the goal fields.", parsed.error.flatten());
-    }
+    const input = parseInput(
+      financialGoalInputSchema,
+      await readJson(context),
+      "Check the goal fields.",
+    );
     return context.json(
-      await repository.create(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.create(context.env, context.get("tenant").tenantId, input),
       201,
     );
   });
 
   routes.patch("/:id", async (context) => {
-    const parsed = financialGoalUpdateSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(400, "invalid_request", "Check the goal fields.", parsed.error.flatten());
-    }
+    const input = parseInput(
+      financialGoalUpdateSchema,
+      await readJson(context),
+      "Check the goal fields.",
+    );
     return context.json(
       await repository.update(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id")),
-        parsed.data,
+        input,
       ),
     );
   });

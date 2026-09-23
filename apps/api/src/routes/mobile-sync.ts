@@ -7,71 +7,50 @@ import {
 import { Hono } from "hono";
 
 import type { MobileSyncRepository } from "../db/mobile-sync";
-import { HttpError } from "../errors";
-import { readJson } from "../request";
+import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createMobileSyncRoutes(repository: MobileSyncRepository) {
   const routes = new Hono<AppEnvironment>();
 
   routes.post("/acknowledge", async (context) => {
-    const parsed = mobileSyncAcknowledgeRequestSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the synchronization acknowledgement.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      mobileSyncAcknowledgeRequestSchema,
+      await readJson(context),
+      "Check the synchronization acknowledgement.",
+    );
     return context.json(
-      await repository.acknowledge(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.acknowledge(context.env, context.get("tenant").tenantId, input),
     );
   });
 
   routes.post("/pull", async (context) => {
-    const parsed = mobileSyncPullRequestSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the synchronization request.",
-        parsed.error.flatten(),
-      );
-    }
-    return context.json(
-      await repository.pull(context.env, context.get("tenant").tenantId, parsed.data),
+    const input = parseInput(
+      mobileSyncPullRequestSchema,
+      await readJson(context),
+      "Check the synchronization request.",
     );
+    return context.json(await repository.pull(context.env, context.get("tenant").tenantId, input));
   });
 
   routes.post("/snapshot", async (context) => {
-    const parsed = mobileSyncSnapshotRequestSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the full-snapshot request.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      mobileSyncSnapshotRequestSchema,
+      await readJson(context),
+      "Check the full-snapshot request.",
+    );
     return context.json(
-      await repository.snapshot(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.snapshot(context.env, context.get("tenant").tenantId, input),
     );
   });
 
   routes.post("/push", async (context) => {
-    const parsed = mobileSyncPushRequestSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the synchronization operations.",
-        parsed.error.flatten(),
-      );
-    }
-    return context.json(
-      await repository.push(context.env, context.get("tenant").tenantId, parsed.data),
+    const input = parseInput(
+      mobileSyncPushRequestSchema,
+      await readJson(context),
+      "Check the synchronization operations.",
     );
+    return context.json(await repository.push(context.env, context.get("tenant").tenantId, input));
   });
 
   return routes;

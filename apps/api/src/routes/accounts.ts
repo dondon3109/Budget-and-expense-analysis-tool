@@ -7,8 +7,7 @@ import { Hono } from "hono";
 
 import type { AccountRepository } from "../db/accounts";
 import type { BillingRepository } from "../db/billing";
-import { HttpError } from "../errors";
-import { parsePathParameter, readJson } from "../request";
+import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 export function createAccountRoutes(
@@ -23,38 +22,30 @@ export function createAccountRoutes(
 
   routes.post("/", async (context) => {
     await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
-    const parsed = accountInputSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the account details.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      accountInputSchema,
+      await readJson(context),
+      "Check the account details.",
+    );
     return context.json(
-      await repository.create!(context.env, context.get("tenant").tenantId, parsed.data),
+      await repository.create!(context.env, context.get("tenant").tenantId, input),
       201,
     );
   });
 
   routes.patch("/:id", async (context) => {
     await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
-    const parsed = accountUpdateWithInterestSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the account and interest details.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      accountUpdateWithInterestSchema,
+      await readJson(context),
+      "Check the account and interest details.",
+    );
     return context.json(
       await repository.update!(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id")),
-        parsed.data,
+        input,
       ),
     );
   });
@@ -71,21 +62,17 @@ export function createAccountRoutes(
 
   routes.patch("/:id/interest", async (context) => {
     await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
-    const parsed = interestUpdateSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Check the interest settings.",
-        parsed.error.flatten(),
-      );
-    }
+    const input = parseInput(
+      interestUpdateSchema,
+      await readJson(context),
+      "Check the interest settings.",
+    );
     return context.json(
       await repository.updateInterest!(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id")),
-        parsed.data,
+        input,
       ),
     );
   });

@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import type { AssistantProvider } from "../assistant/provider";
 import { HttpError } from "../errors";
-import { readJson } from "../request";
+import { parseInput, readJson } from "../request";
 import { completeSupportChat, supportChatInputSchema } from "../support/service";
 import type { BugReportService } from "../support/bug-reports";
 import type { PlatformAdminService } from "../platform-admin";
@@ -21,16 +21,12 @@ export function createSupportRoutes(provider: AssistantProvider) {
   });
 
   routes.post("/chat", async (context) => {
-    const parsed = supportChatInputSchema.safeParse(await readJson(context));
-    if (!parsed.success) {
-      throw new HttpError(
-        400,
-        "invalid_request",
-        "Enter a valid support message of 1,200 characters or fewer.",
-        parsed.error.flatten(),
-      );
-    }
-    return context.json(await completeSupportChat(context.env, provider, parsed.data));
+    const input = parseInput(
+      supportChatInputSchema,
+      await readJson(context),
+      "Enter a valid support message of 1,200 characters or fewer.",
+    );
+    return context.json(await completeSupportChat(context.env, provider, input));
   });
 
   return routes;

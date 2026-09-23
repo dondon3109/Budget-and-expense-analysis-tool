@@ -3,7 +3,7 @@ import { Hono } from "hono";
 
 import type { AiEntryService } from "../entry/ai-entry-service";
 import { HttpError } from "../errors";
-import { readJson } from "../request";
+import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
 const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
@@ -22,16 +22,12 @@ const ACCEPTED_AUDIO_TYPES = new Set([
  * provider request, so an unbounded transcript would let one unit buy an arbitrarily large one.
  */
 function parseTranscript(value: unknown): string {
-  const parsed = entryVoiceTranscriptSchema.safeParse(value);
-  if (!parsed.success) {
-    throw new HttpError(
-      400,
-      "invalid_request",
-      "Provide a transcript of 2,000 characters or fewer.",
-      parsed.error.flatten(),
-    );
-  }
-  return parsed.data;
+  const input = parseInput(
+    entryVoiceTranscriptSchema,
+    value,
+    "Provide a transcript of 2,000 characters or fewer.",
+  );
+  return input;
 }
 
 function parseCategoryList(value: unknown): string[] | undefined {
