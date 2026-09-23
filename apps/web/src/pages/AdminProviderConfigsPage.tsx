@@ -11,69 +11,39 @@ import {
   Trash2,
   TestTube,
   Pencil,
-  Eye,
-  EyeOff,
   Zap,
   Check,
   Info,
 } from "lucide-react";
-import { useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { AdminProviderDialog, errorMessage } from "../components/admin/AdminProviderDialog";
+import { AddConfigDialog, EditConfigDialog } from "../components/admin/ProviderConfigDialogs";
+import {
+  AddCredentialDialog,
+  EditCredentialDialog,
+} from "../components/admin/ProviderCredentialDialogs";
 import { AppShell } from "../components/layout/AppShell";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { useBillingSummary } from "../hooks/useBillingSummary";
-import { useFocusTrap } from "../hooks/useFocusTrap";
-import { useRootLock } from "../hooks/useRootLock";
 import {
   activateProviderConfig,
-  createProviderConfig,
-  createProviderCredential,
   deleteProviderConfig,
   deleteProviderCredential,
   getProviderConfigAudits,
   getProviderConfigs,
   getProviderCredentials,
   getProviderHealth,
-  listCredentialModels,
-  previewProviderModels,
   reorderProviderConfigs,
   testProviderCredential,
   updateProviderConfig,
-  updateProviderCredential,
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
-import { providerAllowlist } from "@zoption/shared";
 import type { ProviderConfig, ProviderCredentialWithUsage, ProviderService } from "@zoption/shared";
 import "./AdminProviderConfigsPage.css";
-
-const ASSISTANT_CREDENTIAL_LABELS: Record<string, string> = {
-  deepseek: "DeepSeek Key",
-  openai: "OpenAI Key",
-  anthropic: "Anthropic Key",
-  gemini: "Gemini Key",
-  meta: "Meta Key",
-  muse_spark: "Muse Spark Key",
-};
-
-const ASSISTANT_KEY_PLACEHOLDERS: Record<string, string> = {
-  deepseek: "sk-...",
-  openai: "sk-... (OpenAI)",
-  anthropic: "sk-ant-... (Anthropic)",
-  gemini: "AIzaSy... (Google AI Studio)",
-  meta: "Paste Meta Llama API key...",
-  muse_spark: "Paste Muse Spark API key...",
-};
-
-/** Model select sentinel for a manually entered model ID. */
-const CUSTOM_MODEL_VALUE = "__custom";
-
-function resolveAddModel(model: string, custom: string): string {
-  return model === CUSTOM_MODEL_VALUE ? custom.trim() : model;
-}
 
 const SERVICES: { id: ProviderService; label: string; description: string }[] = [
   {
@@ -124,39 +94,6 @@ function shortId(id: string): string {
   return id.slice(0, 8);
 }
 
-interface AdminProviderDialogProps {
-  /** Accessible name for the dialog; matches its visible heading. */
-  label: string;
-  onClose: () => void;
-  children: ReactNode;
-}
-
-/**
- * Modal shell for this page's dialogs. Portals to document.body before taking
- * the root lock: these dialogs used to render inside #root, so inerting #root
- * would have inerted the dialog itself. Traps Tab, closes on Escape, and
- * returns focus to whatever opened it.
- */
-function AdminProviderDialog({ label, onClose, children }: AdminProviderDialogProps) {
-  const backdropRef = useRef<HTMLDivElement>(null);
-  useRootLock(true);
-  const handleKeyDown = useFocusTrap(backdropRef, { onEscape: onClose });
-
-  return createPortal(
-    <div
-      ref={backdropRef}
-      className="admin-provider-confirm-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label={label}
-      onKeyDown={handleKeyDown}
-    >
-      {children}
-    </div>,
-    document.body,
-  );
-}
-
 export function AdminProviderConfigsPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
@@ -170,48 +107,11 @@ export function AdminProviderConfigsPage() {
   >("all");
   const [confirmActivate, setConfirmActivate] = useState<ProviderConfig | null>(null);
   const [deleteConfig, setDeleteConfig] = useState<ProviderConfig | null>(null);
-
-  // Configuration add dialog state
   const [addFor, setAddFor] = useState<ProviderService | null>(null);
-  const [addProvider, setAddProvider] = useState<string>("");
-  const [addModel, setAddModel] = useState<string>("");
-  const [addDisplayName, setAddDisplayName] = useState<string>("");
-  const [addCredentialId, setAddCredentialId] = useState<string>("");
-  const [addCredMode, setAddCredMode] = useState<"existing" | "new" | "none">("new");
-  const [addNewCredName, setAddNewCredName] = useState<string>("");
-  const [addNewCredSecret, setAddNewCredSecret] = useState<string>("");
-  const [showAddSecret, setShowAddSecret] = useState<boolean>(false);
-  const [addActivateImmediately, setAddActivateImmediately] = useState<boolean>(true);
-  const [fetchedModels, setFetchedModels] = useState<string[] | null>(null);
-  const [fetchingModels, setFetchingModels] = useState<boolean>(false);
-  const [fetchModelsError, setFetchModelsError] = useState<string>();
-  const [addCustomModel, setAddCustomModel] = useState<string>("");
-  const [isSubmittingConfig, setIsSubmittingConfig] = useState<boolean>(false);
-  // Errors from the add dialog must render inside it. The dialog is a
-  // full-viewport scrim, so anything routed to the page-level errorMsg is
-  // painted underneath and the save looks like a dead click.
-  const [addError, setAddError] = useState<string>();
-
-  // Credential dialog state
-  const [showAddCred, setShowAddCred] = useState(false);
-  const [credProvider, setCredProvider] = useState<string>("deepseek");
-  const [credName, setCredName] = useState<string>("");
-  const [credSecret, setCredSecret] = useState<string>("");
-  const [showAddCredSecret, setShowAddCredSecret] = useState(false);
-  const [editCred, setEditCred] = useState<ProviderCredentialWithUsage | null>(null);
-  const [editCredName, setEditCredName] = useState<string>("");
-  const [editCredSecret, setEditCredSecret] = useState<string>("");
-  const [showEditCredSecret, setShowEditCredSecret] = useState(false);
-  const [deleteCred, setDeleteCred] = useState<ProviderCredentialWithUsage | null>(null);
-
-  // Configuration edit dialog state
   const [editConfig, setEditConfig] = useState<ProviderConfig | null>(null);
-  const [editConfigDisplayName, setEditConfigDisplayName] = useState<string>("");
-  const [editConfigCredentialId, setEditConfigCredentialId] = useState<string>("");
-  const [editCredMode, setEditCredMode] = useState<"existing" | "new" | "none">("existing");
-  const [editNewCredName, setEditNewCredName] = useState<string>("");
-  const [editNewCredSecret, setEditNewCredSecret] = useState<string>("");
-  const [showEditSecret, setShowEditSecret] = useState<boolean>(false);
+  const [showAddCred, setShowAddCred] = useState(false);
+  const [editCred, setEditCred] = useState<ProviderCredentialWithUsage | null>(null);
+  const [deleteCred, setDeleteCred] = useState<ProviderCredentialWithUsage | null>(null);
 
   const configsQuery = useQuery({
     queryKey: queryKeys.providerConfigs(workspace),
@@ -254,8 +154,7 @@ export function AdminProviderConfigsPage() {
         queryKey: queryKeys.providerHealth(workspace),
       });
     },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Activation failed."),
+    onError: (err: unknown) => setErrorMsg(errorMessage(err, "Activation failed.")),
   });
 
   const toggleMutation = useMutation({
@@ -267,7 +166,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Update failed."),
+    onError: (err: unknown) => setErrorMsg(errorMessage(err, "Update failed.")),
   });
 
   const reorderMutation = useMutation({
@@ -279,7 +178,7 @@ export function AdminProviderConfigsPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
     },
-    onError: (err: unknown) => setErrorMsg(err instanceof Error ? err.message : "Reorder failed."),
+    onError: (err: unknown) => setErrorMsg(errorMessage(err, "Reorder failed.")),
   });
 
   const deleteConfigMutation = useMutation({
@@ -294,186 +193,7 @@ export function AdminProviderConfigsPage() {
         queryKey: queryKeys.providerHealth(workspace),
       });
     },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Delete configuration failed."),
-  });
-
-  async function handleCreateConfig() {
-    const effectiveModel = resolveAddModel(addModel, addCustomModel);
-    if (!addFor || !addProvider || !effectiveModel || !addDisplayName.trim()) return;
-    setIsSubmittingConfig(true);
-    setAddError(undefined);
-    setErrorMsg(undefined);
-    try {
-      let credentialId: string | null = null;
-      const isCloudflare = addProvider === "cloudflare_workers_ai";
-      const isGoogle = addProvider === "google";
-
-      if (!isCloudflare) {
-        if (addCredMode === "new") {
-          if (!addNewCredSecret.trim()) {
-            throw new Error("Please enter an API key or secret.");
-          }
-          const createdCred = await createProviderCredential(workspace, {
-            provider: addProvider,
-            name:
-              addNewCredName.trim() || (isGoogle ? "Google AI Studio Key" : `${addProvider} Key`),
-            secret: addNewCredSecret.trim(),
-          });
-          credentialId = createdCred.id;
-          void queryClient.invalidateQueries({
-            queryKey: queryKeys.providerCredentials(workspace),
-          });
-        } else if (addCredMode === "existing") {
-          if (!addCredentialId && !isGoogle) {
-            throw new Error("Please select a saved credential or enter an API key.");
-          }
-          credentialId = addCredentialId || null;
-        } else if (addCredMode === "none") {
-          if (!isGoogle) {
-            throw new Error("This provider requires an API key.");
-          }
-          credentialId = null;
-        }
-      }
-
-      const created = await createProviderConfig(workspace, {
-        service: addFor,
-        provider: addProvider,
-        model: effectiveModel,
-        displayName: addDisplayName.trim(),
-        credentialId,
-      });
-
-      if (addActivateImmediately) {
-        try {
-          await activateProviderConfig(workspace, created.id);
-          setFeedback(`Added and activated ${created.service} → ${created.displayName}`);
-        } catch {
-          setFeedback(`Added ${created.service} → ${created.displayName} (activation pending)`);
-        }
-      } else {
-        setFeedback(`Added ${created.service} → ${created.displayName}`);
-      }
-      setAddFor(null);
-      setAddProvider("");
-      setAddModel("");
-      setAddDisplayName("");
-      setAddCredentialId("");
-      setAddNewCredName("");
-      setAddNewCredSecret("");
-      setAddCredMode("new");
-      setFetchedModels(null);
-      setAddCustomModel("");
-      setFetchModelsError(undefined);
-      setAddActivateImmediately(true);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
-    } catch (err) {
-      setAddError(err instanceof Error ? err.message : "Failed to create configuration.");
-    } finally {
-      setIsSubmittingConfig(false);
-    }
-  }
-
-  async function handleUpdateConfig() {
-    if (!editConfig || !editConfigDisplayName.trim()) return;
-    setIsSubmittingConfig(true);
-    setErrorMsg(undefined);
-    try {
-      let credentialId: string | null = editConfigCredentialId || null;
-      const isCloudflare = editConfig.provider === "cloudflare_workers_ai";
-      const isGoogle = editConfig.provider === "google";
-
-      if (!isCloudflare) {
-        if (editCredMode === "new") {
-          if (!editNewCredSecret.trim()) {
-            throw new Error("Please enter an API key or secret.");
-          }
-          const createdCred = await createProviderCredential(workspace, {
-            provider: editConfig.provider,
-            name: editNewCredName.trim() || `${editConfig.provider} Key`,
-            secret: editNewCredSecret.trim(),
-          });
-          credentialId = createdCred.id;
-          void queryClient.invalidateQueries({
-            queryKey: queryKeys.providerCredentials(workspace),
-          });
-        } else if (editCredMode === "existing") {
-          if (!editConfigCredentialId && !isGoogle) {
-            throw new Error("Please select a saved credential or enter an API key.");
-          }
-          credentialId = editConfigCredentialId || null;
-        } else if (editCredMode === "none") {
-          credentialId = null;
-        }
-      }
-
-      const updated = await updateProviderConfig(workspace, editConfig.id, {
-        displayName: editConfigDisplayName.trim(),
-        credentialId,
-      });
-
-      setFeedback(`Updated configuration: ${updated.displayName}`);
-      setEditConfig(null);
-      setEditConfigDisplayName("");
-      setEditConfigCredentialId("");
-      setEditNewCredName("");
-      setEditNewCredSecret("");
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : "Failed to update configuration.");
-    } finally {
-      setIsSubmittingConfig(false);
-    }
-  }
-
-  const createCredMutation = useMutation({
-    mutationFn: (input: { provider: string; name: string; secret: string }) =>
-      createProviderCredential(workspace, input),
-    onSuccess: (c) => {
-      setFeedback(`Created credential ${c.provider} / ${c.name} ••••${c.apiKeyLast4}`);
-      setErrorMsg(undefined);
-      setShowAddCred(false);
-      setCredName("");
-      setCredSecret("");
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
-    },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Create credential failed."),
-  });
-
-  const updateCredMutation = useMutation({
-    mutationFn: (input: { id: string; name?: string; secret?: string }) =>
-      updateProviderCredential(workspace, input.id, {
-        ...(input.name ? { name: input.name } : {}),
-        ...(input.secret ? { secret: input.secret } : {}),
-      }),
-    onSuccess: (c) => {
-      setFeedback(`Updated credential ${c.name} ••••${c.apiKeyLast4}`);
-      setErrorMsg(undefined);
-      setEditCred(null);
-      setEditCredName("");
-      setEditCredSecret("");
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-    },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Update credential failed."),
+    onError: (err: unknown) => setErrorMsg(errorMessage(err, "Delete configuration failed.")),
   });
 
   const deleteCredMutation = useMutation({
@@ -484,8 +204,7 @@ export function AdminProviderConfigsPage() {
       setDeleteCred(null);
       void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
     },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Delete credential failed."),
+    onError: (err: unknown) => setErrorMsg(errorMessage(err, "Delete credential failed.")),
   });
 
   const testCredMutation = useMutation({
@@ -494,8 +213,7 @@ export function AdminProviderConfigsPage() {
       setFeedback(`Credential test ok: ${res.provider} ••••${res.last4}`);
       setErrorMsg(undefined);
     },
-    onError: (err: unknown) =>
-      setErrorMsg(err instanceof Error ? err.message : "Credential test failed."),
+    onError: (err: unknown) => setErrorMsg(errorMessage(err, "Credential test failed.")),
   });
 
   function move(
@@ -544,145 +262,18 @@ export function AdminProviderConfigsPage() {
     return map;
   }, [healthQuery.data?.health]);
 
-  function availableProviders(service: ProviderService): string[] {
-    return Object.keys(providerAllowlist[service] ?? {});
-  }
-
-  function availableModels(service: ProviderService, provider: string): string[] {
-    const models = providerAllowlist[service]?.[provider];
-    return models ? [...models] : [];
-  }
-
-  function remainingModels(
-    service: ProviderService,
-    provider: string,
-    existing: ProviderConfig[],
-  ): string[] {
-    const all = availableModels(service, provider);
-    const used = new Set(existing.filter((c) => c.provider === provider).map((c) => c.model));
-    return all.filter((m) => !used.has(m));
-  }
-
   function openAdd(service: ProviderService) {
-    setAddActivateImmediately(true);
-    const providers = availableProviders(service);
-    const existing = configsByService.get(service) ?? [];
-
-    // For STT, prefer "google" if it has remaining models because cloudflare is already configured by default
-    let preferredProvider = providers[0] ?? "";
-    if (service === "stt" && providers.includes("google")) {
-      const googleRem = remainingModels(service, "google", existing);
-      if (googleRem.length > 0) {
-        preferredProvider = "google";
-      }
-    }
-
-    const models = preferredProvider ? remainingModels(service, preferredProvider, existing) : [];
-    let provider = preferredProvider;
-    let model = models[0] ?? "";
-    if (!model) {
-      for (const p of providers) {
-        const rem = remainingModels(service, p, existing);
-        if (rem.length) {
-          provider = p;
-          model = rem[0]!;
-          break;
-        }
-      }
-    }
-    setAddProvider(provider);
-    setAddModel(model);
-    setAddDisplayName(
-      provider === "google" && model.includes("live")
-        ? "Google Gemini 3.5 Transcribe Live"
-        : provider && model
-          ? `${provider} / ${model}`
-          : "",
-    );
-    const creds = credentialsByProvider.get(provider) ?? [];
-    setAddCredentialId(creds[0]?.id ?? "");
-    setAddCredMode(
-      provider === "cloudflare_workers_ai" ? "none" : creds.length > 0 ? "existing" : "new",
-    );
-    setAddNewCredName(
-      provider === "google"
-        ? "Google AI Studio Key"
-        : (ASSISTANT_CREDENTIAL_LABELS[provider] ?? `${provider} Key`),
-    );
-    setAddNewCredSecret("");
-    setShowAddSecret(false);
-    setFetchedModels(null);
-    setAddCustomModel("");
-    setFetchingModels(false);
-    setFetchModelsError(undefined);
-    setAddFor(service);
-    setAddError(undefined);
     setErrorMsg(undefined);
+    setAddFor(service);
   }
 
-  async function handleFetchModels() {
-    if (!addFor || !addProvider || fetchingModels) return;
-    setFetchingModels(true);
-    setFetchModelsError(undefined);
-    try {
-      const result =
-        addCredMode === "new"
-          ? await previewProviderModels(workspace, {
-              provider: addProvider,
-              secret: addNewCredSecret.trim(),
-            })
-          : await listCredentialModels(workspace, addCredentialId);
-      const existing = configsByService.get(addFor) ?? [];
-      const used = new Set(existing.filter((c) => c.provider === addProvider).map((c) => c.model));
-      const base = remainingModels(addFor, addProvider, existing);
-      const extras = result.models.filter((m) => !base.includes(m) && !used.has(m));
-      setFetchedModels([...base, ...extras]);
-      if (addModel && addModel !== CUSTOM_MODEL_VALUE && ![...base, ...extras].includes(addModel)) {
-        const next = [...base, ...extras][0] ?? "";
-        setAddModel(next);
-        setAddDisplayName(addProvider && next ? `${addProvider} / ${next}` : "");
-      } else if (!addModel && extras.length > 0 && base.length === 0) {
-        setAddModel(extras[0]!);
-        setAddDisplayName(`${addProvider} / ${extras[0]}`);
-      }
-      if (result.models.length === 0) {
-        setFetchModelsError("The provider returned no models for this key.");
-      }
-    } catch (err) {
-      setFetchModelsError(err instanceof Error ? err.message : "Could not fetch models.");
-    } finally {
-      setFetchingModels(false);
-    }
-  }
-
-  // Escape and the visible Cancel button must leave the dialog in the same
-  // state, so both paths call these shared closers.
-  function closeEditConfig() {
-    setEditConfig(null);
-    setEditConfigDisplayName("");
-    setEditConfigCredentialId("");
-    setEditNewCredName("");
-    setEditNewCredSecret("");
-  }
-
-  function closeAddConfig() {
+  function saved(message: string) {
+    setFeedback(message);
+    setErrorMsg(undefined);
     setAddFor(null);
-    setFetchedModels(null);
-    setAddCustomModel("");
-    setFetchModelsError(undefined);
-  }
-
-  function closeAddCred() {
+    setEditConfig(null);
     setShowAddCred(false);
-    setCredName("");
-    setCredSecret("");
-    setShowAddCredSecret(false);
-  }
-
-  function closeEditCred() {
     setEditCred(null);
-    setEditCredName("");
-    setEditCredSecret("");
   }
 
   return (
@@ -914,11 +505,7 @@ export function AdminProviderConfigsPage() {
                                 <button
                                   type="button"
                                   className="button small secondary"
-                                  onClick={() => {
-                                    setEditCred(cred);
-                                    setEditCredName(cred.name);
-                                    setEditCredSecret("");
-                                  }}
+                                  onClick={() => setEditCred(cred)}
                                 >
                                   <Pencil size={12} /> Edit
                                 </button>
@@ -1181,30 +768,7 @@ export function AdminProviderConfigsPage() {
                                       <button
                                         type="button"
                                         className="button small secondary"
-                                        onClick={() => {
-                                          const creds =
-                                            credentialsByProvider.get(cfg.provider) ?? [];
-                                          setEditConfig(cfg);
-                                          setEditConfigDisplayName(cfg.displayName);
-                                          setEditConfigCredentialId(cfg.credentialId ?? "");
-                                          setEditCredMode(
-                                            cfg.credentialId
-                                              ? "existing"
-                                              : cfg.provider === "google"
-                                                ? "none"
-                                                : creds.length > 0
-                                                  ? "existing"
-                                                  : "new",
-                                          );
-                                          setEditNewCredName(
-                                            cfg.provider === "google"
-                                              ? "Google AI Studio Key"
-                                              : (ASSISTANT_CREDENTIAL_LABELS[cfg.provider] ??
-                                                  `${cfg.provider} Key`),
-                                          );
-                                          setEditNewCredSecret("");
-                                          setShowEditSecret(false);
-                                        }}
+                                        onClick={() => setEditConfig(cfg)}
                                         title="Edit display name or linked credential"
                                       >
                                         <Pencil size={12} /> Edit
@@ -1373,676 +937,41 @@ export function AdminProviderConfigsPage() {
             )}
 
             {editConfig && (
-              <AdminProviderDialog label="Edit configuration" onClose={closeEditConfig}>
-                <div className="admin-provider-confirm add-dialog">
-                  <h3>Edit configuration — {editConfig.displayName}</h3>
-                  <p>
-                    Provider: <strong>{editConfig.provider}</strong> · Model:{" "}
-                    <code>{editConfig.model}</code>
-                  </p>
-                  <label className="add-field">
-                    <span>Display name</span>
-                    <input
-                      value={editConfigDisplayName}
-                      onChange={(e) => setEditConfigDisplayName(e.target.value)}
-                      maxLength={40}
-                    />
-                  </label>
-                  {editConfig.provider === "cloudflare_workers_ai" ? (
-                    <small>Workers AI binding is managed by Cloudflare configuration.</small>
-                  ) : (
-                    <div className="credential-box">
-                      <div className="field-header-row">
-                        <span className="field-label-text">Credential</span>
-                      </div>
-                      {(() => {
-                        const creds = credentialsByProvider.get(editConfig.provider) ?? [];
-                        const isGoogle = editConfig.provider === "google";
-                        return (
-                          <>
-                            <div
-                              className="cred-mode-picker"
-                              role="tablist"
-                              aria-label="Credential mode"
-                            >
-                              <button
-                                type="button"
-                                className={`cred-mode-btn ${editCredMode === "existing" ? "active" : ""}`}
-                                onClick={() => setEditCredMode("existing")}
-                                disabled={creds.length === 0 && !isGoogle}
-                              >
-                                Saved key {creds.length > 0 ? `(${creds.length})` : ""}
-                              </button>
-                              <button
-                                type="button"
-                                className={`cred-mode-btn ${editCredMode === "new" ? "active" : ""}`}
-                                onClick={() => setEditCredMode("new")}
-                              >
-                                <KeyRound size={12} /> Enter new key
-                              </button>
-                              {isGoogle && (
-                                <button
-                                  type="button"
-                                  className={`cred-mode-btn ${editCredMode === "none" ? "active" : ""}`}
-                                  onClick={() => setEditCredMode("none")}
-                                >
-                                  Cloud Run ADC
-                                </button>
-                              )}
-                            </div>
-
-                            {editCredMode === "new" && (
-                              <div className="inline-key-fields">
-                                <label className="add-field">
-                                  <span>Key Name / Label</span>
-                                  <input
-                                    value={editNewCredName}
-                                    onChange={(e) => setEditNewCredName(e.target.value)}
-                                    placeholder={
-                                      isGoogle ? "e.g. My Google AI Key" : "e.g. Production Key"
-                                    }
-                                    maxLength={40}
-                                  />
-                                </label>
-                                <label className="add-field">
-                                  <div className="field-header-row">
-                                    <span>API Key / Secret</span>
-                                    <button
-                                      type="button"
-                                      className="text-toggle-btn"
-                                      onClick={() => setShowEditSecret(!showEditSecret)}
-                                    >
-                                      {showEditSecret ? <EyeOff size={12} /> : <Eye size={12} />}
-                                      {showEditSecret ? "Hide" : "Show"}
-                                    </button>
-                                  </div>
-                                  <input
-                                    type={showEditSecret ? "text" : "password"}
-                                    value={editNewCredSecret}
-                                    onChange={(e) => setEditNewCredSecret(e.target.value)}
-                                    placeholder={
-                                      isGoogle
-                                        ? "AIzaSy... or AQ...."
-                                        : "Paste new API key or secret..."
-                                    }
-                                    autoComplete="off"
-                                    spellCheck={false}
-                                  />
-                                </label>
-                              </div>
-                            )}
-
-                            {editCredMode === "existing" && (
-                              <label className="add-field">
-                                <span>Choose Credential</span>
-                                {creds.length === 0 && !isGoogle ? (
-                                  <small>
-                                    No saved credentials for {editConfig.provider}. Switch to
-                                    &ldquo;Enter new key&rdquo; above.
-                                  </small>
-                                ) : (
-                                  <select
-                                    value={editConfigCredentialId}
-                                    onChange={(e) => setEditConfigCredentialId(e.target.value)}
-                                  >
-                                    {isGoogle && (
-                                      <option value="">None (Cloud Run ADC bridge)</option>
-                                    )}
-                                    {creds.map((c) => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.name} ••••{c.apiKeyLast4}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </label>
-                            )}
-
-                            {editCredMode === "none" && isGoogle && (
-                              <small className="field-hint">
-                                Uses Google ADC configured in Cloud Run bridge (Option B).
-                              </small>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
-                  <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={closeEditConfig}>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="button"
-                      disabled={
-                        !editConfigDisplayName.trim() ||
-                        isSubmittingConfig ||
-                        (editConfig.provider !== "cloudflare_workers_ai" &&
-                          (editCredMode === "new"
-                            ? !editNewCredSecret.trim()
-                            : editCredMode === "existing"
-                              ? !editConfigCredentialId && editConfig.provider !== "google"
-                              : false))
-                      }
-                      onClick={handleUpdateConfig}
-                    >
-                      {isSubmittingConfig ? "Saving…" : "Save configuration"}
-                    </button>
-                  </div>
-                </div>
-              </AdminProviderDialog>
+              <EditConfigDialog
+                workspace={workspace}
+                config={editConfig}
+                credentialsByProvider={credentialsByProvider}
+                onClose={() => setEditConfig(null)}
+                onSaved={saved}
+              />
             )}
 
             {addFor && (
-              <AdminProviderDialog label={`Add ${addFor} configuration`} onClose={closeAddConfig}>
-                <div className="admin-provider-confirm add-dialog">
-                  <h3>Add {addFor} configuration</h3>
-                  {(() => {
-                    const existing = configsByService.get(addFor) ?? [];
-                    const providers = availableProviders(addFor);
-                    const models =
-                      fetchedModels ??
-                      (addProvider ? remainingModels(addFor, addProvider, existing) : []);
-                    // Assistant configs may use any live-fetched model, so the dialog
-                    // stays open even when every curated model is configured.
-                    const hasRemaining =
-                      addFor === "assistant" ||
-                      providers.some((p) => remainingModels(addFor, p, existing).length > 0);
-                    if (!hasRemaining) {
-                      return (
-                        <>
-                          <p>
-                            All allowlisted models for <strong>{addFor}</strong> are already
-                            configured. Expand <code>providerAllowlist</code> in{" "}
-                            <code>packages/shared/src/types.ts</code> to add more providers/models,
-                            then redeploy.
-                          </p>
-                          <div className="confirm-actions">
-                            <button
-                              type="button"
-                              className="button secondary"
-                              onClick={() => setAddFor(null)}
-                            >
-                              Close
-                            </button>
-                          </div>
-                        </>
-                      );
-                    }
-                    const credsForProvider = credentialsByProvider.get(addProvider) ?? [];
-                    const isCloudflare = addProvider === "cloudflare_workers_ai";
-                    const isGoogle = addProvider === "google";
-                    return (
-                      <>
-                        <p>
-                          Choose a provider and model. Give it a display name. Link a credential of
-                          matching provider. Duplicates are rejected.
-                        </p>
-                        <label className="add-field">
-                          <span>Provider</span>
-                          <select
-                            value={addProvider}
-                            onChange={(e) => {
-                              const p = e.target.value;
-                              setAddProvider(p);
-                              setFetchedModels(null);
-                              setAddCustomModel("");
-                              setFetchModelsError(undefined);
-                              const rem = remainingModels(addFor, p, existing);
-                              setAddModel(rem[0] ?? "");
-                              const creds = credentialsByProvider.get(p) ?? [];
-                              setAddCredentialId(creds[0]?.id ?? "");
-                              setAddCredMode(
-                                p === "cloudflare_workers_ai"
-                                  ? "none"
-                                  : creds.length > 0
-                                    ? "existing"
-                                    : "new",
-                              );
-                              setAddNewCredName(
-                                p === "google"
-                                  ? "Google AI Studio Key"
-                                  : (ASSISTANT_CREDENTIAL_LABELS[p] ?? `${p} Key`),
-                              );
-                              setAddNewCredSecret("");
-                              setShowAddSecret(false);
-                              setAddDisplayName(p && rem[0] ? `${p} / ${rem[0]}` : "");
-                            }}
-                          >
-                            {providers.map((p) => {
-                              const rem = remainingModels(addFor, p, existing);
-                              return (
-                                <option key={p} value={p} disabled={rem.length === 0}>
-                                  {p} {rem.length === 0 ? "(all models configured)" : ""}
-                                </option>
-                              );
-                            })}
-                          </select>
-                        </label>
-                        <label className="add-field">
-                          <span>Model</span>
-                          <select value={addModel} onChange={(e) => setAddModel(e.target.value)}>
-                            {models.map((m) => (
-                              <option key={m} value={m}>
-                                {m}
-                              </option>
-                            ))}
-                            {addFor === "assistant" && (
-                              <option value={CUSTOM_MODEL_VALUE}>Other (enter manually)…</option>
-                            )}
-                          </select>
-                          {models.length === 0 && addModel !== CUSTOM_MODEL_VALUE && (
-                            <small>No remaining models for this provider.</small>
-                          )}
-                        </label>
-                        {addFor === "assistant" && addModel === CUSTOM_MODEL_VALUE && (
-                          <label className="add-field">
-                            <span>Custom model ID</span>
-                            <input
-                              value={addCustomModel}
-                              onChange={(e) => {
-                                const next = e.target.value;
-                                setAddCustomModel(next);
-                                if (
-                                  !addDisplayName.trim() ||
-                                  addDisplayName.startsWith(`${addProvider} /`)
-                                ) {
-                                  setAddDisplayName(
-                                    addProvider && next.trim()
-                                      ? `${addProvider} / ${next.trim()}`
-                                      : "",
-                                  );
-                                }
-                              }}
-                              placeholder="e.g. muse-spark-1.3"
-                              maxLength={200}
-                              autoComplete="off"
-                              spellCheck={false}
-                            />
-                            <small className="field-hint">
-                              Use the exact vendor model ID. It must support tool calling to work
-                              with the assistant.
-                            </small>
-                          </label>
-                        )}
-                        {addFor === "assistant" && (
-                          <div className="add-field">
-                            <button
-                              type="button"
-                              className="button secondary compact"
-                              disabled={
-                                fetchingModels ||
-                                (addCredMode === "new"
-                                  ? addNewCredSecret.trim().length < 8
-                                  : addCredMode === "existing"
-                                    ? !addCredentialId
-                                    : true)
-                              }
-                              onClick={handleFetchModels}
-                              title="List the models this key can access, then choose one"
-                            >
-                              <RefreshCw size={13} />
-                              {fetchingModels ? "Fetching models…" : "Fetch live models"}
-                            </button>{" "}
-                            <small className="field-hint">
-                              {fetchedModels
-                                ? `${fetchedModels.length} models available (curated first). Only models supporting tool calling work with the assistant.`
-                                : "Enter a key above (or pick a saved one), then fetch what it can access."}
-                            </small>
-                            {fetchModelsError && (
-                              <div className="admin-provider-feedback error" role="alert">
-                                {fetchModelsError}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        <label className="add-field">
-                          <span>Display name</span>
-                          <input
-                            value={addDisplayName}
-                            onChange={(e) => setAddDisplayName(e.target.value)}
-                            placeholder="e.g. Google Gemini 3.5 Transcribe"
-                            maxLength={40}
-                          />
-                        </label>
-                        {isCloudflare ? (
-                          <div className="credential-notice-box">
-                            <Cpu size={14} />
-                            <span>
-                              No API key required — uses Cloudflare Workers AI edge binding.
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="credential-box">
-                            <div className="field-header-row">
-                              <span className="field-label-text">
-                                {isGoogle ? "Credential (Google API key or OAuth)" : "Credential"}
-                              </span>
-                            </div>
-
-                            <div
-                              className="cred-mode-picker"
-                              role="tablist"
-                              aria-label="Credential mode"
-                            >
-                              <button
-                                type="button"
-                                className={`cred-mode-btn ${addCredMode === "new" ? "active" : ""}`}
-                                onClick={() => setAddCredMode("new")}
-                              >
-                                <KeyRound size={12} /> Enter API key
-                              </button>
-                              <button
-                                type="button"
-                                className={`cred-mode-btn ${addCredMode === "existing" ? "active" : ""}`}
-                                onClick={() => setAddCredMode("existing")}
-                                disabled={credsForProvider.length === 0}
-                              >
-                                Choose saved key{" "}
-                                {credsForProvider.length > 0 ? `(${credsForProvider.length})` : ""}
-                              </button>
-                              {isGoogle && (
-                                <button
-                                  type="button"
-                                  className={`cred-mode-btn ${addCredMode === "none" ? "active" : ""}`}
-                                  onClick={() => setAddCredMode("none")}
-                                >
-                                  Cloud Run ADC (No key)
-                                </button>
-                              )}
-                            </div>
-
-                            {addCredMode === "new" && (
-                              <div className="inline-key-fields">
-                                <label className="add-field">
-                                  <span>Key Name / Label</span>
-                                  <input
-                                    value={addNewCredName}
-                                    onChange={(e) => setAddNewCredName(e.target.value)}
-                                    placeholder={
-                                      isGoogle
-                                        ? "e.g. My Google AI Studio Key"
-                                        : `e.g. ${ASSISTANT_CREDENTIAL_LABELS[addProvider] ?? "API Key"}`
-                                    }
-                                    maxLength={40}
-                                  />
-                                </label>
-                                <label className="add-field">
-                                  <div className="field-header-row">
-                                    <span>API Key / Secret</span>
-                                    <button
-                                      type="button"
-                                      className="text-toggle-btn"
-                                      onClick={() => setShowAddSecret(!showAddSecret)}
-                                    >
-                                      {showAddSecret ? <EyeOff size={12} /> : <Eye size={12} />}
-                                      {showAddSecret ? "Hide" : "Show"}
-                                    </button>
-                                  </div>
-                                  <input
-                                    type={showAddSecret ? "text" : "password"}
-                                    value={addNewCredSecret}
-                                    onChange={(e) => setAddNewCredSecret(e.target.value)}
-                                    placeholder={
-                                      isGoogle
-                                        ? "AIzaSy... or AQ.... (Google AI Studio key)"
-                                        : (ASSISTANT_KEY_PLACEHOLDERS[addProvider] ??
-                                          "Paste API key...")
-                                    }
-                                    autoComplete="off"
-                                    spellCheck={false}
-                                  />
-                                </label>
-                                <small className="field-hint">
-                                  {isGoogle
-                                    ? "Your Google AI Studio API key is securely encrypted (AES-256-GCM) in D1. It enables real-time Gemini Live WebSocket streaming and batch transcription."
-                                    : "Encrypted with AES-256-GCM in Cloudflare D1. Never shared with client browsers."}
-                                </small>
-                              </div>
-                            )}
-
-                            {addCredMode === "existing" && (
-                              <label className="add-field">
-                                <span>
-                                  {isGoogle
-                                    ? "Credential (Google API key or OAuth)"
-                                    : "Credential (must match provider)"}
-                                </span>
-                                {credsForProvider.length === 0 ? (
-                                  <small>
-                                    No credentials for {addProvider}. Switch to &ldquo;Enter API
-                                    key&rdquo; above.
-                                  </small>
-                                ) : (
-                                  <select
-                                    value={addCredentialId}
-                                    onChange={(e) => setAddCredentialId(e.target.value)}
-                                  >
-                                    {isGoogle && (
-                                      <option value="">None (Cloud Run ADC bridge)</option>
-                                    )}
-                                    {credsForProvider.map((c) => (
-                                      <option key={c.id} value={c.id}>
-                                        {c.name} ••••{c.apiKeyLast4}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )}
-                              </label>
-                            )}
-
-                            {addCredMode === "none" && isGoogle && (
-                              <small className="field-hint">
-                                Uses Google ADC configured in Cloud Run bridge (Option B).
-                              </small>
-                            )}
-                          </div>
-                        )}
-
-                        <label className="add-activate-row">
-                          <input
-                            type="checkbox"
-                            checked={addActivateImmediately}
-                            onChange={(e) => setAddActivateImmediately(e.target.checked)}
-                          />
-                          <div>
-                            <strong>Make this model active immediately</strong>
-                            <small>
-                              Directly switches {addFor?.toUpperCase()} to this configuration upon
-                              saving
-                            </small>
-                          </div>
-                        </label>
-
-                        <div className="confirm-actions">
-                          <button
-                            type="button"
-                            className="button secondary"
-                            onClick={closeAddConfig}
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            className="button"
-                            disabled={
-                              !addProvider ||
-                              !resolveAddModel(addModel, addCustomModel) ||
-                              !addDisplayName.trim() ||
-                              isSubmittingConfig ||
-                              (!isCloudflare &&
-                                (addCredMode === "new"
-                                  ? !addNewCredSecret.trim()
-                                  : addCredMode === "existing"
-                                    ? !addCredentialId && !isGoogle
-                                    : false))
-                            }
-                            onClick={handleCreateConfig}
-                          >
-                            {isSubmittingConfig ? "Adding…" : "Add configuration"}
-                          </button>
-                        </div>
-                      </>
-                    );
-                  })()}
-                  {addError && (
-                    <div className="admin-provider-feedback error" role="alert">
-                      {addError}
-                    </div>
-                  )}
-                </div>
-              </AdminProviderDialog>
+              <AddConfigDialog
+                workspace={workspace}
+                service={addFor}
+                existing={configsByService.get(addFor) ?? []}
+                credentialsByProvider={credentialsByProvider}
+                onClose={() => setAddFor(null)}
+                onSaved={saved}
+              />
             )}
 
             {showAddCred && (
-              <AdminProviderDialog label="Add credential" onClose={closeAddCred}>
-                <div className="admin-provider-confirm add-dialog">
-                  <h3>Add credential</h3>
-                  <p>
-                    Provider + human name + secret. Secret is encrypted (AES-256-GCM) and only
-                    ••••last4 is ever shown.
-                  </p>
-                  <label className="add-field">
-                    <span>Provider</span>
-                    <select value={credProvider} onChange={(e) => setCredProvider(e.target.value)}>
-                      <option value="deepseek">deepseek</option>
-                      <option value="openai">openai</option>
-                      <option value="anthropic">anthropic</option>
-                      <option value="gemini">gemini</option>
-                      <option value="meta">meta</option>
-                      <option value="muse_spark">muse_spark</option>
-                      <option value="google">google</option>
-                      <option value="fish_audio">fish_audio</option>
-                    </select>
-                  </label>
-                  <label className="add-field">
-                    <span>Name</span>
-                    <input
-                      value={credName}
-                      onChange={(e) => setCredName(e.target.value)}
-                      placeholder="e.g. Google Gemini Voice Key"
-                      maxLength={40}
-                    />
-                  </label>
-                  <label className="add-field">
-                    <div className="field-header-row">
-                      <span>Secret / API Key</span>
-                      <button
-                        type="button"
-                        className="text-toggle-btn"
-                        onClick={() => setShowAddCredSecret(!showAddCredSecret)}
-                      >
-                        {showAddCredSecret ? <EyeOff size={12} /> : <Eye size={12} />}
-                        {showAddCredSecret ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                    <input
-                      type={showAddCredSecret ? "text" : "password"}
-                      value={credSecret}
-                      onChange={(e) => setCredSecret(e.target.value)}
-                      placeholder="Paste API key (e.g. AIzaSy... or AQ....) or secret"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <small>
-                      For Google, paste your Google AI Studio API key (AIzaSy... or AQ....), OAuth
-                      token, or service account JSON. Secrets are encrypted with AES-256-GCM and
-                      only ••••last4 is ever displayed.
-                    </small>
-                  </label>
-                  <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={closeAddCred}>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="button"
-                      disabled={
-                        !credProvider ||
-                        credName.trim().length < 2 ||
-                        credSecret.trim().length < 8 ||
-                        createCredMutation.isPending
-                      }
-                      onClick={() =>
-                        createCredMutation.mutate({
-                          provider: credProvider,
-                          name: credName.trim(),
-                          secret: credSecret,
-                        })
-                      }
-                    >
-                      {createCredMutation.isPending ? "Creating…" : "Create credential"}
-                    </button>
-                  </div>
-                </div>
-              </AdminProviderDialog>
+              <AddCredentialDialog
+                workspace={workspace}
+                onClose={() => setShowAddCred(false)}
+                onSaved={saved}
+              />
             )}
 
             {editCred && (
-              <AdminProviderDialog label="Edit credential" onClose={closeEditCred}>
-                <div className="admin-provider-confirm add-dialog">
-                  <h3>
-                    Edit credential — {editCred.provider} / {editCred.name}
-                  </h3>
-                  <p>
-                    Current: ••••{editCred.apiKeyLast4} — {editCred.usedBy.length} configuration(s)
-                    using this credential.
-                  </p>
-                  <label className="add-field">
-                    <span>Name</span>
-                    <input
-                      value={editCredName}
-                      onChange={(e) => setEditCredName(e.target.value)}
-                      maxLength={40}
-                    />
-                  </label>
-                  <label className="add-field">
-                    <div className="field-header-row">
-                      <span>Rotate secret (leave blank to keep)</span>
-                      <button
-                        type="button"
-                        className="text-toggle-btn"
-                        onClick={() => setShowEditCredSecret(!showEditCredSecret)}
-                      >
-                        {showEditCredSecret ? <EyeOff size={12} /> : <Eye size={12} />}
-                        {showEditCredSecret ? "Hide" : "Show"}
-                      </button>
-                    </div>
-                    <input
-                      type={showEditCredSecret ? "text" : "password"}
-                      value={editCredSecret}
-                      onChange={(e) => setEditCredSecret(e.target.value)}
-                      placeholder="Paste new secret to rotate"
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                  </label>
-                  <div className="confirm-actions">
-                    <button type="button" className="button secondary" onClick={closeEditCred}>
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="button"
-                      disabled={
-                        updateCredMutation.isPending ||
-                        (editCredName.trim() === editCred.name && !editCredSecret.trim())
-                      }
-                      onClick={() =>
-                        updateCredMutation.mutate({
-                          id: editCred.id,
-                          name:
-                            editCredName.trim() !== editCred.name ? editCredName.trim() : undefined,
-                          secret: editCredSecret.trim() || undefined,
-                        })
-                      }
-                    >
-                      {updateCredMutation.isPending ? "Saving…" : "Save"}
-                    </button>
-                  </div>
-                </div>
-              </AdminProviderDialog>
+              <EditCredentialDialog
+                workspace={workspace}
+                credential={editCred}
+                onClose={() => setEditCred(null)}
+                onSaved={saved}
+              />
             )}
 
             {deleteCred && (

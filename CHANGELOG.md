@@ -13,6 +13,7 @@ All notable product changes are documented here.
   applied to their debts when it ships, so a balance that was already wrong reads correctly.
 - The chat assistant no longer renders a faint pulsing square around the avatar while checking records. The checking pulse animation now targets the message bubble directly instead of the outer message container.
 - Adding an income transaction in the browser works again. The form sent the debt link an expense can carry for every kind of entry, and an income refuses that field, so a correctly filled income entry was rejected before it ever reached the API.
+- On the AI & Voice Models admin page, a failed save in the edit-configuration, add-credential, or edit-credential dialog now shows its reason inside the dialog. It used to appear behind the dialog's backdrop, so the save looked like it did nothing.
 
 ## 2.42.0 — 2026-09-22
 

@@ -358,6 +358,26 @@ describe("AdminProviderConfigsPage", () => {
     expect(apiMocks.createProviderConfig).not.toHaveBeenCalled();
   });
 
+  it("reports a failed save inside the edit dialog", async () => {
+    renderPage();
+    await screen.findByText("Cloudflare Whisper");
+
+    const configEditBtn = screen
+      .getAllByRole("button", { name: /Edit/i })
+      .find((b) => b.getAttribute("title")?.includes("Edit display name"));
+    fireEvent.click(configEditBtn!);
+    const dialog = await screen.findByRole("dialog");
+
+    apiMocks.updateProviderConfig.mockRejectedValue(new Error("Display name already in use."));
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole("button", { name: "Save configuration" }));
+    });
+
+    expect(
+      within(screen.getByRole("dialog")).getByText("Display name already in use."),
+    ).toBeInTheDocument();
+  });
+
   it("allows entering a custom model ID when adding an assistant configuration", async () => {
     renderPage();
     await screen.findByText("AI Assistant");
