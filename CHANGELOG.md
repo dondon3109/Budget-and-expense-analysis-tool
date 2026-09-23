@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.43.1 — 2026-09-23
+
 ### Fixed
 
 - Editing a transaction in the browser, such as changing an expense to income, now saves the change to that transaction. The save could lose track of which transaction was being edited and add a new copy instead.
