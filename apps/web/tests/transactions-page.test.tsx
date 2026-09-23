@@ -2,7 +2,7 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -27,11 +27,27 @@ vi.mock("../src/components/layout/AppShell", () => ({
 }));
 
 vi.mock("../src/components/transactions/TransactionTable", () => ({
-  TransactionTable: () => <div>Transaction table</div>,
+  TransactionTable: ({
+    items,
+    onEdit,
+  }: {
+    items: { id: string }[];
+    onEdit: (item: { id: string }) => void;
+  }) => (
+    <button type="button" onClick={() => onEdit(items[0]!)}>
+      Edit first transaction
+    </button>
+  ),
 }));
 
 vi.mock("../src/components/transactions/TransactionForm", () => ({
-  TransactionForm: () => <div role="dialog" aria-label="Transaction form" />,
+  TransactionForm: ({ onSubmit }: { onSubmit: (input: unknown) => Promise<void> }) => (
+    <div role="dialog" aria-label="Transaction form">
+      <button type="button" onClick={() => void onSubmit({ kind: "income" })}>
+        Submit transaction
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("../src/components/transactions/CategoryManager", () => ({
@@ -319,5 +335,58 @@ describe("TransactionsPage pagination", () => {
     const message = await screen.findByText("No transactions match these filters.");
     expect(message).toHaveAttribute("role", "status");
     expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+});
+
+describe("TransactionsPage editing", () => {
+  const existing = {
+    id: "transaction-1",
+    kind: "expense",
+    description: "Groceries",
+    amountMinor: -1000,
+    currency: "PHP",
+    date: "2026-09-01",
+    createdAt: "2026-09-01T00:00:00.000Z",
+  };
+
+  beforeEach(() => {
+    apiMocks.getTransactions.mockReset().mockResolvedValue({
+      items: [existing],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    apiMocks.getCategories.mockReset().mockResolvedValue([]);
+    apiMocks.getAccounts.mockReset().mockResolvedValue([]);
+    apiMocks.createTransaction.mockReset();
+    apiMocks.updateTransaction.mockReset().mockResolvedValue({ ...existing, kind: "income" });
+  });
+
+  afterEach(() => {
+    onlineManager.setOnline(true);
+    cleanup();
+  });
+
+  it("updates the edited transaction instead of creating a new one when its type changes", async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit first transaction" }));
+    // Holding the save until the page re-renders without the edit target is the window in
+    // which a closure over `editing` used to turn the edit into a create.
+    onlineManager.setOnline(false);
+    fireEvent.click(screen.getByRole("button", { name: "Submit transaction" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Transaction form" })).not.toBeInTheDocument(),
+    );
+    act(() => onlineManager.setOnline(true));
+
+    await waitFor(() =>
+      expect(apiMocks.updateTransaction).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        { id: "transaction-1", input: { kind: "income" } },
+      ),
+    );
+    expect(apiMocks.createTransaction).not.toHaveBeenCalled();
   });
 });
