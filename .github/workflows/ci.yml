@@ -12,17 +12,15 @@ on:
 permissions:
   contents: read
 
+# The three jobs run in parallel and share no state; the Production Release workflow waits for the
+# whole CI run, so a failure in any job still blocks a release.
 jobs:
-  verify:
+  static:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The content freshness guard dates each page from git history
-          # (apps/web/tests/content-freshness.test.ts), so it needs the full log
-          # rather than the default single commit.
-          fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
@@ -42,8 +40,46 @@ jobs:
       - run: NODE_OPTIONS=--max-old-space-size=8192 pnpm lint
       - run: pnpm format:check
       - run: pnpm typecheck
+
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The content freshness guard dates each page from git history
+          # (apps/web/tests/content-freshness.test.ts), so it needs the full log
+          # rather than the default single commit.
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - run: pnpm test:mobile
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 11.9.0
+          run_install: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       # The builds run before the end to end suite so the published sitemap exists
       # for e2e/public-content-routes.spec.ts, which otherwise skips in CI.
       - name: Build shared package and API

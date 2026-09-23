@@ -55,7 +55,8 @@ jobs:
       # babysit-release watcher keys on a failed "Verify release source" step to recognise a
       # superseded CI result. The duplication is deliberate - this copy stops that race before
       # the production environment gate, so the run never requests a reviewer, and the gated
-      # copy re-checks currency after approval.
+      # copy re-checks currency after approval. scripts/release-workflow.test.mjs enforces both the
+      # name and the byte-identity.
       - name: Verify release source
         env:
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
