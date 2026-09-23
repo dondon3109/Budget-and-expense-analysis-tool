@@ -4,6 +4,10 @@ name: Bugfix Draft
 # cannot push anywhere. The open-pr job holds the write token, runs no model, and reads no user
 # text. An artifact sits between them, and that artifact is also the shadow mode deliverable.
 on:
+  # The schedule claims at most one report per tick, so one tick is at most one coding agent run.
+  schedule:
+    - cron: "*/15 * * * *"
+  # A manual run drafts a report by id, including one a failed run already claimed.
   workflow_dispatch:
     inputs:
       bug_report_id:
@@ -15,12 +19,46 @@ permissions:
   contents: read
 
 concurrency:
-  group: bugfix-${{ inputs.bug_report_id }}
+  group: bugfix-${{ inputs.bug_report_id || github.run_id }}
   cancel-in-progress: false
 
 jobs:
+  claim:
+    name: Claim a report
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      id: ${{ steps.pick.outputs.id }}
+    steps:
+      - id: pick
+        env:
+          OPS_API_BASE_URL: ${{ vars.OPS_API_BASE_URL || 'https://api.zoption.site' }}
+          OPS_EGRESS_TOKEN: ${{ secrets.OPS_EGRESS_TOKEN }}
+          BUG_REPORT_ID: ${{ inputs.bug_report_id }}
+        run: |
+          set -euo pipefail
+          id="${BUG_REPORT_ID}"
+          if [ -z "${id}" ]; then
+            # Reading the list claims what it returns. Claiming inside the run that drafts is what
+            # keeps a claimed report from being lost between the poll and the draft.
+            curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer ${OPS_EGRESS_TOKEN}" \
+              "${OPS_API_BASE_URL}/api/ops/bug-reports?limit=1" > claimed.json
+            id="$(jq -r '.reports[0].id // empty' claimed.json)"
+            jq -c '.counts' claimed.json
+            rm claimed.json
+          fi
+          # The id becomes a branch name and a shell value, so only a plain identifier passes.
+          if [ -n "${id}" ] && ! [[ "${id}" =~ ^[A-Za-z0-9_-]+$ ]]; then
+            echo "::error::Refusing a malformed report id"
+            exit 1
+          fi
+          echo "id=${id}" >> "${GITHUB_OUTPUT}"
+
   draft:
     name: Draft the fix
+    needs: claim
+    if: needs.claim.outputs.id != ''
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -45,7 +83,7 @@ jobs:
         env:
           OPS_API_BASE_URL: ${{ vars.OPS_API_BASE_URL || 'https://api.zoption.site' }}
           OPS_EGRESS_TOKEN: ${{ secrets.OPS_EGRESS_TOKEN }}
-          BUG_REPORT_ID: ${{ inputs.bug_report_id }}
+          BUG_REPORT_ID: ${{ needs.claim.outputs.id }}
         run: |
           set -euo pipefail
           curl --fail-with-body --silent --show-error \
@@ -92,7 +130,7 @@ jobs:
 
       - name: Collect the draft
         env:
-          BUG_REPORT_ID: ${{ inputs.bug_report_id }}
+          BUG_REPORT_ID: ${{ needs.claim.outputs.id }}
         run: |
           set -euo pipefail
           if [ ! -f .bugfix-pr-body.md ]; then
@@ -141,6 +179,8 @@ jobs:
       contents: write
       pull-requests: write
       actions: write
+    outputs:
+      url: ${{ steps.open.outputs.url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -173,6 +213,7 @@ jobs:
           fi
 
       - name: Open the draft pull request
+        id: open
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -196,9 +237,52 @@ jobs:
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git push --set-upstream origin "${branch}"
 
-          gh pr create --draft --title "fix: ${title}" \
-            --body-file bugfix-artifact/pr-body.md --head "${branch}"
+          url="$(gh pr create --draft --title "fix: ${title}" \
+            --body-file bugfix-artifact/pr-body.md --head "${branch}")"
+          echo "url=${url}" >> "${GITHUB_OUTPUT}"
 
           # A pull request opened with the run token does not trigger pull_request workflows, so
           # start CI explicitly. workflow_dispatch is the documented exception to that rule.
           gh workflow run ci.yml --ref "${branch}"
+
+  notify:
+    name: Notify on Telegram
+    needs: [claim, draft, open-pr]
+    # Only a run that claimed a report has anything to say. A tick with an empty queue stays quiet.
+    if: always() && needs.claim.outputs.id != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          REPORT_ID: ${{ needs.claim.outputs.id }}
+          CLAIM_RESULT: ${{ needs.claim.result }}
+          DRAFT_RESULT: ${{ needs.draft.result }}
+          OPEN_PR_RESULT: ${{ needs.open-pr.result }}
+          PR_URL: ${{ needs.open-pr.outputs.url }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TELEGRAM_BOT_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
+            echo "::notice::Telegram is not configured, so no message was sent"
+            exit 0
+          fi
+
+          # Telegram is a third party, so the message carries links and status, never report text.
+          if [ "${OPEN_PR_RESULT}" = "success" ]; then
+            text="Bug report ${REPORT_ID}: draft pull request ready for your review
+          ${PR_URL}"
+          elif [ "${DRAFT_RESULT}" = "success" ] && [ "${OPEN_PR_RESULT}" = "skipped" ]; then
+            text="Bug report ${REPORT_ID}: shadow mode draft ready as a run artifact
+          ${RUN_URL}"
+          else
+            text="Bug report ${REPORT_ID}: automation failed (claim ${CLAIM_RESULT}, draft ${DRAFT_RESULT}, open-pr ${OPEN_PR_RESULT}). Rerun by id once fixed.
+          ${RUN_URL}"
+          fi
+
+          curl --fail --silent --show-error --output /dev/null \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${text}" \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage"

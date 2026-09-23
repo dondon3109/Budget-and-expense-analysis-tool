@@ -11,10 +11,14 @@ credential that can write to the main branch.
 
 ## Assumption built on
 
-n8n stays as the orchestrator and keeps its timer, its filtering, and its
-triage. It stops holding any GitHub credential that can write code. Its only
-GitHub capability becomes a fine grained token with `Actions: write` on this
-one repository, used to dispatch `.github/workflows/bugfix.yml`.
+`.github/workflows/bugfix.yml` is its own orchestrator. A 15 minute schedule
+runs a `claim` job that takes at most one report from the egress list, so the
+claim and the draft happen in one run and no credential outside a runner can
+start anything. n8n and its fine grained dispatch token were removed on
+2026-09-23: they held no triage, and a report claimed by n8n whose dispatch
+failed was never offered again. Human approval sits at the pull request, which
+the `main review gate - PR required` ruleset enforces, and a `notify` job sends
+the outcome to Telegram with links only.
 
 Two jobs then do the work that touches the repository:
 

@@ -482,40 +482,41 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 
 ### The chain
 
-1. n8n on HomeCore runs `Zoption Bugfix Draft Dispatch` every 15 minutes. It calls the endpoint with `?limit=1` and dispatches `.github/workflows/bugfix.yml` once per unhandled clean report. The limit bounds the fan out: one report per poll is one workflow run, each of which runs a coding agent, so raise it deliberately rather than by default.
+1. `.github/workflows/bugfix.yml` runs every 15 minutes. Its `claim` job calls the endpoint with `?limit=1`, so one tick claims at most one clean report and starts at most one coding agent run. Raise the limit deliberately rather than by default. Claiming and drafting in one run means a claimed report is never lost between a poll and a dispatch. A manual `workflow_dispatch` with `bug_report_id` drafts one report by id, which is how a report whose run failed gets retried.
 2. The `draft` job runs with `permissions: contents: read`. It fetches that report by id, runs `dsh --profile headless`, checks its own output with `scripts/bugfix-scrub.mjs`, and uploads `fix.patch`, `pr-body.md`, and `meta.json` as the `bugfix-draft` artifact.
 3. The `open-pr` job applies the patch to `bugfix/<report id>` and opens a draft pull request, then starts `ci.yml` explicitly: a pull request opened with the run token does not trigger `pull_request` workflows, and `workflow_dispatch` is the documented exception.
-4. A human reviews and merges. The release pipeline takes over.
+4. The `notify` job sends a Telegram message with the pull request link, the shadow mode run link, or the failure. It carries status and links only, never report text, and does nothing while the Telegram secrets are unset. A tick that claims nothing sends nothing, and a failed `claim` job surfaces only as a failed scheduled run.
+5. A human reviews and merges. The `main review gate - PR required` ruleset requires one approving review. The release pipeline takes over.
 
-The drafting job is the only job that reads user text, and it holds no write token. The `open-pr` job holds the write token, runs no model, and reads no user text. Nothing outside a runner holds a credential that can write code, which is why the earlier fork, organization, and GitHub App are no longer needed.
+The drafting job is the only job that reads user text, and it holds no write token. The `open-pr` job holds the write token, runs no model, and reads no user text. No credential outside a runner can start or write anything, so n8n, the fine grained dispatch token, the fork, the organization, and the GitHub App are all gone.
 
-`bugfix.yml` must exist on `main` before a dispatch can start it, or the GitHub API returns 404.
+GitHub runs a `schedule` trigger only from the default branch, may delay a tick under load, and disables the schedule on a public repository after 60 days without repository activity.
 
 ### External state this depends on
 
 Read every one of these back after a change. None of them live in the repository.
 
-| Setting                  | Where it lives                                                                                                         | Read it back                                                     |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `OPS_EGRESS_TOKEN`       | Worker secret, plus a repository secret the draft job reads                                                            | `pnpm exec wrangler secret list` in `apps/api`; `gh secret list` |
-| `DEEPSEEK_API_KEY`       | Repository secret, read by `dsh` in the draft job                                                                      | `gh secret list`                                                 |
-| `OPEN_BUGFIX_PRS`        | Repository variable, set to `true` (draft pull requests open). Unset is shadow mode, where the draft stays an artifact | `gh variable list`                                               |
-| `OPS_API_BASE_URL`       | Optional repository variable, defaults to `https://api.zoption.site`                                                   | `gh variable list`                                               |
-| `Zoption ops egress`     | n8n credential (Bearer), must equal the Worker's `OPS_EGRESS_TOKEN`                                                    | n8n UI on HomeCore                                               |
-| `GitHub bugfix dispatch` | n8n credential (Bearer). A fine grained PAT with `Actions: write` on this repository and nothing else                  | n8n UI on HomeCore                                               |
+| Setting              | Where it lives                                                                                                         | Read it back                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `OPS_EGRESS_TOKEN`   | Worker secret, plus a repository secret the claim and draft jobs read                                                  | `pnpm exec wrangler secret list` in `apps/api`; `gh secret list` |
+| `DEEPSEEK_API_KEY`   | Repository secret, read by `dsh` in the draft job                                                                      | `gh secret list`                                                 |
+| `TELEGRAM_BOT_TOKEN` | Repository secret, the bot created with @BotFather                                                                     | `gh secret list`                                                 |
+| `TELEGRAM_CHAT_ID`   | Repository secret, `message.chat.id` from the bot's `getUpdates` after you message it                                  | `gh secret list`                                                 |
+| `OPEN_BUGFIX_PRS`    | Repository variable, set to `true` (draft pull requests open). Unset is shadow mode, where the draft stays an artifact | `gh variable list`                                               |
+| `OPS_API_BASE_URL`   | Optional repository variable, defaults to `https://api.zoption.site`                                                   | `gh variable list`                                               |
 
-Arm all of it in one step:
+Set the secrets in one step:
 
 ```bash
 bash scripts/arm-bugfix-automation.sh
 ```
 
-From this repository it writes the two n8n credentials over SSH and sets the repository secrets with `gh`. On the homeserver it writes the credentials alone. Every prompt is optional, so paste only what you have, and running it again updates the same two credentials by id. The two empty `Zoption Bug Report Triage` shells can only be deleted from the n8n UI or with an n8n API key: n8n has no delete command, and this instance holds no API key.
+Every prompt is optional, so paste only what you have, and running it again replaces the same secrets.
 
 ```bash
 gh secret list
 gh variable list
-ssh homecore 'docker exec n8n n8n list:workflow | grep -i dispatch'
+gh workflow view bugfix.yml
 ```
 
 ## Current hosted resources
