@@ -107,6 +107,18 @@ describe("ProCheckoutDialog", () => {
     vi.unstubAllGlobals();
   });
 
+  it("offers Dodo Payments as a hosted checkout for the selected interval", async () => {
+    renderDialog();
+
+    fireEvent.click(screen.getByRole("radio", { name: /Annual/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Dodo Payments" }));
+
+    await vi.waitFor(() =>
+      expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year", "dodo"),
+    );
+    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
+  });
+
   it("shows current plan and payment facts, then starts the selected secure subscription", async () => {
     renderDialog();
 

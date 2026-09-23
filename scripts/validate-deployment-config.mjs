@@ -36,11 +36,41 @@ const secretVariableNames = [
   "PAYPAL_CLIENT_ID",
   "PAYPAL_CLIENT_SECRET",
   "PAYPAL_WEBHOOK_ID",
+  "DODO_PAYMENTS_API_KEY",
+  "DODO_PAYMENTS_WEBHOOK_KEY",
   "FISH_AUDIO_API_KEY",
   "PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
   "OPS_EGRESS_TOKEN",
 ];
 const productionWebOrigins = ["https://www.zoption.site", "https://zoption.site"];
+
+/** Dodo Payments is optional: checkout answers billing_not_configured until all three are set. */
+function validateDodoConfig(vars, environment) {
+  const names = [
+    "DODO_PAYMENTS_ENVIRONMENT",
+    "DODO_PRO_MONTHLY_PRODUCT_ID",
+    "DODO_PRO_ANNUAL_PRODUCT_ID",
+  ];
+  if (!names.some((name) => vars[name] !== undefined)) return;
+
+  const [mode, monthlyProductId, annualProductId] = names.map((name) =>
+    requiredString(vars, name, environment),
+  );
+  if (mode !== "test_mode" && mode !== "live_mode") {
+    throw new Error(`${environment} DODO_PAYMENTS_ENVIRONMENT must be test_mode or live_mode.`);
+  }
+  if (environment === "production" && mode !== "live_mode") {
+    throw new Error("production DODO_PAYMENTS_ENVIRONMENT must be live_mode.");
+  }
+  if (!monthlyProductId.startsWith("pdt_") || !annualProductId.startsWith("pdt_")) {
+    throw new Error(`${environment} Dodo product IDs must start with pdt_.`);
+  }
+  if (monthlyProductId === annualProductId) {
+    throw new Error(
+      `${environment} DODO_PRO_MONTHLY_PRODUCT_ID and DODO_PRO_ANNUAL_PRODUCT_ID must be distinct.`,
+    );
+  }
+}
 
 function stripJsonComments(value) {
   let result = "";
@@ -259,6 +289,8 @@ function validateEnvironment(environment, config) {
       `${environment} PAYPAL_PRO_MONTHLY_PLAN_ID and PAYPAL_PRO_ANNUAL_PLAN_ID must be distinct.`,
     );
   }
+
+  validateDodoConfig(vars, environment);
 
   const databases = Array.isArray(config.d1_databases) ? config.d1_databases : [];
   const database = databases.find((candidate) => candidate?.binding === "DB");

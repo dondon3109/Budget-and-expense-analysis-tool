@@ -1,4 +1,5 @@
 import type {
+  BillingProvider,
   BillingSubscriptionStatus,
   BillingSummary,
   ProEntitlementSource,
@@ -37,11 +38,15 @@ function formatPlanDate(value: string): string {
   }).format(new Date(value));
 }
 
-function isConfirmedPayPalSummary(summary: BillingSummary | undefined): boolean {
+function paymentProviderLabel(provider: BillingProvider | null | undefined): string {
+  return provider === "dodo" ? "Dodo Payments" : "PayPal";
+}
+
+function isConfirmedPaidSummary(summary: BillingSummary | undefined): boolean {
   return Boolean(
     summary?.plan === "zoption_pro" &&
-    summary.entitlementSource === "paypal" &&
-    summary.provider === "paypal" &&
+    summary.provider !== null &&
+    summary.entitlementSource === summary.provider &&
     (summary.status === "active" || summary.status === "trialing") &&
     summary.pendingCheckout === null,
   );
@@ -54,21 +59,20 @@ function statusCopy(
   paymentPending: boolean,
   paymentReviewRequired: boolean,
   confirmingCancellation: boolean,
+  providerLabel: string,
 ): { label: string; heading: string; description: string; tone: string } {
   if (paymentPending) {
     return paymentReviewRequired
       ? {
           label: "Payment review",
-          heading: "PayPal confirmation needs more time",
-          description:
-            "No paid access has been granted yet. Zoption will continue checking PayPal securely, and a second checkout is blocked to prevent duplicate subscriptions.",
+          heading: `${providerLabel} confirmation needs more time`,
+          description: `No paid access has been granted yet. Zoption will continue checking ${providerLabel} securely, and a second checkout is blocked to prevent duplicate subscriptions.`,
           tone: "warning",
         }
       : {
           label: "Confirming payment",
           heading: "Confirming your payment",
-          description:
-            "PayPal is confirming your subscription. Paid access begins only after Zoption receives a verified provider notification.",
+          description: `${providerLabel} is confirming your subscription. Paid access begins only after Zoption receives a verified provider notification.`,
           tone: "pending",
         };
   }
@@ -77,8 +81,7 @@ function statusCopy(
     return {
       label: "Confirming cancellation",
       heading: "Confirming your cancellation",
-      description:
-        "PayPal has received your cancellation request. Renewal stops after Zoption receives its verified provider notification.",
+      description: `${providerLabel} has received your cancellation request. Renewal stops after Zoption receives its verified provider notification.`,
       tone: "pending",
     };
   }
@@ -121,16 +124,14 @@ function statusCopy(
       return {
         label: "Payment issue",
         heading: "Your payment needs attention",
-        description:
-          "PayPal has reported a payment issue. Review your PayPal subscription to restore confirmed paid access.",
+        description: `${providerLabel} has reported a payment issue. Review your ${providerLabel} subscription to restore confirmed paid access.`,
         tone: "warning",
       };
     case "paused":
       return {
         label: "Subscription paused",
         heading: "Your subscription is paused",
-        description:
-          "Pro access is not active while the subscription is paused. Review the subscription in PayPal.",
+        description: `Pro access is not active while the subscription is paused. Review the subscription in ${providerLabel}.`,
         tone: "warning",
       };
     case "canceled":
@@ -214,7 +215,7 @@ export function BillingSettings({ user }: { user: User }) {
   const [checkoutCancelledNotice, setCheckoutCancelledNotice] = useState(false);
 
   // Derived at render so the polling effect depends on a value instead of the summary object.
-  const paymentConfirmed = isConfirmedPayPalSummary(summary);
+  const paymentConfirmed = isConfirmedPaidSummary(summary);
 
   useEffect(() => {
     const pendingCheckoutKey = summary?.pendingCheckout?.createdAt;
@@ -289,7 +290,7 @@ export function BillingSettings({ user }: { user: User }) {
               attemptedAt,
             };
           }
-          if (isConfirmedPayPalSummary(reconciliation.summary)) {
+          if (isConfirmedPaidSummary(reconciliation.summary)) {
             queryClient.setQueryData(queryKeys.billing(workspace), reconciliation.summary);
             setPaymentConfirmationDelayed(false);
             setPaymentPollingExhausted(false);
@@ -307,8 +308,8 @@ export function BillingSettings({ user }: { user: User }) {
             setPaymentReviewRequired(false);
             setPaymentStatusNotice(
               reconciliation.outcome === "closed"
-                ? "PayPal reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
-                : "Zoption could not find a payment awaiting confirmation. If PayPal shows a completed charge, contact support with the PayPal transaction details.",
+                ? "The payment provider reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
+                : "Zoption could not find a payment awaiting confirmation. If your payment provider shows a completed charge, contact support with the transaction details.",
             );
             await refetchBilling();
             if (!cancelled) completePaymentConfirmation();
@@ -323,7 +324,7 @@ export function BillingSettings({ user }: { user: User }) {
         nextSummary = result.data ?? nextSummary;
         if (!nextSummary) throw new Error("Your plan could not be refreshed.");
         lastError = undefined;
-        if (isConfirmedPayPalSummary(nextSummary)) {
+        if (isConfirmedPaidSummary(nextSummary)) {
           setPaymentConfirmationDelayed(false);
           setPaymentPollingExhausted(false);
           setPaymentReviewRequired(false);
@@ -397,10 +398,10 @@ export function BillingSettings({ user }: { user: User }) {
       { replace: true },
     );
 
-    // PayPal redirects here when the buyer cancels the approval. The pending
-    // checkout remains as APPROVAL_PENDING until it expires, which otherwise
-    // leaves Plan and billing stuck in "Confirming your payment". Abort the
-    // unpaid checkout immediately so the user can start a fresh one.
+    // PayPal and Dodo redirect here when the buyer leaves checkout unpaid. The
+    // pending checkout otherwise waits until it expires, which leaves Plan and
+    // billing stuck in "Confirming your payment". Abort the unpaid checkout
+    // immediately so the user can start a fresh one.
     if (summary?.pendingCheckout) {
       const checkoutKey = summary.pendingCheckout.createdAt;
       if (cancelledAbortRef.current !== checkoutKey) {
@@ -541,7 +542,7 @@ export function BillingSettings({ user }: { user: User }) {
           attemptedAt: Date.now(),
         };
       }
-      if (isConfirmedPayPalSummary(reconciliation.summary)) {
+      if (isConfirmedPaidSummary(reconciliation.summary)) {
         queryClient.setQueryData(queryKeys.billing(workspace), reconciliation.summary);
         setPaymentConfirmationDelayed(false);
         setPaymentPollingExhausted(false);
@@ -561,7 +562,7 @@ export function BillingSettings({ user }: { user: User }) {
       const result = await refetchBilling();
       if (result.error) throw result.error;
       const nextSummary = result.data ?? reconciliation.summary;
-      if (isConfirmedPayPalSummary(nextSummary)) {
+      if (isConfirmedPaidSummary(nextSummary)) {
         setPaymentConfirmationDelayed(false);
         setPaymentPollingExhausted(false);
         setPaymentReviewRequired(false);
@@ -585,8 +586,8 @@ export function BillingSettings({ user }: { user: User }) {
         setPaymentReviewRequired(false);
         setPaymentStatusNotice(
           reconciliation.outcome === "closed"
-            ? "PayPal reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
-            : "Zoption could not find a payment awaiting confirmation. If PayPal shows a completed charge, contact support with the PayPal transaction details.",
+            ? "The payment provider reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
+            : "Zoption could not find a payment awaiting confirmation. If your payment provider shows a completed charge, contact support with the transaction details.",
         );
         const nextSearch = new URLSearchParams(location.search);
         nextSearch.delete("checkout");
@@ -623,7 +624,7 @@ export function BillingSettings({ user }: { user: User }) {
       if (
         reconciliation.outcome === "closed" ||
         reconciliation.outcome === "none" ||
-        isConfirmedPayPalSummary(reconciliation.summary)
+        isConfirmedPaidSummary(reconciliation.summary)
       ) {
         setPaymentConfirmationDelayed(false);
         setPaymentPollingExhausted(false);
@@ -631,7 +632,7 @@ export function BillingSettings({ user }: { user: User }) {
         setIsProCheckoutOpen(true);
       } else {
         setError(
-          "A subscription is still being confirmed. Complete it in PayPal before starting another checkout.",
+          "A subscription is still being confirmed. Complete it with your payment provider before starting another checkout.",
         );
       }
     } catch (cause) {
@@ -666,6 +667,9 @@ export function BillingSettings({ user }: { user: User }) {
   }, [checkPaymentStatus, paymentPending, paymentPollingExhausted]);
 
   const visibleError = error ?? (billingError instanceof Error ? billingError.message : undefined);
+  const providerLabel = paymentProviderLabel(
+    summary?.pendingCheckout?.provider ?? summary?.provider,
+  );
   const presentation = statusCopy(
     summary?.status,
     summary?.plan,
@@ -673,6 +677,7 @@ export function BillingSettings({ user }: { user: User }) {
     paymentPending,
     paymentReviewRequired,
     confirmingCancellation,
+    providerLabel,
   );
   const isPro = summary?.plan === "zoption_pro";
   const currentPlanKnown = !paymentPending;
@@ -866,15 +871,15 @@ export function BillingSettings({ user }: { user: User }) {
               )}
             <small>
               {canCheckout
-                ? "Prices are charged in Philippine pesos. PayPal securely hosts checkout. Taxes if applicable may apply."
-                : "PayPal processes subscription payments. Cancellation stops future renewal; no automatic refund is issued."}
+                ? "Prices are charged in Philippine pesos. PayPal or Dodo Payments securely hosts checkout. Taxes if applicable may apply."
+                : `${providerLabel} processes subscription payments. Cancellation stops future renewal; no automatic refund is issued.`}
             </small>
           </div>
         )}
         {summary && !isPro && !canCheckout && canManageBilling && (
           <p className="settings-helper">
             A new checkout is unavailable while this subscription state is being resolved. Review
-            the subscription in PayPal if action is needed.
+            the subscription in {providerLabel} if action is needed.
           </p>
         )}
         {summary && !isPro && !canCheckout && !canManageBilling && !paymentPending && (
@@ -892,10 +897,10 @@ export function BillingSettings({ user }: { user: User }) {
           <div className="billing-confirmation-delayed">
             <p className="settings-helper" role="status">
               {paymentReviewRequired
-                ? "PayPal has not finalized this subscription within the normal confirmation window. Zoption will keep checking securely in the background; do not start another subscription."
+                ? `${providerLabel} has not finalized this subscription within the normal confirmation window. Zoption will keep checking securely in the background; do not start another subscription.`
                 : paymentPollingExhausted
-                  ? "Payment confirmation is still pending. Zoption will continue checking PayPal in the background."
-                  : "Payment confirmation is taking longer than expected. Zoption is still checking PayPal securely."}
+                  ? `Payment confirmation is still pending. Zoption will continue checking ${providerLabel} in the background.`
+                  : `Payment confirmation is taking longer than expected. Zoption is still checking ${providerLabel} securely.`}
             </p>
             {paymentPollingExhausted && (
               <button
@@ -922,14 +927,14 @@ export function BillingSettings({ user }: { user: User }) {
         {cancellationConfirmationDelayed && (
           <p className="settings-helper" role="status">
             Cancellation confirmation is taking longer than expected. Your renewal request remains
-            pending until Zoption receives PayPal’s verified notification. You can safely refresh
-            this page in a moment.
+            pending until Zoption receives {providerLabel}’s verified notification. You can safely
+            refresh this page in a moment.
           </p>
         )}
         {checkoutCancelledNotice && (
           <p className="settings-helper" role="status">
-            PayPal checkout was closed. Zoption relies on PayPal’s verified subscription status
-            before changing access.
+            {providerLabel} checkout was closed. Zoption relies on {providerLabel}’s verified
+            subscription status before changing access.
           </p>
         )}
         {visibleError && (

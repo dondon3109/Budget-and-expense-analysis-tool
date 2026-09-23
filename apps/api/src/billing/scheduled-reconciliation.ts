@@ -1,6 +1,6 @@
 import type { BillingRepository } from "../db/billing";
 import type { Bindings } from "../types";
-import { reconcilePayPalCheckout } from "./reconciliation";
+import { reconcileBillingCheckout } from "./reconciliation";
 
 export interface ScheduledBillingReconciliationResult {
   checked: number;
@@ -10,7 +10,7 @@ export interface ScheduledBillingReconciliationResult {
   failed: number;
 }
 
-export async function reconcileDuePayPalCheckouts(
+export async function reconcileDueBillingCheckouts(
   repository: BillingRepository,
   env: Bindings,
   limit = 25,
@@ -27,7 +27,7 @@ export async function reconcileDuePayPalCheckouts(
   for (const checkout of due) {
     result.checked += 1;
     try {
-      const reconciliation = await reconcilePayPalCheckout(repository, env, checkout.tenantId);
+      const reconciliation = await reconcileBillingCheckout(repository, env, checkout.tenantId);
       if (reconciliation.outcome === "confirmed") result.confirmed += 1;
       else if (reconciliation.outcome === "closed") result.closed += 1;
       else result.pending += 1;
@@ -35,7 +35,7 @@ export async function reconcileDuePayPalCheckouts(
       result.failed += 1;
       console.error(
         JSON.stringify({
-          message: "Scheduled PayPal reconciliation failed",
+          message: "Scheduled billing reconciliation failed",
           checkoutReference: checkout.reference,
           subscriptionId: checkout.providerSubscriptionId,
           errorCode: error instanceof Error ? error.name : "unknown_error",

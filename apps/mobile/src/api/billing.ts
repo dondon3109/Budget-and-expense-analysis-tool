@@ -6,6 +6,7 @@ import {
   type BillingCheckoutReconciliation,
   type BillingCheckoutResponse,
   type BillingInterval,
+  type BillingProvider,
   type BillingSummary,
 } from "@zoption/shared";
 
@@ -32,12 +33,13 @@ export function getBillingSummary(api: BillingApi): Promise<BillingSummary> {
 export function startBillingCheckout(
   api: BillingApi,
   interval: BillingInterval,
+  provider: BillingProvider = "paypal",
 ): Promise<BillingCheckoutResponse> {
   return apiRequest({
     ...api,
     path: "/api/app/billing/checkout",
     method: "POST",
-    body: { interval },
+    body: { interval, provider },
     fallback: billingFallback,
     decode: (value) => billingCheckoutResponseSchema.parse(value),
   });

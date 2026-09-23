@@ -1,13 +1,14 @@
 import { billingCheckoutRequestSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
+import { cancelDodoSubscription, createDodoCheckoutSession } from "../billing/dodo";
 import {
   cancelPayPalSubscription,
   createPayPalSubscription,
   getPayPalBrowserConfiguration,
   getPayPalSubscription,
 } from "../billing/paypal";
-import { reconcilePayPalCheckout } from "../billing/reconciliation";
+import { reconcileBillingCheckout } from "../billing/reconciliation";
 import type { BillingRepository } from "../db/billing";
 import { HttpError } from "../errors";
 import { enqueueJob } from "../jobs";
@@ -32,7 +33,7 @@ export function createBillingRoutes(repository: BillingRepository) {
     };
     const abortPendingCheckout = Boolean(body.abortPendingCheckout ?? body.checkoutCancelled);
     return context.json(
-      await reconcilePayPalCheckout(repository, context.env, context.get("tenant").tenantId, {
+      await reconcileBillingCheckout(repository, context.env, context.get("tenant").tenantId, {
         abortPendingCheckout,
       }),
     );
@@ -48,9 +49,39 @@ export function createBillingRoutes(repository: BillingRepository) {
       context.env,
       tenantId,
       parsed.data.interval,
+      parsed.data.provider,
     );
-    if (checkout.provider !== "paypal") {
-      throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
+    if (checkout.provider !== parsed.data.provider) {
+      throw new HttpError(
+        409,
+        "checkout_in_progress",
+        "A checkout is already open. Finish it or wait for it to expire.",
+      );
+    }
+
+    if (checkout.provider === "dodo") {
+      // A session that already exists cannot be reopened, so a repeat request waits on it.
+      if (checkout.providerCheckoutId) {
+        throw new HttpError(
+          409,
+          "checkout_awaiting_confirmation",
+          "Payment confirmation is already in progress. Check Plan and billing for updates.",
+          { billingPath: "/app/settings#plan-and-billing" },
+        );
+      }
+      const session = await createDodoCheckoutSession(context.env, {
+        productId: checkout.providerPlanId,
+        checkoutReference: checkout.reference,
+      });
+      await repository.bindCheckoutProviderSession(
+        context.env,
+        tenantId,
+        checkout.reference,
+        "dodo",
+        session.sessionId,
+      );
+      await enqueueJob(context.env, { type: "billing-reconcile", tenantId }, { delaySeconds: 30 });
+      return context.json({ approvalUrl: session.checkoutUrl }, 201);
     }
 
     const subscription = checkout.providerSubscriptionId
@@ -79,7 +110,7 @@ export function createBillingRoutes(repository: BillingRepository) {
       );
     }
     if (!subscription.approvalUrl) {
-      const reconciliation = await reconcilePayPalCheckout(repository, context.env, tenantId);
+      const reconciliation = await reconcileBillingCheckout(repository, context.env, tenantId);
       if (reconciliation.outcome === "confirmed") {
         throw new HttpError(
           409,
@@ -101,7 +132,7 @@ export function createBillingRoutes(repository: BillingRepository) {
         { billingPath: "/app/settings#plan-and-billing" },
       );
     }
-    await enqueueJob(context.env, { type: "paypal-reconcile", tenantId }, { delaySeconds: 30 });
+    await enqueueJob(context.env, { type: "billing-reconcile", tenantId }, { delaySeconds: 30 });
     return context.json(
       { approvalUrl: subscription.approvalUrl, subscriptionId: subscription.id },
       201,
@@ -109,11 +140,10 @@ export function createBillingRoutes(repository: BillingRepository) {
   });
 
   routes.post("/cancel", async (context) => {
-    const subscription = await repository.getProviderSubscription(
-      context.env,
-      context.get("tenant").tenantId,
-      "paypal",
-    );
+    const tenantId = context.get("tenant").tenantId;
+    const subscription =
+      (await repository.getProviderSubscription(context.env, tenantId, "paypal")) ??
+      (await repository.getProviderSubscription(context.env, tenantId, "dodo"));
     if (!subscription || subscription.cancelAtPeriodEnd || subscription.status === "canceled") {
       throw new HttpError(
         409,
@@ -121,7 +151,11 @@ export function createBillingRoutes(repository: BillingRepository) {
         "There is no active subscription to cancel.",
       );
     }
-    await cancelPayPalSubscription(context.env, subscription.providerSubscriptionId);
+    if (subscription.provider === "dodo") {
+      await cancelDodoSubscription(context.env, subscription.providerSubscriptionId);
+    } else {
+      await cancelPayPalSubscription(context.env, subscription.providerSubscriptionId);
+    }
     return context.json({ cancellationRequested: true });
   });
 

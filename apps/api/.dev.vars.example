@@ -39,7 +39,7 @@ POSTHOG_PROJECT_TOKEN=
 # The key never lives in D1; only ciphertext does.
 PROVIDER_CREDENTIAL_ENCRYPTION_KEY=
 
-# PayPal is the active subscription provider. Keep the client secret and webhook ID
+# PayPal and Dodo Payments are the subscription providers. Keep the client secret and webhook ID
 # in this ignored file or Worker secrets; plan IDs and environment are non-secret.
 PAYPAL_ENVIRONMENT=sandbox
 PAYPAL_PRO_MONTHLY_PLAN_ID=
@@ -47,6 +47,14 @@ PAYPAL_PRO_ANNUAL_PLAN_ID=
 PAYPAL_CLIENT_ID=
 PAYPAL_CLIENT_SECRET=
 PAYPAL_WEBHOOK_ID=
+
+# Dodo Payments (merchant of record). Product IDs start with pdt_ and environment is
+# test_mode or live_mode; the API key and the whsec_ webhook signing key are secrets.
+DODO_PAYMENTS_ENVIRONMENT=test_mode
+DODO_PRO_MONTHLY_PRODUCT_ID=
+DODO_PRO_ANNUAL_PRODUCT_ID=
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_KEY=
 
 # Resend transactional email (sponsored-seat invitations). Verify the sender domain in
 # Resend and keep the API key in this ignored file or a `wrangler secret put` value.

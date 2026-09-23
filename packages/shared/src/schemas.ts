@@ -11,10 +11,12 @@ import {
   bugReportPageContexts,
   bugReportStatuses,
   billingFeatures,
+  billingProviders,
   billingUsagePeriodKinds,
   customerReviewModerationStatuses,
   financialGoalStatuses,
   interestFrequencies,
+  proEntitlementSources,
   providerServices,
   subscriptionBillingCycles,
   subscriptionStatuses,
@@ -108,7 +110,11 @@ export const resourceIdSchema = z
   .regex(/^[A-Za-z0-9:_-]+$/, "Use a valid resource identifier.");
 
 export const billingCheckoutRequestSchema = z
-  .object({ interval: z.enum(["month", "year"]) })
+  .object({
+    interval: z.enum(["month", "year"]),
+    // Optional so clients released before Dodo Payments keep checking out through PayPal.
+    provider: z.enum(billingProviders).default("paypal"),
+  })
   .strict();
 
 export type BillingCheckoutRequest = z.infer<typeof billingCheckoutRequestSchema>;
@@ -1179,8 +1185,8 @@ export const billingResourceAllowanceSchema = z
 export const billingSummaryResponseSchema = z
   .object({
     plan: z.enum(["free", "zoption_pro"]),
-    entitlementSource: z.enum(["paypal", "platform_admin", "sponsored"]).nullable(),
-    provider: z.enum(["paypal"]).nullable(),
+    entitlementSource: z.enum(proEntitlementSources).nullable(),
+    provider: z.enum(billingProviders).nullable(),
     status: z.enum(["active", "trialing", "past_due", "paused", "canceled"]).nullable(),
     interval: z.enum(["month", "year"]).nullable(),
     currentPeriodEndsAt: z.iso.datetime().nullable(),
@@ -1188,7 +1194,7 @@ export const billingSummaryResponseSchema = z
     cancelAtPeriodEnd: z.boolean(),
     pendingCheckout: z
       .object({
-        provider: z.enum(["paypal"]),
+        provider: z.enum(billingProviders),
         interval: z.enum(["month", "year"]),
         createdAt: z.iso.datetime(),
         expiresAt: z.iso.datetime(),
@@ -1217,7 +1223,8 @@ export type BillingProviderConfig = z.infer<typeof billingProviderConfigResponse
 export const billingCheckoutResponseSchema = z
   .object({
     approvalUrl: z.string().url(),
-    subscriptionId: z.string().trim().min(1).max(128),
+    /** PayPal only: its SDK opens the subscription it names. A Dodo checkout is a redirect. */
+    subscriptionId: z.string().trim().min(1).max(128).optional(),
   })
   .strict();
 

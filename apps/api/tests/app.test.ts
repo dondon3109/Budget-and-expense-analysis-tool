@@ -419,6 +419,7 @@ function createAllowedBillingRepository(): BillingRepository {
       interval: "month" as const,
       providerPlanId: "P-test",
       providerSubscriptionId: null,
+      providerCheckoutId: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       expiresAt: "2026-08-01T00:15:00.000Z",
     })),
@@ -433,6 +434,8 @@ function createAllowedBillingRepository(): BillingRepository {
     recordCheckoutReconciliation: vi.fn(async () => undefined),
     supersedePendingCheckout: vi.fn(async () => undefined),
     bindCheckoutProviderSubscription: vi.fn(async () => undefined),
+    bindCheckoutProviderSession: vi.fn(async () => undefined),
+    linkCheckoutSubscription: vi.fn(async () => null),
     applySubscriptionEvent: vi.fn(async () => "applied" as const),
     applySubscriptionSnapshot: vi.fn(async () => "applied" as const),
   };

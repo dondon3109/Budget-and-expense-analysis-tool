@@ -1,6 +1,6 @@
 import { createAccountDeletionService } from "./account-deletion";
 import { createApp } from "./app";
-import { reconcileDuePayPalCheckouts } from "./billing/scheduled-reconciliation";
+import { reconcileDueBillingCheckouts } from "./billing/scheduled-reconciliation";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
@@ -49,9 +49,9 @@ export default {
   async scheduled(controller, env) {
     validateRequiredApiBindings(env);
     if (controller.cron === FIVE_MINUTE_CRON) {
-      const result = await reconcileDuePayPalCheckouts(billingRepository, env, 25);
+      const result = await reconcileDueBillingCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
-        console.log(JSON.stringify({ message: "Pending PayPal checkouts reconciled", ...result }));
+        console.log(JSON.stringify({ message: "Pending billing checkouts reconciled", ...result }));
       }
       const notifications = await bugReportService.retryPendingNotifications(env, 25);
       if (notifications.claimed > 0) {

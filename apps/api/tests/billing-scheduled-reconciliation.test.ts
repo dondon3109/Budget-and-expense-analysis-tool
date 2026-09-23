@@ -2,7 +2,7 @@ import type { BillingSummary } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { clearPayPalAccessTokenCacheForTesting } from "../src/billing/paypal";
-import { reconcileDuePayPalCheckouts } from "../src/billing/scheduled-reconciliation";
+import { reconcileDueBillingCheckouts } from "../src/billing/scheduled-reconciliation";
 import type {
   BillingCheckoutReference,
   BillingDueCheckout,
@@ -30,6 +30,7 @@ function checkout(tenantId: string, reference: string, subscriptionId: string): 
     interval: "month",
     providerPlanId: "P-monthly",
     providerSubscriptionId: subscriptionId,
+    providerCheckoutId: null,
     createdAt: "2026-08-01T00:00:00.000Z",
     expiresAt: "2099-08-01T00:15:00.000Z",
   };
@@ -146,7 +147,7 @@ describe("scheduled PayPal reconciliation", () => {
         .mockResolvedValueOnce(subscriptionResponse(canceled, "CANCELLED")),
     );
 
-    const result = await reconcileDuePayPalCheckouts(billing, environment(), 7);
+    const result = await reconcileDueBillingCheckouts(billing, environment(), 7);
 
     expect(result).toEqual({ checked: 3, confirmed: 1, closed: 1, pending: 1, failed: 0 });
     expect(billing.listDuePendingCheckouts).toHaveBeenCalledWith(expect.anything(), 7);
@@ -166,7 +167,7 @@ describe("scheduled PayPal reconciliation", () => {
         .mockResolvedValueOnce(subscriptionResponse(pending, "APPROVED")),
     );
 
-    const result = await reconcileDuePayPalCheckouts(billing, environment());
+    const result = await reconcileDueBillingCheckouts(billing, environment());
 
     expect(result).toEqual({ checked: 2, confirmed: 0, closed: 0, pending: 1, failed: 1 });
     expect(billing.recordCheckoutReconciliation).toHaveBeenCalledWith(

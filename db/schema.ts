@@ -792,7 +792,7 @@ export const billingCustomers = sqliteTable(
     tenantId: text("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: ["paypal"] }).notNull(),
+    provider: text("provider", { enum: ["paypal", "dodo"] }).notNull(),
     providerCustomerId: text("provider_customer_id"),
     email: text("email"),
     ...timestamps,
@@ -807,11 +807,12 @@ export const billingCheckoutReferences = sqliteTable(
     tenantId: text("tenant_id")
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: ["paypal"] }).notNull(),
+    provider: text("provider", { enum: ["paypal", "dodo"] }).notNull(),
     plan: text("plan", { enum: ["zoption_pro"] }).notNull(),
     interval: text("interval", { enum: ["month", "year"] }).notNull(),
     providerPlanId: text("provider_plan_id").notNull(),
     providerSubscriptionId: text("provider_subscription_id"),
+    providerCheckoutId: text("provider_checkout_id"),
     expiresAt: text("expires_at").notNull(),
     completedAt: text("completed_at"),
     supersededAt: text("superseded_at"),
@@ -826,18 +827,21 @@ export const billingCheckoutReferences = sqliteTable(
     index("billing_checkout_references_reconciliation_idx")
       .on(table.lastReconciledAt, table.createdAt)
       .where(
-        sql`${table.completedAt} IS NULL AND ${table.supersededAt} IS NULL AND ${table.providerSubscriptionId} IS NOT NULL`,
+        sql`${table.completedAt} IS NULL AND ${table.supersededAt} IS NULL AND (${table.providerSubscriptionId} IS NOT NULL OR ${table.providerCheckoutId} IS NOT NULL)`,
       ),
     uniqueIndex("billing_checkout_references_tenant_open_unique")
       .on(table.tenantId)
       .where(sql`${table.completedAt} IS NULL AND ${table.supersededAt} IS NULL`),
+    uniqueIndex("billing_checkout_references_provider_checkout_unique")
+      .on(table.provider, table.providerCheckoutId)
+      .where(sql`${table.providerCheckoutId} IS NOT NULL`),
   ],
 );
 
 export const billingSubscriptions = sqliteTable(
   "billing_subscriptions",
   {
-    provider: text("provider", { enum: ["paypal"] }).notNull(),
+    provider: text("provider", { enum: ["paypal", "dodo"] }).notNull(),
     providerSubscriptionId: text("provider_subscription_id").notNull(),
     tenantId: text("tenant_id")
       .notNull()
@@ -867,7 +871,7 @@ export const billingSubscriptions = sqliteTable(
 export const billingWebhookEvents = sqliteTable(
   "billing_webhook_events",
   {
-    provider: text("provider", { enum: ["paypal"] }).notNull(),
+    provider: text("provider", { enum: ["paypal", "dodo"] }).notNull(),
     providerEventId: text("provider_event_id").notNull(),
     eventType: text("event_type").notNull(),
     occurredAt: text("occurred_at").notNull(),

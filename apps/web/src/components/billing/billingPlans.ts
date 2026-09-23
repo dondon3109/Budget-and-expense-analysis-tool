@@ -43,4 +43,4 @@ export const proCheckoutOptions: Array<{
 ];
 
 export const paymentDisclosure =
-  "Prices are charged in Philippine pesos. PayPal securely handles card details and subscription approval; available payment methods can vary by customer. Taxes if applicable may apply.";
+  "Prices are charged in Philippine pesos. PayPal or Dodo Payments securely handles card details and subscription approval; available payment methods can vary by customer. Taxes if applicable may apply.";

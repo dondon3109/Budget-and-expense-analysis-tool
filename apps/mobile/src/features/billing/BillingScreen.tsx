@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as WebBrowser from "expo-web-browser";
-import type { BillingInterval, BillingSummary } from "@zoption/shared";
+import type { BillingInterval, BillingProvider, BillingSummary } from "@zoption/shared";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -112,23 +112,28 @@ export function BillingScreen() {
     setMessage("Payment confirmation is still in progress. Check back shortly.");
   }, [withToken]);
 
-  const runCheckout = useCallback(async () => {
-    setBusy("checkout");
-    setMessage(null);
-    try {
-      const { approvalUrl } = await withToken((token) =>
-        startBillingCheckout({ accessToken: token }, interval),
-      );
-      await WebBrowser.openBrowserAsync(approvalUrl, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-      });
-      await reconcileLoop();
-    } catch (error) {
-      setMessage(error instanceof ApiTransportError ? error.message : "Checkout could not start.");
-    } finally {
-      setBusy(null);
-    }
-  }, [interval, reconcileLoop, withToken]);
+  const runCheckout = useCallback(
+    async (provider: BillingProvider) => {
+      setBusy(provider === "dodo" ? "dodo-checkout" : "checkout");
+      setMessage(null);
+      try {
+        const { approvalUrl } = await withToken((token) =>
+          startBillingCheckout({ accessToken: token }, interval, provider),
+        );
+        await WebBrowser.openBrowserAsync(approvalUrl, {
+          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
+        });
+        await reconcileLoop();
+      } catch (error) {
+        setMessage(
+          error instanceof ApiTransportError ? error.message : "Checkout could not start.",
+        );
+      } finally {
+        setBusy(null);
+      }
+    },
+    [interval, reconcileLoop, withToken],
+  );
 
   const runCancel = useCallback(async () => {
     setConfirmingCancel(false);
@@ -280,8 +285,20 @@ export function BillingScreen() {
               sheetTitle="Billing interval"
               onSelect={(value) => setIntervalChoice(value as BillingInterval)}
             />
-            <Button loading={busy === "checkout"} onPress={() => void runCheckout()}>
+            <Button
+              loading={busy === "checkout"}
+              disabled={busy !== null}
+              onPress={() => void runCheckout("paypal")}
+            >
               Continue with PayPal
+            </Button>
+            <Button
+              variant="secondary"
+              loading={busy === "dodo-checkout"}
+              disabled={busy !== null}
+              onPress={() => void runCheckout("dodo")}
+            >
+              Continue with Dodo Payments
             </Button>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
               Checkout opens in your browser. Payment confirmation is verified by the Zoption server

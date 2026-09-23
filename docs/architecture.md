@@ -2,7 +2,7 @@
 
 ## System shape
 
-Zoption is a React/Vite SPA backed by a Hono Cloudflare Worker and D1. Supabase Auth is the identity provider. The browser obtains a Supabase session and sends its access token to authenticated Worker routes; the Worker verifies the JWT against the project's JWKS before resolving the user's D1 tenant. Rate limits use a Durable Object when bound, with D1 as fallback. Background PayPal reconciliation, bug-report mail, and account-deletion follow-up run on a Cloudflare Queue, with the existing crons as a safety net. Profile pictures live in R2 and are served at `/api/public/avatars/*`. Zod schemas, money handling, fingerprints, and aggregate calculations live in the shared package.
+Zoption is a React/Vite SPA backed by a Hono Cloudflare Worker and D1. Supabase Auth is the identity provider. The browser obtains a Supabase session and sends its access token to authenticated Worker routes; the Worker verifies the JWT against the project's JWKS before resolving the user's D1 tenant. Rate limits use a Durable Object when bound, with D1 as fallback. Background PayPal and Dodo Payments checkout reconciliation, bug-report mail, and account-deletion follow-up run on a Cloudflare Queue, with the existing crons as a safety net. Profile pictures live in R2 and are served at `/api/public/avatars/*`. Zod schemas, money handling, fingerprints, and aggregate calculations live in the shared package.
 
 The public landing page contains a static dashboard illustration only. It does not request financial data. All real financial reads and writes require authentication.
 
@@ -76,7 +76,7 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 
 Also mounted in `apps/api/src/app.ts`, each documented in its own runbook:
 
-- `/api/billing/paypal/webhook` (signature-verified PayPal events) and `/api/app/billing`.
+- `/api/billing/paypal/webhook` (signature-verified PayPal events), `/api/billing/dodo/webhook` (Standard Webhooks-signed Dodo Payments events), and `/api/app/billing`. A checkout names its provider; one open checkout and one non-terminal subscription per tenant apply across both providers.
 - `/api/reviews` (public) and `/api/app/reviews`, `/api/app/admin/reviews` (customer reviews).
 - `/api/ops/bug-reports` (bearer `OPS_EGRESS_TOKEN`, scrubbed reports for the bugfix automation) and `/api/app/admin/bug-reports`, `/api/app/support`.
 - `/api/app/admin/*`, `/api/app/identity` (platform administration and provider configuration).

@@ -99,6 +99,7 @@ import { receiptRepository } from "./db/receipts";
 import { cloudflareVisionProvider } from "./receipts/cloudflare-vision";
 import { createReceiptService, type ReceiptService } from "./receipts/service";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
+import { createDodoWebhookRoutes } from "./routes/dodo-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import {
@@ -119,18 +120,13 @@ const ASSISTANT_VOICE_BODY_LIMIT = 4 * 1024 * 1024 + 64 * 1024;
 const AVATAR_BODY_LIMIT = 2 * 1024 * 1024 + 64 * 1024;
 const RECEIPT_IMAGE_BODY_LIMIT = 8 * 1024 * 1024 + 64 * 1024;
 const AI_ENTRY_PDF_BODY_LIMIT = 5 * 1024 * 1024 + 64 * 1024;
-const PAYPAL_WEBHOOK_BODY_LIMIT = 128 * 1024;
-const PAYPAL_WEBHOOK_RATE_LIMIT = {
-  scope: "paypal-webhook",
-  limit: 60,
-  windowSeconds: 60,
-} as const;
+const BILLING_WEBHOOK_BODY_LIMIT = 128 * 1024;
 const SUPPORT_CHAT_BODY_LIMIT = 24 * 1024;
 const SUPPORT_CHAT_RATE_LIMITS = [
   { scope: "public-support-minute", limit: 8, windowSeconds: 60 },
   { scope: "public-support-day", limit: 40, windowSeconds: 24 * 60 * 60 },
 ] as const;
-const MISSING_PAYPAL_WEBHOOK_CLIENT = "missing-cf-connecting-ip";
+const MISSING_BILLING_WEBHOOK_CLIENT = "missing-cf-connecting-ip";
 const MISSING_SUPPORT_CLIENT = "missing-cf-connecting-ip";
 
 function isJsonContentType(contentType: string | undefined): boolean {
@@ -688,37 +684,43 @@ export function createApp(options: AppOptions = {}) {
     );
   });
 
-  app.use("/api/billing/paypal/webhook", async (context, next) => {
-    if (context.req.method !== "POST") {
+  for (const [provider, routes] of [
+    ["paypal", createPayPalWebhookRoutes(billingStore)],
+    ["dodo", createDodoWebhookRoutes(billingStore)],
+  ] as const) {
+    const path = `/api/billing/${provider}/webhook`;
+    app.use(path, async (context, next) => {
+      if (context.req.method !== "POST") {
+        await next();
+        return;
+      }
+
+      const clientIdentifier =
+        context.req.header("CF-Connecting-IP")?.trim() || MISSING_BILLING_WEBHOOK_CLIENT;
+      const limited = await enforceRateLimits(
+        context,
+        rateLimiter,
+        clientIdentifier,
+        [{ scope: `${provider}-webhook`, limit: 60, windowSeconds: 60 }],
+        (seconds) => `Too many webhook deliveries. Try again in ${seconds} seconds.`,
+      );
+      if (limited) return limited;
+
       await next();
-      return;
-    }
-
-    const clientIdentifier =
-      context.req.header("CF-Connecting-IP")?.trim() || MISSING_PAYPAL_WEBHOOK_CLIENT;
-    const limited = await enforceRateLimits(
-      context,
-      rateLimiter,
-      clientIdentifier,
-      [PAYPAL_WEBHOOK_RATE_LIMIT],
-      (seconds) => `Too many webhook deliveries. Try again in ${seconds} seconds.`,
+    });
+    app.use(
+      path,
+      bodyLimit({
+        maxSize: BILLING_WEBHOOK_BODY_LIMIT,
+        onError: (limitedContext) =>
+          limitedContext.json(
+            { error: "payload_too_large", message: "The request body is too large." },
+            413,
+          ),
+      }) as MiddlewareHandler<AppEnvironment>,
     );
-    if (limited) return limited;
-
-    await next();
-  });
-  app.use(
-    "/api/billing/paypal/webhook",
-    bodyLimit({
-      maxSize: PAYPAL_WEBHOOK_BODY_LIMIT,
-      onError: (limitedContext) =>
-        limitedContext.json(
-          { error: "payload_too_large", message: "The request body is too large." },
-          413,
-        ),
-    }) as MiddlewareHandler<AppEnvironment>,
-  );
-  app.route("/api/billing/paypal/webhook", createPayPalWebhookRoutes(billingStore));
+    app.route(path, routes);
+  }
   app.route("/api/support", createSupportRoutes(supportProvider));
   app.route("/api/reviews", createPublicCustomerReviewRoutes(customerReviews));
   app.route(

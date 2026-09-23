@@ -71,7 +71,21 @@ describe("billing api transport", () => {
     expect(result.subscriptionId).toBe("I-SUB123");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(apiBase + "/api/app/billing/checkout");
-    expect(JSON.parse(init.body as string)).toEqual({ interval: "year" });
+    expect(JSON.parse(init.body as string)).toEqual({ interval: "year", provider: "paypal" });
+  });
+
+  it("starts a Dodo Payments checkout, whose response names no PayPal subscription", async () => {
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({ approvalUrl: "https://checkout.dodopayments.com/session/cks_1" }, 201),
+    );
+    const result = await startBillingCheckout(
+      { accessToken: token, fetchImpl: fetchMock },
+      "month",
+      "dodo",
+    );
+    expect(result).toEqual({ approvalUrl: "https://checkout.dodopayments.com/session/cks_1" });
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toEqual({ interval: "month", provider: "dodo" });
   });
 
   it("requests cancellation and decodes the confirmation", async () => {
