@@ -110,8 +110,9 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           set -euo pipefail
-          # Pinned to the stable channel's release because this step holds the model key.
-          npm install --global @anthropic-ai/claude-code@2.1.267
+          # Pinned because this step holds the model key, and to 2.1.280 or newer because older
+          # releases refuse claude-opus-5-5 as an unsupported model.
+          npm install --global @anthropic-ai/claude-code@2.1.280
           task="$(cat <<'TASK'
           A user filed the bug report in .bugfix-report.txt. Identifiers and amounts in it are
           already replaced with [REDACTED]; do not try to recover them.
