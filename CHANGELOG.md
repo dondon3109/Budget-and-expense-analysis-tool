@@ -6,6 +6,11 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Recording a debt payment now updates the debt it names. The linked debt's balance drops by the
+  payment, and a balance that reaches zero marks the debt paid, so Goals & debt reflects the
+  payment instead of the balance from before it. Editing the payment's amount or debt, or deleting
+  it, restores the old balance in the same write. Payments recorded before this release are
+  applied to their debts when it ships, so a balance that was already wrong reads correctly.
 - The chat assistant no longer renders a faint pulsing square around the avatar while checking records. The checking pulse animation now targets the message bubble directly instead of the outer message container.
 - Adding an income transaction in the browser works again. The form sent the debt link an expense can carry for every kind of entry, and an income refuses that field, so a correctly filled income entry was rejected before it ever reached the API.
 

@@ -335,6 +335,28 @@ function insertStatement(
   );
 }
 
+/**
+ * Applies a linked debt payment to the debt balance. The delta is positive when a
+ * payment is recorded and negative when one is reversed, so an edit that drops or
+ * re-links the payment restores the balance it had before. The balance never drops
+ * below zero, and reaching zero marks the debt paid; any later increase marks it
+ * active again.
+ */
+function applyDebtPayment(
+  env: Bindings,
+  tenantId: string,
+  debtId: string,
+  deltaMinor: number,
+): D1PreparedStatement {
+  return env.DB.prepare(
+    `UPDATE debts
+       SET balance_minor = MAX(0, balance_minor - ?),
+           status = CASE WHEN balance_minor - ? <= 0 THEN 'paid' ELSE 'active' END,
+           updated_at = datetime('now')
+     WHERE id = ? AND tenant_id = ?`,
+  ).bind(deltaMinor, deltaMinor, debtId, tenantId);
+}
+
 const EXPORT_ROW_LIMIT = 5000;
 
 export const transactionRepository: TransactionRepository = {
@@ -451,7 +473,7 @@ export const transactionRepository: TransactionRepository = {
     }
 
     const id = crypto.randomUUID();
-    await insertStatement(env, {
+    const insert = insertStatement(env, {
       id,
       tenantId,
       accountId: input.accountId,
@@ -463,7 +485,16 @@ export const transactionRepository: TransactionRepository = {
       kind: input.kind,
       notes: input.notes,
       debtId: input.kind === "expense" ? input.debtId : null,
-    }).run();
+    });
+    // The expense row and the linked debt's new balance are one atomic write.
+    if (input.kind === "expense" && input.debtId) {
+      await env.DB.batch([
+        insert,
+        applyDebtPayment(env, tenantId, input.debtId, input.amountMinor),
+      ]);
+    } else {
+      await insert.run();
+    }
     const created = await findTransaction(env, tenantId, id);
     if (!created) throw new Error("Created transaction could not be read back.");
     return created;
@@ -549,7 +580,7 @@ export const transactionRepository: TransactionRepository = {
       nextKind === "expense"
         ? input.debtId === null
           ? null
-          : (input.debtId ?? current.debtId)
+          : (input.debtId ?? current.debtId ?? null)
         : null;
     const parsed = transactionInputSchema.safeParse({
       date: input.date ?? current.date,
@@ -567,23 +598,48 @@ export const transactionRepository: TransactionRepository = {
     }
     const transaction = parsed.data;
     await validateTransactionReferences(env, tenantId, transaction, current.categoryId);
-    await env.DB.prepare(
+    const update = env.DB.prepare(
       `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = ?, notes = ?, debt_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
-    )
-      .bind(
-        transaction.accountId,
-        transaction.categoryId,
-        transaction.date,
-        transaction.description,
-        normalizeSignedAmount(transaction.amountMinor, transaction.kind),
-        transaction.currency,
-        transaction.kind,
-        transaction.notes || null,
-        nextDebtId,
-        id,
-        tenantId,
-      )
-      .run();
+    ).bind(
+      transaction.accountId,
+      transaction.categoryId,
+      transaction.date,
+      transaction.description,
+      normalizeSignedAmount(transaction.amountMinor, transaction.kind),
+      transaction.currency,
+      transaction.kind,
+      transaction.notes || null,
+      nextDebtId,
+      id,
+      tenantId,
+    );
+    // Reconsider both sides of the edit: a dropped, re-linked, or re-priced payment
+    // moves the balance it was applied to. An unchanged payment leaves the debt alone.
+    const previousPayment =
+      current.kind === "expense" && current.debtId
+        ? { debtId: current.debtId, amountMinor: Math.abs(current.amountMinor) }
+        : null;
+    const nextPayment =
+      nextDebtId !== null ? { debtId: nextDebtId, amountMinor: transaction.amountMinor } : null;
+    const paymentChanged =
+      previousPayment?.debtId !== nextPayment?.debtId ||
+      previousPayment?.amountMinor !== nextPayment?.amountMinor;
+    if (paymentChanged) {
+      const statements = [update];
+      if (previousPayment) {
+        statements.push(
+          applyDebtPayment(env, tenantId, previousPayment.debtId, -previousPayment.amountMinor),
+        );
+      }
+      if (nextPayment) {
+        statements.push(
+          applyDebtPayment(env, tenantId, nextPayment.debtId, nextPayment.amountMinor),
+        );
+      }
+      await env.DB.batch(statements);
+    } else {
+      await update.run();
+    }
     const updated = await findTransaction(env, tenantId, id);
     if (!updated) throw new Error("Updated transaction could not be read back.");
     return updated;
@@ -591,10 +647,16 @@ export const transactionRepository: TransactionRepository = {
 
   async remove(env, tenantId, id) {
     const existing = await env.DB.prepare(
-      "SELECT transfer_group_id AS transferGroupId FROM transactions WHERE id = ? AND tenant_id = ?",
+      `SELECT transfer_group_id AS transferGroupId, kind, amount_minor AS amountMinor, debt_id AS debtId
+       FROM transactions WHERE id = ? AND tenant_id = ?`,
     )
       .bind(id, tenantId)
-      .first<{ transferGroupId: string | null }>();
+      .first<{
+        transferGroupId: string | null;
+        kind: "income" | "expense" | "transfer";
+        amountMinor: number;
+        debtId: string | null;
+      }>();
     if (!existing) throw new HttpError(404, "transaction_not_found", "Transaction not found.");
     if (existing.transferGroupId) {
       await env.DB.batch([
@@ -608,9 +670,19 @@ export const transactionRepository: TransactionRepository = {
       ]);
       return;
     }
-    await env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ? AND id = ?")
-      .bind(tenantId, id)
-      .run();
+    const remove = env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ? AND id = ?").bind(
+      tenantId,
+      id,
+    );
+    // Deleting a debt payment gives the money back to the debt in the same write.
+    if (existing.kind === "expense" && existing.debtId) {
+      await env.DB.batch([
+        remove,
+        applyDebtPayment(env, tenantId, existing.debtId, -Math.abs(existing.amountMinor)),
+      ]);
+      return;
+    }
+    await remove.run();
   },
 
   async export(env, tenantId, query) {
