@@ -7,12 +7,14 @@ on:
   # The schedule claims at most one report per tick, so one tick is at most one coding agent run.
   schedule:
     - cron: "*/15 * * * *"
-  # A manual run drafts a report by id, including one a failed run already claimed.
+  # A manual run without an id claims the next report, the same as a tick, so it still works when
+  # GitHub delays or drops the schedule. With an id it drafts that report, including one a failed
+  # run already claimed.
   workflow_dispatch:
     inputs:
       bug_report_id:
-        description: "Bug report id to draft a fix for"
-        required: true
+        description: "Bug report id to draft; leave empty to claim the next report"
+        required: false
         type: string
 
 permissions:
