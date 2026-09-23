@@ -515,7 +515,7 @@ From this repository it writes the two n8n credentials over SSH and sets the rep
 ```bash
 gh secret list
 gh variable list
-ssh homecore@192.168.1.5 'docker exec n8n n8n list:workflow | grep -i dispatch'
+ssh homecore 'docker exec n8n n8n list:workflow | grep -i dispatch'
 ```
 
 ## Current hosted resources
