@@ -27,7 +27,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 11px;
-  font-weight: 760;
+  font-weight: 650;
 }
 
 .support-report-view-switch button.current {
@@ -71,7 +71,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 25px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .support-reports-empty p {
@@ -127,7 +127,7 @@
   color: var(--action-strong);
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .support-reports-list strong {
@@ -154,7 +154,7 @@
   gap: 8px;
   color: var(--muted);
   font-size: 10px;
-  font-weight: 760;
+  font-weight: 650;
 }
 
 .support-report-status-control select {
@@ -186,7 +186,7 @@
   color: var(--action-strong);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .support-report-detail h2 {
@@ -194,7 +194,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: clamp(24px, 4vw, 32px);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.08;
 }
@@ -214,7 +214,7 @@
   border-radius: 999px;
   background: var(--action-soft);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .support-report-status.status-resolved,
@@ -231,7 +231,7 @@
   margin: 0 0 7px;
   color: var(--ink);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .support-report-detail section p,
@@ -257,7 +257,7 @@
   color: var(--action-strong);
   cursor: pointer;
   font-size: 11px;
-  font-weight: 760;
+  font-weight: 650;
 }
 
 .support-report-detail details p {

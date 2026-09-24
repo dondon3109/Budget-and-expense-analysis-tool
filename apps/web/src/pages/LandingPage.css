@@ -24,6 +24,7 @@
   --lp-expense: var(--expense);
   --lp-expense-soft: var(--expense-soft);
   --lp-expense-text: var(--expense-text);
+  --lp-income-text: var(--income-text);
   --lp-budget: var(--budget);
   --lp-budget-soft: var(--budget-soft);
   --lp-info: var(--info);
@@ -33,10 +34,10 @@
   --lp-surface-hover: var(--surface-hover);
   --lp-font-mono: var(--font-mono);
   --lp-shadow-md: var(--lp-shadow);
-  --lp-glow: rgba(15, 107, 91, 0.08);
-  --lp-shadow-sm: 0 1px 3px rgba(25, 53, 47, 0.05), 0 4px 12px rgba(25, 53, 47, 0.03);
-  --lp-shadow: 0 2px 5px rgba(25, 53, 47, 0.04), 0 14px 34px rgba(25, 53, 47, 0.08);
-  --lp-shadow-lg: 0 4px 12px rgba(25, 53, 47, 0.06), 0 28px 64px rgba(25, 53, 47, 0.12);
+  --lp-glow: rgba(61, 220, 166, 0.12);
+  --lp-shadow-sm: 0 1px 2px rgba(12, 21, 18, 0.05);
+  --lp-shadow: 0 1px 2px rgba(12, 21, 18, 0.05), 0 12px 32px rgba(12, 21, 18, 0.08);
+  --lp-shadow-lg: 0 2px 6px rgba(12, 21, 18, 0.06), 0 28px 64px rgba(12, 21, 18, 0.14);
   --lp-font-display: var(--font-display);
 
   min-height: 100vh;
@@ -70,8 +71,8 @@
   margin: 0;
   font-family: var(--lp-font-display);
   color: var(--lp-fg);
-  font-weight: 400;
-  letter-spacing: -0.015em;
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 
 .landing-page p {
@@ -91,7 +92,7 @@
   -webkit-backdrop-filter: blur(8px);
   color: var(--lp-accent-strong);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.02em;
   box-shadow: var(--lp-shadow-sm);
 }
@@ -124,7 +125,7 @@
   gap: 12px;
   font-family: var(--font-ui);
   font-size: 19px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--lp-fg);
   text-decoration: none;
   transition: transform 0.18s ease;
@@ -149,7 +150,7 @@
 
 .landing-nav .brand-wordmark {
   color: var(--lp-fg);
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: -0.02em;
 }
 
@@ -168,7 +169,7 @@
   align-items: center;
   color: var(--lp-muted);
   font-size: 13.5px;
-  font-weight: 650;
+  font-weight: 580;
   white-space: nowrap;
   border-radius: 10px;
   transition:
@@ -190,7 +191,7 @@
   background: var(--lp-accent-strong);
   box-shadow: 0 6px 18px color-mix(in srgb, var(--lp-accent-strong) 25%, transparent);
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 620;
   white-space: nowrap;
   transition:
     transform 0.18s ease,
@@ -276,7 +277,7 @@
   background: var(--lp-surface);
   color: var(--lp-accent-strong);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   box-shadow: var(--lp-shadow-sm);
 }
 
@@ -308,15 +309,22 @@
 }
 
 .hero h1 {
-  max-width: 600px;
-  font-size: clamp(44px, 5.2vw, 70px);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
+  max-width: 660px;
+  margin-bottom: 28px;
+  font-size: clamp(44px, 4.9vw, 70px);
+  line-height: 1.02;
+  letter-spacing: -0.045em;
 }
 
+/* The promise gets the mint stroke from the Z mark underneath it. */
 .hero h1 em {
-  font-style: italic;
-  color: var(--lp-accent-strong);
+  font-style: normal;
+  color: var(--lp-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--mint);
+  text-decoration-thickness: 0.1em;
+  text-underline-offset: 0.12em;
+  text-decoration-skip-ink: none;
 }
 
 .hero-lead {
@@ -339,7 +347,7 @@
   padding: 0 22px;
   border-radius: 13px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -348,17 +356,18 @@
 }
 
 .hero-actions .button.primary {
-  color: var(--lp-surface);
-  border: 1px solid var(--lp-accent-strong);
-  background: var(--lp-accent-strong);
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--lp-accent-strong) 28%, transparent);
+  color: var(--solid-text);
+  border: 1px solid var(--solid-bg);
+  background: var(--solid-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 8px 20px color-mix(in srgb, var(--solid-bg) 22%, transparent);
 }
 
 .hero-actions .button.primary:hover {
-  background: var(--lp-accent);
-  border-color: var(--lp-accent);
-  transform: translateY(-2px);
-  box-shadow: 0 14px 32px color-mix(in srgb, var(--lp-accent-strong) 38%, transparent);
+  background: var(--solid-hover);
+  border-color: var(--solid-hover);
+  transform: translateY(-1px);
 }
 
 .hero-actions .button.secondary {
@@ -407,7 +416,7 @@
 
 .hero-proof strong {
   font-size: 15px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--lp-fg);
 }
 
@@ -480,7 +489,7 @@
 
 .preview-top b {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-fg);
 }
 
@@ -490,7 +499,7 @@
   background: var(--lp-info-soft);
   color: var(--lp-info);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
@@ -546,7 +555,7 @@
   margin-top: 4px;
   font-family: var(--lp-font-display);
   font-size: 28px;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -571,7 +580,7 @@
   justify-content: space-between;
   margin-bottom: 16px;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-fg);
 }
 
@@ -669,7 +678,7 @@
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--lp-accent-strong);
@@ -710,7 +719,7 @@
 .pillar-item strong {
   display: block;
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--lp-fg);
   line-height: 1.25;
 }
@@ -764,7 +773,7 @@
   background: var(--lp-surface);
   color: var(--lp-muted);
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 620;
   cursor: pointer;
   box-shadow: var(--lp-shadow-sm);
   transition: all 0.2s ease;
@@ -785,7 +794,7 @@
 
 .tab-pill-badge {
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   padding: 2px 7px;
   border-radius: 999px;
   background: var(--lp-surface-soft);
@@ -835,7 +844,7 @@
   gap: 6px;
   margin-bottom: 12px;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--lp-accent-strong);
@@ -879,7 +888,7 @@
 
 .sample-selector-label {
   font-size: 11.5px;
-  font-weight: 750;
+  font-weight: 650;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--lp-muted);
@@ -899,7 +908,7 @@
   background: var(--lp-surface-soft);
   color: var(--lp-fg);
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 580;
   cursor: pointer;
   transition: all 0.18s ease;
 }
@@ -933,7 +942,7 @@
 
 .demo-badge {
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--lp-muted);
@@ -944,7 +953,7 @@
   align-items: center;
   gap: 6px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-fg);
 }
 
@@ -1094,7 +1103,7 @@
 
 .extracted-tag {
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--lp-muted);
@@ -1110,7 +1119,7 @@
 .extracted-field small {
   display: block;
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 580;
   color: var(--lp-muted);
   text-transform: uppercase;
   margin-bottom: 2px;
@@ -1118,7 +1127,7 @@
 
 .extracted-field strong {
   font-size: 13.5px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--lp-fg);
 }
 
@@ -1133,7 +1142,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-accent-strong);
   background: var(--lp-accent-soft);
 }
@@ -1141,7 +1150,7 @@
 .demo-save-btn {
   min-height: 40px;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   border-radius: 10px;
 }
 
@@ -1207,7 +1216,7 @@
 .receipt-merchant-header h4 {
   margin: 0;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--lp-fg);
 }
 
@@ -1253,7 +1262,7 @@
 
 .total-row.grand {
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--lp-fg);
   padding-top: 3px;
 }
@@ -1271,7 +1280,7 @@
   padding: 3px 9px;
   border-radius: 8px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   background: var(--lp-surface);
   border: 1px solid var(--lp-border);
   color: var(--lp-accent-strong);
@@ -1292,7 +1301,7 @@
   padding: 6px 12px;
   border-radius: 8px;
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   border: 1px solid var(--lp-border);
   background: var(--lp-surface-soft);
 }
@@ -1373,7 +1382,7 @@
   padding-bottom: 6px;
   border-bottom: 1px solid var(--lp-border);
   font-size: 11.5px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--lp-fg);
 }
 
@@ -1396,7 +1405,7 @@
   padding: 1px 5px;
   border-radius: 4px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
   background: var(--lp-surface-soft);
   color: var(--lp-muted);
 }
@@ -1452,7 +1461,7 @@
   align-items: center;
   gap: 4px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-muted);
   background: var(--lp-surface-soft);
   padding: 2px 7px;
@@ -1523,7 +1532,7 @@
 
 .facet-kicker {
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--lp-accent-strong);
@@ -1538,7 +1547,7 @@
 .facet-text h4 {
   margin: 10px 0 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-fg);
 }
 
@@ -1603,7 +1612,7 @@
   gap: 12px;
   margin-bottom: 14px;
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-fg);
 }
 
@@ -1611,19 +1620,19 @@
   padding: 5px 12px;
   border-radius: 999px;
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 620;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
+/* --income and --expense are tuned for large marks; small chip text needs the text variants. */
 .chip.in-soft,
 .chip.in {
   background: var(--lp-income-soft);
-  color: var(--lp-income);
+  color: var(--lp-income-text);
 }
 
-/* --expense is tuned for large marks; small chip text needs the text variant (5.15:1). */
 .chip.warn {
   background: var(--lp-expense-soft);
   color: var(--lp-expense-text);
@@ -1665,7 +1674,7 @@
 
 .sheet-row span:last-child {
   text-align: right;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .sheet-row.heading {
@@ -1674,7 +1683,7 @@
 
 .sheet-row.heading span {
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--lp-muted);
@@ -1694,7 +1703,7 @@
 .balance-row b {
   font-family: var(--lp-font-display);
   font-size: 24px;
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.01em;
 }
 
@@ -1725,14 +1734,14 @@
 
 .progress > span {
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 580;
   color: var(--lp-fg);
 }
 
 .progress b {
   font-family: var(--lp-font-display);
   font-size: 17px;
-  font-weight: 400;
+  font-weight: 500;
   text-align: right;
 }
 
@@ -1935,7 +1944,7 @@
 
 .bubble b {
   color: var(--lp-accent-strong);
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .bubble.user b {
@@ -2017,14 +2026,14 @@
 
 .calculator-label-row span {
   font-size: 13.5px;
-  font-weight: 650;
+  font-weight: 580;
   color: var(--lp-muted);
 }
 
 .calculator-label-row strong {
   font-family: var(--lp-font-mono);
   font-size: 18px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--lp-fg);
   font-variant-numeric: tabular-nums;
 }
@@ -2081,7 +2090,7 @@
   color: var(--lp-muted);
   font-family: var(--lp-font-mono);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   cursor: pointer;
   transition:
     background-color 0.16s ease,
@@ -2119,7 +2128,7 @@
   background: var(--lp-accent-soft);
   color: var(--lp-accent-strong);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -2128,7 +2137,7 @@
   display: block;
   font-size: 12px;
   color: var(--lp-muted);
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .result-metric strong {
@@ -2136,7 +2145,7 @@
   margin-top: 4px;
   font-family: var(--lp-font-display);
   font-size: clamp(34px, 4vw, 44px);
-  font-weight: 500;
+  font-weight: 600;
   color: var(--lp-accent-strong);
   letter-spacing: -0.03em;
   line-height: 1;
@@ -2216,7 +2225,7 @@
   background: var(--lp-surface-soft);
   font-family: var(--lp-font-mono);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--lp-muted);
@@ -2230,7 +2239,7 @@
 .comparison-table td strong {
   display: block;
   font-size: 14.5px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--lp-fg);
 }
 
@@ -2260,7 +2269,7 @@
 
 .comparison-cell-value.advantage {
   color: var(--lp-fg);
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .comparison-cell-value.advantage svg {
@@ -2327,7 +2336,7 @@
   gap: 12px;
   color: var(--lp-fg);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   border-top: 1px solid var(--lp-border);
 }
 
@@ -2369,7 +2378,7 @@
 .install-promo-release-heading p {
   color: var(--lp-accent-strong);
   font-size: 11.5px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -2378,7 +2387,7 @@
   margin-top: 2px;
   font-family: var(--font-ui);
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -2389,7 +2398,7 @@
   border-radius: 8px;
   font-family: var(--font-mono);
   font-size: 11.5px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .install-promo-release dl {
@@ -2411,14 +2420,14 @@
 .install-promo-release dt {
   color: var(--lp-muted);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .install-promo-release dd {
   margin: 0;
   color: var(--lp-fg);
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 620;
   text-align: right;
 }
 
@@ -2438,7 +2447,7 @@
   background: var(--lp-accent-strong);
   box-shadow: 0 12px 28px color-mix(in srgb, var(--lp-accent-strong) 25%, transparent);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease,
@@ -2463,7 +2472,7 @@
   margin-top: 16px;
   color: var(--lp-accent-strong);
   font-size: 12.5px;
-  font-weight: 650;
+  font-weight: 580;
   line-height: 1.6;
 }
 
@@ -2595,7 +2604,7 @@
 .step h3 {
   margin-top: 14px;
   font-size: 20px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .step p {
@@ -2618,7 +2627,7 @@
   padding: 0 24px;
   border-radius: 13px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-surface);
   border: 1px solid var(--lp-accent-strong);
   background: var(--lp-accent-strong);
@@ -2641,7 +2650,7 @@
   padding: 0 22px;
   border-radius: 13px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   border: 1px solid var(--lp-border);
   background: var(--lp-surface);
   color: var(--lp-fg);
@@ -2770,7 +2779,7 @@
 .customer-review footer strong {
   color: inherit;
   font-size: 13.5px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .customer-review footer span {
@@ -2864,7 +2873,7 @@
   cursor: pointer;
   list-style: none;
   font-size: 15.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-fg);
 }
 
@@ -2910,7 +2919,7 @@
   margin: 32px auto 0;
   color: var(--lp-accent);
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 620;
   text-decoration: none;
   transition:
     color 0.18s ease,
@@ -3191,7 +3200,7 @@
 
   .sticky-mobile-cta-text strong {
     font-size: 13.5px;
-    font-weight: 700;
+    font-weight: 620;
     color: var(--lp-fg);
     line-height: 1.2;
   }
@@ -3206,7 +3215,7 @@
     min-height: 38px;
     padding: 0 14px;
     font-size: 13px;
-    font-weight: 700;
+    font-weight: 620;
   }
 
   .landing-page .support-chat-root {
@@ -3233,7 +3242,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--lp-accent-strong);
   text-decoration: none;
 }

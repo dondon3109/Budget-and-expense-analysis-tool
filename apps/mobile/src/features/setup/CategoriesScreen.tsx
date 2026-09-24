@@ -42,7 +42,7 @@ function CategoryRow({ category, onPress }: { category: LocalCategoryItem; onPre
       }
       accessibilityState={{ disabled }}
       android_ripple={
-        disabled ? undefined : { color: "rgba(15, 107, 91, 0.12)", borderless: false }
+        disabled ? undefined : { color: "rgba(10, 117, 86, 0.12)", borderless: false }
       }
       className="flex-row items-center"
       disabled={disabled}

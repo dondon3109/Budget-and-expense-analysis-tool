@@ -78,7 +78,7 @@ function HeaderIcon({
       accessibilityLabel={label}
       accessibilityRole="button"
       accessibilityState={{ selected: Boolean(selected) }}
-      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: true }}
+      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
       hitSlop={4}
       onPress={onPress}
       style={styles.iconButton}
@@ -152,7 +152,7 @@ function TransactionItemRow({
       accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}`}
       accessibilityHint="Opens transaction details"
       accessibilityRole="button"
-      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       onPress={() =>
         router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } })
       }

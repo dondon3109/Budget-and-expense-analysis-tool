@@ -43,7 +43,7 @@
   /* --muted, not --subtle: 11px text needs the AA-passing token. */
   color: var(--muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .legal-article section {
@@ -96,7 +96,7 @@
 
 .legal-article a {
   color: var(--action);
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -106,7 +106,7 @@
   color: var(--warning);
   border-radius: 5px;
   background: var(--warning-soft);
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .legal-callout {

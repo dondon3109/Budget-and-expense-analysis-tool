@@ -1,10 +1,10 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Tabs } from "expo-router";
-import { Platform, StyleSheet, type ColorValue } from "react-native";
+import { Platform, StyleSheet, View, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { radii, typography } from "@/ui/tokens";
 
 function TabIcon({
   name,
@@ -21,14 +21,32 @@ function TabIcon({
 }) {
   const theme = useZoptionTheme();
   const iconColor = typeof color === "string" ? color : theme.colors.textMuted;
+  // The current tab sits in a solid pill, the same marker the web tab bar uses. The pill fills
+  // the icon slot, which tabBarIconStyle sizes to PILL; the default slot is only as big as the
+  // glyph, so a larger pill would be clipped and pushed off-center.
   return (
-    <MaterialCommunityIcons
-      name={focused ? activeName : name}
-      color={focused ? theme.colors.brand : iconColor}
-      size={size}
-    />
+    <View
+      style={[styles.iconPill, { backgroundColor: focused ? theme.colors.solid : "transparent" }]}
+    >
+      <MaterialCommunityIcons
+        name={focused ? activeName : name}
+        color={focused ? theme.colors.onSolid : iconColor}
+        size={Math.min(size, 22)}
+      />
+    </View>
   );
 }
+
+const PILL = { width: 56, height: 30 } as const;
+
+const styles = StyleSheet.create({
+  iconPill: {
+    ...PILL,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: radii.round,
+  },
+});
 
 export default function TabLayout() {
   const theme = useZoptionTheme();
@@ -39,8 +57,9 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.brand,
+        tabBarActiveTintColor: theme.colors.text,
         tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarIconStyle: PILL,
         tabBarLabelStyle: {
           ...typography.caption,
           fontWeight: "600",
@@ -51,8 +70,8 @@ export default function TabLayout() {
           backgroundColor: theme.colors.surfaceRaised,
           borderTopColor: theme.colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: 54 + bottomInset,
-          paddingTop: 6,
+          height: 60 + bottomInset,
+          paddingTop: 8,
           paddingBottom: bottomInset,
         },
       }}

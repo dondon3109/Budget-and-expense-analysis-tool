@@ -30,7 +30,7 @@
   border-radius: 50%;
   color: var(--ink);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .import-guide-columns {
@@ -48,7 +48,7 @@
   border-radius: 999px;
   color: var(--ink);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .import-guide-columns a {

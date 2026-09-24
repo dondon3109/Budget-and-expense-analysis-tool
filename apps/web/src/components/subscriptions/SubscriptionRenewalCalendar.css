@@ -75,7 +75,7 @@
 
 .renewal-stat-card .stat-card-value {
   font-size: 24px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--ink);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -116,7 +116,7 @@
 .renewal-grid-title h3 {
   margin: 0;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .renewal-grid-hint {
@@ -143,7 +143,7 @@
   padding: 8px 4px;
   font-size: 11px;
   font-family: var(--font-mono);
-  font-weight: 700;
+  font-weight: 620;
   color: var(--subtle);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -198,7 +198,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 580;
   color: var(--ink);
 }
 
@@ -208,7 +208,7 @@
 
 .renewal-today-badge {
   font-size: 9.5px;
-  font-weight: 700;
+  font-weight: 620;
   padding: 1px 4px;
   border-radius: 3px;
   background: var(--solid-bg);
@@ -229,7 +229,7 @@
   align-items: center;
   gap: 2px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   color: #b91c1c;
@@ -318,7 +318,7 @@
 .renewal-timeline-heading h3 {
   margin: 0 0 4px;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 
@@ -362,14 +362,14 @@
 
 .timeline-date-label {
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 .timeline-relative-badge {
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 580;
   padding: 1px 5px;
   border-radius: 3px;
 }
@@ -409,7 +409,7 @@
 
 .timeline-sub-name {
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--ink);
 }
 
@@ -443,7 +443,7 @@
 
 .timeline-amount-val {
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }

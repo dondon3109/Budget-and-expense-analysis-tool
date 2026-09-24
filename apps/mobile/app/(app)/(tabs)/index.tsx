@@ -51,7 +51,7 @@ function QuickActionBar() {
         accessibilityLabel="Add transaction"
         accessibilityHint="Opens the new transaction form"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
         onPress={() => router.push("/(app)/transaction")}
         style={[
           styles.quickActionTile,
@@ -73,7 +73,7 @@ function QuickActionBar() {
         accessibilityLabel="Scan receipt"
         accessibilityHint="Opens camera to scan a receipt"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
         onPress={() => router.push("/(app)/receipt-scan")}
         style={[
           styles.quickActionTile,
@@ -95,7 +95,7 @@ function QuickActionBar() {
         accessibilityLabel="View budgets"
         accessibilityHint="Opens category budgets overview"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
         onPress={() => router.push("/(app)/(tabs)/budgets")}
         style={[
           styles.quickActionTile,
@@ -117,7 +117,7 @@ function QuickActionBar() {
         accessibilityLabel="AI Assistant"
         accessibilityHint="Opens financial AI assistant"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
         onPress={() => router.push("/(app)/assistant")}
         style={[
           styles.quickActionTile,
@@ -227,7 +227,7 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
               accessibilityRole="button"
               accessibilityLabel={`${account.name}, balance ${account.balanceMinor / 100} ${account.currency}. Tap to adjust balance or edit.`}
               accessibilityHint="Opens account editor to adjust balance"
-              android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+              android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
               onPress={() => router.push(`/(app)/reference?entityType=account&id=${account.id}`)}
               style={({ pressed }) => [styles.accountRow, { opacity: pressed ? 0.75 : 1 }]}
             >

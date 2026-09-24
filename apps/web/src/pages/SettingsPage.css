@@ -23,7 +23,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 19px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -57,7 +57,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 28px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.05;
 }
@@ -76,7 +76,7 @@
   color: var(--subtle);
   font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 580;
   letter-spacing: 0.06em;
   line-height: 1.5;
   text-align: right;
@@ -109,7 +109,7 @@
 .avatar-settings-content label > span {
   color: var(--ink);
   font-size: 13.5px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .avatar-settings-content input[type="file"] {
@@ -139,7 +139,7 @@
   background: var(--solid-bg);
   cursor: pointer;
   font: inherit;
-  font-weight: 750;
+  font-weight: 650;
   transition: background-color 150ms ease;
 }
 
@@ -183,7 +183,7 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 580;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -340,7 +340,7 @@
 .settings-support-item strong {
   color: var(--ink);
   font-size: 13.5px;
-  font-weight: 780;
+  font-weight: 650;
 }
 
 .settings-support-item p {
@@ -353,14 +353,14 @@
 
 .settings-support-email {
   color: var(--ink);
-  font-weight: 760;
+  font-weight: 650;
   overflow-wrap: anywhere;
 }
 
 .settings-support-item .settings-contact-feedback {
   margin-top: 7px;
   color: var(--success);
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .settings-support-item .button {
@@ -393,7 +393,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 20px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -548,7 +548,7 @@
 .settings-voice-lang-name {
   color: var(--ink);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .settings-voice-lang-badge {
@@ -559,7 +559,7 @@
   background: color-mix(in srgb, var(--action) 12%, transparent);
   color: var(--action);
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }

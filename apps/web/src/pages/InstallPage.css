@@ -73,7 +73,7 @@
   gap: 10px;
   color: var(--lp-fg);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 580;
   line-height: 1.45;
 }
 
@@ -124,7 +124,7 @@
 .apk-card-heading p {
   color: var(--lp-accent-strong);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.055em;
   text-transform: uppercase;
 }
@@ -143,7 +143,7 @@
   border-radius: 7px;
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .apk-download-unavailable,
@@ -165,7 +165,7 @@
   gap: 8px;
   color: var(--lp-fg);
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 580;
   line-height: 1.45;
 }
 
@@ -261,7 +261,7 @@
 .apk-checksum p {
   color: var(--lp-muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.045em;
   text-transform: uppercase;
 }
@@ -269,7 +269,7 @@
 .apk-release-facts dd {
   margin: 5px 0 0;
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 580;
   line-height: 1.45;
 }
 
@@ -298,7 +298,7 @@
 .apk-release-notes-title {
   color: var(--lp-muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.045em;
   text-transform: uppercase;
 }
@@ -359,7 +359,7 @@
   background: transparent;
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   cursor: pointer;
 }
 
@@ -385,7 +385,7 @@
   gap: 6px;
   color: var(--lp-accent-strong);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -482,7 +482,7 @@
 .install-boundary-points h3 {
   font-family: var(--font-ui);
   font-size: 16px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .apk-install-steps h3 {
@@ -551,7 +551,7 @@
   gap: 18px;
   color: var(--lp-fg);
   font-size: 15px;
-  font-weight: 720;
+  font-weight: 620;
   line-height: 1.4;
   list-style: none;
   cursor: pointer;
@@ -671,7 +671,7 @@
   align-items: center;
   color: var(--lp-accent-strong);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   text-decoration: underline;
   text-underline-offset: 4px;
 }

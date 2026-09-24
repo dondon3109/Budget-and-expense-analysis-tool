@@ -10,7 +10,7 @@
   border: 1px solid color-mix(in srgb, var(--action) 22%, var(--line));
   border-radius: 50%;
   background: color-mix(in srgb, var(--action) 9%, var(--surface));
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 

@@ -188,7 +188,7 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
   return (
     <Pressable
       accessibilityRole="button"
-      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       onPress={onPress}
     >
       <Card

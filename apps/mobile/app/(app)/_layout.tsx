@@ -8,7 +8,7 @@ import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-
 import { SyncProvider } from "@/sync/sync-state";
 import { ErrorState } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { fonts, typography } from "@/ui/tokens";
 
 export default function AuthenticatedLayout() {
   const session = useSessionSnapshot();
@@ -84,7 +84,7 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
           // instead of the platform default color scheme.
           headerStyle: { backgroundColor: theme.colors.canvas },
           headerTintColor: theme.colors.text,
-          headerTitleStyle: { color: theme.colors.text },
+          headerTitleStyle: { color: theme.colors.text, fontFamily: fonts.heading },
           headerShadowVisible: false,
           contentStyle: { backgroundColor: theme.colors.canvas },
         }}

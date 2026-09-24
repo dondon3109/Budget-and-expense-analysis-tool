@@ -83,7 +83,7 @@
   background: none;
   color: var(--sage);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   cursor: pointer;
   transition: color 0.18s ease;
 }

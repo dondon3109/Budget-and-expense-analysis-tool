@@ -42,7 +42,7 @@
 .tutorials-hero h1 {
   font-family: var(--font-display);
   font-size: clamp(38px, 6vw, 62px);
-  font-weight: 400;
+  font-weight: 500;
   letter-spacing: -0.03em;
   color: var(--ink);
   margin: 0 0 0.75rem 0;
@@ -172,7 +172,7 @@
 
 .tutorial-card-header h2 {
   font-size: 1.375rem;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   margin: 0 0 0.5rem 0;
   line-height: 1.3;
@@ -211,7 +211,7 @@
   border: 1px solid var(--line);
   color: var(--brand-strong);
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 620;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -289,7 +289,7 @@
 
 .tutorials-help-banner h2 {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   margin: 0 0 0.25rem 0;
 }

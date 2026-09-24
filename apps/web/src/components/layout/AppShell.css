@@ -23,7 +23,7 @@
   flex-direction: column;
   overflow-y: auto;
   border-right: 1px solid var(--line);
-  background: var(--paper);
+  background: var(--page-accent);
   transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -57,8 +57,9 @@
     background 0.16s ease;
 }
 
-.nav-collapse-toggle:hover {
-  transform: scale(1.04);
+.nav-collapse-toggle {
+  border-color: transparent;
+  background: transparent;
 }
 
 .sidebar .brand,
@@ -77,14 +78,14 @@
   overflow: hidden;
   border-radius: var(--radius-sm);
   background: var(--solid-bg);
-  box-shadow: 0 3px 8px color-mix(in srgb, var(--solid-bg) 25%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
 }
 
 .sidebar .brand-wordmark,
 .mobile-header .brand-wordmark {
   color: var(--ink);
-  font-family: var(--font-ui);
-  font-weight: 750;
+  font-family: var(--font-display);
+  font-weight: 620;
 }
 
 .sidebar-profile {
@@ -92,8 +93,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: var(--surface-soft);
-  box-shadow: var(--shadow-card);
+  background: var(--surface);
   transition: border-color 0.18s ease;
 }
 
@@ -153,8 +153,8 @@
 
 .sidebar-account-identity strong {
   color: var(--ink);
-  font-size: 12.5px;
-  font-weight: 750;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .sidebar-profile-theme {
@@ -171,7 +171,7 @@
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 650;
+  font-weight: 580;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -183,31 +183,31 @@
 }
 
 .side-nav {
-  margin-top: 16px;
+  margin-top: 14px;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-item {
+  position: relative;
   width: 100%;
-  min-height: 44px;
+  min-height: 40px;
   padding: 0 12px;
   display: flex;
   align-items: center;
   gap: 11px;
   color: var(--muted);
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 9px;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 650;
+  font-size: 13.5px;
+  font-weight: 550;
   text-align: left;
   transition:
     color 150ms ease,
     border-color 150ms ease,
-    background 150ms ease,
-    transform 150ms ease;
+    background 150ms ease;
 }
 
 .nav-item svg {
@@ -219,17 +219,31 @@
 .nav-item:not(.current):hover {
   color: var(--ink);
   background: var(--surface-hover);
-  transform: translateX(2px);
 }
 
+/* The current page reads as the sheet pulled to the front: a raised surface with a mint
+   spine, so it stays obvious without flooding the rail with brand colour. */
 .nav-item.current {
-  color: var(--action-strong);
-  background: var(--action-soft);
-  font-weight: 700;
+  color: var(--ink);
+  border-color: var(--line);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+  font-weight: 580;
+}
+
+.nav-item.current::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: -1px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--mint);
 }
 
 .nav-item.current svg {
-  color: var(--action);
+  color: var(--brand);
 }
 
 .nav-item small {
@@ -262,8 +276,8 @@
   border-radius: var(--radius-sm);
   background: transparent;
   cursor: pointer;
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 12.5px;
+  font-weight: 550;
   transition:
     color 150ms ease,
     background 150ms ease,
@@ -316,7 +330,7 @@
 .dashboard-page {
   width: min(var(--content-max), calc(100% - 64px));
   margin: 0 auto;
-  padding: 52px 0 72px;
+  padding: 40px 0 72px;
 }
 
 .dashboard-header {
@@ -343,19 +357,27 @@
   border-radius: 0;
   background: transparent;
   font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 650;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.dashboard-page .eyebrow::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--mint);
 }
 
 .dashboard-header h1 {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(38px, 3.3vw, 50px);
-  font-weight: 500;
-  letter-spacing: -0.03em;
+  font-size: clamp(34px, 3vw, 46px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
   line-height: 1.02;
 }
 
@@ -453,8 +475,8 @@
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--line);
-    background: var(--paper);
-    box-shadow: 0 1px 12px color-mix(in srgb, var(--shadow) 76%, transparent);
+    background: color-mix(in srgb, var(--page-accent) 92%, transparent);
+    backdrop-filter: blur(16px);
   }
 
   .mobile-header .brand {
@@ -492,11 +514,11 @@
     border-right: 0;
     border-radius: 18px 0 0 18px;
     background: var(--paper);
-    box-shadow: -24px 0 54px color-mix(in srgb, var(--overlay) 34%, transparent);
   }
 
   .sidebar.open {
     transform: translateX(0);
+    box-shadow: -24px 0 54px color-mix(in srgb, var(--overlay) 34%, transparent);
   }
 
   .sidebar-toggle-row,
@@ -535,7 +557,8 @@
     color: var(--ink);
     font-family: var(--font-display);
     font-size: 20px;
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.03em;
   }
 
   .sidebar-profile {
@@ -558,10 +581,12 @@
   }
 
   .nav-item.current {
-    color: var(--action-strong);
-    border-color: color-mix(in srgb, var(--action) 28%, var(--line));
-    background: var(--action-soft);
+    border-color: var(--ink);
     box-shadow: none;
+  }
+
+  .nav-item.current::before {
+    display: none;
   }
 
   .sidebar-account {
@@ -654,8 +679,7 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: stretch;
     border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--paper) 94%, transparent);
-    box-shadow: 0 -10px 28px color-mix(in srgb, var(--shadow) 72%, transparent);
+    background: color-mix(in srgb, var(--page-accent) 92%, transparent);
     backdrop-filter: blur(18px);
   }
 
@@ -672,22 +696,25 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    font-size: 9px;
-    font-weight: 750;
+    font-size: 10px;
+    font-weight: 600;
     line-height: 1;
   }
 
   .mobile-tab-item svg {
     flex: 0 0 auto;
+    padding: 3px 12px;
+    box-sizing: content-box;
+    border-radius: 999px;
   }
 
   .mobile-tab-item.current {
-    color: var(--action-strong);
-    background: var(--action-soft);
+    color: var(--ink);
   }
 
   .mobile-tab-item.current svg {
-    color: var(--action);
+    color: var(--solid-text);
+    background: var(--solid-bg);
   }
 }
 

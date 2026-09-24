@@ -38,7 +38,7 @@
 
 .quick-start-header h2 {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   margin: 0;
 }
@@ -89,7 +89,7 @@
   background-color: var(--action-soft);
   color: var(--action-strong);
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 620;
   display: flex;
   align-items: center;
   justify-content: center;

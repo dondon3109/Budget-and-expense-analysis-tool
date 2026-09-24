@@ -124,10 +124,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-splash-screen",
         {
-          backgroundColor: "#06473d",
+          backgroundColor: "#0c1512",
           image: "./assets/zoption-icon.png",
           imageWidth: 180,
-          dark: { backgroundColor: "#0f1115" },
+          dark: { backgroundColor: "#080b0a" },
+        },
+      ],
+      [
+        "expo-font",
+        {
+          fonts: [
+            "./assets/fonts/BricolageGrotesque-SemiBold.ttf",
+            "./assets/fonts/BricolageGrotesque-Bold.ttf",
+          ],
         },
       ],
       ["expo-sqlite", { useSQLCipher: true }],

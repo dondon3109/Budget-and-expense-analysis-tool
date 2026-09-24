@@ -24,14 +24,6 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import "./AdminOverviewPage.css";
 
-const DIRECTION_CONTRACT = `<!--
-THESIS: The admin console is one rail of areas at rest and a single workbench in use, not a grid of settings cards.
-OWN-WORLD: Zoption paper panels, deep green actions, hairline rules, Newsreader headings, dense Manrope controls, IBM Plex Mono counts.
-STORY: Read the live state of every platform-admin area, open the three that own a page, and work the five sponsored Pro seats in the reserved center.
-FIRST VIEWPORT: Masthead with access truth and refresh, the four-peg rail carrying state and one action each, then the seats workbench filling the floor below.
-FORM: Grounded structure 5 of 7 for an operate surface, the rail with a reserved center; peg-rail staging; seed 36972255.
--->`;
-
 const REVIEW_SUMMARY_QUERY = { page: 1, pageSize: 1 } as const;
 
 const OPEN_REPORT_STATUSES: AdminBugReport["status"][] = [
@@ -373,8 +365,6 @@ export function AdminOverviewPage() {
   return (
     <AppShell>
       <div className="admin-hub">
-        <span hidden aria-hidden="true" dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }} />
-
         <Breadcrumbs items={[{ label: "Home", to: "/app" }, { label: "Admin console" }]} />
 
         <header className="admin-hub-header">

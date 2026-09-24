@@ -7,7 +7,7 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
   await page.goto("/");
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#0f1115");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#080b0a");
 
   const dialog = page.getByRole("dialog", { name: "Choose how Zoption looks" });
   const darkOption = page.getByRole("radio", { name: "Preview Dark theme" });
@@ -21,7 +21,7 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
   await expect(dialog).toBeVisible();
   await expect(coffeeOption).toHaveAttribute("aria-checked", "true");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "coffee");
-  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#efe4d2");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#ece3d5");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("zoption-theme"))).toBeNull();
 
   await page.getByRole("button", { name: "Confirm Coffee theme" }).click();
@@ -48,12 +48,12 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
       }),
     )
     .toEqual({
-      page: "#efe4d2",
-      paper: "#fff9ef",
-      surface: "#fffdf7",
-      ink: "#3a2a23",
-      line: "#dbc6aa",
-      chartGrid: "#ddcbb4",
+      page: "#ece3d5",
+      paper: "#fbf6ee",
+      surface: "#fdfaf4",
+      ink: "#2a1c15",
+      line: "#e0d2bf",
+      chartGrid: "#e0d2bf",
       colorScheme: "light",
     });
 
@@ -90,11 +90,11 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
       }),
     )
     .toEqual({
-      page: "#0f1115",
-      paper: "#171a20",
-      surface: "#1d2128",
-      line: "#303640",
-      chartGrid: "#303640",
+      page: "#080b0a",
+      paper: "#111615",
+      surface: "#131918",
+      line: "#222b29",
+      chartGrid: "#222b29",
     });
 });
 

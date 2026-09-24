@@ -21,7 +21,7 @@
 .plan-usage-heading span {
   color: var(--muted);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -51,7 +51,7 @@
 .plan-usage-indicator > p {
   color: var(--subtle);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 580;
   line-height: 1.45;
 }
 
@@ -64,7 +64,7 @@
   flex: 0 0 auto;
   color: var(--action);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 

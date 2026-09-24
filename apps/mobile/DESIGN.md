@@ -2,18 +2,19 @@
 
 ## Direction
 
-Zoption mobile is calm, compact, and money-first. It carries the existing restrained green identity into native Android and iOS patterns without reproducing the website screen for screen. Financial values and task state outrank decoration.
+Zoption mobile is calm, compact, and money-first. It shares the web app's palette and heading face (a cool mineral ground, near-black ink actions, and the emerald and mint of the Z mark) in native Android and iOS patterns without reproducing the website screen for screen. Financial values and task state outrank decoration.
 
 ## Themes
 
-- Light uses a warm paper canvas, white raised surfaces, deep green text, and restrained teal brand actions.
-- Dark uses near-black neutral surfaces with high-contrast text and brighter semantic accents.
-- Coffee uses warmer tan surfaces and brown text while retaining the Zoption green action color.
+- Light uses a cool green-grey canvas, white raised surfaces, near-black ink text, near-black primary actions, and emerald brand accents.
+- Dark uses a near-black green-tinted canvas, raised dark surfaces, and mint primary actions and accents.
+- Coffee uses oat surfaces, roasted-brown text and primary actions, and the same emerald brand accents.
+- Primary buttons and the active tab pill use the `solid` tokens; `brand` stays for links, selection, and brand-tinted chips.
 - Semantic income, expense, budget, info, warning, and danger colors are centralized in `src/ui/tokens.ts`; feature code does not introduce competing palettes.
 
 ## Typography and money
 
-- System fonts preserve Dynamic Type and native rendering.
+- Screen titles, dialog and empty-state titles, and native header titles use Bricolage Grotesque (`fonts` in `src/ui/tokens.ts`), embedded at build time by the `expo-font` config plugin from `assets/fonts`. Body text and money stay on the system face, which preserves native rendering and true tabular figures. All text keeps Dynamic Type scaling.
 - Display, title, headline, body, callout, label, and caption roles provide a small type hierarchy.
 - `MoneyValue` uses tabular numerals and an explicit screen-reader label such as “42,850 Philippine pesos.”
 - Headings stay compact; dense financial screens should not use oversized decorative hero text.

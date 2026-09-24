@@ -14,6 +14,11 @@ All notable product changes are documented here.
 
 - The mobile app no longer asks you to sign in again when it opens offline. It used to show the sign-in screen once the saved session was more than about an hour old. Now your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.
 
+### Changed
+
+- The web app has a new look: a cool mineral light theme with near-black primary actions and the Z mark's emerald and mint as accents, a deeper near-black dark theme, a refreshed Coffee theme, and new type (Bricolage Grotesque headings, Geist text, Geist Mono figures). The sidebar, balance card, sign-in panel, landing hero, and transaction table are restyled to match.
+- The Android and iOS apps use the same palette in Light, Dark, and Coffee, with Bricolage Grotesque screen titles, near-black (mint in Dark) primary buttons, and a solid pill marking the current tab.
+
 ## 2.43.1 — 2026-09-23
 
 ### Fixed

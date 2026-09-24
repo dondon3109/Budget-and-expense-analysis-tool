@@ -344,7 +344,7 @@ function MonthNavigator({
       <Pressable
         accessibilityLabel="Previous month"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: true }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
         hitSlop={4}
         onPress={() => onChange(shiftMonth(month, -1))}
         style={styles.iconButton}
@@ -378,7 +378,7 @@ function MonthNavigator({
       <Pressable
         accessibilityLabel="Next month"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: true }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
         hitSlop={4}
         onPress={() => onChange(shiftMonth(month, 1))}
         style={styles.iconButton}
@@ -483,7 +483,7 @@ function ZeroBudgetsView({
                   accessibilityHint={`Sets a monthly budget limit for ${category.name}`}
                   accessibilityLabel={`Set budget for ${category.name}`}
                   accessibilityRole="button"
-                  android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+                  android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
                   disabled={disabled}
                   onPress={() => onSelectCategory(category.id)}
                   style={({ pressed }) => [
@@ -740,7 +740,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
     >
       <Pressable
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+        android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
         disabled={row.syncState === "conflicted" || row.syncState === "failed"}
         onPress={onPress}
         style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}

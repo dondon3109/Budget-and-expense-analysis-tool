@@ -34,7 +34,7 @@
   margin: 0 0 7px;
   color: var(--action);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -48,7 +48,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 29px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.05;
 }
@@ -90,7 +90,7 @@
 .share-budget-fieldset legend {
   color: var(--ink);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .share-budget-field input,
@@ -174,7 +174,7 @@
 .share-budget-error {
   color: var(--danger);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .share-budget-generated {
@@ -204,7 +204,7 @@
   border-radius: 10px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .share-budget-copy-button,

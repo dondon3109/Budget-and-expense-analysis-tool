@@ -16,7 +16,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.05;
 }
@@ -35,7 +35,7 @@
   color: var(--subtle);
   font-family: var(--font-mono);
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 580;
   letter-spacing: 0.06em;
   line-height: 1.5;
   text-align: right;
@@ -89,7 +89,7 @@
   margin-bottom: 7px;
   color: var(--ink);
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .sponsored-pro-seats-add > div,
@@ -154,7 +154,7 @@
 
 .sponsored-pro-seats-capacity {
   color: var(--ink);
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .sponsored-pro-seat {
@@ -201,7 +201,7 @@
   justify-content: flex-end;
   color: var(--danger);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 @media (max-width: 760px) {

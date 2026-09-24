@@ -55,7 +55,7 @@
 .review-prompt-heading p {
   color: var(--action);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -81,7 +81,7 @@
   margin-bottom: 7px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .review-rating > div {

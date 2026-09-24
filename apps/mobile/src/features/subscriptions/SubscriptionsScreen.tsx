@@ -369,7 +369,7 @@ function SubscriptionRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${subscription.name}, ${moneyAccessibilityLabel(subscription.amountMinor, currency)}, ${subscription.status}`}
-      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       onPress={onPress}
     >
       <Card

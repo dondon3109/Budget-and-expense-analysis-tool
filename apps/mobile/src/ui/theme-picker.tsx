@@ -13,9 +13,9 @@ const options: Array<{
   icon?: keyof typeof MaterialCommunityIcons.glyphMap;
 }> = [
   { value: "system", label: "System", icon: "theme-light-dark" },
-  { value: "light", label: "Light", swatchBg: "#ffffff", swatchDot: "#0f6b5b" },
-  { value: "dark", label: "Dark", swatchBg: "#0f1115", swatchDot: "#67e0bc" },
-  { value: "coffee", label: "Coffee", swatchBg: "#efe4d2", swatchDot: "#0f6b5b" },
+  { value: "light", label: "Light", swatchBg: "#f1f3f2", swatchDot: "#0c1512" },
+  { value: "dark", label: "Dark", swatchBg: "#080b0a", swatchDot: "#5fe3b8" },
+  { value: "coffee", label: "Coffee", swatchBg: "#ece3d5", swatchDot: "#2a1c15" },
 ];
 
 export function ThemePicker() {
@@ -32,7 +32,7 @@ export function ThemePicker() {
             accessibilityRole="radio"
             accessibilityState={{ selected }}
             android_ripple={{
-              color: selected ? "rgba(15, 107, 91, 0.16)" : "rgba(0, 0, 0, 0.06)",
+              color: selected ? "rgba(10, 117, 86, 0.16)" : "rgba(0, 0, 0, 0.06)",
               borderless: false,
             }}
             onPress={() => setPreference(option.value)}

@@ -62,7 +62,7 @@
 .cookie-consent-copy a,
 .cookie-preferences-policy-note a {
   color: var(--action);
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
@@ -186,7 +186,7 @@
   border-radius: 999px;
   background: var(--brand-soft);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .cookie-preference-copy p {
