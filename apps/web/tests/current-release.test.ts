@@ -26,9 +26,8 @@ describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "Pay for Zoption Pro with Dodo Payments",
-      "Debt payments that pay down the debt",
-      "Remaining budget that stays honest",
-      "Income entries save again",
+      "An optional app lock on Android",
+      "Open offline without signing in again",
       "Android Beta 0.2.34",
     ]);
 
@@ -36,11 +35,21 @@ describe("current release notes", () => {
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/merchant of record/i);
-    expect(copy).toMatch(/balance drops by the payment/i);
     expect(copy).toMatch(/Android Beta 0\.2\.34/);
   });
 
-  it("keeps the 2.41.3 notes as history", () => {
+  it("keeps the debt payment and edit notes as 2.43.1", () => {
+    expect(titles("2.43.1")).toEqual([
+      "Debt payments that pay down the debt",
+      "Edits that stay edits",
+      "Categories without a limit stay out of your budget",
+      "Steadier loading on a slow connection",
+      "A clearer debt form",
+    ]);
+    expect(notes("2.43.1")).toMatch(/lowers that debt's balance/i);
+  });
+
+  it("keeps the splash, safe-to-spend, and forecast notes as 2.41.3", () => {
     expect(titles("2.41.3")).toEqual([
       "A startup screen that no longer flickers",
       "A faster welcome into your workspace",
@@ -50,11 +59,16 @@ describe("current release notes", () => {
       "Honest amounts in the remittance calculator",
       "Android Beta 0.2.33",
     ]);
-    expect(notes("2.41.3")).toMatch(/a single handover rather than a flash/i);
+
+    const copy = notes("2.41.3");
+    expect(copy).toMatch(/a single handover rather than a flash/i);
+    expect(copy).toMatch(/safely spend this week/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.33/);
   });
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.43.1",
       "2.41.3",
       "2.39.0",
       "2.38.0",

@@ -3,6 +3,7 @@ import { ActivityIndicator, Platform, Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
+import { AppLockGate } from "@/features/app-lock/AppLockGate";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
 import { ErrorState } from "@/ui/components";
@@ -31,9 +32,11 @@ export default function AuthenticatedLayout() {
   if (session.status !== "signed-in") return <Redirect href="/(public)/sign-in" />;
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
   return (
-    <LocalWorkspaceProvider subject={session.subject}>
-      <LocalWorkspaceGate identity={identity} />
-    </LocalWorkspaceProvider>
+    <AppLockGate subject={session.subject}>
+      <LocalWorkspaceProvider subject={session.subject}>
+        <LocalWorkspaceGate identity={identity} />
+      </LocalWorkspaceProvider>
+    </AppLockGate>
   );
 }
 

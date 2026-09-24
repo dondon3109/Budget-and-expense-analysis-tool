@@ -41,6 +41,7 @@ const secretVariableNames = [
   "FISH_AUDIO_API_KEY",
   "PROVIDER_CREDENTIAL_ENCRYPTION_KEY",
   "OPS_EGRESS_TOKEN",
+  "GITHUB_BUGFIX_DISPATCH_TOKEN",
 ];
 const productionWebOrigins = ["https://www.zoption.site", "https://zoption.site"];
 

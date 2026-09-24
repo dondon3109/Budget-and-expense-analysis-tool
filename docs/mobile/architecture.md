@@ -83,6 +83,16 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
   cached financial screens to render offline. The independent `/api/app/me` assertion must confirm the
   Worker-derived user and tenant before synchronization starts. An identity mismatch signs out the
   session while preserving the encrypted workspace for deliberate recovery.
+- An offline start whose access token has expired still opens the workspace. auth-js cannot refresh
+  the token, but it keeps the stored refresh token after a network failure, so `SessionProvider`
+  reads the stored subject from `readStoredSessionSubject()`. The `/api/app/me` assertion runs
+  again when NetInfo reports the device reachable, and a refresh token Supabase rejects signs the
+  session out.
+- The optional app lock (`src/auth/app-lock.ts`, `AppLockGate`) holds a salted SHA-256 of the
+  user's app password in SecureStore under `zoption.app_lock.<subject>`. The gate covers the
+  signed-in stack on a cold start and after more than 60 seconds in the background. The app
+  stays mounted underneath, so navigation and unsaved input survive. Five wrong attempts pause
+  entry for 30 seconds. A user-initiated sign-out deletes the lock record.
 - Startup migrations use the keyed connection's regular transaction. Expo's exclusive transaction helper creates another native connection and therefore cannot be used unless that connection is separately keyed.
 - D1 owns cross-device ordering through tenant-scoped integer sequences. Database triggers attach
   existing web/API writes to immutable mobile change rows, while the authenticated pull route exposes

@@ -401,12 +401,13 @@ export function TransactionsPage() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: async (input: TransactionInput) =>
-      editing && !editing.id.startsWith("optimistic:")
-        ? updateTransaction(workspace, { id: editing.id, input })
+    // The edit target travels in the variables: onMutate clears `editing`, and a re-render before
+    // mutationFn runs swaps in options whose closure no longer sees it, turning an edit into a create.
+    mutationFn: async ({ input, form }: { input: TransactionInput; form?: TransactionListItem }) =>
+      form && !form.id.startsWith("optimistic:")
+        ? updateTransaction(workspace, { id: form.id, input })
         : createTransaction(workspace, input),
-    onMutate: async (input) => {
-      const form = editing;
+    onMutate: async ({ input, form }) => {
       const id = form?.id ?? optimisticId("transaction");
       const item = optimisticTransaction(
         id,
@@ -1207,7 +1208,7 @@ export function TransactionsPage() {
           busy={saveMutation.isPending}
           serverError={saveMutation.error?.message}
           onSubmit={async (input) => {
-            await saveMutation.mutateAsync(input);
+            await saveMutation.mutateAsync({ input, form: editing });
             setFormDraft(undefined);
           }}
           onClose={() => {

@@ -248,7 +248,7 @@ export default function MoreScreen() {
           <MenuItem
             icon="account-cog-outline"
             title="Account"
-            subtitle="Identity, email, and deletion options"
+            subtitle="Identity, app lock, and deletion options"
             onPress={() => router.push("/(app)/account")}
           />
         </View>

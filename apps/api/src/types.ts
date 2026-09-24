@@ -73,6 +73,7 @@ export interface Bindings {
   DODO_PAYMENTS_API_KEY?: string;
   DODO_PAYMENTS_WEBHOOK_KEY?: string;
   OPS_EGRESS_TOKEN?: string;
+  GITHUB_BUGFIX_DISPATCH_TOKEN?: string;
 }
 
 export interface AuthUser {
