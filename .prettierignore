@@ -12,7 +12,6 @@ coverage/
 .claude/
 
 # Tool reports, not source.
-.impeccable/
 
 # Generated artifacts: the Android toolchain, Expo, pnpm, and drizzle-kit own these.
 apps/mobile/.expo/

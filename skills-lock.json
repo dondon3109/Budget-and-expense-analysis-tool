@@ -1,12 +1,6 @@
 {
   "version": 1,
   "skills": {
-    "impeccable": {
-      "source": "pbakaus/impeccable",
-      "sourceType": "github",
-      "skillPath": ".agents/skills/impeccable/SKILL.md",
-      "computedHash": "702099286366bb9baaad1984d003b02fb33ee5cc8d396cd376928f5f674c3464"
-    },
     "supabase": {
       "source": "supabase/agent-skills",
       "sourceType": "github",
