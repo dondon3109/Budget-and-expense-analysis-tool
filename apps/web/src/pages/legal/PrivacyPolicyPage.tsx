@@ -7,7 +7,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, assistant, consent, and operational information."
-      lastUpdated="September 19, 2026"
+      lastUpdated="September 23, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -46,10 +46,11 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Plan and billing:</strong> plan tier, including Free or Zoption Pro, plus
             feature usage and allowance records used to apply plan limits. If you start a Pro
-            checkout or subscribe, this also includes PayPal payer, subscription, plan, and
-            checkout-reference identifiers; subscription status and billing interval; current-period
-            and scheduled-change timestamps; and minimal verified-webhook event metadata needed to
-            process an event and avoid processing it twice.
+            checkout or subscribe, this also includes PayPal payer or Dodo Payments customer,
+            checkout session, subscription, plan, and checkout-reference identifiers; subscription
+            status and billing interval; current-period and scheduled-change timestamps; and minimal
+            verified-webhook event metadata needed to process an event and avoid processing it
+            twice.
           </li>
           <li>
             <strong>Assistant:</strong> versioned consent state, display-name preferences, response
@@ -98,8 +99,8 @@ export function PrivacyPolicyPage() {
             <strong>Do not submit banking credentials.</strong> Zoption does not currently connect
             to banks. Do not enter full account numbers, passwords, PINs, security codes, or bank
             credentials unless a future feature explicitly supports secure handling of that data.
-            Full payment-card credentials entered during PayPal approval are handled by PayPal and
-            are not stored by this Zoption integration.
+            Full payment-card credentials entered during PayPal approval or Dodo Payments checkout
+            are handled by that provider and are not stored by this Zoption integration.
           </p>
         </div>
       </section>
@@ -128,8 +129,8 @@ export function PrivacyPolicyPage() {
           </li>
           <li>
             determine available plan features and enforce Free and Pro usage limits; and, if you
-            choose Pro, initiate PayPal subscription approval, reconcile verified PayPal billing
-            webhooks, and apply paid access;
+            choose Pro, initiate PayPal subscription approval or a Dodo Payments checkout, reconcile
+            verified billing webhooks, and apply paid access;
           </li>
           <li>remember browser preferences and honor privacy choices;</li>
           <li>
@@ -203,6 +204,12 @@ export function PrivacyPolicyPage() {
             <strong>PayPal</strong> only if you start checkout for or subscribe to Zoption Pro.
             PayPal handles payment details in its interfaces and sends billing webhooks that Zoption
             verifies on its server before reconciling subscription state and paid access.
+          </li>
+          <li>
+            <strong>Dodo Payments</strong> only if you choose it to check out for or subscribe to
+            Zoption Pro. Dodo Payments acts as merchant of record for that purchase, handles payment
+            details in its hosted checkout, and sends signed billing webhooks that Zoption verifies
+            on its server before reconciling subscription state and paid access.
           </li>
           <li>
             <strong>Resend</strong> for operational email delivery, including notifying the Zoption
@@ -326,8 +333,8 @@ export function PrivacyPolicyPage() {
           operate Free and Pro access and apply feature limits. If you start a Pro checkout or
           subscribe, billing provider identifiers, subscription state, and minimal verified event
           metadata are retained as needed to operate paid access, resolve billing issues, meet legal
-          obligations, and defend claims. Full payment-card credentials are handled by PayPal and
-          are not stored by this integration.
+          obligations, and defend claims. Full payment-card credentials are handled by PayPal or
+          Dodo Payments and are not stored by this integration.
         </p>
         <p>
           Product-support messages are kept in the current browser tab&apos;s session storage so the
@@ -412,19 +419,19 @@ export function PrivacyPolicyPage() {
           Zoption uses service providers that may process personal data outside the Philippines or
           the country where you live. Cloudflare hosts the application, API, and primary D1
           financial database, and stores profile pictures in R2. Supabase processes identity,
-          session, and profile metadata. If you start a Pro checkout or subscribe, PayPal processes
-          subscription approval and payment information. When you enable the AI assistant or send a
-          product-support chat message, the relevant request context described above may be
-          transferred to and processed by the configured AI provider in locations where it or its
-          subprocessors operate. If you enable voice, the recording described above may be processed
-          by Cloudflare Workers AI or your browser&apos;s speech service and the generated-reply
-          text may be processed by Fish Audio in locations where they or their subprocessors
-          operate. Metadata-only AI observability events are sent to PostHog&apos;s US Cloud region.
-          Privacy laws in those locations may differ from those in your country. Zoption remains
-          responsible for personal data under its control and restricts transfers to information
-          reasonably necessary for the relevant service. We use applicable provider terms and
-          reasonable access and security controls, and will use any additional consent or transfer
-          mechanism required by law. Contact{" "}
+          session, and profile metadata. If you start a Pro checkout or subscribe, PayPal or Dodo
+          Payments, whichever you choose, processes subscription approval and payment information.
+          When you enable the AI assistant or send a product-support chat message, the relevant
+          request context described above may be transferred to and processed by the configured AI
+          provider in locations where it or its subprocessors operate. If you enable voice, the
+          recording described above may be processed by Cloudflare Workers AI or your browser&apos;s
+          speech service and the generated-reply text may be processed by Fish Audio in locations
+          where they or their subprocessors operate. Metadata-only AI observability events are sent
+          to PostHog&apos;s US Cloud region. Privacy laws in those locations may differ from those
+          in your country. Zoption remains responsible for personal data under its control and
+          restricts transfers to information reasonably necessary for the relevant service. We use
+          applicable provider terms and reasonable access and security controls, and will use any
+          additional consent or transfer mechanism required by law. Contact{" "}
           <a href="mailto:support@zoption.site">support@zoption.site</a> for information about
           relevant processing locations or safeguards.
         </p>

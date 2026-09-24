@@ -1,5 +1,5 @@
 import { createAccountDeletionService } from "./account-deletion";
-import { reconcilePayPalCheckout } from "./billing/reconciliation";
+import { reconcileBillingCheckout } from "./billing/reconciliation";
 import { billingRepository } from "./db/billing";
 import type { JobMessage } from "./jobs";
 import { subscriptionRenewalService } from "./subscriptions/renewals";
@@ -10,9 +10,10 @@ const accountDeletionService = createAccountDeletionService();
 
 export async function handleQueuedJob(env: Bindings, message: JobMessage): Promise<void> {
   switch (message.type) {
+    case "billing-reconcile":
     case "paypal-reconcile":
       if (!message.tenantId) return;
-      await reconcilePayPalCheckout(billingRepository, env, message.tenantId);
+      await reconcileBillingCheckout(billingRepository, env, message.tenantId);
       return;
     case "bug-report-notify":
       if (!message.reportId) return;

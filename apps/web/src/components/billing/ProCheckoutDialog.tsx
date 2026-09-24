@@ -114,6 +114,7 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
   const createSubscription = useCallback(async () => {
     const checkout = await startBillingCheckout(workspace, interval);
     approvalUrlRef.current = checkout.approvalUrl;
+    if (!checkout.subscriptionId) throw new Error(CHECKOUT_OPEN_ERROR);
     return { subscriptionId: checkout.subscriptionId };
   }, [interval, workspace]);
 
@@ -287,12 +288,13 @@ function ProCheckoutDialogContent({
   const initialActionRef = useRef<HTMLButtonElement>(null);
   const initialProActionRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [dodoBusy, setDodoBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [selectedInterval, setSelectedInterval] = useState<BillingInterval>("month");
   const [providerConfig, setProviderConfig] = useState<BillingProviderConfig>();
   const canCheckout = summary.canCheckout && !summary.pendingCheckout;
   const checkoutUnavailable = summary.pendingCheckout
-    ? "Payment confirmation is already in progress. Check Plan and billing for the latest PayPal verification status."
+    ? "Payment confirmation is already in progress. Check Plan and billing for the latest payment status."
     : summary.canManageBilling
       ? "Review your existing subscription before starting another checkout."
       : "Checkout is temporarily unavailable for this account.";
@@ -342,6 +344,20 @@ function ProCheckoutDialogContent({
       setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleDodoCheckout() {
+    setBusy(true);
+    setDodoBusy(true);
+    setError(undefined);
+    try {
+      await openBillingCheckout(workspace, selectedInterval, "dodo");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
+    } finally {
+      setBusy(false);
+      setDodoBusy(false);
     }
   }
 
@@ -527,6 +543,35 @@ function ProCheckoutDialogContent({
                         : "Preparing secure checkout…"}
                   </button>
                 )}
+
+                <section
+                  className="pro-checkout-payment-methods"
+                  aria-labelledby="dodo-payment-methods-title"
+                >
+                  <div className="pro-checkout-payment-methods-header">
+                    <div className="pro-checkout-payment-methods-title-row">
+                      <ShieldCheck
+                        size={15}
+                        className="pro-checkout-shield-icon"
+                        aria-hidden="true"
+                      />
+                      <strong id="dodo-payment-methods-title">Or pay with Dodo Payments</strong>
+                    </div>
+                    <span>
+                      Dodo Payments is the merchant of record for this option and shows the card and
+                      wallet methods available to you.
+                    </span>
+                  </div>
+                  <button
+                    className="button secondary pro-checkout-continue"
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleDodoCheckout()}
+                  >
+                    <CreditCard size={15} aria-hidden="true" />
+                    {dodoBusy ? "Opening Dodo Payments…" : "Continue with Dodo Payments"}
+                  </button>
+                </section>
               </div>
             ) : (
               <div className="pro-checkout-unavailable">

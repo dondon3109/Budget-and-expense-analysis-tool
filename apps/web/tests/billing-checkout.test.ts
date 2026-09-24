@@ -29,7 +29,28 @@ describe("openBillingCheckout", () => {
   it("redirects only to the API-provided PayPal approval URL", async () => {
     await openBillingCheckout(workspace, "month");
 
-    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "month");
+    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "month", "paypal");
     expect(assign).toHaveBeenCalledWith("https://www.sandbox.paypal.com/checkoutnow?token=example");
+  });
+
+  it("sends a Dodo checkout only to a Dodo-hosted checkout page", async () => {
+    apiMocks.startBillingCheckout.mockResolvedValue({
+      approvalUrl: "https://test.checkout.dodopayments.com/session/cks_example",
+    });
+    await openBillingCheckout(workspace, "year", "dodo");
+
+    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "year", "dodo");
+    expect(assign).toHaveBeenCalledWith(
+      "https://test.checkout.dodopayments.com/session/cks_example",
+    );
+
+    assign.mockClear();
+    apiMocks.startBillingCheckout.mockResolvedValue({
+      approvalUrl: "https://checkout.dodopayments.com.attacker.example/session",
+    });
+    await expect(openBillingCheckout(workspace, "year", "dodo")).rejects.toThrow(
+      "Secure payment could not be opened",
+    );
+    expect(assign).not.toHaveBeenCalled();
   });
 });

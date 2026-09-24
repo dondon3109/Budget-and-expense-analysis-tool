@@ -70,6 +70,15 @@ describe("deployment smoke origin checks", () => {
     ).toThrow("connect-src PostHog origin");
   });
 
+  it("skips the PostHog check when no PostHog origin is expected", () => {
+    expect(() =>
+      assertDeploymentContentSecurityPolicy(csp.replace(` ${expectedPosthogHost}`, ""), {
+        apiUrl,
+        expectedSupabaseUrl,
+      }),
+    ).not.toThrow();
+  });
+
   it("verifies expected and forbidden origins in frontend assets", () => {
     expect(() =>
       assertFrontendAssetOrigins([`const api='${apiUrl}'`, `const auth='${expectedSupabaseUrl}'`], {

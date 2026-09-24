@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Bindings } from "../src/types";
 
-const reconcileDuePayPalCheckouts = vi.hoisted(() => vi.fn());
+const reconcileDueBillingCheckouts = vi.hoisted(() => vi.fn());
 const cleanupExpired = vi.hoisted(() => vi.fn());
 const reconcileAccountDeletions = vi.hoisted(() => vi.fn());
 const creditDueInterest = vi.hoisted(() => vi.fn());
@@ -14,7 +14,7 @@ const dispatchBugfixDraft = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/app", () => ({ createApp: () => ({ fetch: vi.fn() }) }));
 vi.mock("../src/readiness", () => ({ validateRequiredApiBindings }));
-vi.mock("../src/billing/scheduled-reconciliation", () => ({ reconcileDuePayPalCheckouts }));
+vi.mock("../src/billing/scheduled-reconciliation", () => ({ reconcileDueBillingCheckouts }));
 vi.mock("../src/db/assistant", () => ({ assistantRepository: { cleanupExpired } }));
 vi.mock("../src/db/billing", () => ({
   billingRepository,
@@ -59,7 +59,7 @@ function controller(cron: string, scheduledTime = 0): ScheduledController {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  reconcileDuePayPalCheckouts.mockResolvedValue({
+  reconcileDueBillingCheckouts.mockResolvedValue({
     checked: 0,
     confirmed: 0,
     closed: 0,
@@ -79,7 +79,7 @@ describe("scheduled worker handler", () => {
     await worker.scheduled(controller("*/5 * * * *"), environment);
 
     expect(validateRequiredApiBindings).toHaveBeenCalledWith(environment);
-    expect(reconcileDuePayPalCheckouts).toHaveBeenCalledWith(billingRepository, environment, 25);
+    expect(reconcileDueBillingCheckouts).toHaveBeenCalledWith(billingRepository, environment, 25);
     expect(retryPendingBugReportNotifications).toHaveBeenCalledWith(environment, 25);
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
@@ -103,7 +103,7 @@ describe("scheduled worker handler", () => {
     expect(cleanupExpired).toHaveBeenCalledTimes(2);
     expect(reconcileAccountDeletions).toHaveBeenCalledWith(environment, 25);
     expect(cleanupExpiredBugReports).toHaveBeenCalledWith(environment, 100);
-    expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
+    expect(reconcileDueBillingCheckouts).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();
   });
 
@@ -111,7 +111,7 @@ describe("scheduled worker handler", () => {
     await worker.scheduled(controller("17 4 * * *"), environment);
 
     expect(creditDueInterest).toHaveBeenCalledWith(environment);
-    expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
+    expect(reconcileDueBillingCheckouts).not.toHaveBeenCalled();
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
   });
@@ -124,7 +124,7 @@ describe("scheduled worker handler", () => {
     await expect(worker.scheduled(controller("*/5 * * * *"), environment)).rejects.toThrow(
       "API deployment bindings are not ready.",
     );
-    expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
+    expect(reconcileDueBillingCheckouts).not.toHaveBeenCalled();
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();
@@ -134,7 +134,7 @@ describe("scheduled worker handler", () => {
     await worker.scheduled(controller("1 2 3 4 5"), environment);
 
     expect(validateRequiredApiBindings).toHaveBeenCalledWith(environment);
-    expect(reconcileDuePayPalCheckouts).not.toHaveBeenCalled();
+    expect(reconcileDueBillingCheckouts).not.toHaveBeenCalled();
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();

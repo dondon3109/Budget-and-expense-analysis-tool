@@ -25,20 +25,28 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Pay for Zoption Pro with Dodo Payments",
+      "An optional app lock on Android",
+      "Open offline without signing in again",
+      "Android Beta 0.2.34",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/merchant of record/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.34/);
+  });
+
+  it("keeps the debt payment and edit notes as 2.43.1", () => {
+    expect(titles("2.43.1")).toEqual([
       "Debt payments that pay down the debt",
       "Edits that stay edits",
       "Categories without a limit stay out of your budget",
       "Steadier loading on a slow connection",
       "A clearer debt form",
     ]);
-
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
-    expect(copy).toMatch(/lowers that debt's balance/i);
-    expect(copy).toMatch(/instead of sometimes adding a second copy/i);
-    expect(copy).toMatch(/reads as unbudgeted everywhere/i);
-    expect(copy).toMatch(/asks once more before reporting a timeout/i);
+    expect(notes("2.43.1")).toMatch(/lowers that debt's balance/i);
   });
 
   it("keeps the splash, safe-to-spend, and forecast notes as 2.41.3", () => {
@@ -60,6 +68,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.43.1",
       "2.41.3",
       "2.39.0",
       "2.38.0",

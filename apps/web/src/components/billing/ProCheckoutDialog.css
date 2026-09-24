@@ -552,6 +552,18 @@
   box-shadow: 0 6px 18px color-mix(in srgb, var(--solid-bg) 32%, transparent);
 }
 
+.pro-checkout-continue.secondary {
+  color: var(--ink);
+  background: var(--surface);
+  border-color: var(--line-strong);
+}
+
+.pro-checkout-continue.secondary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: color-mix(in srgb, var(--action) 30%, var(--line-strong));
+  box-shadow: none;
+}
+
 .pro-checkout-continue:active:not(:disabled) {
   transform: translateY(0);
 }

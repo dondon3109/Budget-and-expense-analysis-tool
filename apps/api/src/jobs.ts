@@ -1,6 +1,8 @@
 import type { Bindings } from "./types";
 
 export type JobMessage =
+  | { type: "billing-reconcile"; tenantId: string }
+  // Messages a release before Dodo Payments enqueued; accepted until they drain.
   | { type: "paypal-reconcile"; tenantId: string }
   | { type: "bug-report-notify"; reportId: string }
   | { type: "subscription-renewal-notify"; notificationId: string }

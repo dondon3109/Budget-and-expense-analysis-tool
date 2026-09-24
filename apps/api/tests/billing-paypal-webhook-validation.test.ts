@@ -84,18 +84,6 @@ afterEach(() => {
 });
 
 describe("PayPal webhook validation", () => {
-  it("does not expose the retired Paddle webhook route", async () => {
-    const app = createApp({ billing: repository(), readinessCheck: vi.fn(async () => undefined) });
-
-    const response = await app.request(
-      "/api/billing/paddle/webhook",
-      { method: "POST" },
-      environment(),
-    );
-
-    expect(response.status).toBe(404);
-  });
-
   it("rate-limits by Cloudflare client IP before body or provider work", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);

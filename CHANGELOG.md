@@ -6,6 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
+- Zoption Pro can be bought through Dodo Payments as well as PayPal. The upgrade dialog on the web and Plan and billing on mobile offer "Continue with Dodo Payments", which opens Dodo's hosted checkout for the chosen monthly or annual plan. Dodo Payments is the merchant of record for those purchases. Pro starts only after Zoption confirms the subscription with Dodo, renewal can be cancelled from Plan and billing, and a full refund or an opened dispute ends Pro access.
+- Prepared Android Beta 0.2.34 (versionCode 20334) so the next signed build carries Dodo Payments checkout and Dodo subscriptions in Plan and billing. Android Beta 0.2.33 and earlier cannot load Plan and billing for a Dodo subscriber.
 - The mobile app has an optional app lock. Set an app password under More → Account, and Zoption asks for it when the app opens or comes back after more than a minute away. It works offline and applies to that device only. If you forget it, sign out from the lock screen and sign in again.
 
 ### Fixed

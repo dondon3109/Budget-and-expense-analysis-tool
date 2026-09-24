@@ -407,7 +407,7 @@ export interface TransferFeeInsight {
 export const billingIntervals = ["month", "year"] as const;
 export type BillingInterval = (typeof billingIntervals)[number];
 
-export const billingProviders = ["paypal"] as const;
+export const billingProviders = ["paypal", "dodo"] as const;
 export type BillingProvider = (typeof billingProviders)[number];
 
 export const billingSubscriptionStatuses = [
@@ -449,7 +449,7 @@ export interface BillingResourceAllowance {
   limit: number | null;
 }
 
-export const proEntitlementSources = ["paypal", "platform_admin", "sponsored"] as const;
+export const proEntitlementSources = ["paypal", "dodo", "platform_admin", "sponsored"] as const;
 export type ProEntitlementSource = (typeof proEntitlementSources)[number];
 
 export type SponsoredProSeatState = "pending" | "active";

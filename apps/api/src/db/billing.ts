@@ -33,14 +33,13 @@ export const EFFECTIVE_PRO_SUBSCRIPTION_CONDITION = `current_period_ends_at IS N
   AND datetime(current_period_ends_at) > datetime('now')
   AND (
     status IN ('active', 'trialing')
-    OR (provider = 'paypal' AND status = 'canceled' AND cancel_at_period_end = 1)
+    OR (status = 'canceled' AND cancel_at_period_end = 1)
   )`;
 
 export const CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION = `(
   status IN ('active', 'trialing', 'past_due', 'paused')
   OR (
-    provider = 'paypal'
-    AND status = 'canceled'
+    status = 'canceled'
     AND cancel_at_period_end = 1
     AND current_period_ends_at IS NOT NULL
     AND datetime(current_period_ends_at) > datetime('now')
@@ -51,12 +50,10 @@ export function hasEffectiveProEntitlement(
   status: BillingSubscriptionStatus,
   currentPeriodEndsAt: string | null,
   now = new Date(),
-  provider: BillingProvider = "paypal",
   cancelAtPeriodEnd = false,
 ): boolean {
   const isEligibleStatus =
-    isProBillingStatus(status) ||
-    (provider === "paypal" && status === "canceled" && cancelAtPeriodEnd);
+    isProBillingStatus(status) || (status === "canceled" && cancelAtPeriodEnd);
   if (!isEligibleStatus || !currentPeriodEndsAt) return false;
   const periodEnd = new Date(currentPeriodEndsAt);
   return !Number.isNaN(periodEnd.getTime()) && periodEnd.getTime() > now.getTime();
@@ -65,12 +62,11 @@ export function hasEffectiveProEntitlement(
 export function isCheckoutBlockingSubscription(
   status: BillingSubscriptionStatus,
   currentPeriodEndsAt: string | null,
-  provider: BillingProvider,
   cancelAtPeriodEnd: boolean,
   now = new Date(),
 ): boolean {
   if (isNonTerminalBillingStatus(status)) return true;
-  return hasEffectiveProEntitlement(status, currentPeriodEndsAt, now, provider, cancelAtPeriodEnd);
+  return hasEffectiveProEntitlement(status, currentPeriodEndsAt, now, cancelAtPeriodEnd);
 }
 
 export function isCategoryPlanAvailable(
@@ -123,18 +119,46 @@ export function nextManilaMonth(now = new Date()): string {
   return new Date(Date.UTC(year, month, 0, 16)).toISOString();
 }
 
-function configuredPlanId(env: Bindings, interval: BillingInterval): string {
-  const value =
-    interval === "month" ? env.PAYPAL_PRO_MONTHLY_PLAN_ID : env.PAYPAL_PRO_ANNUAL_PLAN_ID;
-  if (!value?.startsWith("P-")) {
+/** PayPal plan ids and Dodo product ids, keyed by interval. */
+function configuredPlans(
+  env: Bindings,
+  provider: BillingProvider,
+): { month?: string; year?: string; prefix: string } {
+  if (provider === "dodo") {
+    return {
+      month: env.DODO_PRO_MONTHLY_PRODUCT_ID,
+      year: env.DODO_PRO_ANNUAL_PRODUCT_ID,
+      prefix: "pdt_",
+    };
+  }
+  return {
+    month: env.PAYPAL_PRO_MONTHLY_PLAN_ID,
+    year: env.PAYPAL_PRO_ANNUAL_PLAN_ID,
+    prefix: "P-",
+  };
+}
+
+function configuredPlanId(
+  env: Bindings,
+  provider: BillingProvider,
+  interval: BillingInterval,
+): string {
+  const plans = configuredPlans(env, provider);
+  const value = plans[interval];
+  if (!value?.startsWith(plans.prefix)) {
     throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
   }
   return value;
 }
 
-function configuredInterval(env: Bindings, providerPlanId: string): BillingInterval | null {
-  if (providerPlanId === env.PAYPAL_PRO_MONTHLY_PLAN_ID) return "month";
-  if (providerPlanId === env.PAYPAL_PRO_ANNUAL_PLAN_ID) return "year";
+function configuredInterval(
+  env: Bindings,
+  provider: BillingProvider,
+  providerPlanId: string,
+): BillingInterval | null {
+  const plans = configuredPlans(env, provider);
+  if (providerPlanId === plans.month) return "month";
+  if (providerPlanId === plans.year) return "year";
   return null;
 }
 
@@ -210,6 +234,8 @@ export interface BillingCheckoutReference {
   interval: BillingInterval;
   providerPlanId: string;
   providerSubscriptionId: string | null;
+  /** Dodo's checkout session id; PayPal creates the subscription itself at checkout. */
+  providerCheckoutId: string | null;
   createdAt: string;
   expiresAt: string;
 }
@@ -235,6 +261,7 @@ export interface BillingRepository {
     env: Bindings,
     tenantId: string,
     interval: BillingInterval,
+    provider: BillingProvider,
   ): Promise<BillingCheckoutReference>;
   createMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1PreparedStatement;
   rethrowMonthlyImportUsageError(env: Bindings, tenantId: string, error: unknown): Promise<never>;
@@ -261,6 +288,24 @@ export interface BillingRepository {
     provider: BillingProvider,
     providerSubscriptionId: string,
   ): Promise<void>;
+  bindCheckoutProviderSession(
+    env: Bindings,
+    tenantId: string,
+    reference: string,
+    provider: BillingProvider,
+    providerCheckoutId: string,
+  ): Promise<void>;
+  /**
+   * Attach a paid subscription to the checkout that sold it, found by the provider's checkout
+   * id or by the checkout reference it echoes. A superseded checkout still links, because the
+   * buyer was charged. Returns the checkout reference, or null when nothing matches.
+   */
+  linkCheckoutSubscription(
+    env: Bindings,
+    provider: BillingProvider,
+    match: { providerCheckoutId: string | null; reference: string | null },
+    providerSubscriptionId: string,
+  ): Promise<string | null>;
   applySubscriptionEvent(
     env: Bindings,
     event: BillingSubscriptionEvent,
@@ -304,9 +349,10 @@ export async function getProEntitlementSource(
      WHERE tenant_id = ?
      ORDER BY CASE source
        WHEN 'paypal' THEN 0
-       WHEN 'platform_admin' THEN 1
-       WHEN 'sponsored' THEN 2
-       ELSE 3
+       WHEN 'dodo' THEN 1
+       WHEN 'platform_admin' THEN 2
+       WHEN 'sponsored' THEN 3
+       ELSE 4
      END
      LIMIT 1`,
   )
@@ -348,11 +394,12 @@ async function pendingCheckoutReference(
 ): Promise<BillingCheckoutReference | null> {
   const checkout = await env.DB.prepare(
     `SELECT id AS reference, provider, interval, provider_plan_id AS providerPlanId,
-            provider_subscription_id AS providerSubscriptionId, created_at AS createdAt,
+            provider_subscription_id AS providerSubscriptionId,
+            provider_checkout_id AS providerCheckoutId, created_at AS createdAt,
             expires_at AS expiresAt
      FROM billing_checkout_references
      WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
-       AND provider_subscription_id IS NOT NULL
+       AND (provider_subscription_id IS NOT NULL OR provider_checkout_id IS NOT NULL)
      ORDER BY created_at DESC
      LIMIT 1`,
   )
@@ -498,7 +545,7 @@ async function applySubscriptionUpdate(
   update: BillingSubscriptionSnapshot,
   webhook?: { providerEventId: string; type: string },
 ): Promise<BillingSubscriptionApplyOutcome> {
-  const configuredPlanInterval = configuredInterval(env, update.providerPlanId);
+  const configuredPlanInterval = configuredInterval(env, update.provider, update.providerPlanId);
   if (
     !update.revocation &&
     (!configuredPlanInterval || (update.interval && update.interval !== configuredPlanInterval))
@@ -749,7 +796,7 @@ export const billingRepository: BillingRepository = {
     });
   },
 
-  async createCheckoutReference(env, tenantId, interval) {
+  async createCheckoutReference(env, tenantId, interval, provider) {
     if (await this.hasNonTerminalSubscription(env, tenantId)) {
       throw new HttpError(
         409,
@@ -759,20 +806,19 @@ export const billingRepository: BillingRepository = {
       );
     }
 
-    const provider: BillingProvider = "paypal";
     const now = new Date().toISOString();
     await env.DB.prepare(
       `UPDATE billing_checkout_references
        SET superseded_at = ?, updated_at = datetime('now')
        WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
-         AND provider_subscription_id IS NULL
+         AND provider_subscription_id IS NULL AND provider_checkout_id IS NULL
          AND datetime(expires_at) <= datetime(?)`,
     )
       .bind(now, tenantId, now)
       .run();
 
     const id = crypto.randomUUID();
-    const selectedPlanId = configuredPlanId(env, interval);
+    const selectedPlanId = configuredPlanId(env, provider, interval);
     const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
     try {
       const result = await env.DB.prepare(
@@ -802,13 +848,15 @@ export const billingRepository: BillingRepository = {
       ) {
         const existing = await env.DB.prepare(
           `SELECT id, provider, interval, provider_plan_id AS providerPlanId,
-                  provider_subscription_id AS providerSubscriptionId, created_at AS createdAt,
+                  provider_subscription_id AS providerSubscriptionId,
+                  provider_checkout_id AS providerCheckoutId, created_at AS createdAt,
                   expires_at AS expiresAt
            FROM billing_checkout_references
            WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
              AND (
                datetime(expires_at) > datetime(?)
                OR provider_subscription_id IS NOT NULL
+               OR provider_checkout_id IS NOT NULL
              )
            LIMIT 1`,
         )
@@ -819,6 +867,7 @@ export const billingRepository: BillingRepository = {
             interval: BillingInterval;
             providerPlanId: string;
             providerSubscriptionId: string | null;
+            providerCheckoutId: string | null;
             createdAt: string;
             expiresAt: string;
           }>();
@@ -833,6 +882,7 @@ export const billingRepository: BillingRepository = {
             interval: existing.interval,
             providerPlanId: existing.providerPlanId,
             providerSubscriptionId: existing.providerSubscriptionId,
+            providerCheckoutId: existing.providerCheckoutId,
             createdAt: existing.createdAt,
             expiresAt: existing.expiresAt,
           };
@@ -851,6 +901,7 @@ export const billingRepository: BillingRepository = {
       interval,
       providerPlanId: selectedPlanId,
       providerSubscriptionId: null,
+      providerCheckoutId: null,
       createdAt: now,
       expiresAt,
     };
@@ -910,10 +961,11 @@ export const billingRepository: BillingRepository = {
       `SELECT id AS reference, tenant_id AS tenantId, provider, interval,
               provider_plan_id AS providerPlanId,
               provider_subscription_id AS providerSubscriptionId,
+              provider_checkout_id AS providerCheckoutId,
               created_at AS createdAt, expires_at AS expiresAt
        FROM billing_checkout_references
-       WHERE provider = 'paypal' AND completed_at IS NULL AND superseded_at IS NULL
-         AND provider_subscription_id IS NOT NULL
+       WHERE completed_at IS NULL AND superseded_at IS NULL
+         AND (provider_subscription_id IS NOT NULL OR provider_checkout_id IS NOT NULL)
          AND datetime(COALESCE(last_reconciled_at, created_at)) <= datetime('now', '-5 minutes')
        ORDER BY COALESCE(last_reconciled_at, created_at), created_at
        LIMIT ?`,
@@ -977,6 +1029,45 @@ export const billingRepository: BillingRepository = {
         "This checkout is no longer available.",
       );
     }
+  },
+
+  async bindCheckoutProviderSession(env, tenantId, reference, provider, providerCheckoutId) {
+    const result = await env.DB.prepare(
+      `UPDATE billing_checkout_references
+       SET provider_checkout_id = ?, updated_at = datetime('now')
+       WHERE id = ? AND tenant_id = ? AND provider = ?
+         AND completed_at IS NULL AND superseded_at IS NULL AND provider_checkout_id IS NULL`,
+    )
+      .bind(providerCheckoutId, reference, tenantId, provider)
+      .run();
+    if ((result.meta.changes ?? 0) !== 1) {
+      throw new HttpError(
+        409,
+        "invalid_checkout_reference",
+        "This checkout is no longer available.",
+      );
+    }
+  },
+
+  async linkCheckoutSubscription(env, provider, match, providerSubscriptionId) {
+    if (!match.providerCheckoutId && !match.reference) return null;
+    const row = await env.DB.prepare(
+      `UPDATE billing_checkout_references
+       SET provider_subscription_id = ?, updated_at = datetime('now')
+       WHERE provider = ? AND completed_at IS NULL
+         AND (provider_checkout_id = ? OR id = ?)
+         AND (provider_subscription_id IS NULL OR provider_subscription_id = ?)
+       RETURNING id`,
+    )
+      .bind(
+        providerSubscriptionId,
+        provider,
+        match.providerCheckoutId,
+        match.reference,
+        providerSubscriptionId,
+      )
+      .first<{ id: string }>();
+    return row?.id ?? null;
   },
 
   async applySubscriptionEvent(env, event) {

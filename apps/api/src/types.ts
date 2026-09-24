@@ -67,6 +67,11 @@ export interface Bindings {
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_WEBHOOK_ID?: string;
+  DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";
+  DODO_PRO_MONTHLY_PRODUCT_ID?: string;
+  DODO_PRO_ANNUAL_PRODUCT_ID?: string;
+  DODO_PAYMENTS_API_KEY?: string;
+  DODO_PAYMENTS_WEBHOOK_KEY?: string;
   OPS_EGRESS_TOKEN?: string;
   GITHUB_BUGFIX_DISPATCH_TOKEN?: string;
 }

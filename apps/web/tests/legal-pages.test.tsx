@@ -29,7 +29,7 @@ describe("legal pages", () => {
     renderPage(<TermsOfServicePage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: September 19, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: September 23, 2026")).toBeInTheDocument();
     expect(
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
@@ -38,6 +38,7 @@ describe("legal pages", () => {
     expect(screen.getByText(/calculated from the transactions recorded/i)).toBeInTheDocument();
     expect(screen.getByText(/sanitized audit snapshots/i)).toBeInTheDocument();
     expect(screen.getByText(/monthly and annual PayPal subscriptions/i)).toBeInTheDocument();
+    expect(screen.getByText(/Dodo Payments is the merchant of record/i)).toBeInTheDocument();
     expect(screen.getByText(/Free plan has no subscription charge/i)).toBeInTheDocument();
     expect(screen.getByText(/account returns to the Free plan/i)).toBeInTheDocument();
     expect(screen.getByText(/renew automatically/i)).toBeInTheDocument();
@@ -52,13 +53,14 @@ describe("legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: September 19, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: September 23, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/DeepSeek/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/PostHog/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Dodo Payments/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/minimal verified-webhook event metadata/i)).toBeInTheDocument();

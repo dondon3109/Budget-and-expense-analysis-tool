@@ -6,7 +6,7 @@ import type { Bindings } from "../src/types";
 describe("enqueueJob", () => {
   it("returns false when the queue binding is missing", async () => {
     await expect(
-      enqueueJob({} as Bindings, { type: "paypal-reconcile", tenantId: "user:1" }),
+      enqueueJob({} as Bindings, { type: "billing-reconcile", tenantId: "user:1" }),
     ).resolves.toBe(false);
   });
 

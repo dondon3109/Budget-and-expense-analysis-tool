@@ -75,6 +75,7 @@ function repository(summaryValue = summary()): BillingRepository {
       interval: "month" as const,
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
+      providerCheckoutId: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       expiresAt: "2099-08-01T00:15:00.000Z",
     })),
@@ -82,6 +83,8 @@ function repository(summaryValue = summary()): BillingRepository {
     recordCheckoutReconciliation: vi.fn(async () => undefined),
     supersedePendingCheckout: vi.fn(async () => undefined),
     bindCheckoutProviderSubscription: vi.fn(async () => undefined),
+    bindCheckoutProviderSession: vi.fn(async () => undefined),
+    linkCheckoutSubscription: vi.fn(async () => null),
     applySubscriptionEvent: vi.fn(async () => "applied" as const),
     applySubscriptionSnapshot: vi.fn(async () => "applied" as const),
   };
@@ -186,6 +189,7 @@ describe("billing checkout reconciliation", () => {
       interval: "month",
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
+      providerCheckoutId: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       expiresAt: "2026-08-01T00:15:00.000Z",
     });
@@ -223,6 +227,7 @@ describe("billing checkout reconciliation", () => {
       interval: "month",
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
+      providerCheckoutId: null,
       createdAt: "2026-08-01T00:00:00.000Z",
       expiresAt: "2026-08-01T00:15:00.000Z",
     });

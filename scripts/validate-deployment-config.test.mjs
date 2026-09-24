@@ -191,6 +191,27 @@ describe("Wrangler deployment config validation", () => {
     );
   });
 
+  it("validates optional Dodo Payments settings only when they are present", () => {
+    const configured = validConfig();
+    Object.assign(configured.env.production.vars, {
+      DODO_PAYMENTS_ENVIRONMENT: "live_mode",
+      DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_monthly",
+      DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_annual",
+    });
+    expect(() => validateWranglerDeploymentConfig(configured)).not.toThrow();
+
+    configured.env.production.vars.DODO_PAYMENTS_ENVIRONMENT = "test_mode";
+    expect(() => validateWranglerDeploymentConfig(configured)).toThrow(
+      "production DODO_PAYMENTS_ENVIRONMENT must be live_mode",
+    );
+
+    const partial = validConfig();
+    partial.env.preview.vars.DODO_PAYMENTS_ENVIRONMENT = "test_mode";
+    expect(() => validateWranglerDeploymentConfig(partial)).toThrow(
+      "preview is missing required DODO_PRO_MONTHLY_PRODUCT_ID configuration",
+    );
+  });
+
   it("rejects secret key types without exposing their values", () => {
     const config = validConfig();
     const secret = "sb_secret_never-print-this";

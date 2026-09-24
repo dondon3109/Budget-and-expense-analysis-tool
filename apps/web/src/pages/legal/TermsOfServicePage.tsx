@@ -5,7 +5,7 @@ export function TermsOfServicePage() {
     <LegalPageLayout
       title="Terms of Service"
       summary="These terms explain the rules for using Zoption, including its Free and Pro plans, personal-finance workspace, file imports, exports, and optional AI assistant."
-      lastUpdated="September 19, 2026"
+      lastUpdated="September 23, 2026"
     >
       <section>
         <h2>1. Who operates Zoption</h2>
@@ -139,9 +139,11 @@ export function TermsOfServicePage() {
         </p>
         <p>
           Zoption Pro is an optional paid plan offered through monthly and annual PayPal
-          subscriptions. Prices are charged in Philippine pesos; the price, billing interval, and
-          plan shown in PayPal approval apply to the subscription you confirm. Subscriptions renew
-          automatically for the selected interval unless you cancel renewal. Taxes may apply.
+          subscriptions or monthly and annual Dodo Payments subscriptions. Prices are charged in
+          Philippine pesos; the price, billing interval, and plan shown in PayPal approval or Dodo
+          Payments checkout apply to the subscription you confirm. Subscriptions renew automatically
+          for the selected interval unless you cancel renewal. Taxes may apply. When you subscribe
+          through Dodo Payments, Dodo Payments is the merchant of record for that purchase.
         </p>
 
         <p>
@@ -152,11 +154,12 @@ export function TermsOfServicePage() {
         </p>
 
         <p>
-          A completed PayPal approval screen does not by itself activate or change paid access.
-          Zoption grants, changes, pauses, or removes paid access only after its server receives and
-          processes a verified PayPal webhook notification. A short confirmation delay may occur
-          after checkout or a billing change. Your use of PayPal may also be subject to
-          PayPal&apos;s terms and privacy notices.
+          A completed PayPal approval screen or Dodo Payments checkout does not by itself activate
+          or change paid access. Zoption grants, changes, pauses, or removes paid access only after
+          its server receives and processes a verified PayPal webhook notification or confirms the
+          subscription with the payment provider. A short confirmation delay may occur after
+          checkout or a billing change. Your use of PayPal or Dodo Payments may also be subject to
+          that provider&apos;s terms and privacy notices.
         </p>
       </section>
 

@@ -8,16 +8,23 @@ import {
 const webUrl = requiredUrl("WEB_URL");
 const apiUrl = requiredUrl("API_URL");
 const expectedSupabaseUrl = requiredUrl("EXPECTED_SUPABASE_URL");
-const expectedPosthogHost = requiredUrl("EXPECTED_POSTHOG_HOST");
+const searchIndexingEnabled = process.env.EXPECT_SEARCH_INDEXING !== "0";
+// Production builds always carry PostHog; Preview builds may omit VITE_POSTHOG_KEY.
+const expectedPosthogHost = searchIndexingEnabled
+  ? requiredUrl("EXPECTED_POSTHOG_HOST")
+  : optionalUrl("EXPECTED_POSTHOG_HOST");
 const forbiddenSupabaseOrigins = optionalOrigins("FORBIDDEN_SUPABASE_ORIGINS");
 const origin = new URL(webUrl).origin;
 const seoOrigin = "https://zoption.site";
-const searchIndexingEnabled = process.env.EXPECT_SEARCH_INDEXING !== "0";
 
 function requiredUrl(name) {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is required.`);
   return value.replace(/\/$/, "");
+}
+
+function optionalUrl(name) {
+  return process.env[name] ? requiredUrl(name) : undefined;
 }
 
 function optionalOrigins(name) {

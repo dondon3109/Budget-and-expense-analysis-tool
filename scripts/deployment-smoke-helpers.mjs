@@ -50,7 +50,8 @@ export function assertDeploymentContentSecurityPolicy(
   // WebSocket requires its own explicit connect-src entry.
   const apiWebSocketOrigin = apiOrigin.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
   const expectedSupabaseOrigin = asOrigin(expectedSupabaseUrl, "EXPECTED_SUPABASE_URL");
-  const expectedPosthogOrigin = asOrigin(expectedPosthogHost, "EXPECTED_POSTHOG_HOST");
+  const expectedPosthogOrigin =
+    expectedPosthogHost && asOrigin(expectedPosthogHost, "EXPECTED_POSTHOG_HOST");
   const forbiddenOrigins = forbiddenSupabaseOrigins.map((origin) =>
     asOrigin(origin, "FORBIDDEN_SUPABASE_ORIGINS"),
   );
@@ -62,7 +63,9 @@ export function assertDeploymentContentSecurityPolicy(
     [connectSources, apiOrigin, "connect-src API origin"],
     [connectSources, apiWebSocketOrigin, "connect-src API WebSocket origin"],
     [connectSources, expectedSupabaseOrigin, "connect-src Supabase origin"],
-    [connectSources, expectedPosthogOrigin, "connect-src PostHog origin"],
+    ...(expectedPosthogOrigin
+      ? [[connectSources, expectedPosthogOrigin, "connect-src PostHog origin"]]
+      : []),
     [imageSources, apiOrigin, "img-src API origin"],
     [imageSources, expectedSupabaseOrigin, "img-src Supabase origin"],
   ]) {

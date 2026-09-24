@@ -119,7 +119,7 @@ const PRICING_FAQS = [
   {
     question: "What currencies and billing methods are supported?",
     answer:
-      "Subscriptions are billed in Philippine pesos (PHP). PayPal securely processes card payments and subscription approvals without Zoption ever touching your card data.",
+      "Subscriptions are billed in Philippine pesos (PHP). PayPal or Dodo Payments securely processes card payments and subscription approvals without Zoption ever touching your card data.",
   },
   {
     question: "Can I cancel my Pro subscription at any time?",

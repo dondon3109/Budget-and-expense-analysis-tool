@@ -199,7 +199,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "How does Zoption billing work?",
     answer:
-      "Zoption offers monthly and annual paid subscription options through PayPal. Prices are charged in Philippine pesos, and subscriptions renew automatically for the selected interval unless you cancel renewal. You can request cancellation through Plan and billing in Zoption.",
+      "Zoption offers monthly and annual paid subscription options through PayPal or Dodo Payments. Prices are charged in Philippine pesos, and subscriptions renew automatically for the selected interval unless you cancel renewal. You can request cancellation through Plan and billing in Zoption.",
   },
   {
     question: "How do I add Zoption as a Preferred Source in Google Search and AI results?",
@@ -297,7 +297,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-09-23";
-const PRICING_LAST_MODIFIED = "2026-09-18";
+const PRICING_LAST_MODIFIED = "2026-09-23";
 const GUIDES_LAST_MODIFIED = "2026-09-18";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
@@ -330,9 +330,9 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
   });
 }
 const FAQ_LAST_MODIFIED = "2026-09-13";
-const CHANGELOG_LAST_MODIFIED = "2026-09-23";
-const TERMS_LAST_MODIFIED = "2026-09-19";
-const PRIVACY_LAST_MODIFIED = "2026-09-19";
+const CHANGELOG_LAST_MODIFIED = "2026-09-24";
+const TERMS_LAST_MODIFIED = "2026-09-23";
+const PRIVACY_LAST_MODIFIED = "2026-09-23";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-09-18";
 const IMPORT_LAST_MODIFIED = "2026-09-18";
 const TOOLS_LAST_MODIFIED = "2026-09-18";

@@ -11,32 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 23, 2026",
+  releasedOn: "September 24, 2026",
   changes: [
     {
-      title: "Debt payments that pay down the debt",
+      title: "Pay for Zoption Pro with Dodo Payments",
       description:
-        'A "Debt payment" expense category now ships with every workspace. Choosing it asks which debt the money went to, and recording the payment lowers that debt\'s balance, marking it paid when the balance reaches zero, so Goals & debt shows the balance after the payment. Editing or deleting the payment restores the old balance, and the ledger and CSV export name the debt beside the category.',
+        "The upgrade dialog on the web and Plan and billing on Android now offer Continue with Dodo Payments beside PayPal. It opens Dodo's secure checkout for the monthly or annual plan, Dodo Payments is the merchant of record for that purchase, and Pro starts once Zoption confirms the subscription. You can cancel renewal from Plan and billing and keep Pro until the end of the paid period.",
     },
     {
-      title: "Edits that stay edits",
+      title: "An optional app lock on Android",
       description:
-        "Saving a changed transaction in the browser, such as switching an expense to income, now updates that transaction instead of sometimes adding a second copy beside it. Adding an income entry works again too; the form had been sending a debt link that only expenses can carry.",
+        "Set an app password under More, then Account, and Zoption asks for it when the app opens or returns after more than a minute away. It works offline and applies only to that device; if you forget it, sign out from the lock screen and sign in again.",
     },
     {
-      title: "Categories without a limit stay out of your budget",
+      title: "Open offline without signing in again",
       description:
-        "Clearing a category's limit used to leave a zero limit behind, and the dashboard and the assistant counted that spending against a plan you never set, so remaining budget could turn negative. A category without a limit now reads as unbudgeted everywhere: its spending stays visible, and your plan totals leave it out.",
+        "The Android app no longer shows the sign-in screen when it opens offline with a session older than about an hour. Your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.",
     },
     {
-      title: "Steadier loading on a slow connection",
+      title: "Android Beta 0.2.34",
       description:
-        'A page that stalls while loading on a lossy connection now asks once more before reporting a timeout, so a brief drop no longer shows "The request took too long" when the server answered fine. Saving still fails immediately, so a change that may already have been applied is never sent twice.',
-    },
-    {
-      title: "A clearer debt form",
-      description:
-        'The rate field now reads "Interest rate (APR)" and explains in one line that it is the yearly interest your lender charges. The rate, balance date, and status fields share one row again, and the rate field no longer draws a second focus ring across its % sign.',
+        "The official Android Beta can subscribe to Pro through Dodo Payments and shows Dodo subscriptions in Plan and billing, and it carries the app lock and offline opening. Android Beta 0.2.33 and earlier cannot load Plan and billing for a Dodo subscriber.",
     },
   ],
 };
@@ -51,6 +46,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.43.1",
+    releasedOn: "September 23, 2026",
+    changes: [
+      {
+        title: "Debt payments that pay down the debt",
+        description:
+          'A "Debt payment" expense category now ships with every workspace. Choosing it asks which debt the money went to, and recording the payment lowers that debt\'s balance, marking it paid when the balance reaches zero, so Goals & debt shows the balance after the payment. Editing or deleting the payment restores the old balance, and the ledger and CSV export name the debt beside the category.',
+      },
+      {
+        title: "Edits that stay edits",
+        description:
+          "Saving a changed transaction in the browser, such as switching an expense to income, now updates that transaction instead of sometimes adding a second copy beside it. Adding an income entry works again too; the form had been sending a debt link that only expenses can carry.",
+      },
+      {
+        title: "Categories without a limit stay out of your budget",
+        description:
+          "Clearing a category's limit used to leave a zero limit behind, and the dashboard and the assistant counted that spending against a plan you never set, so remaining budget could turn negative. A category without a limit now reads as unbudgeted everywhere: its spending stays visible, and your plan totals leave it out.",
+      },
+      {
+        title: "Steadier loading on a slow connection",
+        description:
+          'A page that stalls while loading on a lossy connection now asks once more before reporting a timeout, so a brief drop no longer shows "The request took too long" when the server answered fine. Saving still fails immediately, so a change that may already have been applied is never sent twice.',
+      },
+      {
+        title: "A clearer debt form",
+        description:
+          'The rate field now reads "Interest rate (APR)" and explains in one line that it is the yearly interest your lender charges. The rate, balance date, and status fields share one row again, and the rate field no longer draws a second focus ring across its % sign.',
+      },
+    ],
+  },
   {
     version: "2.41.3",
     releasedOn: "September 21, 2026",

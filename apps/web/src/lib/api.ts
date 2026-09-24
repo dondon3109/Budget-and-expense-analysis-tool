@@ -24,6 +24,7 @@ import type {
   BillingCheckoutReconciliation,
   BillingFeature,
   BillingInterval,
+  BillingProvider,
   BillingProviderConfig,
   BillingResource,
   BillingSummary,
@@ -617,10 +618,11 @@ export function reconcileBillingCheckout(
 export function startBillingCheckout(
   workspace: AuthenticatedWorkspace,
   interval: BillingInterval,
+  provider: BillingProvider = "paypal",
 ): Promise<BillingCheckoutResponse> {
   return requestJson(workspace, "/api/app/billing/checkout", {
     method: "POST",
-    body: JSON.stringify({ interval }),
+    body: JSON.stringify({ interval, provider }),
   });
 }
 
