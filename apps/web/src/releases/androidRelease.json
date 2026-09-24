@@ -1,23 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.33-beta",
-  "versionCode": 20333,
-  "filename": "zoption-beta-0.2.33.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.33.apk",
-  "sha256": "3bb327f42fbb7a8add34d270fe9e55d1ddd06c78a228696eb8d3a653f52131a1",
-  "sizeBytes": 137856174,
-  "sizeLabel": "137,856,174 bytes (131.47 MiB)",
-  "releaseDate": "2026-09-20",
-  "releaseDateLabel": "September 20, 2026",
+  "versionName": "0.2.35-beta",
+  "versionCode": 20335,
+  "filename": "zoption-beta-0.2.35.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.35.apk",
+  "sha256": "cd684c60df57f51f491f11dd4092c4d758db2712b4618fd280027eb260afb4e9",
+  "sizeBytes": 137987982,
+  "sizeLabel": "137,987,982 bytes (131.60 MiB)",
+  "releaseDate": "2026-09-24",
+  "releaseDateLabel": "September 24, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "The app opens straight to your screen instead of three loading screens",
-    "Your saved theme is applied on the first frame, with no flash of the system theme",
-    "The dashboard reads only the transactions its charts display, so it opens faster",
-    "A sync that writes many rows now refreshes the screen once instead of once per row",
-    "The installed app bundles one icon font instead of sixteen"
+    "Say income into the home-screen mic widget, like \"Received 20,000 salary to my GCash\"",
+    "Amounts no longer need \"pesos\", and a note about yesterday is dated yesterday",
+    "A new look in Light, Dark, and Coffee",
+    "Pay for Zoption Pro with Dodo Payments",
+    "An optional app lock, and the app opens offline without signing in again"
   ]
 }
