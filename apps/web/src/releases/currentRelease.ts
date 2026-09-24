@@ -29,9 +29,19 @@ export const currentRelease: ProductRelease = {
         "The Android app no longer shows the sign-in screen when it opens offline with a session older than about an hour. Your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.",
     },
     {
-      title: "Android Beta 0.2.34",
+      title: "Speak your income into the Android mic widget",
       description:
-        "The official Android Beta can subscribe to Pro through Dodo Payments and shows Dodo subscriptions in Plan and billing, and it carries the app lock and offline opening. Android Beta 0.2.33 and earlier cannot load Plan and billing for a Dodo subscriber.",
+        'The home-screen mic widget now records money coming in as well as going out. Say something like "Received 20,000 salary to my GCash" or "Got paid 5k for freelance work" and Zoption opens an income review with the account and category you named. Amounts no longer need "pesos" after them, a note about yesterday is dated yesterday, and an Expense and Income switch fixes a misheard note before you save.',
+    },
+    {
+      title: "A new look on the web and in the app",
+      description:
+        "Zoption has a cooler, calmer palette in Light, Dark, and Coffee, with near-black primary buttons, the Z mark's emerald and mint as accents, and new type for headings, text, and figures. The sidebar, balance card, sign-in panel, and transaction table are restyled to match, and the Android app marks the current tab with a solid pill.",
+    },
+    {
+      title: "Android Beta 0.2.35",
+      description:
+        "The official Android Beta can subscribe to Pro through Dodo Payments and shows Dodo subscriptions in Plan and billing, and it carries the app lock, offline opening, the new look, and income in the mic widget. Android Beta 0.2.33 and earlier cannot load Plan and billing for a Dodo subscriber.",
     },
   ],
 };
