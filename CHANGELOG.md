@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- The web upgrade dialog no longer shows the "Payment handled by PayPal" box. It now offers two clear choices: continue with PayPal, or pay by card, Apple Pay, or Google Pay through Dodo Payments.
+
 ## 2.44.0 — 2026-09-24
 
 ### Added
