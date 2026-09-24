@@ -566,6 +566,330 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
       },
     ],
   },
+  {
+    slug: "budget-semi-monthly-pay-kinsenas-katapusan",
+    title: "How to Budget Semi-Monthly Pay: Kinsenas and Katapusan",
+    seoTitle: "How to Budget Semi-Monthly Pay in the Philippines (Kinsenas & Katapusan)",
+    description:
+      "Split a Philippine salary paid on the 15th and 30th into two workable halves: match each bill to the payday before it is due, save from both, and keep the rent half from running dry.",
+    category: "budgeting",
+    readTimeMinutes: 6,
+    publishedDate: "2026-09-24",
+    updatedDate: "2026-09-24",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "kinsenas katapusan budget",
+      "semi monthly salary budget philippines",
+      "budget 15th and 30th payday",
+      "how to budget every cut off",
+      "sahod budget plan",
+      "bi monthly pay budget pesos",
+    ],
+    sections: [
+      {
+        id: "one-month-two-paydays",
+        title: "One Monthly Plan, Two Paydays",
+        content:
+          "Most Philippine employers pay twice a month, on the 15th (kinsenas) and on the last working day (katapusan). The trap is budgeting each cut off as if it were its own month: the half that has to cover rent always feels short, and the other half feels like extra money. Plan the whole month first, from take home pay, then decide which payday funds each line. Zoption budgets by month, so the monthly plan stays in one place while you split it by payday.",
+        keyTakeaways: [
+          "Plan the month first, then split it between the two paydays.",
+          "Treating each cut off as its own month makes one half feel rich and the other broke.",
+        ],
+      },
+      {
+        id: "match-bills-to-paydays",
+        title: "Match Each Bill to the Payday Before It Is Due",
+        content:
+          "Write down every fixed bill with its due date. A bill due between the 16th and the end of the month is paid from the kinsenas pay. A bill due between the 1st and the 15th is paid from the katapusan pay that arrives just before it. Transport and other daily costs are split evenly between the two. Once every bill has a payday, what remains in each half is the money you can actually decide on.",
+        keyTakeaways: [
+          "Bills due on the 16th to month end come from the 15th pay.",
+          "Bills due on the 1st to the 15th come from the pay at the end of the previous month.",
+        ],
+      },
+      {
+        id: "worked-example-fifteen-thousand",
+        title: "A Worked Example: ₱15,000 Every Cut Off",
+        content:
+          "Take ₱30,000 a month, paid as ₱15,000 on each payday. The kinsenas pay covers electricity and water (₱2,500, due on the 20th), internet and load (₱1,500, due on the 25th), half the transport (₱500), and half the savings (₱3,000), leaving ₱7,500 flexible. The katapusan pay covers rent (₱8,000, due on the 5th), the other ₱500 of transport, and the other ₱3,000 of savings, leaving only ₱3,500 flexible. The month still adds up: ₱13,000 fixed, ₱6,000 savings, ₱11,000 flexible.",
+        keyTakeaways: [
+          "Kinsenas: ₱2,500 + ₱1,500 + ₱500 + ₱3,000 + ₱7,500 flexible = ₱15,000.",
+          "Katapusan: ₱8,000 + ₱500 + ₱3,000 + ₱3,500 flexible = ₱15,000.",
+        ],
+      },
+      {
+        id: "smooth-the-rent-half",
+        title: "Smooth Out the Rent Half",
+        content:
+          "In the example, one half has more than twice the flexible money of the other. To even it out, move ₱2,000 from the kinsenas pay into a rent fund on payday. The katapusan pay then needs only ₱6,000 for rent, and both halves end up with ₱5,500 flexible. Keep the rent fund in a separate account or wallet so it is not spent by accident. In Zoption, record it as a transfer between your own accounts, so it does not count as spending.",
+        keyTakeaways: [
+          "Set aside part of the lighter half for the heavy bill that comes later.",
+          "Equal flexible halves make the two weeks before payday less tight.",
+        ],
+      },
+      {
+        id: "save-from-both-paydays",
+        title: "Save From Both Paydays",
+        content:
+          "Taking savings from only one payday makes that half harder than it needs to be. Split the monthly savings amount across both paydays and move it out the day each pay lands, before any flexible spending starts. If one cut off is thinner because of a holiday or a salary loan deduction, save less in that half and make up the difference in the next one, so the monthly total still holds.",
+        keyTakeaways: [
+          "Split the monthly savings amount across both paydays.",
+          "Move savings out on payday, before flexible spending.",
+        ],
+      },
+      {
+        id: "review-each-cut-off",
+        title: "Check In at Every Cut Off",
+        content:
+          "Two paydays give you two chances to catch a problem. On each payday, look at spending per category against the monthly budget. If the first half has already used most of the dining or grocery budget, the second half needs to be lighter. Zoption shows budget progress per category for the month, so the check takes a few minutes and catches overspending while there is still time to change course.",
+        keyTakeaways: [
+          "Review budget progress on each payday, not only at month end.",
+          "A category that is mostly spent by the 15th needs a lighter second half.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/budget-monthly-salary-philippines",
+        label: "How to Budget a Monthly Salary in the Philippines",
+        description:
+          "Build the monthly plan this guide splits: take home pay, fixed bills first, and savings on payday.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Which bills should come out of the 15th pay?",
+        answer:
+          "The bills due before the next payday, meaning those due from the 16th to the end of the month. Bills due from the 1st to the 15th come out of the pay that lands at the end of the previous month. Use each bill's due date, not its billing period.",
+      },
+      {
+        question: "What if my employer pays on the 10th and the 25th?",
+        answer:
+          "The method is the same with different dates. Each bill is paid from the payday that comes before its due date, and daily costs are split between the two. Only the cut off dates change.",
+      },
+      {
+        question: "Should I budget each cut off separately?",
+        answer:
+          "Budget the month as one plan and use the cut offs to decide which payday pays for what. Separate cut off budgets tend to hide the fact that one half carries rent, so that half always looks short.",
+      },
+    ],
+  },
+  {
+    slug: "emergency-fund-philippines",
+    title: "How to Build an Emergency Fund in the Philippines",
+    seoTitle: "How to Build an Emergency Fund in the Philippines (Peso Targets)",
+    description:
+      "How much to keep for emergencies in pesos, where to keep it so it is safe and reachable, and a month by month plan to build it from a regular salary without stopping.",
+    category: "budgeting",
+    readTimeMinutes: 7,
+    publishedDate: "2026-09-24",
+    updatedDate: "2026-09-24",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "emergency fund philippines",
+      "how much emergency fund philippines",
+      "emergency fund pesos",
+      "where to keep emergency fund philippines",
+      "build emergency fund on salary",
+      "ipon for emergencies",
+    ],
+    sections: [
+      {
+        id: "what-the-fund-is-for",
+        title: "What an Emergency Fund Is For",
+        content:
+          "An emergency fund is money set aside for a cost you did not plan and cannot delay: losing a job, a hospital bill, an urgent house or motorcycle repair, or a family emergency in the province. It is not for a sale, a trip, or the holidays, which are known costs and deserve their own savings. Keeping the fund separate is what lets you pay for a real emergency without a salary loan, a credit card balance, or borrowing from family.",
+        keyTakeaways: [
+          "The fund covers costs you did not plan and cannot postpone.",
+          "Known costs such as holidays and trips get their own savings.",
+        ],
+      },
+      {
+        id: "how-much-to-keep",
+        title: "How Much to Keep",
+        content:
+          "A common guideline is three to six months of essential expenses: rent, utilities, food, transport, medicine, and minimum debt payments, leaving out wants. Aim toward six months if your income is irregular, you are the main earner for your household, or you support family. If that target feels far away, start with one month of fixed bills. It is enough to handle most repairs and short gaps, and reaching it quickly builds the habit.",
+        keyTakeaways: [
+          "Three to six months of essential expenses, not of total spending.",
+          "Aim for more if income is irregular or others depend on you.",
+          "Start with one month of fixed bills as the first milestone.",
+        ],
+      },
+      {
+        id: "worked-example-pesos",
+        title: "A Worked Example in Pesos",
+        content:
+          "Say essential expenses come to ₱18,000 a month: ₱13,000 in fixed bills and ₱5,000 in groceries. Three months is ₱54,000 and six months is ₱108,000. Saving ₱6,000 a month, which is 20 percent of a ₱30,000 take home, passes the first milestone of ₱13,000 in the third month and reaches ₱54,000 after nine months. Put bonuses and the 13th month pay toward the fund while it is incomplete, and the date comes sooner.",
+        keyTakeaways: [
+          "₱18,000 of essentials a month means ₱54,000 for three months and ₱108,000 for six.",
+          "₱6,000 a month reaches three months of essentials in nine months.",
+        ],
+      },
+      {
+        id: "where-to-keep-it",
+        title: "Where to Keep It",
+        content:
+          "The fund needs to be safe and reachable within a day, and separate from the account you spend from. A savings account at a bank that is a member of the Philippine Deposit Insurance Corporation (PDIC) fits, including the digital banks, which often pay higher interest; the insurance covers deposits up to a set maximum per depositor per bank. Savings features inside e-wallets are usually held by a partner or affiliated bank, so check which bank holds the deposit. Keep the fund out of stocks, crypto, and time deposits you cannot break without a penalty: an emergency does not wait for the market to recover.",
+        keyTakeaways: [
+          "Use a separate, deposit-insured savings account you can reach within a day.",
+          "Check which bank actually holds an e-wallet savings balance.",
+          "Do not invest the emergency fund in anything that can fall in value.",
+        ],
+      },
+      {
+        id: "use-and-refill",
+        title: "Using It and Refilling It",
+        content:
+          "When a real emergency happens, use the fund. That is its job, and spending it is better than taking on high-interest debt. Afterwards, go back to the monthly savings amount and refill it before resuming other goals. Record the withdrawal against the category of the actual cost, such as medical or repairs, so your spending history shows what the emergency cost.",
+        keyTakeaways: [
+          "Spending the fund on a real emergency is the plan working.",
+          "Refill the fund before restarting other savings goals.",
+        ],
+      },
+      {
+        id: "track-it-in-zoption",
+        title: "Track the Fund in Zoption",
+        content:
+          "Add the savings account as its own account in Zoption, then create a goal with a target amount and a target date, for example ₱54,000 by next September. Moving money into the fund is a transfer between your own accounts, so it does not count as spending, and the dashboard reports your savings rate for the month. Zoption never asks for a bank login, so the balance you track is the one you record or import.",
+        keyTakeaways: [
+          "Track the fund as its own account with a goal and a target date.",
+          "Transfers into the fund are not spending.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/high-yield-digital-banking-cashflow-guide",
+        label: "High-Yield Digital Banking & Cashflow Forecasting",
+        description:
+          "Compare where to keep savings in the Philippines and how interest adds up over a month and a year.",
+      },
+      {
+        to: "/guides/budget-monthly-salary-philippines",
+        label: "How to Budget a Monthly Salary in the Philippines",
+        description: "Find the monthly savings amount that feeds the fund.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Should I pay off debt or build an emergency fund first?",
+        answer:
+          "Many people do both in stages: build a small starter fund of about one month of fixed bills, then send extra money to high-interest debt such as credit cards, then finish the full fund. Without the starter fund, the next surprise tends to go back on the card.",
+      },
+      {
+        question: "Can I keep my emergency fund in GCash or Maya?",
+        answer:
+          "A savings feature inside an e-wallet can work if it is held by a PDIC-member bank and you can withdraw it quickly. Keep it apart from the wallet balance you spend from, so the fund is not used for everyday payments.",
+      },
+      {
+        question: "Is the emergency fund the same as savings?",
+        answer:
+          "It is one kind of savings with one job. Money for a trip, a gadget, or the holidays belongs in separate goals, so spending it does not leave you without a cushion.",
+      },
+    ],
+  },
+  {
+    slug: "budget-13th-month-pay-philippines",
+    title: "How to Budget Your 13th Month Pay",
+    seoTitle: "How to Budget Your 13th Month Pay in the Philippines",
+    description:
+      "How 13th month pay is computed, when it must be paid, and a peso plan to split it between debt, savings, the holidays, and the long wait to the first January payday.",
+    category: "budgeting",
+    readTimeMinutes: 6,
+    publishedDate: "2026-09-24",
+    updatedDate: "2026-09-24",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "13th month pay budget",
+      "how to spend 13th month pay wisely",
+      "13th month pay computation",
+      "13th month pay philippines",
+      "christmas budget philippines",
+      "bonus budget plan pesos",
+    ],
+    sections: [
+      {
+        id: "how-it-is-computed",
+        title: "How 13th Month Pay Is Computed",
+        content:
+          "Under Presidential Decree No. 851, rank-and-file employees in the private sector who worked at least one month during the calendar year receive 13th month pay of at least one twelfth of the basic salary they earned that year. Basic salary usually leaves out overtime, night differential, allowances, and other pay that is not part of the base rate. An employee earning ₱25,000 a month for all twelve months receives at least ₱25,000. Someone who worked seven months at that rate earned ₱175,000, so the 13th month pay is ₱14,583.33.",
+        keyTakeaways: [
+          "At least one twelfth of the basic salary earned in the calendar year.",
+          "Overtime and allowances are usually not part of the computation.",
+          "Seven months at ₱25,000 gives ₱14,583.33.",
+        ],
+      },
+      {
+        id: "when-it-arrives-and-tax",
+        title: "When It Arrives and How It Is Taxed",
+        content:
+          "The law requires payment on or before December 24. Some employers pay half in May or June and the rest in December, which is allowed as long as the full amount is paid by the deadline. The 13th month pay and other bonuses are tax exempt up to a combined ceiling set by tax law, and any amount above it is taxed with your regular income. Your payslip shows what was withheld. For questions about your own entitlement, the Department of Labor and Employment (DOLE) has the official guidance.",
+        keyTakeaways: [
+          "Paid in full on or before December 24, sometimes in two parts.",
+          "Tax exempt up to a ceiling shared with other bonuses; the excess is taxed.",
+        ],
+      },
+      {
+        id: "plan-before-it-lands",
+        title: "Decide Before It Lands",
+        content:
+          "Money that arrives in December with no plan tends to disappear in December. Decide where each peso goes in November, when the amount is known but not yet spent. Look at three things first: high-interest debt such as credit card balances, how far your emergency fund is from its target, and the gifts and Noche Buena you actually intend to buy. Write the gift list with a peso amount per person before shopping starts.",
+        keyTakeaways: [
+          "Make the plan in November, before the money arrives.",
+          "Put a peso amount next to every name on the gift list.",
+        ],
+      },
+      {
+        id: "worked-example-split",
+        title: "A Worked Example on ₱25,000",
+        content:
+          "One way to split ₱25,000: ₱12,500 (50 percent) to high-interest debt or the emergency fund, ₱5,000 (20 percent) held back for January, and ₱7,500 (30 percent) for gifts, Noche Buena, and the holidays. The January share matters because December's salary is often paid early for the holidays, which makes the wait for the first January payday long, and January bills still arrive on time. Change the percentages to fit your situation, but keep a share for debt or savings.",
+        keyTakeaways: [
+          "₱12,500 debt or savings, ₱5,000 for January, ₱7,500 for the holidays.",
+          "Hold part of it back for the long stretch to the first January payday.",
+        ],
+      },
+      {
+        id: "keep-it-out-of-the-baseline",
+        title: "Keep It Out of the Monthly Baseline",
+        content:
+          "Treat the 13th month pay as a one-off. Do not use it to justify a new subscription, a loan installment, or a higher monthly spending level, because it will not come again next month. In Zoption, record it as income in the month it arrives and move the savings share into a goal. Income and expenses are reported separately, so a large December deposit does not make an overspent month look healthy.",
+        keyTakeaways: [
+          "Do not commit to new monthly payments because of a once-a-year amount.",
+          "Record it as income and move the savings share into a goal.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/emergency-fund-philippines",
+        label: "How to Build an Emergency Fund in the Philippines",
+        description: "Set the target the savings share of your 13th month pay goes toward.",
+      },
+      {
+        to: "/tools/50-30-20-calculator",
+        label: "50/30/20 Calculator for Philippine Pesos",
+        description:
+          "Split any peso amount into three shares in exact centavos, with adjustable percentages.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Do I get 13th month pay if I resigned before December?",
+        answer:
+          "Rank-and-file employees who resigned or were separated during the year are entitled to 13th month pay in proportion to the basic salary they earned that year. It is usually paid with the final pay.",
+      },
+      {
+        question: "Is 13th month pay the same as a Christmas bonus?",
+        answer:
+          "No. The 13th month pay is required by law for covered employees. A Christmas or performance bonus is up to the employer. Both count toward the same tax-exempt ceiling for bonuses.",
+      },
+      {
+        question: "Are managers entitled to 13th month pay?",
+        answer:
+          "The law covers rank-and-file employees, so managerial employees are not covered by it, although many employers pay them one anyway. Check your contract or company policy.",
+      },
+    ],
+  },
 ];
 
 export function getAllFinanceGuides(): FinanceGuide[] {

@@ -69,6 +69,9 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/guides/replace-excel-spreadsheets-budget-tracker": GUIDE_PAGE_SOURCES,
   "/guides/budget-monthly-salary-philippines": GUIDE_PAGE_SOURCES,
   "/guides/50-30-20-rule-pesos": GUIDE_PAGE_SOURCES,
+  "/guides/budget-semi-monthly-pay-kinsenas-katapusan": GUIDE_PAGE_SOURCES,
+  "/guides/emergency-fund-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/budget-13th-month-pay-philippines": GUIDE_PAGE_SOURCES,
   "/tutorials": ["apps/web/src/pages/tutorials/TutorialsPage.tsx"],
   "/import": [
     "apps/web/src/pages/import/ImportHubPage.tsx",

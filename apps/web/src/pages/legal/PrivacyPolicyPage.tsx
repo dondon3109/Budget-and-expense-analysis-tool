@@ -6,8 +6,8 @@ export function PrivacyPolicyPage() {
   return (
     <LegalPageLayout
       title="Privacy Policy"
-      summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, assistant, consent, and operational information."
-      lastUpdated="September 23, 2026"
+      summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
+      lastUpdated="September 24, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -42,6 +42,19 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Imports and exports:</strong> filenames, mappings, preview and validation
             results, import audit information, and requested filtered transaction CSV exports.
+          </li>
+          <li>
+            <strong>Receipt scanning and AI entry:</strong> after separate AI entry consent, the
+            receipt photo or screenshot, spoken transaction note or its transcript, or PDF statement
+            you choose, together with your category names, used to draft transactions for your
+            review. Nothing is added to your workspace until you review and save the draft.
+          </li>
+          <li>
+            <strong>Android app on your device:</strong> a local copy of your financial workspace
+            and a queue of changes not yet synced, kept in an encrypted database whose key is held
+            in the device&apos;s secure storage; your sign-in session in that secure storage; and,
+            if you set an app lock, a salted hash of the app password rather than the password
+            itself.
           </li>
           <li>
             <strong>Plan and billing:</strong> plan tier, including Free or Zoption Pro, plus
@@ -112,6 +125,10 @@ export function PrivacyPolicyPage() {
           <li>create and secure accounts and authenticate requests;</li>
           <li>
             provide tenant-isolated budgeting, transaction, calendar, import, and export features;
+          </li>
+          <li>
+            draft transactions from a receipt image, a spoken note, or a PDF statement only after
+            separate AI entry consent, and only when you start that action;
           </li>
           <li>
             provide the AI assistant only after separate assistant consent and monitor provider
@@ -189,15 +206,25 @@ export function PrivacyPolicyPage() {
             identities, financial records, prompts, or conversation contents are ever sent.
           </li>
           <li>
+            <strong>Cloudflare Workers AI</strong> for AI entry after separate AI entry consent: it
+            reads a receipt image to draft a transaction, transcribes a spoken transaction note and
+            drafts a transaction from it, and extracts transaction rows from the text of a PDF
+            statement. Zoption sends only the file or note you chose and your category names, not
+            the rest of your workspace.
+          </li>
+          <li>
             <strong>
-              Cloudflare Workers AI, your browser&apos;s speech service, and Fish Audio
+              Cloudflare Workers AI, your browser&apos;s speech service, Google, and Fish Audio
             </strong>{" "}
             for the separately enabled voice feature. After voice consent, your browser&apos;s own
             speech service (Google on Chrome, Apple on Safari) may process a user-initiated
             recording where it offers live recognition, and Cloudflare Workers AI also receives the
-            recording to produce a transcript. Transcripts are reviewed before sending. Fish Audio
-            may receive the completed assistant reply text when you choose spoken replies. Zoption
-            does not send workspace records directly to any voice provider or store recordings or
+            recording to produce a transcript. When the administrator activates Google speech
+            recognition, Google receives the recording instead, either through the Gemini Live API
+            or through a Zoption-operated Google Cloud bridge to Google Cloud Speech-to-Text; Pro
+            live voice chat uses this path. Transcripts are reviewed before sending. Fish Audio may
+            receive the completed assistant reply text when you choose spoken replies. Zoption does
+            not send workspace records directly to any voice provider or store recordings or
             generated audio in D1.
           </li>
           <li>
@@ -318,8 +345,19 @@ export function PrivacyPolicyPage() {
           Safari. Transcripts are reviewed before sending. For a voice-originated question, Zoption
           may send the completed assistant reply text to Fish Audio when you choose spoken replies.
           Zoption keeps the recording and generated audio in transient processing and browser memory
-          only; it does not save either in D1. Each provider&apos;s own processing, security,
-          retention, and deletion practices apply to the information it receives.
+          only; it does not save either in D1. When the administrator activates Google speech
+          recognition, including for Pro live voice chat, Google receives the recording instead of
+          Cloudflare Workers AI. Each provider&apos;s own processing, security, retention, and
+          deletion practices apply to the information it receives.
+        </p>
+        <p>
+          AI entry is a separately consented feature, apart from assistant consent. When you scan a
+          receipt, speak a transaction, or choose a PDF statement, Zoption sends that image, audio
+          or transcript, or statement text, with your category names, through its authenticated
+          server to Cloudflare Workers AI to draft transactions. Each use counts toward your
+          plan&apos;s AI allowance. Zoption does not store the receipt image, the audio, or the PDF
+          file in D1. A PDF statement produces a temporary import preview like any other import, and
+          a draft becomes a record only when you review and save it.
         </p>
       </section>
 
@@ -373,6 +411,12 @@ export function PrivacyPolicyPage() {
           remain through that provider retention period.
         </p>
         <p>
+          On Android, the local copy of your workspace stays on the device while you are signed in
+          so the app works offline. Signing out deletes that local database, its encryption key, and
+          the app lock from the device. If changes have not synced yet, the app warns you before
+          signing out, because unsynced changes on the device would be lost.
+        </p>
+        <p>
           Selected customer reviews remain available while the account is active unless you remove
           or replace the review or a platform administrator hides it. Replacing a review returns it
           to moderation before it can appear again. Account deletion removes the review from active
@@ -423,17 +467,18 @@ export function PrivacyPolicyPage() {
           Payments, whichever you choose, processes subscription approval and payment information.
           When you enable the AI assistant or send a product-support chat message, the relevant
           request context described above may be transferred to and processed by the configured AI
-          provider in locations where it or its subprocessors operate. If you enable voice, the
-          recording described above may be processed by Cloudflare Workers AI or your browser&apos;s
-          speech service and the generated-reply text may be processed by Fish Audio in locations
-          where they or their subprocessors operate. Metadata-only AI observability events are sent
-          to PostHog&apos;s US Cloud region. Privacy laws in those locations may differ from those
-          in your country. Zoption remains responsible for personal data under its control and
-          restricts transfers to information reasonably necessary for the relevant service. We use
-          applicable provider terms and reasonable access and security controls, and will use any
-          additional consent or transfer mechanism required by law. Contact{" "}
-          <a href="mailto:support@zoption.site">support@zoption.site</a> for information about
-          relevant processing locations or safeguards.
+          provider in locations where it or its subprocessors operate. If you use AI entry, the
+          receipt image, spoken note, or statement text is processed by Cloudflare Workers AI. If
+          you enable voice, the recording described above may be processed by Cloudflare Workers AI,
+          Google, or your browser&apos;s speech service and the generated-reply text may be
+          processed by Fish Audio in locations where they or their subprocessors operate.
+          Metadata-only AI observability events are sent to PostHog&apos;s US Cloud region. Privacy
+          laws in those locations may differ from those in your country. Zoption remains responsible
+          for personal data under its control and restricts transfers to information reasonably
+          necessary for the relevant service. We use applicable provider terms and reasonable access
+          and security controls, and will use any additional consent or transfer mechanism required
+          by law. Contact <a href="mailto:support@zoption.site">support@zoption.site</a> for
+          information about relevant processing locations or safeguards.
         </p>
       </section>
 

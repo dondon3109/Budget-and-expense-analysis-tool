@@ -53,7 +53,7 @@ describe("legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: September 23, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: September 24, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
@@ -67,6 +67,8 @@ describe("legal pages", () => {
     expect(screen.getByText(/plan tier, including Free or Zoption Pro/i)).toBeInTheDocument();
     expect(screen.getByText(/only if you start checkout for or subscribe/i)).toBeInTheDocument();
     expect(screen.getByText(/transaction-derived balances/i)).toBeInTheDocument();
+    expect(screen.getByText(/after separate AI entry consent: it/i)).toBeInTheDocument();
+    expect(screen.getByText(/Signing out deletes that local database/i)).toBeInTheDocument();
     expect(screen.getAllByText(/sanitized audit/i).length).toBeGreaterThan(0);
     expect(
       screen.getByText(/does not receive the question, prior chat, answer/i),
@@ -95,7 +97,7 @@ describe("legal pages", () => {
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
     expect(
-      screen.getByText(/assistant has a separate, versioned consent flow/i),
+      screen.getByText(/assistant and AI entry each have a separate, versioned consent flow/i),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/cookieless, memory-only mode/i).length).toBeGreaterThan(0);
   });

@@ -26,6 +26,12 @@ describe("robotsText", () => {
     }
   });
 
+  it("welcomes search and AI answers but refuses training in production", () => {
+    expect(robotsText(SITE_ORIGIN, true)).toContain(
+      "Content-Signal: search=yes, ai-input=yes, ai-train=no",
+    );
+  });
+
   it("declares exactly one user-agent group", () => {
     expect(robotsText(SITE_ORIGIN, true).match(/^User-agent:/gm)).toHaveLength(1);
   });

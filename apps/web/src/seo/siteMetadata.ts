@@ -298,7 +298,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-09-24";
 const PRICING_LAST_MODIFIED = "2026-09-24";
-const GUIDES_LAST_MODIFIED = "2026-09-18";
+const GUIDES_LAST_MODIFIED = "2026-09-24";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -333,7 +333,7 @@ const FAQ_LAST_MODIFIED = "2026-09-13";
 const CHANGELOG_LAST_MODIFIED = "2026-09-24";
 const TERMS_LAST_MODIFIED = "2026-09-24";
 const PRIVACY_LAST_MODIFIED = "2026-09-24";
-const COOKIE_POLICY_LAST_MODIFIED = "2026-09-18";
+const COOKIE_POLICY_LAST_MODIFIED = "2026-09-24";
 const IMPORT_LAST_MODIFIED = "2026-09-18";
 const TOOLS_LAST_MODIFIED = "2026-09-18";
 // The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
