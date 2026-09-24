@@ -46,7 +46,7 @@ export function TransactionRow({
       android_ripple={
         onPress
           ? {
-              color: "rgba(15, 107, 91, 0.12)",
+              color: "rgba(10, 117, 86, 0.12)",
               borderless: false,
             }
           : undefined

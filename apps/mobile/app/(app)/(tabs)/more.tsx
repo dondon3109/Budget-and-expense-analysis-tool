@@ -33,7 +33,7 @@ function MenuItem({ icon, title, subtitle, badge, onPress }: MenuItemProps) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${subtitle}`}
-      android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       className="w-full flex-row items-center gap-3"
       onPress={onPress}
       style={({ pressed }) => [

@@ -37,7 +37,8 @@
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  letter-spacing: -0.025em;
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 .auth-heading h1 {
   font-size: 36px;
@@ -114,7 +115,7 @@
   gap: 11px;
   color: var(--subtle);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
 }
 .auth-divider::before,
 .auth-divider::after {
@@ -128,7 +129,7 @@
   gap: 7px;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
 }
 .auth-form label > small {
   color: var(--subtle);
@@ -166,7 +167,7 @@
   justify-content: flex-end;
   color: var(--sage);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
 }
 .auth-footer {
   margin-top: auto;
@@ -180,7 +181,7 @@
 }
 .auth-footer a {
   color: var(--sage);
-  font-weight: 800;
+  font-weight: 700;
 }
 .auth-success {
   padding: 18px;
@@ -214,37 +215,55 @@
 }
 .form-error-duplicate a {
   color: var(--danger);
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 .auth-aside {
+  position: relative;
   padding: 64px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: #17342e;
+  overflow: hidden;
+  color: var(--vault-text);
+  background: var(--vault-bg);
+}
+/* The mint stroke from the Z mark, cut across the panel corner. */
+.auth-aside::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  right: -60px;
+  width: 280px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--mint);
+  transform: rotate(-38deg);
+  opacity: 0.9;
 }
 .auth-aside .eyebrow {
-  color: #9ec9b8;
+  color: var(--mint);
 }
 .auth-aside h2 {
   max-width: 500px;
-  color: var(--contrast-text);
+  color: var(--vault-text);
   font-size: clamp(38px, 5vw, 58px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
   line-height: 1.04;
 }
 .auth-aside > p:not(.eyebrow) {
   max-width: 480px;
   margin: 22px 0 0;
-  color: #c8d5cf;
+  color: var(--vault-muted);
   font-size: 15px;
   line-height: 1.7;
 }
 .auth-aside .text-link {
   width: fit-content;
   margin-top: 34px;
-  color: var(--contrast-text);
+  color: var(--vault-text);
   font-size: 12px;
 }
 

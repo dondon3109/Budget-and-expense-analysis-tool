@@ -114,7 +114,7 @@
   color: var(--danger);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
@@ -181,7 +181,7 @@
 .new-category-form legend {
   color: var(--muted);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -214,14 +214,14 @@
 .transfer-net > span {
   color: var(--muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .transfer-net > strong {
   color: var(--income);
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
 }
@@ -354,7 +354,7 @@
   border-radius: 10px;
   background: var(--surface);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .emoji-picker {

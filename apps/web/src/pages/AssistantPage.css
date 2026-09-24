@@ -96,7 +96,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-history-heading h2 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display);
   font-size: 20px;
   font-weight: 600;
   line-height: 1.1;
@@ -121,7 +121,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 8px;
   background: transparent;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .assistant-history-edit:hover {
@@ -148,7 +148,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 11px;
   background: var(--action);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   box-shadow: 0 4px 14px -4px var(--brand-glow);
   cursor: pointer;
   transition:
@@ -179,7 +179,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface);
   box-shadow: 0 1px 3px var(--shadow);
   font-size: 11.5px;
-  font-weight: 650;
+  font-weight: 580;
   cursor: pointer;
   transition:
     background 180ms ease,
@@ -208,7 +208,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--action-strong);
   font-family: var(--font-mono);
   font-size: 8px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   vertical-align: middle;
@@ -265,7 +265,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--subtle);
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -474,7 +474,7 @@ main:has(.assistant-page) > .legal-footer,
   border: 0;
   background: transparent;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .assistant-delete-confirm button:first-of-type {
@@ -548,7 +548,7 @@ main:has(.assistant-page) > .legal-footer,
   background: color-mix(in srgb, var(--paper) 78%, transparent);
   backdrop-filter: blur(8px);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .assistant-chat-status {
@@ -579,7 +579,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 12.5px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.25;
   letter-spacing: -0.01em;
   text-overflow: ellipsis;
@@ -631,7 +631,7 @@ main:has(.assistant-page) > .legal-footer,
   min-width: 0;
   overflow: hidden;
   color: var(--muted);
-  font-weight: 650;
+  font-weight: 580;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -644,7 +644,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface);
   font-family: var(--font-mono);
   font-size: 8.5px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -680,7 +680,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-chat-usage .plan-usage-label {
   color: var(--muted);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -719,7 +719,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-chat-usage .plan-usage-meta small {
   color: var(--subtle);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 580;
   line-height: 1.45;
 }
 
@@ -727,7 +727,7 @@ main:has(.assistant-page) > .legal-footer,
   flex: 0 0 auto;
   color: var(--action);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 
@@ -794,7 +794,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 999px;
   background: var(--surface);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
   transition:
     border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
@@ -824,7 +824,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-education-notice strong {
   color: var(--ink);
-  font-weight: 650;
+  font-weight: 580;
 }
 
 /* --- Error states --- */
@@ -840,7 +840,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--action);
   border: 0;
   background: transparent;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 /* ============================================================
@@ -898,7 +898,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-empty h2 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(30px, 3.6vw, 40px);
   font-weight: 600;
   letter-spacing: -0.015em;
@@ -930,7 +930,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-fee-currency {
   color: var(--action);
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .assistant-fee-welcome .assistant-fee-disclaimer {
@@ -1014,7 +1014,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-quick-prompts .assistant-quick-prompt-title {
-  font-weight: 650;
+  font-weight: 580;
   color: var(--ink);
 }
 
@@ -1138,7 +1138,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-message-meta strong {
   color: var(--ink);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .assistant-message.user .assistant-message-meta strong {
@@ -1203,7 +1203,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--action);
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1286,7 +1286,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--action);
   font-family: var(--font-mono);
   font-size: 9.5px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -1314,7 +1314,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-data-used strong {
   color: var(--ink);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .assistant-data-used ul {
@@ -1600,7 +1600,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface);
   color: var(--muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.04em;
   cursor: pointer;
   transition:
@@ -1842,7 +1842,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-consent h1 {
   margin: 0;
   color: var(--ink);
-  font-family: var(--font-display), Georgia, serif;
+  font-family: var(--font-display);
   font-size: clamp(30px, 5vw, 43px);
   line-height: 1.08;
 }
@@ -2037,7 +2037,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-memory-trust-banner .trust-text-wrap strong {
   font-size: 12.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 
@@ -2104,7 +2104,7 @@ main:has(.assistant-page) > .legal-footer,
   flex: 0 0 auto;
   color: var(--ink);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .assistant-memory-section .section-help-text {
@@ -2123,7 +2123,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface-soft);
   border: 1px solid var(--line);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--muted);
 }
 
@@ -2184,7 +2184,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .strategy-title {
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   line-height: 1.25;
   color: var(--ink);
 }
@@ -2193,7 +2193,7 @@ main:has(.assistant-page) > .legal-footer,
   align-self: flex-start;
   margin-bottom: 7px;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
   padding: 2px 7px;
   border-radius: 999px;
   background: var(--selection-soft);
@@ -2235,7 +2235,7 @@ main:has(.assistant-page) > .legal-footer,
   flex: 0 0 auto;
   min-width: 92px;
   font-size: 11px;
-  font-weight: 650;
+  font-weight: 580;
   color: var(--muted);
 }
 
@@ -2257,7 +2257,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--muted);
   font: inherit;
   font-size: 11.5px;
-  font-weight: 650;
+  font-weight: 580;
   cursor: pointer;
   transition:
     border-color 0.15s ease,
@@ -2318,7 +2318,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-memory-empty-card h4 {
   margin: 0;
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 
@@ -2343,7 +2343,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .empty-examples .examples-header {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   display: block;
   margin-bottom: 5px;
@@ -2391,7 +2391,7 @@ main:has(.assistant-page) > .legal-footer,
   align-items: center;
   gap: 4px;
   font-size: 10.5px;
-  font-weight: 650;
+  font-weight: 580;
   padding: 3px 7px;
   border-radius: 6px;
 }
@@ -2471,7 +2471,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 8px;
   background: transparent;
   font-size: 11.5px;
-  font-weight: 650;
+  font-weight: 580;
   cursor: pointer;
   transition:
     background 0.15s ease,
@@ -2499,7 +2499,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-memory-clear-confirm .confirm-text strong {
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
   color: var(--danger);
   display: block;
   margin-bottom: 2px;

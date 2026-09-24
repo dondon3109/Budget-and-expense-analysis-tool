@@ -34,7 +34,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 13px;
-  font-weight: 780;
+  font-weight: 650;
   transition:
     background-color 150ms ease,
     box-shadow 150ms ease,
@@ -112,7 +112,7 @@
 .support-chat-header h2 {
   font-family: var(--font-ui);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.25;
 }
@@ -176,7 +176,7 @@
 .support-chat-message > span {
   color: var(--subtle);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .support-chat-message p {
@@ -201,7 +201,7 @@
 
 .support-message-link {
   color: var(--action-strong);
-  font-weight: 760;
+  font-weight: 650;
   text-decoration-color: color-mix(in srgb, var(--action) 52%, transparent);
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
@@ -248,7 +248,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 11px;
-  font-weight: 720;
+  font-weight: 620;
   text-align: left;
 }
 
@@ -312,7 +312,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .support-report-review {
@@ -356,7 +356,7 @@
   color: var(--subtle);
   font-family: var(--font-mono);
   font-size: 9px;
-  font-weight: 650;
+  font-weight: 580;
   letter-spacing: 0.05em;
   line-height: 1.3;
   text-transform: uppercase;
@@ -367,7 +367,7 @@
   color: var(--ink);
   font-family: var(--font-ui);
   font-size: 14px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
@@ -409,7 +409,7 @@
 .support-report-fields label > span {
   color: var(--muted);
   font-size: 10px;
-  font-weight: 760;
+  font-weight: 650;
 }
 
 .support-report-field-row {
@@ -470,7 +470,7 @@
   gap: 6px;
   color: var(--action-strong);
   cursor: pointer;
-  font-weight: 760;
+  font-weight: 650;
 }
 
 .support-report-diagnostics p {
@@ -507,7 +507,7 @@
   cursor: pointer;
   font: inherit;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .support-report-actions button.secondary {

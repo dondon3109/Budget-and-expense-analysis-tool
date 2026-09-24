@@ -34,10 +34,10 @@ export function Button({
     accessibilityLabel ?? (typeof children === "string" ? children : undefined);
   const palette = {
     primary: {
-      background: theme.colors.brand,
-      pressed: theme.colors.brandPressed,
-      text: theme.colors.onBrand,
-      border: theme.colors.brandPressed,
+      background: theme.colors.solid,
+      pressed: theme.colors.solidPressed,
+      text: theme.colors.onSolid,
+      border: theme.colors.solid,
     },
     secondary: {
       background: theme.colors.surfaceRaised,
@@ -76,7 +76,7 @@ export function Button({
               color:
                 variant === "primary" || variant === "danger"
                   ? "rgba(255, 255, 255, 0.24)"
-                  : "rgba(15, 107, 91, 0.16)",
+                  : "rgba(10, 117, 86, 0.16)",
               borderless: false,
             }
       }

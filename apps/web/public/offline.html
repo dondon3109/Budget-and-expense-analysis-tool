@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#06473d" />
+    <meta name="theme-color" content="#0c1512" />
     <title>Connection required — Zoption</title>
     <style>
       :root {
         color-scheme: light dark;
-        font-family: Manrope, ui-sans-serif, system-ui, sans-serif;
-        color: #17342e;
-        background: #f4f1e9;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        color: #0c1512;
+        background: #f1f3f2;
       }
       * {
         box-sizing: border-box;
@@ -24,15 +24,15 @@
           max(24px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
         display: grid;
         place-items: center;
-        background: #f4f1e9;
+        background: #f1f3f2;
       }
       main {
         width: min(560px, 100%);
         padding: clamp(28px, 7vw, 52px);
-        border: 1px solid #d9d5cb;
+        border: 1px solid #e2e6e4;
         border-radius: 20px;
-        background: #fffdf8;
-        box-shadow: 0 24px 70px rgba(35, 51, 44, 0.12);
+        background: #fff;
+        box-shadow: 0 24px 70px rgba(12, 21, 18, 0.1);
       }
       img {
         width: 64px;
@@ -41,14 +41,15 @@
       }
       h1 {
         margin: 24px 0 12px;
-        font-family: Georgia, serif;
+        font-family: ui-sans-serif, system-ui, sans-serif;
         font-size: clamp(36px, 9vw, 54px);
-        font-weight: 400;
+        font-weight: 700;
+        letter-spacing: -0.035em;
         line-height: 1.04;
       }
       p {
         margin: 0;
-        color: #5f6b66;
+        color: #545f5a;
         font-size: 16px;
         line-height: 1.65;
       }
@@ -61,32 +62,32 @@
         justify-content: center;
         color: #fff;
         border-radius: 12px;
-        background: #06473d;
+        background: #0c1512;
         font-weight: 700;
         text-decoration: none;
       }
       a:focus-visible {
-        outline: 3px solid #2f705a;
+        outline: 3px solid #0a7556;
         outline-offset: 4px;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          color: #f2f4f7;
-          background: #0f1115;
+          color: #edf2f0;
+          background: #080b0a;
         }
         body {
-          background: #0f1115;
+          background: #080b0a;
         }
         main {
-          border-color: #303640;
-          background: #171a20;
+          border-color: #222b29;
+          background: #111615;
         }
         p {
-          color: #b2b8c2;
+          color: #a3adaa;
         }
         a {
-          color: #102019;
-          background: #67e0bc;
+          color: #04140e;
+          background: #5fe3b8;
         }
       }
     </style>

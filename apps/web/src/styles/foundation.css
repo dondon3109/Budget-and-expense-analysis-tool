@@ -1,308 +1,333 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: "Manrope";
+  font-family: "Geist";
   font-style: normal;
-  font-weight: 400 800;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/manrope-latin.woff2") format("woff2");
+  src: url("/fonts/geist-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: "Newsreader";
+  font-family: "Bricolage Grotesque";
   font-style: normal;
-  font-weight: 400 600;
+  font-weight: 200 800;
   font-display: swap;
-  src: url("/fonts/newsreader-latin.woff2") format("woff2");
+  src: url("/fonts/bricolage-grotesque-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
     U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
 @font-face {
-  font-family: "IBM Plex Mono";
+  font-family: "Geist Mono";
   font-style: normal;
-  font-weight: 500;
+  font-weight: 100 900;
   font-display: swap;
-  src: url("/fonts/ibm-plex-mono-500-latin.woff2") format("woff2");
+  src: url("/fonts/geist-mono-latin.woff2") format("woff2");
 }
 
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-weight: 600;
-  font-display: swap;
-  src: url("/fonts/ibm-plex-mono-600-latin.woff2") format("woff2");
-}
-
+/* Light is a cool mineral ledger: white sheets on a green-grey desk, near-black ink for
+   primary actions, and the emerald and mint of the Z mark carrying brand and selection.
+   Dark and Coffee redefine the same roles, so components only ever read tokens. */
 :root {
   color-scheme: light;
   --font-ui:
-    "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+    "Geist", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Bricolage Grotesque", "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
   font-family: var(--font-ui);
-  color: #19352f;
-  background: #f4f1e9;
+  font-feature-settings: "ss01", "cv11";
+  color: #0c1512;
+  background: #f1f3f2;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --page: #f4f1e9;
-  --page-accent: #f7f4ec;
-  --ink: #17342e;
-  --muted: #636b64;
-  --subtle: #636e68;
-  --sage: #2f705a;
-  --sage-hover: #245047;
-  --sage-soft: #e5f0eb;
-  --action: #0f6b5b;
-  --action-strong: #06473d;
-  --action-soft: #d5f4ea;
-  --brand: #0f6b5b;
-  --brand-strong: #06473d;
-  --brand-soft: #d5f4ea;
-  --selection-soft: #c6eee1;
-  --brand-glow: rgba(15, 107, 91, 0.2);
-  --income: #08776d;
-  --income-soft: #d9f5f0;
-  --expense: #d96b35;
-  --expense-soft: #ffe3d6;
-  --expense-text: #a0441f;
-  --budget: #6e4fc5;
-  --budget-soft: #eae2ff;
-  --info: #2f65c8;
-  --info-soft: #e0e9ff;
-  --page-glow-alt: rgba(47, 101, 200, 0.15);
-  --inverse-bg: #17342e;
-  --inverse-text: #fffdf8;
-  --inverse-muted: #b9d8cc;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --page: #f1f3f2;
+  --page-accent: #f6f7f7;
+  --ink: #0c1512;
+  --muted: #545f5a;
+  --subtle: #5d6863;
+  --sage: #0a7556;
+  --sage-hover: #075c43;
+  --sage-soft: #e1f5ed;
+  --action: #0a7556;
+  --action-strong: #054a37;
+  --action-soft: #dcf5eb;
+  --brand: #0a7556;
+  --brand-strong: #054a37;
+  --brand-soft: #dcf5eb;
+  --mint: #3ddca6;
+  --selection-soft: #c3f0de;
+  --brand-glow: rgba(10, 117, 86, 0.18);
+  --income: #07805d;
+  --income-soft: #dbf5ea;
+  --expense: #e0592a;
+  --expense-soft: #fde6dc;
+  --expense-text: #ad3d12;
+  --budget: #6546e8;
+  --budget-soft: #ebe6ff;
+  --info: #2459d8;
+  --info-soft: #e2eaff;
+  --page-glow-alt: rgba(36, 89, 216, 0.1);
+  --inverse-bg: #0c1512;
+  --inverse-text: #f4f7f5;
+  --inverse-muted: #a9c9bc;
   --excel-accent: #217346;
   --excel-ink: #175c37;
-  --excel-soft: #edf7f1;
+  --excel-soft: #ecf6f0;
   --excel-line: rgba(33, 115, 70, 0.18);
   --excel-grid: rgba(33, 115, 70, 0.09);
-  --solid-bg: #06473d;
-  --solid-hover: #0f6b5b;
+  --solid-bg: #0c1512;
+  --solid-hover: #22302b;
   --solid-text: #fff;
-  --paper: #fffdf8;
+  --paper: #fff;
   --surface: #fff;
-  --surface-soft: #faf8f2;
-  --surface-hover: #f0eee7;
+  --surface-soft: #f7f8f8;
+  --surface-hover: #edf0ee;
   /* Muted panel fill. Resolves through --surface-hover so each theme stays coherent. */
   --surface-muted: var(--surface-hover);
-  --surface-glass: rgba(255, 255, 255, 0.62);
-  --surface-translucent: rgba(255, 253, 248, 0.9);
-  --glass-border: rgba(255, 255, 255, 0.78);
-  --page-glow: rgba(153, 232, 211, 0.82);
-  --line: #e4dfd3;
-  --line-strong: #d9d5cb;
+  --surface-glass: rgba(255, 255, 255, 0.72);
+  --surface-translucent: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(12, 21, 18, 0.08);
+  --page-glow: rgba(61, 220, 166, 0.22);
+  --line: #e2e6e4;
+  --line-strong: #cdd4d1;
   /* Quiet divider for panels that sit on --surface-muted. Resolves per theme. */
   --subtle-border: var(--line);
-  --focus: #2f705a;
-  --shadow: rgba(35, 51, 44, 0.08);
-  --overlay: rgba(18, 34, 30, 0.56);
-  --success: #2f705a;
-  --success-soft: #e5f1ec;
-  --warning: #745c21;
-  --warning-soft: #fff8e6;
-  --danger: #9b4945;
-  --danger-soft: #fff1ef;
-  --amber: #dc8b3f;
-  --amber-soft: #faeadb;
-  --plum: #7363a6;
-  --plum-soft: #ece8f7;
-  --contrast-bg: #17342e;
-  --contrast-text: #fffdf8;
-  --contrast-muted: #b9d8cc;
-  --chart-income: #00897b;
-  --chart-expense: #d96b35;
-  --chart-grid: #e7e2d8;
-  --chart-axis: #73716b;
-  --chart-tooltip-bg: #fffdf8;
-  --chart-tooltip-border: #d9d5cb;
-  --chart-slice-separator: #fffdf8;
-  --chart-crosshair: rgba(23, 52, 46, 0.3);
+  --focus: #0a7556;
+  --shadow: rgba(12, 21, 18, 0.08);
+  --overlay: rgba(8, 14, 12, 0.5);
+  --success: #0a7556;
+  --success-soft: #e1f5ed;
+  --warning: #7d5600;
+  --warning-soft: #fff4d6;
+  --danger: #c0352b;
+  --danger-soft: #fdecea;
+  --amber: #e08a1e;
+  --amber-soft: #fcefd9;
+  --plum: #7b5bd6;
+  --plum-soft: #eee8fb;
+  --contrast-bg: #0c1512;
+  --contrast-text: #f4f7f5;
+  --contrast-muted: #a9c9bc;
+  /* Vault: the always-dark brand panel (balance hero, auth aside). */
+  --vault-bg: #0c1512;
+  --vault-text: #f4f7f5;
+  --vault-muted: #9fb3ab;
+  --chart-income: #12a37a;
+  --chart-expense: #ef6a3a;
+  --chart-grid: #e6eae8;
+  --chart-axis: #6a7570;
+  --chart-tooltip-bg: #fff;
+  --chart-tooltip-border: #cdd4d1;
+  --chart-slice-separator: #fff;
+  --chart-crosshair: rgba(12, 21, 18, 0.28);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
-  --radius-xl: 20px;
+  --radius-xl: 22px;
   --control-height: 44px;
-  --content-max: 1270px;
-  --sidebar-width: 232px;
-  --shadow-card: 0 1px 2px rgba(35, 51, 44, 0.035), 0 12px 34px rgba(35, 51, 44, 0.055);
-  --shadow-raised: 0 18px 48px rgba(35, 51, 44, 0.12);
-  --shadow-dialog: 0 28px 80px rgba(18, 34, 30, 0.24);
+  --content-max: 1280px;
+  --sidebar-width: 244px;
+  --shadow-card: 0 0 0 1px rgba(12, 21, 18, 0.02), 0 1px 2px rgba(12, 21, 18, 0.04);
+  --shadow-raised: 0 1px 2px rgba(12, 21, 18, 0.05), 0 12px 32px rgba(12, 21, 18, 0.1);
+  --shadow-dialog: 0 2px 6px rgba(8, 14, 12, 0.06), 0 32px 80px rgba(8, 14, 12, 0.22);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  color: #f2f4f7;
-  background: #0f1115;
-  --page: #0f1115;
-  --page-accent: #13161b;
-  --ink: #f2f4f7;
-  --muted: #b2b8c2;
-  --subtle: #929aa6;
-  --sage: #78c5a6;
-  --sage-hover: #8dd3b6;
-  --sage-soft: #1b392f;
-  --action: #67e0bc;
-  --action-strong: #a3f2d5;
-  --action-soft: #123f35;
-  --brand: #67e0bc;
-  --brand-strong: #a3f2d5;
-  --brand-soft: #123f35;
-  --selection-soft: #1a5645;
-  --brand-glow: rgba(103, 224, 188, 0.2);
-  --income: #62ddcb;
-  --income-soft: #123e3b;
-  --expense: #ffad7b;
-  --expense-soft: #4d2a25;
-  --expense-text: #ffb28a;
-  --budget: #c2a6ff;
-  --budget-soft: #382b57;
-  --info: #8ab4ff;
-  --info-soft: #213457;
-  --page-glow-alt: rgba(96, 119, 152, 0.12);
-  --inverse-bg: #0b0d10;
-  --inverse-text: #f2f4f7;
-  --inverse-muted: #b2b8c2;
+  color: #edf2f0;
+  background: #080b0a;
+  --page: #080b0a;
+  --page-accent: #0c100f;
+  --ink: #edf2f0;
+  --muted: #a3adaa;
+  --subtle: #8c9793;
+  --sage: #5fe3b8;
+  --sage-hover: #8eeccc;
+  --sage-soft: #10362b;
+  --action: #5fe3b8;
+  --action-strong: #a4f2d7;
+  --action-soft: #0f3a2d;
+  --brand: #5fe3b8;
+  --brand-strong: #a4f2d7;
+  --brand-soft: #0f3a2d;
+  --mint: #5fe3b8;
+  --selection-soft: #155443;
+  --brand-glow: rgba(95, 227, 184, 0.18);
+  --income: #5fe3b8;
+  --income-soft: #0f3a2d;
+  --expense: #ff8f63;
+  --expense-soft: #45231a;
+  --expense-text: #ffa482;
+  --budget: #ad9bff;
+  --budget-soft: #2d2555;
+  --info: #86aaff;
+  --info-soft: #1b2c52;
+  --page-glow-alt: rgba(134, 170, 255, 0.08);
+  --inverse-bg: #edf2f0;
+  --inverse-text: #0c1512;
+  --inverse-muted: #45524d;
   --excel-accent: #75c99a;
   --excel-ink: #c2ead3;
-  --excel-soft: #172b22;
+  --excel-soft: #13261d;
   --excel-line: rgba(117, 201, 154, 0.22);
   --excel-grid: rgba(117, 201, 154, 0.1);
-  --solid-bg: #67e0bc;
-  --solid-hover: #a3f2d5;
-  --solid-text: #102019;
-  --paper: #171a20;
-  --surface: #1d2128;
-  --surface-soft: #14171c;
-  --surface-hover: #252a33;
-  --surface-glass: rgba(29, 33, 40, 0.78);
-  --surface-translucent: rgba(23, 26, 32, 0.94);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --page-glow: rgba(148, 163, 184, 0.12);
-  --line: #303640;
-  --line-strong: #626d7d;
-  --focus: #7ad8b8;
-  --shadow: rgba(0, 0, 0, 0.34);
-  --overlay: rgba(0, 0, 0, 0.74);
-  --success: #83c9ac;
-  --success-soft: #1a392e;
-  --warning: #e6c57d;
-  --warning-soft: #3b311d;
-  --danger: #f0a29c;
-  --danger-soft: #422522;
-  --amber: #efa85f;
-  --amber-soft: #442f1f;
-  --plum: #b4a5e2;
-  --plum-soft: #312b46;
-  --contrast-bg: #0b0d10;
-  --contrast-text: #f2f4f7;
-  --contrast-muted: #b2b8c2;
-  --chart-income: #199e70;
-  --chart-expense: #d95926;
-  --chart-grid: #303640;
-  --chart-axis: #9ba3af;
-  --chart-tooltip-bg: #1d2128;
-  --chart-tooltip-border: #626d7d;
-  --chart-slice-separator: #171a20;
-  --chart-crosshair: rgba(242, 244, 247, 0.28);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.18), 0 14px 38px rgba(0, 0, 0, 0.2);
-  --shadow-raised: 0 20px 52px rgba(0, 0, 0, 0.34);
-  --shadow-dialog: 0 30px 90px rgba(0, 0, 0, 0.48);
+  --solid-bg: #5fe3b8;
+  --solid-hover: #8eeccc;
+  --solid-text: #04140e;
+  --paper: #111615;
+  --surface: #131918;
+  --surface-soft: #0e1312;
+  --surface-hover: #1b2321;
+  --surface-glass: rgba(19, 25, 24, 0.8);
+  --surface-translucent: rgba(17, 22, 21, 0.94);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --page-glow: rgba(95, 227, 184, 0.08);
+  --line: #222b29;
+  --line-strong: #3a4744;
+  --focus: #5fe3b8;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --overlay: rgba(0, 0, 0, 0.7);
+  --success: #5fe3b8;
+  --success-soft: #10362b;
+  --warning: #f2c56b;
+  --warning-soft: #3a2e14;
+  --danger: #ff8b82;
+  --danger-soft: #45201d;
+  --amber: #f5a948;
+  --amber-soft: #3f2c14;
+  --plum: #b9a6f5;
+  --plum-soft: #2c2548;
+  --contrast-bg: #edf2f0;
+  --contrast-text: #0c1512;
+  --contrast-muted: #45524d;
+  --vault-bg: #0f1c18;
+  --vault-text: #edf2f0;
+  --vault-muted: #93a7a0;
+  --chart-income: #2fc592;
+  --chart-expense: #f06a3a;
+  --chart-grid: #222b29;
+  --chart-axis: #8c9793;
+  --chart-tooltip-bg: #131918;
+  --chart-tooltip-border: #3a4744;
+  --chart-slice-separator: #111615;
+  --chart-crosshair: rgba(237, 242, 240, 0.28);
+  --shadow-card: 0 0 0 1px rgba(255, 255, 255, 0.015), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 40px rgba(0, 0, 0, 0.45);
+  --shadow-dialog: 0 2px 8px rgba(0, 0, 0, 0.3), 0 36px 90px rgba(0, 0, 0, 0.6);
 }
 
+/* Coffee is the warm alternative: roasted-bean ink on oat paper, with the same emerald brand. */
 :root[data-theme="coffee"] {
   color-scheme: light;
-  color: #3a2a23;
-  background: #efe4d2;
-  --page: #efe4d2;
-  --page-accent: #f7eddf;
-  --ink: #3a2a23;
-  --muted: #6e6057;
-  --subtle: #67574d;
-  --sage: #3f745f;
-  --sage-hover: #315b4b;
-  --sage-soft: #e1eee6;
-  --action: #0f6b5b;
-  --action-strong: #06473d;
-  --action-soft: #d7efe6;
-  --brand: #0f6b5b;
-  --brand-strong: #06473d;
-  --brand-soft: #d7efe6;
-  --selection-soft: #c8e6da;
-  --brand-glow: rgba(15, 107, 91, 0.18);
-  --income: #08776d;
-  --income-soft: #d6eee7;
-  --expense: #c95f2d;
-  --expense-soft: #f9dfcf;
-  --expense-text: #99441f;
-  --budget: #6e4fc5;
-  --budget-soft: #e9e0f7;
-  --info: #2f65c8;
-  --info-soft: #dfe8f5;
-  --page-glow-alt: rgba(130, 87, 52, 0.13);
-  --inverse-bg: #3a2a23;
-  --inverse-text: #fff9ef;
-  --inverse-muted: #decab3;
+  color: #2a1c15;
+  background: #ece3d5;
+  --page: #ece3d5;
+  --page-accent: #f3ebdf;
+  --ink: #2a1c15;
+  --muted: #65554b;
+  --subtle: #6a5a4f;
+  --sage: #0c6e52;
+  --sage-hover: #08563f;
+  --sage-soft: #dcefe4;
+  --action: #0c6e52;
+  --action-strong: #064634;
+  --action-soft: #d8eee2;
+  --brand: #0c6e52;
+  --brand-strong: #064634;
+  --brand-soft: #d8eee2;
+  --mint: #3ddca6;
+  --selection-soft: #c5e8d7;
+  --brand-glow: rgba(12, 110, 82, 0.16);
+  --income: #07785a;
+  --income-soft: #d6eedf;
+  --expense: #c9531f;
+  --expense-soft: #f7ddcd;
+  --expense-text: #9a3c12;
+  --budget: #6546c8;
+  --budget-soft: #e8e0f5;
+  --info: #2d5cc0;
+  --info-soft: #dfe6f4;
+  --page-glow-alt: rgba(130, 87, 52, 0.12);
+  --inverse-bg: #2a1c15;
+  --inverse-text: #fbf6ee;
+  --inverse-muted: #d9c6b0;
   --excel-accent: #217346;
   --excel-ink: #175c37;
-  --excel-soft: #e7f1e8;
+  --excel-soft: #e6f0e6;
   --excel-line: rgba(33, 115, 70, 0.2);
   --excel-grid: rgba(33, 115, 70, 0.1);
-  --solid-bg: #06473d;
-  --solid-hover: #0f6b5b;
-  --solid-text: #fff;
-  --paper: #fff9ef;
-  --surface: #fffdf7;
-  --surface-soft: #f8eddd;
-  --surface-hover: #efdfca;
-  --surface-glass: rgba(255, 249, 239, 0.72);
-  --surface-translucent: rgba(255, 249, 239, 0.94);
-  --glass-border: rgba(255, 255, 255, 0.72);
-  --page-glow: rgba(180, 125, 78, 0.2);
-  --line: #dbc6aa;
-  --line-strong: #a98967;
-  --focus: #176b55;
-  --shadow: rgba(74, 49, 32, 0.13);
-  --overlay: rgba(51, 35, 26, 0.62);
-  --success: #346f59;
-  --success-soft: #e1eee6;
-  --warning: #745c21;
-  --warning-soft: #f8edcf;
-  --danger: #94433f;
-  --danger-soft: #f8dfda;
+  --solid-bg: #2a1c15;
+  --solid-hover: #453126;
+  --solid-text: #fbf6ee;
+  --paper: #fbf6ee;
+  --surface: #fdfaf4;
+  --surface-soft: #f6eee2;
+  --surface-hover: #eee2d1;
+  --surface-glass: rgba(251, 246, 238, 0.74);
+  --surface-translucent: rgba(251, 246, 238, 0.94);
+  --glass-border: rgba(42, 28, 21, 0.1);
+  --page-glow: rgba(180, 125, 78, 0.18);
+  --line: #e0d2bf;
+  --line-strong: #c4ae93;
+  --focus: #0c6e52;
+  --shadow: rgba(60, 38, 24, 0.12);
+  --overlay: rgba(42, 28, 21, 0.56);
+  --success: #0c6e52;
+  --success-soft: #dcefe4;
+  --warning: #775400;
+  --warning-soft: #f7ebc9;
+  --danger: #b23a2e;
+  --danger-soft: #f7dfd9;
   --amber: #c77730;
-  --amber-soft: #f5dfc9;
+  --amber-soft: #f4dfc8;
   --plum: #6d5a99;
   --plum-soft: #e8e1f2;
-  --contrast-bg: #3a2a23;
-  --contrast-text: #fff9ef;
-  --contrast-muted: #decab3;
-  --chart-income: #00897b;
+  --contrast-bg: #2a1c15;
+  --contrast-text: #fbf6ee;
+  --contrast-muted: #d9c6b0;
+  --vault-bg: #2a1c15;
+  --vault-text: #fbf6ee;
+  --vault-muted: #cdb9a3;
+  --chart-income: #10976f;
   --chart-expense: #d95926;
-  --chart-grid: #ddcbb4;
-  --chart-axis: #6b5b51;
-  --chart-tooltip-bg: #fff9ef;
-  --chart-tooltip-border: #a98967;
-  --chart-slice-separator: #fff9ef;
-  --chart-crosshair: rgba(58, 42, 35, 0.3);
-  --shadow-card: 0 1px 2px rgba(74, 49, 32, 0.05), 0 14px 36px rgba(74, 49, 32, 0.09);
-  --shadow-raised: 0 20px 52px rgba(74, 49, 32, 0.16);
-  --shadow-dialog: 0 30px 84px rgba(51, 35, 26, 0.3);
+  --chart-grid: #e0d2bf;
+  --chart-axis: #6a5a4f;
+  --chart-tooltip-bg: #fbf6ee;
+  --chart-tooltip-border: #c4ae93;
+  --chart-slice-separator: #fbf6ee;
+  --chart-crosshair: rgba(42, 28, 21, 0.3);
+  --shadow-card: 0 0 0 1px rgba(60, 38, 24, 0.02), 0 1px 2px rgba(60, 38, 24, 0.06);
+  --shadow-raised: 0 1px 2px rgba(60, 38, 24, 0.06), 0 14px 34px rgba(60, 38, 24, 0.14);
+  --shadow-dialog: 0 2px 6px rgba(42, 28, 21, 0.08), 0 32px 84px rgba(42, 28, 21, 0.28);
 }
 
 :root[data-theme="dark"] .auth-card,
 :root[data-theme="dark"] .auth-aside {
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.32);
+  box-shadow: var(--shadow-dialog);
 }
 
 * {
   box-sizing: border-box;
+}
+::selection {
+  color: var(--ink);
+  background: var(--selection-soft);
+}
+/* Tailwind's preflight resets headings to weight 400; headings that set no weight of their
+   own should still read as headings. */
+:where(h1, h2, h3) {
+  font-weight: 600;
+  text-wrap: balance;
+}
+:where(p) {
+  text-wrap: pretty;
 }
 html {
   scroll-behavior: smooth;
@@ -444,7 +469,7 @@ textarea:focus-visible {
   gap: 4px;
   color: var(--brand-strong);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   opacity: 0;
   text-transform: uppercase;
 }
@@ -467,11 +492,11 @@ textarea:focus-visible {
   background: var(--brand-soft);
 }
 .theme-choice-preview {
-  --choice-preview-page: #f4f1e9;
-  --choice-preview-paper: #fffdf8;
-  --choice-preview-surface: #fff;
-  --choice-preview-line: #d9d5cb;
-  --choice-preview-accent: #0f6b5b;
+  --choice-preview-page: #f1f3f2;
+  --choice-preview-paper: #fff;
+  --choice-preview-surface: #f7f8f8;
+  --choice-preview-line: #cdd4d1;
+  --choice-preview-accent: #0c1512;
   height: 118px;
   padding: 10px;
   display: grid;
@@ -483,18 +508,18 @@ textarea:focus-visible {
   background: var(--choice-preview-page);
 }
 .theme-choice-option-dark .theme-choice-preview {
-  --choice-preview-page: #0f1115;
-  --choice-preview-paper: #171a20;
-  --choice-preview-surface: #1d2128;
-  --choice-preview-line: #303640;
-  --choice-preview-accent: #67e0bc;
+  --choice-preview-page: #080b0a;
+  --choice-preview-paper: #111615;
+  --choice-preview-surface: #131918;
+  --choice-preview-line: #3a4744;
+  --choice-preview-accent: #5fe3b8;
 }
 .theme-choice-option-coffee .theme-choice-preview {
-  --choice-preview-page: #efe4d2;
-  --choice-preview-paper: #fff9ef;
-  --choice-preview-surface: #f8eddd;
-  --choice-preview-line: #a98967;
-  --choice-preview-accent: #0f6b5b;
+  --choice-preview-page: #ece3d5;
+  --choice-preview-paper: #fbf6ee;
+  --choice-preview-surface: #f6eee2;
+  --choice-preview-line: #c4ae93;
+  --choice-preview-accent: #2a1c15;
 }
 .theme-choice-preview-bar {
   width: 42%;
@@ -549,7 +574,8 @@ textarea:focus-visible {
   gap: 10px;
   font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 620;
+  letter-spacing: -0.035em;
   color: var(--ink);
 }
 .brand-mark {
@@ -560,7 +586,8 @@ textarea:focus-visible {
   overflow: hidden;
   color: var(--solid-text);
   background: var(--solid-bg);
-  border-radius: 11px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
 }
 .brand-logo-image {
   width: 112%;
@@ -579,12 +606,13 @@ textarea:focus-visible {
   border-radius: 9px;
 }
 .eyebrow {
-  margin: 0 0 7px;
-  color: var(--sage);
+  margin: 0 0 8px;
+  color: var(--brand);
+  font-family: var(--font-mono);
   font-size: 11px;
   line-height: 1;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -602,18 +630,27 @@ textarea:focus-visible {
   border-radius: 10px;
   background: transparent;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 750;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
   transition:
     border-color 150ms ease,
     background 150ms ease,
-    box-shadow 150ms ease;
+    box-shadow 150ms ease,
+    transform 120ms ease;
+}
+.button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .button.primary {
   color: var(--solid-text);
   border-color: var(--solid-bg);
   background: var(--solid-bg);
-  box-shadow: 0 8px 22px color-mix(in srgb, var(--solid-bg) 18%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 2px color-mix(in srgb, var(--solid-bg) 30%, transparent),
+    0 4px 12px color-mix(in srgb, var(--solid-bg) 14%, transparent);
 }
 .button.primary:hover {
   border-color: var(--solid-hover);
@@ -622,9 +659,10 @@ textarea:focus-visible {
 .button.secondary {
   border-color: var(--line-strong);
   background: var(--surface);
+  box-shadow: 0 1px 2px var(--shadow);
 }
 .button.secondary:hover {
-  border-color: color-mix(in srgb, var(--action) 30%, var(--line-strong));
+  border-color: color-mix(in srgb, var(--ink) 22%, var(--line-strong));
   background: var(--surface-hover);
 }
 .button.danger {
@@ -650,8 +688,12 @@ textarea:focus-visible {
   align-items: center;
   gap: 7px;
   margin-top: 24px;
-  color: var(--sage);
-  font-weight: 800;
+  color: var(--brand);
+  font-weight: 580;
+  text-underline-offset: 3px;
+}
+.text-link:hover {
+  text-decoration: underline;
 }
 .full-page-status {
   min-height: 100vh;
@@ -709,7 +751,7 @@ textarea:focus-visible {
   background: transparent;
   cursor: pointer;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   text-align: left;
 }
 .theme-menu-option:hover,
@@ -740,7 +782,7 @@ textarea:focus-visible {
   background: var(--surface);
   cursor: pointer;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   transition:
     color 0.18s ease,
     border-color 0.18s ease,
@@ -792,7 +834,7 @@ textarea:focus-visible {
   background: var(--paper);
   color: var(--ink);
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 580;
   text-decoration: none;
 }
 
@@ -851,7 +893,7 @@ button:disabled {
   margin: -1px 0 0;
   color: var(--danger) !important;
   font-size: 11px !important;
-  font-weight: 650 !important;
+  font-weight: 580 !important;
   line-height: 1.45;
 }
 @media (max-width: 760px) {

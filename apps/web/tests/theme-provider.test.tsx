@@ -50,7 +50,7 @@ beforeEach(() => {
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
   document.documentElement.style.colorScheme = "";
-  document.head.innerHTML = '<meta name="theme-color" content="#f4f1e9">';
+  document.head.innerHTML = '<meta name="theme-color" content="#f1f3f2">';
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
 });
 
@@ -74,7 +74,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement.style.colorScheme).toBe("light");
     expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
       "content",
-      "#efe4d2",
+      "#ece3d5",
     );
 
     await user.click(trigger);
@@ -169,7 +169,7 @@ describe("ThemeProvider", () => {
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
     expect(document.querySelector('meta[name="theme-color"]')).toHaveAttribute(
       "content",
-      "#efe4d2",
+      "#ece3d5",
     );
   });
 

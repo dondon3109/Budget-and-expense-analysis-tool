@@ -44,14 +44,6 @@ export function LandingPage() {
 
   return (
     <div className="landing-page">
-      {/*
-        THESIS: Zoption rejects invasive fintech spyware, bank credential harvesting, and loud gamified spending trackers; it delivers an artisanal, calm, integer-precise financial workspace that empowers users through private file imports, transparent math, and grounded read-only intelligence.
-        OWN-WORLD: Deep forest and emerald accents, warm tactile paper and sand canvases, high-contrast editorial serifs (Newsreader), crisp tabular geometric interfaces (Manrope + IBM Plex Mono), fine hairline borders, luminous glass highlights, and responsive micro-interactions.
-        STORY: First-time visitors immediately realize Zoption is private, requires no bank password, handles Excel/CSV/Bank files with zero friction, and gives total clarity over monthly cash flow, budgets, recurring bills, and savings interest without invasive tracking.
-        FIRST VIEWPORT: Crisp navigation with glass blur and theme switch; bold editorial value proposition with live privacy trust badge and dual primary/secondary action triggers; floating interactive monthly dashboard mockup with live metric gauges, interactive 6-month chart bars with hover value inspector, and trust cards.
-        FORM: Persuade landing page crafted with museum-grade typography, dynamic interactive modules, rich tactile visual depth, accessible semantic hierarchy, and seamless responsive design across light, dark, and coffee themes.
-      */}
-
       <PublicHeader links={LANDING_HEADER_LINKS} />
 
       <main id="main-content" tabIndex={-1}>

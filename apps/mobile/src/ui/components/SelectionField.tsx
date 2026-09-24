@@ -53,7 +53,7 @@ export function SelectionField({
           accessibilityLabel={item.label}
           accessibilityHint={item.detail}
           android_ripple={{
-            color: theme.colors.brandSoft ? "rgba(15, 107, 91, 0.12)" : "rgba(0,0,0,0.06)",
+            color: theme.colors.brandSoft ? "rgba(10, 117, 86, 0.12)" : "rgba(0,0,0,0.06)",
             borderless: false,
           }}
           onPress={() => {
@@ -182,7 +182,7 @@ export function SelectionField({
                 accessibilityLabel={option.label}
                 accessibilityHint={option.detail}
                 android_ripple={{
-                  color: theme.colors.brandSoft ? "rgba(15, 107, 91, 0.12)" : "rgba(0,0,0,0.06)",
+                  color: theme.colors.brandSoft ? "rgba(10, 117, 86, 0.12)" : "rgba(0,0,0,0.06)",
                   borderless: false,
                 }}
                 onPress={() => {

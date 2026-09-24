@@ -23,9 +23,9 @@
     }
   }
   const themeColors = {
-    light: "#f4f1e9",
-    dark: "#0f1115",
-    coffee: "#efe4d2",
+    light: "#f1f3f2",
+    dark: "#080b0a",
+    coffee: "#ece3d5",
   };
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";

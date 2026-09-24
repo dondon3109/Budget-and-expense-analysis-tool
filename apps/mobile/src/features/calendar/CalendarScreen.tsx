@@ -61,7 +61,7 @@ function DayCard({ date, day }: { date: string; day?: LocalCalendarDay }) {
           accessibilityHint="Opens the event editor"
           accessibilityRole="button"
           accessibilityLabel={"Event " + event.title}
-          android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+          android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
           onPress={() => router.push({ pathname: "/(app)/event", params: { id: event.id } })}
           style={styles.row}
         >
@@ -139,7 +139,7 @@ export function CalendarScreen() {
         <Pressable
           accessibilityLabel="Previous month"
           accessibilityRole="button"
-          android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+          android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
           onPress={() => changeMonth(-1)}
           style={[styles.monthButton, { borderColor: theme.colors.border }]}
         >
@@ -159,7 +159,7 @@ export function CalendarScreen() {
         <Pressable
           accessibilityLabel="Next month"
           accessibilityRole="button"
-          android_ripple={{ color: "rgba(15, 107, 91, 0.16)", borderless: false }}
+          android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
           onPress={() => changeMonth(1)}
           style={[styles.monthButton, { borderColor: theme.colors.border }]}
         >

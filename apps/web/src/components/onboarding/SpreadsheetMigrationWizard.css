@@ -297,7 +297,7 @@
 
 .migration-stat-card .val {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 
@@ -346,7 +346,7 @@
 .migration-success-box h3 {
   margin: 0;
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 

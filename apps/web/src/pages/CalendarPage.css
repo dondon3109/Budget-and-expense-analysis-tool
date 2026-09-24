@@ -135,7 +135,7 @@
   font-family: var(--font-display);
   font-size: 26px;
   line-height: 1.1;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .calendar-surface-heading > span,
@@ -193,7 +193,7 @@
 
 .calendar-next-month-toggle span {
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -247,7 +247,7 @@
   color: var(--muted);
   background: var(--paper);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.1em;
   text-align: left;
   text-transform: uppercase;
@@ -338,7 +338,7 @@
   gap: 4px;
   color: var(--ink);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
@@ -349,7 +349,7 @@
   background: var(--action);
   border-radius: 999px;
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   line-height: 1.4;
@@ -401,7 +401,7 @@
 
 .calendar-indicator.event {
   color: var(--sage);
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .calendar-indicator.event-more {
@@ -417,7 +417,7 @@
 
 .calendar-indicator.subscription.due {
   color: var(--danger);
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .calendar-side-column {
@@ -474,7 +474,7 @@
   font-family: var(--font-display);
   font-size: 24px;
   line-height: 1.1;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .calendar-add-event p:not(.eyebrow) {
@@ -503,7 +503,7 @@
   margin: 0;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -650,7 +650,7 @@
   margin: 0;
   color: var(--muted);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.09em;
   text-transform: uppercase;
 }
@@ -688,7 +688,7 @@
   padding-top: 2px;
   color: var(--sage);
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 620;
   line-height: 1.4;
   font-variant-numeric: tabular-nums;
 }
@@ -728,7 +728,7 @@
   gap: 7px;
   color: var(--muted);
   font-size: 9px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .calendar-event-delete-error {
@@ -774,7 +774,7 @@
   grid-column: 2;
   grid-row: 1;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -886,8 +886,8 @@
 }
 
 .transaction-form .calendar-event-all-day:has(input:focus-visible) {
-  border-color: #76a994;
-  box-shadow: 0 0 0 3px rgba(63, 143, 116, 0.12);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--brand-glow);
 }
 
 .transaction-form .calendar-event-all-day input {
@@ -1019,7 +1019,7 @@
     border-radius: 5px;
     background: var(--surface-soft);
     font-size: 8px;
-    font-weight: 800;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
   }

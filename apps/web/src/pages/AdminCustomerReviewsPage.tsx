@@ -38,14 +38,6 @@ const STATUS_LABELS: Record<CustomerReviewModerationStatus, string> = {
   hidden: "Hidden",
 };
 
-const DIRECTION_CONTRACT = `<!--
-THESIS: Landing-page trust is curated as a finite visible lineup, not buried in a generic table.
-OWN-WORLD: Zoption paper surfaces, deep green actions, quiet rules, Newsreader headings, and dense Manrope controls.
-STORY: See the live lineup, find a submission, inspect immutable words, publish or hide, then place or reorder.
-FIRST VIEWPORT: Title and preview action, six numbered lineup slots, then inbox and detail beginning together below.
-FORM: Grounded structure 6, finite editorial tray above source inbox and detail pane; seed 3e908755.
--->`;
-
 function displayDate(value: string): string {
   return new Intl.DateTimeFormat("en-PH", {
     month: "short",
@@ -193,14 +185,7 @@ export function AdminCustomerReviewsPage() {
   function renderPage(content: ReactNode) {
     return (
       <AppShell>
-        <div className="admin-reviews-page">
-          <span
-            hidden
-            aria-hidden="true"
-            dangerouslySetInnerHTML={{ __html: DIRECTION_CONTRACT }}
-          />
-          {content}
-        </div>
+        <div className="admin-reviews-page">{content}</div>
       </AppShell>
     );
   }

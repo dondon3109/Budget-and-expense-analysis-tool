@@ -132,7 +132,7 @@ export function ShareBudgetSheet({
                   accessibilityLabel={`Share ${row.categoryName}`}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked }}
-                  android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+                  android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
                   onPress={() => toggleCategory(row.categoryId)}
                   style={[
                     styles.envelopeRow,
@@ -192,7 +192,7 @@ export function ShareBudgetSheet({
                 accessibilityLabel={option.label}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                android_ripple={{ color: "rgba(15, 107, 91, 0.12)", borderless: false }}
+                android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
                 onPress={() => changeExpiry(option.value)}
                 style={[
                   styles.expiryPill,

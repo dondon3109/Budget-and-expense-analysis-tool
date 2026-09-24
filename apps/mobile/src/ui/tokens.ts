@@ -15,6 +15,12 @@ export interface ColorTokens {
   brandPressed: ColorValue;
   onBrand: ColorValue;
   brandSoft: ColorValue;
+  /** Primary action fill: near-black ink in light themes, mint in dark. */
+  solid: ColorValue;
+  solidPressed: ColorValue;
+  onSolid: ColorValue;
+  /** The mint stroke from the Z mark, used for small selection accents. */
+  mint: ColorValue;
   income: ColorValue;
   expense: ColorValue;
   budget: ColorValue;
@@ -42,21 +48,46 @@ export const spacing = {
   xxl: 48,
 } as const;
 
-export const radii = { sm: 8, md: 12, lg: 16, xl: 20, sheet: 24, round: 999 } as const;
+export const radii = { sm: 8, md: 12, lg: 16, xl: 22, sheet: 24, round: 999 } as const;
+
+/**
+ * Headings use Bricolage Grotesque, embedded at build time by the expo-font
+ * config plugin. The files are named after their PostScript names, which is the family name iOS
+ * resolves, and Android resolves the file name, so one string works on both. Body text and money
+ * stay on the system face for native rendering and true tabular figures. Each face is a single weight, so these styles leave
+ * fontWeight at normal; a bold weight on a single-face family makes Android synthesize bold.
+ */
+export const fonts = {
+  heading: "BricolageGrotesque-SemiBold",
+  headingBold: "BricolageGrotesque-Bold",
+} as const;
 export const touchTarget = Platform.OS === "ios" ? 44 : 48;
 
 export const typography = {
-  display: { fontSize: 24, lineHeight: 30, fontWeight: "700" as const },
-  title: { fontSize: 20, lineHeight: 26, fontWeight: "700" as const },
+  display: {
+    fontFamily: fonts.headingBold,
+    fontSize: 28,
+    lineHeight: 33,
+    fontWeight: "normal" as const,
+    letterSpacing: -0.8,
+  },
+  title: {
+    fontFamily: fonts.heading,
+    fontSize: 21,
+    lineHeight: 26,
+    fontWeight: "normal" as const,
+    letterSpacing: -0.4,
+  },
   headline: { fontSize: 16, lineHeight: 21, fontWeight: "600" as const },
   body: { fontSize: 15, lineHeight: 22, fontWeight: "400" as const },
   callout: { fontSize: 14, lineHeight: 20, fontWeight: "400" as const },
   label: { fontSize: 14, lineHeight: 19, fontWeight: "600" as const },
   caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
   money: {
-    fontSize: 22,
-    lineHeight: 28,
+    fontSize: 24,
+    lineHeight: 30,
     fontWeight: "700" as const,
+    letterSpacing: -0.5,
     fontVariant: ["tabular-nums"] as TextStyle["fontVariant"],
   },
 } as const;
@@ -64,7 +95,7 @@ export const typography = {
 export const elevation = {
   card: Platform.select({
     ios: {
-      shadowColor: "#12221e",
+      shadowColor: "#0c1512",
       shadowOpacity: 0.04,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 2 },
@@ -89,78 +120,90 @@ export const themes: Record<ThemeName, ThemeTokens> = {
     name: "light",
     dark: false,
     colors: {
-      canvas: "#f8fafc",
-      canvasMuted: "#f1f5f9",
+      canvas: "#f1f3f2",
+      canvasMuted: "#f6f7f7",
       surface: "#ffffff",
       surfaceRaised: "#ffffff",
-      text: "#0f172a",
-      textMuted: "#64748b",
-      border: "#e2e8f0",
-      brand: "#0f6b5b",
-      brandPressed: "#06473d",
+      text: "#0c1512",
+      textMuted: "#545f5a",
+      border: "#e2e6e4",
+      brand: "#0a7556",
+      brandPressed: "#054a37",
       onBrand: "#ffffff",
-      brandSoft: "#e6f7f2",
-      income: "#0d9488",
-      expense: "#e11d48",
-      budget: "#7c3aed",
-      info: "#2563eb",
-      warning: "#d97706",
-      warningSoft: "#fef3c7",
-      danger: "#dc2626",
-      dangerSoft: "#fee2e2",
-      overlay: "rgba(15, 23, 42, 0.45)",
+      brandSoft: "#dcf5eb",
+      solid: "#0c1512",
+      solidPressed: "#22302b",
+      onSolid: "#ffffff",
+      mint: "#3ddca6",
+      income: "#06734f",
+      expense: "#b8461a",
+      budget: "#6546e8",
+      info: "#2459d8",
+      warning: "#8f5a00",
+      warningSoft: "#fff4d6",
+      danger: "#c0352b",
+      dangerSoft: "#fdecea",
+      overlay: "rgba(8, 14, 12, 0.5)",
     },
   },
   dark: {
     name: "dark",
     dark: true,
     colors: {
-      canvas: "#0f1115",
-      canvasMuted: "#14171c",
-      surface: "#171a20",
-      surfaceRaised: "#1d2128",
-      text: "#f2f4f7",
-      textMuted: "#b2b8c2",
-      border: "#2e3540",
-      brand: "#67e0bc",
-      brandPressed: "#a3f2d5",
-      onBrand: "#102019",
-      brandSoft: "#123f35",
-      income: "#62ddcb",
-      expense: "#ffad7b",
-      budget: "#c2a6ff",
-      info: "#8ab4ff",
-      warning: "#e6c57d",
-      warningSoft: "#3b311d",
-      danger: "#f0a29c",
-      dangerSoft: "#422522",
-      overlay: "rgba(0, 0, 0, 0.74)",
+      canvas: "#080b0a",
+      canvasMuted: "#0e1312",
+      surface: "#111615",
+      surfaceRaised: "#131918",
+      text: "#edf2f0",
+      textMuted: "#a3adaa",
+      border: "#222b29",
+      brand: "#5fe3b8",
+      brandPressed: "#a4f2d7",
+      onBrand: "#04140e",
+      brandSoft: "#0f3a2d",
+      solid: "#5fe3b8",
+      solidPressed: "#8eeccc",
+      onSolid: "#04140e",
+      mint: "#5fe3b8",
+      income: "#5fe3b8",
+      expense: "#ff8f63",
+      budget: "#ad9bff",
+      info: "#86aaff",
+      warning: "#f2c56b",
+      warningSoft: "#3a2e14",
+      danger: "#ff8b82",
+      dangerSoft: "#45201d",
+      overlay: "rgba(0, 0, 0, 0.7)",
     },
   },
   coffee: {
     name: "coffee",
     dark: false,
     colors: {
-      canvas: "#efe4d2",
-      canvasMuted: "#f8eddd",
-      surface: "#fff9ef",
-      surfaceRaised: "#fffdf7",
-      text: "#3a2a23",
-      textMuted: "#67574d",
-      border: "#d2c1ad",
-      brand: "#0f6b5b",
-      brandPressed: "#06473d",
+      canvas: "#ece3d5",
+      canvasMuted: "#f3ebdf",
+      surface: "#fbf6ee",
+      surfaceRaised: "#fdfaf4",
+      text: "#2a1c15",
+      textMuted: "#65554b",
+      border: "#e0d2bf",
+      brand: "#0c6e52",
+      brandPressed: "#064634",
       onBrand: "#ffffff",
-      brandSoft: "#d7efe6",
-      income: "#08776d",
-      expense: "#99441f",
-      budget: "#6e4fc5",
-      info: "#2f65c8",
-      warning: "#745c21",
-      warningSoft: "#f8edcf",
-      danger: "#94433f",
-      dangerSoft: "#f8dfda",
-      overlay: "rgba(51, 35, 26, 0.62)",
+      brandSoft: "#d8eee2",
+      solid: "#2a1c15",
+      solidPressed: "#453126",
+      onSolid: "#fbf6ee",
+      mint: "#3ddca6",
+      income: "#066b50",
+      expense: "#9a3c12",
+      budget: "#6546c8",
+      info: "#2d5cc0",
+      warning: "#775400",
+      warningSoft: "#f7ebc9",
+      danger: "#b23a2e",
+      dangerSoft: "#f7dfd9",
+      overlay: "rgba(42, 28, 21, 0.56)",
     },
   },
 };

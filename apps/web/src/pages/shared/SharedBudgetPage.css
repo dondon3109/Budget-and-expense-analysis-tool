@@ -50,7 +50,7 @@
   margin-bottom: 9px;
   color: var(--shared-accent);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -61,7 +61,7 @@
   color: var(--shared-text);
   font-family: var(--font-display);
   font-size: clamp(34px, 6vw, 62px);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.045em;
   line-height: 0.98;
 }
@@ -91,7 +91,7 @@
 .shared-budget-stats span {
   color: var(--shared-muted);
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -101,7 +101,7 @@
   margin: 4px 0 0;
   color: var(--shared-text);
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
 }
 
 .shared-budget-notes {
@@ -131,7 +131,7 @@
   color: var(--shared-text);
   border-radius: 16px;
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .shared-budget-stats {
@@ -153,7 +153,7 @@
   color: var(--shared-text);
   font-family: var(--font-display);
   font-size: clamp(24px, 3.3vw, 34px);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.035em;
   line-height: 1;
 }
@@ -176,7 +176,7 @@
   color: var(--shared-text);
   font-family: var(--font-display);
   font-size: 24px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .shared-budget-section-heading p {
@@ -213,7 +213,7 @@
 .shared-budget-envelope-heading h3 {
   color: var(--shared-text);
   font-size: 15px;
-  font-weight: 850;
+  font-weight: 700;
 }
 
 .shared-budget-envelope-heading p {
@@ -285,7 +285,7 @@
   border-radius: 10px;
   background: var(--solid-bg, var(--shared-accent));
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   text-decoration: none;
 }
 

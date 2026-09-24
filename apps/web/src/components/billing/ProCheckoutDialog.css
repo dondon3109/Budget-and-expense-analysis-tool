@@ -53,7 +53,7 @@
   align-items: center;
   padding: 3px 9px;
   font-size: 10.5px;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   border-radius: 9999px;
@@ -65,7 +65,7 @@
   margin: 0;
   color: var(--muted);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -76,7 +76,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: clamp(24px, 3.2vw, 30px);
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.025em;
   line-height: 1.12;
 }
@@ -183,7 +183,7 @@
   align-items: center;
   padding: 3px 9px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   border-radius: 9999px;
@@ -198,7 +198,7 @@
   align-items: center;
   padding: 3px 10px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   border-radius: 9999px;
@@ -236,7 +236,7 @@
 .pro-checkout-effective-rate {
   color: var(--action);
   font-size: 12.5px;
-  font-weight: 750;
+  font-weight: 650;
   white-space: nowrap;
 }
 
@@ -271,7 +271,7 @@
 .pro-checkout-plan li b {
   color: var(--ink);
   font-size: 13.5px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .pro-checkout-feature-excluded {
@@ -312,7 +312,7 @@
   background: var(--surface);
   color: var(--ink);
   font-size: 14px;
-  font-weight: 750;
+  font-weight: 650;
   cursor: pointer;
   transition:
     background-color 140ms ease,
@@ -351,7 +351,7 @@
   padding: 0;
   color: var(--ink);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
@@ -424,7 +424,7 @@
 .pro-checkout-interval strong {
   color: var(--ink);
   font-size: 13.5px;
-  font-weight: 750;
+  font-weight: 650;
   white-space: nowrap;
   text-align: left;
 }
@@ -434,7 +434,7 @@
   align-items: center;
   padding: 1.5px 6px;
   font-size: 9.5px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.02em;
   border-radius: 5px;
   background: var(--action);
@@ -482,7 +482,7 @@
 .pro-checkout-payment-methods > div strong {
   color: var(--ink);
   font-size: 13px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .pro-checkout-payment-methods-header span,
@@ -512,7 +512,7 @@
   background: var(--surface);
   color: var(--ink);
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 580;
 }
 
 .pro-checkout-payment-methods li svg {
@@ -532,7 +532,7 @@
   gap: 9px;
   border-radius: 14px;
   font-size: 14.5px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--solid-text);
   background: var(--solid-bg);
   border: 1px solid var(--solid-bg);

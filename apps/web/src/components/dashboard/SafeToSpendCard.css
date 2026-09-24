@@ -22,7 +22,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-size: clamp(30px, 3.2vw, 40px);
-  font-weight: 500;
+  font-weight: 600;
   font-variant-numeric: lining-nums tabular-nums;
   letter-spacing: -0.03em;
   line-height: 1;
@@ -57,7 +57,7 @@
   background: var(--brand-soft);
   color: var(--brand);
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 650;
   text-decoration: none;
   white-space: nowrap;
 }

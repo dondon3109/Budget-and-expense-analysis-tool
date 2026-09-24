@@ -69,7 +69,7 @@
 .guide-section-heading {
   font-family: var(--font-display, inherit);
   font-size: 1.35rem;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   margin: 0;
   scroll-margin-top: 80px;
@@ -92,7 +92,7 @@
 
 .guide-takeaways-title {
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 620;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--ink);
@@ -120,7 +120,7 @@
 .guide-faqs-heading {
   font-family: var(--font-display, inherit);
   font-size: 1.35rem;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   margin: 0;
 }
@@ -157,7 +157,7 @@
 .guide-related-heading {
   font-family: var(--font-display, inherit);
   font-size: 1.2rem;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
   margin: 0;
 }

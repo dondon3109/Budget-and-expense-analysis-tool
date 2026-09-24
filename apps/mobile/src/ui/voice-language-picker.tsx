@@ -50,7 +50,7 @@ export function VoiceLanguagePicker({
             accessibilityState={{ selected, disabled: Boolean(disabled) }}
             disabled={disabled}
             android_ripple={{
-              color: selected ? "rgba(15, 107, 91, 0.16)" : "rgba(0, 0, 0, 0.06)",
+              color: selected ? "rgba(10, 117, 86, 0.16)" : "rgba(0, 0, 0, 0.06)",
               borderless: false,
             }}
             onPress={() => handleSelect(option.code)}

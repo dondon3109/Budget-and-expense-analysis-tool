@@ -6,8 +6,8 @@
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f4f1e9",
-  "theme_color": "#06473d",
+  "background_color": "#f1f3f2",
+  "theme_color": "#0c1512",
   "categories": ["finance", "productivity"],
   "prefer_related_applications": false,
   "icons": [

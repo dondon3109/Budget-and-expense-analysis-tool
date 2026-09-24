@@ -16,7 +16,7 @@
   margin: 0 0 7px;
   color: var(--action);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -25,7 +25,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: clamp(34px, 4vw, 48px);
-  font-weight: 450;
+  font-weight: 550;
   letter-spacing: -0.03em;
   line-height: 1;
 }
@@ -76,7 +76,7 @@
   margin: 16px 0 0;
   font-family: var(--font-display);
   font-size: 26px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .admin-provider-access p {
@@ -144,7 +144,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.02em;
 }
 
@@ -161,7 +161,7 @@
   padding-top: 4px;
   color: var(--action-strong);
   font-size: 10px;
-  font-weight: 760;
+  font-weight: 650;
 }
 
 .admin-provider-table-wrap {
@@ -182,7 +182,7 @@
   text-align: left;
   color: var(--subtle);
   font-size: 9px;
-  font-weight: 760;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   background: var(--surface-soft);
@@ -214,14 +214,14 @@
   color: var(--solid-text);
   font-family: var(--font-mono);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .active-dot {
   margin-left: 8px;
   color: var(--action-strong);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .admin-provider-table code {
@@ -243,7 +243,7 @@
   padding: 4px 8px;
   border-radius: 999px;
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .provider-status.enabled {
@@ -336,13 +336,13 @@
   border-radius: 999px;
   background: var(--action-soft);
   color: var(--action-strong);
-  font-weight: 750;
+  font-weight: 650;
   text-transform: uppercase;
   font-size: 9px;
 }
 
 .audit-service {
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 
@@ -406,7 +406,7 @@
   padding: 3px 8px;
   border-radius: 999px;
   font-size: 9px;
-  font-weight: 750;
+  font-weight: 650;
 }
 
 .health-badge.ok {
@@ -435,7 +435,7 @@
 .add-field span {
   color: var(--subtle);
   font-size: 9px;
-  font-weight: 760;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -470,7 +470,7 @@
 .api-key-commands span {
   color: var(--subtle);
   font-size: 9px;
-  font-weight: 760;
+  font-weight: 650;
   text-transform: uppercase;
 }
 
@@ -559,7 +559,7 @@
   background: var(--surface);
   color: var(--action);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 .tab-count {
@@ -569,7 +569,7 @@
   background: var(--surface);
   color: var(--muted);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 620;
 }
 
 /* Credential Mode Picker & Inline Key Inputs */
@@ -605,7 +605,7 @@
 .field-label-text {
   color: var(--subtle);
   font-size: 9px;
-  font-weight: 760;
+  font-weight: 650;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -715,7 +715,7 @@
   background: var(--success);
   color: var(--contrast-text);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   letter-spacing: 0.03em;
   text-transform: uppercase;
 }
@@ -765,7 +765,7 @@
 .admin-active-hero-title {
   margin: 0;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 620;
   color: var(--ink);
 }
 
@@ -847,7 +847,7 @@
   background: var(--success-soft);
   color: var(--success);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 620;
   border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
 }
 
