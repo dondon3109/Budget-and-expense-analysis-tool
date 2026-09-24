@@ -1,7 +1,7 @@
 import { render, waitFor, act } from "@testing-library/react-native";
 import React, { useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
-import type { Session } from "@supabase/supabase-js";
+import { AuthApiError, AuthRetryableFetchError, type Session } from "@supabase/supabase-js";
 
 const mockSecureValues = new Map<string, string>();
 
@@ -41,6 +41,7 @@ const mockAuth = {
   }),
 };
 
+let mockStoredSubject: string | null = null;
 jest.mock("./supabase-client", () => ({
   get supabase() {
     return { auth: mockAuth };
@@ -48,6 +49,7 @@ jest.mock("./supabase-client", () => ({
   getSupabaseClient() {
     return { auth: mockAuth };
   },
+  readStoredSessionSubject: () => Promise.resolve(mockStoredSubject),
 }));
 
 jest.mock("@/db/workspace", () => ({
@@ -83,6 +85,7 @@ describe("SessionProvider and dummy session handling", () => {
     mockSecureValues.clear();
     mockDevelopmentVariant = false;
     mockCurrentSession = null;
+    mockStoredSubject = null;
     mockAuth.onAuthStateChange.mockReset().mockImplementation((_callback) => ({
       data: { subscription: { unsubscribe: jest.fn() } },
     }));
@@ -277,6 +280,10 @@ describe("SessionProvider and dummy session handling", () => {
     expect(mockAuth.signOut).toHaveBeenCalledTimes(1);
     expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "global" });
     expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id");
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(
+      "zoption.app_lock.real-user-id",
+      expect.anything(),
+    );
     expect(latest.current?.status).toBe("signed-out");
   });
 
@@ -302,5 +309,53 @@ describe("SessionProvider and dummy session handling", () => {
     expect(mockAuth.signOut).toHaveBeenNthCalledWith(2, { scope: "local" });
     expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id");
     expect(latest.current?.status).toBe("signed-out");
+  });
+
+  describe("offline start", () => {
+    const storedSubject = "08060c19-8a55-4046-a2e7-7384808dd81c";
+
+    async function renderWithStartupError(error: Error) {
+      mockStoredSubject = storedSubject;
+      // auth-js reports the failed startup refresh twice: from getSession() and
+      // as an INITIAL_SESSION event carrying null.
+      mockAuth.onAuthStateChange.mockImplementation((callback) => {
+        setTimeout(() => callback("INITIAL_SESSION", null), 0);
+        return { data: { subscription: { unsubscribe: jest.fn() } } };
+      });
+      mockAuth.getSession.mockImplementation(() =>
+        Promise.resolve({ data: { session: null }, error } as never),
+      );
+      const latest: { current: ReturnType<typeof useSessionSnapshot> | null } = { current: null };
+      await act(async () => {
+        render(
+          <SessionProvider>
+            <TestConsumer onSnapshot={(snap) => (latest.current = snap)} />
+          </SessionProvider>,
+        );
+      });
+      // Let the INITIAL_SESSION event land after getSession() has settled.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      });
+      return latest;
+    }
+
+    it("keeps the stored user signed in when the token refresh cannot reach Supabase", async () => {
+      const latest = await renderWithStartupError(
+        new AuthRetryableFetchError("Network request failed", 0),
+      );
+
+      expect(latest.current?.status).toBe("signed-in");
+      expect(latest.current?.subject).toBe(storedSubject);
+    });
+
+    it("signs out when Supabase rejects the stored refresh token", async () => {
+      const latest = await renderWithStartupError(
+        new AuthApiError("Invalid Refresh Token", 400, "refresh_token_not_found"),
+      );
+
+      expect(latest.current?.status).toBe("signed-out");
+      expect(latest.current?.subject).toBeNull();
+    });
   });
 });

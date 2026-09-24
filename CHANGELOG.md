@@ -4,6 +4,14 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- The mobile app has an optional app lock. Set an app password under More → Account, and Zoption asks for it when the app opens or comes back after more than a minute away. It works offline and applies to that device only. If you forget it, sign out from the lock screen and sign in again.
+
+### Fixed
+
+- The mobile app no longer asks you to sign in again when it opens offline. It used to show the sign-in screen once the saved session was more than about an hour old. Now your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.
+
 ## 2.43.1 — 2026-09-23
 
 ### Fixed
