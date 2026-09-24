@@ -22,6 +22,7 @@ import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 import { telemetry } from "@/telemetry/telemetry";
 
+import { clearAppLock } from "./app-lock";
 import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
@@ -402,6 +403,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     if (subject && !options.preserveLocalWorkspace) {
       await discardLocalWorkspace(subject);
+      await clearAppLock(subject);
     }
     subjectRef.current = null;
     setSnapshot(signedOutSession);

@@ -280,6 +280,10 @@ describe("SessionProvider and dummy session handling", () => {
     expect(mockAuth.signOut).toHaveBeenCalledTimes(1);
     expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "global" });
     expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id");
+    expect(SecureStore.deleteItemAsync).toHaveBeenCalledWith(
+      "zoption.app_lock.real-user-id",
+      expect.anything(),
+    );
     expect(latest.current?.status).toBe("signed-out");
   });
 
