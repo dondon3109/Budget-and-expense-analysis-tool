@@ -86,6 +86,21 @@ describe("landing page", () => {
     expect(within(modules).getAllByText(/subscription/i).length).toBeGreaterThan(0);
   });
 
+  it("tells the receipt pile story with a described photo and a sign-up action", () => {
+    renderLanding();
+
+    const story = screen.getByRole("region", { name: "End the month-end money scramble." });
+    expect(within(story).getByRole("img", { name: /stressed woman at her desk/i })).toHaveAttribute(
+      "loading",
+      "lazy",
+    );
+    expect(within(story).getByText(/Zoption sorts the pile\./)).toBeInTheDocument();
+    expect(within(story).getByRole("link", { name: /clear the pile for free/i })).toHaveAttribute(
+      "href",
+      "/signup",
+    );
+  });
+
   it("presents supported export formats without duplicate announcements", () => {
     renderLanding();
 
