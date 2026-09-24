@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- The landing page has a new "Sound familiar?" story after the feature highlights. As you scroll, a photo of a desk buried in receipts is pinned in place while the loose expenses fly off the table into one sorted monthly ledger with a total against the budget. With reduced motion turned on, the finished ledger shows without animation.
+
 ## 2.44.0 — 2026-09-24
 
 ### Added

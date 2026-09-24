@@ -42,7 +42,8 @@
 
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
+  /* clip, not hidden: hidden makes this a scroll container and breaks sticky children. */
+  overflow-x: clip;
   color: var(--lp-fg);
   background: var(--lp-bg);
   font-family: var(--font-ui);
@@ -3249,4 +3250,319 @@
 
 .spotlight-learn-more a:hover {
   text-decoration: underline;
+}
+
+/* ============================================================
+   Receipt pile scroll story
+   The section is taller than the viewport and its stage stays pinned
+   while ReceiptPileScroll publishes scroll progress as --p (0 to 1).
+   Every motion below is a clamped ramp of --p, so the resting state
+   (--p: 1, used before hydration and under reduced motion) is the
+   finished, sorted ledger.
+   ============================================================ */
+.receipt-scroll {
+  --p: 1;
+  position: relative;
+  height: 280vh;
+}
+
+.receipt-scroll-stage {
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: clamp(32px, 5vw, 64px);
+  width: min(1160px, calc(100% - 48px));
+  min-height: 100vh;
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 96px 0 32px;
+}
+
+.receipt-scroll-copy h2 {
+  margin-top: 12px;
+  font-size: clamp(30px, 3.6vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+.receipt-scroll-beats {
+  display: grid;
+  margin: 22px 0 24px;
+}
+
+/* All three beats share one grid cell and cross-fade on overlapping ramps. */
+.receipt-scroll-beat {
+  grid-area: 1 / 1;
+  opacity: var(--o);
+  translate: 0 calc((1 - var(--o)) * 14px);
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--lp-muted);
+}
+
+.receipt-scroll-beat strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 19px;
+  color: var(--lp-fg);
+}
+
+.receipt-scroll-beat-1 {
+  --o: clamp(0, (0.32 - var(--p)) / 0.08, 1);
+}
+
+.receipt-scroll-beat-2 {
+  --o: clamp(0, min((var(--p) - 0.26) / 0.08, (0.74 - var(--p)) / 0.08), 1);
+}
+
+.receipt-scroll-beat-3 {
+  --o: clamp(0, (var(--p) - 0.68) / 0.08, 1);
+}
+
+.receipt-scroll-steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 0 28px;
+  padding: 14px 0 0;
+  list-style: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--lp-subtle);
+}
+
+.receipt-scroll-steps::before,
+.receipt-scroll-steps::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--lp-border);
+}
+
+.receipt-scroll-steps::after {
+  background: var(--lp-accent);
+  transform: scaleX(var(--p));
+  transform-origin: left;
+}
+
+.receipt-scroll-frame {
+  --reveal: clamp(0, var(--p) / 0.2, 1);
+  --sorted: clamp(0, (var(--p) - 0.4) / 0.35, 1);
+  --done: clamp(0, (var(--p) - 0.8) / 0.15, 1);
+
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border: 1px solid var(--lp-border);
+  border-radius: 24px;
+  box-shadow: var(--lp-shadow-lg);
+  clip-path: inset(calc((1 - var(--reveal)) * 7%) round 24px);
+}
+
+.receipt-scroll-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(calc(1.14 - 0.08 * var(--reveal) - 0.06 * var(--sorted)));
+}
+
+/* Quiets the clutter behind the ledger once sorting starts. */
+.receipt-scroll-veil {
+  position: absolute;
+  inset: 0;
+  background: var(--lp-bg);
+  opacity: calc(var(--sorted) * 0.5);
+}
+
+.receipt-scroll-ledger {
+  position: absolute;
+  top: 3.5cqw;
+  right: 3.5cqw;
+  display: grid;
+  gap: 1cqw;
+  isolation: isolate;
+  width: 40cqw;
+  padding: 2.2cqw;
+  font-size: clamp(10px, 1.9cqw, 14px);
+}
+
+.receipt-scroll-ledger::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--lp-border);
+  border-radius: 2cqw;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-lg);
+  opacity: var(--sorted);
+}
+
+.receipt-scroll-ledger-head,
+.receipt-scroll-ledger-total {
+  opacity: var(--sorted);
+}
+
+.receipt-scroll-ledger-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 0.4cqw;
+  font-weight: 650;
+  color: var(--lp-fg);
+}
+
+.receipt-scroll-ledger-head small {
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--lp-accent-strong);
+}
+
+/* Each chip flies from its scattered offset to its ledger row on its own staggered ramp. */
+.receipt-scroll-chip {
+  --t: clamp(0, (var(--p) - var(--start)) / 0.28, 1);
+
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0.9cqw 1.3cqw;
+  border: 1px solid var(--lp-border);
+  border-radius: 0.8cqw;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-sm);
+  color: var(--lp-fg);
+  font-family: var(--lp-font-mono);
+  translate: calc((1 - var(--t)) * var(--dx)) calc((1 - var(--t)) * var(--dy));
+  rotate: calc((1 - var(--t)) * var(--r));
+  scale: calc(0.86 + 0.14 * var(--t));
+  will-change: translate, rotate;
+}
+
+.receipt-scroll-chip b {
+  font-weight: 650;
+  color: var(--lp-expense-text);
+}
+
+.receipt-scroll-ledger-total {
+  display: grid;
+  gap: 0.8cqw;
+  margin-top: 0.6cqw;
+}
+
+.receipt-scroll-ledger-total div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.receipt-scroll-ledger-total span {
+  color: var(--lp-muted);
+}
+
+.receipt-scroll-ledger-total b {
+  font-family: var(--lp-font-mono);
+  font-size: 1.25em;
+  color: var(--lp-fg);
+}
+
+.receipt-scroll-ledger-total small {
+  margin-left: auto;
+  color: var(--lp-muted);
+}
+
+.receipt-scroll-meter {
+  display: block;
+  height: 0.8cqw;
+  min-height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--lp-accent-soft);
+}
+
+.receipt-scroll-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--lp-accent);
+  transform: scaleX(calc(0.9 * var(--done)));
+  transform-origin: left;
+}
+
+@media (max-width: 900px) {
+  .receipt-scroll {
+    height: 240vh;
+  }
+
+  .receipt-scroll-stage {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: 20px;
+    width: calc(100% - 32px);
+    padding: 84px 0 24px;
+  }
+
+  .receipt-scroll-copy h2 {
+    font-size: clamp(26px, 7vw, 34px);
+  }
+
+  .receipt-scroll-beats {
+    margin: 12px 0 16px;
+  }
+
+  .receipt-scroll-beat {
+    font-size: 15px;
+  }
+
+  .receipt-scroll-beat strong {
+    font-size: 17px;
+  }
+
+  .receipt-scroll-steps {
+    margin-bottom: 16px;
+  }
+
+  .receipt-scroll-ledger {
+    width: 50cqw;
+    font-size: 2.6cqw;
+  }
+}
+
+/* The pinned stage must fit one phone screen or the photo is cut off while pinned;
+   the sticky mobile bar already carries the sign-up action. */
+@media (max-width: 768px) {
+  .receipt-scroll-copy .button {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) and (max-height: 740px) {
+  .receipt-scroll-stage {
+    padding-top: 76px;
+  }
+
+  .receipt-scroll-copy .eyebrow,
+  .receipt-scroll-steps {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .receipt-scroll {
+    height: auto;
+  }
+
+  .receipt-scroll-stage {
+    position: static;
+    min-height: 0;
+    padding-top: 72px;
+  }
 }

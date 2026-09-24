@@ -8,6 +8,7 @@ import { BudgetPlannerCalculator } from "../components/landing/BudgetPlannerCalc
 import { CustomerReviews } from "../components/landing/CustomerReviews";
 import { FastEntrySpotlight } from "../components/landing/FastEntrySpotlight";
 import { FeatureModules } from "../components/landing/FeatureModules";
+import { ReceiptPileScroll } from "../components/landing/ReceiptPileScroll";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { PublicHeader, type PublicHeaderLink } from "../components/navigation/PublicHeader";
 import { SupportChat } from "../components/support/SupportChat";
@@ -202,6 +203,8 @@ export function LandingPage() {
             </div>
           </div>
         </section>
+
+        <ReceiptPileScroll />
 
         <FastEntrySpotlight />
 
