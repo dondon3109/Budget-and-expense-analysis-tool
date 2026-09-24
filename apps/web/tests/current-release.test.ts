@@ -28,14 +28,16 @@ describe("current release notes", () => {
       "Pay for Zoption Pro with Dodo Payments",
       "An optional app lock on Android",
       "Open offline without signing in again",
-      "Android Beta 0.2.34",
+      "Speak your income into the Android mic widget",
+      "A new look on the web and in the app",
+      "Android Beta 0.2.35",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/merchant of record/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.34/);
+    expect(copy).toMatch(/Android Beta 0\.2\.35/);
   });
 
   it("keeps the debt payment and edit notes as 2.43.1", () => {
