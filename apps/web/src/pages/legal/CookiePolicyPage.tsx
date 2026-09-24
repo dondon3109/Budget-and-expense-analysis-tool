@@ -10,7 +10,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="September 16, 2026"
+      lastUpdated="September 24, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>
@@ -18,7 +18,10 @@ export function CookiePolicyPage() {
           “Cookies” is often used as a general label, but websites can also use localStorage, SDKs,
           pixels, iframes, and related browser technologies. Zoption currently uses browser storage
           for theme choice, this consent record, a remembered transaction sort preference,
-          release-update acknowledgments, and Supabase authentication/session operation.
+          release-update acknowledgments, the product-support chat for the current tab, and Supabase
+          authentication/session operation. A service worker also caches the site&apos;s static
+          files and public pages so they load offline; it never caches your financial workspace,
+          private app pages, or account requests.
         </p>
       </section>
 
@@ -109,17 +112,18 @@ export function CookiePolicyPage() {
       <section>
         <h2>6. Relationship to other processing</h2>
         <p>
-          Cookie Settings do not control the DeepSeek financial assistant, the user-initiated
-          product-support chat, or metadata-only PostHog AI observability and mobile crash
-          telemetry. The financial assistant has a separate, versioned consent flow because it
-          involves feature-specific server processing. The support chat sends a message only when
-          you choose to submit it and keeps its browser copy in session storage. A signed-in bug
-          report is stored only after you review and explicitly submit it; this account-bound
-          storage is not controlled by Cookie Settings. PostHog receives operational model, latency,
-          token, call-structure, finish, and error metadata for the financial assistant without
-          questions, answers, financial records, tool payloads, credentials, or internal IDs. Mobile
-          builds transmit only sanitized crash summaries without message contents or financial
-          records. Read the <Link to="/privacy-policy">Privacy Policy</Link> for account, financial,
+          Cookie Settings do not control the financial assistant, AI entry (receipt scanning, spoken
+          transactions, and PDF statement entry), the user-initiated product-support chat, or
+          metadata-only PostHog AI observability and mobile crash telemetry. The financial assistant
+          and AI entry each have a separate, versioned consent flow because they involve
+          feature-specific server processing. The support chat sends a message only when you choose
+          to submit it and keeps its browser copy in session storage. A signed-in bug report is
+          stored only after you review and explicitly submit it; this account-bound storage is not
+          controlled by Cookie Settings. PostHog receives operational model, latency, token,
+          call-structure, finish, and error metadata for the financial assistant without questions,
+          answers, financial records, tool payloads, credentials, or internal IDs. Mobile builds
+          transmit only sanitized crash summaries without message contents or financial records.
+          Read the <Link to="/privacy-policy">Privacy Policy</Link> for account, financial,
           provider, assistant, and rights information.
         </p>
       </section>
@@ -127,9 +131,9 @@ export function CookiePolicyPage() {
       <section>
         <h2>7. Contact</h2>
         <p>
-          Operator: Zoption Administrator
+          Operator: Don Leonard E. Estrera
           <br />
-          Email: support@zoption.site
+          Email: <a href="mailto:support@zoption.site">support@zoption.site</a>
         </p>
       </section>
     </LegalPageLayout>

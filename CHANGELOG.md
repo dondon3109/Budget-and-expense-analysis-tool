@@ -8,6 +8,11 @@ All notable product changes are documented here.
 
 - Three new Philippine budgeting guides: budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.
 
+### Changed
+
+- The Privacy Policy now describes receipt scanning, spoken transactions, and PDF statement entry, which send the file or note you choose to Cloudflare Workers AI after separate consent; Google speech recognition for Pro live voice chat; and what the Android app keeps on your device, including the encrypted local workspace and the app lock, and what signing out removes.
+- The Cookie Policy now lists the offline cache of public pages and the support chat's tab storage, names the site operator, and no longer names one AI provider for the assistant.
+
 ### Fixed
 
 - `llms.txt` and `llms-full.txt` now list every public page, including the budgeting guides, tutorials, and feature pages, and stay in step with the sitemap as pages are added. `robots.txt` now states that search engines and AI answers may use the site but model training may not.
