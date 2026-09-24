@@ -23,7 +23,7 @@ The browser product: a prerendered public site plus the signed in application un
 | `src/lib/queryKeys.ts`      | Workspace scoped query key roots                                                                                   |
 | `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                                             |
 | `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                                  |
-| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, and `404.html`                                 |
+| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, `404.html`, and the `llms.txt` page lists      |
 | `tests/`                    | Flat Vitest suites for the whole app                                                                               |
 
 ## Commands

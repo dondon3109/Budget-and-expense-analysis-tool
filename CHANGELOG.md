@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- `llms.txt` and `llms-full.txt` now list every public page, including the budgeting guides, tutorials, and feature pages, and stay in step with the sitemap as pages are added. `robots.txt` now states that search engines and AI answers may use the site but model training may not.
+
 ## 2.44.0 — 2026-09-24
 
 ### Added

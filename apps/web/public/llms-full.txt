@@ -3,21 +3,8 @@
 > Zoption is a privacy-conscious personal budget and expense tracking platform for reviewing transactions, budgets, recurring charges, and monthly cash flow in a private workspace without sharing online banking credentials.
 
 ## Public Endpoints & Canonical URLs
-- **Home**: https://zoption.site/
-- **Pricing & Plans**: https://zoption.site/pricing
-- **FAQ**: https://zoption.site/faq
-- **Changelog**: https://zoption.site/changelog
-- **50/30/20 peso budget calculator**: https://zoption.site/tools/50-30-20-calculator
-- **Import bank statements**: https://zoption.site/import
-- **Import BDO statements**: https://zoption.site/import/bdo-statement
-- **Import BPI statements**: https://zoption.site/import/bpi-statement
-- **Import MariBank statements**: https://zoption.site/import/maribank-statement
-- **Import Bank of America statements**: https://zoption.site/import/bank-of-america-statement
-- **Import Chase / JPMorgan statements**: https://zoption.site/import/jpmorgan-statement
-- **Android Beta APK**: https://zoption.site/install
-- **Terms of Service**: https://zoption.site/terms-of-service
-- **Privacy Policy**: https://zoption.site/privacy-policy
-- **Cookie Policy**: https://zoption.site/cookie-policy
+
+{{public-pages}}
 
 ## Core Architecture & Security Model
 1. **Zero Bank Credentials**: Zoption never integrates with credential-scraping aggregators (such as Plaid or Yodlee). Users import standard export files (CSV, Excel XLS/XLSX, PDF bank statements) or input entries via voice/camera.

@@ -56,20 +56,15 @@ This contradicts stated intent in two places:
 - The FAQ entry and `/faq` structured data telling users to add Zoption as a Google
   Preferred Source.
 
-The `Content-Signal: search=yes,ai-train=no,use=reference` header shows the intent is
-to allow AI _search_ while refusing AI _training_. Blocking GPTBot and Google-Extended
-undermines that.
+The intent is to allow AI _search_ while refusing AI _training_. Blocking GPTBot and
+Google-Extended undermines that.
 
-**Code side is done.** `scripts/robots.mjs` no longer repeats `Allow` rules for agents
-the Cloudflare block already covers. Restating them produced two equally specific,
-conflicting groups with no defined winner — crawlers resolve that tie restrictively, so
-the duplicate group could not win and only added ambiguity. The wildcard
-`User-agent: * / Allow: /` already permits those agents the moment the edge stops
-blocking them, and `robots.test.ts` fails if anyone re-adds the redundant rules.
-
-**Code side.** `scripts/robots.mjs` no longer repeats `Allow` rules for agents the
-Cloudflare block covered. The wildcard `User-agent: * / Allow: /` now permits those
-agents on its own, and `robots.test.ts` fails if anyone re-adds the redundant rules.
+**Code side.** `scripts/robots.mjs` emits a single wildcard group, `User-agent: * /
+Allow: /`, and never restates per-agent `Allow` rules; `robots.test.ts` fails if anyone
+re-adds them. The same group carries
+`Content-Signal: search=yes, ai-input=yes, ai-train=no` (Cloudflare's content signals
+policy), which states the search-yes, training-no intent the managed block used to imply.
+Crawlers that do not recognise the line ignore it.
 
 **Dashboard side.** In Cloudflare for the `zoption.site` zone: **Bots** → _Manage your
 robots.txt_ → off. This could not be done from the repository — the managed block is
@@ -77,10 +72,15 @@ injected above the origin response at the edge, so no origin file can override i
 the zone is ever recreated or the setting is re-enabled, this is the first thing to
 re-check.
 
-> **Note:** the live `robots.txt` still shows the pre-consolidation content with
-> redundant per-agent `Allow` groups. That is expected — it is the previously deployed
-> build. The consolidated file ships with the next release. It is a cleanup, not a
-> blocker: the old file allows the same crawlers.
+## `llms.txt` and `llms-full.txt`
+
+Both files live in `apps/web/public/` and hold hand-written product facts and boundaries.
+Their page lists are not hand-written: each file carries one `{{public-pages}}` marker
+that `prerender.mjs` replaces with every `PUBLIC_ROUTE_PATHS` entry, using the route's
+canonical URL, title, and meta description (`scripts/llms.mjs`). A new public route
+therefore reaches `llms.txt` and the sitemap together. `llms.test.ts` fails if either
+template loses its marker. Update the product-fact sections by hand when a feature,
+plan limit, or import preset changes.
 
 ## The real constraint: eight indexable URLs
 
@@ -234,15 +234,14 @@ This document ranks opportunities qualitatively. To prioritize on evidence:
       `Allow` groups) — code side done
 - [x] Turn off _Manage your robots.txt_ in the Cloudflare dashboard (2026-08-31)
 - [x] Verify live `robots.txt` has no `Disallow` — confirmed 0
-- [ ] **Ship it: commit and push.** Production is 5 commits behind `origin/main`, so
-      none of the work below is live yet (sitemap still lists 8 URLs, `/tools/...` 404s)
+- [x] Ship the search-demand pages (live sitemap lists 25 URLs, checked 2026-09-24)
 - [ ] Verify `zoption.site` is indexed (`site:zoption.site`)
 - [ ] Submit sitemap in Search Console
-- [x] Cluster A import pages (hub + 5 bank guides) — **built, not deployed**
-- [x] Interactive 50/30/20 peso calculator (`/tools/50-30-20-calculator`) — **built,
-      not deployed**
+- [x] Cluster A import pages (hub + 5 bank guides)
+- [x] Interactive 50/30/20 peso calculator (`/tools/50-30-20-calculator`)
+- [x] Generate the `llms.txt` page lists from the route manifest
 - [ ] Decide on Cluster B Philippine budgeting guides
-- [ ] Decide on Cluster D feature explainers
+- [x] Cluster D feature explainers (`/features/receipt-scanning`, `/features/voice-expense-entry`)
 - [ ] Connect GSC and Ahrefs to replace qualitative ranking with real data
 - [x] Automate the content-date drift check (`apps/web/tests/content-freshness.test.ts`)
 
@@ -255,7 +254,7 @@ deployed (`wrangler pages deploy apps/web/dist`):
 2. `vite build` — client bundle into `dist/`
 3. `vite build --ssr src/entry-server.tsx --outDir dist-ssr`
 4. `node scripts/prerender.mjs` — renders every `PUBLIC_ROUTE_PATHS` entry to static
-   HTML, then writes `robots.txt` and `sitemap.xml`
+   HTML, then writes `robots.txt`, `sitemap.xml`, and the `llms.txt` page lists
 
 Two consequences are easy to miss:
 

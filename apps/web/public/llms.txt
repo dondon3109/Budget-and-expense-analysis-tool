@@ -4,21 +4,7 @@
 
 ## Public pages
 
-- [Home](https://zoption.site/): Product overview, voice & receipt entry, statement imports, and account creation.
-- [Pricing & Plans](https://zoption.site/pricing): Transparent Free Plan (₱0) and Pro Plan (₱149/mo, ₱1,299/yr) comparisons with zero bank credential sharing.
-- [Changelog & Updates](https://zoption.site/changelog): Version release notes, new features, and product improvements.
-- [50/30/20 Peso Budget Calculator](https://zoption.site/tools/50-30-20-calculator): Free interactive calculator splitting Philippine peso take-home pay into needs, wants, and savings with exact centavo accuracy and adjustable percentages.
-- [Import Bank Statements](https://zoption.site/import): How CSV, Excel, and PDF statement imports work, with no bank connection.
-- [Import BDO Statements](https://zoption.site/import/bdo-statement): Bringing BDO transaction history into Zoption.
-- [Import BPI Statements](https://zoption.site/import/bpi-statement): Bringing BPI transaction history into Zoption.
-- [Import MariBank Statements](https://zoption.site/import/maribank-statement): Bringing MariBank transaction history into Zoption.
-- [Import Bank of America Statements](https://zoption.site/import/bank-of-america-statement): Bringing Bank of America transaction history into Zoption.
-- [Import Chase & JPMorgan Statements](https://zoption.site/import/jpmorgan-statement): Bringing Chase and JPMorgan transaction history into Zoption.
-- [FAQ](https://zoption.site/faq): Plain-language answers about tracking expenses, imports, budgets, AI assistant, privacy, and billing.
-- [Download Android Beta APK](https://zoption.site/install): Official native Android Beta APK with on-device receipt scanning and offline support.
-- [Terms of Service](https://zoption.site/terms-of-service): Terms governing the service.
-- [Privacy Policy](https://zoption.site/privacy-policy): Account, financial-data, assistant, and provider processing practices.
-- [Cookie Policy](https://zoption.site/cookie-policy): Necessary browser storage and privacy-preserving, cookieless web analytics.
+{{public-pages}}
 
 ## Search and verification
 

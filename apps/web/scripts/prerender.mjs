@@ -3,6 +3,7 @@ import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { withLlmsPageList } from "./llms.mjs";
 import { robotsText } from "./robots.mjs";
 import { verifyPrerenderArtifacts } from "./verify-prerender.mjs";
 
@@ -242,6 +243,16 @@ async function main() {
     indexingEnabled ? headers : previewHeaders(headers),
   );
   await writeFile(resolve(distDirectory, "robots.txt"), robotsText(SITE_ORIGIN, indexingEnabled));
+
+  const llmsPages = routes.map(({ metadata }) => ({
+    url: metadata.canonical,
+    title: metadata.title,
+    description: metadata.description,
+  }));
+  for (const file of ["llms.txt", "llms-full.txt"]) {
+    const path = resolve(distDirectory, file);
+    await writeFile(path, withLlmsPageList(await readFile(path, "utf8"), llmsPages));
+  }
 
   if (indexingEnabled) {
     await writeFile(
