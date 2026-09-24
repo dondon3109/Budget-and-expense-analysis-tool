@@ -492,35 +492,6 @@
   line-height: 1.5;
 }
 
-.pro-checkout-payment-methods ul {
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  list-style: none;
-}
-
-.pro-checkout-payment-methods li {
-  display: inline-flex;
-  grid-template-columns: none;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 12px;
-  font-weight: 580;
-}
-
-.pro-checkout-payment-methods li svg {
-  margin: 0;
-  color: var(--muted);
-  flex: 0 0 auto;
-}
-
 .pro-checkout-secure-action {
   display: grid;
   gap: 9px;

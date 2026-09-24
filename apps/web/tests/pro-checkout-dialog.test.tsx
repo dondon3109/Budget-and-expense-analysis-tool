@@ -130,9 +130,8 @@ describe("ProCheckoutDialog", () => {
     expect(
       screen.getByText(/does not add or move transactions into the week/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Debit or credit card when available")).toBeInTheDocument();
-    expect(screen.getByText(/PayPal will show the methods available to you/i)).toBeInTheDocument();
-    expect(screen.getByText("PayPal")).toBeInTheDocument();
+    expect(screen.queryByText("Payment handled by PayPal")).not.toBeInTheDocument();
+    expect(screen.getByText(/Pay by card, Apple Pay, or Google Pay/i)).toBeInTheDocument();
     const continueSecurely = await screen.findByRole("button", { name: "Continue securely" });
     expect(paypalMocks.providerProps).toHaveBeenCalledWith(
       expect.objectContaining({

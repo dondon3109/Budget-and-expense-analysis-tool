@@ -12,6 +12,7 @@ All notable product changes are documented here.
 
 - The Privacy Policy now describes receipt scanning, spoken transactions, and PDF statement entry, which send the file or note you choose to Cloudflare Workers AI after separate consent; Google speech recognition for Pro live voice chat; and what the Android app keeps on your device, including the encrypted local workspace and the app lock, and what signing out removes.
 - The Cookie Policy now lists the offline cache of public pages and the support chat's tab storage, names the site operator, and no longer names one AI provider for the assistant.
+- The web upgrade dialog no longer shows the "Payment handled by PayPal" box. It now offers two clear choices: continue with PayPal, or pay by card, Apple Pay, or Google Pay through Dodo Payments.
 
 ### Fixed
 

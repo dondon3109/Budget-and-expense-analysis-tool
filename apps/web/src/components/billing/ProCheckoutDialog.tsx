@@ -5,7 +5,7 @@ import {
   usePayPalSubscriptionPaymentSession,
 } from "@paypal/react-paypal-js/sdk-v6";
 import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
-import { Check, CreditCard, LockKeyhole, Minus, ShieldCheck, WalletCards, X } from "lucide-react";
+import { Check, CreditCard, LockKeyhole, Minus, ShieldCheck, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
@@ -480,36 +480,6 @@ function ProCheckoutDialogContent({
                   </div>
                 </fieldset>
 
-                <section
-                  className="pro-checkout-payment-methods"
-                  aria-labelledby="payment-methods-title"
-                >
-                  <div className="pro-checkout-payment-methods-header">
-                    <div className="pro-checkout-payment-methods-title-row">
-                      <ShieldCheck
-                        size={15}
-                        className="pro-checkout-shield-icon"
-                        aria-hidden="true"
-                      />
-                      <strong id="payment-methods-title">Payment handled by PayPal</strong>
-                    </div>
-                    <span>
-                      PayPal will show the methods available to you, which may include debit or
-                      credit card.
-                    </span>
-                  </div>
-                  <ul aria-label="Possible payment methods">
-                    <li>
-                      <CreditCard size={15} aria-hidden="true" />
-                      Debit or credit card when available
-                    </li>
-                    <li>
-                      <WalletCards size={15} aria-hidden="true" />
-                      PayPal
-                    </li>
-                  </ul>
-                </section>
-
                 {providerConfig ? (
                   <PayPalProvider
                     clientId={providerConfig.clientId}
@@ -558,8 +528,8 @@ function ProCheckoutDialogContent({
                       <strong id="dodo-payment-methods-title">Or pay with Dodo Payments</strong>
                     </div>
                     <span>
-                      Dodo Payments is the merchant of record for this option and shows the card and
-                      wallet methods available to you.
+                      Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record
+                      for this option.
                     </span>
                   </div>
                   <button
