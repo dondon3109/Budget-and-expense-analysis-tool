@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.44.0 — 2026-09-24
+
 ### Added
 
 - Zoption Pro can be bought through Dodo Payments as well as PayPal. The upgrade dialog on the web and Plan and billing on mobile offer "Continue with Dodo Payments", which opens Dodo's hosted checkout for the chosen monthly or annual plan. Dodo Payments is the merchant of record for those purchases. Pro starts only after Zoption confirms the subscription with Dodo, renewal can be cancelled from Plan and billing, and a full refund or an opened dispute ends Pro access.
