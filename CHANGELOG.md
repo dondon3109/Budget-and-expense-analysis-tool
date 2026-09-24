@@ -12,6 +12,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- The Android home-screen mic widget now records income. Saying "Received 20,000 salary to my GCash" or "Got paid 5k for freelance work" opens an income review with the matching account and category instead of failing or saving an expense. Amounts no longer need "pesos" after them, "5k" means 5,000, and a note about "yesterday" is dated yesterday. The review screen has an Expense and Income switch for a misheard note, and the widget label now reads "Speak transaction".
 - The mobile app no longer asks you to sign in again when it opens offline. It used to show the sign-in screen once the saved session was more than about an hour old. Now your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.
 
 ## 2.43.1 — 2026-09-23

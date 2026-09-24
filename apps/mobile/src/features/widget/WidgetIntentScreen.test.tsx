@@ -14,9 +14,7 @@ import { WidgetIntentScreen } from "./WidgetIntentScreen";
 // delta from a balance that has not been read yet, and the expense path must
 // honour the account and category the speaker named in the transcript.
 
-const reconcileParams = {
-  payload: JSON.stringify({ type: "reconcile", account: "BDO", newBalanceMinor: 500000 }),
-};
+const reconcileParams = { transcript: "Reconcile BDO to 5000 pesos" };
 
 let mockSearchParams: Record<string, string> = { ...reconcileParams };
 
@@ -83,6 +81,14 @@ function expenseFormData(): TransactionFormData {
         name: "Uncategorized",
         kind: "expense",
         color: "#64748B",
+        iconEmoji: null,
+        pending: false,
+      },
+      {
+        id: "c-salary",
+        name: "Salary",
+        kind: "income",
+        color: "#0f6b5b",
         iconEmoji: null,
         pending: false,
       },
@@ -191,15 +197,7 @@ describe("WidgetIntentScreen expense review", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockSearchParams = {
-      // The native widget's payload carries no account and no category.
-      payload: JSON.stringify({
-        type: "expense",
-        amountMinor: 50000,
-        merchant: "dinner today using cash",
-      }),
-      transcript,
-    };
+    mockSearchParams = { transcript };
     jest
       .mocked(useSyncState)
       .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
@@ -227,7 +225,6 @@ describe("WidgetIntentScreen expense review", () => {
   it("summarizes the raw merchant into a concise description", async () => {
     await render(<WidgetIntentScreen />);
 
-    // Raw merchant was "dinner today using cash", summarized to "Dinner"
     expect(screen.getByDisplayValue("Dinner")).toBeTruthy();
   });
 
@@ -247,15 +244,42 @@ describe("WidgetIntentScreen expense review", () => {
   });
 
   it("falls back to the first account and Uncategorized when nothing matches", async () => {
-    mockSearchParams = {
-      payload: JSON.stringify({ type: "expense", amountMinor: 15000, merchant: "misc" }),
-      transcript: "spent 150 pesos on misc",
-    };
+    mockSearchParams = { transcript: "spent 150 pesos on misc" };
 
     await render(<WidgetIntentScreen />);
 
     expect(screen.getByRole("button", { name: "Account, Bank, PHP" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Category, Uncategorized" })).toBeTruthy();
+  });
+  it("saves a spoken income as income", async () => {
+    mockSearchParams = { transcript: "Received 20,000 pesos salary to my GCash" };
+
+    await render(<WidgetIntentScreen />);
+
+    expect(screen.getByText("Confirm income")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Deposit to, GCash, PHP" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Category, Salary" })).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Save income" }));
+    await waitFor(() => expect(createTransaction).toHaveBeenCalledTimes(1));
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "income",
+        accountId: "a-gcash",
+        categoryId: "c-salary",
+        amountMinor: 2_000_000,
+        description: "Salary",
+      }),
+    );
+  });
+
+  it("lets the user flip a misheard expense to income", async () => {
+    await render(<WidgetIntentScreen />);
+
+    await fireEvent.press(screen.getByRole("radio", { name: "Income" }));
+
+    expect(screen.getByText("Confirm income")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Category, Salary" })).toBeTruthy();
   });
 });
 

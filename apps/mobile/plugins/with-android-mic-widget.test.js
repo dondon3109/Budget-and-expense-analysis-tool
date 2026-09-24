@@ -90,7 +90,7 @@ test("generated widget carries the scheme and deep-links the intent route", () =
     '<string name="zoption_mic_widget_scheme">zoption-preview</string>',
   );
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
-    '<string name="zoption_mic_widget_action_label">Record expense</string>',
+    '<string name="zoption_mic_widget_action_label">Speak transaction</string>',
   );
   const infoXml = files["app/src/main/res/xml/zoption_mic_widget_info.xml"];
   expect(infoXml).toContain('android:resizeMode="horizontal|vertical"');
@@ -107,12 +107,10 @@ test("generated widget carries the scheme and deep-links the intent route", () =
   expect(layoutXml).not.toContain("@android:drawable/ic_btn_speak_now");
   const intents = files["app/src/main/java/site/zoption/micwidget/MicWidgetIntents.kt"];
   expect(intents).toContain('authority("widget-intent")');
-  expect(intents).toContain("PARAM_PAYLOAD");
-  expect(intents).toContain('"type", "reconcile"');
-  expect(intents).toContain('"type", "expense"');
-  expect(intents).toContain("newBalanceMinor");
-  expect(intents).toContain("amountMinor");
-  expect(intents).toContain("summarizeMerchant");
+  // Parsing lives only in the app; the native side forwards the transcript.
+  expect(intents).toContain("PARAM_TRANSCRIPT");
+  expect(intents).not.toContain("PARAM_PAYLOAD");
+  expect(intents).not.toContain("buildIntentJson");
   const activity = files["app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt"];
   expect(activity).toContain("RecognizerIntent.ACTION_RECOGNIZE_SPEECH");
   expect(activity).toContain("isRecognitionAvailable");

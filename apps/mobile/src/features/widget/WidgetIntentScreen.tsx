@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
 import { matchCategory, transactionInputSchema } from "@zoption/shared";
@@ -16,7 +16,12 @@ import { Button, Card, ErrorState, FormField, MoneyValue, SelectionField } from 
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
-import { formatMinorForInput, localCalendarDate } from "@/features/transactions/transaction-form";
+import { KindSelector } from "@/features/transactions/KindSelector";
+import {
+  formatMinorForInput,
+  localCalendarDate,
+  type TransactionFormKind,
+} from "@/features/transactions/transaction-form";
 import {
   buildBalanceAdjustmentInput,
   computeBalanceAdjustment,
@@ -25,15 +30,15 @@ import {
 } from "@/features/account/balance-adjustment";
 
 import {
-  parseWidgetIntentPayload,
   parseWidgetTranscriptToIntent,
   resolveKnownBalanceMinor,
   resolveWidgetAccount,
   resolveWidgetAccountFromTranscript,
   resolveWidgetCategory,
   summarizeWidgetDescription,
-  type WidgetExpenseIntent,
+  widgetTransactionDate,
   type WidgetIntent,
+  type WidgetTransactionIntent,
 } from "./widget-intent";
 
 function single(value: string | string[] | undefined): string | undefined {
@@ -47,16 +52,15 @@ function widgetErrorMessage(code: string | undefined): string {
   if (code === "no_speech") {
     return "No speech was recognized. Tap the widget mic and try again.";
   }
-  return "That voice note could not be understood as an expense or a balance update.";
+  return "That voice note needs an amount, like “Spent 250 pesos on lunch” or “Received 20,000 salary”.";
 }
 
 type ResolvedIntent =
   | { status: "failed"; message: string; transcript: string | null }
-  | { status: "ready"; intent: WidgetIntent; interpreted: boolean; transcript: string | null };
+  | { status: "ready"; intent: WidgetIntent; transcript: string };
 
 function useResolvedIntent(): ResolvedIntent {
   const params = useLocalSearchParams<{
-    payload?: string | string[];
     transcript?: string | string[];
     error?: string | string[];
   }>();
@@ -66,74 +70,55 @@ function useResolvedIntent(): ResolvedIntent {
     if (error) {
       return { status: "failed" as const, message: widgetErrorMessage(error), transcript };
     }
-    const payload = single(params.payload);
-    if (payload) {
-      const parsed = parseWidgetIntentPayload(payload);
-      if (parsed.ok)
-        return { status: "ready" as const, intent: parsed.intent, interpreted: false, transcript };
-    }
-    if (transcript) {
-      const fallback = parseWidgetTranscriptToIntent(transcript);
-      if (fallback)
-        return { status: "ready" as const, intent: fallback, interpreted: true, transcript };
-    }
-    return {
-      status: "failed" as const,
-      message: widgetErrorMessage(undefined),
-      transcript,
-    };
-  }, [params.payload, params.transcript, params.error]);
+    const intent = transcript ? parseWidgetTranscriptToIntent(transcript) : null;
+    if (transcript && intent) return { status: "ready" as const, intent, transcript };
+    return { status: "failed" as const, message: widgetErrorMessage(undefined), transcript };
+  }, [params.transcript, params.error]);
 }
 
-function ExpenseConfirm({
+const KIND_LABEL = { expense: "Expense", income: "Income" } as const;
+
+function TransactionConfirm({
   intent,
   transcript,
 }: {
-  intent: WidgetExpenseIntent;
-  transcript: string | null;
+  intent: WidgetTransactionIntent;
+  transcript: string;
 }) {
   const theme = useZoptionTheme();
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const formData = useTransactionFormData();
 
-  const accounts = useMemo(
-    () => formData.data?.accounts.filter((item) => !item.pending) ?? [],
-    [formData.data],
-  );
-  const categories = useMemo(
-    () =>
-      formData.data?.categories.filter((item) => item.kind === "expense" && !item.pending) ?? [],
-    [formData.data],
-  );
-
-  const [description, setDescription] = useState(() =>
-    summarizeWidgetDescription(
-      intent.merchant,
-      accounts.map((a) => a.name),
-    ),
-  );
-
-  useEffect(() => {
-    if (accounts.length > 0) {
-      setDescription((current) => {
-        if (current === intent.merchant) {
-          return summarizeWidgetDescription(
-            intent.merchant,
-            accounts.map((a) => a.name),
-          );
-        }
-        return current;
-      });
-    }
-  }, [accounts, intent.merchant]);
-
+  const [kind, setKind] = useState(intent.type);
+  const [description, setDescription] = useState<string | null>(null);
   const [amount, setAmount] = useState(formatMinorForInput(intent.amountMinor));
   const [accountId, setAccountId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const accounts = useMemo(
+    () => formData.data?.accounts.filter((item) => !item.pending) ?? [],
+    [formData.data],
+  );
+  const categories = useMemo(
+    () => formData.data?.categories.filter((item) => item.kind === kind && !item.pending) ?? [],
+    [formData.data, kind],
+  );
+  const date = localCalendarDate(widgetTransactionDate(transcript));
+  const label = KIND_LABEL[kind];
+
+  // Until the user edits it, the description is re-derived once account names
+  // load so a spoken account ("... into my BDO Savings") never leaks into it.
+  const resolvedDescription =
+    description ??
+    summarizeWidgetDescription(
+      intent.merchant,
+      accounts.map((item) => item.name),
+      label,
+    );
 
   const dismiss = (): void => {
     if (typeof router.canGoBack === "function" && router.canGoBack()) {
@@ -143,30 +128,25 @@ function ExpenseConfirm({
     }
   };
 
-  // The native widget only parses the amount and merchant, so the account and
-  // category the speaker actually named ("... dinner today using cash") are
-  // recovered here: the account from the speaker's own account names in the
-  // transcript, the category from the shared semantic matcher.
+  // The account and category the speaker named ("... dinner today using
+  // cash") are recovered from the transcript: the account from the speaker's
+  // own account names, the category from the shared semantic matcher.
   const suggestedCategory = useMemo(
-    () =>
-      matchCategory(categories, intent.category ?? null, {
-        kind: "expense",
-        contextText: transcript ?? intent.merchant,
-      }),
-    [categories, intent.category, intent.merchant, transcript],
+    () => matchCategory(categories, null, { kind, contextText: transcript }),
+    [categories, kind, transcript],
   );
   const resolvedAccountId =
-    accountId ??
-    resolveWidgetAccount(accounts, intent.account) ??
-    resolveWidgetAccountFromTranscript(accounts, transcript) ??
-    accounts[0]?.id ??
-    "";
+    accountId ?? resolveWidgetAccountFromTranscript(accounts, transcript) ?? accounts[0]?.id ?? "";
   const resolvedCategoryId =
-    categoryId ??
-    suggestedCategory?.id ??
-    resolveWidgetCategory(categories, "expense", intent.category) ??
-    "";
+    categoryId ?? suggestedCategory?.id ?? resolveWidgetCategory(categories, kind) ?? "";
   const account = accounts.find((item) => item.id === resolvedAccountId);
+
+  const changeKind = (next: TransactionFormKind): void => {
+    if (next !== "expense" && next !== "income") return;
+    setKind(next);
+    // A category of the other kind is invalid, so fall back to the suggestion.
+    setCategoryId(null);
+  };
 
   const confirm = async (): Promise<void> => {
     if (!local.workspace || saving || saved) return;
@@ -181,11 +161,11 @@ function ExpenseConfirm({
         return;
       }
       const parsed = transactionInputSchema.safeParse({
-        kind: "expense",
+        kind,
         accountId: resolvedAccountId,
         categoryId: resolvedCategoryId,
-        date: localCalendarDate(),
-        description: description.trim(),
+        date,
+        description: resolvedDescription.trim(),
         amountMinor,
         currency: account?.currency ?? "PHP",
       });
@@ -212,7 +192,7 @@ function ExpenseConfirm({
   if (formData.error || !formData.data) {
     return (
       <ErrorState
-        title="Voice expense unavailable"
+        title={`Voice ${label.toLocaleLowerCase("en")} unavailable`}
         message={formData.error ?? "Reading accounts from encrypted storage."}
         onRetry={formData.error ? formData.retry : undefined}
       />
@@ -221,7 +201,7 @@ function ExpenseConfirm({
 
   if (saved) {
     return (
-      <Card accessibilityLabel="Expense saved">
+      <Card accessibilityLabel={`${label} saved`}>
         <View className="gap-4">
           <View className="flex-row items-center gap-3">
             <View
@@ -241,7 +221,7 @@ function ExpenseConfirm({
               />
             </View>
             <View className="min-w-0 flex-1">
-              <Text style={[typography.headline, { color: theme.colors.text }]}>Expense saved</Text>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>{label} saved</Text>
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
                 Your voice note is now in the ledger.
               </Text>
@@ -263,10 +243,12 @@ function ExpenseConfirm({
   }
 
   return (
-    <Card accessibilityLabel="Confirm voice expense">
+    <Card accessibilityLabel={`Confirm voice ${label.toLocaleLowerCase("en")}`}>
       <View className="gap-4">
         <View className="flex-row items-center justify-between">
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Confirm expense</Text>
+          <Text style={[typography.headline, { color: theme.colors.text }]}>
+            Confirm {label.toLocaleLowerCase("en")}
+          </Text>
           <View
             style={{
               paddingHorizontal: spacing.sm,
@@ -276,13 +258,19 @@ function ExpenseConfirm({
             }}
           >
             <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
-              Voice Draft
+              {date === localCalendarDate() ? "Today" : "Yesterday"}
             </Text>
           </View>
         </View>
+        <KindSelector
+          value={kind}
+          kinds={["expense", "income"]}
+          disabled={saving}
+          onChange={changeKind}
+        />
         <FormField
           label="Description"
-          value={description}
+          value={resolvedDescription}
           onChangeText={setDescription}
           maxLength={240}
           editable={!saving}
@@ -297,7 +285,7 @@ function ExpenseConfirm({
           editable={!saving}
         />
         <SelectionField
-          label="Account"
+          label={kind === "income" ? "Deposit to" : "Account"}
           value={resolvedAccountId}
           options={accounts.map((item) => ({
             id: item.id,
@@ -329,7 +317,7 @@ function ExpenseConfirm({
         <View className="flex-row items-center gap-3">
           <View className="flex-1">
             <Button loading={saving} disabled={saving} onPress={() => void confirm()}>
-              Save expense
+              {`Save ${label.toLocaleLowerCase("en")}`}
             </Button>
           </View>
           <Button variant="secondary" disabled={saving} onPress={dismiss}>
@@ -706,41 +694,39 @@ export function WidgetIntentScreen() {
       title="Voice widget"
       description="Review a voice note from the home-screen mic"
     >
-      {resolved.transcript ? (
-        <Card accessibilityLabel="Spoken voice note">
-          <View className="flex-row items-center gap-3">
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: radii.round,
-                backgroundColor: theme.colors.brandSoft,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <MaterialCommunityIcons
-                name="microphone-outline"
-                size={20}
-                color={theme.colors.brand}
-              />
-            </View>
-            <View className="min-w-0 flex-1">
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Voice note heard
-              </Text>
-              <Text
-                style={[typography.callout, { color: theme.colors.text, fontStyle: "italic" }]}
-                numberOfLines={3}
-              >
-                “{resolved.transcript}”
-              </Text>
-            </View>
+      <Card accessibilityLabel="Spoken voice note">
+        <View className="flex-row items-center gap-3">
+          <View
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: radii.round,
+              backgroundColor: theme.colors.brandSoft,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <MaterialCommunityIcons
+              name="microphone-outline"
+              size={20}
+              color={theme.colors.brand}
+            />
           </View>
-        </Card>
-      ) : null}
-      {resolved.intent.type === "expense" ? (
-        <ExpenseConfirm intent={resolved.intent} transcript={resolved.transcript} />
+          <View className="min-w-0 flex-1">
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Voice note heard
+            </Text>
+            <Text
+              style={[typography.callout, { color: theme.colors.text, fontStyle: "italic" }]}
+              numberOfLines={3}
+            >
+              “{resolved.transcript}”
+            </Text>
+          </View>
+        </View>
+      </Card>
+      {resolved.intent.type !== "reconcile" ? (
+        <TransactionConfirm intent={resolved.intent} transcript={resolved.transcript} />
       ) : (
         <ReconcileConfirm
           accountName={resolved.intent.account}

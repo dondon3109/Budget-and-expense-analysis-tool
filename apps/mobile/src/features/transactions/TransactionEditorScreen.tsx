@@ -1,15 +1,6 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   matchCategory,
@@ -32,7 +23,7 @@ import {
   Skeleton,
   SyncStatus,
 } from "@/ui/components";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import {
   formatMinorForInput,
@@ -48,6 +39,7 @@ import {
   remainingSecondsFromMs,
   type VoicePreviewState,
 } from "./voice-preview";
+import { KindSelector } from "./KindSelector";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
@@ -66,70 +58,6 @@ const emptyForm: TransactionFormValues = {
 
 function singleParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function KindSelector({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: TransactionFormKind;
-  disabled?: boolean;
-  onChange: (kind: TransactionFormKind) => void;
-}) {
-  const theme = useZoptionTheme();
-  return (
-    <View className="gap-2">
-      <Text style={[typography.label, { color: theme.colors.text }]}>Type</Text>
-      <View
-        accessibilityRole="radiogroup"
-        className="flex-row"
-        style={[styles.segmentGroup, { backgroundColor: theme.colors.canvasMuted }]}
-      >
-        {(["expense", "income", "transfer"] as const).map((kind) => {
-          const selected = value === kind;
-          return (
-            <Pressable
-              key={kind}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
-              disabled={disabled}
-              onPress={() => onChange(kind)}
-              style={[
-                styles.segment,
-                {
-                  backgroundColor: selected ? theme.colors.surfaceRaised : "transparent",
-                  borderColor: selected ? theme.colors.border : "transparent",
-                  opacity: disabled ? 0.55 : 1,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                accessibilityElementsHidden
-                color={selected ? theme.colors.brand : theme.colors.textMuted}
-                name={
-                  kind === "expense"
-                    ? "arrow-up-right"
-                    : kind === "income"
-                      ? "arrow-down-left"
-                      : "swap-horizontal"
-                }
-                size={19}
-              />
-              <Text
-                style={[
-                  typography.label,
-                  { color: selected ? theme.colors.text : theme.colors.textMuted },
-                ]}
-              >
-                {kind === "expense" ? "Expense" : kind === "income" ? "Income" : "Transfer"}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
 }
 
 export function TransactionEditorScreen() {
@@ -838,22 +766,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
-  },
-  segmentGroup: {
-    width: "100%",
-    borderRadius: radii.md,
-    padding: spacing.xxs,
-    gap: spacing.xxs,
-  },
-  segment: {
-    flex: 1,
-    minHeight: touchTarget,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
   },
   notes: { minHeight: 104 },
 });

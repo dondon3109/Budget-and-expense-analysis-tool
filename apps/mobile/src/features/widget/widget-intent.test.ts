@@ -1,67 +1,12 @@
 import {
-  parseWidgetIntentPayload,
   parseWidgetTranscriptToIntent,
   resolveKnownBalanceMinor,
   resolveWidgetAccount,
   resolveWidgetAccountFromTranscript,
   resolveWidgetCategory,
   summarizeWidgetDescription,
+  widgetTransactionDate,
 } from "./widget-intent";
-
-describe("parseWidgetIntentPayload", () => {
-  it("routes an expense payload", () => {
-    const result = parseWidgetIntentPayload(
-      JSON.stringify({
-        type: "expense",
-        amountMinor: 25000,
-        merchant: "Jollibee",
-        category: "Food",
-        account: "Cash",
-      }),
-    );
-    expect(result).toEqual({
-      ok: true,
-      intent: {
-        type: "expense",
-        amountMinor: 25000,
-        merchant: "Jollibee",
-        category: "Food",
-        account: "Cash",
-      },
-    });
-  });
-
-  it("routes a reconcile payload", () => {
-    const result = parseWidgetIntentPayload(
-      JSON.stringify({
-        type: "reconcile",
-        account: "BDO",
-        newBalanceMinor: 500000,
-      }),
-    );
-    expect(result).toEqual({
-      ok: true,
-      intent: { type: "reconcile", account: "BDO", newBalanceMinor: 500000 },
-    });
-  });
-
-  it("rejects garbage payloads", () => {
-    for (const garbage of [
-      "not json at all",
-      JSON.stringify({ type: "unknown", amountMinor: 100 }),
-      JSON.stringify({ type: "expense", amountMinor: -50, merchant: "X" }),
-      JSON.stringify({ type: "expense", amountMinor: 0, merchant: "X" }),
-      JSON.stringify({ type: "expense", amountMinor: 25.5, merchant: "X" }),
-      JSON.stringify({ type: "expense", merchant: "Missing amount" }),
-      JSON.stringify({ type: "reconcile", account: "", newBalanceMinor: 100 }),
-      JSON.stringify({ type: "reconcile", newBalanceMinor: 100 }),
-      JSON.stringify(null),
-      "",
-    ]) {
-      expect(parseWidgetIntentPayload(garbage).ok).toBe(false);
-    }
-  });
-});
 
 describe("summarizeWidgetDescription", () => {
   it("shortens and cleans spoken expense descriptions", () => {
@@ -121,10 +66,70 @@ describe("parseWidgetTranscriptToIntent", () => {
     });
   });
 
-  it("rejects transcripts without a currency-marked amount", () => {
+  it("parses income transcripts", () => {
+    expect(parseWidgetTranscriptToIntent("Received 20,000 pesos salary from Acme")).toEqual({
+      type: "income",
+      amountMinor: 2_000_000,
+      merchant: "Salary from Acme",
+    });
+    expect(parseWidgetTranscriptToIntent("I got paid 5k for freelance work")).toEqual({
+      type: "income",
+      amountMinor: 500_000,
+      merchant: "Freelance work",
+    });
+    expect(parseWidgetTranscriptToIntent("Add income 1500 pesos")).toEqual({
+      type: "income",
+      amountMinor: 150_000,
+      merchant: "Income",
+    });
+    expect(parseWidgetTranscriptToIntent("Sold my old phone for 3000")).toEqual({
+      type: "income",
+      amountMinor: 300_000,
+      merchant: "Sold my old phone",
+    });
+  });
+
+  it("keeps spending on income words an expense", () => {
+    expect(parseWidgetTranscriptToIntent("Paid 8000 pesos salary to the helper")).toEqual({
+      type: "expense",
+      amountMinor: 800_000,
+      merchant: "Salary to the helper",
+    });
+  });
+
+  it("accepts a bare amount but never a date, time, or store number", () => {
+    expect(parseWidgetTranscriptToIntent("salary 20,000")).toMatchObject({
+      type: "income",
+      amountMinor: 2_000_000,
+    });
+    expect(parseWidgetTranscriptToIntent("lunch on march 5 for 180")).toMatchObject({
+      type: "expense",
+      amountMinor: 18_000,
+    });
+    expect(parseWidgetTranscriptToIntent("snacks at 7-eleven 95")).toMatchObject({
+      amountMinor: 9_500,
+    });
+    expect(parseWidgetTranscriptToIntent("dinner at 7 pm 450 pesos")).toMatchObject({
+      amountMinor: 45_000,
+    });
+  });
+
+  it("rejects transcripts without an amount", () => {
     expect(parseWidgetTranscriptToIntent("hello world")).toBeNull();
     expect(parseWidgetTranscriptToIntent("lunch on march 5")).toBeNull();
+    expect(parseWidgetTranscriptToIntent("meeting at 3 pm")).toBeNull();
     expect(parseWidgetTranscriptToIntent("   ")).toBeNull();
+  });
+});
+
+describe("widgetTransactionDate", () => {
+  const now = new Date(2026, 8, 24, 12);
+
+  it("dates a note spoken about yesterday one day back", () => {
+    expect(widgetTransactionDate("spent 300 pesos on dinner yesterday", now).getDate()).toBe(23);
+    expect(widgetTransactionDate("grab ride last night 250", now).getDate()).toBe(23);
+    expect(widgetTransactionDate("lunch 180", now)).toBe(now);
+    expect(widgetTransactionDate(null, now)).toBe(now);
   });
 });
 
