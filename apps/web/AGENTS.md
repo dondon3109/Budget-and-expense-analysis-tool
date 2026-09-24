@@ -7,7 +7,7 @@ The browser product: a prerendered public site plus the signed in application un
 ## Stack
 
 - **Language / Runtime**: TypeScript, React 19, Vite 8
-- **Styling**: hand written semantic CSS beside each component; Tailwind v4 is imported once but is not the design tool
+- **Styling**: hand written semantic CSS; theme tokens and self-hosted fonts (Geist, Bricolage Grotesque) live in `src/styles/`, component CSS sits beside each component. Tailwind v4 is imported once in `foundation.css` but is not the design tool
 - **Server state**: TanStack Query, always keyed by workspace
 - **Validation**: `@zoption/shared` zod schemas
 - **Tests**: Vitest with jsdom opted in per file; Playwright specs live in the root `e2e/`
@@ -63,5 +63,3 @@ pnpm test:e2e                      # Playwright, from the repo root
 ## Related specs
 
 - `docs/scope/web/scope.md`, `docs/seo.md`, `docs/deployment.md`, `docs/specs/web/0001-search-demand-pages.md`
-
-_Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

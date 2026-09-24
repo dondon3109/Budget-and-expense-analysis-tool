@@ -8,6 +8,7 @@ The Expo native client for Android and iOS. It keeps an encrypted local workspac
 
 - **Language / Runtime**: TypeScript, React Native 0.86 on Expo SDK 57
 - **Navigation**: expo-router
+- **Styling**: NativeWind (Tailwind 3) plus the theme palette in `src/ui/tokens.ts`
 - **Local data**: encrypted SQLite workspace with append only migrations
 - **Sync**: `@zoption/shared` wire schemas against the Worker sync routes
 - **Tests**: Jest with `--runInBand`, colocated with the source
@@ -60,13 +61,11 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - A transfer is two local transaction rows and exactly one outbox entity. The outbox allows one active row per entity.
 - Never add SMS or notification read permissions. SMS entry is clipboard paste parsed by the shared `parseSmsNotification`.
 - `SYSTEM_ALERT_WINDOW` must not ship and predictive back stays disabled; both are enforced in `app.config.ts`.
-- `package.json` version is the only version name, and `android.versionCode` in `app.config.ts` is the one hand picked number.
+- `package.json` version is the only version name, and `android.versionCode` in `app.config.ts` is the one hand picked number (`0.2.34-beta` → `20334`). Bump both on every release; the `Android Beta Build` workflow rejects an APK whose identity does not match.
 - `metro.config.cjs` enables `inlineRequires`, so module evaluation is deferred to first use. Keep bare side-effect imports (`react-native-gesture-handler`, `@/styles/global.css`, the module-scope `TaskManager.defineTask`) as they are: they have no binding to inline and must still run eagerly.
 - Cold start phases are recorded with `markStartupPhase` from `src/diagnostics/startup-timing.ts`, which is `__DEV__`-gated and never ships. Add a phase there instead of a bare `console.log`.
-- The colocated Jest suites run in CI and in `pnpm verify` through `pnpm test:mobile`. The root `pnpm test` is Vitest and collects only `apps/**/tests/**`, `packages/**/tests/**`, and `scripts/**`, so a mobile test is only run when it sits beside its source. CI does typecheck this workspace through the root `pnpm typecheck`, but `pnpm -r build` skips it because there is no build script.
+- Mobile tests run only through `pnpm test:mobile` (also in CI and `pnpm verify`); root `pnpm test` is Vitest and never collects them. `pnpm -r build` skips this workspace, which has no build script.
 
 ## Related specs
 
 - `docs/mobile/` (architecture, sync-protocol, build-instructions, shared-compatibility), `docs/maintainability.md`
-
-_Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

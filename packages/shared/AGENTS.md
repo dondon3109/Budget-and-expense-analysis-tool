@@ -59,5 +59,3 @@ pnpm test                                # from the repo root
 ## Related specs
 
 - `docs/maintainability.md`, `docs/mobile/shared-compatibility.md`, `docs/mobile/sync-protocol.md`
-
-_Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

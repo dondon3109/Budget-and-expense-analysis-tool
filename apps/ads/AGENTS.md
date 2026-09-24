@@ -35,5 +35,3 @@ pnpm --filter @zoption/ads typecheck
 ## Gotchas
 
 - `apps/ads` has no build script and no CI workflow, so `pnpm -r build` skips it while `pnpm -r typecheck` still covers it.
-
-_Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

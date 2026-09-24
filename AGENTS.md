@@ -1,88 +1,72 @@
 # Agent guidance
 
-Don prefers complex systems to be implemented as simply as possible. Keep changes scoped, type-safe, and supported by focused tests. Be cautious with destructive actions, keep useful comments current, and treat questions as read-only requests unless Don explicitly asks for implementation.
-
-## Commits and releases
-
-When asked to commit, inspect the actual change and use a Conventional Commit subject:
-
-- `feat(scope): ...` for a new user-facing capability; this triggers a minor release.
-- `fix(scope): ...` for a bug fix; this triggers a patch release.
-- `feat(scope)!: ...` or a `BREAKING CHANGE:` footer for an incompatible change; this triggers a major release.
-- `docs:`, `test:`, `chore:`, `refactor:`, `style:`, `ci:`, and `build:` for non-releasing work of those types.
-
-Use an imperative, concise summary and an optional scope when it adds useful context. Do not label maintenance work as `feat` or `fix` merely to force a release.
-
-Do not manually edit product version numbers during normal development. Semantic-release determines the next Git tag and GitHub Release from commits after CI passes. Android and native mobile package versions remain separate release artifacts and should change only as part of their explicit signed-app release process.
-
-Do not deploy the production Worker or Pages app manually during normal development. The `Production Release` workflow owns D1 migration, Worker deployment, versioned Pages deployment, smoke verification, and semantic-release publication after CI, and its deploy job waits for the `production` environment's required reviewer, so approving that run is the production deploy action. Manual production commands are emergency recovery operations and must never run concurrently with that workflow.
-
-Keep `CHANGELOG.md` current for every release. Record notable user-facing changes under `Unreleased` before release, then, after semantic-release succeeds, move those entries under the exact released version and date in a follow-up, non-releasing `docs:` commit. Do not guess the next version or mark a failed release as published.
-
-Check for stale patch list notes on production when releasing. Make sure to update the patch list as needed before releasing.
-
-When releasing new changes however small it may be, always treat it as a new version both in web and mobile. Hence, always bump the version on mobile releases.
-
-## Documentation
-
-- Keep a document current in the same change that makes it stale. A change that moves a command, a configuration value, an environment binding, or an external service setting is not finished until the document that owns that fact matches it.
-- Record external state, not only code. What is configured in the Supabase, Cloudflare, PayPal, and Resend dashboards is invisible in the repository, so `docs/deployment.md` states what is actually configured and how to read it back.
-- Do not leave a setting as tribal knowledge. If a future session would need a dashboard login to learn a value this project depends on, write it down.
-- A line that only narrates what a commit did is churn. Record facts that stay true.
+Zoption is a budget and expense tracker: a React web app, an Expo Android/iOS app, and a Cloudflare Worker API that owns all financial data. Don prefers complex systems implemented as simply as possible.
 
 ## Working style
 
-- Do not spawn subagents for work a single agent can complete in one pass.
-- If parallel agents are justified, assign non-overlapping file ownership first.
-- A green scoped run is not evidence the tree is green. With several agents in one working tree, a passing package typecheck or test file says nothing about a root file importing `@zoption/*` or a `node_modules` that lost its workspace links. Run `pnpm verify` before reporting done, and report its result.
-- Prefer focused tests over broad, repetitive regression suites.
-- If a request is phrased as a question, answer it without editing files and offer implementation separately.
+- A question is a read-only request. Answer it, then offer to implement.
+- Keep changes scoped, type-safe, and covered by focused tests, not broad regression suites.
+- Be cautious with destructive actions. Look before deleting or overwriting.
+- Do not spawn subagents for work one agent can finish. If parallel agents are justified, give each non-overlapping files.
+- Run `pnpm verify` before reporting done and report its result. A green scoped typecheck or test file does not prove the tree is green.
+
+## Invariants
+
+Never trade these for shorter code (details in `docs/maintainability.md`):
+
+- Money is integer minor units (centavos) end to end. Parse only with the shared `parseAmountToMinor`; never float math.
+- Every tenant data read and write is scoped by `tenantId` from the auth context, never from request input.
+- Auth fails closed. Validate at I/O boundaries (HTTP bodies, env, storage, third-party APIs, user input) with `@zoption/shared` zod schemas, then trust the types internally.
+- Mobile writes a mutation and its outbox row in one SQLite transaction.
 
 ## Implementation
 
-- Write the smallest change that preserves behavior and contracts. Prefer fewer new files, types, hooks, and wrappers.
-- Correctness outranks brevity. Do not remove boundary validation, fail-closed auth, tenant scoping, integer-money handling, or sync/outbox atomicity to shorten code. See `docs/maintainability.md`.
-- Protect boundaries, streamline internals. Validate at I/O (HTTP bodies, env, storage, third-party APIs, user input). After schema/type validation, do not repeat the same null/shape checks in internal code.
-- Subtraction over addition. When replacing logic, delete the old path instead of wrapping it. Do not delete adjacent error or compatibility handling you have not verified as dead.
-- Do not add single-use wrappers, adapter types, or helper functions for logic used once. Extract only when the logic is reused, independently testable, or makes a domain rule obvious.
-- In UI code, derive values during render. Do not add extra `useState` plus a sync `useEffect` to copy props or query data. Keep effects for subscriptions, one-time setup, imperative APIs, and true external synchronization.
-- Prefer early returns over nested `if/else`. Do not replace clear domain branches with clever maps or dense ternaries.
-- Comments explain constraints and non-obvious why. Do not add comments that only narrate the next line. Keep existing useful comments current.
-- Match the local file’s style. Do not introduce a new abstraction layer for a one-off change.
+- Write the smallest change that preserves behavior and contracts. Prefer fewer files, types, hooks, and wrappers; extract only reused or independently testable logic.
+- When replacing logic, delete the old path instead of wrapping it. Keep error or compatibility handling you have not proven dead.
+- In UI code, derive values during render. No `useState` plus sync `useEffect` to mirror props or query data.
+- Prefer early returns and plain domain branches over clever maps or dense ternaries.
+- Comments explain constraints and non-obvious why. Keep existing ones current.
+- Match the local file's style.
+- Design: no gradients on cards, floating cards, or backgrounds. Colors come from the theme tokens (web `apps/web/src/styles/`, mobile `apps/mobile/src/ui/tokens.ts`).
 
-## Design Preferences
+## Documentation
 
-- Prefer not to use gradient coloring on card, floating card and backgrounds
+- Update the doc that owns a fact (command, config value, binding, external setting) in the same change that moves it.
+- `docs/deployment.md` records what is actually configured in the Supabase, Cloudflare, PayPal, Dodo Payments, and Resend dashboards and how to read it back. No setting should need a dashboard login to learn.
+- Record facts that stay true, not narration of what a commit did.
+
+## Commits and releases
+
+- Conventional Commits, imperative subject, optional scope: `feat` (minor), `fix` (patch), `feat!` or a `BREAKING CHANGE:` footer (major). Use `docs`, `test`, `chore`, `refactor`, `style`, `ci`, `build` for non-releasing work; never label maintenance as `feat`/`fix` to force a release.
+- Never edit the web/product version by hand. semantic-release tags `main` after CI.
+- Never deploy production manually. The `Production Release` workflow runs D1 migrations, the Worker and Pages deploys, smoke checks, and semantic-release; approving its `production` environment gate is the deploy. Manual commands are emergency recovery only and never run alongside it.
+- Before a release, update the in-app patch notes so they match what ships: `apps/web/src/releases/currentRelease.ts` (the "What's new" list and `releaseHistory`), plus `apps/web/src/releases/androidRelease.json` once a new APK is published.
+- Every release is a new web **and** mobile version. Bump `apps/mobile/package.json` `version` and `android.versionCode` in `apps/mobile/app.config.ts` (`0.2.34-beta` → `20334`). The signed APK is built and published by the `Android Beta Build` workflow (`docs/mobile/build-instructions.md`).
+- `CHANGELOG.md`: add notable user-facing changes under `Unreleased`. After semantic-release succeeds, move them under the exact released version and date in a follow-up `docs:` commit. Never guess a version or mark a failed release as published.
 
 ## Stack
 
-- **Language / Runtime**: TypeScript on Node 22+, Cloudflare Workers, and Expo (React Native)
-- **Framework**: React 19 + Vite (web), Hono (Worker API), expo-router (mobile)
-- **Key dependencies**: `@zoption/shared` (zod schemas and domain rules), TanStack Query, Drizzle schema over Cloudflare D1, Supabase Auth, Wrangler
-- **Package manager**: pnpm 11 workspaces (`apps/*`, `packages/*`; `apps/stt-bridge` excluded)
-
-## Build approach
-
-Tracer Bullet: each feature runs end to end through every layer and works, then widens. Recorded in `docs/scope/web/scope.md`.
+- TypeScript, Node 22+, pnpm 11 workspaces (`apps/*`, `packages/*`; `apps/stt-bridge` is a standalone Cloud Run service outside the workspace).
+- Web: React 19 + Vite, TanStack Query. API: Hono on Cloudflare Workers, D1, Supabase Auth. Mobile: Expo + expo-router, encrypted SQLite. Shared: `@zoption/shared` zod schemas and domain rules.
 
 ## Commands
 
 ```bash
 pnpm install
-pnpm verify             # workspace links, full typecheck, lint, format check, and the Vitest plus mobile Jest suites; run before reporting done
-pnpm dev                # api, web, and mobile together
-pnpm build              # pnpm -r build; skips mobile and ads
-pnpm test               # vitest run across the repo
-pnpm test:mobile        # jest --runInBand for the colocated apps/mobile suites
-pnpm typecheck          # pnpm -r typecheck, then the e2e tsconfig
-pnpm lint
-pnpm test:e2e           # playwright; applies local D1 migrations first
+pnpm verify        # workspace links, typecheck, lint, format check, Vitest, mobile Jest; run before reporting done
+pnpm dev           # api, web, and mobile together
+pnpm test          # Vitest (apps/**/tests, packages/**/tests, scripts)
+pnpm test:mobile   # colocated mobile Jest suites
+pnpm test:e2e      # Playwright; applies local D1 migrations first
+pnpm format        # prettier --write
 ```
 
-## Context files
+## Package guides
 
-- [apps/api/AGENTS.md](apps/api/AGENTS.md): Worker API, D1, tenancy, and the sync protocol
-- [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, and CSP
-- [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, and Android releases
-- [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, and sync contracts
+Read the one for the area you touch:
+
+- [apps/api/AGENTS.md](apps/api/AGENTS.md): Worker API, D1 migrations, tenancy, sync protocol
+- [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, CSP
+- [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, Android releases
+- [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, sync contracts
 - [apps/ads/AGENTS.md](apps/ads/AGENTS.md): Remotion ad renderer (frozen)
