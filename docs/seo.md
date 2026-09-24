@@ -153,9 +153,19 @@ Competitors: `pesobuddy.com/guides/how-to-budget-salary-philippines`,
 Well covered, so differentiate on genuine strengths: peso/centavo accuracy, offline
 Android use, no bank connection, e-wallet tracking.
 
+**Shipped.** Each guide is an entry in `packages/shared/src/financeGuides.ts`:
+
 - `/guides/budget-monthly-salary-philippines`
 - `/guides/50-30-20-rule-pesos`
-- `/guides/track-gcash-maya-spending`
+- `/guides/track-gcash-maya-without-bank-linking`
+- `/guides/budget-semi-monthly-pay-kinsenas-katapusan`
+- `/guides/emergency-fund-philippines`
+- `/guides/budget-13th-month-pay-philippines`
+
+Legal and tax facts (13th month pay, deposit insurance) are stated without figures that
+change by statute, such as the bonus tax ceiling or the PDIC maximum, and point to the
+agency that owns the number. `finance-guides.test.ts` keeps these guides free of iOS,
+app-store, and rating claims.
 
 ### Cluster C — interactive tools
 
@@ -240,7 +250,7 @@ This document ranks opportunities qualitatively. To prioritize on evidence:
 - [x] Cluster A import pages (hub + 5 bank guides)
 - [x] Interactive 50/30/20 peso calculator (`/tools/50-30-20-calculator`)
 - [x] Generate the `llms.txt` page lists from the route manifest
-- [ ] Decide on Cluster B Philippine budgeting guides
+- [x] Cluster B Philippine budgeting guides
 - [x] Cluster D feature explainers (`/features/receipt-scanning`, `/features/voice-expense-entry`)
 - [ ] Connect GSC and Ahrefs to replace qualitative ranking with real data
 - [x] Automate the content-date drift check (`apps/web/tests/content-freshness.test.ts`)

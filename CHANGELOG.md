@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Three new Philippine budgeting guides: budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.
+
 ### Fixed
 
 - `llms.txt` and `llms-full.txt` now list every public page, including the budgeting guides, tutorials, and feature pages, and stay in step with the sitemap as pages are added. `robots.txt` now states that search engines and AI answers may use the site but model training may not.

@@ -14,10 +14,10 @@ describe("finance guides content and helper functions", () => {
     expect(SharedIndex.FINANCE_GUIDES).toBeDefined();
   });
 
-  it("contains the six core Philippine personal finance guides", () => {
+  it("contains the nine Philippine personal finance guides", () => {
     const guides = getAllFinanceGuides();
-    expect(guides).toHaveLength(6);
-    expect(FINANCE_GUIDES).toHaveLength(6);
+    expect(guides).toHaveLength(9);
+    expect(FINANCE_GUIDES).toHaveLength(9);
 
     const slugs = guides.map((g) => g.slug);
     expect(slugs).toEqual([
@@ -27,6 +27,9 @@ describe("finance guides content and helper functions", () => {
       "replace-excel-spreadsheets-budget-tracker",
       "budget-monthly-salary-philippines",
       "50-30-20-rule-pesos",
+      "budget-semi-monthly-pay-kinsenas-katapusan",
+      "emergency-fund-philippines",
+      "budget-13th-month-pay-philippines",
     ]);
   });
 
@@ -69,11 +72,17 @@ describe("finance guides content and helper functions", () => {
     }
   });
 
-  it("keeps the two new budgeting guides to claims the product can keep", () => {
-    // These two pages describe what the app does, so they must not promise the iOS app,
+  it("keeps the peso budgeting guides to claims the product can keep", () => {
+    // These pages describe what the app does, so they must not promise the iOS app,
     // the app stores, or a rating. A PDF mention is allowed only in a sentence that also
     // names Android, the platform whose receipt scanner reads PDF statements.
-    for (const slug of ["budget-monthly-salary-philippines", "50-30-20-rule-pesos"]) {
+    for (const slug of [
+      "budget-monthly-salary-philippines",
+      "50-30-20-rule-pesos",
+      "budget-semi-monthly-pay-kinsenas-katapusan",
+      "emergency-fund-philippines",
+      "budget-13th-month-pay-philippines",
+    ]) {
       const guide = getFinanceGuideBySlug(slug);
       expect(guide).not.toBeNull();
       const copy = JSON.stringify(guide);
