@@ -1,3 +1,5 @@
+import NetInfo from "@react-native-community/netinfo";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import {
   createContext,
   useCallback,
@@ -89,6 +91,13 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
           await signOut({ preserveLocalWorkspace: true }).catch(() => undefined);
           return;
         }
+        if (isAuthRetryableFetchError(error)) {
+          setSnapshot({
+            status: "error",
+            message: "You're offline. Changes stay on this device and sync when you reconnect.",
+          });
+          return;
+        }
         setSnapshot({
           status: "error",
           message:
@@ -109,6 +118,18 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
   }, [attempt, getAccessToken, sessionStatus, signOut, subject]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  // A check that failed offline, including an offline start, runs again once
+  // the device reconnects, so sync resumes without the user asking.
+  useEffect(() => {
+    if (snapshot.status !== "error") return;
+    let wasReachable: boolean | null = null;
+    return NetInfo.addEventListener((state) => {
+      const reachable = state.isInternetReachable ?? state.isConnected;
+      if (wasReachable === false && reachable) retry();
+      wasReachable = reachable;
+    });
+  }, [retry, snapshot.status]);
   const value = useMemo(() => ({ ...snapshot, retry }), [retry, snapshot]);
 
   return <WorkerIdentityContext.Provider value={value}>{children}</WorkerIdentityContext.Provider>;

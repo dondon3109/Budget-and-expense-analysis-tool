@@ -1,7 +1,7 @@
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import Constants from "expo-constants";
-import type { Session } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError } from "@supabase/supabase-js";
 import * as Linking from "expo-linking";
 import {
   createContext,
@@ -25,7 +25,7 @@ import { telemetry } from "@/telemetry/telemetry";
 import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
-import { getSupabaseClient, supabase } from "./supabase-client";
+import { getSupabaseClient, readStoredSessionSubject, supabase } from "./supabase-client";
 
 import { DUMMY_DEV_SUBJECT } from "@/db/demo-seed";
 export { DUMMY_DEV_SUBJECT };
@@ -104,12 +104,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const isDummySessionRef = useRef(false);
   const initializedRef = useRef(false);
 
-  const applySession = useCallback((session: Session | null) => {
+  const applySubject = useCallback((nextSubject: string | null) => {
     isDummySessionRef.current = false;
-    if (session) {
+    if (nextSubject) {
       void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
     }
-    const nextSubject = session?.user.id ?? null;
     const previousSubject = subjectRef.current;
     if (initializedRef.current && previousSubject !== nextSubject) {
       clearUserScopedRuntimeState();
@@ -124,7 +123,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     subjectRef.current = nextSubject;
     initializedRef.current = true;
     setSnapshot({
-      status: session ? "signed-in" : "signed-out",
+      status: nextSubject ? "signed-in" : "signed-out",
       subject: nextSubject,
     });
   }, []);
@@ -169,22 +168,37 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const client = supabase;
 
     let active = true;
-    const { data: authListener } = client.auth.onAuthStateChange((_event, session) => {
-      if (active) applySession(session);
+    const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
+      // The startup getSession() below owns the initial state. INITIAL_SESSION
+      // reports null whenever the startup refresh fails, including offline.
+      if (event === "INITIAL_SESSION") return;
+      if (active) applySubject(session?.user.id ?? null);
     });
 
     void client.auth.getSession().then(async ({ data, error }) => {
       if (!active) return;
       if (!error && data?.session) {
-        applySession(data.session);
+        applySubject(data.session.user.id);
         return;
+      }
+      if (error && isAuthRetryableFetchError(error)) {
+        // Offline with an expired access token: auth-js could not refresh but
+        // kept the stored refresh token, so the user is still signed in. Open
+        // their local workspace; the Worker identity check still gates sync,
+        // and a refresh Supabase later rejects emits SIGNED_OUT.
+        const storedSubject = await readStoredSessionSubject().catch(() => null);
+        if (!active) return;
+        if (storedSubject) {
+          applySubject(storedSubject);
+          return;
+        }
       }
       if (demoEnabled) {
         const stored = await SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => null);
         if (!active) return;
         if (stored && stored !== DUMMY_DEV_SUBJECT) {
           await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
-          applySession(null);
+          applySubject(null);
           return;
         }
         if (stored && stored === DUMMY_DEV_SUBJECT) {
@@ -198,7 +212,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
           return;
         }
       }
-      applySession(null);
+      applySubject(null);
     });
 
     const appStateListener =
@@ -219,7 +233,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       appStateListener?.remove();
       if (Platform.OS !== "web") void client.auth.stopAutoRefresh();
     };
-  }, [applySession, demoEnabled]);
+  }, [applySubject, demoEnabled]);
 
   const signInWithDummyAccount = useCallback(async () => {
     if (!demoEnabled) {

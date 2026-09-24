@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- The mobile app no longer asks you to sign in again when it opens offline. It used to show the sign-in screen once the saved session was more than about an hour old. Now your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.
+
 ## 2.43.1 — 2026-09-23
 
 ### Fixed
