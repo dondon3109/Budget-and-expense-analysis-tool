@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- The mobile "Sync delayed" notice on Home and Transactions has a close (×) button. Closing it hides that notice so it no longer takes up the screen; a different sync problem still shows a new notice, and your changes keep retrying in the background.
+
 ## 2.44.0 — 2026-09-24
 
 ### Added

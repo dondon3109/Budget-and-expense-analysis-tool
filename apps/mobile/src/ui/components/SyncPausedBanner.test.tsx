@@ -20,4 +20,14 @@ describe("SyncPausedBanner", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Retry now" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
+
+  it("hides the notice when dismissed and shows it again for a different message", async () => {
+    const view = await render(<SyncPausedBanner message="First failure." onRetry={jest.fn()} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Dismiss sync delayed notice" }));
+    expect(screen.queryByText("Sync delayed")).toBeNull();
+
+    await view.rerender(<SyncPausedBanner message="Second failure." onRetry={jest.fn()} />);
+    expect(screen.getByText("Sync delayed")).toBeTruthy();
+  });
 });
