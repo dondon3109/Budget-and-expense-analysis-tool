@@ -3,6 +3,7 @@ import { Share } from "react-native";
 
 import { AccountScreen } from "./AccountScreen";
 import { downloadAccountArchive } from "@/api/account";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 
 jest.mock("expo-router", () => ({
   router: {
@@ -36,9 +37,28 @@ jest.mock("@/auth/session-state", () => ({
   }),
 }));
 
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
+}));
+
 jest.mock("@/db/local-workspace-state", () => ({
   useLocalWorkspace: () => ({
     workspace: { schemaVersion: 1 },
+  }),
+  useTransactionFormData: () => ({
+    data: {
+      accounts: [
+        { id: "a-bank", name: "Bank", type: "checking", currency: "PHP", pending: false },
+        { id: "a-cash", name: "Cash", type: "cash", currency: "PHP", pending: false },
+      ],
+      categories: [],
+      transaction: null,
+      unavailableReason: null,
+    },
+    error: null,
+    retry: jest.fn(),
   }),
   useLocalWorkspaceStats: () => ({
     stats: {
@@ -80,5 +100,16 @@ describe("AccountScreen", () => {
       expect(Share.share).toHaveBeenCalled();
       expect(screen.getByText("Account archive exported successfully.")).toBeTruthy();
     });
+  });
+
+  it("starts the default spending account on Cash and saves a new choice", async () => {
+    useDefaultSpendingAccountStore.setState({ accountId: null });
+    await render(<AccountScreen />);
+
+    await fireEvent.press(screen.getByRole("button", { name: /Account, Cash/ }));
+    await fireEvent.press(screen.getByLabelText("Bank"));
+
+    expect(useDefaultSpendingAccountStore.getState().accountId).toBe("a-bank");
+    expect(screen.getByRole("button", { name: /Account, Bank/ })).toBeTruthy();
   });
 });

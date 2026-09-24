@@ -40,6 +40,10 @@ vi.mock("../src/components/account/BillingSettings", () => ({
   ),
 }));
 
+vi.mock("../src/components/account/DefaultSpendingAccountSettings", () => ({
+  DefaultSpendingAccountSettings: () => null,
+}));
+
 vi.mock("../src/components/reviews/CustomerReviewSettings", () => ({
   CustomerReviewSettings: () => (
     <section id="customer-review" aria-labelledby="customer-review-settings-title" tabIndex={-1}>

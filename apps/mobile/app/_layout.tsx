@@ -17,6 +17,7 @@ import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
 import { telemetry } from "@/telemetry/telemetry";
@@ -93,13 +94,15 @@ export default function RootLayout() {
   }, []);
 
   // These stores set skipHydration, so a saved value is only read when something
-  // asks for it. Without this the voice language, assistant voice options, and
-  // mic capture consent all start at their defaults on every launch. The theme
-  // store hydrates in ZoptionThemeProvider, which renders nothing until it has.
+  // asks for it. Without this the voice language, assistant voice options, mic
+  // capture consent, and default spending account all start at their defaults on
+  // every launch. The theme store hydrates in ZoptionThemeProvider, which renders
+  // nothing until it has.
   useEffect(() => {
     void useVoiceLanguageStore.persist.rehydrate();
     void useAssistantVoiceOptionsStore.persist.rehydrate();
     void useMicCaptureConsentStore.persist.rehydrate();
+    void useDefaultSpendingAccountStore.persist.rehydrate();
   }, []);
 
   return (

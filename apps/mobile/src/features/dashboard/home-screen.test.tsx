@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import HomeScreen from "../../../app/(app)/(tabs)/index";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { usePlan } from "@/auth/plan-state";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { localIsoDate } from "./dashboard-view";
 
@@ -23,6 +24,12 @@ jest.mock("@react-native-community/netinfo", () => ({
 jest.mock("@/db/local-workspace-state", () => ({
   useDashboardData: jest.fn(),
   useSubscriptions: jest.fn(),
+}));
+
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
 }));
 
 jest.mock("@/sync/sync-state", () => ({
@@ -290,6 +297,62 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Recent activity")).toBeTruthy();
     expect(screen.getByText("Salary deposit")).toBeTruthy();
     expect(screen.getByText("Supermarket groceries")).toBeTruthy();
+  });
+
+  it("stars the default spending account and moves it on press", async () => {
+    useDefaultSpendingAccountStore.setState({ accountId: null });
+    const expense = {
+      id: "tx-1",
+      date: localIsoDate(new Date()),
+      description: "Lunch",
+      amountMinor: -250_00,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+      categoryId: "cat-food",
+      categoryName: "Food",
+      categoryColor: "#2f65c8",
+      categoryIconEmoji: null,
+      accountName: "Cash",
+    };
+    const account = {
+      currency: "PHP" as const,
+      balanceMinor: 1_000_00,
+      balancesByCurrency: { PHP: 1_000_00, USD: 0 },
+      archived: false,
+      system: false,
+    };
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: {
+        transactions: [expense],
+        recentTransactions: [expense],
+        accounts: [
+          { ...account, id: "acc-bank", name: "Bank", type: "checking" },
+          { ...account, id: "acc-cash", name: "Cash", type: "cash" },
+        ],
+        budgets: [],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+
+    const cashStar = screen.getByRole("button", {
+      name: "Use Cash as the default spending account",
+    });
+    const bankStar = screen.getByRole("button", {
+      name: "Use Bank as the default spending account",
+    });
+    expect(cashStar.props.accessibilityState).toMatchObject({ selected: true });
+    expect(bankStar.props.accessibilityState).toMatchObject({ selected: false });
+
+    await fireEvent.press(bankStar);
+
+    expect(useDefaultSpendingAccountStore.getState().accountId).toBe("acc-bank");
+    expect(
+      screen.getByRole("button", { name: "Use Bank as the default spending account" }).props
+        .accessibilityState,
+    ).toMatchObject({ selected: true });
   });
 
   it("triggers sync and dashboard retry on pull to refresh", async () => {

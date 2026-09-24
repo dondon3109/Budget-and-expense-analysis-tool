@@ -10,6 +10,7 @@ import { SafeToSpendHero } from "@/features/dashboard/SafeToSpendHero";
 import { QuickStartGuideCard } from "@/features/dashboard/QuickStartGuideCard";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
@@ -29,7 +30,12 @@ import { fullDateLabel } from "@/ui/components/cashflow-chart-geometry";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
-import type { CashflowTrend, DashboardSummary, TransactionRecord } from "@zoption/shared";
+import {
+  preferredTransactionAccount,
+  type CashflowTrend,
+  type DashboardSummary,
+  type TransactionRecord,
+} from "@zoption/shared";
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -147,6 +153,12 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const balances = summary.accountBalances;
   const netMinor = summary.metrics.netMinor;
   const isNetPositive = netMinor >= 0;
+  const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
+  const setDefaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.setAccountId);
+  const defaultSpendingAccount = preferredTransactionAccount(
+    balances?.items.filter((account) => !account.archived) ?? [],
+    defaultSpendingAccountId,
+  );
 
   return (
     <Card accessibilityLabel="Account balances">
@@ -221,63 +233,91 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
       </Text>
       {balances && balances.items.length > 0 ? (
         <View style={{ gap: spacing.xs, marginTop: spacing.xxs }}>
-          {balances.items.map((account) => (
-            <Pressable
-              key={account.id}
-              accessibilityRole="button"
-              accessibilityLabel={`${account.name}, balance ${account.balanceMinor / 100} ${account.currency}. Tap to adjust balance or edit.`}
-              accessibilityHint="Opens account editor to adjust balance"
-              android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-              onPress={() => router.push(`/(app)/reference?entityType=account&id=${account.id}`)}
-              style={({ pressed }) => [styles.accountRow, { opacity: pressed ? 0.75 : 1 }]}
-            >
-              <View style={styles.accountLeading}>
-                <View
-                  accessibilityElementsHidden
-                  style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
+          {balances.items.map((account) => {
+            const isDefaultSpending = account.id === defaultSpendingAccount?.id;
+            return (
+              <View key={account.id} style={styles.accountRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${account.name}, balance ${account.balanceMinor / 100} ${account.currency}. Tap to adjust balance or edit.`}
+                  accessibilityHint="Opens account editor to adjust balance"
+                  android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
+                  onPress={() =>
+                    router.push(`/(app)/reference?entityType=account&id=${account.id}`)
+                  }
+                  style={({ pressed }) => [styles.accountRowMain, { opacity: pressed ? 0.75 : 1 }]}
+                >
+                  <View style={styles.accountLeading}>
+                    <View
+                      accessibilityElementsHidden
+                      style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
+                    >
+                      <MaterialCommunityIcons
+                        name={account.currency === "USD" ? "currency-usd" : "wallet-outline"}
+                        size={18}
+                        color={theme.colors.brand}
+                      />
+                    </View>
+                    <Text
+                      numberOfLines={1}
+                      style={[typography.body, { color: theme.colors.text, flex: 1 }]}
+                    >
+                      {account.name}
+                    </Text>
+                    {account.currency === "USD" ? (
+                      <View
+                        style={[
+                          styles.currencyTag,
+                          {
+                            backgroundColor: theme.colors.surface,
+                            borderColor: theme.colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            typography.caption,
+                            { color: theme.colors.textMuted, fontSize: 10 },
+                          ]}
+                        >
+                          USD
+                        </Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <View className="flex-row items-center gap-1">
+                    <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
+                    <MaterialCommunityIcons
+                      accessibilityElementsHidden
+                      color={theme.colors.textMuted}
+                      name="chevron-right"
+                      size={16}
+                    />
+                  </View>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Use ${account.name} as the default spending account`}
+                  accessibilityState={{ selected: isDefaultSpending }}
+                  disabled={account.archived}
+                  hitSlop={4}
+                  onPress={() => setDefaultSpendingAccountId(account.id)}
+                  style={styles.accountDefaultButton}
                 >
                   <MaterialCommunityIcons
-                    name={account.currency === "USD" ? "currency-usd" : "wallet-outline"}
-                    size={18}
-                    color={theme.colors.brand}
+                    color={isDefaultSpending ? theme.colors.brand : theme.colors.textMuted}
+                    name={isDefaultSpending ? "star" : "star-outline"}
+                    size={20}
                   />
-                </View>
-                <Text
-                  numberOfLines={1}
-                  style={[typography.body, { color: theme.colors.text, flex: 1 }]}
-                >
-                  {account.name}
-                </Text>
-                {account.currency === "USD" ? (
-                  <View
-                    style={[
-                      styles.currencyTag,
-                      { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-                    ]}
-                  >
-                    <Text
-                      style={[typography.caption, { color: theme.colors.textMuted, fontSize: 10 }]}
-                    >
-                      USD
-                    </Text>
-                  </View>
-                ) : null}
+                </Pressable>
               </View>
-              <View className="flex-row items-center gap-1">
-                <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
-                <MaterialCommunityIcons
-                  accessibilityElementsHidden
-                  color={theme.colors.textMuted}
-                  name="chevron-right"
-                  size={16}
-                />
-              </View>
-            </Pressable>
-          ))}
+            );
+          })}
           <Text
             style={[typography.caption, { color: theme.colors.textMuted, marginTop: spacing.xxs }]}
           >
-            Tap any account above to adjust its balance or view details.
+            Tap any account above to adjust its balance or view details. The starred account is
+            where new transactions start.
           </Text>
         </View>
       ) : null}
@@ -1070,9 +1110,21 @@ const styles = StyleSheet.create({
   accountRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.xxs,
+  },
+  accountRowMain: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.sm,
     paddingVertical: spacing.xxs,
+  },
+  accountDefaultButton: {
+    width: touchTarget,
+    height: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
   },
   accountLeading: {
     flexDirection: "row",

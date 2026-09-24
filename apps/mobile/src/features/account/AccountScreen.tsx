@@ -18,6 +18,7 @@ import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 
 import { AppLockCard } from "./AppLockCard";
+import { DefaultSpendingAccountCard } from "./DefaultSpendingAccountCard";
 
 export function AccountScreen() {
   const theme = useZoptionTheme();
@@ -157,6 +158,8 @@ export function AccountScreen() {
       </Card>
 
       {session.subject ? <AppLockCard subject={session.subject} /> : null}
+
+      <DefaultSpendingAccountCard />
 
       <Card accessibilityLabel="Voice language settings">
         <View className="gap-2">

@@ -53,6 +53,7 @@ import {
   isBillingEnforcementError,
   updateTransaction,
 } from "../lib/api";
+import { useDefaultSpendingAccountId } from "../lib/defaultSpendingAccount";
 import { formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
@@ -536,6 +537,7 @@ export function TransactionsPage() {
 
   const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
   const accounts = accountsQuery.data ?? [];
+  const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const debts = debtsQuery.data?.items ?? [];
   const page = transactionsQuery.data;
   const hasFilters = Boolean(
@@ -648,7 +650,7 @@ export function TransactionsPage() {
           (a.name.toLowerCase().includes(parsed.account.replaceAll("*", "").toLowerCase()) ||
             a.id === parsed.account),
       ) ??
-      preferredTransactionAccount(accounts) ??
+      preferredTransactionAccount(accounts, defaultSpendingAccountId) ??
       accounts[0];
 
     const categoryId = matchedCategory?.id ?? categories.find((c) => c.kind === kind)?.id ?? "";

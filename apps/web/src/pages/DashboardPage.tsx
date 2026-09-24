@@ -8,7 +8,7 @@ import type {
   InterestFrequency,
   TransactionListQuery,
 } from "@zoption/shared";
-import { interestFrequencies } from "@zoption/shared";
+import { interestFrequencies, preferredTransactionAccount } from "@zoption/shared";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownRight,
@@ -19,6 +19,7 @@ import {
   Plus,
   Receipt,
   SlidersHorizontal,
+  Star,
   Trash2,
   WalletCards,
   X,
@@ -68,6 +69,10 @@ import {
   monthStart,
   shiftMonth,
 } from "../lib/calendar";
+import {
+  setDefaultSpendingAccountId,
+  useDefaultSpendingAccountId,
+} from "../lib/defaultSpendingAccount";
 import { formatFullMonth, formatMoney, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import {
@@ -209,6 +214,7 @@ export function DashboardPage() {
   const [interestPayDay, setInterestPayDay] = useState(15);
   const [removingAccount, setRemovingAccount] = useState<AccountBalanceSummaryItem>();
   const [adjustingAccount, setAdjustingAccount] = useState<AccountBalanceSummaryItem>();
+  const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
@@ -595,6 +601,10 @@ export function DashboardPage() {
       if (right.name === "Cash") return 1;
       return left.name.localeCompare(right.name);
     });
+  const defaultSpendingAccount = preferredTransactionAccount(
+    activeAccounts,
+    defaultSpendingAccountId,
+  );
   const empty =
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
@@ -843,12 +853,13 @@ export function DashboardPage() {
                   const isDefaultBank = account.name === "Bank";
                   const canEdit = !account.system || isDefaultBank;
                   const canRemove = !account.system;
+                  const isDefaultSpending = account.id === defaultSpendingAccount?.id;
                   return (
-                    <li key={account.id} data-primary={account.name === "Cash" || undefined}>
+                    <li key={account.id}>
                       <div className="dashboard-account-details">
                         <span className="dashboard-account-name">
                           {account.name}
-                          {account.name === "Cash" && <em>Primary</em>}
+                          {isDefaultSpending && <em>Default</em>}
                         </span>
                         <span className="dashboard-account-meta">
                           {accountTypeLabel(account.type)}
@@ -857,6 +868,24 @@ export function DashboardPage() {
                       </div>
                       <div className="dashboard-account-value">
                         <span className="dashboard-account-actions">
+                          <button
+                            type="button"
+                            className="dashboard-account-default"
+                            onClick={() => setDefaultSpendingAccountId(account.id)}
+                            aria-pressed={isDefaultSpending}
+                            aria-label={`Use ${account.name} as the default spending account`}
+                            title={
+                              isDefaultSpending
+                                ? `${account.name} is the default spending account`
+                                : `Use ${account.name} as the default spending account`
+                            }
+                          >
+                            <Star
+                              size={14}
+                              aria-hidden="true"
+                              fill={isDefaultSpending ? "currentColor" : "none"}
+                            />
+                          </button>
                           <button
                             type="button"
                             onClick={() => setAdjustingAccount(account)}

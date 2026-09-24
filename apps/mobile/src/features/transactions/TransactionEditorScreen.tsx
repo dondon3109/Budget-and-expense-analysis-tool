@@ -10,6 +10,7 @@ import {
 } from "@zoption/shared";
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
@@ -134,7 +135,11 @@ export function TransactionEditorScreen() {
 
     const account = existing
       ? formData.data.accounts.find((item) => item.id === existingAccountId)
-      : (matchedParamAccount ?? preferredTransactionAccount(formData.data.accounts));
+      : (matchedParamAccount ??
+        preferredTransactionAccount(
+          formData.data.accounts,
+          useDefaultSpendingAccountStore.getState().accountId,
+        ));
 
     const matchedCategory =
       !existing && (paramCategory || paramDescription)
@@ -312,7 +317,10 @@ export function TransactionEditorScreen() {
     setPreviewSummary(null);
     const synchronizedAccounts =
       formData.data?.accounts.filter((account) => !account.pending) ?? [];
-    const defaultAccount = preferredTransactionAccount(synchronizedAccounts);
+    const defaultAccount = preferredTransactionAccount(
+      synchronizedAccounts,
+      useDefaultSpendingAccountStore.getState().accountId,
+    );
     const defaultCategory = formData.data?.categories.find(
       (item) => item.kind === "expense" && !item.pending,
     );
