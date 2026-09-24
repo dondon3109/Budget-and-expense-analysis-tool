@@ -24,6 +24,7 @@
   --lp-expense: var(--expense);
   --lp-expense-soft: var(--expense-soft);
   --lp-expense-text: var(--expense-text);
+  --lp-income-text: var(--income-text);
   --lp-budget: var(--budget);
   --lp-budget-soft: var(--budget-soft);
   --lp-info: var(--info);
@@ -1625,13 +1626,13 @@
   gap: 6px;
 }
 
+/* --income and --expense are tuned for large marks; small chip text needs the text variants. */
 .chip.in-soft,
 .chip.in {
   background: var(--lp-income-soft);
-  color: var(--lp-income);
+  color: var(--lp-income-text);
 }
 
-/* --expense is tuned for large marks; small chip text needs the text variant (5.15:1). */
 .chip.warn {
   background: var(--lp-expense-soft);
   color: var(--lp-expense-text);

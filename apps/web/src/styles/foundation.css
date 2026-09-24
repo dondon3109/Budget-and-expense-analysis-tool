@@ -69,6 +69,7 @@
   --expense: #e0592a;
   --expense-soft: #fde6dc;
   --expense-text: #ad3d12;
+  --income-text: #0a7556;
   --budget: #6546e8;
   --budget-soft: #ebe6ff;
   --info: #2459d8;
@@ -165,6 +166,7 @@
   --expense: #ff8f63;
   --expense-soft: #45231a;
   --expense-text: #ffa482;
+  --income-text: #5fe3b8;
   --budget: #ad9bff;
   --budget-soft: #2d2555;
   --info: #86aaff;
@@ -250,6 +252,7 @@
   --expense: #c9531f;
   --expense-soft: #f7ddcd;
   --expense-text: #9a3c12;
+  --income-text: #0a7556;
   --budget: #6546c8;
   --budget-soft: #e8e0f5;
   --info: #2d5cc0;
