@@ -657,9 +657,11 @@ export default function TransactionsScreen() {
 
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
-        <View style={styles.syncBannerInset}>
-          <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
-        </View>
+        <SyncPausedBanner
+          message={sync.message}
+          onRetry={sync.retry}
+          style={styles.syncBannerInset}
+        />
       ) : null}
       {local.error ? (
         <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
@@ -905,7 +907,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   loading: { gap: spacing.xs, padding: spacing.md },
-  syncBannerInset: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  syncBannerInset: { width: "auto", marginHorizontal: spacing.md, marginVertical: spacing.sm },
   listContent: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
   dateHeader: {
