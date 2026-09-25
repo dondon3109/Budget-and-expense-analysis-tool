@@ -23,3 +23,4 @@ export * from "./safeToSpend";
 export * from "./voiceCaption";
 export * from "./voiceLanguages";
 export * from "./redaction";
+export * from "./receipts";

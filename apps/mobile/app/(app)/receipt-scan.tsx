@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   preferredTransactionAccount,
+  receiptItemDescription,
   type Currency,
   type ReceiptDraft,
   type TransactionInput,
@@ -17,7 +18,6 @@ import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "@/ap
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import {
-  receiptItemDescription,
   reviewedItemsTotalMinor,
   reviewItemsFromReceipt,
   type ReceiptReviewCategory,

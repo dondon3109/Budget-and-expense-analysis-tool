@@ -175,6 +175,55 @@ describe("receipt service", () => {
     });
   });
 
+  it("drops total, VAT summary, and payment lines the model lists as items", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "SM Supermarket",
+      amountMinor: 33_500,
+      kind: "expense",
+      items: [
+        { description: "Rice 5kg", amountMinor: 30_000 },
+        { description: "GCash cash-in fee", amountMinor: 3_500 },
+        { description: "Subtotal", amountMinor: 33_500 },
+        { description: "VATable Sales", amountMinor: 29_911 },
+        { description: "VAT-Exempt Sales", amountMinor: 0 },
+        { description: "VAT Amount", amountMinor: 3_589 },
+        { description: "TOTAL", amountMinor: 33_500 },
+        { description: "Cash", amountMinor: 50_000 },
+        { description: "Change", amountMinor: 16_500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Rice 5kg", amountMinor: 30_000 },
+        { description: "GCash cash-in fee", amountMinor: 3_500 },
+      ],
+    });
+  });
+
+  it("rescales line items the model wrote in pesos when they reconcile exactly", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Jollibee",
+      amountMinor: 28_500,
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy", amountMinor: 185 },
+        { description: "Peach mango pie", amountMinor: 100 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Chickenjoy", amountMinor: 18_500 },
+        { description: "Peach mango pie", amountMinor: 10_000 },
+      ],
+    });
+  });
+
   it("falls back to the receipt total when a discount would make itemization not reconcile", async () => {
     const vision = provider();
     (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({

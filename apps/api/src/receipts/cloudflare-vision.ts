@@ -50,7 +50,7 @@ const EXTRACTION_PROMPT = [
   '- kind: exactly one of "expense", "income", or "transfer"',
   "- categoryName: one short category label such as Food, Transport, Utilities",
   "- items: an array of up to 30 individually charged purchase lines. Each item has description, amountMinor in centavos as the final line total, and optional categoryName.",
-  "  Include every readable product or paid fee line. Exclude discounts, coupons, promotions, receipt headers, subtotal, grand total, payment, tendered cash, and change. If any discount, coupon, or promotion is applied, return items: [] so the reviewed receipt total remains accurate. Items should add up to amountMinor. Use [] if no individual line is readable.",
+  "  Include every readable product or paid fee line, using the extended price when a line shows quantity times unit price. Exclude VATable sales, VAT-exempt sales, zero-rated sales, and VAT amount summaries. Exclude discounts, coupons, promotions, receipt headers, subtotal, grand total, payment, tendered cash, and change. If any discount, coupon, or promotion is applied, return items: [] so the reviewed receipt total remains accurate. Items should add up to amountMinor. Use [] if no individual line is readable.",
   "- rawText: the readable text from the receipt, up to a few lines",
 ].join("\n");
 

@@ -150,12 +150,81 @@ describe("ReceiptEntry", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
 
     expect(onContinue).toHaveBeenCalledWith({
+      date: "2026-08-13",
+      kind: "expense",
+      lines: [{ description: "Jollibee", amountMinor: 30000, categoryName: "Food & dining" }],
+    });
+  });
+
+  it("turns each receipt line into its own preview row once the items match the total", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
       merchant: "Jollibee",
       date: "2026-08-13",
-      amountMinor: 30000,
+      amountMinor: -28500,
+      currency: "PHP",
       kind: "expense",
-      categoryId: "food",
-      categoryName: "Food & dining",
+      categoryName: "Groceries",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18500, categoryName: "Food & dining" },
+        { description: "Peach mango pie", amountMinor: 9000 },
+      ],
+      rawText: "JOLLIBEE TOTAL 285.00",
+    });
+    const onContinue = vi.fn();
+    renderEntry(onContinue);
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+
+    expect(await screen.findByLabelText("Item 1 description")).toHaveValue("Chickenjoy");
+    expect(screen.getByLabelText("Item 2 amount (₱)")).toHaveValue("90.00");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("The items add to");
+    expect(onContinue).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Item 2 amount (₱)"), { target: { value: "100" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+
+    expect(onContinue).toHaveBeenCalledWith({
+      date: "2026-08-13",
+      kind: "expense",
+      lines: [
+        { description: "Jollibee · Chickenjoy", amountMinor: 18500, categoryName: "Food & dining" },
+        {
+          description: "Jollibee · Peach mango pie",
+          amountMinor: 10000,
+          categoryName: "Uncategorized",
+        },
+      ],
+    });
+  });
+
+  it("can collapse unreconciled items into one receipt total", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
+      merchant: "Market",
+      date: "2026-08-13",
+      amountMinor: -24500,
+      currency: "PHP",
+      kind: "expense",
+      items: [{ description: "Vegetables", amountMinor: 12000 }],
+      rawText: "",
+    });
+    const onContinue = vi.fn();
+    renderEntry(onContinue);
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save as one total" }));
+    expect(screen.queryByLabelText("Item 1 description")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+
+    expect(onContinue).toHaveBeenCalledWith({
+      date: "2026-08-13",
+      kind: "expense",
+      lines: [{ description: "Market", amountMinor: 24500, categoryName: "Uncategorized" }],
     });
   });
 

@@ -12,6 +12,8 @@ All notable product changes are documented here.
 
 - The category picker in the transaction form lists categories without an emoji first, A to Z, followed by categories with an emoji, A to Z, so plain names are easier to scan.
 - New loading animation on web and mobile: three ledger rows fill in turn from left to right. It replaces the drawn Z monogram on the web startup screen, the orbiting emblem on in-page loading states, and the plain spinner on the mobile startup, session restore, workspace unlock, and sign-in screens. With reduced motion turned on, the rows stay still and filled.
+- Receipt scanning on the web lists each item it reads from the photo. You can correct, remove, or add items, and each one becomes its own row in the import preview once the items add up to the receipt total. "Save as one total" keeps the previous single-transaction behavior.
+- Receipt scanning on web and mobile no longer lists subtotal, total, VAT summary, cash, or change lines as purchased items, and it corrects item prices the reader returned in pesos instead of centavos when they then match the receipt total exactly.
 
 ## 2.45.1 — 2026-09-25
 
