@@ -283,46 +283,46 @@ export function SupportScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
         >
-          <FlatList
-            ref={listRef}
-            data={messages}
-            keyExtractor={(item, index) => index + ":" + item.role}
-            contentContainerStyle={styles.chatContent}
-            renderItem={renderSupportMessage}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            ListHeaderComponent={
-              <Text
-                style={[
-                  typography.caption,
-                  { color: theme.colors.textMuted, marginBottom: spacing.sm },
-                ]}
-              >
-                Messages go to Zoption's AI support provider for a reply. Bug reports are saved only
-                after you review and submit them. Never share passwords, card numbers or uploaded
-                files here.
-              </Text>
-            }
-            ListEmptyComponent={
-              <EmptyState
-                title="How can we help?"
-                description="Ask how to record a transfer, why an import row was rejected, or what a dashboard number means."
-              />
-            }
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-          />
-
           {draft ? (
-            <View style={styles.draftWrap}>
-              <BugReportReview
-                draft={draft}
-                busy={busy}
-                onChange={setDraft}
-                onCancel={() => setDraft(null)}
-                onSubmit={() => void submitReport()}
-              />
-            </View>
-          ) : null}
+            // The review gets the whole panel: squeezed under the chat and composer, its
+            // five text fields were too small to read and edit on a phone.
+            <BugReportReview
+              draft={draft}
+              busy={busy}
+              onChange={setDraft}
+              onCancel={() => setDraft(null)}
+              onSubmit={() => void submitReport()}
+            />
+          ) : (
+            <FlatList
+              ref={listRef}
+              data={messages}
+              keyExtractor={(item, index) => index + ":" + item.role}
+              contentContainerStyle={styles.chatContent}
+              renderItem={renderSupportMessage}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              ListHeaderComponent={
+                <Text
+                  style={[
+                    typography.caption,
+                    { color: theme.colors.textMuted, marginBottom: spacing.sm },
+                  ]}
+                >
+                  Messages go to Zoption's AI support provider for a reply. Bug reports are saved
+                  only after you review and submit them. Never share passwords, card numbers or
+                  uploaded files here.
+                </Text>
+              }
+              ListEmptyComponent={
+                <EmptyState
+                  title="How can we help?"
+                  description="Ask how to record a transfer, why an import row was rejected, or what a dashboard number means."
+                />
+              }
+              onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+            />
+          )}
 
           {submittedReference ? (
             <View style={[styles.notice, { backgroundColor: theme.colors.brandSoft }]}>
@@ -357,36 +357,38 @@ export function SupportScreen() {
             </Text>
           ) : null}
 
-          <View
-            style={[
-              styles.composer,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            <TextInput
-              accessibilityLabel="Message Zoption Support"
-              multiline
-              value={draftText}
-              onChangeText={setDraftText}
-              placeholder="Describe what you need help with"
-              placeholderTextColor={theme.colors.textMuted}
-              maxLength={1200}
-              style={[styles.input, { color: theme.colors.text }]}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Send support message"
-              accessibilityState={{ disabled: !canSend }}
-              disabled={!canSend}
-              onPress={() => void sendChat()}
+          {draft ? null : (
+            <View
               style={[
-                styles.sendButton,
-                { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
+                styles.composer,
+                { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
               ]}
             >
-              <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
-            </Pressable>
-          </View>
+              <TextInput
+                accessibilityLabel="Message Zoption Support"
+                multiline
+                value={draftText}
+                onChangeText={setDraftText}
+                placeholder="Describe what you need help with"
+                placeholderTextColor={theme.colors.textMuted}
+                maxLength={1200}
+                style={[styles.input, { color: theme.colors.text }]}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Send support message"
+                accessibilityState={{ disabled: !canSend }}
+                disabled={!canSend}
+                onPress={() => void sendChat()}
+                style={[
+                  styles.sendButton,
+                  { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
+                ]}
+              >
+                <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
+              </Pressable>
+            </View>
+          )}
         </KeyboardAvoidingView>
       ) : (
         <View style={styles.reports}>
@@ -464,13 +466,13 @@ function BugReportReview({
   const patch = (update: Partial<BugReportDraft>): void => onChange({ ...draft, ...update });
   const valid = useMemo(() => validateBugDraft(draft) === null, [draft]);
   return (
-    <Card style={styles.reviewCard}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator
-        style={styles.reviewScroll}
-        contentContainerStyle={styles.reviewScrollContent}
-      >
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator
+      style={styles.reviewScroll}
+      contentContainerStyle={styles.reviewScrollContent}
+    >
+      <Card>
         <View className="gap-3">
           <Text style={[typography.headline, { color: theme.colors.text }]}>Bug report draft</Text>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -496,6 +498,7 @@ function BugReportReview({
             onChangeText={(actualBehavior) => patch({ actualBehavior })}
             multiline
             maxLength={2000}
+            style={styles.reviewDetail}
           />
           <FormField
             label="What did you expect?"
@@ -503,6 +506,7 @@ function BugReportReview({
             onChangeText={(expectedBehavior) => patch({ expectedBehavior })}
             multiline
             maxLength={2000}
+            style={styles.reviewDetail}
           />
           <FormField
             label="Steps to reproduce"
@@ -510,6 +514,7 @@ function BugReportReview({
             onChangeText={(stepsToReproduce) => patch({ stepsToReproduce })}
             multiline
             maxLength={2000}
+            style={styles.reviewDetail}
           />
           <SelectionField
             label="How often?"
@@ -528,8 +533,8 @@ function BugReportReview({
             </Button>
           </View>
         </View>
-      </ScrollView>
-    </Card>
+      </Card>
+    </ScrollView>
   );
 }
 
@@ -609,15 +614,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     marginBottom: spacing.sm,
   },
-  draftWrap: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.sm,
-    flexShrink: 1,
-    maxHeight: "75%",
-  },
-  reviewCard: { maxHeight: "100%", flexShrink: 1 },
-  reviewScroll: { maxHeight: "100%" },
-  reviewScrollContent: { flexGrow: 1, paddingBottom: spacing.xs },
+  reviewScroll: { flex: 1 },
+  reviewScrollContent: { padding: spacing.md, paddingBottom: spacing.xl },
+  reviewDetail: { minHeight: 120 },
   notice: {
     flexDirection: "row",
     alignItems: "center",
