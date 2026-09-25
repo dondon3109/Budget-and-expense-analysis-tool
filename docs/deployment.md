@@ -341,11 +341,14 @@ Do these outside the repository before enabling `Production Release`; the workfl
    ```
 
    - **main integrity - no rewrite, no delete** (`23728450`): refuses deletion and non-fast-forward pushes on `refs/heads/main`, with no bypass actors.
-   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main` with one approving review and the `static`, `unit`, and `e2e` CI checks passing. The maintainer's user (`dondon3109`) is its only bypass actor, in `always` mode, so a direct push from that account is permitted and logged as a bypass, while a pull request needs an approval its own author cannot give.
+   - **main review gate - PR required** (`23728455`): requires a pull request for `refs/heads/main` with one approving review, and dismisses an approval when a new commit is pushed. The maintainer's user (`dondon3109`) is its only bypass actor, in `always` mode, so the maintainer can merge their own pull request without an approval its author cannot give. The PR Review workflow's `github-actions[bot]` approval also satisfies this rule, which is what lets an eligible pull request auto-merge with no human step; auto-merge never uses the maintainer bypass.
+   - **main CI gate - checks required** (`23980221`): requires the `static`, `unit`, and `e2e` checks from GitHub Actions (integration `15368`) on `refs/heads/main`, with no bypass actors. Nothing merges on red CI, including through the maintainer's review bypass. A direct push to `main` is refused unless that exact commit already passed the checks on a branch, so every change, including the post-release `CHANGELOG.md` commit, goes through a pull request.
 
    The bypass and the count of one are deliberate. On 2026-09-21, with no bypass and `required_approving_review_count` 0, reopening PR #22 — the `zoption-bug-automation` app's own proof that it could not merge itself — reported `mergeable MERGEABLE` and no review decision, so `require_extra_approval_for_unattributed_changes` alone does not keep an app-authored pull request behind a human. One required approval plus the maintainer bypass is what does.
 
-   Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. Neither it nor the rulesets require a passing status check before merge: `Production Release` refuses a red `main` push instead, because it only runs from a successful `CI` result. Requiring the `static`, `unit`, and `e2e` checks is the next tightening if the merge button itself should block.
+   Classic branch protection on `main` is enabled as well, with force pushes and deletions disabled and `enforce_admins` on. It requires no status checks; the CI gate ruleset does.
+
+   Repository auto-merge is enabled (`allow_auto_merge`), for the PR Review workflow below. Read it back with `gh api repos/dondon3109/Budget-and-expense-analysis-tool --jq .allow_auto_merge`.
 
 7. Require a reviewer on the `production` environment. It is what keeps a push to `main` — from any identity, including the maintainer's own bypass — from reaching production without a human click. It is external state, so read it back:
 
@@ -494,7 +497,7 @@ The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation
 2. The `draft` job runs with `permissions: contents: read`. It fetches that report by id, runs Claude Code headless (`claude -p`, model `claude-opus-5-5`, on the Claude Pro subscription) with file tools and `pnpm vitest run` only, checks its own output with `scripts/bugfix-scrub.mjs`, and uploads `fix.patch`, `pr-body.md`, and `meta.json` as the `bugfix-draft` artifact.
 3. The `open-pr` job applies the patch to `bugfix/<report id>` and opens a draft pull request, then starts `ci.yml` explicitly: a pull request opened with the run token does not trigger `pull_request` workflows, and `workflow_dispatch` is the documented exception.
 4. The `notify` job sends a Telegram message with the pull request link, the shadow mode run link, or the failure. It carries status and links only, never report text, and does nothing while the Telegram secrets are unset. A tick that claims nothing sends nothing, and a failed `claim` job surfaces only as a failed scheduled run.
-5. A human reviews and merges. The `main review gate - PR required` ruleset requires one approving review and passing CI. The release pipeline takes over.
+5. A human reviews and merges. The `main review gate - PR required` ruleset requires one approving review and the `main CI gate - checks required` ruleset requires passing CI. PR Review never auto-merges a pull request `github-actions[bot]` opened. The release pipeline takes over.
 
 The drafting job is the only job that reads user text, and it holds no write token. The `open-pr` job holds the write token, runs no model, and reads no user text. No credential outside a runner can start or write anything, so n8n, the fine grained dispatch token, the fork, the organization, and the GitHub App are all gone.
 
@@ -529,6 +532,26 @@ gh secret list
 gh variable list
 gh workflow view bugfix.yml
 ```
+
+## Pull request review and auto-merge
+
+`.github/workflows/pr-review.yml` runs on every non-draft pull request from a branch of this repository. Fork pull requests get no secrets, so they are skipped.
+
+1. The `review` job runs with `contents: read`. Claude Code (`claude -p`, model `claude-opus-5-5`, on `CLAUDE_CODE_OAUTH_TOKEN`) reads a precomputed diff with only the `Read` and `Glob` tools available (`--tools`, so no shell and no content search; `Read` is denied `/proc`, even through a symlink, so the model cannot read its own token). The checkout is the pull request's, so the job deletes `.claude/`, `.mcp.json`, and `CLAUDE.local.md`, replaces every `CLAUDE.md` and `AGENTS.md` with the base branch's copy (their `@` imports load without the `Read` tool, so a pull request could otherwise import `/proc/self/environ`), and runs with `--setting-sources user --strict-mcp-config`: a hook or MCP server the pull request adds never runs next to the token and returns a schema-checked verdict: `approve` or `changes_requested`, findings, and whether the Conventional Commit type fits. It uploads that verdict as the `claude-review` artifact.
+2. The `report` job runs no model. It checks the verdict's shape, sets a `claude-review` commit status, and keeps one review comment on the pull request up to date. It reads changed paths, size, and author from the GitHub API, and applies `scripts/pr-risk.mjs` from the base branch.
+3. With `AUTO_MERGE_PRS` set to `true`, an eligible pull request gets an approval from `github-actions[bot]` and squash auto-merge, pinned to the reviewed head commit. GitHub merges it once the CI gate ruleset's checks pass. It is eligible only when all of these hold: the verdict is `approve` with no blocker or major finding, the title is a Conventional Commit whose type fits, no path matches `scripts/pr-risk.mjs`, it changes at most 600 lines, and a human opened it. Anything else keeps its comment and waits for a human merge. A push dismisses the approval, so a new commit must be reviewed again.
+
+The `claude-review` status is not a required check. Auto-merge waits on the approval instead, and a merge through the maintainer bypass still has to pass CI.
+
+While `AUTO_MERGE_PRS` is `true` the automation owns auto-merge: a `disarm` job turns it off with `AUTO_MERGE_TOKEN` at the start of every run that finds it on, including one a human enabled, so a new head is never armed before its own review. In shadow mode it leaves auto-merge alone. The report job also redacts Anthropic token-shaped text from the comment.
+
+The gate protects against the model and the diff it reads, not against a branch that edits the workflow: under `pull_request` a pull request runs its own copy of `pr-review.yml`. Only the maintainer and the bugfix bot can push branches here, and the bugfix bot's patches may not touch `.github/`, `.claude/`, `.mcp.json`, or any `CLAUDE.md` or `AGENTS.md`.
+
+| Setting             | Where it lives                                                                                                                                                                                                                                                                                                                        | Read it back                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `AUTO_MERGE_PRS`    | Repository variable, set to `true`: eligible pull requests are approved and auto-merged. Unset is shadow mode: comment and status only                                                                                                                                                                                                | `gh variable list`                                                                      |
+| `AUTO_MERGE_TOKEN`  | Repository secret. A fine grained personal access token of the maintainer with `Contents: write` and `Pull requests: write` on this repository only. A merge enabled with the run token would not start CI's `push` run on `main`, and Production Release follows only that run. It expires, so renew it before the date GitHub shows | `gh secret list`                                                                        |
+| Actions may approve | `can_approve_pull_request_reviews` must stay `true` for the approval step                                                                                                                                                                                                                                                             | `gh api repos/dondon3109/Budget-and-expense-analysis-tool/actions/permissions/workflow` |
 
 ## Current hosted resources
 
