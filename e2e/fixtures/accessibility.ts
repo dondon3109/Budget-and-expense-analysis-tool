@@ -305,6 +305,17 @@ export async function captureRoute(page: Page, route: string, label: string): Pr
  */
 const MAX_SCROLL_STEPS = 40;
 
+/** Indexes of the [data-scroll-fade] elements that are on screen and fully shown right now. */
+function settledFadesOnScreen(page: Page): Promise<number[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll("[data-scroll-fade]")].flatMap((element, index) => {
+      const rect = element.getBoundingClientRect();
+      const onScreen = rect.bottom > 0 && rect.top < window.innerHeight;
+      return onScreen && getComputedStyle(element).opacity === "1" ? [index] : [];
+    }),
+  );
+}
+
 /**
  * axe evaluates the whole document at every scroll position, including elements that are
  * far off-screen and not painted. For those it can guess the wrong backdrop: the landing
@@ -335,9 +346,13 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
   // sticky mobile CTA was reported at 2.89:1 and 4.42:1 when its real ratios are 5.50:1 and
   // 10:1, and the numbers moved between runs). WCAG assesses the presented steady state, and
   // axe's guidance is to disable animations when scanning, so do it outright rather than
-  // relying on the reduced-motion media query alone.
+  // relying on the reduced-motion media query alone. Smooth scrolling goes too: with it, every
+  // scrollTo below is still gliding when axe runs, so a step scans wherever the glide reached
+  // rather than the position it asked for.
   await page.addStyleTag({
-    content: "*, *::before, *::after { animation: none !important; transition: none !important; }",
+    content:
+      "*, *::before, *::after { animation: none !important; transition: none !important; } " +
+      "html { scroll-behavior: auto !important; }",
   });
 
   const steps = await page.evaluate(() =>
@@ -352,10 +367,18 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
 
   const found = new Map<string, Finding>();
   const advisory: string[] = [];
+  // Scroll-driven cross-fades ([data-scroll-fade]) are not animations, so the style tag above
+  // cannot settle them: at a given scroll position a beat can sit at 1% opacity and blend into
+  // a 1.01:1 ratio no reader ever sees as text. Such an element is measured only where it is
+  // fully shown. The viewport steps can jump past that window, so a finer pass finds it for each
+  // one they missed, and the scan fails if an element is never fully shown at all.
+  const settledFades = new Set<number>();
 
-  for (let step = 0; step < steps; step += 1) {
-    await page.evaluate((index) => window.scrollTo(0, index * window.innerHeight), step);
+  const scanAt = async (scrollY: number) => {
+    await page.evaluate((y) => window.scrollTo(0, y), scrollY);
     await page.waitForTimeout(200);
+
+    (await settledFadesOnScreen(page)).forEach((index) => settledFades.add(index));
 
     const results = await new AxeBuilder({ page }).analyze();
     for (const violation of results.violations) {
@@ -370,6 +393,8 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
             // An unresolvable target is kept, not treated as off-screen: axe found a real element,
             // and dropping it here is a finding disappearing without anyone noticing.
             if (!element) return true;
+            const fade = element.closest("[data-scroll-fade]");
+            if (fade && getComputedStyle(fade).opacity !== "1") return false;
             const rect = element.getBoundingClientRect();
             return (
               rect.width > 0 && rect.height > 0 && rect.bottom > 0 && rect.top < window.innerHeight
@@ -399,6 +424,30 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
         }
       });
     }
+  };
+
+  const viewportHeight = await page.evaluate(() => window.innerHeight);
+  for (let step = 0; step < steps; step += 1) {
+    await scanAt(step * viewportHeight);
+  }
+
+  const fadeCount = await page.evaluate(
+    () => document.querySelectorAll("[data-scroll-fade]").length,
+  );
+  const fineStep = Math.max(Math.floor(viewportHeight / 8), 1);
+  const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  for (let y = 0; settledFades.size < fadeCount && y < scrollHeight; y += fineStep) {
+    await page.evaluate((top) => window.scrollTo(0, top), y);
+    await page.waitForTimeout(50);
+    const settledNow = await settledFadesOnScreen(page);
+    if (settledNow.some((index) => !settledFades.has(index))) await scanAt(y);
+  }
+
+  if (settledFades.size < fadeCount) {
+    throw new Error(
+      `${label}: ${fadeCount - settledFades.size} scroll-faded element(s) were never fully shown ` +
+        "at any scroll position, so their contrast was never measured.",
+    );
   }
 
   await page.evaluate(() => window.scrollTo(0, 0));
