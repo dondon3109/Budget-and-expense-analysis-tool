@@ -12,9 +12,11 @@ import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-
 import { useSyncState } from "@/sync/sync-state";
 import { AssistantStatusBadge } from "@/features/assistant/assistant-ui";
 import { UpdateSettingsCard } from "@/features/updates";
-import { Button, Card, ConfirmationDialog } from "@/ui/components";
+import { Button, Card, CollapsibleCard, ConfirmationDialog } from "@/ui/components";
 import { Screen } from "@/ui/screen";
-import { ThemePicker } from "@/ui/theme-picker";
+import { useThemeStore } from "@/stores/theme-store";
+import { useVoiceLanguageStore, VOICE_LANGUAGES } from "@/stores/voice-language-store";
+import { ThemePicker, themePreferenceLabel } from "@/ui/theme-picker";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -76,6 +78,8 @@ export default function MoreScreen() {
   const local = useLocalWorkspace();
   const localStats = useLocalWorkspaceStats();
   const theme = useZoptionTheme();
+  const themePreference = useThemeStore((state) => state.preference);
+  const voiceLanguage = useVoiceLanguageStore((state) => state.language);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -256,27 +260,26 @@ export default function MoreScreen() {
 
       <View style={styles.section}>
         <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
-          APPEARANCE
+          PREFERENCES
         </Text>
-        <Card>
+        <CollapsibleCard
+          title="Theme"
+          summary={themePreferenceLabel(themePreference)}
+          icon="palette-outline"
+        >
           <ThemePicker />
-        </Card>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={[typography.label, styles.sectionHeader, { color: theme.colors.textMuted }]}>
-          VOICE LANGUAGE
-        </Text>
-        <Card accessibilityLabel="Voice language settings">
-          <View className="gap-2">
-            <Text style={[typography.headline, { color: theme.colors.text }]}>Voice language</Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Choose your default voice language for AI assistant voice chats and transaction voice
-              entry. Auto mode automatically detects English and Tagalog.
-            </Text>
-            <VoiceLanguagePicker />
-          </View>
-        </Card>
+        </CollapsibleCard>
+        <CollapsibleCard
+          title="Voice language"
+          summary={VOICE_LANGUAGES.find((option) => option.code === voiceLanguage)?.label ?? "Auto"}
+          icon="microphone-outline"
+        >
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Choose your default voice language for AI assistant voice chats and transaction voice
+            entry. Auto mode automatically detects English and Tagalog.
+          </Text>
+          <VoiceLanguagePicker />
+        </CollapsibleCard>
       </View>
 
       {demoEnabled ? (

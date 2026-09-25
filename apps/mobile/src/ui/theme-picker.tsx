@@ -18,6 +18,10 @@ const options: Array<{
   { value: "coffee", label: "Coffee", swatchBg: "#ece3d5", swatchDot: "#2a1c15" },
 ];
 
+export function themePreferenceLabel(preference: ThemePreference): string {
+  return options.find((option) => option.value === preference)?.label ?? "System";
+}
+
 export function ThemePicker() {
   const theme = useZoptionTheme();
   const preference = useThemeStore((state) => state.preference);
