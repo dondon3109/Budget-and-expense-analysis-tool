@@ -16,7 +16,6 @@ import {
   FormField,
   MoneyValue,
   moneyAccessibilityLabel,
-  SelectionField,
   Skeleton,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -84,7 +83,6 @@ export function BudgetsScreen() {
         return {
           id: category.id,
           label: emoji ? `${emoji} ${category.name}` : category.name,
-          color: category.color,
           detail: category.pending ? "Pending setup" : undefined,
         };
       }),
@@ -92,8 +90,9 @@ export function BudgetsScreen() {
   );
 
   const openAdd = (presetCategoryId?: string): void => {
-    const targetId = presetCategoryId ?? availableCategories[0]?.id ?? null;
-    setEditor({ open: true, mode: "add", categoryId: targetId, amount: "" });
+    // No silent default: the first category alphabetically is "Debt payment", and a
+    // preselected choice sent budgets there when people only typed an amount.
+    setEditor({ open: true, mode: "add", categoryId: presetCategoryId ?? null, amount: "" });
     setErrors({});
     setMessage(null);
   };
@@ -888,7 +887,7 @@ function BudgetEditorSheet({
   value,
   visible,
 }: {
-  addOptions: { id: string; label: string; color?: string; detail?: string }[];
+  addOptions: { id: string; label: string; detail?: string }[];
   editingBudget: BudgetMonthItem | undefined;
   editingCategoryOption:
     { id: string; name: string; color: string; iconEmoji?: string | null } | undefined;
@@ -967,15 +966,62 @@ function BudgetEditorSheet({
           </View>
         </View>
       ) : (
-        <SelectionField
-          error={errors.categoryId}
-          label="Expense Category"
-          onSelect={onCategoryChange}
-          options={addOptions}
-          placeholder="Choose an expense category"
-          sheetTitle="Choose an expense category"
-          value={value.categoryId ?? ""}
-        />
+        // Every option stays visible so the chosen category is never hidden behind a
+        // collapsed menu inside the sheet.
+        <View accessibilityRole="radiogroup" style={{ gap: spacing.xs }}>
+          <Text style={[typography.label, { color: theme.colors.text }]}>Expense category</Text>
+          {addOptions.length === 0 ? (
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Every expense category already has a budget this month.
+            </Text>
+          ) : (
+            addOptions.map((option) => {
+              const selected = option.id === value.categoryId;
+              return (
+                <Pressable
+                  key={option.id}
+                  accessibilityHint={option.detail}
+                  accessibilityLabel={option.label}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  onPress={() => onCategoryChange(option.id)}
+                  style={[
+                    styles.categoryOption,
+                    {
+                      backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
+                      borderColor: selected ? theme.colors.brand : theme.colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
+                    {option.label}
+                  </Text>
+                  {option.detail ? (
+                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                      {option.detail}
+                    </Text>
+                  ) : null}
+                  {selected ? (
+                    <MaterialCommunityIcons
+                      accessibilityElementsHidden
+                      color={theme.colors.brand}
+                      name="check"
+                      size={20}
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })
+          )}
+          {errors.categoryId ? (
+            <Text
+              accessibilityRole="alert"
+              style={[typography.caption, { color: theme.colors.danger }]}
+            >
+              {errors.categoryId}
+            </Text>
+          ) : null}
+        </View>
       )}
 
       <FormField
@@ -1213,6 +1259,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xxs,
+  },
+  categoryOption: {
+    minHeight: touchTarget,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
   },
   editingCategoryBanner: {
     flexDirection: "row",

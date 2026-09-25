@@ -322,7 +322,10 @@ describe("Profile dashboard account management", () => {
     apiMocks.getCategories.mockReset().mockResolvedValue([]);
   });
 
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    window.localStorage.clear();
+  });
 
   it("paces the account balance when the month carries no budget plan", async () => {
     // Recorded activity keeps the dashboard out of its first-run empty state, where the
@@ -441,7 +444,7 @@ describe("Profile dashboard account management", () => {
     );
 
     expect(names).toEqual(["Cash", "Bank", "Maya Wallet"]);
-    expect(within(accountManager).getByText("Primary")).toBeInTheDocument();
+    expect(within(accountManager).getByText("Default").closest("li")).toHaveTextContent("Cash");
     expect(
       within(accountManager).queryByRole("button", { name: "Edit Cash" }),
     ).not.toBeInTheDocument();
@@ -460,6 +463,24 @@ describe("Profile dashboard account management", () => {
     fireEvent.click(within(accountManager).getByText("Removed accounts (1)"));
     expect(removedAccounts).toHaveAttribute("open");
     expect(within(accountManager).getByText("Old wallet")).toBeInTheDocument();
+  });
+
+  it("moves the default spending account when another account is starred", async () => {
+    renderPage();
+
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+    const star = within(accountManager).getByRole("button", {
+      name: "Use Maya Wallet as the default spending account",
+    });
+    expect(star).toHaveAttribute("aria-pressed", "false");
+
+    fireEvent.click(star);
+
+    expect(star).toHaveAttribute("aria-pressed", "true");
+    expect(within(accountManager).getByText("Default").closest("li")).toHaveTextContent(
+      "Maya Wallet",
+    );
+    expect(window.localStorage.getItem("zoption-default-spending-account")).toBe("custom");
   });
 
   it("shows each account's PHP and USD balances in the breakdown", async () => {

@@ -1,4 +1,6 @@
 import {
+  latestDueSubscriptionBillingDate,
+  manilaDate,
   monthlySubscriptionCost,
   normalizeSignedAmount,
   subscriptionBillingDateForMonth,
@@ -427,11 +429,39 @@ export const subscriptionRepository: SubscriptionRepository = {
       throw new HttpError(404, "subscription_not_found", "Subscription not found.");
     }
 
-    await env.DB.prepare(
-      "UPDATE subscriptions SET status = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?",
-    )
-      .bind(input.status, id, tenantId)
-      .run();
+    // Reactivating does not bill the cycles that passed while canceled. The schedule jumps to
+    // the latest billing date already due, so the renewal sweep charges that one cycle only, and
+    // a block recorded against a skipped cycle no longer applies.
+    const nextBillingDate =
+      existing.status === "canceled" && input.status === "active"
+        ? latestDueSubscriptionBillingDate(
+            existing.nextBillingDate,
+            existing.billingCycle,
+            manilaDate(),
+          )
+        : existing.nextBillingDate;
+
+    if (nextBillingDate === existing.nextBillingDate) {
+      await env.DB.prepare(
+        "UPDATE subscriptions SET status = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?",
+      )
+        .bind(input.status, id, tenantId)
+        .run();
+    } else {
+      await env.DB.batch([
+        env.DB.prepare(
+          `UPDATE subscriptions
+           SET status = ?, next_billing_date = ?, renewal_blocked_reason = NULL,
+               updated_at = datetime('now')
+           WHERE id = ? AND tenant_id = ?`,
+        ).bind(input.status, nextBillingDate, id, tenantId),
+        // A linked charge only ever means the upcoming one, so older cycles are released.
+        env.DB.prepare(
+          `UPDATE transactions SET subscription_id = NULL, updated_at = datetime('now')
+           WHERE tenant_id = ? AND subscription_id = ? AND date < ?`,
+        ).bind(tenantId, id, nextBillingDate),
+      ]);
+    }
 
     const updated = await findSubscription(env, tenantId, id);
     if (!updated) throw new Error("Updated subscription could not be read back.");

@@ -1,15 +1,30 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { Button } from "./Button";
 
-export function SyncPausedBanner({ message, onRetry }: { message: string; onRetry: () => void }) {
+export function SyncPausedBanner({
+  message,
+  onRetry,
+  style,
+}: {
+  message: string;
+  onRetry: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
   const theme = useZoptionTheme();
+  // Dismissal hides only this message, so a different sync failure still surfaces.
+  const [dismissedMessage, setDismissedMessage] = useState<string | null>(null);
+
+  if (dismissedMessage === message) {
+    return null;
+  }
 
   return (
-    <View style={[styles.banner, { backgroundColor: theme.colors.warningSoft }]}>
+    <View style={[styles.banner, { backgroundColor: theme.colors.warningSoft }, style]}>
       <View
         accessibilityElementsHidden
         style={[styles.iconWrap, { backgroundColor: theme.colors.surfaceRaised }]}
@@ -35,6 +50,16 @@ export function SyncPausedBanner({ message, onRetry }: { message: string; onRetr
           </Button>
         </View>
       </View>
+
+      <Pressable
+        accessibilityLabel="Dismiss sync delayed notice"
+        accessibilityRole="button"
+        hitSlop={8}
+        onPress={() => setDismissedMessage(message)}
+        style={styles.dismiss}
+      >
+        <MaterialCommunityIcons color={theme.colors.textMuted} name="close" size={20} />
+      </Pressable>
     </View>
   );
 }
@@ -62,4 +87,5 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   action: { alignSelf: "flex-start" },
+  dismiss: { flexShrink: 0, padding: spacing.xxs },
 });

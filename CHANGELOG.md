@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - Three new Philippine budgeting guides: budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.
+- You can choose a default spending account, and new transactions start on it instead of Cash. On the web, tap the star beside an account in the Home account list, or pick it under Account Settings → Default spending account. On mobile, tap the star beside an account on Home, or pick it under More → Account. The chosen account is picked first when you add a transaction, import an SMS, scan a receipt, or use the home-screen mic widget, and an account you name out loud to the widget still wins. Each browser and device keeps its own choice. If you haven't chosen one, or the chosen account is removed, Cash is picked first as before.
 
 ### Changed
 
@@ -14,10 +15,16 @@ All notable product changes are documented here.
 - The Cookie Policy now lists the offline cache of public pages and the support chat's tab storage, names the site operator, and no longer names one AI provider for the assistant.
 - The web upgrade dialog no longer shows the "Payment handled by PayPal" box. It now offers two clear choices: continue with PayPal, or pay by card, Apple Pay, or Google Pay through Dodo Payments.
 - The landing page has a new "Sound familiar?" story after the feature highlights. As you scroll, a photo of a desk buried in receipts is pinned in place while the loose expenses fly off the table into one sorted monthly ledger with a total against the budget. With reduced motion turned on, the finished ledger shows without animation.
+- On mobile, reviewing a bug report draft in Help & support fills the whole panel with taller text boxes instead of a small card squeezed under the chat.
+- The mobile "Sync delayed" notice on Home and Transactions has a close (×) button. Closing it hides that notice so it no longer takes up the screen; a different sync problem still shows a new notice, and your changes keep retrying in the background.
 
 ### Fixed
 
 - `llms.txt` and `llms-full.txt` now list every public page, including the budgeting guides, tutorials, and feature pages, and stay in step with the sitemap as pages are added. `robots.txt` now states that search engines and AI answers may use the site but model training may not.
+- Reactivating a canceled subscription charges only the billing date already due, not every cycle missed while it was canceled.
+- A subscription that could not be renewed now names the billing date that was missed, instead of showing the current month's date beside the warning.
+- My reports under Help & support on mobile loads again. It showed an error, and a bug report you had just submitted also reported an error, because report dates came back in a format the app rejected.
+- Adding a budget on mobile no longer picks a category for you. The Add budget sheet used to start on "Debt payment", so saving without changing it put the budget there. The sheet now lists every expense category without a budget, and you choose one before saving.
 
 ## 2.44.0 — 2026-09-24
 

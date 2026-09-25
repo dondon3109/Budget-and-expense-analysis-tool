@@ -26,11 +26,16 @@ function formatBillingDate(value: string): string {
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
-/** Why a due cycle is not being charged, in the same terms the reminder email uses. */
-function renewalBlockedNote(reason: SubscriptionRenewalReason): string {
+/**
+ * Why a due cycle is not being charged, in the same terms the reminder email uses. The blocked
+ * cycle is always the stored next billing date, which can be earlier than the month shown in the
+ * billing date column, so the note names it.
+ */
+function renewalBlockedNote(reason: SubscriptionRenewalReason, dueDate: string): string {
+  const cycle = formatBillingDate(dueDate);
   return reason === "account_archived"
-    ? "Not renewed: account removed"
-    : "Not renewed: not enough balance";
+    ? `${cycle} not renewed: account removed`
+    : `${cycle} not renewed: not enough balance`;
 }
 
 export function SubscriptionTable({
@@ -97,7 +102,7 @@ export function SubscriptionTable({
                       </span>
                       {item.status === "active" && item.renewalBlockedReason ? (
                         <span className="subscription-renewal-blocked">
-                          {renewalBlockedNote(item.renewalBlockedReason)}
+                          {renewalBlockedNote(item.renewalBlockedReason, item.nextBillingDate)}
                         </span>
                       ) : null}
                     </div>
