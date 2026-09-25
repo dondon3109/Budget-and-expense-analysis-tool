@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- New loading animation on web and mobile: three ledger rows fill in turn from left to right. It replaces the drawn Z monogram on the web startup screen, the orbiting emblem on in-page loading states, and the plain spinner on the mobile startup, session restore, workspace unlock, and sign-in screens. With reduced motion turned on, the rows stay still and filled.
+
 ## 2.45.1 — 2026-09-25
 
 ### Fixed

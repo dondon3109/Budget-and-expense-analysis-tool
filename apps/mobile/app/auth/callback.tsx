@@ -1,11 +1,11 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 import { authErrorMessage } from "@/auth/auth-validation";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { getSupabaseClient } from "@/auth/supabase-client";
-import { Button } from "@/ui/components";
+import { Button, LedgerLoader } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
@@ -72,7 +72,7 @@ export default function AuthCallbackRoute() {
           <Button onPress={() => router.replace("/(public)/sign-in")}>Back to sign in</Button>
         </View>
       ) : (
-        <ActivityIndicator accessibilityLabel="Finishing sign in" color={theme.colors.brand} />
+        <LedgerLoader accessibilityLabel="Finishing sign in" />
       )}
     </Screen>
   );

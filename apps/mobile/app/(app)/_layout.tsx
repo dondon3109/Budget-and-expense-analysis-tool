@@ -1,12 +1,12 @@
 import { Redirect, Stack } from "expo-router";
-import { ActivityIndicator, Platform, Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
-import { ErrorState } from "@/ui/components";
+import { ErrorState, LedgerLoader } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { fonts, typography } from "@/ui/tokens";
 
@@ -21,8 +21,8 @@ export default function AuthenticatedLayout() {
   // Only a resolved signed-out session redirects. Same rule as app/index.tsx.
   if (session.status === "loading") {
     return (
-      <View className="flex-1 items-center justify-center gap-3 px-6">
-        <ActivityIndicator accessibilityLabel="Restoring your session" color={theme.colors.brand} />
+      <View className="flex-1 items-center justify-center gap-5 px-6">
+        <LedgerLoader accessibilityLabel="Restoring your session" />
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
           Restoring your session…
         </Text>
@@ -45,11 +45,8 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
   const theme = useZoptionTheme();
   if (local.status === "opening") {
     return (
-      <View className="flex-1 items-center justify-center gap-3 px-6">
-        <ActivityIndicator
-          accessibilityLabel="Opening encrypted local workspace"
-          color={theme.colors.brand}
-        />
+      <View className="flex-1 items-center justify-center gap-5 px-6">
+        <LedgerLoader accessibilityLabel="Opening encrypted local workspace" />
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
           Unlocking encrypted local data…
         </Text>
