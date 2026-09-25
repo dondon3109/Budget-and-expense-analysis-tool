@@ -152,7 +152,11 @@ jobs:
           # Renames list the old path too, so moving a file out of a risky directory still counts.
           gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}/files" --paginate \
             --jq '.[] | .filename, (.previous_filename // empty)' > changed-paths.txt
-          risky="$(node scripts/pr-risk.mjs changed-paths.txt)"
+          # Until the risk list is on the base branch nothing is eligible, but the review still posts.
+          risky="the base branch has no scripts/pr-risk.mjs"
+          if [ -f scripts/pr-risk.mjs ]; then
+            risky="$(node scripts/pr-risk.mjs changed-paths.txt)"
+          fi
           lines="$(gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}" --jq '.additions + .deletions')"
 
           reasons=()
