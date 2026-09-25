@@ -28,6 +28,12 @@ All notable product changes are documented here.
 - My reports under Help & support on mobile loads again. It showed an error, and a bug report you had just submitted also reported an error, because report dates came back in a format the app rejected.
 - Adding a budget on mobile no longer picks a category for you. The Add budget sheet used to start on "Debt payment", so saving without changing it put the budget there. The sheet now lists every expense category without a budget, and you choose one before saving.
 
+## 2.44.1 — 2026-09-24
+
+### Fixed
+
+- The Android install page offers Android Beta 0.2.35 (versionCode 20335), the build that carries Dodo Payments checkout and the app lock, instead of 0.2.33.
+
 ## 2.44.0 — 2026-09-24
 
 ### Added

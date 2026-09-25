@@ -14,6 +14,7 @@ import type {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -35,6 +36,12 @@ vi.mock("../src/auth/AuthProvider", () => ({
     user: { id: "test-user", email: "test@example.com" },
     signOut: vi.fn(),
   }),
+}));
+
+// The app shell (navigation, support chat, review prompt) is not under test here, and rendering it
+// on every step made the first test's cold render slow enough to hit the 5s timeout on a loaded CI runner.
+vi.mock("../src/components/layout/AppShell", () => ({
+  AppShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
 }));
 
 vi.mock("../src/lib/api", async (importOriginal) => ({
