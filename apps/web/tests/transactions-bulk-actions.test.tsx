@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import type { CategoryRecord, TransactionInput, TransactionListItem } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -530,5 +530,95 @@ describe("TransactionsPage saved views", () => {
     expect(screen.queryByRole("option", { name: "Food only" })).not.toBeInTheDocument();
     expect(window.localStorage.getItem("zoption-transaction-views")).toBe("[]");
     expect(locationSearch()).toContain("category=cat-food");
+  });
+});
+
+describe("TransactionsPage continuous loading", () => {
+  const observers: Array<{ callback: IntersectionObserverCallback; disconnected: boolean }> = [];
+
+  function reachEnd() {
+    act(() => {
+      for (const observer of observers.filter((entry) => !entry.disconnected)) {
+        observer.callback(
+          [{ isIntersecting: true } as IntersectionObserverEntry],
+          {} as IntersectionObserver,
+        );
+      }
+    });
+  }
+
+  beforeEach(() => {
+    observers.length = 0;
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        private readonly entry;
+        constructor(callback: IntersectionObserverCallback) {
+          this.entry = { callback, disconnected: false };
+          observers.push(this.entry);
+        }
+        observe() {}
+        disconnect() {
+          this.entry.disconnected = true;
+        }
+      },
+    );
+    apiMocks.getTransactions
+      .mockReset()
+      .mockImplementation(async (_ws, request: { page: number }) => ({
+        items: [request.page === 1 ? groceries : salary],
+        page: request.page,
+        pageSize: 1,
+        total: 2,
+        totalPages: 2,
+      }));
+  });
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("loads the next page when the end of the ledger comes into view", async () => {
+    renderPage();
+    await screen.findByText("Groceries");
+
+    reachEnd();
+
+    expect(await screen.findByText("Salary")).toBeInTheDocument();
+    expect(apiMocks.getTransactions).toHaveBeenLastCalledWith(
+      workspace,
+      expect.objectContaining({ page: 2 }),
+    );
+  });
+
+  it("stops loading after a failed page until the user asks again", async () => {
+    apiMocks.getTransactions.mockImplementation(async (_ws, request: { page: number }) => {
+      if (request.page === 2) throw new Error("Offline");
+      return { items: [groceries], page: 1, pageSize: 1, total: 2, totalPages: 2 };
+    });
+    renderPage();
+    await screen.findByText("Groceries");
+
+    reachEnd();
+    await screen.findByText("Offline");
+    expect(apiMocks.getTransactions).toHaveBeenCalledTimes(2);
+
+    reachEnd();
+    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    expect(apiMocks.getTransactions).toHaveBeenCalledTimes(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await waitFor(() => expect(apiMocks.getTransactions).toHaveBeenCalledTimes(3));
+  });
+
+  it("keeps a selection across loaded pages and selects every loaded row", async () => {
+    renderPage();
+    await screen.findByText("Groceries");
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select Groceries" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    await screen.findByText("Salary");
+    expect(screen.getByRole("checkbox", { name: "Select Groceries" })).toBeChecked();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all loaded transactions" }));
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
   });
 });

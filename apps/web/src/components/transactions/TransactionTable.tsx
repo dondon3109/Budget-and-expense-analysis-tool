@@ -24,6 +24,8 @@ interface TransactionTableProps {
   onToggleSelectAll: () => void;
   /** Splits rows under a sticky header per day; only meaningful while sorted by date. */
   groupByDay?: boolean;
+  /** More pages remain, so the last day may continue past the loaded rows. */
+  lastDayPartial?: boolean;
 }
 
 function SortIcon({ active, direction }: { active: boolean; direction: "asc" | "desc" }) {
@@ -82,7 +84,7 @@ function DayTotal({
   );
 }
 
-function DayHeader({ group }: { group: TransactionDayGroup }) {
+function DayHeader({ group, partial }: { group: TransactionDayGroup; partial: boolean }) {
   const label = dayLabel(group.date);
   return (
     <tr className="transaction-day-row">
@@ -93,10 +95,18 @@ function DayHeader({ group }: { group: TransactionDayGroup }) {
             <span className="transaction-day-weekday">{label.weekday}</span>
             <span className="transaction-day-month">{label.month}</span>
           </span>
-          <span className="transaction-day-totals">
-            <DayTotal label="Income" totals={group.totals} field="incomeMinor" tone="income" />
-            <DayTotal label="Expenses" totals={group.totals} field="expenseMinor" tone="expense" />
-          </span>
+          {/* A day cut off by the next unloaded page would show a partial sum as the day's total. */}
+          {!partial && (
+            <span className="transaction-day-totals">
+              <DayTotal label="Income" totals={group.totals} field="incomeMinor" tone="income" />
+              <DayTotal
+                label="Expenses"
+                totals={group.totals}
+                field="expenseMinor"
+                tone="expense"
+              />
+            </span>
+          )}
         </div>
       </th>
     </tr>
@@ -121,6 +131,7 @@ export function TransactionTable({
   onToggleSelect,
   onToggleSelectAll,
   groupByDay = false,
+  lastDayPartial = false,
 }: TransactionTableProps) {
   const selectAllRef = useRef<HTMLInputElement>(null);
   const selectedLoaded = items.filter((item) => selectedIds.has(item.id)).length;
@@ -292,9 +303,9 @@ export function TransactionTable({
           </tr>
         </thead>
         {groupByDay ? (
-          groupTransactionsByDay(items).map((group) => (
+          groupTransactionsByDay(items).map((group, index, groups) => (
             <tbody key={group.date} className="transaction-day-group">
-              <DayHeader group={group} />
+              <DayHeader group={group} partial={lastDayPartial && index === groups.length - 1} />
               {group.items.map(renderRow)}
             </tbody>
           ))

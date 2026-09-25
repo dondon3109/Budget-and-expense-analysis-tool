@@ -134,8 +134,8 @@ export function saveOptimisticTransaction(
     items: page.items.filter((candidate) => candidate.id !== id),
   }));
 
-  let inserted = false;
-  if (transactionMatchesQuery(item, query)) {
+  const matches = transactionMatchesQuery(item, query);
+  if (matches) {
     const lastPage = pages[pages.length - 1]!;
     const fullyLoaded = lastPage.page >= lastPage.totalPages;
     const index = pages.findIndex((page) =>
@@ -148,11 +148,11 @@ export function saveOptimisticTransaction(
         ...page,
         items: [...page.items, item].sort((left, right) => compareTransactions(left, right, query)),
       };
-      inserted = true;
     }
   }
 
-  const delta = existed && !inserted ? -1 : !existed && inserted ? 1 : 0;
+  // The total counts every matching row, loaded or not; edits only ever start from loaded rows.
+  const delta = (matches ? 1 : 0) - (existed ? 1 : 0);
   return {
     ...feed,
     pages: pages.map((page) => withTotal(page, Math.max(0, page.total + delta))),

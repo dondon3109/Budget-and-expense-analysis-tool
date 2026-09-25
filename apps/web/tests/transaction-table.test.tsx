@@ -38,6 +38,7 @@ function renderTable(
     items?: TransactionListItem[];
     selectedIds?: ReadonlySet<string>;
     groupByDay?: boolean;
+    lastDayPartial?: boolean;
   } = {},
 ) {
   const onSort = vi.fn();
@@ -56,6 +57,7 @@ function renderTable(
       onToggleSelect={onToggleSelect}
       onToggleSelectAll={onToggleSelectAll}
       groupByDay={options.groupByDay}
+      lastDayPartial={options.lastDayPartial}
     />,
   );
   return { onSort, onToggleSelect, onToggleSelectAll, onRequestDelete };
@@ -116,6 +118,18 @@ describe("TransactionTable day groups", () => {
 
     expect(screen.getByRole("rowheader", { name: "Tuesday, July 28, 2026" })).toHaveTextContent(
       "Income₱0",
+    );
+  });
+
+  it("hides the last day's totals while more pages may continue it", () => {
+    const earlier = { ...item, id: "transaction-3", date: "2026-07-28" };
+    renderTable({ items: [item, earlier], groupByDay: true, lastDayPartial: true });
+
+    expect(screen.getByRole("rowheader", { name: "Wednesday, July 29, 2026" })).toHaveTextContent(
+      "Expenses",
+    );
+    expect(screen.getByRole("rowheader", { name: "Tuesday, July 28, 2026" })).not.toHaveTextContent(
+      "Expenses",
     );
   });
 

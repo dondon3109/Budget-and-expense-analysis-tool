@@ -300,6 +300,8 @@ export function TransactionsPage() {
     queryFn: () => getDebts(workspace),
   });
   const feedKey = queryKeys.transactionFeed(workspace, query);
+  // An invalidation refetches every loaded page in sequence, so a user who has scrolled N pages
+  // pays N 50-row reads after each save. Accepted: it keeps the scrolled list in place.
   const transactionsQuery = useInfiniteQuery({
     queryKey: feedKey,
     queryFn: ({ pageParam }) => getTransactions(workspace, { ...query, page: pageParam }),
@@ -577,10 +579,18 @@ export function TransactionsPage() {
   // Loads the next page as the end of the ledger nears the viewport, the way the mobile list
   // scrolls. The footer's Load more button stays as the keyboard and fallback path.
   const feedEndRef = useRef<HTMLElement>(null);
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = transactionsQuery;
+  // It stands down while any read is in flight, so it never cancels the refetch that reconciles
+  // an edit, and after a failed page, so an outage cannot loop; Load more or Try again resumes.
+  const { hasNextPage, isFetching, isFetchNextPageError, fetchNextPage } = transactionsQuery;
   useEffect(() => {
     const end = feedEndRef.current;
-    if (!end || !hasNextPage || isFetchingNextPage || typeof IntersectionObserver === "undefined") {
+    if (
+      !end ||
+      !hasNextPage ||
+      isFetching ||
+      isFetchNextPageError ||
+      typeof IntersectionObserver === "undefined"
+    ) {
       return;
     }
     const observer = new IntersectionObserver(
@@ -591,7 +601,7 @@ export function TransactionsPage() {
     );
     observer.observe(end);
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, items.length]);
+  }, [fetchNextPage, hasNextPage, isFetching, isFetchNextPageError, items.length]);
 
   useEffect(() => {
     setBulkCategoryId((current) =>
@@ -1114,6 +1124,7 @@ export function TransactionsPage() {
               <TransactionTable
                 items={items}
                 groupByDay={query.sortBy === "date"}
+                lastDayPartial={transactionsQuery.hasNextPage}
                 sortBy={query.sortBy}
                 sortDirection={query.sortDirection}
                 selectedIds={selectedIds}

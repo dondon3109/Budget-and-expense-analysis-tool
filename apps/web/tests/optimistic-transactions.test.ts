@@ -166,7 +166,20 @@ describe("optimistic transaction lists", () => {
     // Older than everything loaded while more pages remain: the next page read brings it.
     const unloaded = saveOptimisticTransaction(current, query, { ...oldest, id: "older" });
     expect(ids(unloaded)).toEqual(["newest", "middle"]);
-    expect(unloaded?.pages[0]?.total).toBe(3);
+    expect(unloaded?.pages[0]?.total).toBe(4);
+  });
+
+  it("keeps the total when an edit moves a row past the loaded pages", () => {
+    const newest = { ...item, id: "newest", date: "2026-08-28" };
+    const middle = { ...item, id: "middle", date: "2026-08-20" };
+    const current = feedOf(
+      { ...page, items: [newest], pageSize: 1, total: 3, totalPages: 3 },
+      { ...page, page: 2, items: [middle], pageSize: 1, total: 3, totalPages: 3 },
+    );
+
+    const next = saveOptimisticTransaction(current, query, { ...newest, date: "2026-08-01" });
+    expect(ids(next)).toEqual(["middle"]);
+    expect(next?.pages.map((entry) => entry.total)).toEqual([3, 3]);
   });
 
   it("drops a row repeated across an offset page boundary", () => {
