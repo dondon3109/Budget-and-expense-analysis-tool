@@ -55,10 +55,6 @@ flowchart LR
 
 The app stores Philippine pesos as integer centavos, uses ISO dates at the API boundary, excludes transfers from income/expense totals, and scopes every financial record to the tenant resolved from the verified Supabase user. See [architecture notes](docs/architecture.md).
 
-## Screenshot capture
-
-With the local app running, `pnpm capture:screenshots` captures repeatable landing, login, and signup views under `docs/screenshots/`. Financial workspace screenshots require an authenticated test account and are intentionally not generated from shared seeded records.
-
 ## Local setup
 
 Requirements: Node.js 22+ (CI uses 24) and pnpm 11.

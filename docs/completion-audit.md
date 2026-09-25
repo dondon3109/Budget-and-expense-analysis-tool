@@ -16,7 +16,7 @@
 - Loading, empty, recoverable-error, keyboard/focus, text-chart-equivalent, contrast, reduced-motion, desktop, and mobile states.
 - D1-backed write/import rate limits keyed by authenticated tenant identity.
 - Unit, API, component, desktop/mobile Playwright, production-build, and Lighthouse gates.
-- README, architecture/data rules, CSV guide, test strategy, performance results, privacy limitations, deployment/rollback runbook, case study, and reproducible public screenshots.
+- README, architecture/data rules, CSV guide, test strategy, performance results, privacy limitations, deployment/rollback runbook, and case study.
 
 ## Deployment verification required for this change
 
