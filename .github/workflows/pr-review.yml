@@ -94,13 +94,15 @@ jobs:
           # --setting-sources user skips project and local settings, --strict-mcp-config every MCP
           # server, and the files go too so nothing else picks them up.
           rm -rf .claude .mcp.json CLAUDE.local.md
-          # Read only tools: a tool outside this list is refused, since no terminal can approve it.
-          # The model key is in this process's environment, so /proc stays unreadable to a
-          # prompt-injected diff; the report job also redacts token-shaped text before posting.
+          # --tools removes every other tool, where --allowedTools would only pre-approve these and
+          # still let read-only shell commands run. Grep is left out because a search rooted at /
+          # reaches /proc/<pid>/environ, which holds the model key; Glob returns names only, and
+          # Read is denied /proc, including through a symlink the pull request commits. The report
+          # job also redacts token-shaped text before posting.
           claude -p "$task" --model claude-opus-5-5 --output-format json \
             --setting-sources user --strict-mcp-config \
-            --allowedTools "Read,Glob,Grep" \
-            --disallowedTools "Read(//proc/**)" "Grep(//proc/**)" "Glob(//proc/**)" \
+            --tools "Read,Glob" \
+            --disallowedTools "Read(//proc/**)" \
             --json-schema "$(cat <<'SCHEMA'
           {
             "type": "object",
@@ -198,6 +200,9 @@ jobs:
 
           reasons=()
           [ "$(jq -r .verdict review-artifact/verdict.json)" = "approve" ] || reasons+=("Claude requested changes")
+          # The verdict is model output, so a blocker or major finding blocks even beside "approve".
+          jq -e 'all(.findings[]; .severity == "minor")' review-artifact/verdict.json > /dev/null \
+            || reasons+=("Claude reported a blocker or major finding")
           [ "$(jq -r .titleTypeCorrect review-artifact/verdict.json)" = "true" ] || reasons+=("the title's commit type does not fit the change")
           # The squashed title is the commit semantic-release reads.
           [[ "${PR_TITLE}" =~ ^(feat|fix|docs|test|chore|refactor|style|ci|build|perf|revert)(\([a-z0-9-]+\))?!?:\ .+ ]] \
