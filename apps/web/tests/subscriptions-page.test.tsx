@@ -126,7 +126,7 @@ describe("SubscriptionsPage", () => {
     vi.mocked(deleteSubscription).mockResolvedValue(undefined);
   });
 
-  it("says why a due subscription is not being renewed", async () => {
+  it("names the overdue cycle when a subscription is not being renewed", async () => {
     vi.mocked(getSubscriptions).mockResolvedValue({
       month: "2026-07-01",
       currency: "PHP",
@@ -135,6 +135,8 @@ describe("SubscriptionsPage", () => {
         {
           ...record,
           renewalBlockedReason: "insufficient_balance",
+          // The blocked cycle is June even though the July billing date is on screen.
+          nextBillingDate: "2026-06-25",
           billingDate: "2026-07-25",
           monthlyCostMinor: 199_00,
         },
@@ -142,7 +144,9 @@ describe("SubscriptionsPage", () => {
     });
     renderPage();
 
-    expect(await screen.findByText("Not renewed: not enough balance")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Jun 25, 2026 not renewed: not enough balance"),
+    ).toBeInTheDocument();
   });
 
   it("says when a due subscription is paid from a removed account", async () => {
@@ -154,6 +158,7 @@ describe("SubscriptionsPage", () => {
         {
           ...record,
           renewalBlockedReason: "account_archived",
+          nextBillingDate: "2026-07-25",
           billingDate: "2026-07-25",
           monthlyCostMinor: 199_00,
         },
@@ -161,7 +166,9 @@ describe("SubscriptionsPage", () => {
     });
     renderPage();
 
-    expect(await screen.findByText("Not renewed: account removed")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Jul 25, 2026 not renewed: account removed"),
+    ).toBeInTheDocument();
   });
 
   it("renders the summary and exact five-column subscription table", async () => {

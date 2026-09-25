@@ -192,6 +192,66 @@ function dueSubscription(
 }
 
 describe("subscription renewals", () => {
+  it("charges only the latest due cycle after reactivating, not the ones missed while canceled", async () => {
+    const { env, database } = renewalEnvironment();
+    database.exec(`
+      INSERT INTO user_tenants (user_id, tenant_id) VALUES ('user-1', 'tenant-1');
+      INSERT INTO subscriptions (
+        id, tenant_id, account_id, category_id, name, amount_minor, currency,
+        billing_cycle, next_billing_date, status, renewal_blocked_reason
+      ) VALUES (
+        'subscription-1', 'tenant-1', 'account-1', 'category-1', 'Gemini', 27500,
+        'PHP', 'monthly', '2026-07-23', 'canceled', 'insufficient_balance'
+      );
+      INSERT INTO transactions (
+        id, tenant_id, account_id, category_id, date, description, amount_minor, currency,
+        kind, subscription_id
+      ) VALUES (
+        'charge-july', 'tenant-1', 'account-1', 'category-1', '2026-07-23', 'Gemini', -27500,
+        'PHP', 'expense', 'subscription-1'
+      );
+    `);
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send: async () => undefined },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T11:43:00+08:00"));
+    await subscriptionRepository.setStatus(env, "tenant-1", "subscription-1", {
+      status: "active",
+    });
+
+    expect(
+      database
+        .prepare(
+          "SELECT next_billing_date AS date, renewal_blocked_reason AS reason FROM subscriptions WHERE id = 'subscription-1'",
+        )
+        .get(),
+    ).toEqual({ date: "2026-09-23", reason: null });
+    expect(
+      database
+        .prepare(
+          "SELECT subscription_id AS subscriptionId FROM transactions WHERE id = 'charge-july'",
+        )
+        .get(),
+    ).toEqual({ subscriptionId: null });
+
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({ checked: 1, charged: 1 });
+    expect(
+      database
+        .prepare(
+          "SELECT date FROM transactions WHERE description = 'Gemini' AND id != 'charge-july'",
+        )
+        .all(),
+    ).toEqual([{ date: "2026-09-23" }]);
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")
+        .get(),
+    ).toEqual({ date: "2026-10-23" });
+  });
+
   it("names the active subscriptions paid from an account so removing it can warn", async () => {
     const { env, database } = renewalEnvironment();
     dueSubscription(database, 20_000);

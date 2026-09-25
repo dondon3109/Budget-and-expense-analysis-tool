@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  latestDueSubscriptionBillingDate,
   monthlySubscriptionCost,
   nextSubscriptionBillingDate,
   subscriptionBillingDateForMonth,
@@ -40,6 +41,24 @@ describe("subscription calculations", () => {
     expect(nextSubscriptionBillingDate("2026-01-31", "monthly")).toBe("2026-02-28");
     expect(nextSubscriptionBillingDate("2026-02-28", "monthly")).toBe("2026-03-28");
     expect(nextSubscriptionBillingDate("2026-03-28", "monthly")).toBe("2026-04-28");
+  });
+
+  it("skips to the latest billing date already due, leaving future dates alone", () => {
+    expect(latestDueSubscriptionBillingDate("2026-08-23", "monthly", "2026-09-25")).toBe(
+      "2026-09-23",
+    );
+    expect(latestDueSubscriptionBillingDate("2026-08-23", "monthly", "2026-09-23")).toBe(
+      "2026-09-23",
+    );
+    expect(latestDueSubscriptionBillingDate("2026-08-23", "monthly", "2026-09-22")).toBe(
+      "2026-08-23",
+    );
+    expect(latestDueSubscriptionBillingDate("2026-10-23", "monthly", "2026-09-25")).toBe(
+      "2026-10-23",
+    );
+    expect(latestDueSubscriptionBillingDate("2024-07-12", "yearly", "2026-09-25")).toBe(
+      "2026-07-12",
+    );
   });
 
   it("only projects yearly billing in the renewal month", () => {
