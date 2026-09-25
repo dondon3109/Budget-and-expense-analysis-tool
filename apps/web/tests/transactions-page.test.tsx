@@ -244,7 +244,7 @@ describe("TransactionsPage loading state", () => {
   });
 });
 
-describe("TransactionsPage pagination", () => {
+describe("TransactionsPage continuous ledger", () => {
   beforeEach(() => {
     apiMocks.getCategories.mockReset().mockResolvedValue([]);
     apiMocks.getAccounts.mockReset().mockResolvedValue([]);
@@ -253,58 +253,49 @@ describe("TransactionsPage pagination", () => {
       .mockReset()
       .mockImplementation(
         async (_workspace: unknown, request: { page: number; pageSize: number }) => ({
-          items: Array.from({ length: 10 }, (_, index) => ({
-            id: `transaction-${(request.page - 1) * 10 + index + 1}`,
-            description: `Transaction ${(request.page - 1) * 10 + index + 1}`,
+          items: Array.from({ length: request.page < 3 ? 50 : 20 }, (_, index) => ({
+            id: `transaction-${(request.page - 1) * 50 + index + 1}`,
+            description: `Transaction ${(request.page - 1) * 50 + index + 1}`,
           })),
           page: request.page,
           pageSize: request.pageSize,
-          total: 240,
-          totalPages: 24,
+          total: 120,
+          totalPages: 3,
         }),
       );
   });
 
   afterEach(cleanup);
 
-  it("announces the visible slice and page count as the page changes", async () => {
+  it("appends the next page instead of replacing the list", async () => {
     renderPage();
 
-    const firstPage = await screen.findByText(/Showing 1–10 of 240/);
-    expect(firstPage).toHaveAttribute("role", "status");
-    expect(firstPage).toHaveTextContent("Page 1 of 24");
-    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
+    expect(await screen.findByText("Showing 50 of 120")).toHaveAttribute("role", "status");
+    expect(apiMocks.getTransactions).toHaveBeenLastCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      expect.objectContaining({ page: 1, pageSize: 50 }),
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Showing 100 of 120")).toBeInTheDocument();
+    expect(apiMocks.getTransactions).toHaveBeenLastCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      expect.objectContaining({ page: 2 }),
+    );
 
-    expect(await screen.findByText(/Showing 11–20 of 240/)).toHaveTextContent("Page 2 of 24");
-    expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
-  });
-
-  it("reports a final partial page and disables Next", async () => {
-    apiMocks.getTransactions.mockReset().mockResolvedValue({
-      items: Array.from({ length: 5 }, (_, index) => ({ id: `transaction-${index + 1}` })),
-      page: 24,
-      pageSize: 10,
-      total: 235,
-      totalPages: 24,
-    });
-    renderPage();
-
-    const lastPage = await screen.findByText(/Showing 231–235 of 235/);
-    expect(lastPage).toHaveTextContent("Page 24 of 24");
-    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(await screen.findByText("Showing 120 of 120")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 
   it("announces the position from a single live region", async () => {
     renderPage();
 
-    const status = await screen.findByText(/Showing 1–10 of 240/);
+    const status = await screen.findByText("Showing 50 of 120");
     const panel = status.closest(".transactions-panel");
 
-    expect(status).toHaveAttribute("role", "status");
     expect(panel).not.toBeNull();
-    // The panel itself must stay non-live or the range would be announced twice.
+    // The panel itself must stay non-live or the position would be announced twice.
     expect(panel).not.toHaveAttribute("aria-live");
     expect(panel!.querySelectorAll('[role="status"], [aria-live]')).toHaveLength(1);
   });
@@ -312,21 +303,21 @@ describe("TransactionsPage pagination", () => {
   it("does not re-announce the position on every keystroke", async () => {
     renderPage();
 
-    const status = await screen.findByText(/Showing 1–10 of 240/);
+    const status = await screen.findByText("Showing 50 of 120");
     const search = screen.getByRole("searchbox");
 
     fireEvent.change(search, { target: { value: "m" } });
     fireEvent.change(search, { target: { value: "ma" } });
 
-    // The same node keeps the same text until the settled query returns a new slice.
-    expect(screen.getByText(/Showing 1–10 of 240/)).toBe(status);
+    // The same node keeps the same text until the settled query returns a new list.
+    expect(screen.getByText("Showing 50 of 120")).toBe(status);
   });
 
   it("hands the announcement to the empty state when nothing matches", async () => {
     apiMocks.getTransactions.mockReset().mockResolvedValue({
       items: [],
       page: 1,
-      pageSize: 10,
+      pageSize: 50,
       total: 0,
       totalPages: 1,
     });

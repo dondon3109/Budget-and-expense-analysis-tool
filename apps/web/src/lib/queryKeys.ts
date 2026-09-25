@@ -30,6 +30,9 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "transactions", query] as const,
   allTransactions: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "transactions"] as const,
+  /** The Transactions page's infinite ledger; its cache holds pages, not a single page. */
+  transactionFeed: (workspace: AuthenticatedWorkspace, query: TransactionListQuery) =>
+    [...queryKeys.allTransactions(workspace), "feed", query] as const,
   transactionCalendar: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.allTransactions(workspace), "calendar", month] as const,
   allEvents: (workspace: AuthenticatedWorkspace) =>

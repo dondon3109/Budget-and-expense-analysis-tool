@@ -10,6 +10,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- The web Transactions list is grouped by day like the mobile app: each day has a header with its date and that day's income and expenses (shown once the whole day has loaded), and the header stays pinned while you scroll through that day. The list now loads more transactions as you scroll instead of splitting them into numbered pages. Grouping applies while sorted by date.
 - The category picker in the transaction form lists categories without an emoji first, A to Z, followed by categories with an emoji, A to Z, so plain names are easier to scan.
 - New loading animation on web and mobile: three ledger rows fill in turn from left to right. It replaces the drawn Z monogram on the web startup screen, the orbiting emblem on in-page loading states, and the plain spinner on the mobile startup, session restore, workspace unlock, and sign-in screens. With reduced motion turned on, the rows stay still and filled.
 - The mobile Home screen leads with Total Balance, then quick actions, safe to spend, this month, cash flow, spending, budgets, and recent activity; the forecast and remittance calculator sit at the bottom. Total Balance shows a bar splitting your peso balance across accounts, each account's type icon and share of your assets, the total owed, and any USD held beside the peso total. This month compares money in and out as bars, spending by category adds a combined share bar, and the cash flow chart shows income and expense totals for the selected range.
