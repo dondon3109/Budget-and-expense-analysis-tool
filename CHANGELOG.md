@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- You can choose a default spending account, and new transactions start on it instead of Cash. On the web, tap the star beside an account in the Home account list, or pick it under Account Settings → Default spending account. On mobile, tap the star beside an account on Home, or pick it under More → Account. The chosen account is picked first when you add a transaction, import an SMS, scan a receipt, or use the home-screen mic widget, and an account you name out loud to the widget still wins. Each browser and device keeps its own choice. If you haven't chosen one, or the chosen account is removed, Cash is picked first as before.
+
 ### Changed
 
 - The mobile "Sync delayed" notice on Home and Transactions has a close (×) button. Closing it hides that notice so it no longer takes up the screen; a different sync problem still shows a new notice, and your changes keep retrying in the background.

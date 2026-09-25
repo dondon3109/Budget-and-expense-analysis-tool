@@ -1,11 +1,20 @@
 import type { TransactionInput } from "./schemas";
 import type { AccountType } from "./types";
 
-/** New entries prefer cash while preserving a usable fallback for workspaces without one. */
-export function preferredTransactionAccount<Account extends { type: AccountType }>(
+/**
+ * New entries prefer the account the user set as their default spending account,
+ * then cash, then the first account. A default that is no longer in the list
+ * (removed, or from another workspace) falls through instead of blocking entry.
+ */
+export function preferredTransactionAccount<Account extends { id: string; type: AccountType }>(
   accounts: readonly Account[],
+  defaultAccountId?: string | null,
 ): Account | undefined {
-  return accounts.find((account) => account.type === "cash") ?? accounts[0];
+  return (
+    accounts.find((account) => account.id === defaultAccountId) ??
+    accounts.find((account) => account.type === "cash") ??
+    accounts[0]
+  );
 }
 
 export interface BalanceAdjustmentPreview {

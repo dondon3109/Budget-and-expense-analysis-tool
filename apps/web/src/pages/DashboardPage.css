@@ -1213,6 +1213,10 @@
   background: var(--action-soft);
 }
 
+.dashboard-account-actions .dashboard-account-default[aria-pressed="true"] {
+  color: var(--action);
+}
+
 .dashboard-account-actions button[aria-label^="Remove"]:hover {
   color: var(--danger);
   background: var(--danger-soft);
@@ -1469,6 +1473,21 @@
 }
 
 @media (max-width: 470px) {
+  /* Four 44px account actions leave no room for the name on a phone, so the
+     balance and actions drop below it instead of squeezing it to nothing. */
+  .dashboard-account-breakdown li {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .dashboard-account-details {
+    flex: 1 1 140px;
+  }
+
+  .dashboard-account-value {
+    margin-left: auto;
+  }
+
   .overview-stat-bar {
     grid-template-columns: 1fr;
   }

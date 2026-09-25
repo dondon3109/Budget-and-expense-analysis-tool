@@ -96,7 +96,10 @@ const debts: Debt[] = [
   },
 ];
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  window.localStorage.clear();
+});
 
 const transaction: TransactionListItem = {
   id: "transaction-1",
@@ -179,6 +182,34 @@ describe("TransactionForm", () => {
     );
 
     await waitFor(() => expect(screen.getByLabelText("Account")).toHaveValue("account-cash"));
+  });
+
+  it("defaults a new transaction to the default spending account over Cash", async () => {
+    window.localStorage.setItem("zoption-default-spending-account", accounts[0]!.id);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category]}
+        accounts={[
+          {
+            id: "account-cash",
+            name: "Cash",
+            type: "cash",
+            currency: "PHP",
+            balanceMinor: null,
+            balanceAsOf: null,
+            archived: false,
+          },
+          ...accounts,
+        ]}
+        debts={debts}
+        busy={false}
+        onSubmit={vi.fn(async () => undefined)}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByLabelText("Account")).toHaveValue(accounts[0]!.id));
   });
 
   it("keeps the existing date when editing even if an initial date is provided", () => {
