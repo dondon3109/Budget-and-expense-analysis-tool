@@ -215,7 +215,7 @@ jobs:
           # change from the human reading the pull request.
           # .claude/, .mcp.json, and the CLAUDE.md and AGENTS.md instructions configure Claude Code,
           # which PR Review runs on this checkout.
-          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|\.claude/|scripts/)|(^|/)(pnpm-lock\.yaml|release\.config\.mjs|\.gitattributes|\.mcp\.json|CLAUDE\.local\.md|CLAUDE\.md|AGENTS\.md)$' || true)"
+          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|scripts/)|(^|/)\.claude/|(^|/)(pnpm-lock\.yaml|release\.config\.mjs|\.gitattributes|\.mcp\.json|CLAUDE\.local\.md|CLAUDE\.md|AGENTS\.md)$' || true)"
           if [ -n "${blocked}" ]; then
             echo "::error::This draft changes files the automation may not change"
             printf '%s\n' "${blocked}"

@@ -92,8 +92,9 @@ jobs:
           # The checkout is the pull request's, so its own Claude Code configuration must not load:
           # a project hook or MCP server would run with the model key in its environment.
           # --setting-sources user skips project and local settings, --strict-mcp-config every MCP
-          # server, and the files go too so nothing else picks them up.
-          rm -rf .claude .mcp.json CLAUDE.local.md
+          # server, and the files go too, at any depth, so nothing else picks them up.
+          git ls-files -z -- ':(glob)**/.claude/**' ':(glob)**/.mcp.json' ':(glob)**/CLAUDE.local.md' \
+            | xargs -0 rm -f --
           # CLAUDE.md files load as instructions, and their @path imports bypass the Read deny rules,
           # so an import of /proc/self/environ would put the model key in context. Review with the
           # base branch's copies; the pull request's changes to them are still in the diff.
@@ -152,7 +153,8 @@ jobs:
     # After disarm, so a re-arm never races a disarm of the previous head. Disarm is skipped
     # when auto-merge is off, which must not block the report.
     needs: [review, disarm]
-    if: always() && needs.review.result == 'success' && needs.disarm.result != 'failure'
+    # !cancelled(), not always(): a run a newer push cancelled must not post or disarm for its old head.
+    if: "!cancelled() && needs.review.result == 'success' && needs.disarm.result != 'failure'"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -237,8 +239,12 @@ jobs:
         run: |
           set -euo pipefail
           verdict="$(jq -r .verdict review-artifact/verdict.json)"
+          # Green only on the gate's own review condition: approve with every finding minor.
           state=failure
-          [ "${verdict}" = "approve" ] && state=success
+          if jq -e '.verdict == "approve" and all(.findings[]; .severity == "minor")' \
+            review-artifact/verdict.json > /dev/null; then
+            state=success
+          fi
           gh api "repos/${GH_REPO}/statuses/${HEAD_SHA}" -f state="${state}" \
             -f context=claude-review -f description="Claude: ${verdict}" -f target_url="${RUN_URL}" > /dev/null
 

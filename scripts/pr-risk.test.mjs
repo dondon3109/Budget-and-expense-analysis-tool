@@ -10,6 +10,7 @@ describe("highRiskPaths", () => {
       "AGENTS.md",
       "apps/api/AGENTS.md",
       ".claude/settings.json",
+      "apps/api/.claude/settings.json",
       ".mcp.json",
       "db/migrations/0042_add_column.sql",
       "db/schema.ts",
