@@ -496,6 +496,68 @@ describe("smsNotificationParser", () => {
       });
     });
 
+    it("does not read 'at <time>' as the merchant", () => {
+      const text = "P500.00 was deducted from your account on 08/25/26 at 10:30 AM. Ref 123";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "expense", payeeOrMerchant: "Unknown Merchant" });
+    });
+
+    it("does not take a payee from a footer sentence", () => {
+      const text = "P200.00 was deducted from your account. Reply to this message for help.";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result?.payeeOrMerchant).toBe("Unknown Merchant");
+    });
+
+    it("reads a biller's payment confirmation as an expense", () => {
+      const text = "We have received your payment of P1,500.00 for MERALCO. Ref 777";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result?.type).toBe("expense");
+    });
+
+    it("ignores 'send' in an OTP footer", () => {
+      const text = "P300.00 was charged to your card. Never send your OTP to anyone.";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result?.type).toBe("expense");
+    });
+
+    it.each(["Cash out of P1,000.00 is successful.", "You cashed out P1,000.00 today."])(
+      "reads %s as a transfer",
+      (text) => {
+        const result = parseSmsNotification(text, "2026-08-25");
+
+        expect(result).toMatchObject({ type: "transfer", payeeOrMerchant: "Cash withdrawal" });
+      },
+    );
+
+    it("takes an income payee from 'from X'", () => {
+      const text = "Deposit of P2,000.00 from ACME CORP on 08/25/26. Ref 42";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "income", payeeOrMerchant: "ACME CORP" });
+    });
+
+    it("takes an expense payee from 'at X'", () => {
+      const text = "A purchase of P780.00 was made at STARBUCKS BGC. Ref 9";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({
+        type: "expense",
+        payeeOrMerchant: "STARBUCKS BGC",
+        suggestedCategory: "Food & Dining",
+      });
+    });
+
+    it("does not name the user's own account as a transfer payee", () => {
+      const text = "Transfer of funds P5,000.00 to your savings account is complete.";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "transfer", payeeOrMerchant: "Transfer" });
+    });
+
     it("keeps wallet names out of an expense's category", () => {
       expect(suggestCategory("PAYPAL *GIT", "expense", "You have paid P64.33 GCash")).toBe(
         "General",

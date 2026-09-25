@@ -507,6 +507,10 @@ function classifyDirection(text: string): { type: SmsTransactionType; label?: st
   if (/\b(?:cash[ \t-]?in|cashed[ \t]+in)\b/i.test(text)) {
     return { type: "income", label: "Cash in" };
   }
+  // A biller confirming "we received your payment" is the user paying, not income.
+  if (/\breceived[ \t]+your[ \t]+payment\b/i.test(text)) {
+    return { type: "expense" };
+  }
   if (
     /\b(?:received|credited|deposited|deposit|refund(?:ed)?|reversal|reversed|incoming)\b/i.test(
       text,
@@ -514,7 +518,8 @@ function classifyDirection(text: string): { type: SmsTransactionType; label?: st
   ) {
     return { type: "income", label: "Sender" };
   }
-  if (/\b(?:sent|send|transferred|transfer|instapay|pesonet)\b/i.test(text)) {
+  // Not "send": footers like "Never send your OTP to anyone" would turn a purchase into a transfer.
+  if (/\b(?:sent|transferred|transfer|instapay|pesonet)\b/i.test(text)) {
     return { type: "transfer", label: "Transfer" };
   }
   if (/\b(?:paid|payment|purchased?|charged|spent|debited|bought)\b/i.test(text)) {
@@ -523,14 +528,22 @@ function classifyDirection(text: string): { type: SmsTransactionType; label?: st
   return null;
 }
 
-/** Counterparty after the amount: "from X" for income, "to X" or "at X" otherwise. */
+/**
+ * Counterparty after the amount: "from X" for income, "to X" or "at X" otherwise. The search stays
+ * inside the amount's sentence so footers ("reply to this message") are never read as payees.
+ */
 function fallbackPayee(text: string, fromIndex: number, type: SmsTransactionType): string | null {
+  const sentenceEnd = /\.(?:\s|$)/.exec(text.slice(fromIndex));
+  const sentence = sentenceEnd ? text.slice(0, fromIndex + sentenceEnd.index) : text;
   const keywords = type === "income" ? [["from"]] : [["to"], ["at"]];
   const payee = cleanPayee(
-    extractPayeeBetween(text, fromIndex, keywords, GENERIC_TERMINATORS) ?? undefined,
+    extractPayeeBetween(sentence, fromIndex, keywords, GENERIC_TERMINATORS) ?? undefined,
   );
-  // "from your GCash wallet" or "to your account" names the user's own account, not a payee.
-  if (!payee || /^(?:your|my|the)\b/i.test(payee)) return null;
+  if (!payee) return null;
+  // "from your GCash wallet" or "to acct ending 1234" names the user's own account, not a payee.
+  if (/^(?:your|my|the|this|acct|account|card)\b/i.test(payee)) return null;
+  // "at 10:30 AM" or "at 08/25" is a timestamp, not a merchant.
+  if (/^\d{1,2}[:/-]\d/.test(payee)) return null;
   return payee;
 }
 
