@@ -8,10 +8,13 @@ export interface AllocationSlice {
 }
 
 export interface BalanceAllocation {
-  /** Positive PHP balances, largest first. Their shares sum to about 100. */
+  /**
+   * Positive PHP balances, largest first. Shares are of `assetsMinor`, not the
+   * headline total, which is net of debt; they sum to about 100.
+   */
   slices: AllocationSlice[];
   assetsMinor: number;
-  /** Sum of negative PHP balances (credit cards, overdrafts), zero or below. */
+  /** Sum of negative PHP balances (credit cards and overdrawn accounts), zero or below. */
   liabilitiesMinor: number;
 }
 

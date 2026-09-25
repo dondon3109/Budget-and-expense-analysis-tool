@@ -167,7 +167,7 @@ function accountSubtitle(
   if (account.currency === "USD") return "Held in USD";
   if (account.balanceMinor < 0) return "Owed";
   if (sharePercent === undefined) return "No balance";
-  return `${sharePercent}% of total`;
+  return `${sharePercent}% of assets`;
 }
 
 function BalanceCard({ summary }: { summary: DashboardSummary }) {
@@ -184,14 +184,15 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
     defaultSpendingAccountId,
   );
   const allocation = balanceAllocation(items);
-  // Series colors come from theme tokens so the bar reads in every theme; any
-  // account past the fifth shares the muted tone.
+  // Series colors come from theme tokens so the bar reads in every theme. The
+  // expense tone is left out so no account reads as negative; any account past
+  // the fifth shares the muted tone.
   const palette = [
     theme.colors.brand,
     theme.colors.info,
     theme.colors.budget,
     theme.colors.warning,
-    theme.colors.expense,
+    theme.colors.text,
   ];
   const slices = allocation.slices.map((slice, index) => ({
     ...slice,
@@ -244,8 +245,15 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
           </View>
           {usdMinor !== 0 ? (
             <View style={styles.usdMeta}>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
-              <MoneyValue amountMinor={usdMinor} currency="USD" style={styles.metaMoney} />
+              {usdMinor > 0 ? (
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
+              ) : null}
+              <MoneyValue
+                amountMinor={usdMinor}
+                currency="USD"
+                tone={usdMinor < 0 ? "expense" : "default"}
+                style={styles.metaMoney}
+              />
             </View>
           ) : null}
         </View>
@@ -271,9 +279,7 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
 
       {allocation.liabilitiesMinor < 0 ? (
         <View style={styles.cardHeaderRow}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Owed on credit
-          </Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Total owed</Text>
           <MoneyValue
             amountMinor={allocation.liabilitiesMinor}
             tone="expense"

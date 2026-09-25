@@ -388,10 +388,10 @@ describe("HomeScreen", () => {
     await render(<HomeScreen />);
 
     expect(screen.getByLabelText("Balance split: Bank 75 percent, Cash 25 percent")).toBeTruthy();
-    expect(screen.getByText("75% of total")).toBeTruthy();
-    expect(screen.getByText("25% of total")).toBeTruthy();
+    expect(screen.getByText("75% of assets")).toBeTruthy();
+    expect(screen.getByText("25% of assets")).toBeTruthy();
     expect(screen.getByText("Owed")).toBeTruthy();
-    expect(screen.getByText("Owed on credit")).toBeTruthy();
+    expect(screen.getByText("Total owed")).toBeTruthy();
   });
 
   it("triggers sync and dashboard retry on pull to refresh", async () => {
