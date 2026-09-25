@@ -11,7 +11,8 @@ name: PR Review
 # patches may not touch .github/.
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    # converted_to_draft only runs disarm: the review skips drafts.
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
 
 permissions:
   contents: read
@@ -88,10 +89,16 @@ jobs:
           - verdict is approve only when there is no blocker or major finding.
           TASK
           )"
+          # The checkout is the pull request's, so its own Claude Code configuration must not load:
+          # a project hook or MCP server would run with the model key in its environment.
+          # --setting-sources user skips project and local settings, --strict-mcp-config every MCP
+          # server, and the files go too so nothing else picks them up.
+          rm -rf .claude .mcp.json CLAUDE.local.md
           # Read only tools: a tool outside this list is refused, since no terminal can approve it.
           # The model key is in this process's environment, so /proc stays unreadable to a
           # prompt-injected diff; the report job also redacts token-shaped text before posting.
           claude -p "$task" --model claude-opus-5-5 --output-format json \
+            --setting-sources user --strict-mcp-config \
             --allowedTools "Read,Glob,Grep" \
             --disallowedTools "Read(//proc/**)" "Grep(//proc/**)" "Glob(//proc/**)" \
             --json-schema "$(cat <<'SCHEMA'
@@ -133,7 +140,10 @@ jobs:
 
   report:
     name: Post the review
-    needs: review
+    # After disarm, so a re-arm never races a disarm of the previous head. Disarm is skipped
+    # when auto-merge is off, which must not block the report.
+    needs: [review, disarm]
+    if: always() && needs.review.result == 'success' && needs.disarm.result != 'failure'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

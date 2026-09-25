@@ -9,6 +9,8 @@ const HIGH_RISK = [
   /^\.github\//,
   /^scripts\//,
   /(^|\/)(AGENTS|CLAUDE)\.md$/,
+  /^\.claude\//,
+  /(^|\/)(\.mcp\.json|CLAUDE\.local\.md)$/,
   // Schema, dependencies, and release configuration.
   /^db\//,
   /^supabase\//,
