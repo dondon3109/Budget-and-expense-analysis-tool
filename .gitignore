@@ -40,7 +40,6 @@ __pycache__/
 *.apk
 *.aab
 *.idsig
-apps/ads/out/
 .worktrees/
 
 # Client build handoff for prerender (build-time only, outside the deployed dist)
