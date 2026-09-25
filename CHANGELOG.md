@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Prepared Android Beta 0.2.36 (versionCode 20336) so the next signed build carries the default spending account, the dismissible Sync delayed notice, the working My reports list, and the Add budget category choice.
 - Three new Philippine budgeting guides: budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.
 - You can choose a default spending account, and new transactions start on it instead of Cash. On the web, tap the star beside an account in the Home account list, or pick it under Account Settings → Default spending account. On mobile, tap the star beside an account on Home, or pick it under More → Account. The chosen account is picked first when you add a transaction, import an SMS, scan a receipt, or use the home-screen mic widget, and an account you name out loud to the widget still wins. Each browser and device keeps its own choice. If you haven't chosen one, or the chosen account is removed, Cash is picked first as before.
 
@@ -20,6 +21,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Privacy redaction of bug reports and support text no longer slows to a crawl on a long run of symbols such as `%%%%`; 200 KB of them took about a minute to scan and now takes milliseconds.
 - `llms.txt` and `llms-full.txt` now list every public page, including the budgeting guides, tutorials, and feature pages, and stay in step with the sitemap as pages are added. `robots.txt` now states that search engines and AI answers may use the site but model training may not.
 - Reactivating a canceled subscription charges only the billing date already due, not every cycle missed while it was canceled.
 - A subscription that could not be renewed now names the billing date that was missed, instead of showing the current month's date beside the warning.
