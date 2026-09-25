@@ -1,19 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import {
-  ASCENDER_LENGTH,
-  ASCENDER_PATH,
-  ASCENDER_TIMING,
-  MARK_VIEW_BOX,
-  MONOGRAM_DASH,
-  MONOGRAM_LENGTH,
-  MONOGRAM_PATH,
-  MONOGRAM_RESTING_OFFSET,
-  MONOGRAM_TIMING,
-  ascenderKeyframes,
-  monogramKeyframes,
-} from "./loadingMark";
+import { LedgerLoader } from "./LedgerLoader";
 
 import "./FullPageLoadingStatus.css";
 
@@ -57,28 +45,9 @@ export function FullPageLoadingStatus({
 }: FullPageLoadingStatusProps) {
   const reduceMotion = useReducedMotion();
   const rootRef = useRef<HTMLDivElement>(null);
-  const lineRef = useRef<SVGPathElement>(null);
-  const markRef = useRef<SVGPathElement>(null);
   const completeRef = useRef(onComplete);
   completeRef.current = onComplete;
   const requestedRef = useRef(false);
-
-  // Both elements animate themselves on the compositor. Declarative keyframes
-  // rather than per-frame writes: this loop has to be exact, and it must not
-  // touch React state while the app is still starting up.
-  useEffect(() => {
-    if (reduceMotion) return;
-    const line = lineRef.current;
-    const mark = markRef.current;
-    if (!line || !mark || typeof line.animate !== "function") return;
-    const animations = [
-      line.animate(ascenderKeyframes(), ASCENDER_TIMING),
-      mark.animate(monogramKeyframes(), MONOGRAM_TIMING),
-    ];
-    return () => {
-      for (const animation of animations) animation.cancel();
-    };
-  }, [reduceMotion]);
 
   // The exit belongs to the handover, so it waits for the caller to say the app
   // behind can take over. It fills forwards, because an exit that stops applying
@@ -117,29 +86,7 @@ export function FullPageLoadingStatus({
       aria-atomic="true"
       aria-busy="true"
     >
-      <svg
-        className="full-page-loading-mark"
-        viewBox={MARK_VIEW_BOX}
-        fill="none"
-        aria-hidden="true"
-      >
-        {!reduceMotion && (
-          <path
-            ref={lineRef}
-            className="full-page-loading-line"
-            d={ASCENDER_PATH}
-            strokeDasharray={ASCENDER_LENGTH * 2}
-            strokeDashoffset={ASCENDER_LENGTH * 2}
-          />
-        )}
-        <path
-          ref={markRef}
-          className="full-page-loading-monogram"
-          d={MONOGRAM_PATH}
-          strokeDasharray={MONOGRAM_DASH}
-          strokeDashoffset={reduceMotion ? MONOGRAM_RESTING_OFFSET : MONOGRAM_LENGTH}
-        />
-      </svg>
+      <LedgerLoader size="large" />
 
       <div className="full-page-loading-copy">
         <span className="full-page-loading-brand">Zoption Platform</span>

@@ -29,6 +29,7 @@ function readWorkspaceFile(relativePath: string): string {
 
 const inlineLoaderCss = readWorkspaceFile("src/components/layout/InlineLoader.css");
 const fullPageCss = readWorkspaceFile("src/components/layout/FullPageLoadingStatus.css");
+const ledgerLoaderCss = readWorkspaceFile("src/components/layout/LedgerLoader.css");
 
 function stripComments(css: string): string {
   return css.replace(/\/\*[\s\S]*?\*\//g, "");
@@ -65,7 +66,9 @@ describe("InlineLoader", () => {
     motionState.reduceMotion = true;
     render(<InlineLoader label="Fetching transactions" />);
 
-    expect(screen.getByRole("status")).toHaveAttribute("data-reduced-motion");
+    const loader = screen.getByRole("status").querySelector(".ledger-loader");
+    expect(loader).toHaveAttribute("data-size", "small");
+    expect(loader).toHaveAttribute("data-reduced-motion");
     expect(screen.getByText("Fetching transactions…")).toBeInTheDocument();
   });
 });
@@ -83,12 +86,24 @@ describe("loading surface craft floor", () => {
     }
   });
 
-  it("keeps both loading surfaces flat instead of gradient-washed", () => {
-    expect(stripComments(inlineLoaderCss)).not.toMatch(/gradient\(/);
-    expect(stripComments(fullPageCss)).not.toMatch(/gradient\(/);
+  it("keeps every loading surface flat instead of gradient-washed", () => {
+    for (const css of [inlineLoaderCss, fullPageCss, ledgerLoaderCss]) {
+      expect(stripComments(css)).not.toMatch(/gradient\(/);
+    }
   });
 
   it("uses no bounce easing on the loading surfaces", () => {
-    expect(stripComments(fullPageCss)).not.toContain("cubic-bezier(0.34, 1.56, 0.64, 1)");
+    for (const css of [fullPageCss, ledgerLoaderCss]) {
+      expect(stripComments(css)).not.toContain("cubic-bezier(0.34, 1.56, 0.64, 1)");
+    }
+  });
+
+  it("sweeps the ledger with transform only, so it never triggers layout", () => {
+    const sweep = stripComments(ledgerLoaderCss).match(
+      /@keyframes ledger-sweep\s*\{([\s\S]*?)\n\}/,
+    );
+    expect(sweep?.[1]).toBeDefined();
+    const properties = Array.from((sweep?.[1] ?? "").matchAll(/([a-z-]+)\s*:/g), (m) => m[1]);
+    expect(new Set(properties)).toEqual(new Set(["transform"]));
   });
 });
