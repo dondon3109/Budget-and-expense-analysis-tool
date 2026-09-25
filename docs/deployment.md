@@ -543,7 +543,7 @@ gh workflow view bugfix.yml
 
 The `claude-review` status is not a required check. Auto-merge waits on the approval instead, and a merge through the maintainer bypass still has to pass CI.
 
-A `disarm` job turns auto-merge off at the start of every run that finds it on, so a new head is never armed before its own review. The report job also redacts Anthropic token-shaped text from the comment.
+While `AUTO_MERGE_PRS` is `true` the automation owns auto-merge: a `disarm` job turns it off with `AUTO_MERGE_TOKEN` at the start of every run that finds it on, including one a human enabled, so a new head is never armed before its own review. In shadow mode it leaves auto-merge alone. The report job also redacts Anthropic token-shaped text from the comment.
 
 The gate protects against the model and the diff it reads, not against a branch that edits the workflow: under `pull_request` a pull request runs its own copy of `pr-review.yml`. Only the maintainer and the bugfix bot can push branches here, and the bugfix bot's patches may not touch `.github/`.
 
