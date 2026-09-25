@@ -210,6 +210,12 @@ describe("SubscriptionsPage", () => {
       { key: "user:test-user", userId: "test-user" },
       expect.stringMatching(/^\d{4}-\d{2}-01$/),
     );
+    // The status action must come back once the mutation settles, not stay on "Updating…".
+    // The refetch still returns the active record, so the row settles back on "Cancel".
+    await waitFor(() => expect(screen.queryByText("Updating…")).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel Music streaming" })).toBeEnabled(),
+    );
   });
 
   it("scopes every subscription header and names the renewals table", async () => {

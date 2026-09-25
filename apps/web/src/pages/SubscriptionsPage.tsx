@@ -417,7 +417,7 @@ export function SubscriptionsPage() {
               ) : (
                 <SubscriptionTable
                   items={data.items}
-                  updatingId={statusMutation.variables?.id}
+                  updatingId={statusMutation.isPending ? statusMutation.variables.id : undefined}
                   deletingId={deleteMutation.variables}
                   onStatusChange={(id, status) => statusMutation.mutate({ id, status })}
                   onEdit={openEdit}
