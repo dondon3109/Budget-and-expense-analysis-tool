@@ -497,10 +497,14 @@ describe("smsNotificationParser", () => {
     });
 
     it("does not read 'at <time>' as the merchant", () => {
-      const text = "P500.00 was deducted from your account on 08/25/26 at 10:30 AM. Ref 123";
-      const result = parseSmsNotification(text, "2026-08-25");
+      for (const text of [
+        "P500.00 was deducted from your account on 08/25/26 at 10:30 AM. Ref 123",
+        "P500.00 was deducted from your account at 2026-08-25 10:30. Ref 123",
+      ]) {
+        const result = parseSmsNotification(text, "2026-08-25");
 
-      expect(result).toMatchObject({ type: "expense", payeeOrMerchant: "Unknown Merchant" });
+        expect(result).toMatchObject({ type: "expense", payeeOrMerchant: "Unknown Merchant" });
+      }
     });
 
     it("does not take a payee from a footer sentence", () => {
@@ -544,6 +548,31 @@ describe("smsNotificationParser", () => {
 
       expect(result).toMatchObject({ type: "income", payeeOrMerchant: "JUAN" });
     });
+
+    it.each([
+      "Payment of P800.00 received from JUAN DELA CRUZ. Ref 1",
+      "Received payment of P800.00 from JUAN DELA CRUZ.",
+    ])("reads a payment received from someone as income: %s", (text) => {
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "income", payeeOrMerchant: "JUAN DELA CRUZ" });
+    });
+
+    it("reads a salary paid to the user's account as income", () => {
+      const text = "Your salary of P25,000.00 has been paid to your account.";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "income", suggestedCategory: "Salary" });
+    });
+
+    it.each(["Refund of P500.00 for your cash out fee.", "Reversal of P1,000.00 withdrawal."])(
+      "reads a refund or reversal as income: %s",
+      (text) => {
+        const result = parseSmsNotification(text, "2026-08-25");
+
+        expect(result).toMatchObject({ type: "income", payeeOrMerchant: "Refund" });
+      },
+    );
 
     it("finds the merchant after 'at' when 'to' names the user's card", () => {
       const text = "P300.00 was charged to your card at STARBUCKS. Ref 1";

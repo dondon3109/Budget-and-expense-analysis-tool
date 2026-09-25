@@ -519,15 +519,31 @@ function amountSentence(
  * "deposit account", so the specific movements and the spending verbs are checked before the
  * income words. `label` names the payee when the text has none.
  */
-function classifyDirection(sentence: string): { type: SmsTransactionType; label?: string } | null {
+function classifyDirection(
+  sentence: string,
+  amountEnd: number,
+): { type: SmsTransactionType; label?: string } | null {
+  // A refund or reversal returns money even when it names what it reverses ("Reversal of
+  // P1,000.00 withdrawal", "Refund of P500.00 for your cash out fee").
+  if (/\b(?:refund(?:ed)?|reversal|reversed)\b/i.test(sentence)) {
+    return { type: "income", label: "Refund" };
+  }
   if (/\b(?:withdr(?:aw|awn|awal|ew)|cash[ \t-]?out|cashed[ \t]+out)\b/i.test(sentence)) {
     return { type: "transfer", label: "Cash withdrawal" };
   }
   if (/\b(?:cash[ \t-]?in|cashed[ \t]+in)\b/i.test(sentence)) {
     return { type: "income", label: "Cash in" };
   }
+  // "Your salary of P25,000.00 has been paid to your account" is money arriving.
+  if (/\b(?:paid|credited|deposited)[ \t]+(?:to|into)[ \t]+your\b/i.test(sentence)) {
+    return { type: "income", label: "Sender" };
+  }
   if (/\b(?:paid|purchased?|charged|spent|debited|deducted|bought)\b/i.test(sentence)) {
     return { type: "expense" };
+  }
+  // "Payment of P800.00 received from JUAN" names who paid the user.
+  if (/\breceived\b/i.test(sentence) && fallbackPayee(sentence, amountEnd, "income")) {
+    return { type: "income", label: "Sender" };
   }
   // A biller confirming a payment ("we received your payment", "your bill payment of P500 has
   // been received") is the user paying. "You received a payment from Juan" stays income.
@@ -538,11 +554,7 @@ function classifyDirection(sentence: string): { type: SmsTransactionType; label?
   ) {
     return { type: "expense" };
   }
-  if (
-    /\b(?:received|credited|deposited|deposit|refund(?:ed)?|reversal|reversed|incoming)\b/i.test(
-      sentence,
-    )
-  ) {
+  if (/\b(?:received|credited|deposited|deposit|incoming)\b/i.test(sentence)) {
     return { type: "income", label: "Sender" };
   }
   // Not "send": footers like "Never send your OTP to anyone" would turn a purchase into a transfer.
@@ -572,8 +584,8 @@ function fallbackPayee(
     if (!payee) continue;
     // "from your GCash wallet" or "to acct ending 1234" names the user's own account.
     if (/^(?:your|my|the|this|acct|account|card)\b/i.test(payee)) continue;
-    // "at 10:30 AM" or "at 08/25" is a timestamp, not a merchant.
-    if (/^\d{1,2}[:/-]\d/.test(payee)) continue;
+    // "at 10:30 AM", "at 08/25" or "at 2026-08-25" is a timestamp, not a merchant.
+    if (/^\d{1,4}[:/-]\d/.test(payee)) continue;
     return payee;
   }
   return null;
@@ -1379,7 +1391,7 @@ export function parseSmsNotification(
           broadMatch.index,
           broadMatch.index + broadMatch[0].length,
         );
-        const direction = classifyDirection(scope.sentence);
+        const direction = classifyDirection(scope.sentence, scope.amountEnd);
         const type: SmsTransactionType = direction?.type ?? "expense";
         const channel = inferChannel(rawText);
         const payee =
