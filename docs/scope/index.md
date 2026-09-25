@@ -8,7 +8,6 @@ Zoption is a privacy conscious budgeting product for people who want to understa
 | `apps/api`        | The Cloudflare Worker: tenant data, sync, billing, assistant, admin | not scoped yet               |                     |
 | `apps/mobile`     | The Expo native client for Android and iOS                          | not scoped yet               |                     |
 | `packages/shared` | Shared domain rules and types used by every app                     | not scoped yet               |                     |
-| `apps/ads`        | Remotion ad renderer, frozen until a campaign needs it              | not scoped yet               |                     |
 | `apps/stt-bridge` | Cloud Run speech bridge, frozen and unshipped                       | not scoped yet               |                     |
 
 Work that crosses apps belongs in a `_root` scope, which does not exist yet. Run `/scope <workspace>` to add one workspace at a time, or `/scope` with no argument to reconcile the scopes you already have.

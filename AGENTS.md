@@ -69,4 +69,3 @@ Read the one for the area you touch:
 - [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, CSP
 - [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, Android releases
 - [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, sync contracts
-- [apps/ads/AGENTS.md](apps/ads/AGENTS.md): Remotion ad renderer (frozen)
