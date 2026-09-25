@@ -89,7 +89,9 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
   again when NetInfo reports the device reachable, and a refresh token Supabase rejects signs the
   session out.
 - The optional app lock (`src/auth/app-lock.ts`, `AppLockGate`) holds a salted SHA-256 of the
-  user's app password in SecureStore under `zoption.app_lock.<subject>`. The gate covers the
+  user's 6-digit PIN in SecureStore under `zoption.app_lock.<subject>` (record version 2). A
+  version 1 record holds a free-text app password from earlier builds; the lock screen accepts it
+  once and then requires a new PIN before opening. The gate covers the
   signed-in stack on a cold start and after more than 60 seconds in the background. The app
   stays mounted underneath, so navigation and unsaved input survive. Five wrong attempts pause
   entry for 30 seconds. A user-initiated sign-out deletes the lock record.

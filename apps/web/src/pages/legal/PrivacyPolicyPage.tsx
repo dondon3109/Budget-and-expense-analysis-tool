@@ -53,8 +53,7 @@ export function PrivacyPolicyPage() {
             <strong>Android app on your device:</strong> a local copy of your financial workspace
             and a queue of changes not yet synced, kept in an encrypted database whose key is held
             in the device&apos;s secure storage; your sign-in session in that secure storage; and,
-            if you set an app lock, a salted hash of the app password rather than the password
-            itself.
+            if you set an app lock, a salted hash of the app lock PIN rather than the PIN itself.
           </li>
           <li>
             <strong>Plan and billing:</strong> plan tier, including Free or Zoption Pro, plus

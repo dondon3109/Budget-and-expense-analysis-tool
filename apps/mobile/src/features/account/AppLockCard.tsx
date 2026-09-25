@@ -1,30 +1,35 @@
 import { useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Modal, Text, View } from "react-native";
 
 import {
-  APP_LOCK_MIN_LENGTH,
+  PIN_LENGTH,
   clearAppLock,
-  hasAppLock,
+  readAppLockKind,
   setAppLock,
   verifyAppLock,
 } from "@/auth/app-lock";
-import { Button, Card, FormField, SkeletonLines } from "@/ui/components";
+import { PinPadScreen, PinSetupScreen } from "@/features/app-lock/PinPad";
+import { Button, Card, SkeletonLines } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
+
+/** Which full-screen PIN step is open. Changing and turning off check the current PIN first. */
+type PinStep = "create" | "verify-to-change" | "verify-to-turn-off";
 
 export function AppLockCard({ subject }: { subject: string }) {
   const theme = useZoptionTheme();
   const [enabled, setEnabled] = useState<boolean | null>(null);
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<PinStep | null>(null);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState<{ error?: string; success?: string }>({});
 
   useEffect(() => {
     let active = true;
-    hasAppLock(subject)
-      .then((locked) => {
-        if (active) setEnabled(locked);
+    readAppLockKind(subject)
+      .then((kind) => {
+        if (active) setEnabled(kind !== null);
       })
       .catch(() => {
         if (active) setFeedback({ error: "Zoption could not read the app lock setting." });
@@ -34,56 +39,57 @@ export function AppLockCard({ subject }: { subject: string }) {
     };
   }, [subject]);
 
-  const reset = (next: boolean, success: string): void => {
-    setEnabled(next);
-    setPassword("");
-    setConfirmation("");
-    setFeedback({ success });
+  const open = (next: PinStep): void => {
+    setPin("");
+    setPinError(null);
+    setFeedback({});
+    setStep(next);
   };
 
-  const turnOn = async (): Promise<void> => {
-    if (password.length < APP_LOCK_MIN_LENGTH) {
-      setFeedback({ error: `Use at least ${APP_LOCK_MIN_LENGTH} characters.` });
-      return;
-    }
-    if (password !== confirmation) {
-      setFeedback({ error: "The passwords do not match." });
-      return;
-    }
-    setBusy(true);
-    try {
-      await setAppLock(subject, password);
-      reset(true, "App lock is on. Zoption asks for this password when it opens.");
-    } catch {
-      setFeedback({ error: "Zoption could not save the app password. Try again." });
-    } finally {
-      setBusy(false);
-    }
+  const close = (): void => {
+    setPin("");
+    setPinError(null);
+    setStep(null);
   };
 
-  const turnOff = async (): Promise<void> => {
-    setBusy(true);
+  const verifyCurrent = async (attempt: string): Promise<void> => {
+    setChecking(true);
     try {
-      if (!(await verifyAppLock(subject, password))) {
-        setFeedback({ error: "That password is not correct." });
+      if (!(await verifyAppLock(subject, attempt))) {
+        setPin("");
+        setPinError("Incorrect PIN. Try again.");
+        return;
+      }
+      if (step === "verify-to-change") {
+        open("create");
         return;
       }
       await clearAppLock(subject);
-      reset(false, "App lock is off.");
+      setEnabled(false);
+      close();
+      setFeedback({ success: "App lock is off." });
     } catch {
-      setFeedback({ error: "Zoption could not turn off the app lock. Try again." });
+      setPin("");
+      setPinError("Zoption could not check the PIN. Try again.");
     } finally {
-      setBusy(false);
+      setChecking(false);
     }
   };
+
+  const cancel = (
+    <Button variant="quiet" onPress={close}>
+      Cancel
+    </Button>
+  );
 
   return (
     <Card accessibilityLabel="App lock settings">
       <View className="gap-3">
         <Text style={[typography.headline, { color: theme.colors.text }]}>App lock</Text>
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Ask for a password whenever Zoption opens or returns after a minute away. It works offline
-          and applies to this device only. If you forget it, sign out and sign in again.
+          Ask for a {PIN_LENGTH}-digit PIN whenever Zoption opens or returns after a minute away. It
+          works offline and applies to this device only. If you forget it, sign out and sign in
+          again.
         </Text>
         {feedback.error ? (
           <Text
@@ -104,52 +110,52 @@ export function AppLockCard({ subject }: { subject: string }) {
         {enabled === null ? (
           <SkeletonLines lines={1} />
         ) : enabled ? (
-          <>
-            <FormField
-              label="Current app password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="off"
-            />
-            <Button
-              variant="secondary"
-              loading={busy}
-              disabled={password.length === 0}
-              onPress={() => void turnOff()}
-            >
+          <View className="gap-2">
+            <Button variant="secondary" onPress={() => open("verify-to-change")}>
+              Change PIN
+            </Button>
+            <Button variant="quiet" onPress={() => open("verify-to-turn-off")}>
               Turn off app lock
             </Button>
-          </>
+          </View>
         ) : (
-          <>
-            <FormField
-              label="New app password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="off"
-              hint={`At least ${APP_LOCK_MIN_LENGTH} characters.`}
-            />
-            <FormField
-              label="Confirm app password"
-              value={confirmation}
-              onChangeText={setConfirmation}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="off"
-            />
-            <Button loading={busy} onPress={() => void turnOn()}>
-              Turn on app lock
-            </Button>
-          </>
+          <Button onPress={() => open("create")}>Turn on app lock</Button>
         )}
       </View>
+
+      <Modal animationType="slide" visible={step !== null} onRequestClose={close}>
+        {step === "create" ? (
+          <PinSetupScreen
+            footer={cancel}
+            onSave={async (next) => {
+              await setAppLock(subject, next);
+              setEnabled(true);
+              close();
+              setFeedback({
+                success: "App lock is on. Zoption asks for this PIN when it opens.",
+              });
+            }}
+          />
+        ) : step !== null ? (
+          <PinPadScreen
+            title="Enter your current PIN"
+            message={
+              step === "verify-to-change"
+                ? "Confirm it's you before choosing a new PIN."
+                : "Confirm it's you before turning off app lock."
+            }
+            value={pin}
+            onChange={(next) => {
+              setPinError(null);
+              setPin(next);
+              if (next.length === PIN_LENGTH) void verifyCurrent(next);
+            }}
+            error={pinError}
+            disabled={checking}
+            footer={cancel}
+          />
+        ) : null}
+      </Modal>
     </Card>
   );
 }
