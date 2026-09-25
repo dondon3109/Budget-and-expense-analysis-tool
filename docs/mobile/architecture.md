@@ -94,7 +94,9 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
   once and then requires a new PIN before opening. The gate covers the
   signed-in stack on a cold start and after more than 60 seconds in the background. The app
   stays mounted underneath, so navigation and unsaved input survive. Five wrong attempts pause
-  entry for 30 seconds. A user-initiated sign-out deletes the lock record.
+  entry for 30 seconds, on the lock screen and when Account settings asks for the current PIN.
+  Each relock mounts a fresh lock screen, so a half-finished legacy-password replacement starts
+  over from the password. A user-initiated sign-out deletes the lock record.
 - Startup migrations use the keyed connection's regular transaction. Expo's exclusive transaction helper creates another native connection and therefore cannot be used unless that connection is separately keyed.
 - D1 owns cross-device ordering through tenant-scoped integer sequences. Database triggers attach
   existing web/API writes to immutable mobile change rows, while the authenticated pull route exposes

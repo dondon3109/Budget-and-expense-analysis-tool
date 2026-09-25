@@ -7,7 +7,9 @@ import {
   readAppLockKind,
   setAppLock,
   verifyAppLock,
+  type AppLockKind,
 } from "@/auth/app-lock";
+import { COOLDOWN_MESSAGE, useAttemptLimit } from "@/features/app-lock/AppLockGate";
 import { PinPadScreen, PinSetupScreen } from "@/features/app-lock/PinPad";
 import { Button, Card, SkeletonLines } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -18,18 +20,21 @@ type PinStep = "create" | "verify-to-change" | "verify-to-turn-off";
 
 export function AppLockCard({ subject }: { subject: string }) {
   const theme = useZoptionTheme();
-  const [enabled, setEnabled] = useState<boolean | null>(null);
+  // undefined while loading, null when no lock is set.
+  const [lockKind, setLockKind] = useState<AppLockKind | null | undefined>(undefined);
   const [step, setStep] = useState<PinStep | null>(null);
   const [pin, setPin] = useState("");
   const [pinError, setPinError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  // The same limit as the lock screen, so an unlocked phone is no faster way to guess the PIN.
+  const attempts = useAttemptLimit();
   const [feedback, setFeedback] = useState<{ error?: string; success?: string }>({});
 
   useEffect(() => {
     let active = true;
     readAppLockKind(subject)
       .then((kind) => {
-        if (active) setEnabled(kind !== null);
+        if (active) setLockKind(kind);
       })
       .catch(() => {
         if (active) setFeedback({ error: "Zoption could not read the app lock setting." });
@@ -57,15 +62,16 @@ export function AppLockCard({ subject }: { subject: string }) {
     try {
       if (!(await verifyAppLock(subject, attempt))) {
         setPin("");
-        setPinError("Incorrect PIN. Try again.");
+        setPinError(attempts.recordFailure() ? COOLDOWN_MESSAGE : "Incorrect PIN. Try again.");
         return;
       }
+      attempts.reset();
       if (step === "verify-to-change") {
         open("create");
         return;
       }
       await clearAppLock(subject);
-      setEnabled(false);
+      setLockKind(null);
       close();
       setFeedback({ success: "App lock is off." });
     } catch {
@@ -107,9 +113,16 @@ export function AppLockCard({ subject }: { subject: string }) {
             {feedback.success}
           </Text>
         ) : null}
-        {enabled === null ? (
+        {lockKind === undefined ? (
           <SkeletonLines lines={1} />
-        ) : enabled ? (
+        ) : lockKind === "password" ? (
+          // The number pad cannot enter a legacy free-text password; the lock
+          // screen replaces it with a PIN the next time Zoption locks.
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Your app lock still uses a password. Zoption asks you to replace it with a PIN the next
+            time it locks.
+          </Text>
+        ) : lockKind === "pin" ? (
           <View className="gap-2">
             <Button variant="secondary" onPress={() => open("verify-to-change")}>
               Change PIN
@@ -129,7 +142,7 @@ export function AppLockCard({ subject }: { subject: string }) {
             footer={cancel}
             onSave={async (next) => {
               await setAppLock(subject, next);
-              setEnabled(true);
+              setLockKind("pin");
               close();
               setFeedback({
                 success: "App lock is on. Zoption asks for this PIN when it opens.",
@@ -151,7 +164,7 @@ export function AppLockCard({ subject }: { subject: string }) {
               if (next.length === PIN_LENGTH) void verifyCurrent(next);
             }}
             error={pinError}
-            disabled={checking}
+            disabled={checking || attempts.coolingDown}
             footer={cancel}
           />
         ) : null}

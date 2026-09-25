@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type * as NodeCrypto from "crypto";
-import { Text } from "react-native";
+import { AppState, Text, type AppStateStatus } from "react-native";
 
 const mockSecureValues = new Map<string, string>();
 
@@ -39,7 +39,7 @@ jest.mock("@/auth/session-state", () => ({
 import { clearAppLock, readAppLockKind, setAppLock, verifyAppLock } from "@/auth/app-lock";
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 
-import { AppLockGate, MAX_ATTEMPTS } from "./AppLockGate";
+import { AppLockGate, MAX_ATTEMPTS, RELOCK_AFTER_MS } from "./AppLockGate";
 
 const subject = "08060c19-8a55-4046-a2e7-7384808dd81c";
 
@@ -150,6 +150,42 @@ describe("app lock", () => {
     await waitFor(() => expect(screen.queryByText("Confirm your PIN")).toBeNull());
     await expect(readAppLockKind(subject)).resolves.toBe("pin");
     await expect(verifyAppLock(subject, "135790")).resolves.toBe(true);
+  });
+
+  it("asks for the legacy password again when it relocks during PIN replacement", async () => {
+    let appStateListener: ((state: AppStateStatus) => void) | undefined;
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+      appStateListener = listener;
+      return { remove: jest.fn() };
+    });
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000);
+    mockSecureValues.set(
+      `zoption.app_lock.${subject}`,
+      JSON.stringify({
+        version: 1,
+        salt: "legacy",
+        hash: jest
+          .requireActual<typeof NodeCrypto>("crypto")
+          .createHash("sha256")
+          .update("legacy:correct horse")
+          .digest("hex"),
+      }),
+    );
+    await renderGate();
+
+    await fireEvent.changeText(screen.getByLabelText("App password"), "correct horse");
+    await fireEvent.press(screen.getByText("Continue"));
+    expect(await screen.findByText("Create a PIN")).toBeTruthy();
+
+    await act(async () => {
+      appStateListener?.("background");
+      now.mockReturnValue(1_000 + RELOCK_AFTER_MS + 1);
+      appStateListener?.("active");
+    });
+
+    expect(await screen.findByLabelText("App password")).toBeTruthy();
+    expect(screen.queryByText("Create a PIN")).toBeNull();
+    jest.restoreAllMocks();
   });
 
   it("asks before discarding unsynced changes when signing out from the lock", async () => {

@@ -22,7 +22,36 @@ export const RELOCK_AFTER_MS = 60_000;
 export const MAX_ATTEMPTS = 5;
 export const ATTEMPT_COOLDOWN_MS = 30_000;
 
+export const COOLDOWN_MESSAGE = `Too many attempts. Try again in ${ATTEMPT_COOLDOWN_MS / 1000} seconds.`;
+
 type LockState = "checking" | "unlocked" | AppLockKind;
+
+/** Counts wrong entries in a row and pauses entry for ATTEMPT_COOLDOWN_MS after MAX_ATTEMPTS. */
+export function useAttemptLimit() {
+  const [coolingDown, setCoolingDown] = useState(false);
+  const failuresRef = useRef(0);
+
+  useEffect(() => {
+    if (!coolingDown) return;
+    const timer = setTimeout(() => setCoolingDown(false), ATTEMPT_COOLDOWN_MS);
+    return () => clearTimeout(timer);
+  }, [coolingDown]);
+
+  return {
+    coolingDown,
+    /** Records a wrong entry and returns true when it starts the cooldown. */
+    recordFailure: (): boolean => {
+      failuresRef.current += 1;
+      if (failuresRef.current < MAX_ATTEMPTS) return false;
+      failuresRef.current = 0;
+      setCoolingDown(true);
+      return true;
+    },
+    reset: (): void => {
+      failuresRef.current = 0;
+    },
+  };
+}
 
 /**
  * Holds the signed-in app behind the user's PIN when they set one. Children
@@ -32,6 +61,10 @@ type LockState = "checking" | "unlocked" | AppLockKind;
 export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: string }>) {
   const theme = useZoptionTheme();
   const [lockState, setLockState] = useState<LockState>("checking");
+  // Keys the lock screen so every relock starts it fresh. Without this, a relock
+  // while the lock is already showing (for example mid legacy-password
+  // replacement, after the old password was accepted) would keep that state.
+  const [lockGeneration, setLockGeneration] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -59,11 +92,15 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
       const away = Date.now() - backgroundedAt;
       backgroundedAt = null;
       if (away < RELOCK_AFTER_MS) return;
+      const relock = (kind: AppLockKind): void => {
+        setLockState(kind);
+        setLockGeneration((generation) => generation + 1);
+      };
       void readAppLockKind(subject)
         .then((kind) => {
-          if (kind) setLockState(kind);
+          if (kind) relock(kind);
         })
-        .catch(() => setLockState("pin"));
+        .catch(() => relock("pin"));
     });
     return () => subscription.remove();
   }, [subject]);
@@ -83,6 +120,7 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
       >
         {locked ? (
           <AppLockScreen
+            key={lockGeneration}
             subject={subject}
             kind={lockState}
             onUnlock={() => setLockState("unlocked")}
@@ -107,25 +145,19 @@ function AppLockScreen({
   const [secret, setSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const [coolingDown, setCoolingDown] = useState(false);
-  const failuresRef = useRef(0);
+  const attempts = useAttemptLimit();
+  const coolingDown = attempts.coolingDown;
   // A legacy app password unlocks once, then must be replaced with a PIN.
   const [replacingPassword, setReplacingPassword] = useState(false);
   const [signOutStep, setSignOutStep] = useState<"idle" | "confirm" | "discard">("idle");
   const [signingOut, setSigningOut] = useState(false);
-
-  useEffect(() => {
-    if (!coolingDown) return;
-    const timer = setTimeout(() => setCoolingDown(false), ATTEMPT_COOLDOWN_MS);
-    return () => clearTimeout(timer);
-  }, [coolingDown]);
 
   const unlock = async (attempt: string): Promise<void> => {
     if (checking || coolingDown || attempt.length === 0) return;
     setChecking(true);
     try {
       if (await verifyAppLock(subject, attempt)) {
-        failuresRef.current = 0;
+        attempts.reset();
         setSecret("");
         setError(null);
         if (kind === "password") {
@@ -135,12 +167,9 @@ function AppLockScreen({
         onUnlock();
         return;
       }
-      failuresRef.current += 1;
       setSecret("");
-      if (failuresRef.current >= MAX_ATTEMPTS) {
-        failuresRef.current = 0;
-        setCoolingDown(true);
-        setError(`Too many attempts. Try again in ${ATTEMPT_COOLDOWN_MS / 1000} seconds.`);
+      if (attempts.recordFailure()) {
+        setError(COOLDOWN_MESSAGE);
         return;
       }
       setError(kind === "pin" ? "Incorrect PIN. Try again." : "That password is not correct.");
