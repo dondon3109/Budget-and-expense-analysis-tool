@@ -16,6 +16,10 @@ All notable product changes are documented here.
 - The mobile Home screen leads with Total Balance, then quick actions, safe to spend, this month, cash flow, spending, budgets, and recent activity; the forecast and remittance calculator sit at the bottom. Total Balance shows a bar splitting your peso balance across accounts, each account's type icon and share of your assets, the total owed, and any USD held beside the peso total. This month compares money in and out as bars, spending by category adds a combined share bar, and the cash flow chart shows income and expense totals for the selected range.
 - On the mobile More tab, Theme and Voice language sit under Preferences as folded rows that show the current choice; tap one to open its options.
 
+### Fixed
+
+- Quick Paste from SMS reads more alerts correctly. A GCash withdrawal or cash out is filled in as a transfer named "Cash withdrawal", a cash in as income, and GCash messages that say "You have successfully paid, sent, or received" are recognised. For alerts without a known format, the merchant is taken from the "to", "at", or "from" part of the message instead of showing "Unknown Merchant". Purchases paid from a wallet such as GCash are no longer suggested the Transfers / Cash In category.
+
 ## 2.45.1 — 2026-09-25
 
 ### Fixed
