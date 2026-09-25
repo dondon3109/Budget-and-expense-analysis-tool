@@ -1,3 +1,4 @@
+import type { InfiniteData } from "@tanstack/react-query";
 import type {
   AccountRecord,
   CategoryRecord,
@@ -108,42 +109,96 @@ export function optimisticTransaction(
   };
 }
 
+/** The Transactions page's infinite ledger: one entry per loaded API page. */
+export type TransactionFeed = InfiniteData<TransactionPage>;
+
+function withTotal(page: TransactionPage, total: number): TransactionPage {
+  return { ...page, total, totalPages: Math.max(1, Math.ceil(total / page.pageSize)) };
+}
+
+/**
+ * Places a saved row in the loaded page it sorts into. A row that sorts past everything
+ * loaded is left for the next page read, unless the ledger is fully loaded.
+ */
 export function saveOptimisticTransaction(
-  page: TransactionPage | undefined,
+  feed: TransactionFeed | undefined,
   query: TransactionListQuery,
   item: TransactionListItem,
   previousId?: string,
-): TransactionPage | undefined {
-  if (!page) return page;
+): TransactionFeed | undefined {
+  if (!feed || feed.pages.length === 0) return feed;
   const id = previousId ?? item.id;
-  const existed = page.items.some((candidate) => candidate.id === id);
-  const items = page.items.filter((candidate) => candidate.id !== id);
-  const shouldInsert = transactionMatchesQuery(item, query) && (existed || query.page === 1);
-  if (shouldInsert) items.push(item);
-  items.sort((left, right) => compareTransactions(left, right, query));
-
-  const total = Math.max(
-    0,
-    page.total + (existed && !shouldInsert ? -1 : !existed && shouldInsert ? 1 : 0),
-  );
-  return {
+  const existed = feed.pages.some((page) => page.items.some((candidate) => candidate.id === id));
+  const pages = feed.pages.map((page) => ({
     ...page,
-    items: items.slice(0, page.pageSize),
-    total,
-    totalPages: Math.max(1, Math.ceil(total / page.pageSize)),
+    items: page.items.filter((candidate) => candidate.id !== id),
+  }));
+
+  let inserted = false;
+  if (transactionMatchesQuery(item, query)) {
+    const lastPage = pages[pages.length - 1]!;
+    const fullyLoaded = lastPage.page >= lastPage.totalPages;
+    const index = pages.findIndex((page) =>
+      page.items.some((candidate) => compareTransactions(item, candidate, query) < 0),
+    );
+    const target = index === -1 && fullyLoaded ? pages.length - 1 : index;
+    if (target !== -1) {
+      const page = pages[target]!;
+      pages[target] = {
+        ...page,
+        items: [...page.items, item].sort((left, right) => compareTransactions(left, right, query)),
+      };
+      inserted = true;
+    }
+  }
+
+  const delta = existed && !inserted ? -1 : !existed && inserted ? 1 : 0;
+  return {
+    ...feed,
+    pages: pages.map((page) => withTotal(page, Math.max(0, page.total + delta))),
   };
 }
 
 export function deleteOptimisticTransaction(
-  page: TransactionPage | undefined,
+  feed: TransactionFeed | undefined,
   id: string,
-): TransactionPage | undefined {
-  if (!page || !page.items.some((item) => item.id === id)) return page;
-  const total = Math.max(0, page.total - 1);
+): TransactionFeed | undefined {
+  if (!feed?.pages.some((page) => page.items.some((item) => item.id === id))) return feed;
   return {
-    ...page,
-    items: page.items.filter((item) => item.id !== id),
-    total,
-    totalPages: Math.max(1, Math.ceil(total / page.pageSize)),
+    ...feed,
+    pages: feed.pages.map((page) =>
+      withTotal(
+        { ...page, items: page.items.filter((item) => item.id !== id) },
+        Math.max(0, page.total - 1),
+      ),
+    ),
   };
+}
+
+export function mapFeedTransactions(
+  feed: TransactionFeed | undefined,
+  update: (item: TransactionListItem) => TransactionListItem,
+): TransactionFeed | undefined {
+  if (!feed) return feed;
+  return {
+    ...feed,
+    pages: feed.pages.map((page) => ({ ...page, items: page.items.map(update) })),
+  };
+}
+
+/**
+ * Flattens the loaded pages. Offset paging can repeat a row at a page boundary when the
+ * ledger changes between reads, so the first occurrence wins.
+ */
+export function feedTransactions(feed: TransactionFeed | undefined): TransactionListItem[] {
+  const seen = new Set<string>();
+  const items: TransactionListItem[] = [];
+  for (const page of feed?.pages ?? []) {
+    for (const item of page.items) {
+      if (seen.has(item.id)) continue;
+      seen.add(item.id);
+      items.push(item);
+    }
+  }
+  return items;
 }

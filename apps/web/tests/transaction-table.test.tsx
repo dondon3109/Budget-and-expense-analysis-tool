@@ -37,6 +37,7 @@ function renderTable(
     sortDirection?: "asc" | "desc";
     items?: TransactionListItem[];
     selectedIds?: ReadonlySet<string>;
+    groupByDay?: boolean;
   } = {},
 ) {
   const onSort = vi.fn();
@@ -54,6 +55,7 @@ function renderTable(
       onRequestDelete={onRequestDelete}
       onToggleSelect={onToggleSelect}
       onToggleSelectAll={onToggleSelectAll}
+      groupByDay={options.groupByDay}
     />,
   );
   return { onSort, onToggleSelect, onToggleSelectAll, onRequestDelete };
@@ -99,6 +101,31 @@ describe("TransactionTable sorting", () => {
   });
 });
 
+describe("TransactionTable day groups", () => {
+  it("heads each day with its date and that day's income and expenses", () => {
+    const earlier = { ...item, id: "transaction-3", date: "2026-07-28", amountMinor: -4000 };
+    renderTable({ items: [item, incomeItem, earlier], groupByDay: true });
+
+    const groups = screen.getByRole("table", { name: "Transactions" }).querySelectorAll("tbody");
+    expect(groups).toHaveLength(2);
+
+    const first = screen.getByRole("rowheader", { name: "Wednesday, July 29, 2026" });
+    expect(first).toHaveTextContent("Income₱5,000");
+    expect(first).toHaveTextContent("Expenses₱125");
+    expect(groups[0]!.querySelectorAll("tr[data-ledger-row]")).toHaveLength(2);
+
+    expect(screen.getByRole("rowheader", { name: "Tuesday, July 28, 2026" })).toHaveTextContent(
+      "Income₱0",
+    );
+  });
+
+  it("keeps one flat body when not grouped", () => {
+    renderTable({ items: [item, incomeItem] });
+
+    expect(screen.queryAllByRole("rowheader")).toHaveLength(0);
+  });
+});
+
 describe("TransactionTable keyboard navigation", () => {
   it("makes body rows programmatically focusable without adding tab stops", () => {
     renderTable({ items: [item, incomeItem] });
@@ -116,7 +143,7 @@ describe("TransactionTable selection", () => {
     const { onToggleSelect } = renderTable({ items: [item, incomeItem] });
 
     expect(
-      screen.getByRole("checkbox", { name: "Select all transactions on this page" }),
+      screen.getByRole("checkbox", { name: "Select all loaded transactions" }),
     ).not.toBeChecked();
     fireEvent.click(screen.getByRole("checkbox", { name: "Select Groceries" }));
     expect(onToggleSelect).toHaveBeenCalledWith("transaction-1");
@@ -127,7 +154,7 @@ describe("TransactionTable selection", () => {
 
     expect(screen.getByRole("checkbox", { name: "Select Groceries" })).toBeChecked();
     const selectAll = screen.getByRole("checkbox", {
-      name: "Select all transactions on this page",
+      name: "Select all loaded transactions",
     }) as HTMLInputElement;
     expect(selectAll.indeterminate).toBe(true);
     expect(selectAll).not.toBeChecked();
@@ -136,7 +163,7 @@ describe("TransactionTable selection", () => {
   it("reports the select-all toggle", () => {
     const { onToggleSelectAll } = renderTable();
 
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select all transactions on this page" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select all loaded transactions" }));
 
     expect(onToggleSelectAll).toHaveBeenCalledTimes(1);
   });

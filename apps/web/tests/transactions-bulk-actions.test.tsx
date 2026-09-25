@@ -356,7 +356,7 @@ describe("TransactionsPage bulk actions", () => {
     await screen.findByText("Groceries");
 
     const selectAll = screen.getByRole("checkbox", {
-      name: "Select all transactions on this page",
+      name: "Select all loaded transactions",
     }) as HTMLInputElement;
     fireEvent.click(selectAll);
     expect(screen.getByText("2 selected")).toBeInTheDocument();
@@ -424,7 +424,7 @@ describe("TransactionsPage shortcuts", () => {
 describe("TransactionsPage ledger row navigation", () => {
   function rows() {
     return Array.from(
-      screen.getByRole("table", { name: "Transactions" }).querySelectorAll("tbody tr"),
+      screen.getByRole("table", { name: "Transactions" }).querySelectorAll("tr[data-ledger-row]"),
     );
   }
 

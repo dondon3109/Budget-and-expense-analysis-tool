@@ -9,7 +9,7 @@
 - Fail-closed authenticated application routes and Worker APIs.
 - Per-user D1 tenant resolution and atomic bootstrap of an account plus starter categories only.
 - Empty first-use onboarding with import and manual-entry actions.
-- Manual transaction create/edit/delete, category management, account/category/type/date/search filters, sorting, pagination, and filter-matched CSV export.
+- Manual transaction create/edit/delete, category management, account/category/type/date/search filters, sorting, day-grouped infinite scrolling, and filter-matched CSV export.
 - Preview-first CSV mapping, size/row limits, field-specific errors, duplicate prevention, one-time expiring commit tokens, and atomic persistence.
 - Integer-centavo PHP rules, ISO dates, UTC timestamps, transfer exclusion, stable fingerprints, tenant scope, and owner-first indexes.
 - Category spending, six-month money-in/out trend, budget-vs-actual, savings rate, and recurring-expense insights.

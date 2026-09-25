@@ -6,12 +6,15 @@ import {
   type TransactionInput,
   type TransactionListItem,
   type TransactionListQuery,
-  type TransactionPage,
 } from "@zoption/shared";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ChevronLeft,
-  ChevronRight,
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   Download,
   FolderCog,
   MessageSquare,
@@ -59,8 +62,11 @@ import { queryKeys } from "../lib/queryKeys";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import {
   deleteOptimisticTransaction,
+  feedTransactions,
+  mapFeedTransactions,
   optimisticTransaction,
   saveOptimisticTransaction,
+  type TransactionFeed,
 } from "../lib/optimisticTransactions";
 import { userWorkspace } from "../lib/workspace";
 import {
@@ -79,9 +85,10 @@ import {
 } from "../transactions/sortPreference";
 import "./TransactionsPage.css";
 
+// The ledger scrolls continuously: `page` stays 1 here and each loaded page supplies its own.
 const initialQuery: TransactionListQuery = {
   page: 1,
-  pageSize: 10,
+  pageSize: 50,
   ...DEFAULT_TRANSACTION_SORT,
 };
 
@@ -292,9 +299,13 @@ export function TransactionsPage() {
     queryKey: queryKeys.debts(workspace),
     queryFn: () => getDebts(workspace),
   });
-  const transactionsQuery = useQuery({
-    queryKey: queryKeys.transactions(workspace, query),
-    queryFn: () => getTransactions(workspace, query),
+  const feedKey = queryKeys.transactionFeed(workspace, query);
+  const transactionsQuery = useInfiniteQuery({
+    queryKey: feedKey,
+    queryFn: ({ pageParam }) => getTransactions(workspace, { ...query, page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.page < lastPage.totalPages ? lastPage.page + 1 : undefined,
     placeholderData: keepPreviousData,
   });
 
@@ -305,7 +316,7 @@ export function TransactionsPage() {
       const preference = readTransactionSortPreference({
         getItem: () => event.newValue,
       });
-      setQuery((current) => ({ ...current, ...preference, page: 1 }));
+      setQuery((current) => ({ ...current, ...preference }));
     }
 
     window.addEventListener("storage", syncTransactionSort);
@@ -360,7 +371,7 @@ export function TransactionsPage() {
     setQuery((current) =>
       sameFilters(filterStateOf(current), fromUrl)
         ? current
-        : { ...current, ...EMPTY_FILTERS, ...fromUrl, page: 1 },
+        : { ...current, ...EMPTY_FILTERS, ...fromUrl },
     );
     setSearchDraft((current) => {
       const next = searchParams.get("search") ?? "";
@@ -376,7 +387,7 @@ export function TransactionsPage() {
 
     searchTimerRef.current = setTimeout(() => {
       setQuery((current) =>
-        current.search === nextSearch ? current : { ...current, search: nextSearch, page: 1 },
+        current.search === nextSearch ? current : { ...current, search: nextSearch },
       );
       searchTimerRef.current = undefined;
     }, SEARCH_DEBOUNCE_MS);
@@ -389,7 +400,7 @@ export function TransactionsPage() {
   // A hidden row must never be acted on: drop the selection whenever the visible set changes.
   useEffect(() => {
     setSelectedIds((current) => (current.size === 0 ? current : new Set()));
-  }, [filtersKey, query.page]);
+  }, [filtersKey]);
 
   const refreshProductData = async () => {
     await Promise.all([
@@ -418,9 +429,9 @@ export function TransactionsPage() {
         debtsQuery.data?.items ?? [],
         form?.createdAt,
       );
-      const snapshot = await updateOptimistically<TransactionPage>(
+      const snapshot = await updateOptimistically<TransactionFeed>(
         queryClient,
-        queryKeys.transactions(workspace, query),
+        feedKey,
         (current) => saveOptimisticTransaction(current, query, item, form?.id),
       );
       setFormOpen(false);
@@ -433,9 +444,8 @@ export function TransactionsPage() {
       setFormOpen(true);
     },
     onSuccess: (saved, _input, context) => {
-      queryClient.setQueryData<TransactionPage>(
-        queryKeys.transactions(workspace, query),
-        (current) => saveOptimisticTransaction(current, query, saved, context.id),
+      queryClient.setQueryData<TransactionFeed>(feedKey, (current) =>
+        saveOptimisticTransaction(current, query, saved, context.id),
       );
     },
     onSettled: () => {
@@ -447,12 +457,12 @@ export function TransactionsPage() {
       for (const item of items) await deleteTransaction(workspace, item.id);
     },
     onMutate: async (items) => {
-      const snapshot = await updateOptimistically<TransactionPage>(
+      const snapshot = await updateOptimistically<TransactionFeed>(
         queryClient,
-        queryKeys.transactions(workspace, query),
+        feedKey,
         (current) =>
-          items.reduce<TransactionPage | undefined>(
-            (page, item) => deleteOptimisticTransaction(page, item.id),
+          items.reduce<TransactionFeed | undefined>(
+            (feed, item) => deleteOptimisticTransaction(feed, item.id),
             current,
           ),
       );
@@ -476,12 +486,12 @@ export function TransactionsPage() {
       }
     },
     onMutate: async (items) => {
-      const snapshot = await updateOptimistically<TransactionPage>(
+      const snapshot = await updateOptimistically<TransactionFeed>(
         queryClient,
-        queryKeys.transactions(workspace, query),
+        feedKey,
         (current) =>
-          items.reduce<TransactionPage | undefined>(
-            (page, item) => saveOptimisticTransaction(page, query, item),
+          items.reduce<TransactionFeed | undefined>(
+            (feed, item) => saveOptimisticTransaction(feed, query, item),
             current,
           ),
       );
@@ -502,26 +512,21 @@ export function TransactionsPage() {
     onMutate: async ({ ids, categoryId }) => {
       const category = categoriesQuery.data?.find((candidate) => candidate.id === categoryId);
       const idSet = new Set(ids);
-      const snapshot = await updateOptimistically<TransactionPage>(
+      const snapshot = await updateOptimistically<TransactionFeed>(
         queryClient,
-        queryKeys.transactions(workspace, query),
+        feedKey,
         (current) =>
-          current
-            ? {
-                ...current,
-                items: current.items.map((item) =>
-                  idSet.has(item.id) && category
-                    ? {
-                        ...item,
-                        categoryId,
-                        categoryName: category.name,
-                        categoryColor: category.color,
-                        categoryIconEmoji: category.iconEmoji ?? null,
-                      }
-                    : item,
-                ),
-              }
-            : current,
+          mapFeedTransactions(current, (item) =>
+            idSet.has(item.id) && category
+              ? {
+                  ...item,
+                  categoryId,
+                  categoryName: category.name,
+                  categoryColor: category.color,
+                  categoryIconEmoji: category.iconEmoji ?? null,
+                }
+              : item,
+          ),
       );
       return { snapshot };
     },
@@ -539,7 +544,10 @@ export function TransactionsPage() {
   const accounts = accountsQuery.data ?? [];
   const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const debts = debtsQuery.data?.items ?? [];
-  const page = transactionsQuery.data;
+  const feed = transactionsQuery.data;
+  const items = useMemo(() => feedTransactions(feed), [feed]);
+  // The first page carries the freshest total; later pages may have been read before an edit.
+  const total = feed?.pages[0]?.total;
   const hasFilters = Boolean(
     searchDraft.trim() ||
     query.search ||
@@ -550,8 +558,8 @@ export function TransactionsPage() {
     query.to,
   );
   const selectedItems = useMemo(
-    () => (page?.items ?? []).filter((item) => selectedIds.has(item.id)),
-    [page?.items, selectedIds],
+    () => items.filter((item) => selectedIds.has(item.id)),
+    [items, selectedIds],
   );
   const selectedKinds = useMemo(
     () => new Set(selectedItems.map((item) => item.kind)),
@@ -565,6 +573,25 @@ export function TransactionsPage() {
     if (!deleteMutation.isPending) return undefined;
     return new Set((deleteMutation.variables ?? []).map((item) => item.id));
   }, [deleteMutation.isPending, deleteMutation.variables]);
+
+  // Loads the next page as the end of the ledger nears the viewport, the way the mobile list
+  // scrolls. The footer's Load more button stays as the keyboard and fallback path.
+  const feedEndRef = useRef<HTMLElement>(null);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = transactionsQuery;
+  useEffect(() => {
+    const end = feedEndRef.current;
+    if (!end || !hasNextPage || isFetchingNextPage || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) void fetchNextPage();
+      },
+      { rootMargin: "600px 0px" },
+    );
+    observer.observe(end);
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, items.length]);
 
   useEffect(() => {
     setBulkCategoryId((current) =>
@@ -582,13 +609,13 @@ export function TransactionsPage() {
 
   // Keep the selection to rows that are still on screen.
   useEffect(() => {
-    const visible = new Set((page?.items ?? []).map((item) => item.id));
+    const visible = new Set(items.map((item) => item.id));
     setSelectedIds((current) => {
       if (current.size === 0) return current;
       const next = new Set([...current].filter((id) => visible.has(id)));
       return next.size === current.size ? current : next;
     });
-  }, [page?.items]);
+  }, [items]);
 
   function openCreate() {
     setEditing(undefined);
@@ -672,14 +699,14 @@ export function TransactionsPage() {
   };
 
   function updateFilters(change: Partial<TransactionListQuery>) {
-    setQuery((current) => ({ ...current, ...change, page: 1 }));
+    setQuery((current) => ({ ...current, ...change }));
   }
 
   function applySearchImmediately() {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     const nextSearch = normalizeSearch(searchDraft);
     setQuery((current) =>
-      current.search === nextSearch ? current : { ...current, search: nextSearch, page: 1 },
+      current.search === nextSearch ? current : { ...current, search: nextSearch },
     );
   }
 
@@ -705,7 +732,7 @@ export function TransactionsPage() {
     searchTimerRef.current = undefined;
     setSearchDraft(view.filters.search ?? "");
     // Same state path as manual filtering, so the URL effect writes the filter params.
-    setQuery((current) => ({ ...current, ...view.filters, page: 1 }));
+    setQuery((current) => ({ ...current, ...view.filters }));
     setActiveViewId(view.id);
   }
 
@@ -740,10 +767,9 @@ export function TransactionsPage() {
   }
 
   function toggleSelectAll() {
-    const visible = page?.items ?? [];
     setSelectedIds((current) => {
-      const allSelected = visible.length > 0 && visible.every((item) => current.has(item.id));
-      return allSelected ? new Set() : new Set(visible.map((item) => item.id));
+      const allSelected = items.length > 0 && items.every((item) => current.has(item.id));
+      return allSelected ? new Set() : new Set(items.map((item) => item.id));
     });
   }
 
@@ -781,7 +807,7 @@ export function TransactionsPage() {
     sortDirection: TransactionListQuery["sortDirection"],
   ) {
     persistTransactionSortPreference({ sortBy, sortDirection });
-    setQuery((current) => ({ ...current, page: 1, sortBy, sortDirection }));
+    setQuery((current) => ({ ...current, sortBy, sortDirection }));
   }
 
   function handleSort(sortBy: TransactionListQuery["sortBy"]) {
@@ -799,13 +825,6 @@ export function TransactionsPage() {
     SORT_OPTIONS.find(
       (option) => option.sortBy === query.sortBy && option.sortDirection === query.sortDirection,
     ) ?? SORT_OPTIONS[0]!;
-
-  const paginationRange = page
-    ? {
-        start: (page.page - 1) * page.pageSize + 1,
-        end: Math.min((page.page - 1) * page.pageSize + page.items.length, page.total),
-      }
-    : { start: 0, end: 0 };
 
   async function handleExport() {
     setExporting(true);
@@ -901,12 +920,12 @@ export function TransactionsPage() {
           <div className="transactions-panel-heading">
             <div>
               <strong>
-                {page
-                  ? `${page.total} transaction${page.total === 1 ? "" : "s"}`
+                {total !== undefined
+                  ? `${total} transaction${total === 1 ? "" : "s"}`
                   : "Loading transactions"}
               </strong>
               <span>
-                {transactionsQuery.isFetching && page
+                {transactionsQuery.isFetching && feed
                   ? "Refreshing list…"
                   : "Personal workspace · Philippine pesos"}
               </span>
@@ -1080,9 +1099,9 @@ export function TransactionsPage() {
               </button>
             </div>
           )}
-          {page && page.items.length === 0 && (
+          {feed && items.length === 0 && (
             <div className="empty-transactions">
-              {/* Takes over from the pagination status, which is not rendered for an empty page. */}
+              {/* Takes over from the ledger status, which is not rendered for an empty list. */}
               <strong role="status">No transactions match these filters.</strong>
               <p>Clear the filters or add a new transaction to your workspace.</p>
               <button className="button primary" type="button" onClick={openCreate}>
@@ -1090,10 +1109,11 @@ export function TransactionsPage() {
               </button>
             </div>
           )}
-          {page && page.items.length > 0 && (
+          {feed && items.length > 0 && (
             <>
               <TransactionTable
-                items={page.items}
+                items={items}
+                groupByDay={query.sortBy === "date"}
                 sortBy={query.sortBy}
                 sortDirection={query.sortDirection}
                 selectedIds={selectedIds}
@@ -1104,33 +1124,22 @@ export function TransactionsPage() {
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}
               />
-              <footer className="table-pagination">
+              <footer ref={feedEndRef} className="transaction-feed-end">
                 {/* Sole announcement point for the ledger position; the bulk-selection and undo
                     statuses elsewhere in the panel announce different things. */}
-                <span className="table-pagination-range" role="status">
-                  {`Showing ${paginationRange.start}–${paginationRange.end} of ${page.total}`}
-                  <span className="table-pagination-pages">
-                    {` · Page ${page.page} of ${page.totalPages}`}
-                  </span>
+                <span className="transaction-feed-status" role="status">
+                  {`Showing ${items.length} of ${total ?? items.length}`}
                 </span>
-                <div>
+                {transactionsQuery.hasNextPage && (
                   <button
+                    className="button secondary"
                     type="button"
-                    onClick={() => setQuery((current) => ({ ...current, page: current.page - 1 }))}
-                    disabled={page.page <= 1}
-                    aria-label="Previous page"
+                    onClick={() => void transactionsQuery.fetchNextPage()}
+                    disabled={transactionsQuery.isFetchingNextPage}
                   >
-                    <ChevronLeft size={17} />
+                    {transactionsQuery.isFetchingNextPage ? "Loading…" : "Load more"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setQuery((current) => ({ ...current, page: current.page + 1 }))}
-                    disabled={page.page >= page.totalPages}
-                    aria-label="Next page"
-                  >
-                    <ChevronRight size={17} />
-                  </button>
-                </div>
+                )}
               </footer>
             </>
           )}
@@ -1235,7 +1244,7 @@ export function TransactionsPage() {
         onApply={handleApplySms}
         categories={categories}
         accounts={accounts}
-        existingTransactions={page?.items}
+        existingTransactions={items}
       />
     </AppShell>
   );
