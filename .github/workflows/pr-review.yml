@@ -174,14 +174,18 @@ jobs:
       - name: Check the verdict shape
         run: |
           set -euo pipefail
+          # The same limits as the review job's --json-schema, checked again on this side of the
+          # trust boundary because the artifact is model output.
           jq -e '
             (.verdict == "approve" or .verdict == "changes_requested")
-            and (.summary | type == "string")
+            and (.summary | type == "string" and length <= 1500)
             and (.titleTypeCorrect | type == "boolean")
             and (.findings | type == "array" and length <= 20)
             and all(.findings[];
               (.severity == "blocker" or .severity == "major" or .severity == "minor")
-              and (.file | type == "string") and (.message | type == "string"))
+              and (.file | type == "string" and length <= 300)
+              and (.message | type == "string" and length <= 1000)
+              and (.line == null or (.line | type == "number" and . == floor)))
           ' review-artifact/verdict.json > /dev/null
 
       - name: Decide auto-merge eligibility
@@ -235,7 +239,7 @@ jobs:
           # an Anthropic token that slipped past the review job's /proc deny rules is not published.
           jq -r --arg note "${NOTE}" --arg sha "${HEAD_SHA}" '
             "<!-- claude-review -->\n### Claude review: \(.verdict)\n\n\(.summary)\n\n"
-            + (.findings | map("- **\(.severity)** `\(.file)\(if .line then ":\(.line)" else "" end)`: \(.message)") | join("\n"))
+            + (.findings | map("- **\(.severity)** `\(.file | gsub("`"; "\u0027"))\(if .line then ":\(.line)" else "" end)`: \(.message)") | join("\n"))
             + "\n\n\($note)\n\n<sub>Reviewed \($sha[0:7]).</sub>"
             | gsub("sk-ant-[A-Za-z0-9_-]+"; "[redacted token]") | gsub("@"; "@​")
           ' review-artifact/verdict.json > comment.md
@@ -274,5 +278,8 @@ jobs:
           fi
           # The approval satisfies the review gate ruleset, and dismiss-stale-reviews withdraws it
           # on the next push, so a later commit cannot ride this review into main.
-          gh pr review "${PR_NUMBER}" --approve --body "Approved by the Claude review of ${HEAD_SHA:0:7}."
+          # commit_id pins the approval to the reviewed head. Without it GitHub attaches it to
+          # whatever head the pull request has now, which a push since the review may have changed.
+          gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}/reviews" -f commit_id="${HEAD_SHA}" \
+            -f event=APPROVE -f body="Approved by the Claude review of ${HEAD_SHA:0:7}." > /dev/null
           GH_TOKEN="${AUTO_MERGE_TOKEN}" gh pr merge "${PR_NUMBER}" --auto --squash --match-head-commit "${HEAD_SHA}"
