@@ -10,15 +10,15 @@ const HIGH_RISK = [
   /^scripts\//,
   /(^|\/)(AGENTS|CLAUDE)\.md$/,
   // Schema, dependencies, and release configuration.
-  /^db\/migrations\//,
+  /^db\//,
   /^supabase\//,
   /(^|\/)(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|\.gitattributes)$/,
   /^release\.config\.mjs$/,
   /(^|\/)wrangler[^/]*\.jsonc?$/,
   // Auth, tenancy, money, billing, credentials, and sync.
-  /^apps\/api\/src\/(auth|request|platform-admin|account-deletion)\.ts$/,
+  /^apps\/api\/src\/(app|auth|request|platform-admin|account-deletion)\.ts$/,
   /^apps\/api\/src\/(billing|provider-credentials|entry)\//,
-  /^apps\/api\/src\/db\/(billing|provider-credentials|mobile-sync)/,
+  /^apps\/api\/src\/db\/(billing|provider-credentials|mobile-sync|tenants)/,
   /^packages\/shared\/src\/(money|sync|schemas)\.ts$/,
   /^apps\/mobile\/src\/(auth|db|sync)\//,
 ];
