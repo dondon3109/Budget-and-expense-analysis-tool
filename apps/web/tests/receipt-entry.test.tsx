@@ -132,6 +132,15 @@ describe("ReceiptEntry", () => {
     expect(apiMocks.grantReceiptConsent).toHaveBeenCalledOnce();
   });
 
+  it("tells the user each photo reads one receipt until they dismiss the notice", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    renderEntry();
+
+    expect(await screen.findByText("One receipt per photo.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss one receipt per photo notice" }));
+    expect(screen.queryByText("One receipt per photo.")).not.toBeInTheDocument();
+  });
+
   it("reads a photo into an editable draft and continues with the corrected fields", async () => {
     apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
     const onContinue = vi.fn();

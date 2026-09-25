@@ -101,13 +101,11 @@ function mapProviderError(error: unknown, reporter: ReceiptDiagnosticReporter): 
   );
 }
 
-function containsDiscountLine(candidate: ReceiptVisionCandidate): boolean {
-  return Boolean(
-    candidate.items?.some((item) =>
-      /\b(?:discount|coupon|promo(?:tion)?|voucher)\b/i.test(item.description ?? ""),
-    ),
-  );
-}
+// Discount lines reduce what was paid for the items above them. "Less VAT" is
+// the VAT removed from a senior citizen or PWD purchase, so it is a deduction
+// here rather than a VAT summary line.
+const DISCOUNT_LINE_PATTERN =
+  /\b(?:discount|disc|coupon|promo(?:tion)?|voucher|less(?:\s*:)?\s*(?:vat|sc|pwd|senior))\b/i;
 
 // Totals, tax breakdowns, and payment lines the model sometimes lists as items
 // despite the prompt. Philippine receipts print VATable/VAT-exempt/zero-rated
@@ -116,7 +114,7 @@ function containsDiscountLine(candidate: ReceiptVisionCandidate): boolean {
 const SUMMARY_LINE_PATTERNS = [
   /^(?:sub|grand|net)?[\s-]*total\b/i,
   /^amount\s+(?:due|paid|tendered)\b/i,
-  /^(?:vat(?:able)?|vat[\s-]*exempt|zero[\s-]*rated|(?:sales\s+)?tax|less\s*:?\s*vat|12%\s*vat)\b/i,
+  /^(?:vat(?:able)?|vat[\s-]*exempt|zero[\s-]*rated|(?:sales\s+)?tax|12%\s*vat)\b/i,
   // Payment lines are matched whole so items such as "Cash-in fee" stay.
   /^(?:cash(?:\s+tendered)?|change|tendered|payment|balance(?:\s+due)?)\s*:?\s*$/i,
 ];
@@ -127,46 +125,71 @@ function isSummaryLine(description: string): boolean {
 
 type ReceiptDraftItem = NonNullable<ReceiptDraft["items"]>[number];
 
+/**
+ * Spreads a receipt-level discount across the purchased lines in proportion to
+ * their price, so each transaction records what was actually paid and the lines
+ * still add up to the receipt total. Integer largest-remainder allocation keeps
+ * every centavo accounted for.
+ */
+function applyDiscount(items: ReceiptDraftItem[], discountMinor: number): ReceiptDraftItem[] {
+  const grossMinor = items.reduce((total, item) => total + item.amountMinor, 0);
+  if (discountMinor >= grossMinor || !Number.isSafeInteger(grossMinor * discountMinor)) return [];
+  const shares = items.map((item, index) => {
+    const exact = item.amountMinor * discountMinor;
+    return { index, share: Math.floor(exact / grossMinor), remainder: exact % grossMinor };
+  });
+  let unallocated = discountMinor - shares.reduce((total, entry) => total + entry.share, 0);
+  for (const entry of [...shares].sort((a, b) => b.remainder - a.remainder || a.index - b.index)) {
+    if (unallocated === 0) break;
+    entry.share += 1;
+    unallocated -= 1;
+  }
+  return items.flatMap((item, index) => {
+    const amountMinor = item.amountMinor - (shares[index]?.share ?? 0);
+    // A fully discounted line cost nothing, so it has no transaction to record.
+    return amountMinor > 0 ? [{ ...item, amountMinor }] : [];
+  });
+}
+
 function normalizeItems(
   candidate: ReceiptVisionCandidate,
   totalMinor: number,
 ): ReceiptDraftItem[] | undefined {
-  // A receipt discount needs a negative adjustment, but local receipt-item
-  // transactions are deliberately positive. Fall back to the reviewed total
-  // instead of presenting an itemization that cannot reconcile.
-  if (containsDiscountLine(candidate)) return [];
-  const items = candidate.items
-    ?.flatMap((item) => {
-      const description = item.description?.trim();
-      if (
-        !description ||
-        isSummaryLine(description) ||
-        typeof item.amountMinor !== "number" ||
-        !Number.isSafeInteger(item.amountMinor) ||
-        item.amountMinor === 0
-      ) {
-        return [];
-      }
-      return [
-        {
-          description: description.slice(0, 160),
-          amountMinor: Math.abs(item.amountMinor),
-          ...(item.categoryName?.trim()
-            ? { categoryName: item.categoryName.trim().slice(0, 80) }
-            : {}),
-        },
-      ];
-    })
-    .slice(0, 30);
-  if (!items?.length) return items;
+  if (!candidate.items) return undefined;
+  let items: ReceiptDraftItem[] = [];
+  let discountMinor = 0;
+  for (const item of candidate.items) {
+    const description = item.description?.trim();
+    if (
+      !description ||
+      typeof item.amountMinor !== "number" ||
+      !Number.isSafeInteger(item.amountMinor) ||
+      item.amountMinor === 0
+    ) {
+      continue;
+    }
+    if (DISCOUNT_LINE_PATTERN.test(description)) {
+      discountMinor += Math.abs(item.amountMinor);
+      continue;
+    }
+    if (isSummaryLine(description)) continue;
+    items.push({
+      description: description.slice(0, 160),
+      amountMinor: Math.abs(item.amountMinor),
+      ...(item.categoryName?.trim() ? { categoryName: item.categoryName.trim().slice(0, 80) } : {}),
+    });
+  }
+  items = items.slice(0, 30);
+  if (!items.length) return items;
   // The small vision model often writes line prices in pesos while the total
   // follows the centavo instruction. Only rescale when that is the exact
   // explanation, so a genuinely mismatched itemization stays visible for review.
-  const sum = items.reduce((total, item) => total + item.amountMinor, 0);
-  if (sum * 100 === Math.abs(totalMinor)) {
-    return items.map((item) => ({ ...item, amountMinor: item.amountMinor * 100 }));
+  const netMinor = items.reduce((total, item) => total + item.amountMinor, 0) - discountMinor;
+  if (netMinor * 100 === Math.abs(totalMinor)) {
+    items = items.map((item) => ({ ...item, amountMinor: item.amountMinor * 100 }));
+    discountMinor *= 100;
   }
-  return items;
+  return discountMinor > 0 ? applyDiscount(items, discountMinor) : items;
 }
 
 export function createReceiptService(

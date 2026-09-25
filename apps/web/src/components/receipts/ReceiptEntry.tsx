@@ -9,7 +9,7 @@ import {
   type TransactionKind,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, LoaderCircle, Plus, RotateCcw, X } from "lucide-react";
+import { Camera, Info, LoaderCircle, Plus, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "../../lib/api";
@@ -116,6 +116,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
   const [categoryError, setCategoryError] = useState<string>();
   const [items, setItems] = useState<ReceiptItemRow[]>([]);
   const [itemsError, setItemsError] = useState<string>();
+  const [singleReceiptNoticeOpen, setSingleReceiptNoticeOpen] = useState(true);
 
   const preferencesQuery = useQuery({
     queryKey: queryKeys.receiptPreferences(workspace),
@@ -331,6 +332,22 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
             <small>JPEG, PNG, or WebP · up to 8 MB</small>
           </div>
         </div>
+        {singleReceiptNoticeOpen && (
+          <div className="receipt-notice" role="status">
+            <Info size={16} aria-hidden="true" />
+            <p>
+              <strong>One receipt per photo.</strong> Each scan reads a single receipt. Photograph
+              several receipts one at a time.
+            </p>
+            <button
+              type="button"
+              aria-label="Dismiss one receipt per photo notice"
+              onClick={() => setSingleReceiptNoticeOpen(false)}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
         <label
           className={["receipt-capture", imageUrl ? "has-photo" : ""].filter(Boolean).join(" ")}
         >

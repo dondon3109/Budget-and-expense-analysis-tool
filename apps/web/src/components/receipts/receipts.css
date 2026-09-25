@@ -329,3 +329,45 @@
     grid-template-columns: minmax(0, 1fr) 96px auto;
   }
 }
+
+.receipt-notice {
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--action) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--action) 8%, var(--surface));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.receipt-notice > svg {
+  margin-top: 2px;
+  color: var(--action);
+}
+
+.receipt-notice p {
+  margin: 0;
+}
+
+.receipt-notice strong {
+  color: var(--ink);
+}
+
+.receipt-notice button {
+  padding: 2px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.receipt-notice button:hover,
+.receipt-notice button:focus-visible {
+  color: var(--ink);
+}

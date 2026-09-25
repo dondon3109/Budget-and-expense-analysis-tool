@@ -224,7 +224,7 @@ describe("receipt service", () => {
     });
   });
 
-  it("falls back to the receipt total when a discount would make itemization not reconcile", async () => {
+  it("nets a single-line discount into the purchased item", async () => {
     const vision = provider();
     (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
       merchant: "Market",
@@ -239,6 +239,46 @@ describe("receipt service", () => {
 
     await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       amountMinor: 24_500,
+      items: [{ description: "Vegetables", amountMinor: 24_500, categoryName: "Groceries" }],
+    });
+  });
+
+  it("spreads discounts across items by price so every centavo reconciles", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Jollibee",
+      amountMinor: -34_000,
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy bucket", amountMinor: 25_000 },
+        { description: "Spaghetti", amountMinor: 10_000 },
+        { description: "SC Disc 20%", amountMinor: -600 },
+        { description: "Less VAT", amountMinor: -400 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    const draft = await service.extract(env, TENANT_ID, receiptImage());
+    expect(draft.items).toEqual([
+      { description: "Chickenjoy bucket", amountMinor: 24_286 },
+      { description: "Spaghetti", amountMinor: 9_714 },
+    ]);
+  });
+
+  it("falls back to the receipt total when the discount covers every item", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: 100,
+      kind: "expense",
+      items: [
+        { description: "Sample", amountMinor: 500 },
+        { description: "Voucher", amountMinor: -500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       items: [],
     });
   });
