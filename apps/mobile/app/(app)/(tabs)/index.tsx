@@ -9,6 +9,7 @@ import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard"
 import { SafeToSpendHero } from "@/features/dashboard/SafeToSpendHero";
 import { QuickStartGuideCard } from "@/features/dashboard/QuickStartGuideCard";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
+import { balanceAllocation } from "@/features/dashboard/balance-allocation";
 import { buildDashboardView, localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
@@ -32,6 +33,8 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import {
   preferredTransactionAccount,
+  type AccountBalanceSummaryItem,
+  type AccountType,
   type CashflowTrend,
   type DashboardSummary,
   type TransactionRecord,
@@ -148,93 +151,143 @@ function QuickActionBar() {
   );
 }
 
+const ACCOUNT_TYPE_ICONS: Record<AccountType, keyof typeof MaterialCommunityIcons.glyphMap> = {
+  cash: "cash",
+  checking: "bank-outline",
+  savings: "piggy-bank-outline",
+  credit: "credit-card-outline",
+  other: "wallet-outline",
+};
+
+function accountSubtitle(
+  account: AccountBalanceSummaryItem,
+  sharePercent: number | undefined,
+): string {
+  if (account.archived) return "Archived";
+  if (account.currency === "USD") return "Held in USD";
+  if (account.balanceMinor < 0) return "Owed";
+  if (sharePercent === undefined) return "No balance";
+  return `${sharePercent}% of total`;
+}
+
 function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const balances = summary.accountBalances;
+  const items = balances?.items ?? [];
   const netMinor = summary.metrics.netMinor;
   const isNetPositive = netMinor >= 0;
+  const usdMinor = balances?.balancesByCurrency.USD ?? 0;
   const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
   const setDefaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.setAccountId);
   const defaultSpendingAccount = preferredTransactionAccount(
-    balances?.items.filter((account) => !account.archived) ?? [],
+    items.filter((account) => !account.archived),
     defaultSpendingAccountId,
   );
+  const allocation = balanceAllocation(items);
+  // Series colors come from theme tokens so the bar reads in every theme; any
+  // account past the fifth shares the muted tone.
+  const palette = [
+    theme.colors.brand,
+    theme.colors.info,
+    theme.colors.budget,
+    theme.colors.warning,
+    theme.colors.expense,
+  ];
+  const slices = allocation.slices.map((slice, index) => ({
+    ...slice,
+    color: palette[index] ?? theme.colors.textMuted,
+  }));
+  const sliceById = new Map(slices.map((slice) => [slice.id, slice]));
 
   return (
     <Card accessibilityLabel="Account balances">
       <View style={styles.cardHeaderRow}>
         <SectionLabel>Total Balance</SectionLabel>
-        <View className="flex-row items-center gap-3">
-          {balances && balances.items.length > 0 && balances.items[0] ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Adjust balance"
-              accessibilityHint="Opens balance adjustment for your accounts"
-              onPress={() => {
-                const targetId = balances.items[0]?.id;
-                if (targetId) {
-                  router.push(`/(app)/reference?entityType=account&id=${targetId}`);
-                }
-              }}
-              hitSlop={8}
-            >
-              <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
-                Adjust balance
-              </Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Manage accounts"
-            onPress={() => router.push("/(app)/money-setup")}
-            hitSlop={8}
-          >
-            <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
-              Accounts
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-      <View style={styles.balanceHeroRow}>
-        <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
-        <View
-          style={[
-            styles.netChangePill,
-            {
-              backgroundColor: isNetPositive ? theme.colors.brandSoft : theme.colors.canvasMuted,
-            },
-          ]}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Manage accounts"
+          onPress={() => router.push("/(app)/money-setup")}
+          hitSlop={8}
         >
-          <MaterialCommunityIcons
-            name={isNetPositive ? "trending-up" : "trending-down"}
-            size={14}
-            color={isNetPositive ? theme.colors.income : theme.colors.expense}
-          />
-          <MoneyValue
-            amountMinor={netMinor}
-            tone={isNetPositive ? "income" : "expense"}
-            style={styles.netPillMoney}
-          />
-          <Text
+          <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+            Manage
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{ gap: spacing.xs }}>
+        <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
+        <View style={styles.heroMetaRow}>
+          <View
             style={[
-              typography.caption,
-              {
-                color: isNetPositive ? theme.colors.income : theme.colors.expense,
-                fontWeight: "700",
-              },
+              styles.netChangePill,
+              { backgroundColor: isNetPositive ? theme.colors.brandSoft : theme.colors.dangerSoft },
             ]}
           >
-            this month
-          </Text>
+            <MaterialCommunityIcons
+              name={isNetPositive ? "trending-up" : "trending-down"}
+              size={14}
+              color={isNetPositive ? theme.colors.income : theme.colors.expense}
+            />
+            <MoneyValue
+              amountMinor={netMinor}
+              tone={isNetPositive ? "income" : "expense"}
+              style={styles.netPillMoney}
+            />
+            <Text
+              style={[
+                typography.caption,
+                { color: isNetPositive ? theme.colors.income : theme.colors.expense },
+              ]}
+            >
+              this month
+            </Text>
+          </View>
+          {usdMinor !== 0 ? (
+            <View style={styles.usdMeta}>
+              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
+              <MoneyValue amountMinor={usdMinor} currency="USD" style={styles.metaMoney} />
+            </View>
+          ) : null}
         </View>
       </View>
-      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        Calculated from your recorded ledger across all accounts.
-      </Text>
-      {balances && balances.items.length > 0 ? (
-        <View style={{ gap: spacing.xs, marginTop: spacing.xxs }}>
-          {balances.items.map((account) => {
+
+      {slices.length > 0 ? (
+        <View
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={`Balance split: ${slices
+            .map((slice) => `${slice.name} ${slice.sharePercent} percent`)
+            .join(", ")}`}
+          style={[styles.allocationBar, { backgroundColor: theme.colors.canvasMuted }]}
+        >
+          {slices.map((slice) => (
+            <View
+              key={slice.id}
+              style={{ flex: slice.balanceMinor, backgroundColor: slice.color }}
+            />
+          ))}
+        </View>
+      ) : null}
+
+      {allocation.liabilitiesMinor < 0 ? (
+        <View style={styles.cardHeaderRow}>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Owed on credit
+          </Text>
+          <MoneyValue
+            amountMinor={allocation.liabilitiesMinor}
+            tone="expense"
+            style={styles.metaMoney}
+          />
+        </View>
+      ) : null}
+
+      {items.length > 0 ? (
+        <View style={[styles.accountList, { borderTopColor: theme.colors.border }]}>
+          {items.map((account) => {
             const isDefaultSpending = account.id === defaultSpendingAccount?.id;
+            const slice = sliceById.get(account.id);
+            const accent = slice?.color ?? theme.colors.textMuted;
             return (
               <View key={account.id} style={styles.accountRow}>
                 <Pressable
@@ -247,53 +300,33 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
                   }
                   style={({ pressed }) => [styles.accountRowMain, { opacity: pressed ? 0.75 : 1 }]}
                 >
-                  <View style={styles.accountLeading}>
-                    <View
-                      accessibilityElementsHidden
-                      style={[styles.accountIconBox, { backgroundColor: theme.colors.brandSoft }]}
-                    >
-                      <MaterialCommunityIcons
-                        name={account.currency === "USD" ? "currency-usd" : "wallet-outline"}
-                        size={18}
-                        color={theme.colors.brand}
-                      />
-                    </View>
+                  <View
+                    accessibilityElementsHidden
+                    style={[styles.accountIconBox, { backgroundColor: theme.colors.canvasMuted }]}
+                  >
+                    <MaterialCommunityIcons
+                      name={ACCOUNT_TYPE_ICONS[account.type]}
+                      size={18}
+                      color={accent}
+                    />
+                  </View>
+                  <View style={styles.accountText}>
                     <Text
                       numberOfLines={1}
-                      style={[typography.body, { color: theme.colors.text, flex: 1 }]}
+                      style={[typography.label, { color: theme.colors.text }]}
                     >
                       {account.name}
                     </Text>
-                    {account.currency === "USD" ? (
-                      <View
-                        style={[
-                          styles.currencyTag,
-                          {
-                            backgroundColor: theme.colors.surface,
-                            borderColor: theme.colors.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            typography.caption,
-                            { color: theme.colors.textMuted, fontSize: 10 },
-                          ]}
-                        >
-                          USD
-                        </Text>
-                      </View>
-                    ) : null}
+                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                      {accountSubtitle(account, slice?.sharePercent)}
+                    </Text>
                   </View>
-                  <View className="flex-row items-center gap-1">
-                    <MoneyValue amountMinor={account.balanceMinor} currency={account.currency} />
-                    <MaterialCommunityIcons
-                      accessibilityElementsHidden
-                      color={theme.colors.textMuted}
-                      name="chevron-right"
-                      size={16}
-                    />
-                  </View>
+                  <MoneyValue
+                    amountMinor={account.balanceMinor}
+                    currency={account.currency}
+                    tone={account.balanceMinor < 0 ? "expense" : "default"}
+                    style={styles.accountMoney}
+                  />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -313,11 +346,9 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
               </View>
             );
           })}
-          <Text
-            style={[typography.caption, { color: theme.colors.textMuted, marginTop: spacing.xxs }]}
-          >
-            Tap any account above to adjust its balance or view details. The starred account is
-            where new transactions start.
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Tap an account to adjust its balance. The starred account is where new transactions
+            start.
           </Text>
         </View>
       ) : null}
@@ -325,119 +356,88 @@ function BalanceCard({ summary }: { summary: DashboardSummary }) {
   );
 }
 
+function FlowRow({
+  label,
+  icon,
+  amountMinor,
+  maxMinor,
+  tone,
+}: {
+  label: string;
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  amountMinor: number;
+  maxMinor: number;
+  tone: "income" | "expense";
+}) {
+  const theme = useZoptionTheme();
+  const color = tone === "income" ? theme.colors.income : theme.colors.expense;
+  const percent = maxMinor <= 0 ? 0 : Math.round((amountMinor / maxMinor) * 100);
+  return (
+    <View style={{ gap: spacing.xxs }}>
+      <View style={styles.flowRowHeader}>
+        <MaterialCommunityIcons accessibilityElementsHidden name={icon} size={16} color={color} />
+        <Text style={[typography.caption, { color: theme.colors.textMuted, flex: 1 }]}>
+          {label}
+        </Text>
+        <MoneyValue
+          amountMinor={tone === "income" ? amountMinor : -amountMinor}
+          tone={tone}
+          style={typography.headline}
+        />
+      </View>
+      <View style={[styles.flowTrack, { backgroundColor: theme.colors.canvasMuted }]}>
+        <View
+          style={[
+            styles.flowFill,
+            { width: `${percent}%` as DimensionValue, backgroundColor: color },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}
+
 function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const { metrics, insights } = summary;
+  const maxFlowMinor = Math.max(metrics.moneyInMinor, metrics.moneyOutMinor);
   return (
     <Card accessibilityLabel="This month summary">
       <View style={styles.cardHeaderRow}>
         <SectionLabel>This month</SectionLabel>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {summary.period.from} to {summary.period.to}
+          {fullDateLabel(summary.period.from, "month")}
         </Text>
       </View>
 
-      <View style={styles.summaryGrid}>
-        {/* Money in */}
-        <View
-          style={[
-            styles.summaryTile,
-            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
-          ]}
-        >
-          <View style={styles.summaryTileHeader}>
-            <View
-              accessibilityElementsHidden
-              style={[styles.metricIconWrap, { backgroundColor: theme.colors.brandSoft }]}
-            >
-              <MaterialCommunityIcons
-                name="arrow-down-left"
-                size={16}
-                color={theme.colors.income}
-              />
-            </View>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Money in</Text>
-          </View>
-          <MoneyValue
-            amountMinor={metrics.moneyInMinor}
-            tone="income"
-            style={typography.headline}
-          />
-        </View>
+      <FlowRow
+        label="Money in"
+        icon="arrow-down-left"
+        amountMinor={metrics.moneyInMinor}
+        maxMinor={maxFlowMinor}
+        tone="income"
+      />
+      <FlowRow
+        label="Money out"
+        icon="arrow-up-right"
+        amountMinor={metrics.moneyOutMinor}
+        maxMinor={maxFlowMinor}
+        tone="expense"
+      />
 
-        {/* Money out */}
-        <View
-          style={[
-            styles.summaryTile,
-            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
-          ]}
-        >
-          <View style={styles.summaryTileHeader}>
-            <View
-              accessibilityElementsHidden
-              style={[styles.metricIconWrap, { backgroundColor: theme.colors.dangerSoft }]}
-            >
-              <MaterialCommunityIcons
-                name="arrow-up-right"
-                size={16}
-                color={theme.colors.expense}
-              />
-            </View>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Money out</Text>
-          </View>
-          <MoneyValue
-            amountMinor={-metrics.moneyOutMinor}
-            tone="expense"
-            style={typography.headline}
-          />
-        </View>
-
-        {/* Net flow */}
-        <View
-          style={[
-            styles.summaryTile,
-            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
-          ]}
-        >
-          <View style={styles.summaryTileHeader}>
-            <View
-              accessibilityElementsHidden
-              style={[styles.metricIconWrap, { backgroundColor: theme.colors.surfaceRaised }]}
-            >
-              <MaterialCommunityIcons name="scale-balance" size={16} color={theme.colors.brand} />
-            </View>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Net flow</Text>
-          </View>
+      <View style={[styles.statRow, { borderTopColor: theme.colors.border }]}>
+        <View style={styles.stat}>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Net flow</Text>
           <MoneyValue
             amountMinor={metrics.netMinor}
             tone={metrics.netMinor >= 0 ? "income" : "expense"}
             style={typography.headline}
           />
         </View>
-
-        {/* Savings rate */}
-        <View
-          style={[
-            styles.summaryTile,
-            { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
-          ]}
-        >
-          <View style={styles.summaryTileHeader}>
-            <View
-              accessibilityElementsHidden
-              style={[styles.metricIconWrap, { backgroundColor: theme.colors.surfaceRaised }]}
-            >
-              <MaterialCommunityIcons
-                name="piggy-bank-outline"
-                size={16}
-                color={theme.colors.brand}
-              />
-            </View>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Savings rate
-            </Text>
-          </View>
-          <Text style={[typography.headline, { color: theme.colors.text, fontWeight: "700" }]}>
+        <View style={[styles.statDivider, { backgroundColor: theme.colors.border }]} />
+        <View style={styles.stat}>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Savings rate</Text>
+          <Text style={[typography.headline, { color: theme.colors.text }]}>
             {insights.savingsRatePercent === null ? "—" : `${insights.savingsRatePercent}%`}
           </Text>
         </View>
@@ -448,11 +448,9 @@ function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
 
 function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
-  const max = summary.spendingByCategory.reduce(
-    (largest, item) => Math.max(largest, item.amountMinor),
-    0,
-  );
-  if (summary.spendingByCategory.length === 0) {
+  const categories = summary.spendingByCategory;
+  const max = categories.reduce((largest, item) => Math.max(largest, item.amountMinor), 0);
+  if (categories.length === 0) {
     return (
       <Card>
         <SectionLabel>Spending by category</SectionLabel>
@@ -477,8 +475,20 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
           </Text>
         </Pressable>
       </View>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[styles.allocationBar, { backgroundColor: theme.colors.canvasMuted }]}
+      >
+        {categories.map((item) => (
+          <View
+            key={item.categoryId}
+            style={{ flex: item.amountMinor, backgroundColor: item.color }}
+          />
+        ))}
+      </View>
       <View style={{ gap: spacing.sm }}>
-        {summary.spendingByCategory.map((item) => {
+        {categories.map((item) => {
           const percent = max <= 0 ? 0 : Math.round((item.amountMinor / max) * 100);
           return (
             <View
@@ -500,19 +510,16 @@ function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
                 >
                   {item.name}
                 </Text>
-                <View
-                  style={[
-                    styles.shareBadge,
-                    { backgroundColor: theme.colors.canvasMuted, borderColor: theme.colors.border },
-                  ]}
-                >
-                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                    {item.sharePercent}%
-                  </Text>
-                </View>
-                <MoneyValue amountMinor={-item.amountMinor} tone="expense" />
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  {item.sharePercent}%
+                </Text>
+                <MoneyValue
+                  amountMinor={-item.amountMinor}
+                  tone="expense"
+                  style={styles.categoryMoney}
+                />
               </View>
-              <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
+              <View style={[styles.track, { backgroundColor: theme.colors.canvasMuted }]}>
                 <View
                   style={[
                     styles.fill,
@@ -1011,6 +1018,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <View style={{ gap: spacing.md }}>
+          {hasTransactions ? <BalanceCard summary={view.summary} /> : null}
           <QuickActionBar />
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
@@ -1031,22 +1039,21 @@ export default function HomeScreen() {
                 }
                 onViewRenewals={() => router.push("/(app)/subscriptions")}
               />
-              <BalanceCard summary={view.summary} />
               <MonthSummaryCard summary={view.summary} />
-              <SpendingByCategory summary={view.summary} />
               <CashflowCard
                 cashflow={view.cashflow}
                 isPro={isPro}
                 onSelectView={setCashflowView}
                 selectedView={cashflowView}
               />
+              <SpendingByCategory summary={view.summary} />
+              <BudgetCard summary={view.summary} />
+              <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
               <CashflowForecastCard
                 startingBalanceMinor={view.accountBalances.overallBalanceMinor}
                 subscriptions={subscriptions.subscriptions.filter((sub) => sub.status === "active")}
               />
               <RemittanceCalculatorCard />
-              <BudgetCard summary={view.summary} />
-              <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
             </>
           ) : (
             <HomeEmptyView syncing={sync.status === "syncing"} />
@@ -1082,17 +1089,47 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   heroMoney: {
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 34,
+    lineHeight: 40,
     fontWeight: "700",
+    letterSpacing: -0.8,
   },
-  balanceHeroRow: {
+  heroMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     flexWrap: "wrap",
     gap: spacing.xs,
-    marginVertical: spacing.xxs,
+  },
+  usdMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  metaMoney: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "600",
+  },
+  allocationBar: {
+    flexDirection: "row",
+    height: 10,
+    gap: 2,
+    borderRadius: radii.round,
+    overflow: "hidden",
+  },
+  accountList: {
+    gap: spacing.xxs,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  accountText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  accountMoney: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
   },
   netChangePill: {
     flexDirection: "row",
@@ -1116,9 +1153,8 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
     gap: spacing.sm,
-    paddingVertical: spacing.xxs,
+    minHeight: touchTarget,
   },
   accountDefaultButton: {
     width: touchTarget,
@@ -1126,50 +1162,41 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  accountLeading: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    flex: 1,
-    minWidth: 0,
-  },
   accountIconBox: {
-    width: 32,
-    height: 32,
+    width: 36,
+    height: 36,
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
   },
-  currencyTag: {
-    paddingHorizontal: spacing.xxs + 2,
-    paddingVertical: 1,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-  },
-  summaryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  summaryTile: {
-    flex: 1,
-    minWidth: "47%",
-    padding: spacing.sm,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    gap: spacing.xs,
-  },
-  summaryTileHeader: {
+  flowRowHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
   },
-  metricIconWrap: {
-    width: 28,
-    height: 28,
+  flowTrack: {
+    height: 10,
     borderRadius: radii.round,
+    overflow: "hidden",
+  },
+  flowFill: {
+    height: 10,
+    borderRadius: radii.round,
+  },
+  statRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  stat: {
+    flex: 1,
+    gap: 2,
+  },
+  statDivider: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: "stretch",
+    marginHorizontal: spacing.sm,
   },
   categoryRow: {
     flexDirection: "row",
@@ -1177,11 +1204,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   categoryEmoji: { width: 24, fontSize: 19, lineHeight: 24 },
-  shareBadge: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: radii.round,
-    borderWidth: 1,
+  categoryMoney: {
+    fontSize: 15,
+    lineHeight: 20,
+    fontWeight: "600",
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -1203,8 +1229,10 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   segment: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: spacing.xxs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,

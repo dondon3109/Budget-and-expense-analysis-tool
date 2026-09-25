@@ -355,6 +355,45 @@ describe("HomeScreen", () => {
     ).toMatchObject({ selected: true });
   });
 
+  it("charts each account's share of the total balance and flags money owed", async () => {
+    const expense = {
+      id: "tx-1",
+      date: localIsoDate(new Date()),
+      description: "Lunch",
+      amountMinor: -250_00,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+      categoryId: "cat-food",
+      categoryName: "Food",
+      categoryColor: "#2f65c8",
+      categoryIconEmoji: null,
+      accountName: "Cash",
+    };
+    const account = { currency: "PHP" as const, archived: false, system: false };
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: {
+        transactions: [expense],
+        recentTransactions: [expense],
+        accounts: [
+          { ...account, id: "acc-cash", name: "Cash", type: "cash", balanceMinor: 250_00 },
+          { ...account, id: "acc-bank", name: "Bank", type: "checking", balanceMinor: 750_00 },
+          { ...account, id: "acc-card", name: "Card", type: "credit", balanceMinor: -100_00 },
+        ],
+        budgets: [],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+
+    expect(screen.getByLabelText("Balance split: Bank 75 percent, Cash 25 percent")).toBeTruthy();
+    expect(screen.getByText("75% of total")).toBeTruthy();
+    expect(screen.getByText("25% of total")).toBeTruthy();
+    expect(screen.getByText("Owed")).toBeTruthy();
+    expect(screen.getByText("Owed on credit")).toBeTruthy();
+  });
+
   it("triggers sync and dashboard retry on pull to refresh", async () => {
     const mockSyncRetry = jest.fn();
     const mockDashboardRetry = jest.fn();
