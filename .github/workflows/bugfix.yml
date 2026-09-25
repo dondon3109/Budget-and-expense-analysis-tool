@@ -213,8 +213,9 @@ jobs:
           changed="$(git apply --numstat -z bugfix-artifact/fix.patch | tr '\000' '\n' | cut -f3 | sort -u)"
           # A -diff attribute in .gitattributes makes git treat a file as binary, which hides the
           # change from the human reading the pull request.
-          # .claude/ and .mcp.json configure Claude Code, which PR Review runs on this checkout.
-          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|\.claude/|scripts/)|(^|/)(pnpm-lock\.yaml|release\.config\.mjs|\.gitattributes|\.mcp\.json|CLAUDE\.local\.md)$' || true)"
+          # .claude/, .mcp.json, and the CLAUDE.md and AGENTS.md instructions configure Claude Code,
+          # which PR Review runs on this checkout.
+          blocked="$(printf '%s\n' "${changed}" | grep -E '^(\.github/|\.claude/|scripts/)|(^|/)(pnpm-lock\.yaml|release\.config\.mjs|\.gitattributes|\.mcp\.json|CLAUDE\.local\.md|CLAUDE\.md|AGENTS\.md)$' || true)"
           if [ -n "${blocked}" ]; then
             echo "::error::This draft changes files the automation may not change"
             printf '%s\n' "${blocked}"

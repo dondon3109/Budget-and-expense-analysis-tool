@@ -94,6 +94,13 @@ jobs:
           # --setting-sources user skips project and local settings, --strict-mcp-config every MCP
           # server, and the files go too so nothing else picks them up.
           rm -rf .claude .mcp.json CLAUDE.local.md
+          # CLAUDE.md files load as instructions, and their @path imports bypass the Read deny rules,
+          # so an import of /proc/self/environ would put the model key in context. Review with the
+          # base branch's copies; the pull request's changes to them are still in the diff.
+          git ls-files -z -- ':(glob)**/CLAUDE.md' ':(glob)**/AGENTS.md' | xargs -0 rm -f --
+          git ls-tree -r -z --name-only "${BASE_SHA}" \
+            | grep -zE '(^|/)(CLAUDE|AGENTS)\.md$' \
+            | xargs -0 --no-run-if-empty git checkout "${BASE_SHA}" --
           # --tools removes every other tool, where --allowedTools would only pre-approve these and
           # still let read-only shell commands run. Grep is left out because a search rooted at /
           # reaches /proc/<pid>/environ, which holds the model key; Glob returns names only, and
@@ -285,4 +292,7 @@ jobs:
           # whatever head the pull request has now, which a push since the review may have changed.
           gh api "repos/${GH_REPO}/pulls/${PR_NUMBER}/reviews" -f commit_id="${HEAD_SHA}" \
             -f event=APPROVE -f body="Approved by the Claude review of ${HEAD_SHA:0:7}." > /dev/null
-          GH_TOKEN="${AUTO_MERGE_TOKEN}" gh pr merge "${PR_NUMBER}" --auto --squash --match-head-commit "${HEAD_SHA}"
+          # --subject pins the squashed commit to the title checked above; semantic-release reads it,
+          # and a later title edit does not trigger a new review.
+          GH_TOKEN="${AUTO_MERGE_TOKEN}" gh pr merge "${PR_NUMBER}" --auto --squash --match-head-commit "${HEAD_SHA}" \
+            --subject "${PR_TITLE} (#${PR_NUMBER})"
