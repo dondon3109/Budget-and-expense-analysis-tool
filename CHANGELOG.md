@@ -10,6 +10,8 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Reactivating a canceled subscription charges only the billing date already due, not every cycle missed while it was canceled.
+- A subscription that could not be renewed now names the billing date that was missed, instead of showing the current month's date beside the warning.
 - My reports under Help & support on mobile loads again. It showed an error, and a bug report you had just submitted also reported an error, because report dates came back in a format the app rejected.
 - Adding a budget on mobile no longer picks a category for you. The Add budget sheet used to start on "Debt payment", so saving without changing it put the budget there. The sheet now lists every expense category without a budget, and you choose one before saving.
 

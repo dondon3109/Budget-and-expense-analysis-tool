@@ -49,3 +49,21 @@ export function nextSubscriptionBillingDate(
   const billingDay = Math.min(day, lastDay);
   return `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(billingDay).padStart(2, "0")}`;
 }
+
+/**
+ * The most recent billing date on or before `today`, stepping forward from `nextBillingDate`.
+ * Reactivating a canceled subscription starts from here, so the cycles that passed while it was
+ * canceled are skipped and only the one already due is charged. A future date is returned as is.
+ */
+export function latestDueSubscriptionBillingDate(
+  nextBillingDate: string,
+  billingCycle: SubscriptionBillingCycle,
+  today: string,
+): string {
+  let due = nextBillingDate;
+  for (;;) {
+    const following = nextSubscriptionBillingDate(due, billingCycle);
+    if (following > today) return due;
+    due = following;
+  }
+}
