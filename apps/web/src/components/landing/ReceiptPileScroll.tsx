@@ -63,16 +63,18 @@ export function ReceiptPileScroll() {
         <div className="receipt-scroll-copy">
           <p className="eyebrow">Sound familiar?</p>
           <h2 id="receipt-scroll-title">End the month-end money scramble.</h2>
+          {/* data-scroll-fade tells the accessibility scan these beats cross-fade with scroll,
+              so it measures each one only where it is fully shown. */}
           <div className="receipt-scroll-beats">
-            <p className="receipt-scroll-beat receipt-scroll-beat-1">
+            <p className="receipt-scroll-beat receipt-scroll-beat-1" data-scroll-fade>
               <strong>Receipts everywhere.</strong> A notebook total, a spreadsheet that never
               matches, and cash you can&rsquo;t account for.
             </p>
-            <p className="receipt-scroll-beat receipt-scroll-beat-2">
+            <p className="receipt-scroll-beat receipt-scroll-beat-2" data-scroll-fade>
               <strong>Zoption sorts the pile.</strong> Snap a receipt, say an expense, or import a
               statement, and every amount lands in its budget.
             </p>
-            <p className="receipt-scroll-beat receipt-scroll-beat-3">
+            <p className="receipt-scroll-beat receipt-scroll-beat-3" data-scroll-fade>
               <strong>One clear month.</strong> Exact totals against your budget, so the next
               decision is obvious instead of stressful.
             </p>

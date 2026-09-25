@@ -25,6 +25,24 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Choose a default spending account",
+      "Reactivating a subscription charges only what is due",
+      "Steadier Android help and budgets",
+      "A Sync delayed notice you can close",
+      "Two clear ways to pay for Pro on the web",
+      "New Philippine budgeting guides",
+      "Android Beta 0.2.36",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/instead of Cash/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.36/);
+  });
+
+  it("keeps the Dodo Payments, app lock, and mic widget income notes as 2.44.0", () => {
+    expect(titles("2.44.0")).toEqual([
       "Pay for Zoption Pro with Dodo Payments",
       "An optional app lock on Android",
       "Open offline without signing in again",
@@ -33,9 +51,7 @@ describe("current release notes", () => {
       "Android Beta 0.2.35",
     ]);
 
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
+    const copy = notes("2.44.0");
     expect(copy).toMatch(/merchant of record/i);
     expect(copy).toMatch(/Android Beta 0\.2\.35/);
   });
@@ -70,6 +86,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.44.0",
       "2.43.1",
       "2.41.3",
       "2.39.0",

@@ -182,7 +182,10 @@ const TRAILING_CURRENCY_REGEX =
   /\b\d+(?:,\d{3})*(?:\.\d+)?(?:[kKmMbB])?\s*(?:pesos?|dollars?|cents?|php)\b/gi;
 const SPELLED_CURRENCY_REGEX = new RegExp(`\\b(?:${WORD_NUM_KEYS}|[\\s-])+pesos?\\b`, "gi");
 
-const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+// The local part is capped at the RFC 5321 limit of 64 so a long run of local-part characters
+// with no "@" is not rescanned from every start position (polynomial ReDoS, CodeQL
+// js/polynomial-redos).
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]{1,64}@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 const RESERVED_EMAIL_DOMAIN_REGEX =
   /@(?:[a-z0-9-]+\.)*(?:example\.(?:com|net|org)|[a-z0-9-]+\.(?:test|example|invalid|localhost))$/i;
 

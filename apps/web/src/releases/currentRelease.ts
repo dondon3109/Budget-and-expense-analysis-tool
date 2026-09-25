@@ -11,37 +11,42 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 24, 2026",
+  releasedOn: "September 25, 2026",
   changes: [
     {
-      title: "Pay for Zoption Pro with Dodo Payments",
+      title: "Choose a default spending account",
       description:
-        "The upgrade dialog on the web and Plan and billing on Android now offer Continue with Dodo Payments beside PayPal. It opens Dodo's secure checkout for the monthly or annual plan, Dodo Payments is the merchant of record for that purchase, and Pro starts once Zoption confirms the subscription. You can cancel renewal from Plan and billing and keep Pro until the end of the paid period.",
+        "Tap the star beside an account on Home, or pick one under Account Settings on the web or More, then Account on Android, and new transactions start on it instead of Cash. It is picked first when you add a transaction, import an SMS, scan a receipt, or use the mic widget, and each browser and device keeps its own choice.",
     },
     {
-      title: "An optional app lock on Android",
+      title: "Reactivating a subscription charges only what is due",
       description:
-        "Set an app password under More, then Account, and Zoption asks for it when the app opens or returns after more than a minute away. It works offline and applies only to that device; if you forget it, sign out from the lock screen and sign in again.",
+        "Turning a canceled subscription back on now charges the billing date already due, not every cycle missed while it was canceled. A subscription that could not renew names the billing date it missed instead of this month's date.",
     },
     {
-      title: "Open offline without signing in again",
+      title: "Steadier Android help and budgets",
       description:
-        "The Android app no longer shows the sign-in screen when it opens offline with a session older than about an hour. Your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.",
+        "My reports under Help & support loads again, and a report you just sent no longer shows an error. Adding a budget asks you to choose its category instead of quietly starting on Debt payment, and a bug report draft now fills the whole panel so it is easier to review.",
     },
     {
-      title: "Speak your income into the Android mic widget",
+      title: "A Sync delayed notice you can close",
       description:
-        'The home-screen mic widget now records money coming in as well as going out. Say something like "Received 20,000 salary to my GCash" or "Got paid 5k for freelance work" and Zoption opens an income review with the account and category you named. Amounts no longer need "pesos" after them, a note about yesterday is dated yesterday, and an Expense and Income switch fixes a misheard note before you save.',
+        "The Sync delayed notice on Home and Transactions in the Android app has a close button. Your changes keep retrying in the background, and a different sync problem still shows a new notice.",
     },
     {
-      title: "A new look on the web and in the app",
+      title: "Two clear ways to pay for Pro on the web",
       description:
-        "Zoption has a cooler, calmer palette in Light, Dark, and Coffee, with near-black primary buttons, the Z mark's emerald and mint as accents, and new type for headings, text, and figures. The sidebar, balance card, sign-in panel, and transaction table are restyled to match, and the Android app marks the current tab with a solid pill.",
+        "The upgrade dialog now offers two plain choices: continue with PayPal, or pay by card, Apple Pay, or Google Pay through Dodo Payments.",
     },
     {
-      title: "Android Beta 0.2.35",
+      title: "New Philippine budgeting guides",
       description:
-        "The official Android Beta can subscribe to Pro through Dodo Payments and shows Dodo subscriptions in Plan and billing, and it carries the app lock, offline opening, the new look, and income in the mic widget. Android Beta 0.2.33 and earlier cannot load Plan and billing for a Dodo subscriber.",
+        "Three new guides cover budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.",
+    },
+    {
+      title: "Android Beta 0.2.36",
+      description:
+        "The official Android Beta carries the default spending account, the dismissible Sync delayed notice, the working My reports list, and the Add budget category choice.",
     },
   ],
 };
@@ -56,6 +61,42 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.44.0",
+    releasedOn: "September 24, 2026",
+    changes: [
+      {
+        title: "Pay for Zoption Pro with Dodo Payments",
+        description:
+          "The upgrade dialog on the web and Plan and billing on Android now offer Continue with Dodo Payments beside PayPal. It opens Dodo's secure checkout for the monthly or annual plan, Dodo Payments is the merchant of record for that purchase, and Pro starts once Zoption confirms the subscription. You can cancel renewal from Plan and billing and keep Pro until the end of the paid period.",
+      },
+      {
+        title: "An optional app lock on Android",
+        description:
+          "Set an app password under More, then Account, and Zoption asks for it when the app opens or returns after more than a minute away. It works offline and applies only to that device; if you forget it, sign out from the lock screen and sign in again.",
+      },
+      {
+        title: "Open offline without signing in again",
+        description:
+          "The Android app no longer shows the sign-in screen when it opens offline with a session older than about an hour. Your workspace opens, you can add transactions, and sync resumes by itself when you reconnect.",
+      },
+      {
+        title: "Speak your income into the Android mic widget",
+        description:
+          'The home-screen mic widget now records money coming in as well as going out. Say something like "Received 20,000 salary to my GCash" or "Got paid 5k for freelance work" and Zoption opens an income review with the account and category you named. Amounts no longer need "pesos" after them, a note about yesterday is dated yesterday, and an Expense and Income switch fixes a misheard note before you save.',
+      },
+      {
+        title: "A new look on the web and in the app",
+        description:
+          "Zoption has a cooler, calmer palette in Light, Dark, and Coffee, with near-black primary buttons, the Z mark's emerald and mint as accents, and new type for headings, text, and figures. The sidebar, balance card, sign-in panel, and transaction table are restyled to match, and the Android app marks the current tab with a solid pill.",
+      },
+      {
+        title: "Android Beta 0.2.35",
+        description:
+          "The official Android Beta can subscribe to Pro through Dodo Payments and shows Dodo subscriptions in Plan and billing, and it carries the app lock, offline opening, the new look, and income in the mic widget. Android Beta 0.2.33 and earlier cannot load Plan and billing for a Dodo subscriber.",
+      },
+    ],
+  },
   {
     version: "2.43.1",
     releasedOn: "September 23, 2026",
