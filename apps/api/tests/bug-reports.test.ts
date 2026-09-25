@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 
-import type { BugReportCreateInput } from "@zoption/shared";
+import { bugReportResponseSchema, type BugReportCreateInput } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { bugReportRepository } from "../src/db/bug-reports";
@@ -182,6 +182,8 @@ describe("bug report persistence and delivery", () => {
     const reporterReports = await service.listForReporter(env, TENANT_ID);
     expect(reporterReports).toHaveLength(1);
     expect(reporterReports[0]).not.toHaveProperty("reporterEmail");
+    // The mobile client decodes this response strictly, timestamps included.
+    expect(() => bugReportResponseSchema.parse(reporterReports[0])).not.toThrow();
     const adminReports = await service.listForAdmin(env);
     expect(adminReports[0]).toMatchObject({
       reporterUserId: "user-1",

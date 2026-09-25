@@ -74,6 +74,8 @@ export interface BugReportRepository {
   cleanupExpired(env: Bindings, cutoff: string, limit: number): Promise<number>;
 }
 
+// created_at and updated_at default to SQLite's `datetime('now')` ("YYYY-MM-DD HH:MM:SS"), which
+// the strict ISO response schema rejects, so the projection normalizes them to UTC ISO 8601.
 const selectColumns = `
   id, reference, reporter_user_id AS reporterUserId, reporter_email AS reporterEmail,
   title, category, actual_behavior AS actualBehavior, expected_behavior AS expectedBehavior,
@@ -81,7 +83,8 @@ const selectColumns = `
   diagnostics_json AS diagnosticsJson, status,
   notification_status AS notificationStatus,
   notification_attempts AS notificationAttempts, notified_at AS notifiedAt,
-  created_at AS createdAt, updated_at AS updatedAt`;
+  strftime('%Y-%m-%dT%H:%M:%SZ', created_at) AS createdAt,
+  strftime('%Y-%m-%dT%H:%M:%SZ', updated_at) AS updatedAt`;
 
 // Both egress reads project the same fields, and neither loads reporter identity or diagnostics.
 const egressColumns = `
