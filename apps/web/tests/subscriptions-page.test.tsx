@@ -210,6 +210,11 @@ describe("SubscriptionsPage", () => {
       { key: "user:test-user", userId: "test-user" },
       expect.stringMatching(/^\d{4}-\d{2}-01$/),
     );
+    // The status action must come back once the mutation settles, not stay on "Updating…".
+    await waitFor(() => expect(screen.queryByText("Updating…")).not.toBeInTheDocument());
+    expect(
+      screen.getByRole("button", { name: /^(Cancel|Reactivate) Music streaming$/ }),
+    ).toBeEnabled();
   });
 
   it("scopes every subscription header and names the renewals table", async () => {
