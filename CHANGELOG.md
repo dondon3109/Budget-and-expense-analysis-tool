@@ -4,6 +4,12 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- The Android install page offers Android Beta 0.2.36 (versionCode 20336), the build that carries the default spending account, the dismissible Sync delayed notice, the working My reports list, and the Add budget category choice, instead of 0.2.35.
+
+## 2.45.0 — 2026-09-25
+
 ### Added
 
 - Prepared Android Beta 0.2.36 (versionCode 20336) so the next signed build carries the default spending account, the dismissible Sync delayed notice, the working My reports list, and the Add budget category choice.
