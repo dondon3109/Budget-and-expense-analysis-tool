@@ -163,6 +163,52 @@ describe("BudgetsScreen", () => {
     expect(screen.getByRole("button", { name: "Save new budget" })).toBeDisabled();
   });
 
+  it("makes the category an explicit choice instead of defaulting to the first one", async () => {
+    const setBudgetLimit = jest.fn().mockResolvedValue(undefined);
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      workspace: { transactionMutations: { setBudgetLimit } } as unknown as LocalWorkspace,
+      status: "ready",
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    jest.mocked(useBudgetMonth).mockReturnValue({
+      data: {
+        budgets: [],
+        categories: [
+          {
+            id: "debt",
+            name: "Debt payment",
+            kind: "expense",
+            color: "#e34948",
+            iconEmoji: "🏦",
+            pending: false,
+          },
+          {
+            id: "food",
+            name: "Food & dining",
+            kind: "expense",
+            color: "#e87ba4",
+            iconEmoji: "🍔",
+            pending: false,
+          },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<BudgetsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Add budget" }));
+    expect(screen.getByRole("button", { name: "Save new budget" })).toBeDisabled();
+
+    await fireEvent.press(screen.getByRole("radio", { name: "🍔 Food & dining" }));
+    await fireEvent.changeText(screen.getByLabelText("Monthly spending limit"), "100");
+    await fireEvent.press(screen.getByRole("button", { name: "Save new budget" }));
+
+    expect(setBudgetLimit).toHaveBeenCalledWith(expect.any(String), "food", 10_000);
+  });
+
   it("navigates months and shows 'This month' quick return pill when shifted", async () => {
     jest.mocked(useBudgetMonth).mockReturnValue({
       data: {
