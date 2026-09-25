@@ -13,6 +13,10 @@ All notable product changes are documented here.
 - The category picker in the transaction form lists categories without an emoji first, A to Z, followed by categories with an emoji, A to Z, so plain names are easier to scan.
 - New loading animation on web and mobile: three ledger rows fill in turn from left to right. It replaces the drawn Z monogram on the web startup screen, the orbiting emblem on in-page loading states, and the plain spinner on the mobile startup, session restore, workspace unlock, and sign-in screens. With reduced motion turned on, the rows stay still and filled.
 
+### Fixed
+
+- Quick Paste from SMS reads more alerts correctly. A GCash withdrawal or cash out is filled in as a transfer named "Cash withdrawal", a cash in as income, and GCash messages that say "You have successfully paid, sent, or received" are recognised. For alerts without a known format, the merchant is taken from the "to", "at", or "from" part of the message instead of showing "Unknown Merchant". Purchases paid from a wallet such as GCash are no longer suggested the Transfers / Cash In category.
+
 ## 2.45.1 — 2026-09-25
 
 ### Fixed

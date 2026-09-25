@@ -486,6 +486,54 @@ function inferChannel(rawText: string): SupportedChannel {
   return "generic";
 }
 
+// Shared generic terminators include period and RN to avoid swallowing reference
+const GENERIC_TERMINATORS: PayeeTerminator[] = [
+  { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
+  { type: "dotWord", word: "ref" },
+  { type: "dotWord", word: "rn" },
+  { type: "rnColon" },
+  { type: "dot" },
+];
+
+/**
+ * Money direction for alerts no specific pattern recognised. Order matters: a withdrawal or
+ * cash out also says "from your wallet", and a credit alert can mention the word "transfer", so
+ * the more specific movements are checked first. `label` names the payee when the text has none.
+ */
+function classifyDirection(text: string): { type: SmsTransactionType; label?: string } | null {
+  if (/\b(?:withdr(?:aw|awn|awal|ew)|cash[ \t-]?out|cashed[ \t]+out)\b/i.test(text)) {
+    return { type: "transfer", label: "Cash withdrawal" };
+  }
+  if (/\b(?:cash[ \t-]?in|cashed[ \t]+in)\b/i.test(text)) {
+    return { type: "income", label: "Cash in" };
+  }
+  if (
+    /\b(?:received|credited|deposited|deposit|refund(?:ed)?|reversal|reversed|incoming)\b/i.test(
+      text,
+    )
+  ) {
+    return { type: "income", label: "Sender" };
+  }
+  if (/\b(?:sent|send|transferred|transfer|instapay|pesonet)\b/i.test(text)) {
+    return { type: "transfer", label: "Transfer" };
+  }
+  if (/\b(?:paid|payment|purchased?|charged|spent|debited|bought)\b/i.test(text)) {
+    return { type: "expense" };
+  }
+  return null;
+}
+
+/** Counterparty after the amount: "from X" for income, "to X" or "at X" otherwise. */
+function fallbackPayee(text: string, fromIndex: number, type: SmsTransactionType): string | null {
+  const keywords = type === "income" ? [["from"]] : [["to"], ["at"]];
+  const payee = cleanPayee(
+    extractPayeeBetween(text, fromIndex, keywords, GENERIC_TERMINATORS) ?? undefined,
+  );
+  // "from your GCash wallet" or "to your account" names the user's own account, not a payee.
+  if (!payee || /^(?:your|my|the)\b/i.test(payee)) return null;
+  return payee;
+}
+
 export function suggestCategory(
   payeeOrMerchant: string,
   type: SmsTransactionType,
@@ -555,12 +603,13 @@ export function suggestCategory(
     return "Salary";
   }
 
-  // 8. Transfers / Cash In
+  // 8. Transfers / Cash In. For an expense only the payee counts: every wallet alert names the
+  // wallet ("paid P64.33 GCash to PAYPAL"), so matching the raw text would file purchases here.
   if (
     type === "transfer" ||
     type === "income" ||
     /(?:gcash|maya|paymaya|bpi|bdo|unionbank|metrobank|landbank|rcbc|security[ \t]*bank|cimb|seabank|gotyme|tonik|bank[ \t]*transfer|instapay|pesonet|cash[ \t]*in|cash-in|send[ \t]*money|express[ \t]*send|padala|transfer)/i.test(
-      haystack,
+      payeeOrMerchant,
     )
   ) {
     return "Transfers / Cash In";
@@ -602,10 +651,13 @@ export function parseSmsNotification(
   // 1. GCash patterns - linear tokenization (no overlapping \s* vs \s+ and no (.+?) catastrophic)
   if (/gcash/i.test(rawText)) {
     // Pattern A: "You have paid PHP 250.00 of GCash to JOLLIBEE on 08/25/2026 14:30. Ref. No. 123456789"
-    if (/You have paid/i.test(rawText)) {
+    if (/You have(?:[ \t]+successfully)?[ \t]+paid/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You have paid[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(
+          `You have(?:[ \\t]+successfully)?[ \\t]+paid[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`,
+          "i",
+        ),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], gcashTerminators);
@@ -634,10 +686,13 @@ export function parseSmsNotification(
     }
 
     // Pattern B: "You have sent PHP 500.00 of GCash to JUAN DELA CRUZ 09171234567 on 08/25/2026 10:15. Ref. No. 987654321"
-    if (/You have sent/i.test(rawText)) {
+    if (/You have(?:[ \t]+successfully)?[ \t]+sent/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You have sent[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(
+          `You have(?:[ \\t]+successfully)?[ \\t]+sent[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`,
+          "i",
+        ),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["to"]], gcashTerminators);
@@ -666,10 +721,13 @@ export function parseSmsNotification(
     }
 
     // Pattern C: "You have received PHP 1,000.00 of GCash from MARIA CLARA 09181234567 on 08/25/2026 11:20. Ref. No. 456789123"
-    if (/You have received/i.test(rawText)) {
+    if (/You have(?:[ \t]+successfully)?[ \t]+received/i.test(rawText)) {
       const amt = extractAmountAfterPrefix(
         rawText,
-        new RegExp(`You have received[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`, "i"),
+        new RegExp(
+          `You have(?:[ \\t]+successfully)?[ \\t]+received[ \\t]+(?:PHP|P|\\u20B1)?[ \\t]*(${BOUNDED_AMOUNT})`,
+          "i",
+        ),
       );
       if (amt) {
         const payeeRaw = extractPayeeBetween(rawText, amt.endIndex, [["from"]], gcashTerminators);
@@ -1076,17 +1134,9 @@ export function parseSmsNotification(
   }
 
   // 8. Generic fallbacks - linear bounded tokenization
-  // Shared generic terminators include period and RN to avoid swallowing reference
-  const genericTerminators: PayeeTerminator[] = [
-    { type: "gapWords", alts: [["on"]], trailingSpace: true, trailingDigit: true },
-    { type: "dotWord", word: "ref" },
-    { type: "dotWord", word: "rn" },
-    { type: "rnColon" },
-    { type: "dot" },
-  ];
-  const genericExpenseTerminators: PayeeTerminator[] = genericTerminators;
-  const genericTransferTerminators: PayeeTerminator[] = genericTerminators;
-  const genericIncomeTerminators: PayeeTerminator[] = genericTerminators;
+  const genericExpenseTerminators: PayeeTerminator[] = GENERIC_TERMINATORS;
+  const genericTransferTerminators: PayeeTerminator[] = GENERIC_TERMINATORS;
+  const genericIncomeTerminators: PayeeTerminator[] = GENERIC_TERMINATORS;
   // Card charged / spent / purchase / debited: 'was charged $42.50 at Target'
   {
     const amt = extractAmountAfterPrefix(
@@ -1279,12 +1329,13 @@ export function parseSmsNotification(
       const amountMinor = parseAmountMinor(broadMatch[1]);
       if (amountMinor !== null) {
         const dt = parseDateTimeFromText(rawText, referenceDate);
-        const isIncome = /received|credited|deposit|cash[ \t]*in/i.test(rawText);
-        const isTransfer = /transfer|sent/i.test(rawText);
-        const type: SmsTransactionType = isIncome ? "income" : isTransfer ? "transfer" : "expense";
-
+        const direction = classifyDirection(rawText);
+        const type: SmsTransactionType = direction?.type ?? "expense";
         const channel = inferChannel(rawText);
-        const payee = "Unknown Merchant";
+        const payee =
+          fallbackPayee(rawText, broadMatch.index + broadMatch[0].length, type) ??
+          direction?.label ??
+          "Unknown Merchant";
 
         return {
           channel,
@@ -1298,7 +1349,7 @@ export function parseSmsNotification(
           accountSuffix,
           rawText,
           suggestedCategory: suggestCategory(payee, type, rawText),
-          confidence: "low",
+          confidence: direction ? "medium" : "low",
         };
       }
     }

@@ -427,7 +427,7 @@ describe("smsNotificationParser", () => {
         payeeOrMerchant: "PAYPAL *GIT",
         referenceNumber: "5000056111527",
         rawText: text,
-        suggestedCategory: "Transfers / Cash In",
+        suggestedCategory: "General",
         confidence: "high",
       });
     });
@@ -441,6 +441,65 @@ describe("smsNotificationParser", () => {
       expect(result?.time).toBeUndefined();
       expect(result?.amountMinor).toBe(50000);
       expect(result?.payeeOrMerchant).toBe("0917-123-4567");
+    });
+  });
+
+  describe("Direction and payee for unrecognised phrasing", () => {
+    it("reads a GCash withdrawal as a transfer to cash", () => {
+      const text =
+        "You have successfully withdrawn P1,216.00 from your GCash wallet with applicable fees on 07-15-26 03:49:00 PM Your new balance is P82.11. Ref. No 5042913534199";
+      const result = parseSmsNotification(text);
+
+      expect(result).toMatchObject({
+        channel: "gcash",
+        type: "transfer",
+        amountMinor: 121600,
+        date: "2026-07-15",
+        time: "15:49:00",
+        payeeOrMerchant: "Cash withdrawal",
+        referenceNumber: "5042913534199",
+        suggestedCategory: "Transfers / Cash In",
+        confidence: "medium",
+      });
+    });
+
+    it("accepts GCash's 'successfully' phrasing on payments", () => {
+      const text =
+        "You have successfully paid P350.00 GCash to MERALCO on 07-15-26 03:49:00 PM. Ref. No. 5042913534100";
+      const result = parseSmsNotification(text);
+
+      expect(result).toMatchObject({
+        type: "expense",
+        payeeOrMerchant: "MERALCO",
+        suggestedCategory: "Utilities",
+        confidence: "high",
+      });
+    });
+
+    it("reads a cash in as income", () => {
+      const text = "Cash In of P500.00 to your GCash account is successful. Ref. No. 1234567";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "income", payeeOrMerchant: "Cash in" });
+    });
+
+    it("takes the merchant after 'to' when the verb is not a known pattern", () => {
+      const text =
+        "P1,250.00 has been debited from your account for bills payment to PLDT. Ref 555";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({
+        type: "expense",
+        amountMinor: 125000,
+        payeeOrMerchant: "PLDT",
+        suggestedCategory: "Utilities",
+      });
+    });
+
+    it("keeps wallet names out of an expense's category", () => {
+      expect(suggestCategory("PAYPAL *GIT", "expense", "You have paid P64.33 GCash")).toBe(
+        "General",
+      );
     });
   });
 
