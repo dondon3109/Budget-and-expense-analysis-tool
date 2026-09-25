@@ -96,16 +96,9 @@ export function SubscriptionTable({
                 </td>
                 <td data-label="Status">
                   <div className="subscription-status-cell">
-                    <div className="subscription-status-stack">
-                      <span className={`subscription-status-badge ${item.status}`}>
-                        {item.status === "active" ? "Active" : "Canceled"}
-                      </span>
-                      {item.status === "active" && item.renewalBlockedReason ? (
-                        <span className="subscription-renewal-blocked">
-                          {renewalBlockedNote(item.renewalBlockedReason, item.nextBillingDate)}
-                        </span>
-                      ) : null}
-                    </div>
+                    <span className={`subscription-status-badge ${item.status}`}>
+                      {item.status === "active" ? "Active" : "Canceled"}
+                    </span>
                     <button
                       className="subscription-status-action"
                       type="button"
@@ -115,6 +108,11 @@ export function SubscriptionTable({
                     >
                       {updatingId === item.id ? "Updating…" : actionLabel}
                     </button>
+                    {item.status === "active" && item.renewalBlockedReason ? (
+                      <span className="subscription-renewal-blocked">
+                        {renewalBlockedNote(item.renewalBlockedReason, item.nextBillingDate)}
+                      </span>
+                    ) : null}
                   </div>
                 </td>
                 <td data-label="Actions">
