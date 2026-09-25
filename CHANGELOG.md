@@ -16,6 +16,8 @@ All notable product changes are documented here.
 - Receipts with a discount, coupon, promo, senior citizen or PWD discount, or Less VAT line are now itemized too. The discount is shared across the items in proportion to their price, so each transaction records what was actually paid and the items still add up to the receipt total.
 - The receipt scanner on web and mobile shows a dismissible notice that each photo reads one receipt, so several receipts should be photographed one at a time.
 - Receipt scanning on web and mobile no longer lists subtotal, total, VAT summary, cash, or change lines as purchased items, and it corrects item prices the reader returned in pesos instead of centavos when they then match the receipt total exactly.
+- The mobile Home screen leads with Total Balance, then quick actions, safe to spend, this month, cash flow, spending, budgets, and recent activity; the forecast and remittance calculator sit at the bottom. Total Balance shows a bar splitting your peso balance across accounts, each account's type icon and share of your assets, the total owed, and any USD held beside the peso total. This month compares money in and out as bars, spending by category adds a combined share bar, and the cash flow chart shows income and expense totals for the selected range.
+- On the mobile More tab, Theme and Voice language sit under Preferences as folded rows that show the current choice; tap one to open its options.
 
 ## 2.45.1 — 2026-09-25
 

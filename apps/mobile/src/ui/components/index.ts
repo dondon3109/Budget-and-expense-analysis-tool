@@ -3,6 +3,7 @@ export * from "./Button";
 export * from "./Card";
 export * from "./CashflowChart";
 export * from "./ChartCard";
+export * from "./CollapsibleCard";
 export * from "./ConfirmationDialog";
 export * from "./EmptyState";
 export * from "./ErrorState";

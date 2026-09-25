@@ -49,6 +49,8 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
     (largest, point) => Math.max(largest, point.incomeMinor, point.expenseMinor),
     0,
   );
+  const incomeTotalMinor = points.reduce((sum, point) => sum + point.incomeMinor, 0);
+  const expenseTotalMinor = points.reduce((sum, point) => sum + point.expenseMinor, 0);
   const axis = useMemo(() => createCashflowAxis(maximumMinor), [maximumMinor]);
   const geometry = buildChartGeometry(width, points.length, axis.domainMax);
   const tickInterval = xAxisInterval(points.length, cashflow.granularity);
@@ -135,12 +137,18 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
       ) : null}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: theme.colors.income }]} />
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Income</Text>
+          <View style={styles.legendLabel}>
+            <View style={[styles.legendDot, { backgroundColor: theme.colors.income }]} />
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Income</Text>
+          </View>
+          <MoneyValue amountMinor={incomeTotalMinor} tone="income" style={styles.legendValue} />
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: theme.colors.expense }]} />
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Expenses</Text>
+          <View style={styles.legendLabel}>
+            <View style={[styles.legendDash, { backgroundColor: theme.colors.expense }]} />
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Expenses</Text>
+          </View>
+          <MoneyValue amountMinor={-expenseTotalMinor} tone="expense" style={styles.legendValue} />
         </View>
       </View>
       <GestureDetector gesture={gesture}>
@@ -267,11 +275,13 @@ const styles = StyleSheet.create({
   },
   legend: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
+    gap: spacing.lg,
     marginBottom: spacing.xs,
   },
   legendItem: {
+    gap: 2,
+  },
+  legendLabel: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
@@ -280,6 +290,17 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 999,
+  },
+  // Mirrors the dashed expense line so the legend matches without color alone.
+  legendDash: {
+    width: 12,
+    height: 2,
+    borderRadius: 999,
+  },
+  legendValue: {
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "700",
   },
   callout: {
     position: "absolute",
