@@ -238,7 +238,8 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
       return;
     }
     setCategoryError(undefined);
-    if (!items.length) {
+    // Receipt items split spending or income; a transfer stays one signed total.
+    if (!items.length || kind === "transfer") {
       onContinue({
         date,
         kind,
@@ -483,7 +484,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
                 </small>
               )}
             </label>
-            {items.length > 0 && (
+            {items.length > 0 && kind !== "transfer" && (
               <fieldset className="receipt-items">
                 <legend>Receipt items</legend>
                 <p>Each item becomes its own transaction in the import preview.</p>

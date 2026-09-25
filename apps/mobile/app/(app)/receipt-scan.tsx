@@ -590,10 +590,7 @@ export default function ReceiptScanScreen() {
                 name="information-outline"
                 size={20}
               />
-              <Text
-                accessibilityRole="alert"
-                style={[typography.callout, styles.noticeText, { color: theme.colors.text }]}
-              >
+              <Text style={[typography.callout, styles.noticeText, { color: theme.colors.text }]}>
                 <Text style={typography.label}>One receipt per photo. </Text>
                 Each scan reads a single receipt. Photograph several receipts one at a time.
               </Text>

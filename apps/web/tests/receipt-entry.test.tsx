@@ -210,6 +210,55 @@ describe("ReceiptEntry", () => {
     });
   });
 
+  it("keeps a transfer receipt as one signed total instead of itemizing it", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
+      merchant: "GCash",
+      date: "2026-08-13",
+      amountMinor: -50000,
+      currency: "PHP",
+      kind: "expense",
+      items: [{ description: "Send money", amountMinor: 40000 }],
+      rawText: "",
+    });
+    const transferCategory: CategoryRecord = {
+      id: "transfer",
+      name: "Transfer",
+      kind: "transfer",
+      color: "#999999",
+      archived: false,
+      system: true,
+      origin: "system",
+      requiredPlan: "free",
+      locked: false,
+    };
+    const onContinue = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReceiptEntry
+          workspace={workspace}
+          categories={[...categories, transferCategory]}
+          onContinue={onContinue}
+        />
+      </QueryClientProvider>,
+    );
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+    fireEvent.change(await screen.findByLabelText("Type"), { target: { value: "transfer" } });
+    fireEvent.change(screen.getByLabelText("Amount (₱)"), { target: { value: "-500.00" } });
+    expect(screen.queryByLabelText("Item 1 description")).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Category"), { target: { value: "transfer" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+
+    expect(onContinue).toHaveBeenCalledWith({
+      date: "2026-08-13",
+      kind: "transfer",
+      lines: [{ description: "GCash", amountMinor: -50000, categoryName: "Transfer" }],
+    });
+  });
+
   it("can collapse unreconciled items into one receipt total", async () => {
     apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
     apiMocks.extractReceipt.mockResolvedValue({

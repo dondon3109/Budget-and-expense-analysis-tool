@@ -103,7 +103,8 @@ function mapProviderError(error: unknown, reporter: ReceiptDiagnosticReporter): 
 
 // Discount lines reduce what was paid for the items above them. "Less VAT" is
 // the VAT removed from a senior citizen or PWD purchase, so it is a deduction
-// here rather than a VAT summary line.
+// here rather than a VAT summary line. The prompt asks for deductions as
+// negative amounts, so a positive "Promo Bucket" or "Disc brake pad" stays an item.
 const DISCOUNT_LINE_PATTERN =
   /\b(?:discount|disc|coupon|promo(?:tion)?|voucher|less(?:\s*:)?\s*(?:vat|sc|pwd|senior))\b/i;
 
@@ -168,8 +169,8 @@ function normalizeItems(
     ) {
       continue;
     }
-    if (DISCOUNT_LINE_PATTERN.test(description)) {
-      discountMinor += Math.abs(item.amountMinor);
+    if (item.amountMinor < 0 && DISCOUNT_LINE_PATTERN.test(description)) {
+      discountMinor -= item.amountMinor;
       continue;
     }
     if (isSummaryLine(description)) continue;

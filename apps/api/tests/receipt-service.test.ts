@@ -265,6 +265,49 @@ describe("receipt service", () => {
     ]);
   });
 
+  it("keeps positive promo-named products as items rather than discounts", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "KFC",
+      amountMinor: -45_000,
+      kind: "expense",
+      items: [
+        { description: "Promo Bucket", amountMinor: 40_000 },
+        { description: "Disc brake cleaner", amountMinor: 5_000 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Promo Bucket", amountMinor: 40_000 },
+        { description: "Disc brake cleaner", amountMinor: 5_000 },
+      ],
+    });
+  });
+
+  it("rescales peso lines and their discount together before spreading it", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: -24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: 150 },
+        { description: "Fish", amountMinor: 100 },
+        { description: "Member discount", amountMinor: -5 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 14_700 },
+        { description: "Fish", amountMinor: 9_800 },
+      ],
+    });
+  });
+
   it("falls back to the receipt total when the discount covers every item", async () => {
     const vision = provider();
     (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
