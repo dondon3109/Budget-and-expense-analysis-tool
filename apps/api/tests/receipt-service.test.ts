@@ -160,7 +160,7 @@ describe("receipt service", () => {
       kind: "expense",
       items: [
         { description: "Vegetables", amountMinor: 12000, categoryName: "Groceries" },
-        { description: "Fish", amountMinor: -12500 },
+        { description: "Fish", amountMinor: 12500 },
         { description: "", amountMinor: 100 },
         { description: "Ignored", amountMinor: 0 },
       ],
@@ -263,6 +263,67 @@ describe("receipt service", () => {
       { description: "Chickenjoy bucket", amountMinor: 24_286 },
       { description: "Spaghetti", amountMinor: 9_714 },
     ]);
+  });
+
+  it("treats every line as a purchase when the model signed them all negative", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: -24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: -12_000 },
+        { description: "Fish", amountMinor: -12_500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 12_000 },
+        { description: "Fish", amountMinor: 12_500 },
+      ],
+    });
+  });
+
+  it("treats any negative line as a deduction even without discount wording", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Mercury Drug",
+      amountMinor: -8_000,
+      kind: "expense",
+      items: [
+        { description: "Vitamins", amountMinor: 10_000 },
+        { description: "SC 20%", amountMinor: -2_000 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [{ description: "Vitamins", amountMinor: 8_000 }],
+    });
+  });
+
+  it("does not rescale when item prices and the discount use different scales", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: -24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: 150 },
+        { description: "Fish", amountMinor: 100 },
+        { description: "Member discount", amountMinor: -50 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 120 },
+        { description: "Fish", amountMinor: 80 },
+      ],
+    });
   });
 
   it("keeps positive promo-named products as items rather than discounts", async () => {

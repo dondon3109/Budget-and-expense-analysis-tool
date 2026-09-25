@@ -101,13 +101,6 @@ function mapProviderError(error: unknown, reporter: ReceiptDiagnosticReporter): 
   );
 }
 
-// Discount lines reduce what was paid for the items above them. "Less VAT" is
-// the VAT removed from a senior citizen or PWD purchase, so it is a deduction
-// here rather than a VAT summary line. The prompt asks for deductions as
-// negative amounts, so a positive "Promo Bucket" or "Disc brake pad" stays an item.
-const DISCOUNT_LINE_PATTERN =
-  /\b(?:discount|disc|coupon|promo(?:tion)?|voucher|less(?:\s*:)?\s*(?:vat|sc|pwd|senior))\b/i;
-
 // Totals, tax breakdowns, and payment lines the model sometimes lists as items
 // despite the prompt. Philippine receipts print VATable/VAT-exempt/zero-rated
 // sales and the VAT amount as summaries of lines already listed above them, so
@@ -157,25 +150,33 @@ function normalizeItems(
   totalMinor: number,
 ): ReceiptDraftItem[] | undefined {
   if (!candidate.items) return undefined;
-  let items: ReceiptDraftItem[] = [];
-  let discountMinor = 0;
-  for (const item of candidate.items) {
+  const lines = candidate.items.flatMap((item) => {
     const description = item.description?.trim();
     if (
       !description ||
+      isSummaryLine(description) ||
       typeof item.amountMinor !== "number" ||
       !Number.isSafeInteger(item.amountMinor) ||
       item.amountMinor === 0
     ) {
-      continue;
+      return [];
     }
-    if (item.amountMinor < 0 && DISCOUNT_LINE_PATTERN.test(description)) {
+    return [{ ...item, description, amountMinor: item.amountMinor }];
+  });
+  // The prompt asks for every deduction (discount, coupon, SC/PWD 20%, Less VAT)
+  // as a negative line, so the sign decides, not the wording: a "Promo Bucket"
+  // is a purchase. When no line is positive the model copied the expense sign
+  // onto every price instead, so those lines are purchases too.
+  const signedDeductions = lines.some((item) => item.amountMinor > 0);
+  let items: ReceiptDraftItem[] = [];
+  let discountMinor = 0;
+  for (const item of lines) {
+    if (signedDeductions && item.amountMinor < 0) {
       discountMinor -= item.amountMinor;
       continue;
     }
-    if (isSummaryLine(description)) continue;
     items.push({
-      description: description.slice(0, 160),
+      description: item.description.slice(0, 160),
       amountMinor: Math.abs(item.amountMinor),
       ...(item.categoryName?.trim() ? { categoryName: item.categoryName.trim().slice(0, 80) } : {}),
     });
@@ -185,6 +186,7 @@ function normalizeItems(
   // The small vision model often writes line prices in pesos while the total
   // follows the centavo instruction. Only rescale when that is the exact
   // explanation, so a genuinely mismatched itemization stays visible for review.
+  // Discounts rescale with the items; mixed scales never reconcile and stay as read.
   const netMinor = items.reduce((total, item) => total + item.amountMinor, 0) - discountMinor;
   if (netMinor * 100 === Math.abs(totalMinor)) {
     items = items.map((item) => ({ ...item, amountMinor: item.amountMinor * 100 }));
