@@ -244,8 +244,11 @@ jobs:
             | gsub("sk-ant-[A-Za-z0-9_-]+"; "[redacted token]") | gsub("@"; "@​")
           ' review-artifact/verdict.json > comment.md
 
-          existing="$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- claude-review -->"))) | .id' | head -n 1)"
+          # All ids are read before taking the first: piping into head could SIGPIPE gh on a long
+          # thread, which pipefail turns into a failed step.
+          ids="$(gh api "repos/${GH_REPO}/issues/${PR_NUMBER}/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- claude-review -->"))) | .id')"
+          existing="${ids%%$'\n'*}"
           if [ -n "${existing}" ]; then
             gh api --method PATCH "repos/${GH_REPO}/issues/comments/${existing}" -F body=@comment.md > /dev/null
           else

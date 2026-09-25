@@ -24,12 +24,14 @@ const HIGH_RISK = [
   /(^|\/)tsconfig[^/]*\.json$/,
   /^e2e\/fixtures\//,
   // Auth, tenancy, money, billing, credentials, and sync.
-  /^apps\/api\/src\/(app|auth|request|platform-admin|account-deletion)\.ts$/,
+  /^apps\/api\/src\/(app|index|auth|request|rate-limit|rate-limit-do|platform-admin|account-deletion)\.ts$/,
   /^apps\/api\/src\/(billing|provider-credentials|entry)\//,
-  /^apps\/api\/src\/db\/(billing|provider-credentials|mobile-sync|tenants|platform-admin|account-deletion)/,
+  /^apps\/api\/src\/db\/(billing|provider-credentials|mobile-sync|tenants|platform-admin|account-deletion|provider-configs)/,
   /^apps\/api\/src\/routes\/(billing|paypal-webhooks|dodo-webhooks|provider-credentials|admin-provider-configs|platform-admin|account-deletion|ops-bug-report-egress|mobile-sync)\.ts$/,
   /^packages\/shared\/src\/(money|sync|schemas)\.ts$/,
   /^apps\/mobile\/src\/(auth|db|sync)\//,
+  /^apps\/web\/src\/auth\//,
+  /^apps\/web\/public\/_headers$/,
 ];
 
 export function highRiskPaths(paths) {
