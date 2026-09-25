@@ -48,6 +48,27 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
   previewImport: vi.fn(),
 }));
 
+// The receipt review has its own suite; here it only hands ImportPage a reviewed draft.
+vi.mock("../src/components/receipts/ReceiptEntry", () => ({
+  ReceiptEntry: ({ onContinue }: { onContinue: (draft: unknown) => void }) => (
+    <button
+      type="button"
+      onClick={() =>
+        onContinue({
+          date: "2026-08-13",
+          kind: "expense",
+          lines: [
+            { description: "Jollibee · Chickenjoy", amountMinor: 18_500, categoryName: "Food" },
+            { description: 'Jollibee · "Pie"', amountMinor: 10_000, categoryName: "Food" },
+          ],
+        })
+      }
+    >
+      Use reviewed receipt
+    </button>
+  ),
+}));
+
 vi.mock("../src/lib/workbookImportClient", () => ({
   WorkbookImportClient: class {
     private disposed = false;
@@ -223,6 +244,38 @@ describe("ImportPage", () => {
       pageSize: 1,
       total: 4,
       totalPages: 4,
+    });
+  });
+
+  it("previews each reviewed receipt line as its own signed row", async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ImportDraftProvider>
+            <MemoryRouter initialEntries={["/app/import?mode=receipt"]}>
+              <Routes>
+                <Route path="/app/import" element={<ImportPage />} />
+              </Routes>
+            </MemoryRouter>
+          </ImportDraftProvider>
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Use reviewed receipt" }));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+
+    await waitFor(() => expect(previewImport).toHaveBeenCalledOnce());
+    expect(vi.mocked(previewImport).mock.calls[0]?.[1]).toMatchObject({
+      fileName: "receipt-2026-08-13.csv",
+      csvText: [
+        "Description,Amount,Category,Type",
+        '"Jollibee · Chickenjoy",-185.00,"Food",expense',
+        '"Jollibee · ""Pie""",-100.00,"Food",expense',
+      ].join("\r\n"),
+      fallbackDate: "2026-08-13",
     });
   });
 

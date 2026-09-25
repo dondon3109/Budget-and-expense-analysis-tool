@@ -5,6 +5,7 @@ import {
   receiptDraftSchema,
   transactionVoiceDraftSchema,
 } from "../src/schemas";
+import { receiptItemDescription } from "../src/receipts";
 
 describe("receiptDraftSchema", () => {
   it("accepts a fully parsed receipt draft", () => {
@@ -112,5 +113,13 @@ describe("transactionVoiceDraftSchema", () => {
         kind: "expense",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("receiptItemDescription", () => {
+  it("keeps the merchant as context for each receipt item", () => {
+    expect(receiptItemDescription("Jollibee", "Chickenjoy")).toBe("Jollibee · Chickenjoy");
+    expect(receiptItemDescription("Jollibee", "jollibee")).toBe("Jollibee");
+    expect(receiptItemDescription(" ", "Chickenjoy")).toBe("Chickenjoy");
   });
 });

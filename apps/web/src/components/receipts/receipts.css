@@ -249,3 +249,125 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ============================================================
+   RECEIPT ITEMS
+   ============================================================ */
+.receipt-items {
+  grid-column: 1 / -1;
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--surface-soft);
+}
+
+.receipt-items legend {
+  padding: 0 4px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.receipt-items > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.receipt-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 118px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.receipt-item-remove {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.receipt-item-remove:hover,
+.receipt-item-remove:focus-visible {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.receipt-items-total {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-items-total.matches {
+  color: var(--action);
+}
+
+.receipt-items-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.receipt-items-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .receipt-item {
+    grid-template-columns: minmax(0, 1fr) 96px auto;
+  }
+}
+
+.receipt-notice {
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  color: var(--muted);
+  border: 1px solid color-mix(in srgb, var(--action) 28%, var(--line));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--action) 8%, var(--surface));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.receipt-notice > svg {
+  margin-top: 2px;
+  color: var(--action);
+}
+
+.receipt-notice p {
+  margin: 0;
+}
+
+.receipt-notice strong {
+  color: var(--ink);
+}
+
+.receipt-notice button {
+  padding: 2px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.receipt-notice button:hover,
+.receipt-notice button:focus-visible {
+  color: var(--ink);
+}

@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   preferredTransactionAccount,
+  receiptItemDescription,
   type Currency,
   type ReceiptDraft,
   type TransactionInput,
@@ -17,7 +18,6 @@ import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "@/ap
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import {
-  receiptItemDescription,
   reviewedItemsTotalMinor,
   reviewItemsFromReceipt,
   type ReceiptReviewCategory,
@@ -159,6 +159,7 @@ export default function ReceiptScanScreen() {
   const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
   const [items, setItems] = useState<ReceiptReviewItem[]>([]);
   const [showRawText, setShowRawText] = useState(false);
+  const [singleReceiptNoticeOpen, setSingleReceiptNoticeOpen] = useState(true);
 
   const accounts = useMemo(
     () => formData.data?.accounts.filter((account) => !account.pending) ?? [],
@@ -581,6 +582,28 @@ export default function ReceiptScanScreen() {
 
       {phase === "ready" ? (
         <View className="w-full gap-5">
+          {singleReceiptNoticeOpen ? (
+            <View style={[styles.notice, { backgroundColor: theme.colors.brandSoft }]}>
+              <MaterialCommunityIcons
+                accessibilityElementsHidden
+                color={theme.colors.brand}
+                name="information-outline"
+                size={20}
+              />
+              <Text style={[typography.callout, styles.noticeText, { color: theme.colors.text }]}>
+                <Text style={typography.label}>One receipt per photo. </Text>
+                Each scan reads a single receipt. Photograph several receipts one at a time.
+              </Text>
+              <Pressable
+                accessibilityLabel="Dismiss one receipt per photo notice"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setSingleReceiptNoticeOpen(false)}
+              >
+                <MaterialCommunityIcons color={theme.colors.textMuted} name="close" size={20} />
+              </Pressable>
+            </View>
+          ) : null}
           {captureActions}
           {message ? (
             <ErrorState
@@ -848,6 +871,14 @@ export default function ReceiptScanScreen() {
 
 const styles = StyleSheet.create({
   captureCard: { gap: spacing.md },
+  notice: {
+    borderRadius: radii.md,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.sm,
+  },
+  noticeText: { flex: 1, minWidth: 0 },
   captureIcon: {
     width: touchTarget,
     height: touchTarget,

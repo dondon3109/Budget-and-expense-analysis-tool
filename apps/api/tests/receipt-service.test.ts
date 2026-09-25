@@ -160,7 +160,7 @@ describe("receipt service", () => {
       kind: "expense",
       items: [
         { description: "Vegetables", amountMinor: 12000, categoryName: "Groceries" },
-        { description: "Fish", amountMinor: -12500 },
+        { description: "Fish", amountMinor: 12500 },
         { description: "", amountMinor: 100 },
         { description: "Ignored", amountMinor: 0 },
       ],
@@ -175,7 +175,56 @@ describe("receipt service", () => {
     });
   });
 
-  it("falls back to the receipt total when a discount would make itemization not reconcile", async () => {
+  it("drops total, VAT summary, and payment lines the model lists as items", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "SM Supermarket",
+      amountMinor: 33_500,
+      kind: "expense",
+      items: [
+        { description: "Rice 5kg", amountMinor: 30_000 },
+        { description: "GCash cash-in fee", amountMinor: 3_500 },
+        { description: "Subtotal", amountMinor: 33_500 },
+        { description: "VATable Sales", amountMinor: 29_911 },
+        { description: "VAT-Exempt Sales", amountMinor: 0 },
+        { description: "VAT Amount", amountMinor: 3_589 },
+        { description: "TOTAL", amountMinor: 33_500 },
+        { description: "Cash", amountMinor: 50_000 },
+        { description: "Change", amountMinor: 16_500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Rice 5kg", amountMinor: 30_000 },
+        { description: "GCash cash-in fee", amountMinor: 3_500 },
+      ],
+    });
+  });
+
+  it("rescales line items the model wrote in pesos when they reconcile exactly", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Jollibee",
+      amountMinor: 28_500,
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy", amountMinor: 185 },
+        { description: "Peach mango pie", amountMinor: 100 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Chickenjoy", amountMinor: 18_500 },
+        { description: "Peach mango pie", amountMinor: 10_000 },
+      ],
+    });
+  });
+
+  it("nets a single-line discount into the purchased item", async () => {
     const vision = provider();
     (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
       merchant: "Market",
@@ -190,6 +239,150 @@ describe("receipt service", () => {
 
     await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       amountMinor: 24_500,
+      items: [{ description: "Vegetables", amountMinor: 24_500, categoryName: "Groceries" }],
+    });
+  });
+
+  it("spreads discounts across items by price so every centavo reconciles", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Jollibee",
+      amountMinor: -34_000,
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy bucket", amountMinor: 25_000 },
+        { description: "Spaghetti", amountMinor: 10_000 },
+        { description: "SC Disc 20%", amountMinor: -600 },
+        { description: "Less VAT", amountMinor: -400 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    const draft = await service.extract(env, TENANT_ID, receiptImage());
+    expect(draft.items).toEqual([
+      { description: "Chickenjoy bucket", amountMinor: 24_286 },
+      { description: "Spaghetti", amountMinor: 9_714 },
+    ]);
+  });
+
+  it("treats every line as a purchase when the model signed them all negative", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: -24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: -12_000 },
+        { description: "Fish", amountMinor: -12_500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 12_000 },
+        { description: "Fish", amountMinor: 12_500 },
+      ],
+    });
+  });
+
+  it("treats any negative line as a deduction even without discount wording", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Mercury Drug",
+      amountMinor: -8_000,
+      kind: "expense",
+      items: [
+        { description: "Vitamins", amountMinor: 10_000 },
+        { description: "SC 20%", amountMinor: -2_000 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [{ description: "Vitamins", amountMinor: 8_000 }],
+    });
+  });
+
+  it("does not rescale when item prices and the discount use different scales", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: -24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: 150 },
+        { description: "Fish", amountMinor: 100 },
+        { description: "Member discount", amountMinor: -50 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 120 },
+        { description: "Fish", amountMinor: 80 },
+      ],
+    });
+  });
+
+  it("keeps positive promo-named products as items rather than discounts", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "KFC",
+      amountMinor: -45_000,
+      kind: "expense",
+      items: [
+        { description: "Promo Bucket", amountMinor: 40_000 },
+        { description: "Disc brake cleaner", amountMinor: 5_000 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Promo Bucket", amountMinor: 40_000 },
+        { description: "Disc brake cleaner", amountMinor: 5_000 },
+      ],
+    });
+  });
+
+  it("rescales peso lines and their discount together before spreading it", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: -24_500,
+      kind: "expense",
+      items: [
+        { description: "Vegetables", amountMinor: 150 },
+        { description: "Fish", amountMinor: 100 },
+        { description: "Member discount", amountMinor: -5 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
+      items: [
+        { description: "Vegetables", amountMinor: 14_700 },
+        { description: "Fish", amountMinor: 9_800 },
+      ],
+    });
+  });
+
+  it("falls back to the receipt total when the discount covers every item", async () => {
+    const vision = provider();
+    (vision.extract as ReturnType<typeof vi.fn>).mockResolvedValue({
+      merchant: "Market",
+      amountMinor: 100,
+      kind: "expense",
+      items: [
+        { description: "Sample", amountMinor: 500 },
+        { description: "Voucher", amountMinor: -500 },
+      ],
+    });
+    const service = createReceiptService(repository(), vision);
+
+    await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       items: [],
     });
   });

@@ -1,5 +1,6 @@
 import {
   CsvParseError,
+  formatMinorAmount,
   importPreviewRequestSchema,
   inspectCsv,
   normalizeSignedAmount,
@@ -184,22 +185,22 @@ export function ImportPage() {
   }
 
   function beginReceiptPreview(draft: ReceiptEntryDraft) {
-    const signedAmount =
-      draft.kind === "expense"
-        ? -Math.abs(draft.amountMinor)
-        : draft.kind === "income"
-          ? Math.abs(draft.amountMinor)
-          : draft.amountMinor;
     const headers = ["Description", "Amount", "Category", "Type"];
-    const receiptCsv = [
-      headers.join(","),
-      [
-        csvField(draft.merchant),
-        (signedAmount / 100).toFixed(2),
-        csvField(draft.categoryName),
+    const rows = draft.lines.map((line) => {
+      const signedAmount =
+        draft.kind === "expense"
+          ? -Math.abs(line.amountMinor)
+          : draft.kind === "income"
+            ? Math.abs(line.amountMinor)
+            : line.amountMinor;
+      return [
+        csvField(line.description),
+        formatMinorAmount(signedAmount),
+        csvField(line.categoryName),
         draft.kind,
-      ].join(","),
-    ].join("\r\n");
+      ].join(",");
+    });
+    const receiptCsv = [headers.join(","), ...rows].join("\r\n");
 
     beginFileSelection();
     setFileName("receipt-" + draft.date + ".csv");
@@ -207,7 +208,7 @@ export function ImportPage() {
     setInspection(inspectCsv(receiptCsv));
     setHeaderRowNumber(1);
     setHeaders(headers);
-    setSelectedRowCount(1);
+    setSelectedRowCount(draft.lines.length);
     setMapping({
       description: "Description",
       amount: "Amount",

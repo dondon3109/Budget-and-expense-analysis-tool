@@ -1,10 +1,6 @@
 import type { CategoryRecord, ReceiptDraft } from "@zoption/shared";
 
-import {
-  receiptItemDescription,
-  reviewedItemsTotalMinor,
-  reviewItemsFromReceipt,
-} from "./receipt-review";
+import { reviewedItemsTotalMinor, reviewItemsFromReceipt } from "./receipt-review";
 
 const categories: CategoryRecord[] = [
   {
@@ -74,10 +70,8 @@ describe("receipt review items", () => {
     expect(reviewedItemsTotalMinor(items)).toBe(24_500);
   });
 
-  it("sums reviewed amounts and preserves merchant context in each transaction", () => {
+  it("sums reviewed amounts", () => {
     const items = reviewItemsFromReceipt(draft, categories, "expense");
     expect(reviewedItemsTotalMinor(items)).toBe(28_500);
-    expect(receiptItemDescription("Jollibee", "Chickenjoy")).toBe("Jollibee · Chickenjoy");
-    expect(receiptItemDescription("Jollibee", "Jollibee")).toBe("Jollibee");
   });
 });
