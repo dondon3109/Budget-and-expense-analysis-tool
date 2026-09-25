@@ -5,6 +5,7 @@ import {
   matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
+  sortCategoriesForPicker,
   transactionInputSchema,
   type AccountRecord,
   type CategoryRecord,
@@ -26,6 +27,7 @@ import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
+import { NewCategoryInline } from "./NewCategoryInline";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
 export interface TransactionFormDraft {
@@ -55,6 +57,9 @@ interface TransactionFormProps {
   onClose: () => void;
 }
 
+/** Select value for the "New category" option; never a real category id. */
+const NEW_CATEGORY_OPTION = "__new_category__";
+
 function toAmountText(item?: TransactionListItem): string {
   return item ? (Math.abs(item.amountMinor) / 100).toFixed(2) : "";
 }
@@ -64,7 +69,7 @@ export function TransactionForm({
   item,
   initialDraft,
   initialDate,
-  categories,
+  categories: categoriesProp,
   accounts,
   debts,
   busy,
@@ -95,6 +100,19 @@ export function TransactionForm({
     initialDraft?.currency ?? item?.currency ?? "PHP",
   );
   const [clientError, setClientError] = useState<string>();
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  // Categories added inline, kept until the parent's category query returns them, so the
+  // new pick is not reset by the "selected category must exist" effect below.
+  const [createdCategories, setCreatedCategories] = useState<CategoryRecord[]>([]);
+  const categories = useMemo(
+    () => [
+      ...categoriesProp,
+      ...createdCategories.filter(
+        (created) => !categoriesProp.some((category) => category.id === created.id),
+      ),
+    ],
+    [categoriesProp, createdCategories],
+  );
   const dialogRef = useRef<HTMLElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
@@ -452,21 +470,43 @@ export function TransactionForm({
             <span>Category</span>
             <select
               value={categoryId}
-              onChange={(event) => setCategoryId(event.target.value)}
+              onChange={(event) => {
+                if (event.target.value === NEW_CATEGORY_OPTION) {
+                  setCreatingCategory(true);
+                  return;
+                }
+                setCategoryId(event.target.value);
+              }}
               required
             >
               {selectableCategories.length === 0 && (
                 <option value="">Upgrade or create a {kind} category first</option>
               )}
-              {availableCategories.map((category) => (
-                <option key={category.id} value={category.id} disabled={category.locked}>
-                  {category.iconEmoji ? `${category.iconEmoji} ` : ""}
-                  {category.name}
-                  {category.locked ? " — Pro required" : ""}
-                </option>
-              ))}
+              {sortCategoriesForPicker(availableCategories, (category) => category.iconEmoji).map(
+                (category) => (
+                  <option key={category.id} value={category.id} disabled={category.locked}>
+                    {category.iconEmoji ? `${category.iconEmoji} ` : ""}
+                    {category.name}
+                    {category.locked ? " — Pro required" : ""}
+                  </option>
+                ),
+              )}
+              <option value={NEW_CATEGORY_OPTION}>+ New category…</option>
             </select>
           </label>
+          {creatingCategory && (
+            <NewCategoryInline
+              workspace={workspace}
+              kind={kind}
+              categoryCount={categories.length}
+              onCreated={(category) => {
+                setCreatedCategories((current) => [...current, category]);
+                setCategoryId(category.id);
+                setCreatingCategory(false);
+              }}
+              onCancel={() => setCreatingCategory(false)}
+            />
+          )}
           {debtPaymentSelected &&
             (selectableDebts.length === 0 ? (
               <p className="form-hint">
