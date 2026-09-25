@@ -721,6 +721,27 @@ export function resolveCategoryEmoji(
   return getDefaultCategoryEmoji(category.name);
 }
 
+const pictographPattern = /\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+const pictographGlobalPattern =
+  /\p{Extended_Pictographic}|\p{Regional_Indicator}|\p{Emoji_Modifier}|\uFE0F|\u200D|\u20E3/gu;
+
+/** Picker order: categories shown as plain text A–Z, then categories shown with an emoji A–Z.
+ *  `emojiOf` returns the emoji the surface actually renders beside the name, so the
+ *  grouping matches what the user sees; an emoji typed into the name also counts. */
+export function sortCategoriesForPicker<T extends { name: string }>(
+  categories: readonly T[],
+  emojiOf: (category: T) => string | null | undefined,
+): T[] {
+  const hasEmoji = (category: T) =>
+    Boolean(emojiOf(category)?.trim()) || pictographPattern.test(category.name);
+  const sortName = (category: T) => category.name.replace(pictographGlobalPattern, "").trim();
+  return [...categories].sort((left, right) => {
+    const groupOrder = Number(hasEmoji(left)) - Number(hasEmoji(right));
+    if (groupOrder !== 0) return groupOrder;
+    return sortName(left).localeCompare(sortName(right), "en", { sensitivity: "base" });
+  });
+}
+
 export const categoryInputSchema = z
   .object({
     name: z.string().trim().min(1).max(80),

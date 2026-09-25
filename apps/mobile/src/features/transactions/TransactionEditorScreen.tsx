@@ -7,6 +7,7 @@ import {
   parseAmountToMinor,
   preferredTransactionAccount,
   resolveCategoryEmoji,
+  sortCategoriesForPicker,
 } from "@zoption/shared";
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
@@ -41,6 +42,7 @@ import {
   type VoicePreviewState,
 } from "./voice-preview";
 import { KindSelector } from "./KindSelector";
+import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
@@ -60,6 +62,9 @@ const emptyForm: TransactionFormValues = {
 function singleParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+/** Selection id for the "New category" row; never a real category id. */
+const NEW_CATEGORY_OPTION = "__new_category__";
 
 export function TransactionEditorScreen() {
   const params = useLocalSearchParams<{
@@ -91,6 +96,7 @@ export function TransactionEditorScreen() {
   const pendingValuesToSaveRef = useRef<TransactionFormValues | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const saveRef = useRef<
     ((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined
   >(undefined);
@@ -211,15 +217,20 @@ export function TransactionEditorScreen() {
         label: account.name,
         detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
       })) ?? [];
-  const categoryOptions = categories.map((category) => {
-    const emoji = resolveCategoryEmoji(category);
-    return {
-      id: category.id,
-      label: emoji ? `${emoji} ${category.name}` : category.name,
-      color: category.color,
-      detail: category.pending ? "Pending setup" : undefined,
-    };
-  });
+  const categoryOptions = sortCategoriesForPicker(categories, resolveCategoryEmoji).map(
+    (category) => {
+      const emoji = resolveCategoryEmoji(category);
+      return {
+        id: category.id,
+        label: emoji ? `${emoji} ${category.name}` : category.name,
+        color: category.color,
+        detail: category.pending ? "Pending setup" : undefined,
+      };
+    },
+  );
+  // Transfers only list synced categories, so a category created here would not appear for them.
+  const canCreateCategory = values.kind !== "transfer";
+  const localWorkspace = local.workspace;
 
   const updateValue = <Key extends keyof TransactionFormValues>(
     key: Key,
@@ -677,12 +688,35 @@ export function TransactionEditorScreen() {
             disabled={saving || mutationBlocked}
             error={errors.categoryId}
             label="Category"
-            onSelect={(categoryId) => updateValue("categoryId", categoryId)}
-            options={categoryOptions}
+            onSelect={(categoryId) => {
+              if (categoryId === NEW_CATEGORY_OPTION) {
+                setCreatingCategory(true);
+                return;
+              }
+              updateValue("categoryId", categoryId);
+            }}
+            options={
+              canCreateCategory
+                ? [...categoryOptions, { id: NEW_CATEGORY_OPTION, label: "+ New category" }]
+                : categoryOptions
+            }
             placeholder="Choose a category"
             sheetTitle={`Choose ${values.kind} category`}
             value={values.categoryId}
           />
+          {creatingCategory && canCreateCategory && localWorkspace ? (
+            <NewCategoryInline
+              kind={values.kind}
+              categoryCount={categories.length}
+              createCategory={(input) => localWorkspace.transactionMutations.createCategory(input)}
+              onCreated={(categoryId) => {
+                updateValue("categoryId", categoryId);
+                setCreatingCategory(false);
+                sync.retry();
+              }}
+              onCancel={() => setCreatingCategory(false)}
+            />
+          ) : null}
           <FormField
             autoCapitalize="none"
             autoCorrect={false}

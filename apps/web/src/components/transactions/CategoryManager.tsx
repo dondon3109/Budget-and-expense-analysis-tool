@@ -30,7 +30,7 @@ interface CategoryManagerProps {
   onClose: () => void;
 }
 
-const palette = [
+export const categoryPalette = [
   "#2a78d6",
   "#008300",
   "#e87ba4",
@@ -65,7 +65,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [name, setName] = useState("");
   const [kind, setKind] = useState<TransactionKind>("expense");
-  const [color, setColor] = useState(palette[0]!);
+  const [color, setColor] = useState(categoryPalette[0]!);
   const [iconEmoji, setIconEmoji] = useState("");
   const [editingId, setEditingId] = useState<string>();
   const [editingName, setEditingName] = useState("");
@@ -288,7 +288,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
           <fieldset>
             <legend>Color</legend>
             <div className="color-picker">
-              {palette.map((option) => (
+              {categoryPalette.map((option) => (
                 <button
                   key={option}
                   type="button"

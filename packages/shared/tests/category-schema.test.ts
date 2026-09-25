@@ -5,6 +5,7 @@ import {
   categoryUpdateSchema,
   getDefaultCategoryEmoji,
   resolveCategoryEmoji,
+  sortCategoriesForPicker,
 } from "../src/schemas";
 
 describe("category emoji schemas", () => {
@@ -45,5 +46,37 @@ describe("category emoji schemas", () => {
     expect(resolveCategoryEmoji({ name: "Food", iconEmoji: "🍕" })).toBe("🍕");
     expect(resolveCategoryEmoji({ name: "Food", iconEmoji: null })).toBe("🍔");
     expect(resolveCategoryEmoji({ name: "Custom", iconEmoji: null })).toBeNull();
+  });
+});
+
+describe("sortCategoriesForPicker", () => {
+  it("lists plain-text categories A–Z before emoji categories A–Z", () => {
+    const categories = [
+      { name: "zoo", iconEmoji: null },
+      { name: "Food", iconEmoji: "🍔" },
+      { name: "Allowance", iconEmoji: null },
+      { name: "🎮 Games", iconEmoji: null },
+      { name: "bills", iconEmoji: null },
+      { name: "Coffee", iconEmoji: "☕" },
+    ];
+
+    const sorted = sortCategoriesForPicker(categories, (category) => category.iconEmoji);
+
+    expect(sorted.map((category) => category.name)).toEqual([
+      "Allowance",
+      "bills",
+      "zoo",
+      "Coffee",
+      "Food",
+      "🎮 Games",
+    ]);
+  });
+
+  it("groups by the emoji the surface renders, including name defaults", () => {
+    const categories = [{ name: "Groceries" }, { name: "Pets" }];
+
+    const sorted = sortCategoriesForPicker(categories, resolveCategoryEmoji);
+
+    expect(sorted.map((category) => category.name)).toEqual(["Pets", "Groceries"]);
   });
 });
