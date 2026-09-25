@@ -21,6 +21,15 @@ describe("transaction defaults", () => {
     expect(preferredTransactionAccount([bank])).toBe(bank);
     expect(preferredTransactionAccount([])).toBeUndefined();
   });
+
+  it("prefers the default spending account over cash", () => {
+    expect(preferredTransactionAccount([cash, bank], "bank")).toBe(bank);
+  });
+
+  it("ignores a default spending account that is no longer available", () => {
+    expect(preferredTransactionAccount([bank, cash], "removed")).toBe(cash);
+    expect(preferredTransactionAccount([bank, cash], null)).toBe(cash);
+  });
 });
 
 describe("balance adjustment helpers", () => {

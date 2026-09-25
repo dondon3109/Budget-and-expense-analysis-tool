@@ -21,6 +21,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
+import { useDefaultSpendingAccountId } from "../../lib/defaultSpendingAccount";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
@@ -97,9 +98,10 @@ export function TransactionForm({
   const dialogRef = useRef<HTMLElement>(null);
   const descriptionRef = useRef<HTMLInputElement>(null);
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
+  const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const defaultAccount = useMemo(
-    () => preferredTransactionAccount(activeAccounts),
-    [activeAccounts],
+    () => preferredTransactionAccount(activeAccounts, defaultSpendingAccountId),
+    [activeAccounts, defaultSpendingAccountId],
   );
   const availableCategories = useMemo(
     () => categories.filter((category) => !category.archived && category.kind === kind),

@@ -15,6 +15,7 @@ import { evaluatePassword } from "../auth/passwordPolicy";
 import { useAuth } from "../auth/AuthProvider";
 import { AccountDeletionDialog } from "../components/account/AccountDeletionDialog";
 import { BillingSettings } from "../components/account/BillingSettings";
+import { DefaultSpendingAccountSettings } from "../components/account/DefaultSpendingAccountSettings";
 import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { AppShell } from "../components/layout/AppShell";
@@ -43,6 +44,7 @@ const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#help": "help",
   "#contact": "contact",
   "#data-portability": "data-portability",
+  "#default-spending-account": "default-spending-account",
   "#voice-language": "voice-language",
   "#voice-settings": "voice-language",
 };
@@ -829,6 +831,8 @@ export function SettingsPage() {
               })}
             </div>
           </section>
+
+          {user && <DefaultSpendingAccountSettings workspace={userWorkspace(user)} />}
 
           {user && <CustomerReviewSettings workspace={userWorkspace(user)} />}
 

@@ -7,6 +7,7 @@ import {
 } from "@/db/local-workspace-state";
 import type { LocalDashboardData, TransactionFormData } from "@/db/repository";
 import type { LocalWorkspace } from "@/db/workspace";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { WidgetIntentScreen } from "./WidgetIntentScreen";
 
@@ -36,6 +37,12 @@ jest.mock("@/db/local-workspace-state", () => ({
 
 jest.mock("@/sync/sync-state", () => ({
   useSyncState: jest.fn(),
+}));
+
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
 }));
 
 const createTransaction = jest.fn().mockResolvedValue("txn-1");
@@ -198,6 +205,7 @@ describe("WidgetIntentScreen expense review", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchParams = { transcript };
+    useDefaultSpendingAccountStore.setState({ accountId: null });
     jest
       .mocked(useSyncState)
       .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
@@ -243,13 +251,30 @@ describe("WidgetIntentScreen expense review", () => {
     await fireEvent.press(cancelButton);
   });
 
-  it("falls back to the first account and Uncategorized when nothing matches", async () => {
+  it("falls back to Cash and Uncategorized when nothing matches", async () => {
     mockSearchParams = { transcript: "spent 150 pesos on misc" };
 
     await render(<WidgetIntentScreen />);
 
-    expect(screen.getByRole("button", { name: "Account, Bank, PHP" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Account, Cash, PHP" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Category, Uncategorized" })).toBeTruthy();
+  });
+
+  it("starts an unnamed account on the default spending account", async () => {
+    mockSearchParams = { transcript: "spent 150 pesos on misc" };
+    useDefaultSpendingAccountStore.setState({ accountId: "a-gcash" });
+
+    await render(<WidgetIntentScreen />);
+
+    expect(screen.getByRole("button", { name: "Account, GCash, PHP" })).toBeTruthy();
+  });
+
+  it("still honours an account the speaker named over the default", async () => {
+    useDefaultSpendingAccountStore.setState({ accountId: "a-gcash" });
+
+    await render(<WidgetIntentScreen />);
+
+    expect(screen.getByRole("button", { name: "Account, Cash, PHP" })).toBeTruthy();
   });
   it("saves a spoken income as income", async () => {
     mockSearchParams = { transcript: "Received 20,000 pesos salary to my GCash" };

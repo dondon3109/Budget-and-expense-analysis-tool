@@ -24,6 +24,7 @@ import {
   type ReceiptReviewItem,
 } from "@/features/receipts/receipt-review";
 import { localCalendarDate, parseTransactionForm } from "@/features/transactions/transaction-form";
+import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
@@ -155,6 +156,7 @@ export default function ReceiptScanScreen() {
   const [date, setDate] = useState(localCalendarDate());
   const [kind, setKind] = useState<ReceiptKind>("expense");
   const [accountId, setAccountId] = useState("");
+  const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
   const [items, setItems] = useState<ReceiptReviewItem[]>([]);
   const [showRawText, setShowRawText] = useState(false);
 
@@ -203,9 +205,9 @@ export default function ReceiptScanScreen() {
   }, []);
 
   useEffect(() => {
-    const defaultAccount = preferredTransactionAccount(accounts);
+    const defaultAccount = preferredTransactionAccount(accounts, defaultSpendingAccountId);
     if (!accountId && defaultAccount) setAccountId(defaultAccount.id);
-  }, [accountId, accounts]);
+  }, [accountId, accounts, defaultSpendingAccountId]);
 
   useEffect(() => {
     const fallback = defaultCategoryId(categories, kind);
