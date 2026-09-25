@@ -36,8 +36,10 @@ export function LedgerLoader({
   // 0 = before the row, 1 = filling it, 2 = past it.
   const sweeps = useRef(ROW_SHARES.map(() => new Animated.Value(0))).current;
 
+  // Sweep only once the setting is known to be off; until then the rows sit
+  // empty, so a reduced-motion reader never sees a sweep start and stop.
   useEffect(() => {
-    if (reduceMotion) return;
+    if (reduceMotion !== false) return;
     const animation = Animated.parallel(
       sweeps.map((sweep, index) =>
         Animated.sequence([
@@ -115,8 +117,9 @@ export function LedgerLoader({
   );
 }
 
-function useReduceMotion(): boolean {
-  const [reduceMotion, setReduceMotion] = useState(false);
+/** `undefined` until the platform answers, which it does asynchronously. */
+function useReduceMotion(): boolean | undefined {
+  const [reduceMotion, setReduceMotion] = useState<boolean>();
   useEffect(() => {
     let active = true;
     void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {

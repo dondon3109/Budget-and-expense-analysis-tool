@@ -4,8 +4,13 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- You can create a new category straight from the category picker while adding or editing a transaction, on the web and on mobile. Choose "+ New category", enter a name and an optional emoji, and it is selected for the transaction without losing anything you already typed. On mobile this is offered for money in and money out, not transfers.
+
 ### Changed
 
+- The category picker in the transaction form lists categories without an emoji first, A to Z, followed by categories with an emoji, A to Z, so plain names are easier to scan.
 - New loading animation on web and mobile: three ledger rows fill in turn from left to right. It replaces the drawn Z monogram on the web startup screen, the orbiting emblem on in-page loading states, and the plain spinner on the mobile startup, session restore, workspace unlock, and sign-in screens. With reduced motion turned on, the rows stay still and filled.
 
 ## 2.45.1 — 2026-09-25
