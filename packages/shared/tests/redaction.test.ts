@@ -603,4 +603,11 @@ describe("detectIdentifierLeaks", () => {
     // A reserved name must be the whole domain suffix, not a prefix of a real domain.
     expect(detectIdentifierLeaks('email: "owner@example.com.ph",')).toEqual(["email"]);
   });
+
+  it("scans a long run of local-part characters with no @ in linear time", () => {
+    // Unbounded, the email pattern rescanned the run from every start: seconds at this length.
+    const started = performance.now();
+    expect(detectIdentifierLeaks("%".repeat(200_000))).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
 });
