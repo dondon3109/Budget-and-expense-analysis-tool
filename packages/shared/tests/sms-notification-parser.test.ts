@@ -517,6 +517,41 @@ describe("smsNotificationParser", () => {
       expect(result?.type).toBe("expense");
     });
 
+    it.each([
+      "P500.00 was charged to your card at SHOP X. If you have not received an OTP, call 8888.",
+      "P1,250.00 was debited from your deposit account. Ref 9",
+      "P640.00 was spent at SHOP X. Cash out anytime!",
+      "P640.00 was spent at SHOP X. See our refund policy.",
+    ])("keeps an expense when a footer or account name has other keywords: %s", (text) => {
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result?.type).toBe("expense");
+    });
+
+    it.each([
+      "Payment received: P1,500.00 for your MERALCO bill.",
+      "We have received payment of P1,500.00 for MERALCO.",
+      "Your bill payment of P1,500.00 has been received.",
+    ])("reads a biller confirmation as an expense: %s", (text) => {
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result?.type).toBe("expense");
+    });
+
+    it("keeps a payment the user received as income", () => {
+      const text = "You received a payment of P800.00 from JUAN. Ref 5";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "income", payeeOrMerchant: "JUAN" });
+    });
+
+    it("finds the merchant after 'at' when 'to' names the user's card", () => {
+      const text = "P300.00 was charged to your card at STARBUCKS. Ref 1";
+      const result = parseSmsNotification(text, "2026-08-25");
+
+      expect(result).toMatchObject({ type: "expense", payeeOrMerchant: "STARBUCKS" });
+    });
+
     it("ignores 'send' in an OTP footer", () => {
       const text = "P300.00 was charged to your card. Never send your OTP to anyone.";
       const result = parseSmsNotification(text, "2026-08-25");

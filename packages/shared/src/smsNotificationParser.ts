@@ -496,55 +496,87 @@ const GENERIC_TERMINATORS: PayeeTerminator[] = [
 ];
 
 /**
- * Money direction for alerts no specific pattern recognised. Order matters: a withdrawal or
- * cash out also says "from your wallet", and a credit alert can mention the word "transfer", so
- * the more specific movements are checked first. `label` names the payee when the text has none.
+ * The sentence holding the amount. Alerts end with footers ("If you have not received an OTP",
+ * "Cash out anytime!") whose keywords would otherwise decide the direction or the payee.
  */
-function classifyDirection(text: string): { type: SmsTransactionType; label?: string } | null {
-  if (/\b(?:withdr(?:aw|awn|awal|ew)|cash[ \t-]?out|cashed[ \t]+out)\b/i.test(text)) {
+function amountSentence(
+  text: string,
+  amountStart: number,
+  amountEnd: number,
+): { sentence: string; amountEnd: number } {
+  let start = 0;
+  const before = text.slice(0, amountStart);
+  const boundary = /[.!?]\s/g;
+  for (let m = boundary.exec(before); m; m = boundary.exec(before)) start = m.index + m[0].length;
+  const after = /[.!?](?:\s|$)/.exec(text.slice(amountEnd));
+  const end = after ? amountEnd + after.index : text.length;
+  return { sentence: text.slice(start, end), amountEnd: amountEnd - start };
+}
+
+/**
+ * Money direction for alerts no specific pattern recognised, read from the amount's sentence
+ * only. Order matters: a withdrawal also says "from your wallet", and a debit alert can name a
+ * "deposit account", so the specific movements and the spending verbs are checked before the
+ * income words. `label` names the payee when the text has none.
+ */
+function classifyDirection(sentence: string): { type: SmsTransactionType; label?: string } | null {
+  if (/\b(?:withdr(?:aw|awn|awal|ew)|cash[ \t-]?out|cashed[ \t]+out)\b/i.test(sentence)) {
     return { type: "transfer", label: "Cash withdrawal" };
   }
-  if (/\b(?:cash[ \t-]?in|cashed[ \t]+in)\b/i.test(text)) {
+  if (/\b(?:cash[ \t-]?in|cashed[ \t]+in)\b/i.test(sentence)) {
     return { type: "income", label: "Cash in" };
   }
-  // A biller confirming "we received your payment" is the user paying, not income.
-  if (/\breceived[ \t]+your[ \t]+payment\b/i.test(text)) {
+  if (/\b(?:paid|purchased?|charged|spent|debited|deducted|bought)\b/i.test(sentence)) {
+    return { type: "expense" };
+  }
+  // A biller confirming a payment ("we received your payment", "your bill payment of P500 has
+  // been received") is the user paying. "You received a payment from Juan" stays income.
+  if (
+    /\bpayment\b/i.test(sentence) &&
+    /\breceived\b/i.test(sentence) &&
+    !/\byou[ \t]+(?:have[ \t]+)?received\b/i.test(sentence)
+  ) {
     return { type: "expense" };
   }
   if (
     /\b(?:received|credited|deposited|deposit|refund(?:ed)?|reversal|reversed|incoming)\b/i.test(
-      text,
+      sentence,
     )
   ) {
     return { type: "income", label: "Sender" };
   }
   // Not "send": footers like "Never send your OTP to anyone" would turn a purchase into a transfer.
-  if (/\b(?:sent|transferred|transfer|instapay|pesonet)\b/i.test(text)) {
+  if (/\b(?:sent|transferred|transfer|instapay|pesonet)\b/i.test(sentence)) {
     return { type: "transfer", label: "Transfer" };
   }
-  if (/\b(?:paid|payment|purchased?|charged|spent|debited|bought)\b/i.test(text)) {
+  if (/\bpayment\b/i.test(sentence)) {
     return { type: "expense" };
   }
   return null;
 }
 
 /**
- * Counterparty after the amount: "from X" for income, "to X" or "at X" otherwise. The search stays
- * inside the amount's sentence so footers ("reply to this message") are never read as payees.
+ * Counterparty after the amount: "from X" for income, "to X" for a transfer, and "at X" then
+ * "to X" for an expense, so "charged to your card at STARBUCKS" still finds the merchant.
  */
-function fallbackPayee(text: string, fromIndex: number, type: SmsTransactionType): string | null {
-  const sentenceEnd = /\.(?:\s|$)/.exec(text.slice(fromIndex));
-  const sentence = sentenceEnd ? text.slice(0, fromIndex + sentenceEnd.index) : text;
-  const keywords = type === "income" ? [["from"]] : [["to"], ["at"]];
-  const payee = cleanPayee(
-    extractPayeeBetween(sentence, fromIndex, keywords, GENERIC_TERMINATORS) ?? undefined,
-  );
-  if (!payee) return null;
-  // "from your GCash wallet" or "to acct ending 1234" names the user's own account, not a payee.
-  if (/^(?:your|my|the|this|acct|account|card)\b/i.test(payee)) return null;
-  // "at 10:30 AM" or "at 08/25" is a timestamp, not a merchant.
-  if (/^\d{1,2}[:/-]\d/.test(payee)) return null;
-  return payee;
+function fallbackPayee(
+  sentence: string,
+  amountEnd: number,
+  type: SmsTransactionType,
+): string | null {
+  const keywords = type === "income" ? ["from"] : type === "transfer" ? ["to"] : ["at", "to"];
+  for (const keyword of keywords) {
+    const payee = cleanPayee(
+      extractPayeeBetween(sentence, amountEnd, [[keyword]], GENERIC_TERMINATORS) ?? undefined,
+    );
+    if (!payee) continue;
+    // "from your GCash wallet" or "to acct ending 1234" names the user's own account.
+    if (/^(?:your|my|the|this|acct|account|card)\b/i.test(payee)) continue;
+    // "at 10:30 AM" or "at 08/25" is a timestamp, not a merchant.
+    if (/^\d{1,2}[:/-]\d/.test(payee)) continue;
+    return payee;
+  }
+  return null;
 }
 
 export function suggestCategory(
@@ -1342,11 +1374,16 @@ export function parseSmsNotification(
       const amountMinor = parseAmountMinor(broadMatch[1]);
       if (amountMinor !== null) {
         const dt = parseDateTimeFromText(rawText, referenceDate);
-        const direction = classifyDirection(rawText);
+        const scope = amountSentence(
+          rawText,
+          broadMatch.index,
+          broadMatch.index + broadMatch[0].length,
+        );
+        const direction = classifyDirection(scope.sentence);
         const type: SmsTransactionType = direction?.type ?? "expense";
         const channel = inferChannel(rawText);
         const payee =
-          fallbackPayee(rawText, broadMatch.index + broadMatch[0].length, type) ??
+          fallbackPayee(scope.sentence, scope.amountEnd, type) ??
           direction?.label ??
           "Unknown Merchant";
 
