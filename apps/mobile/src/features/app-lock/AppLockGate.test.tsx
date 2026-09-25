@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type * as NodeCrypto from "crypto";
-import { Text } from "react-native";
+import { AppState, Text, type AppStateStatus } from "react-native";
 
 const mockSecureValues = new Map<string, string>();
 
@@ -36,12 +36,18 @@ jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({ signOut: mockSignOut }),
 }));
 
-import { clearAppLock, hasAppLock, setAppLock, verifyAppLock } from "@/auth/app-lock";
+import { clearAppLock, readAppLockKind, setAppLock, verifyAppLock } from "@/auth/app-lock";
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 
-import { AppLockGate, MAX_ATTEMPTS } from "./AppLockGate";
+import { AppLockGate, MAX_ATTEMPTS, RELOCK_AFTER_MS } from "./AppLockGate";
 
 const subject = "08060c19-8a55-4046-a2e7-7384808dd81c";
+
+async function enterPin(pin: string) {
+  for (const digit of pin) {
+    await fireEvent.press(screen.getByLabelText(digit));
+  }
+}
 
 async function renderGate() {
   await act(async () => {
@@ -60,25 +66,27 @@ describe("app lock", () => {
   });
 
   it("stores only a salted hash and verifies per subject", async () => {
-    await setAppLock(subject, "4321");
+    await setAppLock(subject, "482913");
 
     const stored = mockSecureValues.get(`zoption.app_lock.${subject}`) ?? "";
-    expect(stored).not.toContain("4321");
-    await expect(verifyAppLock(subject, "4321")).resolves.toBe(true);
-    await expect(verifyAppLock(subject, "0000")).resolves.toBe(false);
-    await expect(hasAppLock("another-subject")).resolves.toBe(false);
+    expect(stored).not.toContain("482913");
+    await expect(readAppLockKind(subject)).resolves.toBe("pin");
+    await expect(verifyAppLock(subject, "482913")).resolves.toBe(true);
+    await expect(verifyAppLock(subject, "000000")).resolves.toBe(false);
+    await expect(readAppLockKind("another-subject")).resolves.toBeNull();
 
     await clearAppLock(subject);
-    await expect(hasAppLock(subject)).resolves.toBe(false);
+    await expect(readAppLockKind(subject)).resolves.toBeNull();
   });
 
-  it("rejects a password shorter than the minimum", async () => {
-    await expect(setAppLock(subject, "123")).rejects.toThrow("at least 4");
+  it("accepts only a six-digit PIN", async () => {
+    await expect(setAppLock(subject, "1234")).rejects.toThrow("6 digits");
+    await expect(setAppLock(subject, "12345a")).rejects.toThrow("6 digits");
   });
 
   it("fails closed on an unreadable lock record", async () => {
     mockSecureValues.set(`zoption.app_lock.${subject}`, "not json");
-    await expect(hasAppLock(subject)).resolves.toBe(true);
+    await expect(readAppLockKind(subject)).resolves.toBe("pin");
     await expect(verifyAppLock(subject, "anything")).resolves.toBe(false);
   });
 
@@ -88,41 +96,106 @@ describe("app lock", () => {
     expect(screen.queryByText("Zoption is locked")).toBeNull();
   });
 
-  it("unlocks only with the right password", async () => {
-    await setAppLock(subject, "4321");
+  it("unlocks only with the right PIN, submitting on the last digit", async () => {
+    await setAppLock(subject, "482913");
     await renderGate();
     expect(screen.getByText("Zoption is locked")).toBeTruthy();
 
-    await fireEvent.changeText(screen.getByLabelText("App password"), "0000");
-    await fireEvent.press(screen.getByText("Unlock"));
-    expect(await screen.findByText("That password is not correct.")).toBeTruthy();
+    await enterPin("000000");
+    expect(await screen.findByText("Incorrect PIN. Try again.")).toBeTruthy();
+    expect(screen.getByLabelText("0 of 6 digits entered")).toBeTruthy();
 
-    await fireEvent.changeText(screen.getByLabelText("App password"), "4321");
-    await fireEvent.press(screen.getByText("Unlock"));
+    await enterPin("48291");
+    await fireEvent.press(screen.getByLabelText("Delete digit"));
+    await enterPin("13");
     await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
   });
 
-  it("pauses attempts after repeated wrong passwords", async () => {
-    await setAppLock(subject, "4321");
+  it("pauses attempts after repeated wrong PINs", async () => {
+    await setAppLock(subject, "482913");
     await renderGate();
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-      await fireEvent.changeText(screen.getByLabelText("App password"), "0000");
-      await fireEvent.press(screen.getByText("Unlock"));
+      await enterPin("000000");
+      await waitFor(() => expect(screen.getByLabelText("0 of 6 digits entered")).toBeTruthy());
     }
 
     expect(await screen.findByText(/Too many attempts/)).toBeTruthy();
-    expect(screen.getByLabelText("App password").props.editable).toBe(false);
+    expect(screen.getByLabelText("1").props.accessibilityState.disabled).toBe(true);
+  });
+
+  it("replaces a legacy app password with a PIN after one unlock", async () => {
+    mockSecureValues.set(
+      `zoption.app_lock.${subject}`,
+      JSON.stringify({
+        version: 1,
+        salt: "legacy",
+        hash: jest
+          .requireActual<typeof NodeCrypto>("crypto")
+          .createHash("sha256")
+          .update("legacy:correct horse")
+          .digest("hex"),
+      }),
+    );
+    await renderGate();
+
+    await fireEvent.changeText(screen.getByLabelText("App password"), "correct horse");
+    await fireEvent.press(screen.getByText("Continue"));
+    expect(await screen.findByText("Create a PIN")).toBeTruthy();
+
+    await enterPin("135790");
+    expect(await screen.findByText("Confirm your PIN")).toBeTruthy();
+    await enterPin("135790");
+
+    await waitFor(() => expect(screen.queryByText("Confirm your PIN")).toBeNull());
+    await expect(readAppLockKind(subject)).resolves.toBe("pin");
+    await expect(verifyAppLock(subject, "135790")).resolves.toBe(true);
+  });
+
+  it("asks for the legacy password again when it relocks during PIN replacement", async () => {
+    let appStateListener: ((state: AppStateStatus) => void) | undefined;
+    jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+      appStateListener = listener;
+      return { remove: jest.fn() };
+    });
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000);
+    mockSecureValues.set(
+      `zoption.app_lock.${subject}`,
+      JSON.stringify({
+        version: 1,
+        salt: "legacy",
+        hash: jest
+          .requireActual<typeof NodeCrypto>("crypto")
+          .createHash("sha256")
+          .update("legacy:correct horse")
+          .digest("hex"),
+      }),
+    );
+    await renderGate();
+
+    await fireEvent.changeText(screen.getByLabelText("App password"), "correct horse");
+    await fireEvent.press(screen.getByText("Continue"));
+    expect(await screen.findByText("Create a PIN")).toBeTruthy();
+
+    await act(async () => {
+      appStateListener?.("background");
+      now.mockReturnValue(1_000 + RELOCK_AFTER_MS + 1);
+      appStateListener?.("active");
+    });
+
+    expect(await screen.findByLabelText("App password")).toBeTruthy();
+    expect(screen.queryByText("Create a PIN")).toBeNull();
+    jest.restoreAllMocks();
   });
 
   it("asks before discarding unsynced changes when signing out from the lock", async () => {
-    await setAppLock(subject, "4321");
+    await setAppLock(subject, "482913");
     mockSignOut.mockRejectedValueOnce(
       new UnsyncedChangesError({ unsyncedOperationCount: 2, unresolvedConflictCount: 0 }),
     );
     await renderGate();
 
-    await fireEvent.press(screen.getByText("Forgot password? Sign out"));
+    await fireEvent.press(screen.getByText("Forgot PIN? Sign out"));
     await fireEvent.press(screen.getByText("Sign out"));
     expect(mockSignOut).toHaveBeenLastCalledWith({ discardUnsyncedChanges: false });
 

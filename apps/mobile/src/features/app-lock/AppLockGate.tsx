@@ -2,38 +2,79 @@ import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { AppState, Modal, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { hasAppLock, verifyAppLock } from "@/auth/app-lock";
+import {
+  PIN_LENGTH,
+  readAppLockKind,
+  setAppLock,
+  verifyAppLock,
+  type AppLockKind,
+} from "@/auth/app-lock";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
-import { Button, FormField } from "@/ui/components";
+import { Button, ConfirmationDialog, FormField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
+
+import { PinPadScreen, PinSetupScreen } from "./PinPad";
 
 /** A short trip out (camera, share sheet, Google sign-in) does not re-lock. */
 export const RELOCK_AFTER_MS = 60_000;
 export const MAX_ATTEMPTS = 5;
 export const ATTEMPT_COOLDOWN_MS = 30_000;
 
-type LockState = "checking" | "locked" | "unlocked";
+export const COOLDOWN_MESSAGE = `Too many attempts. Try again in ${ATTEMPT_COOLDOWN_MS / 1000} seconds.`;
+
+type LockState = "checking" | "unlocked" | AppLockKind;
+
+/** Counts wrong entries in a row and pauses entry for ATTEMPT_COOLDOWN_MS after MAX_ATTEMPTS. */
+export function useAttemptLimit() {
+  const [coolingDown, setCoolingDown] = useState(false);
+  const failuresRef = useRef(0);
+
+  useEffect(() => {
+    if (!coolingDown) return;
+    const timer = setTimeout(() => setCoolingDown(false), ATTEMPT_COOLDOWN_MS);
+    return () => clearTimeout(timer);
+  }, [coolingDown]);
+
+  return {
+    coolingDown,
+    /** Records a wrong entry and returns true when it starts the cooldown. */
+    recordFailure: (): boolean => {
+      failuresRef.current += 1;
+      if (failuresRef.current < MAX_ATTEMPTS) return false;
+      failuresRef.current = 0;
+      setCoolingDown(true);
+      return true;
+    },
+    reset: (): void => {
+      failuresRef.current = 0;
+    },
+  };
+}
 
 /**
- * Holds the signed-in app behind the user's app password when they set one.
- * Children stay mounted under the lock, so re-locking after time away keeps
- * navigation and unsaved form input.
+ * Holds the signed-in app behind the user's PIN when they set one. Children
+ * stay mounted under the lock, so re-locking after time away keeps navigation
+ * and unsaved form input.
  */
 export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: string }>) {
   const theme = useZoptionTheme();
   const [lockState, setLockState] = useState<LockState>("checking");
+  // Keys the lock screen so every relock starts it fresh. Without this, a relock
+  // while the lock is already showing (for example mid legacy-password
+  // replacement, after the old password was accepted) would keep that state.
+  const [lockGeneration, setLockGeneration] = useState(0);
 
   useEffect(() => {
     let active = true;
-    hasAppLock(subject)
-      .then((locked) => {
-        if (active) setLockState(locked ? "locked" : "unlocked");
+    readAppLockKind(subject)
+      .then((kind) => {
+        if (active) setLockState(kind ?? "unlocked");
       })
       .catch(() => {
         // Fail closed: an unreadable lock store keeps the workspace covered.
-        if (active) setLockState("locked");
+        if (active) setLockState("pin");
       });
     return () => {
       active = false;
@@ -51,11 +92,15 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
       const away = Date.now() - backgroundedAt;
       backgroundedAt = null;
       if (away < RELOCK_AFTER_MS) return;
-      void hasAppLock(subject)
-        .then((locked) => {
-          if (locked) setLockState("locked");
+      const relock = (kind: AppLockKind): void => {
+        setLockState(kind);
+        setLockGeneration((generation) => generation + 1);
+      };
+      void readAppLockKind(subject)
+        .then((kind) => {
+          if (kind) relock(kind);
         })
-        .catch(() => setLockState("locked"));
+        .catch(() => relock("pin"));
     });
     return () => subscription.remove();
   }, [subject]);
@@ -63,68 +108,80 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
   if (lockState === "checking") {
     return <View style={{ flex: 1, backgroundColor: theme.colors.canvas }} />;
   }
+  const locked = lockState === "pin" || lockState === "password";
   return (
     <>
       {children}
       <Modal
         animationType="none"
-        visible={lockState === "locked"}
+        visible={locked}
         // The lock has no dismiss: Android back must not reveal the app.
         onRequestClose={() => undefined}
       >
-        <AppLockScreen subject={subject} onUnlock={() => setLockState("unlocked")} />
+        {locked ? (
+          <AppLockScreen
+            key={lockGeneration}
+            subject={subject}
+            kind={lockState}
+            onUnlock={() => setLockState("unlocked")}
+          />
+        ) : null}
       </Modal>
     </>
   );
 }
 
-function AppLockScreen({ subject, onUnlock }: { subject: string; onUnlock: () => void }) {
+function AppLockScreen({
+  subject,
+  kind,
+  onUnlock,
+}: {
+  subject: string;
+  kind: AppLockKind;
+  onUnlock: () => void;
+}) {
   const theme = useZoptionTheme();
   const session = useSessionSnapshot();
-  const [password, setPassword] = useState("");
+  const [secret, setSecret] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
-  const [coolingDown, setCoolingDown] = useState(false);
-  const failuresRef = useRef(0);
+  const attempts = useAttemptLimit();
+  const coolingDown = attempts.coolingDown;
+  // A legacy app password unlocks once, then must be replaced with a PIN.
+  const [replacingPassword, setReplacingPassword] = useState(false);
   const [signOutStep, setSignOutStep] = useState<"idle" | "confirm" | "discard">("idle");
   const [signingOut, setSigningOut] = useState(false);
 
-  useEffect(() => {
-    if (!coolingDown) return;
-    const timer = setTimeout(() => setCoolingDown(false), ATTEMPT_COOLDOWN_MS);
-    return () => clearTimeout(timer);
-  }, [coolingDown]);
-
-  const unlock = async (): Promise<void> => {
-    if (checking || coolingDown || password.length === 0) return;
+  const unlock = async (attempt: string): Promise<void> => {
+    if (checking || coolingDown || attempt.length === 0) return;
     setChecking(true);
     try {
-      if (await verifyAppLock(subject, password)) {
-        failuresRef.current = 0;
-        setPassword("");
+      if (await verifyAppLock(subject, attempt)) {
+        attempts.reset();
+        setSecret("");
         setError(null);
+        if (kind === "password") {
+          setReplacingPassword(true);
+          return;
+        }
         onUnlock();
         return;
       }
-      failuresRef.current += 1;
-      setPassword("");
-      if (failuresRef.current >= MAX_ATTEMPTS) {
-        failuresRef.current = 0;
-        setCoolingDown(true);
-        setError(
-          `Too many attempts. Try again in ${ATTEMPT_COOLDOWN_MS / 1000} seconds, or sign out.`,
-        );
+      setSecret("");
+      if (attempts.recordFailure()) {
+        setError(COOLDOWN_MESSAGE);
         return;
       }
-      setError("That password is not correct.");
+      setError(kind === "pin" ? "Incorrect PIN. Try again." : "That password is not correct.");
     } catch {
-      setError("Zoption could not check the password. Try again.");
+      setError("Zoption could not check it. Try again.");
     } finally {
       setChecking(false);
     }
   };
 
   const signOut = async (discardUnsyncedChanges: boolean): Promise<void> => {
+    setSignOutStep("idle");
     setSigningOut(true);
     setError(null);
     try {
@@ -142,6 +199,58 @@ function AppLockScreen({ subject, onUnlock }: { subject: string; onUnlock: () =>
     }
   };
 
+  if (replacingPassword) {
+    return (
+      <PinSetupScreen
+        onSave={async (pin) => {
+          await setAppLock(subject, pin);
+          onUnlock();
+        }}
+      />
+    );
+  }
+
+  const signOutControls = (
+    <>
+      <Button variant="quiet" loading={signingOut} onPress={() => setSignOutStep("confirm")}>
+        {kind === "pin" ? "Forgot PIN? Sign out" : "Forgot password? Sign out"}
+      </Button>
+      <ConfirmationDialog
+        visible={signOutStep !== "idle"}
+        title={signOutStep === "discard" ? "Delete unsynced changes?" : "Sign out?"}
+        message={
+          signOutStep === "discard"
+            ? "This device has changes Zoption has not received yet. Signing out now deletes them."
+            : "Signing out removes this device's copy of your workspace and its app lock. Sign in again to download your synced data."
+        }
+        confirmLabel={
+          signOutStep === "discard" ? "Delete unsynced changes and sign out" : "Sign out"
+        }
+        destructive
+        onCancel={() => setSignOutStep("idle")}
+        onConfirm={() => void signOut(signOutStep === "discard")}
+      />
+    </>
+  );
+
+  if (kind === "pin") {
+    return (
+      <PinPadScreen
+        title="Zoption is locked"
+        message="Enter your PIN to open your workspace."
+        value={secret}
+        onChange={(next) => {
+          setError(null);
+          setSecret(next);
+          if (next.length === PIN_LENGTH) void unlock(next);
+        }}
+        error={error}
+        disabled={checking || coolingDown || signingOut}
+        footer={signOutControls}
+      />
+    );
+  }
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
       <View style={{ flex: 1, justifyContent: "center", gap: spacing.md, padding: spacing.lg }}>
@@ -149,12 +258,13 @@ function AppLockScreen({ subject, onUnlock }: { subject: string; onUnlock: () =>
           Zoption is locked
         </Text>
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Enter your app password to open your workspace.
+          App lock now uses a PIN. Enter your app password once, then choose a {PIN_LENGTH}-digit
+          PIN to replace it.
         </Text>
         <FormField
           label="App password"
-          value={password}
-          onChangeText={setPassword}
+          value={secret}
+          onChangeText={setSecret}
           secureTextEntry
           autoFocus
           autoCapitalize="none"
@@ -162,7 +272,7 @@ function AppLockScreen({ subject, onUnlock }: { subject: string; onUnlock: () =>
           autoComplete="off"
           editable={!coolingDown}
           returnKeyType="done"
-          onSubmitEditing={() => void unlock()}
+          onSubmitEditing={() => void unlock(secret)}
         />
         {error ? (
           <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
@@ -171,35 +281,12 @@ function AppLockScreen({ subject, onUnlock }: { subject: string; onUnlock: () =>
         ) : null}
         <Button
           loading={checking}
-          disabled={coolingDown || password.length === 0}
-          onPress={() => void unlock()}
+          disabled={coolingDown || secret.length === 0}
+          onPress={() => void unlock(secret)}
         >
-          Unlock
+          Continue
         </Button>
-
-        {signOutStep === "idle" ? (
-          <Button variant="quiet" onPress={() => setSignOutStep("confirm")}>
-            Forgot password? Sign out
-          </Button>
-        ) : (
-          <View style={{ gap: spacing.sm }}>
-            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              {signOutStep === "discard"
-                ? "This device has changes Zoption has not received yet. Signing out now deletes them."
-                : "Signing out removes this device's copy of your workspace and its app password. Sign in again to download your synced data."}
-            </Text>
-            <Button
-              variant="danger"
-              loading={signingOut}
-              onPress={() => void signOut(signOutStep === "discard")}
-            >
-              {signOutStep === "discard" ? "Delete unsynced changes and sign out" : "Sign out"}
-            </Button>
-            <Button variant="quiet" onPress={() => setSignOutStep("idle")}>
-              Cancel
-            </Button>
-          </View>
-        )}
+        {signOutControls}
       </View>
     </SafeAreaView>
   );
