@@ -14,6 +14,10 @@ const DAILY_REMINDER_ROUTE = "/(app)/transaction";
 
 export type DailyReminderResult = "scheduled" | "off" | "denied";
 
+// Bumped by every identity change. An apply or restore that started under an
+// earlier identity must not write its time back or leave a reminder scheduled.
+let identityGeneration = 0;
+
 /** "18:00" → "6:00 PM"; "off" → "Off". */
 export function dailyReminderLabel(time: DailyReminderTime): string {
   if (time === "off") return "Off";
@@ -25,58 +29,84 @@ export function dailyReminderLabel(time: DailyReminderTime): string {
 
 /**
  * Replaces the scheduled daily reminder with one at `time`, or removes it for
- * "off". Asks for notification permission only when turning the reminder on,
- * and removes the reminder when it is refused.
+ * "off", and saves the time only once the OS schedule matches it. Asks for
+ * notification permission only when turning the reminder on, and turns the
+ * reminder off when it is refused.
  *
  * A new time is scheduled under the same identifier, which replaces the old
  * reminder, instead of cancelling first: if a native call throws partway, the
- * previous reminder is still scheduled and still matches the time the card shows.
+ * previous reminder is still scheduled and still matches the saved time.
  */
 export async function applyDailyReminder(time: DailyReminderTime): Promise<DailyReminderResult> {
+  const generation = identityGeneration;
   if (time === "off") {
-    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+    await turnOff();
     return "off";
   }
 
   // Android 13+ only shows the permission prompt once a channel exists.
-  if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync(DAILY_REMINDER_CHANNEL_ID, {
-      name: "Daily reminder",
-      importance: Notifications.AndroidImportance.DEFAULT,
-    });
-  }
+  await ensureChannel();
   if (!(await hasNotificationPermission())) {
-    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+    await turnOff();
     return "denied";
   }
+  return (await scheduleIfCurrent(time, generation)) ? "scheduled" : "off";
+}
 
-  const [hour, minute] = parseTime(time);
-  await Notifications.scheduleNotificationAsync({
-    identifier: DAILY_REMINDER_ID,
-    content: {
-      title: "Log today's money",
-      body: "Take a minute to record today's expenses and income.",
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-      channelId: DAILY_REMINDER_CHANNEL_ID,
+/**
+ * Shows the reminder while the app is open, then loads the saved time and makes
+ * the OS schedule match it. Run once at launch. It never prompts: without
+ * permission the saved time is reset to Off. This also repairs drift, such as
+ * an iOS reinstall that keeps the saved time in the Keychain but drops the
+ * scheduled notification.
+ */
+export async function startDailyReminder(): Promise<void> {
+  Notifications.setNotificationHandler({
+    handleNotification: (notification) => {
+      const show = notification.request.identifier === DAILY_REMINDER_ID;
+      return Promise.resolve({
+        shouldShowBanner: show,
+        shouldShowList: show,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      });
     },
   });
-  return "scheduled";
+
+  const generation = identityGeneration;
+  await useDailyReminderStore.persist.rehydrate();
+  // An identity change that ran while the saved time loaded wins with its Off.
+  const time = generation === identityGeneration ? useDailyReminderStore.getState().time : "off";
+  if (time === "off") {
+    await turnOff();
+    return;
+  }
+  const permission = await Notifications.getPermissionsAsync();
+  if (!permission.granted) {
+    await turnOff();
+    return;
+  }
+  await ensureChannel();
+  await scheduleIfCurrent(time, generation);
 }
 
 /**
  * Turns the reminder off and forgets a tap that has not been handled yet. Runs
  * on every identity change (sign-out, forced sign-out, account switch) so the
  * reminder never outlives the account that set it, and a tap made while signed
- * out cannot open the editor after the next sign-in.
+ * out cannot open the editor after the next sign-in. The two native calls run
+ * independently so a failure in one cannot skip the other; a cancel that still
+ * fails is retried by the next launch's startDailyReminder, which sees Off.
  */
 export async function clearDailyReminder(): Promise<void> {
+  identityGeneration += 1;
   useDailyReminderStore.getState().setTime("off");
-  Notifications.clearLastNotificationResponse();
-  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+  const results = await Promise.allSettled([
+    Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID),
+    Promise.resolve().then(() => Notifications.clearLastNotificationResponse()),
+  ]);
+  const failure = results.find((result) => result.status === "rejected");
+  if (failure) throw failure.reason;
 }
 
 /**
@@ -97,6 +127,49 @@ export function DailyReminderTapHandler() {
     return () => subscription.remove();
   }, []);
   return null;
+}
+
+async function turnOff(): Promise<void> {
+  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+  useDailyReminderStore.getState().setTime("off");
+}
+
+async function ensureChannel(): Promise<void> {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync(DAILY_REMINDER_CHANNEL_ID, {
+    name: "Daily reminder",
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
+/** Schedules `time` and saves it, unless an identity change happened since `generation`. */
+async function scheduleIfCurrent(
+  time: Exclude<DailyReminderTime, "off">,
+  generation: number,
+): Promise<boolean> {
+  if (generation !== identityGeneration) return false;
+  const [hour, minute] = parseTime(time);
+  await Notifications.scheduleNotificationAsync({
+    identifier: DAILY_REMINDER_ID,
+    content: {
+      title: "Log today's money",
+      body: "Take a minute to record today's expenses and income.",
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour,
+      minute,
+      channelId: DAILY_REMINDER_CHANNEL_ID,
+    },
+  });
+  // Signed out while the schedule call ran: that cleanup's cancel may have
+  // landed first, so cancel again and leave the saved time at its Off.
+  if (generation !== identityGeneration) {
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+    return false;
+  }
+  useDailyReminderStore.getState().setTime(time);
+  return true;
 }
 
 async function hasNotificationPermission(): Promise<boolean> {

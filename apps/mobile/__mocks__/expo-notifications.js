@@ -10,6 +10,7 @@ module.exports = {
   getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => ""),
+  setNotificationHandler: jest.fn(),
   getLastNotificationResponse: jest.fn(() => null),
   clearLastNotificationResponse: jest.fn(),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),

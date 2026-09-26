@@ -14,10 +14,10 @@ import { SessionProvider, useSessionSnapshot } from "@/auth/session-state";
 import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
+import { startDailyReminder } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
-import { useDailyReminderStore } from "@/stores/daily-reminder-store";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
@@ -96,15 +96,19 @@ export default function RootLayout() {
 
   // These stores set skipHydration, so a saved value is only read when something
   // asks for it. Without this the voice language, assistant voice options, mic
-  // capture consent, default spending account, and daily reminder time all
-  // start at their defaults on every launch. The theme store hydrates in ZoptionThemeProvider, which renders
-  // nothing until it has.
+  // capture consent, and default spending account all start at their defaults
+  // on every launch. The theme store hydrates in ZoptionThemeProvider, which
+  // renders nothing until it has. The daily reminder store hydrates in
+  // startDailyReminder, which then makes the OS schedule match the saved time.
   useEffect(() => {
     void useVoiceLanguageStore.persist.rehydrate();
     void useAssistantVoiceOptionsStore.persist.rehydrate();
     void useMicCaptureConsentStore.persist.rehydrate();
     void useDefaultSpendingAccountStore.persist.rehydrate();
-    void useDailyReminderStore.persist.rehydrate();
+    void startDailyReminder().catch(() => {
+      // Best-effort like background sync: a notification failure must never
+      // affect startup. The card still shows the saved time.
+    });
   }, []);
 
   return (

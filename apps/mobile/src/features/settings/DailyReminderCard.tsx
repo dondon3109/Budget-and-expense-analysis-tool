@@ -18,23 +18,18 @@ type Notice = "blocked" | "failed";
 export function DailyReminderCard() {
   const theme = useZoptionTheme();
   const time = useDailyReminderStore((state) => state.time);
-  const setTime = useDailyReminderStore((state) => state.setTime);
   const [pending, setPending] = useState<DailyReminderTime | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
 
+  // applyDailyReminder saves the time itself once the OS schedule matches it,
+  // so the summary above always reflects what is actually scheduled.
   const choose = async (next: DailyReminderTime) => {
     if (pending) return;
     setPending(next);
     setNotice(null);
     try {
       const result = await applyDailyReminder(next);
-      // A refused permission leaves no reminder scheduled, so the card must say Off.
-      if (result === "denied") {
-        setTime("off");
-        setNotice("blocked");
-        return;
-      }
-      setTime(next);
+      if (result === "denied") setNotice("blocked");
     } catch {
       setNotice("failed");
     } finally {

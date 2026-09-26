@@ -25,7 +25,11 @@ describe("DailyReminderCard", () => {
   });
 
   it("is off by default and schedules the chosen time", async () => {
-    jest.mocked(applyDailyReminder).mockResolvedValue("scheduled");
+    // applyDailyReminder saves the time once scheduled; the card shows what it saved.
+    jest.mocked(applyDailyReminder).mockImplementation(async (time) => {
+      useDailyReminderStore.setState({ time });
+      return "scheduled";
+    });
     await render(<DailyReminderCard />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Off" }));
@@ -37,7 +41,10 @@ describe("DailyReminderCard", () => {
   });
 
   it("stays off and explains when notifications are blocked", async () => {
-    jest.mocked(applyDailyReminder).mockResolvedValue("denied");
+    jest.mocked(applyDailyReminder).mockImplementation(async () => {
+      useDailyReminderStore.setState({ time: "off" });
+      return "denied";
+    });
     await render(<DailyReminderCard />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Off" }));
