@@ -25,6 +25,26 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Try Zoption Pro free for 7 days",
+      "Create a category while adding a transaction",
+      "A 6-digit PIN for the Android app lock",
+      "Transactions grouped by day on the web",
+      "Itemized receipts, discounts included",
+      "A clearer Home screen on Android",
+      "Quick Paste reads more SMS alerts",
+      "A new loading animation",
+      "Android Beta 0.2.37",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/no card or payment setup/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.37/);
+  });
+
+  it("keeps the default spending account notes as 2.45.0", () => {
+    expect(titles("2.45.0")).toEqual([
       "Choose a default spending account",
       "Reactivating a subscription charges only what is due",
       "Steadier Android help and budgets",
@@ -34,9 +54,7 @@ describe("current release notes", () => {
       "Android Beta 0.2.36",
     ]);
 
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
+    const copy = notes("2.45.0");
     expect(copy).toMatch(/instead of Cash/i);
     expect(copy).toMatch(/Android Beta 0\.2\.36/);
   });
@@ -86,6 +104,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.45.0",
       "2.44.0",
       "2.43.1",
       "2.41.3",

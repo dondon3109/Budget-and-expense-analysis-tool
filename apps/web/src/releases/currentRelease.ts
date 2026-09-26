@@ -11,42 +11,52 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 25, 2026",
+  releasedOn: "September 26, 2026",
   changes: [
     {
-      title: "Choose a default spending account",
+      title: "Try Zoption Pro free for 7 days",
       description:
-        "Tap the star beside an account on Home, or pick one under Account Settings on the web or More, then Account on Android, and new transactions start on it instead of Cash. It is picked first when you add a transaction, import an SMS, scan a receipt, or use the mic widget, and each browser and device keeps its own choice.",
+        "Every workspace gets a 7-day Pro trial with no card or payment setup. New sign-ups start theirs right away and existing Free accounts get one now. Zoption emails you when it starts, the day before it ends, and when it has ended, then moves you to the Free plan without charging anything.",
     },
     {
-      title: "Reactivating a subscription charges only what is due",
+      title: "Create a category while adding a transaction",
       description:
-        "Turning a canceled subscription back on now charges the billing date already due, not every cycle missed while it was canceled. A subscription that could not renew names the billing date it missed instead of this month's date.",
+        "Choose + New category in the category picker on the web or in the app, enter a name and an optional emoji, and it is selected for the transaction without losing what you already typed.",
     },
     {
-      title: "Steadier Android help and budgets",
+      title: "A 6-digit PIN for the Android app lock",
       description:
-        "My reports under Help & support loads again, and a report you just sent no longer shows an error. Adding a budget asks you to choose its category instead of quietly starting on Debt payment, and a bug report draft now fills the whole panel so it is easier to review.",
+        "The app lock now uses a 6-digit PIN on a number pad instead of a password. If you set an app password before, enter it once after updating and then choose a PIN.",
     },
     {
-      title: "A Sync delayed notice you can close",
+      title: "Transactions grouped by day on the web",
       description:
-        "The Sync delayed notice on Home and Transactions in the Android app has a close button. Your changes keep retrying in the background, and a different sync problem still shows a new notice.",
+        "Each day has a pinned header with its date and that day's income and expenses, and more transactions load as you scroll instead of on numbered pages.",
     },
     {
-      title: "Two clear ways to pay for Pro on the web",
+      title: "Itemized receipts, discounts included",
       description:
-        "The upgrade dialog now offers two plain choices: continue with PayPal, or pay by card, Apple Pay, or Google Pay through Dodo Payments.",
+        "Receipt scanning lists each item it reads so you can correct, remove, or add items, and each becomes its own transaction. Discounts, including senior citizen and PWD discounts, are shared across the items so they still add up to the receipt total.",
     },
     {
-      title: "New Philippine budgeting guides",
+      title: "A clearer Home screen on Android",
       description:
-        "Three new guides cover budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.",
+        "Home leads with Total Balance split across your accounts, then quick actions, safe to spend, this month, cash flow, spending, budgets, and recent activity. Theme and Voice language now fold under Preferences on the More tab.",
     },
     {
-      title: "Android Beta 0.2.36",
+      title: "Quick Paste reads more SMS alerts",
       description:
-        "The official Android Beta carries the default spending account, the dismissible Sync delayed notice, the working My reports list, and the Add budget category choice.",
+        "GCash withdrawals, cash ins, and payment messages are recognised, and unfamiliar alerts take the merchant from the message instead of showing Unknown Merchant.",
+    },
+    {
+      title: "A new loading animation",
+      description:
+        "Three ledger rows fill in turn while Zoption loads on the web and in the app. With reduced motion on, they stay still.",
+    },
+    {
+      title: "Android Beta 0.2.37",
+      description:
+        "The official Android Beta carries the free Pro trial, the 6-digit PIN app lock, the new Home screen, itemized receipts, and creating categories from the picker.",
     },
   ],
 };
@@ -61,6 +71,47 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.45.0",
+    releasedOn: "September 25, 2026",
+    changes: [
+      {
+        title: "Choose a default spending account",
+        description:
+          "Tap the star beside an account on Home, or pick one under Account Settings on the web or More, then Account on Android, and new transactions start on it instead of Cash. It is picked first when you add a transaction, import an SMS, scan a receipt, or use the mic widget, and each browser and device keeps its own choice.",
+      },
+      {
+        title: "Reactivating a subscription charges only what is due",
+        description:
+          "Turning a canceled subscription back on now charges the billing date already due, not every cycle missed while it was canceled. A subscription that could not renew names the billing date it missed instead of this month's date.",
+      },
+      {
+        title: "Steadier Android help and budgets",
+        description:
+          "My reports under Help & support loads again, and a report you just sent no longer shows an error. Adding a budget asks you to choose its category instead of quietly starting on Debt payment, and a bug report draft now fills the whole panel so it is easier to review.",
+      },
+      {
+        title: "A Sync delayed notice you can close",
+        description:
+          "The Sync delayed notice on Home and Transactions in the Android app has a close button. Your changes keep retrying in the background, and a different sync problem still shows a new notice.",
+      },
+      {
+        title: "Two clear ways to pay for Pro on the web",
+        description:
+          "The upgrade dialog now offers two plain choices: continue with PayPal, or pay by card, Apple Pay, or Google Pay through Dodo Payments.",
+      },
+      {
+        title: "New Philippine budgeting guides",
+        description:
+          "Three new guides cover budgeting a semi-monthly salary paid on the 15th and 30th, building an emergency fund in pesos, and planning your 13th month pay.",
+      },
+      {
+        title: "Android Beta 0.2.36",
+        description:
+          "The official Android Beta carries the default spending account, the dismissible Sync delayed notice, the working My reports list, and the Add budget category choice.",
+      },
+    ],
+  },
   {
     version: "2.44.0",
     releasedOn: "September 24, 2026",
