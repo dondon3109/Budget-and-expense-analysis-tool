@@ -4,9 +4,13 @@
  * screens can be reviewed with real content instead of empty states.
  *
  * Usage (from the repo root):
- *   node scripts/seed-local-workspace.mjs --user <supabase-user-uuid>
- *   node scripts/seed-local-workspace.mjs --user <uuid> --months 6
- *   node scripts/seed-local-workspace.mjs --user <uuid> --reset
+ *   pnpm seed:local --user <supabase-user-uuid>
+ *   pnpm seed:local --user <uuid> --months 6
+ *   pnpm seed:local --user <uuid> --reset
+ *
+ * It imports the shared money rules straight from TypeScript source, so it needs Node
+ * 22.18+ when run as plain `node`; `pnpm seed:local` adds --experimental-strip-types so
+ * Node 22.6+ works too.
  *
  * The API bootstraps a tenant, its three system accounts and its ten starter
  * categories on the first authenticated request (apps/api/src/db/tenants.ts,
@@ -15,12 +19,22 @@
  * request: every write is INSERT OR IGNORE against a deterministic id.
  *
  * Everything it creates is prefixed with 'seed:' so --reset removes only what this
- * script made and never touches data you created by hand.
+ * script made and never touches data you created by hand. The one exception: --reset also
+ * deletes every transaction linked to a seeded subscription, including renewal charges the
+ * API posted later.
+ *
+ * Mobile sync accepts a 'subscription:<id>' change group only when it is exactly one
+ * subscription plus one transaction. Seeding and --reset keep that shape as long as each
+ * seeded subscription still has exactly its seeded charge. A workspace seeded before the
+ * charge existed, or one with renewal charges on a seeded subscription, has groups the pull
+ * rejects: recreate the local D1 state and seed again instead of resetting.
  */
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
 import { normalizeSignedAmount, parseAmountToMinor } from "../packages/shared/src/money.ts";
 
 const API_DIR = new URL("../apps/api/", import.meta.url).pathname;
@@ -196,7 +210,7 @@ const SEED_SUBSCRIPTIONS = [
 const iso = (date) => date.toISOString().slice(0, 10);
 const monthStart = (date) => `${iso(date).slice(0, 7)}-01`;
 
-function buildSql(userId, months) {
+export function buildSql(userId, months) {
   const tenantId = `user:${userId}`;
   const accountId = (suffix) =>
     suffix === "default" ? `${tenantId}:account:default` : `${tenantId}:account:${suffix}`;
@@ -404,10 +418,12 @@ function buildSql(userId, months) {
     const next = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, dayOfMonth));
     return iso(next);
   };
-  // Mirrors subscriptionsRepository.create in apps/api/src/db/subscriptions.ts: every
+  // Mirrors subscriptionRepository.create in apps/api/src/db/subscriptions.ts: every
   // subscription is inserted with its first linked charge in the very next statement. The
   // mobile sync triggers put both changes in the atomic group 'subscription:<id>', and a
   // pull rejects any such group that is not exactly one subscription plus one transaction.
+  // The charge is inserted only when the subscription insert itself wrote a row
+  // (changes() = 1), so a rerun never adds a charge on its own.
   for (const sub of SEED_SUBSCRIPTIONS) {
     const subscriptionId = seedId("sub", sub.id);
     const billingDate = nextMonth(sub.day);
@@ -418,10 +434,10 @@ function buildSql(userId, months) {
         `${sqlString(accountId("gcash"))})`,
     );
     statement(
-      `INSERT OR IGNORE INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, source_kind, subscription_id) VALUES (` +
+      `INSERT OR IGNORE INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, source_kind, subscription_id) SELECT ` +
         `${sqlString(seedId("sub", sub.id, "charge"))}, ${sqlString(tenantId)}, ${sqlString(accountId("gcash"))}, ` +
         `${sqlString(categoryId("leisure"))}, ${sqlString(billingDate)}, ${sqlString(sub.name)}, ${normalizeSignedAmount(parseAmountToMinor(sub.amount), "expense")}, ` +
-        `'PHP', 'expense', 'manual', ${sqlString(subscriptionId)})`,
+        `'PHP', 'expense', 'manual', ${sqlString(subscriptionId)} WHERE changes() = 1`,
     );
   }
 
@@ -454,7 +470,7 @@ function buildSql(userId, months) {
   return lines.join("\n");
 }
 
-function buildResetSql(userId) {
+export function buildResetSql(userId) {
   const tenantId = `user:${userId}`;
   const filter = `tenant_id = ${sqlString(tenantId)} AND id LIKE '${SEED_PREFIX}%'`;
   // Each subscription's linked charges are deleted in the statement right before it, so the
@@ -501,9 +517,9 @@ function main() {
     `  ${count} seeded transactions across the last ${args.months} month(s), plus budgets, ${SEED_SUBSCRIPTIONS.length} subscriptions, 1 goal, 1 debt and 2 calendar events.`,
   );
   console.log("  Re-running is safe: every insert is INSERT OR IGNORE on a deterministic id.");
-  console.log(
-    "  Undo with: node scripts/seed-local-workspace.mjs --user " + args.user + " --reset",
-  );
+  console.log("  Undo with: pnpm seed:local --user " + args.user + " --reset");
 }
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main();
+}

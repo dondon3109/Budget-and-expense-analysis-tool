@@ -145,7 +145,7 @@ Removing the `credsStore` key fixes it. The original file is backed up at
    empty states:
 
    ```bash
-   node scripts/seed-local-workspace.mjs --user d56d6661-1c15-43a0-9faa-5909d3e2053a
+   pnpm seed:local --user d56d6661-1c15-43a0-9faa-5909d3e2053a
    ```
 
    This mirrors what the API bootstraps on the first authenticated request
@@ -179,12 +179,14 @@ state.
 ## Undo
 
 ```bash
-node scripts/seed-local-workspace.mjs --user <uuid> --reset   # remove only seeded rows
-node scripts/local-supabase.mjs disable                       # restore cloud config
+pnpm seed:local --user <uuid> --reset       # remove only seeded rows
+node scripts/local-supabase.mjs disable     # restore cloud config
 ```
 
-`--reset` deletes only rows whose id starts with `seed:`, so hand-made data and the
-workspace itself (tenant, accounts, categories) survive.
+`--reset` deletes only rows whose id starts with `seed:`, plus any transaction linked to a
+seeded subscription, so hand-made data and the workspace itself (tenant, accounts,
+categories) survive. A workspace seeded before seeded subscriptions carried their first
+charge cannot sync to the mobile app; recreate the local D1 state and seed again.
 
 ## What still will not work locally
 
@@ -243,7 +245,7 @@ Run from the repo root:
 4. Seed the audited account's workspace:
 
    ```bash
-   node scripts/seed-local-workspace.mjs --user 08060c19-8a55-4046-a2e7-7384808dd81c
+   pnpm seed:local --user 08060c19-8a55-4046-a2e7-7384808dd81c
    ```
 
 5. Run the audit:
