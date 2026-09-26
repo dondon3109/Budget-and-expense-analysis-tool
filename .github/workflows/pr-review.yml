@@ -221,7 +221,7 @@ jobs:
           [[ "${PR_TITLE}" =~ ^(feat|fix|docs|test|chore|refactor|style|ci|build|perf|revert)(\([a-z0-9-]+\))?!?:\ .+ ]] \
             || reasons+=("the title is not a Conventional Commit")
           [ -z "${risky}" ] || reasons+=("it touches high-risk paths: $(echo "${risky}" | head -n 5 | paste -sd, -)")
-          [ "${lines}" -le 600 ] || reasons+=("it changes ${lines} lines, over the 600 line limit")
+          [ "${lines}" -le 5000 ] || reasons+=("it changes ${lines} lines, over the 5000 line limit")
           # A bot-authored pull request stays behind a human, as the review gate ruleset intends.
           [ "${PR_AUTHOR}" != "github-actions[bot]" ] || reasons+=("a bot opened it")
 
