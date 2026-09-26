@@ -1,23 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.36-beta",
-  "versionCode": 20336,
-  "filename": "zoption-beta-0.2.36.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.36.apk",
-  "sha256": "2e7aaa1a4c52cf0d392795aacca8854fe921e15d801b85545d18a7b747a5c6fe",
-  "sizeBytes": 138013462,
-  "sizeLabel": "138,013,462 bytes (131.62 MiB)",
-  "releaseDate": "2026-09-25",
-  "releaseDateLabel": "September 25, 2026",
+  "versionName": "0.2.37-beta",
+  "versionCode": 20337,
+  "filename": "zoption-beta-0.2.37.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.37.apk",
+  "sha256": "b304c87a199530473da8db5dce42542885f354905333c1e12fc3e4d57b7b9798",
+  "sizeBytes": 138039110,
+  "sizeLabel": "138,039,110 bytes (131.64 MiB)",
+  "releaseDate": "2026-09-26",
+  "releaseDateLabel": "September 26, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Choose a default spending account for new transactions",
-    "Close the Sync delayed notice on Home and Transactions",
-    "My reports under Help & support loads again",
-    "Add budget asks you to choose a category",
-    "Bug report drafts fill the whole panel for easier review"
+    "Try Zoption Pro free for 7 days, no card needed",
+    "Lock the app with a 6-digit PIN instead of a password",
+    "A clearer Home screen with your balance split across accounts",
+    "Receipt scanning itemizes purchases, discounts included",
+    "Create a category right from the category picker"
   ]
 }
