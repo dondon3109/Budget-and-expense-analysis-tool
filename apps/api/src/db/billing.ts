@@ -351,7 +351,7 @@ export async function getProEntitlementSource(
   tenantId: string,
 ): Promise<EntitlementViewSource | null> {
   const row = await env.DB.prepare(
-    `SELECT source FROM effective_pro_entitlements
+    `SELECT source FROM effective_pro_access
      WHERE tenant_id = ?
      ORDER BY CASE source
        WHEN 'paypal' THEN 0

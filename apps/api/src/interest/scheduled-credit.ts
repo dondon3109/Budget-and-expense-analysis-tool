@@ -60,7 +60,7 @@ export async function creditDueInterest(
             interest_frequency AS interestFrequency,
             interest_pay_day AS interestPayDay,
             EXISTS (
-              SELECT 1 FROM effective_pro_entitlements e WHERE e.tenant_id = accounts.tenant_id
+              SELECT 1 FROM effective_pro_access e WHERE e.tenant_id = accounts.tenant_id
             ) AS hasPro
      FROM accounts
      WHERE type = 'savings' AND interest_enabled = 1 AND archived = 0`,

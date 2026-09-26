@@ -1231,6 +1231,16 @@ export const billingSummaryResponseSchema = z
   })
   .strict();
 
+/**
+ * The Supabase Auth admin user lookup. Only the sign-in address is read; the rest of the record
+ * is Supabase's to change, so unknown keys are allowed. Older API versions nest it in `user`.
+ */
+const supabaseAdminUserEmailSchema = z.object({ email: z.email() });
+export const supabaseAdminUserResponseSchema = z.union([
+  z.object({ user: supabaseAdminUserEmailSchema }),
+  supabaseAdminUserEmailSchema,
+]);
+
 export const billingProviderConfigResponseSchema = z
   .object({
     provider: z.literal("paypal"),

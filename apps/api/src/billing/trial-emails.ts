@@ -4,8 +4,11 @@ import { PRO_TRIAL_DAYS } from "../db/tenants";
 import { createResendSender, ResendError } from "../resend";
 import type { Bindings, EmailSender } from "../types";
 
-/** A send that keeps failing stops after this many attempts instead of retrying forever. */
-const MAX_EMAIL_FAILURES = 5;
+/**
+ * A stage that keeps failing is given up after this many five-minute attempts (about an hour),
+ * so a provider outage costs at most that one email, never the later stages.
+ */
+const MAX_STAGE_FAILURES = 12;
 const ENDING_NOTICE_MS = 24 * 60 * 60 * 1_000;
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
   dateStyle: "long",
@@ -123,13 +126,36 @@ async function claim(
   return (result.meta.changes ?? 0) > 0;
 }
 
+/** Reopens a failed stage for the next run, or gives it up once it has failed too often. */
 async function release(env: Bindings, tenantId: string, kind: TrialEmailKind): Promise<void> {
+  const column = EMAIL_COLUMN[kind];
   await env.DB.prepare(
-    `UPDATE pro_trials SET ${EMAIL_COLUMN[kind]} = NULL, email_failures = email_failures + 1
-     WHERE tenant_id = ?`,
+    `UPDATE pro_trials
+     SET ${column} = CASE WHEN email_failures + 1 >= ?1 THEN ${column} ELSE NULL END,
+         email_failures = CASE WHEN email_failures + 1 >= ?1 THEN 0 ELSE email_failures + 1 END
+     WHERE tenant_id = ?2`,
   )
+    .bind(MAX_STAGE_FAILURES, tenantId)
+    .run();
+}
+
+async function resetFailures(env: Bindings, tenantId: string): Promise<void> {
+  await env.DB.prepare("UPDATE pro_trials SET email_failures = 0 WHERE tenant_id = ?")
     .bind(tenantId)
     .run();
+}
+
+/**
+ * Missing configuration is not a delivery failure: the sweep waits for it instead of spending
+ * every trial's attempts.
+ */
+function emailConfigured(env: Bindings, injectedSender?: EmailSender): boolean {
+  return Boolean(
+    (injectedSender || env.RESEND_API_KEY?.trim()) &&
+    env.EMAIL_FROM?.trim() &&
+    env.SUPABASE_URL?.trim() &&
+    env.SUPABASE_SERVICE_ROLE_KEY?.trim(),
+  );
 }
 
 function errorCode(error: unknown): string {
@@ -143,20 +169,28 @@ export function createTrialEmailService(
 ) {
   return {
     async sendDue(env: Bindings, limit: number, now = new Date()): Promise<TrialEmailSweepResult> {
+      const result: TrialEmailSweepResult = { checked: 0, sent: 0, skipped: 0, failed: 0 };
+      if (!emailConfigured(env, injected.sender)) return result;
+
       const nowIso = now.toISOString();
+      // Select only rows with a stage due now, so rows already handled never fill the limit.
       const { results } = await env.DB.prepare(
         `SELECT tenant_id AS tenantId, ends_at AS endsAt,
                 started_email_at AS startedEmailAt, ending_email_at AS endingEmailAt
          FROM pro_trials
-         WHERE ended_email_at IS NULL AND email_failures < ?
-           AND (started_email_at IS NULL OR datetime(ends_at, '-1 day') <= datetime(?))
+         WHERE ended_email_at IS NULL
+           AND (
+             (started_email_at IS NULL AND datetime(ends_at, '-1 day') > datetime(?1))
+             OR (ending_email_at IS NULL AND datetime(ends_at, '-1 day') <= datetime(?1)
+                 AND datetime(ends_at) > datetime(?1))
+             OR datetime(ends_at) <= datetime(?1)
+           )
          ORDER BY ends_at
-         LIMIT ?`,
+         LIMIT ?2`,
       )
-        .bind(MAX_EMAIL_FAILURES, nowIso, limit)
+        .bind(nowIso, limit)
         .all<PendingTrialRow>();
 
-      const result: TrialEmailSweepResult = { checked: 0, sent: 0, skipped: 0, failed: 0 };
       for (const row of results) {
         const kind = dueTrialEmail(row, now);
         if (!kind) continue;
@@ -177,6 +211,7 @@ export function createTrialEmailService(
           await configuredSender(env, injected.sender).send(
             trialMessage(env, kind, row.endsAt, recipient),
           );
+          await resetFailures(env, row.tenantId);
           result.sent += 1;
         } catch (error) {
           await release(env, row.tenantId, kind);

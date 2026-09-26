@@ -160,14 +160,57 @@ describe("7-day Pro trial", () => {
     });
   });
 
-  it("retries a failed send and gives up after five failures", async () => {
+  it("retries a failed stage, gives it up after twelve failures, and still sends later stages", async () => {
     const { env, database } = environment();
     await tenantBootstrapRepository.bootstrap(env, { id: "user-1" });
-    const { service } = recordingService({ fail: true });
+    const failing = recordingService({ fail: true });
 
-    for (let attempt = 0; attempt < 7; attempt += 1) await service.sendDue(env, 50);
+    for (let attempt = 0; attempt < 11; attempt += 1) await failing.service.sendDue(env, 50);
+    expect(
+      database.prepare("SELECT started_email_at, email_failures FROM pro_trials").get(),
+    ).toEqual({ started_email_at: null, email_failures: 11 });
 
-    const row = database.prepare("SELECT started_email_at, email_failures FROM pro_trials").get();
-    expect(row).toMatchObject({ started_email_at: null, email_failures: 5 });
+    await failing.service.sendDue(env, 50);
+    expect(
+      database.prepare("SELECT started_email_at, email_failures FROM pro_trials").get(),
+    ).toEqual({ started_email_at: expect.any(String), email_failures: 0 });
+    expect(await failing.service.sendDue(env, 50)).toMatchObject({ checked: 0 });
+
+    const { sent, service } = recordingService();
+    await service.sendDue(env, 50, new Date(trialEndsAt(database).getTime() - 60_000));
+    expect(sent.map((message) => message.subject)).toEqual([
+      "Your Zoption Pro trial ends tomorrow",
+    ]);
+  });
+
+  it("does not spend attempts while email delivery is not configured", async () => {
+    const { env, database } = environment();
+    await tenantBootstrapRepository.bootstrap(env, { id: "user-1" });
+    const { sent, service } = recordingService();
+
+    const result = await service.sendDue({ ...env, EMAIL_FROM: undefined }, 50);
+
+    expect(result).toEqual({ checked: 0, sent: 0, skipped: 0, failed: 0 });
+    expect(sent).toEqual([]);
+    expect(
+      database.prepare("SELECT started_email_at, email_failures FROM pro_trials").get(),
+    ).toEqual({ started_email_at: null, email_failures: 0 });
+  });
+
+  it("never lets already-handled rows fill the sweep limit", async () => {
+    const { env, database } = environment();
+    for (let index = 0; index < 5; index += 1) {
+      await tenantBootstrapRepository.bootstrap(env, { id: `user-${index}` });
+    }
+    const endsAt = trialEndsAt(database);
+    const lastDay = new Date(endsAt.getTime() - 60_000);
+    const { sent, service } = recordingService();
+
+    // Each run sends at most two, and rows already sent their ending email are not reselected.
+    for (let run = 0; run < 3; run += 1) await service.sendDue(env, 2, lastDay);
+
+    expect(sent.map((message) => message.subject)).toEqual(
+      Array.from({ length: 5 }, () => "Your Zoption Pro trial ends tomorrow"),
+    );
   });
 });

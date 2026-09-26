@@ -1,6 +1,6 @@
-import type { Bindings } from "./types";
+import { supabaseAdminUserResponseSchema } from "@zoption/shared";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import type { Bindings } from "./types";
 
 export function escapeHtml(value: string): string {
   return value
@@ -37,13 +37,7 @@ export async function recipientAddress(
   );
   if (!response.ok) return null;
 
-  const payload: unknown = await response.json().catch(() => null);
-  const record =
-    typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
-  const nested =
-    typeof record.user === "object" && record.user !== null
-      ? (record.user as Record<string, unknown>)
-      : record;
-  const email = typeof nested.email === "string" ? nested.email.trim() : "";
-  return EMAIL_PATTERN.test(email) ? email : null;
+  const parsed = supabaseAdminUserResponseSchema.safeParse(await response.json().catch(() => null));
+  if (!parsed.success) return null;
+  return "user" in parsed.data ? parsed.data.user.email : parsed.data.email;
 }

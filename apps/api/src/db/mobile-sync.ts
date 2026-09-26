@@ -323,7 +323,7 @@ async function validateSubscriptionReferences(
 
 async function hasEffectiveProEntitlementRow(env: Bindings, tenantId: string): Promise<boolean> {
   const row = await env.DB.prepare(
-    "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ? LIMIT 1",
+    "SELECT 1 AS entitled FROM effective_pro_access WHERE tenant_id = ? LIMIT 1",
   )
     .bind(tenantId)
     .first<{ entitled: number }>();

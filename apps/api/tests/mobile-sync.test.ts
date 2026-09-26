@@ -1059,7 +1059,7 @@ describe("mobile sync account and category push repository", () => {
     const repository = createMobileSyncRepository(async (bindings, tenantId) =>
       Boolean(
         await bindings.DB.prepare(
-          "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ?",
+          "SELECT 1 AS entitled FROM effective_pro_access WHERE tenant_id = ?",
         )
           .bind(tenantId)
           .first(),
@@ -1346,7 +1346,7 @@ describe("mobile sync account and category push repository", () => {
     const repository = createMobileSyncRepository(async (bindings, tenantId) =>
       Boolean(
         await bindings.DB.prepare(
-          "SELECT 1 AS entitled FROM effective_pro_entitlements WHERE tenant_id = ?",
+          "SELECT 1 AS entitled FROM effective_pro_access WHERE tenant_id = ?",
         )
           .bind(tenantId)
           .first(),
