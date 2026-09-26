@@ -14,7 +14,7 @@ import { SessionProvider, useSessionSnapshot } from "@/auth/session-state";
 import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
-import { startDailyReminder } from "@/features/reminders/daily-reminder";
+import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -61,6 +61,12 @@ function SplashRelease() {
   return null;
 }
 
+/** Restores the daily reminder for a signed-in session and clears it otherwise. */
+function DailyReminderSession() {
+  useDailyReminderSession(useSessionSnapshot().status);
+  return null;
+}
+
 function RootNavigator() {
   const theme = useZoptionTheme();
   return (
@@ -99,16 +105,12 @@ export default function RootLayout() {
   // capture consent, and default spending account all start at their defaults
   // on every launch. The theme store hydrates in ZoptionThemeProvider, which
   // renders nothing until it has. The daily reminder store hydrates in
-  // startDailyReminder, which then makes the OS schedule match the saved time.
+  // DailyReminderSession, once the session is known to be signed in.
   useEffect(() => {
     void useVoiceLanguageStore.persist.rehydrate();
     void useAssistantVoiceOptionsStore.persist.rehydrate();
     void useMicCaptureConsentStore.persist.rehydrate();
     void useDefaultSpendingAccountStore.persist.rehydrate();
-    void startDailyReminder().catch(() => {
-      // Best-effort like background sync: a notification failure must never
-      // affect startup. The card still shows the saved time.
-    });
   }, []);
 
   return (
@@ -116,6 +118,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <SessionProvider>
           <SplashRelease />
+          <DailyReminderSession />
           <WorkerIdentityProvider>
             <ZoptionThemeProvider>
               <AndroidUpdateProvider>

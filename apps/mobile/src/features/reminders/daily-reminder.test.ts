@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react-native";
+import { render, renderHook } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
@@ -12,6 +12,7 @@ import {
   DAILY_REMINDER_ID,
   DailyReminderTapHandler,
   startDailyReminder,
+  useDailyReminderSession,
 } from "./daily-reminder";
 
 jest.mock("expo-notifications", () => ({
@@ -261,6 +262,63 @@ describe("daily reminder at launch", () => {
 
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
     expect(useDailyReminderStore.getState().time).toBe("off");
+  });
+});
+
+describe("daily reminder session binding", () => {
+  it("waits while the session is still loading", async () => {
+    await renderHook(() => useDailyReminderSession("loading"));
+
+    expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
+    expect(notifications.setNotificationHandler).not.toHaveBeenCalled();
+  });
+
+  it("clears a saved reminder when the app launches signed out", async () => {
+    // The session ended while the app was closed: no identity transition runs.
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("21:00"));
+    useDailyReminderStore.setState({ time: "21:00" });
+    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
+
+    await renderHook(() => useDailyReminderSession("signed-out"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+    expect(useDailyReminderStore.getState().time).toBe("off");
+  });
+
+  it("restores the saved reminder once the session is signed in", async () => {
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("08:00"));
+    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
+
+    await renderHook(() => useDailyReminderSession("signed-in"));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ trigger: expect.objectContaining({ hour: 8, minute: 0 }) }),
+    );
+  });
+
+  it("keeps a time chosen while the saved one is still loading", async () => {
+    const stored = deferred<string | null>();
+    jest
+      .mocked(SecureStore.getItemAsync)
+      .mockImplementation((key) =>
+        key === REMINDER_STORAGE_KEY ? stored.promise : Promise.resolve(null),
+      );
+    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
+
+    const starting = startDailyReminder();
+    const applying = applyDailyReminder("21:00");
+    // Let an unguarded apply finish before the saved time arrives.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    stored.resolve(savedTime("18:00"));
+    await starting;
+
+    await expect(applying).resolves.toBe("scheduled");
+    expect(useDailyReminderStore.getState().time).toBe("21:00");
+    const lastSchedule = notifications.scheduleNotificationAsync.mock.calls.at(-1)?.[0];
+    expect(lastSchedule?.trigger).toEqual(expect.objectContaining({ hour: 21, minute: 0 }));
   });
 });
 

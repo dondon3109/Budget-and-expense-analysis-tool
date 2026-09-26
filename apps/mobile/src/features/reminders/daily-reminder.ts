@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
+import type { SessionStatus } from "@/auth/session-state";
 import { useDailyReminderStore, type DailyReminderTime } from "@/stores/daily-reminder-store";
 
 /** Fixed identifier, so rescheduling replaces the one reminder instead of stacking copies. */
@@ -17,6 +18,10 @@ export type DailyReminderResult = "scheduled" | "off" | "denied";
 // Bumped by every identity change. An apply or restore that started under an
 // earlier identity must not write its time back or leave a reminder scheduled.
 let identityGeneration = 0;
+
+// The latest launch restore. An apply waits for it, so a restore that is still
+// loading the saved time cannot overwrite a time the user just chose.
+let restoring: Promise<void> = Promise.resolve();
 
 /** "18:00" → "6:00 PM"; "off" → "Off". */
 export function dailyReminderLabel(time: DailyReminderTime): string {
@@ -38,6 +43,7 @@ export function dailyReminderLabel(time: DailyReminderTime): string {
  * previous reminder is still scheduled and still matches the saved time.
  */
 export async function applyDailyReminder(time: DailyReminderTime): Promise<DailyReminderResult> {
+  await restoring.catch(() => undefined);
   const generation = identityGeneration;
   if (time === "off") {
     await turnOff();
@@ -54,13 +60,34 @@ export async function applyDailyReminder(time: DailyReminderTime): Promise<Daily
 }
 
 /**
- * Shows the reminder while the app is open, then loads the saved time and makes
- * the OS schedule match it. Run once at launch. It never prompts: without
- * permission the saved time is reset to Off. This also repairs drift, such as
- * an iOS reinstall that keeps the saved time in the Keychain but drops the
- * scheduled notification.
+ * Ties the reminder to a signed-in session. Mount once under SessionProvider.
+ * Signed in, it restores the reminder; signed out, it clears it. The clear
+ * matters at launch: a session that ended while the app was closed resolves
+ * straight to signed-out without an identity transition, so
+ * clearUserScopedRuntimeState never runs for it.
  */
-export async function startDailyReminder(): Promise<void> {
+export function useDailyReminderSession(status: SessionStatus): void {
+  useEffect(() => {
+    // Best-effort like background sync: a notification failure must never
+    // affect startup or sign-in.
+    if (status === "signed-in") void startDailyReminder().catch(() => undefined);
+    if (status === "signed-out") void clearDailyReminder().catch(() => undefined);
+  }, [status]);
+}
+
+/**
+ * Shows the reminder while the app is open, then loads the saved time and makes
+ * the OS schedule match it. Runs when a session is signed in. It never prompts:
+ * without permission the saved time is reset to Off. This also repairs drift,
+ * such as an iOS reinstall that keeps the saved time in the Keychain but drops
+ * the scheduled notification.
+ */
+export function startDailyReminder(): Promise<void> {
+  restoring = restoreDailyReminder();
+  return restoring;
+}
+
+async function restoreDailyReminder(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: (notification) => {
       const show = notification.request.identifier === DAILY_REMINDER_ID;
@@ -96,7 +123,7 @@ export async function startDailyReminder(): Promise<void> {
  * reminder never outlives the account that set it, and a tap made while signed
  * out cannot open the editor after the next sign-in. The two native calls run
  * independently so a failure in one cannot skip the other; a cancel that still
- * fails is retried by the next launch's startDailyReminder, which sees Off.
+ * fails is retried by the next restore, which sees Off.
  */
 export async function clearDailyReminder(): Promise<void> {
   identityGeneration += 1;
