@@ -10,6 +10,9 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(async () => undefined),
 }));
 
+jest.mock("expo-notifications", () => ({}));
+jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+
 describe("PreferenceCards", () => {
   beforeEach(() => {
     useThemeStore.setState({ preference: "coffee" });

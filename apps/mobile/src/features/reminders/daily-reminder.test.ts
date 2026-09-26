@@ -1,0 +1,133 @@
+import { render } from "@testing-library/react-native";
+import * as Notifications from "expo-notifications";
+import { router } from "expo-router";
+import { createElement } from "react";
+
+import {
+  applyDailyReminder,
+  dailyReminderLabel,
+  DAILY_REMINDER_ID,
+  DailyReminderTapHandler,
+} from "./daily-reminder";
+
+jest.mock("expo-notifications", () => ({
+  AndroidImportance: { DEFAULT: 5 },
+  SchedulableTriggerInputTypes: { DAILY: "daily" },
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  getPermissionsAsync: jest.fn(),
+  requestPermissionsAsync: jest.fn(),
+  scheduleNotificationAsync: jest.fn(async () => "zoption-daily-reminder"),
+  getLastNotificationResponse: jest.fn(() => null),
+  clearLastNotificationResponse: jest.fn(),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+}));
+
+jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+
+const notifications = jest.mocked(Notifications);
+
+function permission(granted: boolean, canAskAgain = true) {
+  return { granted, canAskAgain } as Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>;
+}
+
+function responseFor(identifier: string) {
+  return { notification: { request: { identifier } } } as Notifications.NotificationResponse;
+}
+
+describe("daily reminder scheduling", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("labels reminder times in 12-hour form", () => {
+    expect(dailyReminderLabel("off")).toBe("Off");
+    expect(dailyReminderLabel("08:00")).toBe("8:00 AM");
+    expect(dailyReminderLabel("12:00")).toBe("12:00 PM");
+    expect(dailyReminderLabel("21:00")).toBe("9:00 PM");
+  });
+
+  it("turning the reminder off cancels it without asking for permission", async () => {
+    await expect(applyDailyReminder("off")).resolves.toBe("off");
+
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.getPermissionsAsync).not.toHaveBeenCalled();
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("replaces the reminder with one daily trigger at the chosen time", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
+
+    await expect(applyDailyReminder("21:00")).resolves.toBe("scheduled");
+
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identifier: DAILY_REMINDER_ID,
+        trigger: expect.objectContaining({ type: "daily", hour: 21, minute: 0 }),
+      }),
+    );
+  });
+
+  it("asks for permission once and schedules when it is granted", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(false));
+    notifications.requestPermissionsAsync.mockResolvedValue(permission(true));
+
+    await expect(applyDailyReminder("08:00")).resolves.toBe("scheduled");
+
+    expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("schedules nothing when permission is refused", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(false));
+    notifications.requestPermissionsAsync.mockResolvedValue(permission(false));
+
+    await expect(applyDailyReminder("18:00")).resolves.toBe("denied");
+
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("does not prompt again once the user has blocked notifications", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(false, false));
+
+    await expect(applyDailyReminder("18:00")).resolves.toBe("denied");
+
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe("daily reminder tap", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("opens the transaction editor for the tap that launched the app, once", async () => {
+    notifications.getLastNotificationResponse.mockReturnValue(responseFor(DAILY_REMINDER_ID));
+
+    await render(createElement(DailyReminderTapHandler));
+
+    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+    expect(notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the editor for a tap while the app is running", async () => {
+    await render(createElement(DailyReminderTapHandler));
+    const listener = notifications.addNotificationResponseReceivedListener.mock.calls[0]?.[0];
+
+    listener?.(responseFor(DAILY_REMINDER_ID));
+
+    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+  });
+
+  it("ignores other notifications", async () => {
+    notifications.getLastNotificationResponse.mockReturnValue(responseFor("something-else"));
+
+    await render(createElement(DailyReminderTapHandler));
+
+    expect(router.push).not.toHaveBeenCalled();
+    expect(notifications.clearLastNotificationResponse).not.toHaveBeenCalled();
+  });
+});
