@@ -18,13 +18,16 @@ type Notice = "blocked" | "failed";
 export function DailyReminderCard() {
   const theme = useZoptionTheme();
   const time = useDailyReminderStore((state) => state.time);
+  // Until the saved time has loaded, "Off" could be wrong, so say nothing yet.
+  const restored = useDailyReminderStore((state) => state.restored);
   const [pending, setPending] = useState<DailyReminderTime | null>(null);
+  const busy = pending !== null || !restored;
   const [notice, setNotice] = useState<Notice | null>(null);
 
   // applyDailyReminder saves the time itself once the OS schedule matches it,
   // so the summary above always reflects what is actually scheduled.
   const choose = async (next: DailyReminderTime) => {
-    if (pending) return;
+    if (busy) return;
     setPending(next);
     setNotice(null);
     try {
@@ -38,7 +41,11 @@ export function DailyReminderCard() {
   };
 
   return (
-    <CollapsibleCard title="Daily reminder" summary={dailyReminderLabel(time)} icon="bell-outline">
+    <CollapsibleCard
+      title="Daily reminder"
+      summary={restored ? dailyReminderLabel(time) : "Loading…"}
+      icon="bell-outline"
+    >
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
         Get one notification a day to record that day&apos;s expenses and income.
       </Text>
@@ -55,8 +62,8 @@ export function DailyReminderCard() {
               key={option}
               accessibilityRole="radio"
               accessibilityLabel={label}
-              accessibilityState={{ selected, disabled: pending !== null }}
-              disabled={pending !== null}
+              accessibilityState={{ selected, disabled: busy }}
+              disabled={busy}
               onPress={() => void choose(option)}
               style={[
                 styles.option,

@@ -25,18 +25,22 @@ const secureDailyReminderStorage: StateStorage = {
 
 interface DailyReminderState {
   time: DailyReminderTime;
+  /** Not persisted: false until this session's restore has loaded the saved time. */
+  restored: boolean;
   setTime: (time: DailyReminderTime) => void;
 }
 
 /**
- * Remembers the chosen reminder time so the settings card can show it. The
- * OS owns the schedule itself: a scheduled daily notification survives app
- * restarts, and expo-notifications reschedules it after a reboot.
+ * The chosen reminder time, shown by the settings card. Written only by
+ * features/reminders/daily-reminder.ts once the OS schedule matches it; the
+ * schedule itself survives app restarts and reboots, and the launch restore
+ * re-applies the saved time.
  */
 export const useDailyReminderStore = create<DailyReminderState>()(
   persist(
     (set) => ({
       time: "off",
+      restored: false,
       setTime: (time) => set({ time }),
     }),
     {

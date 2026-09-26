@@ -24,7 +24,7 @@ jest.mock("expo-router", () => ({
 describe("DailyReminderCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderStore.setState({ time: "off", restored: true });
   });
 
   it("is off by default and schedules the chosen time", async () => {
@@ -56,6 +56,16 @@ describe("DailyReminderCard", () => {
     expect(useDailyReminderStore.getState().time).toBe("off");
     expect(screen.getByRole("alert").props.children).toMatch(/Notifications are turned off/);
     expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
+  });
+
+  it("waits for the saved time before showing or changing it", async () => {
+    useDailyReminderStore.setState({ time: "off", restored: false });
+    await render(<DailyReminderCard />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Loading…" }));
+    await fireEvent.press(screen.getByRole("radio", { name: "9:00 PM" }));
+
+    expect(applyDailyReminder).not.toHaveBeenCalled();
   });
 
   it("keeps the previous time when scheduling fails", async () => {

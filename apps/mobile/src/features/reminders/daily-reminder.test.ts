@@ -46,8 +46,15 @@ function permission(granted: boolean, canAskAgain = true) {
   return { granted, canAskAgain } as Awaited<ReturnType<typeof Notifications.getPermissionsAsync>>;
 }
 
+let tapTime = 0;
+
+/** A distinct tap each call: the handler opens the editor once per tap. */
 function responseFor(identifier: string) {
-  return { notification: { request: { identifier } } } as Notifications.NotificationResponse;
+  tapTime += 1;
+  return {
+    actionIdentifier: "expo.modules.notifications.actions.DEFAULT",
+    notification: { date: tapTime, request: { identifier } },
+  } as unknown as Notifications.NotificationResponse;
 }
 
 function savedTime(time: string) {
@@ -242,6 +249,15 @@ describe("daily reminder at launch", () => {
     expect(useDailyReminderStore.getState().time).toBe("off");
   });
 
+  it("marks the restore finished even when it fails", async () => {
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("18:00"));
+    notifications.getPermissionsAsync.mockRejectedValueOnce(new Error("native failure"));
+
+    await expect(startDailyReminder()).rejects.toThrow("native failure");
+
+    expect(useDailyReminderStore.getState().restored).toBe(true);
+  });
+
   it("cancels a stray reminder when the saved time is off", async () => {
     await startDailyReminder();
 
@@ -343,6 +359,17 @@ describe("daily reminder tap", () => {
     listener?.(responseFor(DAILY_REMINDER_ID));
 
     expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+  });
+
+  it("opens the editor once when the launching tap also reaches the listener", async () => {
+    const launchTap = responseFor(DAILY_REMINDER_ID);
+    notifications.getLastNotificationResponse.mockReturnValue(launchTap);
+
+    await render(createElement(DailyReminderTapHandler));
+    const listener = notifications.addNotificationResponseReceivedListener.mock.calls[0]?.[0];
+    listener?.(launchTap);
+
+    expect(router.push).toHaveBeenCalledTimes(1);
   });
 
   it("waits for the navigator before opening the editor on a cold start", async () => {

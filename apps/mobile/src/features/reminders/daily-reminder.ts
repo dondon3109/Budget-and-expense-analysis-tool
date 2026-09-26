@@ -23,6 +23,11 @@ let identityGeneration = 0;
 // loading the saved time cannot overwrite a time the user just chose.
 let restoring: Promise<void> = Promise.resolve();
 
+// The tap last acted on. A launching tap can reach both
+// getLastNotificationResponse and the response listener; each tap opens the
+// editor once.
+let handledTap: string | null = null;
+
 /** "18:00" → "6:00 PM"; "off" → "Off". */
 export function dailyReminderLabel(time: DailyReminderTime): string {
   if (time === "off") return "Off";
@@ -83,7 +88,12 @@ export function useDailyReminderSession(status: SessionStatus): void {
  * the scheduled notification.
  */
 export function startDailyReminder(): Promise<void> {
-  restoring = restoreDailyReminder();
+  useDailyReminderStore.setState({ restored: false });
+  // `finally`, not a success path: a failed restore must not leave the card
+  // waiting forever. It then shows whatever time was loaded, if any.
+  restoring = restoreDailyReminder().finally(() => {
+    useDailyReminderStore.setState({ restored: true });
+  });
   return restoring;
 }
 
@@ -149,6 +159,9 @@ export function DailyReminderTapHandler() {
     if (!navigationReady) return;
     const openEditor = (response: Notifications.NotificationResponse | null) => {
       if (response?.notification.request.identifier !== DAILY_REMINDER_ID) return;
+      const tap = `${response.notification.date}:${response.actionIdentifier}`;
+      if (tap === handledTap) return;
+      handledTap = tap;
       Notifications.clearLastNotificationResponse();
       router.push(DAILY_REMINDER_ROUTE);
     };
