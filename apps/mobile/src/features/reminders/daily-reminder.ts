@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
-import type { DailyReminderTime } from "@/stores/daily-reminder-store";
+import { useDailyReminderStore, type DailyReminderTime } from "@/stores/daily-reminder-store";
 
 /** Fixed identifier, so rescheduling replaces the one reminder instead of stacking copies. */
 export const DAILY_REMINDER_ID = "zoption-daily-reminder";
@@ -65,6 +65,18 @@ export async function applyDailyReminder(time: DailyReminderTime): Promise<Daily
     },
   });
   return "scheduled";
+}
+
+/**
+ * Turns the reminder off and forgets a tap that has not been handled yet. Runs
+ * on every identity change (sign-out, forced sign-out, account switch) so the
+ * reminder never outlives the account that set it, and a tap made while signed
+ * out cannot open the editor after the next sign-in.
+ */
+export async function clearDailyReminder(): Promise<void> {
+  useDailyReminderStore.getState().setTime("off");
+  Notifications.clearLastNotificationResponse();
+  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
 }
 
 /**

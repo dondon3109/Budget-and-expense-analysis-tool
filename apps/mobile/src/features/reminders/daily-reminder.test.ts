@@ -3,8 +3,10 @@ import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { createElement } from "react";
 
+import { useDailyReminderStore } from "@/stores/daily-reminder-store";
 import {
   applyDailyReminder,
+  clearDailyReminder,
   dailyReminderLabel,
   DAILY_REMINDER_ID,
   DailyReminderTapHandler,
@@ -24,6 +26,11 @@ jest.mock("expo-notifications", () => ({
 }));
 
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
+}));
 
 const notifications = jest.mocked(Notifications);
 
@@ -108,6 +115,18 @@ describe("daily reminder scheduling", () => {
 
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe("daily reminder identity cleanup", () => {
+  it("turns the reminder off and forgets an unhandled tap", async () => {
+    useDailyReminderStore.setState({ time: "21:00" });
+
+    await clearDailyReminder();
+
+    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
   });
 });
 

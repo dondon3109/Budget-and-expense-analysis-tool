@@ -6,7 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
-- The Android and iOS app can remind you once a day to record that day's expenses and income. Choose a time (8:00 AM, 12:00 PM, 6:00 PM, or 9:00 PM) under More → Preferences → Daily reminder; it is off until you pick one, and tapping the reminder opens a new transaction.
+- The Android and iOS app can remind you once a day to record that day's expenses and income. Choose a time (8:00 AM, 12:00 PM, 6:00 PM, or 9:00 PM) under More → Preferences → Daily reminder; it is off until you pick one, tapping the reminder opens a new transaction, and signing out turns it off.
 
 ## 2.46.1 — 2026-09-26
 

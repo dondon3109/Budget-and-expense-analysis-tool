@@ -78,6 +78,7 @@ export default tseslint.config(
       "**/scripts/**/*.mjs",
       "**/scripts/**/*.d.mts",
       "apps/mobile/*.cjs",
+      "apps/mobile/__mocks__/**/*.js",
       "apps/mobile/plugins/**/*.js",
       "apps/web/public/**/*.js",
       "apps/web/src/lib/pcm-worklet.js",
@@ -109,7 +110,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["apps/mobile/plugins/**/*.test.js"],
+    files: ["apps/mobile/__mocks__/**/*.js", "apps/mobile/plugins/**/*.test.js"],
     languageOptions: {
       globals: {
         afterEach: "readonly",
