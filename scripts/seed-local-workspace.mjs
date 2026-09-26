@@ -4,9 +4,13 @@
  * screens can be reviewed with real content instead of empty states.
  *
  * Usage (from the repo root):
- *   node scripts/seed-local-workspace.mjs --user <supabase-user-uuid>
- *   node scripts/seed-local-workspace.mjs --user <uuid> --months 6
- *   node scripts/seed-local-workspace.mjs --user <uuid> --reset
+ *   pnpm seed:local --user <supabase-user-uuid>
+ *   pnpm seed:local --user <uuid> --months 6
+ *   pnpm seed:local --user <uuid> --reset
+ *
+ * It imports the shared money rules straight from TypeScript source, so it needs Node
+ * 22.18+ when run as plain `node`; `pnpm seed:local` adds --experimental-strip-types so
+ * Node 22.6+ works too.
  *
  * The API bootstraps a tenant, its three system accounts and its ten starter
  * categories on the first authenticated request (apps/api/src/db/tenants.ts,
@@ -15,12 +19,23 @@
  * request: every write is INSERT OR IGNORE against a deterministic id.
  *
  * Everything it creates is prefixed with 'seed:' so --reset removes only what this
- * script made and never touches data you created by hand.
+ * script made and never touches data you created by hand. The one exception: --reset also
+ * deletes every transaction linked to a seeded subscription, including renewal charges the
+ * API posted later.
+ *
+ * Mobile sync accepts a 'subscription:<id>' change group only when it is exactly one
+ * subscription plus one transaction. Seeding and --reset keep that shape as long as each
+ * seeded subscription still has exactly its seeded charge. A workspace seeded before the
+ * charge existed, or one with renewal charges on a seeded subscription, has groups the pull
+ * rejects: recreate the local D1 state and seed again instead of resetting.
  */
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+import { normalizeSignedAmount, parseAmountToMinor } from "../packages/shared/src/money.ts";
 
 const API_DIR = new URL("../apps/api/", import.meta.url).pathname;
 const SEED_PREFIX = "seed:";
@@ -186,11 +201,16 @@ function queryScalar(db, sql) {
   }
 }
 
-const peso = (amount) => Math.round(amount * 100);
+const SEED_SUBSCRIPTIONS = [
+  { id: "spotify", name: "Spotify Premium", amount: "149", day: 4, cycle: "monthly" },
+  { id: "netflix", name: "Netflix Standard", amount: "549", day: 11, cycle: "monthly" },
+  { id: "icloud", name: "iCloud+ 200GB", amount: "149", day: 22, cycle: "monthly" },
+];
+
 const iso = (date) => date.toISOString().slice(0, 10);
 const monthStart = (date) => `${iso(date).slice(0, 7)}-01`;
 
-function buildSql(userId, months) {
+export function buildSql(userId, months) {
   const tenantId = `user:${userId}`;
   const accountId = (suffix) =>
     suffix === "default" ? `${tenantId}:account:default` : `${tenantId}:account:${suffix}`;
@@ -231,10 +251,14 @@ function buildSql(userId, months) {
   let txn = 0;
   const addTransaction = ({ date, description, amount, kind, category, account, notes = null }) => {
     txn += 1;
+    // Stored amounts are signed like the API's: income positive, expenses and outgoing
+    // transfers negative.
+    const magnitude = parseAmountToMinor(amount);
+    const amountMinor = kind === "transfer" ? -magnitude : normalizeSignedAmount(magnitude, kind);
     statement(
       `INSERT OR IGNORE INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, source_kind) VALUES (` +
         `${sqlString(seedId("txn", txn))}, ${sqlString(tenantId)}, ${sqlString(accountId(account))}, ` +
-        `${sqlString(categoryId(category))}, ${sqlString(date)}, ${sqlString(description)}, ${peso(amount)}, ` +
+        `${sqlString(categoryId(category))}, ${sqlString(date)}, ${sqlString(description)}, ${amountMinor}, ` +
         `'PHP', ${sqlString(kind)}, ${sqlString(notes)}, 'manual')`,
     );
   };
@@ -251,7 +275,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(15),
       description: "Salary — first half",
-      amount: 22500,
+      amount: "22500",
       kind: "income",
       category: "salary",
       account: "bank",
@@ -260,7 +284,7 @@ function buildSql(userId, months) {
       addTransaction({
         date: day(28),
         description: "Salary — second half",
-        amount: 22500,
+        amount: "22500",
         kind: "income",
         category: "salary",
         account: "bank",
@@ -270,7 +294,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(1),
       description: "Rent",
-      amount: 12000,
+      amount: "12000",
       kind: "expense",
       category: "housing",
       account: "bank",
@@ -278,7 +302,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(5),
       description: "Robinsons Supermarket",
-      amount: 3420.5,
+      amount: "3420.50",
       kind: "expense",
       category: "food",
       account: "gcash",
@@ -286,7 +310,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(12),
       description: "SM Groceries",
-      amount: 2180,
+      amount: "2180",
       kind: "expense",
       category: "food",
       account: "gcash",
@@ -295,7 +319,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(19),
       description: "Jollibee",
-      amount: 465,
+      amount: "465",
       kind: "expense",
       category: "food",
       account: "default",
@@ -303,7 +327,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(8),
       description: "Meralco",
-      amount: 2840.75,
+      amount: "2840.75",
       kind: "expense",
       category: "utilities",
       account: "bank",
@@ -311,7 +335,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(9),
       description: "PLDT Fiber",
-      amount: 1699,
+      amount: "1699",
       kind: "expense",
       category: "utilities",
       account: "bank",
@@ -319,7 +343,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(3),
       description: "Jeepney and MRT",
-      amount: 320,
+      amount: "320",
       kind: "expense",
       category: "transport",
       account: "default",
@@ -327,7 +351,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(16),
       description: "Grab to BGC",
-      amount: 585,
+      amount: "585",
       kind: "expense",
       category: "transport",
       account: "gcash",
@@ -335,7 +359,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(21),
       description: "Cinema",
-      amount: 780,
+      amount: "780",
       kind: "expense",
       category: "leisure",
       account: "gcash",
@@ -343,7 +367,7 @@ function buildSql(userId, months) {
     addTransaction({
       date: day(24),
       description: "Coffee with friends",
-      amount: 640,
+      amount: "640",
       kind: "expense",
       category: "leisure",
       account: "default",
@@ -353,7 +377,7 @@ function buildSql(userId, months) {
       addTransaction({
         date: day(28),
         description: "Transfer to savings",
-        amount: 5000,
+        amount: "5000",
         kind: "transfer",
         category: "savings-transfer",
         account: "bank",
@@ -366,7 +390,7 @@ function buildSql(userId, months) {
   addTransaction({
     date: thisMonth,
     description: "Laptop repair",
-    amount: 6800,
+    amount: "6800",
     kind: "expense",
     category: "food",
     account: "bank",
@@ -375,17 +399,17 @@ function buildSql(userId, months) {
 
   // --- monthly budgets for the current month -------------------------------
   const budgets = [
-    { key: "housing", limit: 13000 },
-    { key: "food", limit: 9000 },
-    { key: "transport", limit: 3000 },
-    { key: "utilities", limit: 5000 },
-    { key: "leisure", limit: 2500 },
+    { key: "housing", limit: "13000" },
+    { key: "food", limit: "9000" },
+    { key: "transport", limit: "3000" },
+    { key: "utilities", limit: "5000" },
+    { key: "leisure", limit: "2500" },
   ];
   for (const budget of budgets) {
     statement(
       `INSERT OR IGNORE INTO budgets (id, tenant_id, category_id, month, limit_minor) VALUES (` +
         `${sqlString(seedId("budget", budget.key))}, ${sqlString(tenantId)}, ${sqlString(categoryId(budget.key))}, ` +
-        `${sqlString(thisMonth)}, ${peso(budget.limit)})`,
+        `${sqlString(thisMonth)}, ${parseAmountToMinor(budget.limit)})`,
     );
   }
 
@@ -394,17 +418,26 @@ function buildSql(userId, months) {
     const next = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, dayOfMonth));
     return iso(next);
   };
-  const subscriptions = [
-    { id: "spotify", name: "Spotify Premium", amount: 149, day: 4, cycle: "monthly" },
-    { id: "netflix", name: "Netflix Standard", amount: 549, day: 11, cycle: "monthly" },
-    { id: "icloud", name: "iCloud+ 200GB", amount: 149, day: 22, cycle: "monthly" },
-  ];
-  for (const sub of subscriptions) {
+  // Mirrors subscriptionRepository.create in apps/api/src/db/subscriptions.ts: every
+  // subscription is inserted with its first linked charge in the very next statement. The
+  // mobile sync triggers put both changes in the atomic group 'subscription:<id>', and a
+  // pull rejects any such group that is not exactly one subscription plus one transaction.
+  // The charge is inserted only when the subscription insert itself wrote a row
+  // (changes() = 1), so a rerun never adds a charge on its own.
+  for (const sub of SEED_SUBSCRIPTIONS) {
+    const subscriptionId = seedId("sub", sub.id);
+    const billingDate = nextMonth(sub.day);
     statement(
-      `INSERT OR IGNORE INTO subscriptions (id, tenant_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, status, account_id) VALUES (` +
-        `${sqlString(seedId("sub", sub.id))}, ${sqlString(tenantId)}, ${sqlString(categoryId("leisure"))}, ` +
-        `${sqlString(sub.name)}, ${peso(sub.amount)}, 'PHP', ${sqlString(sub.cycle)}, ${sqlString(nextMonth(sub.day))}, 'active', ` +
+      `INSERT OR IGNORE INTO subscriptions (id, tenant_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, last_charged_date, status, account_id) VALUES (` +
+        `${sqlString(subscriptionId)}, ${sqlString(tenantId)}, ${sqlString(categoryId("leisure"))}, ` +
+        `${sqlString(sub.name)}, ${parseAmountToMinor(sub.amount)}, 'PHP', ${sqlString(sub.cycle)}, ${sqlString(billingDate)}, ${sqlString(billingDate)}, 'active', ` +
         `${sqlString(accountId("gcash"))})`,
+    );
+    statement(
+      `INSERT OR IGNORE INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, source_kind, subscription_id) SELECT ` +
+        `${sqlString(seedId("sub", sub.id, "charge"))}, ${sqlString(tenantId)}, ${sqlString(accountId("gcash"))}, ` +
+        `${sqlString(categoryId("leisure"))}, ${sqlString(billingDate)}, ${sqlString(sub.name)}, ${normalizeSignedAmount(parseAmountToMinor(sub.amount), "expense")}, ` +
+        `'PHP', 'expense', 'manual', ${sqlString(subscriptionId)} WHERE changes() = 1`,
     );
   }
 
@@ -412,12 +445,12 @@ function buildSql(userId, months) {
   const goalTarget = iso(new Date(Date.UTC(today.getUTCFullYear() + 1, today.getUTCMonth(), 1)));
   statement(
     `INSERT OR IGNORE INTO financial_goals (id, tenant_id, name, target_amount_minor, current_amount_minor, target_date, status) VALUES (` +
-      `${sqlString(seedId("goal", "emergency"))}, ${sqlString(tenantId)}, 'Emergency fund', ${peso(150000)}, ${peso(42000)}, ` +
+      `${sqlString(seedId("goal", "emergency"))}, ${sqlString(tenantId)}, 'Emergency fund', ${parseAmountToMinor("150000")}, ${parseAmountToMinor("42000")}, ` +
       `${sqlString(goalTarget)}, 'active')`,
   );
   statement(
     `INSERT OR IGNORE INTO debts (id, tenant_id, name, type, balance_minor, apr_basis_points, minimum_payment_minor, balance_as_of, status) VALUES (` +
-      `${sqlString(seedId("debt", "card"))}, ${sqlString(tenantId)}, 'BPI Credit Card', 'credit_card', ${peso(28500)}, 2400, ${peso(1500)}, ` +
+      `${sqlString(seedId("debt", "card"))}, ${sqlString(tenantId)}, 'BPI Credit Card', 'credit_card', ${parseAmountToMinor("28500")}, 2400, ${parseAmountToMinor("1500")}, ` +
       `${sqlString(iso(today))}, 'active')`,
   );
 
@@ -437,14 +470,23 @@ function buildSql(userId, months) {
   return lines.join("\n");
 }
 
-function buildResetSql(userId) {
+export function buildResetSql(userId) {
   const tenantId = `user:${userId}`;
   const filter = `tenant_id = ${sqlString(tenantId)} AND id LIKE '${SEED_PREFIX}%'`;
+  // Each subscription's linked charges are deleted in the statement right before it, so the
+  // two deletes land next to each other as one valid 'subscription:<id>' sync group.
+  const subscriptionDeletes = SEED_SUBSCRIPTIONS.flatMap((sub) => {
+    const subscriptionId = sqlString(`${SEED_PREFIX}${userId}:sub:${sub.id}`);
+    return [
+      `DELETE FROM transactions WHERE tenant_id = ${sqlString(tenantId)} AND subscription_id = ${subscriptionId}`,
+      `DELETE FROM subscriptions WHERE tenant_id = ${sqlString(tenantId)} AND id = ${subscriptionId}`,
+    ];
+  });
   return (
     [
+      ...subscriptionDeletes,
       `DELETE FROM transactions WHERE ${filter}`,
       `DELETE FROM budgets WHERE ${filter}`,
-      `DELETE FROM subscriptions WHERE ${filter}`,
       `DELETE FROM financial_goals WHERE ${filter}`,
       `DELETE FROM debts WHERE ${filter}`,
       `DELETE FROM calendar_events WHERE ${filter}`,
@@ -472,12 +514,12 @@ function main() {
   );
   console.log(`Seeded ${args.db} for ${tenantId}.`);
   console.log(
-    `  ${count} seeded transactions across the last ${args.months} month(s), plus budgets, 3 subscriptions, 1 goal, 1 debt and 2 calendar events.`,
+    `  ${count} seeded transactions across the last ${args.months} month(s), plus budgets, ${SEED_SUBSCRIPTIONS.length} subscriptions, 1 goal, 1 debt and 2 calendar events.`,
   );
   console.log("  Re-running is safe: every insert is INSERT OR IGNORE on a deterministic id.");
-  console.log(
-    "  Undo with: node scripts/seed-local-workspace.mjs --user " + args.user + " --reset",
-  );
+  console.log("  Undo with: pnpm seed:local --user " + args.user + " --reset");
 }
 
-main();
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  main();
+}

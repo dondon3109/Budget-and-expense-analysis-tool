@@ -28,7 +28,7 @@
     "audit:a11y": "node scripts/a11y-source-audit.mjs",
     "audit:auth-stub": "node scripts/fake-supabase-auth.mjs",
     "supabase:local": "node scripts/local-supabase.mjs",
-    "seed:local": "node scripts/seed-local-workspace.mjs",
+    "seed:local": "node --experimental-strip-types scripts/seed-local-workspace.mjs",
     "paypal:sandbox:setup": "node --env-file=apps/api/.dev.vars scripts/setup-paypal-sandbox.mjs",
     "paypal:live:setup": "node --env-file=apps/api/.dev.vars scripts/setup-paypal-live.mjs",
     "mobile:start": "node scripts/ensure-adb-reverse.mjs && pnpm --filter @zoption/mobile start",
