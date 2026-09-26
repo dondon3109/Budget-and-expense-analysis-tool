@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Prepared Android Beta 0.2.37 (versionCode 20337) so the next signed build carries the free Pro trial, the 6-digit PIN app lock, the reworked Home screen, itemized receipts, and creating categories from the picker.
 - Every workspace gets a free 7-day Zoption Pro trial, with no card or payment setup. New sign-ups start theirs right away, and existing Free accounts get one when this release ships. Zoption emails you when the trial starts, the day before it ends, and when it has ended; afterwards you move to the Free plan automatically and nothing is charged.
 - You can create a new category straight from the category picker while adding or editing a transaction, on the web and on mobile. Choose "+ New category", enter a name and an optional emoji, and it is selected for the transaction without losing anything you already typed. On mobile this is offered for money in and money out, not transfers.
 
@@ -25,6 +26,12 @@ All notable product changes are documented here.
 ### Fixed
 
 - Quick Paste from SMS reads more alerts correctly. A GCash withdrawal or cash out is filled in as a transfer named "Cash withdrawal", a cash in as income, and GCash messages that say "You have successfully paid, sent, or received" are recognised. For alerts without a known format, the merchant is taken from the "to", "at", or "from" part of the message instead of showing "Unknown Merchant". Purchases paid from a wallet such as GCash are no longer suggested the Transfers / Cash In category.
+
+## 2.45.2 — 2026-09-25
+
+### Fixed
+
+- A subscription row on the web no longer stays on "Updating…" after you cancel or reactivate it.
 
 ## 2.45.1 — 2026-09-25
 
