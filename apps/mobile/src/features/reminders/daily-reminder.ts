@@ -26,11 +26,17 @@ export function dailyReminderLabel(time: DailyReminderTime): string {
 /**
  * Replaces the scheduled daily reminder with one at `time`, or removes it for
  * "off". Asks for notification permission only when turning the reminder on,
- * and schedules nothing when it is refused.
+ * and removes the reminder when it is refused.
+ *
+ * A new time is scheduled under the same identifier, which replaces the old
+ * reminder, instead of cancelling first: if a native call throws partway, the
+ * previous reminder is still scheduled and still matches the time the card shows.
  */
 export async function applyDailyReminder(time: DailyReminderTime): Promise<DailyReminderResult> {
-  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
-  if (time === "off") return "off";
+  if (time === "off") {
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+    return "off";
+  }
 
   // Android 13+ only shows the permission prompt once a channel exists.
   if (Platform.OS === "android") {
@@ -39,7 +45,10 @@ export async function applyDailyReminder(time: DailyReminderTime): Promise<Daily
       importance: Notifications.AndroidImportance.DEFAULT,
     });
   }
-  if (!(await hasNotificationPermission())) return "denied";
+  if (!(await hasNotificationPermission())) {
+    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+    return "denied";
+  }
 
   const [hour, minute] = parseTime(time);
   await Notifications.scheduleNotificationAsync({

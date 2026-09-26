@@ -60,7 +60,9 @@ describe("daily reminder scheduling", () => {
 
     await expect(applyDailyReminder("21:00")).resolves.toBe("scheduled");
 
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    // Scheduling under the same identifier replaces the old reminder; cancelling
+    // first would leave nothing scheduled if the schedule call then failed.
+    expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -86,7 +88,17 @@ describe("daily reminder scheduling", () => {
 
     await expect(applyDailyReminder("18:00")).resolves.toBe("denied");
 
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+  });
+
+  it("keeps the previous reminder when scheduling the new time fails", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
+    notifications.scheduleNotificationAsync.mockRejectedValueOnce(new Error("native failure"));
+
+    await expect(applyDailyReminder("08:00")).rejects.toThrow("native failure");
+
+    expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
   });
 
   it("does not prompt again once the user has blocked notifications", async () => {
