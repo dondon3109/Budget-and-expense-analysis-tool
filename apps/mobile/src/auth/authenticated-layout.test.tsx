@@ -21,6 +21,7 @@ jest.mock("@/db/local-workspace-state", () => ({
   LocalWorkspaceProvider: ({ children }: { children: React.ReactNode }) => children,
   useLocalWorkspace: jest.fn(),
 }));
+jest.mock("@/features/reminders/daily-reminder", () => ({ DailyReminderTapHandler: () => null }));
 jest.mock("@/sync/sync-state", () => ({
   SyncProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

@@ -1,5 +1,5 @@
 import type { ConfigContext, ExpoConfig } from "expo/config";
-import { withAndroidManifest, type ConfigPlugin } from "expo/config-plugins";
+import { withAndroidManifest, withEntitlementsPlist, type ConfigPlugin } from "expo/config-plugins";
 
 import packageJson from "./package.json";
 
@@ -85,6 +85,19 @@ const withLegacyBackHandling: ConfigPlugin = (config) =>
     return cfg;
   });
 
+/**
+ * expo-notifications' config plugin always writes the `aps-environment` push
+ * entitlement, and prebuild applies that plugin whenever the package is
+ * installed, listed or not. The daily reminder is a local notification and
+ * nothing uses push, so strip the entitlement: iOS signing would otherwise
+ * require the Push Notifications capability on every provisioning profile.
+ */
+const withoutPushEntitlement: ConfigPlugin = (config) =>
+  withEntitlementsPlist(config, (cfg) => {
+    delete cfg.modResults["aps-environment"];
+    return cfg;
+  });
+
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appVariant = resolveVariant(environmentValue(process.env.APP_VARIANT));
   const variant = variants[appVariant];
@@ -147,6 +160,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       ["expo-secure-store", { configureAndroidBackup: true }],
+      // Registered before expo-notifications: its entitlement mod must run after
+      // that plugin's, and mods of one type run in reverse registration order.
+      withoutPushEntitlement as unknown as [string, unknown],
+      // The daily reminder's Android status bar icon must be a white silhouette;
+      // without one Android draws the full-colour launcher icon as a blank square.
+      ["expo-notifications", { icon: "./assets/zoption-notification-icon.png", color: "#0a7556" }],
       [
         "expo-audio",
         {

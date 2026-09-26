@@ -4,6 +4,7 @@ import { Platform, Text, View } from "react-native";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
+import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
 import { ErrorState, LedgerLoader } from "@/ui/components";
@@ -302,6 +303,7 @@ function LocalWorkspaceGate({ identity }: { identity: ReturnType<typeof useWorke
           }}
         />
       </Stack>
+      <DailyReminderTapHandler />
     </SyncProvider>
   );
 }

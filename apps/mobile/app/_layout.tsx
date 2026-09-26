@@ -14,6 +14,7 @@ import { SessionProvider, useSessionSnapshot } from "@/auth/session-state";
 import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
+import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -60,6 +61,12 @@ function SplashRelease() {
   return null;
 }
 
+/** Restores the daily reminder for a signed-in session and clears it otherwise. */
+function DailyReminderSession() {
+  useDailyReminderSession(useSessionSnapshot().status);
+  return null;
+}
+
 function RootNavigator() {
   const theme = useZoptionTheme();
   return (
@@ -95,9 +102,10 @@ export default function RootLayout() {
 
   // These stores set skipHydration, so a saved value is only read when something
   // asks for it. Without this the voice language, assistant voice options, mic
-  // capture consent, and default spending account all start at their defaults on
-  // every launch. The theme store hydrates in ZoptionThemeProvider, which renders
-  // nothing until it has.
+  // capture consent, and default spending account all start at their defaults
+  // on every launch. The theme store hydrates in ZoptionThemeProvider, which
+  // renders nothing until it has. The daily reminder store hydrates in
+  // DailyReminderSession, once the session is known to be signed in.
   useEffect(() => {
     void useVoiceLanguageStore.persist.rehydrate();
     void useAssistantVoiceOptionsStore.persist.rehydrate();
@@ -110,6 +118,7 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <SessionProvider>
           <SplashRelease />
+          <DailyReminderSession />
           <WorkerIdentityProvider>
             <ZoptionThemeProvider>
               <AndroidUpdateProvider>
