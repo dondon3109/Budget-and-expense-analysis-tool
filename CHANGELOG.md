@@ -9,6 +9,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - The Android install page offers Android Beta 0.2.37 (versionCode 20337), the build that carries the free Pro trial, the 6-digit PIN app lock, the reworked Home screen, itemized receipts, and creating categories from the picker, instead of 0.2.36.
+- The mobile PIN number pad is centered again with evenly spaced keys, the delete key stays hidden until a digit is entered, and keys highlight while pressed. The one-time step that swaps an old app password for a PIN now matches the PIN screens.
 
 ## 2.46.0 — 2026-09-26
 
