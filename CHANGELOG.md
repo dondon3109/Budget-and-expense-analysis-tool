@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.46.1 — 2026-09-26
+
 ### Fixed
 
 - The Android install page offers Android Beta 0.2.37 (versionCode 20337), the build that carries the free Pro trial, the 6-digit PIN app lock, the reworked Home screen, itemized receipts, and creating categories from the picker, instead of 0.2.36.
