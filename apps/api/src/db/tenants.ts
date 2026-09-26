@@ -2,6 +2,8 @@ import { DEBT_PAYMENT_CATEGORY_SYSTEM_KEY } from "@zoption/shared";
 
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
+export const PRO_TRIAL_DAYS = 7;
+
 const SYSTEM_ACCOUNTS = [
   { suffix: "default", name: "Cash", type: "cash", systemKey: "account:cash" },
   { suffix: "bank", name: "Bank", type: "checking", systemKey: "account:bank" },
@@ -152,6 +154,12 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
         user.id,
         tenantId,
       ),
+      // One no-card Pro trial per workspace; the cron sends its emails.
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO pro_trials (tenant_id, started_at, ends_at)
+         VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
+                 strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+${PRO_TRIAL_DAYS} days'))`,
+      ).bind(tenantId),
       ...SYSTEM_ACCOUNTS.map((account) =>
         env.DB.prepare(
           "INSERT OR IGNORE INTO accounts (id, tenant_id, name, type, currency, system_key) VALUES (?, ?, ?, ?, 'PHP', ?)",

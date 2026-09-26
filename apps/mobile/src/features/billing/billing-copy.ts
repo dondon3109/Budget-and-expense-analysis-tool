@@ -37,6 +37,9 @@ export function entitlementCopy(summary: BillingSummary): string | null {
 
 export function periodEndsCopy(summary: BillingSummary): string | null {
   if (summary.plan !== "zoption_pro" || summary.currentPeriodEndsAt === null) return null;
+  if (summary.status === "trialing") {
+    return "Trial ends on " + manilaDate(summary.currentPeriodEndsAt) + ".";
+  }
   if (summary.cancelAtPeriodEnd) {
     return (
       "Renewal is off. Pro access remains until " + manilaDate(summary.currentPeriodEndsAt) + "."

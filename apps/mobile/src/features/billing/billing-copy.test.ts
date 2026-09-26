@@ -62,6 +62,9 @@ describe("billing copy helpers", () => {
     expect(periodEndsCopy(summary())).toMatch(/Renews on /);
     expect(periodEndsCopy(summary({ cancelAtPeriodEnd: true }))).toMatch(/Renewal is off/);
     expect(periodEndsCopy(summary({ plan: "free" }))).toBe(null);
+    expect(
+      periodEndsCopy(summary({ status: "trialing", entitlementSource: null, provider: null })),
+    ).toMatch(/^Trial ends on /);
   });
 
   it("titles usages per feature", () => {

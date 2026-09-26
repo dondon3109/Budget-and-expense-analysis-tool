@@ -911,6 +911,29 @@ export const billingMonthlyUsage = sqliteTable(
   ],
 );
 
+export const proTrials = sqliteTable(
+  "pro_trials",
+  {
+    tenantId: text("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    startedAt: text("started_at").notNull(),
+    endsAt: text("ends_at").notNull(),
+    startedEmailAt: text("started_email_at"),
+    endingEmailAt: text("ending_email_at"),
+    endedEmailAt: text("ended_email_at"),
+    emailFailures: integer("email_failures").notNull().default(0),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [
+    index("pro_trials_pending_email_idx")
+      .on(table.endsAt)
+      .where(sql`${table.endedEmailAt} IS NULL`),
+  ],
+);
+
 export const rateLimits = sqliteTable(
   "rate_limits",
   {

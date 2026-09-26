@@ -50,6 +50,8 @@ export function createMobileSyncTestEnvironment(
       }
     },
   });
+  // The fixtures model Free workspaces; 0065 would otherwise backfill each a Pro trial.
+  database.exec("DELETE FROM pro_trials");
   return { env: { DB: binding }, database };
 }
 

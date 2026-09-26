@@ -11,10 +11,14 @@ const retryPendingBugReportNotifications = vi.hoisted(() => vi.fn());
 const cleanupExpiredBugReports = vi.hoisted(() => vi.fn());
 const billingRepository = vi.hoisted(() => ({}));
 const dispatchBugfixDraft = vi.hoisted(() => vi.fn());
+const sendDueTrialEmails = vi.hoisted(() => vi.fn());
 
 vi.mock("../src/app", () => ({ createApp: () => ({ fetch: vi.fn() }) }));
 vi.mock("../src/readiness", () => ({ validateRequiredApiBindings }));
 vi.mock("../src/billing/scheduled-reconciliation", () => ({ reconcileDueBillingCheckouts }));
+vi.mock("../src/billing/trial-emails", () => ({
+  trialEmailService: { sendDue: sendDueTrialEmails },
+}));
 vi.mock("../src/db/assistant", () => ({ assistantRepository: { cleanupExpired } }));
 vi.mock("../src/db/billing", () => ({
   billingRepository,
@@ -72,6 +76,7 @@ beforeEach(() => {
   retryPendingBugReportNotifications.mockResolvedValue({ claimed: 0, sent: 0, failed: 0 });
   cleanupExpiredBugReports.mockResolvedValue(0);
   dispatchBugfixDraft.mockResolvedValue("idle");
+  sendDueTrialEmails.mockResolvedValue({ checked: 0, sent: 0, skipped: 0, failed: 0 });
 });
 
 describe("scheduled worker handler", () => {
@@ -81,6 +86,7 @@ describe("scheduled worker handler", () => {
     expect(validateRequiredApiBindings).toHaveBeenCalledWith(environment);
     expect(reconcileDueBillingCheckouts).toHaveBeenCalledWith(billingRepository, environment, 25);
     expect(retryPendingBugReportNotifications).toHaveBeenCalledWith(environment, 25);
+    expect(sendDueTrialEmails).toHaveBeenCalledWith(environment, 50);
     expect(cleanupExpired).not.toHaveBeenCalled();
     expect(reconcileAccountDeletions).not.toHaveBeenCalled();
     expect(creditDueInterest).not.toHaveBeenCalled();
