@@ -36,6 +36,9 @@ export function PinPadScreen({
   footer,
 }: PinPadScreenProps) {
   const theme = useZoptionTheme();
+  // NativeWind's Pressable wrapper replaces a style function with an empty
+  // style, which dropped each key's size, so pressed feedback is tracked here.
+  const [pressedKey, setPressedKey] = useState<string | null>(null);
   const dotColor = error ? theme.colors.danger : theme.colors.text;
 
   const press = (key: string): void => {
@@ -106,9 +109,11 @@ export function PinPadScreen({
                   disabled={disabled || hidden}
                   onPress={() => press(key)}
                   onLongPress={key === "delete" ? () => onChange("") : undefined}
-                  style={({ pressed }) => [
+                  onPressIn={() => setPressedKey(key)}
+                  onPressOut={() => setPressedKey(null)}
+                  style={[
                     styles.key,
-                    pressed ? { backgroundColor: theme.colors.surface } : null,
+                    pressedKey === key ? { backgroundColor: theme.colors.surface } : null,
                     disabled ? styles.disabled : null,
                     hidden ? styles.hidden : null,
                   ]}

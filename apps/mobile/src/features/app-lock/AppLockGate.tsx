@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useEffect, useRef, useState, type PropsWithChildren } from "react";
 import { AppState, Modal, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -254,13 +255,22 @@ function AppLockScreen({
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.canvas }}>
       <View style={{ flex: 1, justifyContent: "center", gap: spacing.md, padding: spacing.lg }}>
-        <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
-          Zoption is locked
-        </Text>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          App lock now uses a PIN. Enter your app password once, then choose a {PIN_LENGTH}-digit
-          PIN to replace it.
-        </Text>
+        {/* Same heading as the PIN screens, so this one-time step reads as part of that flow. */}
+        <View style={{ alignItems: "center", gap: spacing.xs, marginBottom: spacing.md }}>
+          <MaterialCommunityIcons name="lock-outline" size={28} color={theme.colors.text} />
+          <Text
+            accessibilityRole="header"
+            style={[typography.title, { color: theme.colors.text, textAlign: "center" }]}
+          >
+            Zoption is locked
+          </Text>
+          <Text
+            style={[typography.callout, { color: theme.colors.textMuted, textAlign: "center" }]}
+          >
+            App lock now uses a {PIN_LENGTH}-digit PIN. Enter your app password one last time, then
+            choose your PIN.
+          </Text>
+        </View>
         <FormField
           label="App password"
           value={secret}
