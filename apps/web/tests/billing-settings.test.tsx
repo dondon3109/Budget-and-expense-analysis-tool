@@ -183,6 +183,32 @@ describe("BillingSettings", () => {
     expect(await screen.findByText(heading)).toBeInTheDocument();
   });
 
+  it("describes the no-card Zoption trial apart from a provider trial", async () => {
+    // `summary` treats a null entitlement override as unset, so clear it afterwards.
+    renderSettings({
+      ...summary("trialing", {
+        provider: null,
+        interval: null,
+        canCheckout: true,
+        canManageBilling: false,
+        nonTerminalSubscriptionCount: 0,
+      }),
+      entitlementSource: null,
+    });
+
+    expect(await screen.findByText(/No card is needed/)).toBeInTheDocument();
+    expect(screen.getByText(/Trial ends/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose a Pro plan" })).toBeInTheDocument();
+  });
+
+  it("keeps the provider trial copy for a paid trial", async () => {
+    renderSettings(summary("trialing"));
+
+    expect(
+      await screen.findByText("Your trial currently includes Pro access and limits."),
+    ).toBeInTheDocument();
+  });
+
   it("describes permanent complementary Pro without a renewal date", async () => {
     renderSettings(
       summary(null, {

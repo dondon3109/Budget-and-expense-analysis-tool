@@ -6,13 +6,13 @@ import {
   type SubscriptionRenewalNotification,
   type SubscriptionRepository,
 } from "../db/subscriptions";
+import { escapeHtml, recipientAddress } from "../account-email";
 import { enqueueJob } from "../jobs";
 import { createResendSender, ResendError } from "../resend";
 import type { Bindings, EmailSender } from "../types";
 
 const SWEEP_LIMIT = 100;
 const MANILA_OFFSET_MS = 8 * 60 * 60 * 1_000;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
@@ -46,15 +46,6 @@ export function manilaDate(now = new Date()): string {
   return new Date(now.getTime() + MANILA_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
 function formatAmount(amountMinor: number): string {
   return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
 }
@@ -85,43 +76,6 @@ function subscriptionsUrl(env: Bindings): string | null {
   } catch {
     return null;
   }
-}
-
-/**
- * The address the account signs in with. Supabase owns it, so it is read at delivery time
- * instead of being mirrored into D1 where it would go stale after an address change.
- */
-async function recipientAddress(
-  env: Bindings,
-  tenantId: string,
-  fetcher: typeof fetch = fetch,
-): Promise<string | null> {
-  const baseUrl = env.SUPABASE_URL?.trim();
-  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  if (!baseUrl || !serviceRoleKey) return null;
-
-  const owner = await env.DB.prepare(
-    "SELECT user_id AS userId FROM user_tenants WHERE tenant_id = ? LIMIT 1",
-  )
-    .bind(tenantId)
-    .first<{ userId: string }>();
-  if (!owner?.userId) return null;
-
-  const response = await fetcher(
-    `${baseUrl}/auth/v1/admin/users/${encodeURIComponent(owner.userId)}`,
-    { headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}` } },
-  );
-  if (!response.ok) return null;
-
-  const payload: unknown = await response.json().catch(() => null);
-  const record =
-    typeof payload === "object" && payload !== null ? (payload as Record<string, unknown>) : {};
-  const nested =
-    typeof record.user === "object" && record.user !== null
-      ? (record.user as Record<string, unknown>)
-      : record;
-  const email = typeof nested.email === "string" ? nested.email.trim() : "";
-  return EMAIL_PATTERN.test(email) ? email : null;
 }
 
 function notificationMessage(

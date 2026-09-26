@@ -117,7 +117,11 @@ function statusCopy(
       return {
         label: "Pro trial",
         heading: "Your Zoption Pro trial is active",
-        description: "Your trial currently includes Pro access and limits.",
+        // No entitlement source means Zoption's own no-card trial rather than a provider trial.
+        description:
+          entitlementSource === null
+            ? "Your free trial includes Pro access and limits. No card is needed, and you move to the Free plan when it ends unless you choose a Pro plan."
+            : "Your trial currently includes Pro access and limits.",
         tone: "success",
       };
     case "past_due":

@@ -1,6 +1,7 @@
 import { createAccountDeletionService } from "./account-deletion";
 import { createApp } from "./app";
 import { reconcileDueBillingCheckouts } from "./billing/scheduled-reconciliation";
+import { trialEmailService } from "./billing/trial-emails";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
@@ -75,6 +76,10 @@ export default {
             ...renewalNotifications,
           }),
         );
+      }
+      const trialEmails = await trialEmailService.sendDue(env, 50);
+      if (trialEmails.checked > 0) {
+        console.log(JSON.stringify({ message: "Trial emails processed", ...trialEmails }));
       }
       const expiredCounters = await deleteExpiredRateLimits(env);
       if (expiredCounters > 0) {

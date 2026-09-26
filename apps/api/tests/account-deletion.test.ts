@@ -184,6 +184,7 @@ describe("account deletion repository", () => {
     expect(batchedSql).toContain("DELETE FROM customer_reviews WHERE tenant_id = ?");
     // Migration 0059 drops billing_assistant_cycle_usage, so the purge must not reference it.
     expect(batchedSql).toContain("DELETE FROM billing_monthly_usage WHERE tenant_id = ?");
+    expect(batchedSql).toContain("DELETE FROM pro_trials WHERE tenant_id = ?");
     expect(batchedSql.some((sql) => sql.includes("billing_assistant_cycle_usage"))).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Every workspace gets a free 7-day Zoption Pro trial, with no card or payment setup. New sign-ups start theirs right away, and existing Free accounts get one when this release ships. Zoption emails you when the trial starts, the day before it ends, and when it has ended; afterwards you move to the Free plan automatically and nothing is charged.
 - You can create a new category straight from the category picker while adding or editing a transaction, on the web and on mobile. Choose "+ New category", enter a name and an optional emoji, and it is selected for the transaction without losing anything you already typed. On mobile this is offered for money in and money out, not transfers.
 
 ### Changed

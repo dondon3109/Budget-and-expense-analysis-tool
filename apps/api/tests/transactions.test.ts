@@ -96,7 +96,7 @@ function createSqliteEnvironment(): {
       status text NOT NULL DEFAULT 'active',
       updated_at text NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE TABLE effective_pro_entitlements (
+    CREATE TABLE effective_pro_access (
       tenant_id text NOT NULL,
       source text NOT NULL
     );

@@ -86,7 +86,7 @@ describe("import commit category guard", () => {
     expect(regularSql).not.toContain("system_key IS NULL");
     expect(overrideSql).toContain("system_key IS NULL");
     expect(overrideSql).toContain("required_plan = 'free'");
-    expect(overrideSql).toContain("SELECT 1 FROM effective_pro_entitlements WHERE tenant_id = ?");
+    expect(overrideSql).toContain("SELECT 1 FROM effective_pro_access WHERE tenant_id = ?");
     expect(overrideSql).toContain("(SELECT id FROM categories");
   });
 });

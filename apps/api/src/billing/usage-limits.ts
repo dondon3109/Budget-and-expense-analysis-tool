@@ -17,5 +17,5 @@ export const PRO_LIMITS: Record<BillingFeature, number> = {
 };
 
 export const EFFECTIVE_PRO_ENTITLEMENT_CONDITION = `EXISTS (
-  SELECT 1 FROM effective_pro_entitlements WHERE tenant_id = ?
+  SELECT 1 FROM effective_pro_access WHERE tenant_id = ?
 )`;

@@ -340,25 +340,42 @@ async function currentSubscription(
     .first<SubscriptionSummaryRow>();
 }
 
+/**
+ * `trial` stays internal: installed mobile apps parse the billing summary strictly, so a trial
+ * is reported as a `trialing` status with no entitlement source.
+ */
+type EntitlementViewSource = ProEntitlementSource | "trial";
+
 export async function getProEntitlementSource(
   env: Bindings,
   tenantId: string,
-): Promise<ProEntitlementSource | null> {
+): Promise<EntitlementViewSource | null> {
   const row = await env.DB.prepare(
-    `SELECT source FROM effective_pro_entitlements
+    `SELECT source FROM effective_pro_access
      WHERE tenant_id = ?
      ORDER BY CASE source
        WHEN 'paypal' THEN 0
        WHEN 'dodo' THEN 1
        WHEN 'platform_admin' THEN 2
        WHEN 'sponsored' THEN 3
-       ELSE 4
+       WHEN 'trial' THEN 4
+       ELSE 5
      END
      LIMIT 1`,
   )
     .bind(tenantId)
-    .first<{ source: ProEntitlementSource }>();
+    .first<{ source: EntitlementViewSource }>();
   return row?.source ?? null;
+}
+
+async function activeTrialEndsAt(env: Bindings, tenantId: string): Promise<string | null> {
+  const row = await env.DB.prepare(
+    `SELECT ends_at AS endsAt FROM pro_trials
+     WHERE tenant_id = ? AND datetime(ends_at) > datetime('now')`,
+  )
+    .bind(tenantId)
+    .first<{ endsAt: string }>();
+  return row?.endsAt ?? null;
 }
 
 export async function hasProEntitlement(env: Bindings, tenantId: string): Promise<boolean> {
@@ -758,15 +775,29 @@ export const billingRepository: BillingRepository = {
     const isPro = entitlementSource !== null;
     const plan = isPro ? "zoption_pro" : "free";
     const limits = isPro ? PRO_LIMITS : FREE_LIMITS;
+    const trialEndsAt =
+      entitlementSource === "trial" ? await activeTrialEndsAt(env, tenantId) : null;
+    const period = trialEndsAt
+      ? {
+          provider: null,
+          status: "trialing" as const,
+          interval: null,
+          currentPeriodEndsAt: trialEndsAt,
+          scheduledChangeAt: null,
+          cancelAtPeriodEnd: false,
+        }
+      : {
+          provider: subscription?.provider ?? null,
+          status: subscription?.status ?? null,
+          interval: subscription?.interval ?? null,
+          currentPeriodEndsAt: subscription?.currentPeriodEndsAt ?? null,
+          scheduledChangeAt: subscription?.scheduledChangeAt ?? null,
+          cancelAtPeriodEnd: Boolean(subscription?.cancelAtPeriodEnd),
+        };
     return {
       plan,
-      entitlementSource,
-      provider: subscription?.provider ?? null,
-      status: subscription?.status ?? null,
-      interval: subscription?.interval ?? null,
-      currentPeriodEndsAt: subscription?.currentPeriodEndsAt ?? null,
-      scheduledChangeAt: subscription?.scheduledChangeAt ?? null,
-      cancelAtPeriodEnd: Boolean(subscription?.cancelAtPeriodEnd),
+      entitlementSource: entitlementSource === "trial" ? null : entitlementSource,
+      ...period,
       pendingCheckout: pendingCheckout
         ? {
             provider: pendingCheckout.provider,

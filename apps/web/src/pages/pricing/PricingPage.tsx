@@ -107,6 +107,11 @@ const COMPARISON_ROWS = [
 
 const PRICING_FAQS = [
   {
+    question: "Is there a free trial of Zoption Pro?",
+    answer:
+      "Yes. Every new account gets 7 days of Zoption Pro for free, with no card or payment setup. We email you when the trial starts, the day before it ends, and when it has ended. Afterwards you move to the Free plan automatically, nothing is charged, and all your data stays.",
+  },
+  {
     question: "Can I use Zoption for free permanently?",
     answer:
       "Yes. The Free plan has no trial expiration and does not ask for credit card information. Core tracking, budgeting, and 500 shared AI actions per month—chat, voice chat, receipt scanning, PDF statement entry, and transaction voice entry—are yours for as long as you want.",
