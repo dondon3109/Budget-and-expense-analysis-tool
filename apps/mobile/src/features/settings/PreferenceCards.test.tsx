@@ -11,7 +11,10 @@ jest.mock("expo-secure-store", () => ({
 }));
 
 jest.mock("expo-notifications", () => ({}));
-jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("expo-router", () => ({
+  router: { push: jest.fn() },
+  useRootNavigationState: jest.fn(),
+}));
 
 describe("PreferenceCards", () => {
   beforeEach(() => {

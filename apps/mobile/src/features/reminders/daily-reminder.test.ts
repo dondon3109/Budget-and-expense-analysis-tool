@@ -1,6 +1,6 @@
 import { render, renderHook } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
+import { router, useRootNavigationState } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { createElement } from "react";
 
@@ -29,7 +29,10 @@ jest.mock("expo-notifications", () => ({
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
 }));
 
-jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("expo-router", () => ({
+  router: { push: jest.fn() },
+  useRootNavigationState: jest.fn(() => ({ key: "root" })),
+}));
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => null),
   setItemAsync: jest.fn(async () => undefined),
@@ -338,6 +341,22 @@ describe("daily reminder tap", () => {
     const listener = notifications.addNotificationResponseReceivedListener.mock.calls[0]?.[0];
 
     listener?.(responseFor(DAILY_REMINDER_ID));
+
+    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+  });
+
+  it("waits for the navigator before opening the editor on a cold start", async () => {
+    notifications.getLastNotificationResponse.mockReturnValue(responseFor(DAILY_REMINDER_ID));
+    const navigationState = jest.mocked(useRootNavigationState);
+    navigationState.mockReturnValue(
+      undefined as unknown as ReturnType<typeof useRootNavigationState>,
+    );
+
+    const view = await render(createElement(DailyReminderTapHandler));
+    expect(router.push).not.toHaveBeenCalled();
+
+    navigationState.mockReturnValue({ key: "root" } as ReturnType<typeof useRootNavigationState>);
+    await view.rerender(createElement(DailyReminderTapHandler));
 
     expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
   });

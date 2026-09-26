@@ -16,7 +16,10 @@ jest.mock("@/features/reminders/daily-reminder", () => ({
   applyDailyReminder: jest.fn(),
 }));
 jest.mock("expo-notifications", () => ({}));
-jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("expo-router", () => ({
+  router: { push: jest.fn() },
+  useRootNavigationState: jest.fn(),
+}));
 
 describe("DailyReminderCard", () => {
   beforeEach(() => {

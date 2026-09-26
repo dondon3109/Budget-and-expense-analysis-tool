@@ -1,26 +1,13 @@
 /**
  * @jest-environment node
  */
-import { createRequire } from "node:module";
+import { execFile } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
+import { promisify } from "node:util";
 
-// Resolves the native config exactly as `expo config --type introspect` does,
-// so plugins that prebuild applies on its own (expo-notifications is applied
-// whenever it is installed) are part of what this checks. Both modules are
-// loaded from @expo/cli's own dependencies, the copies the CLI uses.
-const cliRequire = createRequire(
-  createRequire(require.resolve("expo/package.json")).resolve("@expo/cli/package.json"),
-);
-const { getPrebuildConfigAsync } = cliRequire("@expo/prebuild-config") as {
-  getPrebuildConfigAsync: (
-    projectRoot: string,
-    options: { platforms: string[] },
-  ) => Promise<{ exp: unknown }>;
-};
-const { compileModsAsync } = cliRequire("@expo/config-plugins/build/plugins/mod-compiler.js") as {
-  compileModsAsync: (config: unknown, options: Record<string, unknown>) => Promise<unknown>;
-};
+const execFileAsync = promisify(execFile);
+const projectRoot = path.resolve(__dirname, "../..");
 
 interface IntrospectedConfig {
   _internal: {
@@ -37,23 +24,23 @@ interface IntrospectedConfig {
   };
 }
 
+/**
+ * Resolves the native config through the public `expo config --type introspect`
+ * command, so plugins that prebuild applies on its own (expo-notifications is
+ * applied whenever it is installed) are part of what this checks.
+ */
 async function introspect(variant: string): Promise<IntrospectedConfig> {
-  const projectRoot = path.resolve(__dirname, "../..");
-  const original = process.env.APP_VARIANT;
-  process.env.APP_VARIANT = variant;
-  try {
-    const { exp } = await getPrebuildConfigAsync(projectRoot, { platforms: ["ios", "android"] });
-    await compileModsAsync(exp, {
-      projectRoot,
-      introspect: true,
-      platforms: ["ios", "android"],
-      assertMissingModProviders: false,
-    });
-    return exp as unknown as IntrospectedConfig;
-  } finally {
-    if (original === undefined) delete process.env.APP_VARIANT;
-    else process.env.APP_VARIANT = original;
-  }
+  const { stdout } = await execFileAsync(
+    path.join(projectRoot, "node_modules/.bin/expo"),
+    ["config", "--type", "introspect", "--json"],
+    {
+      cwd: projectRoot,
+      // Offline and without telemetry: the command must not depend on the network in CI.
+      env: { ...process.env, APP_VARIANT: variant, EXPO_OFFLINE: "1", EXPO_NO_TELEMETRY: "1" },
+      maxBuffer: 64 * 1024 * 1024,
+    },
+  );
+  return JSON.parse(stdout) as IntrospectedConfig;
 }
 
 describe("native config produced by prebuild", () => {

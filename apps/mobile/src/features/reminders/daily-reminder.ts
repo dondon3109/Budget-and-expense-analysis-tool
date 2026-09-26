@@ -1,5 +1,5 @@
 import * as Notifications from "expo-notifications";
-import { router } from "expo-router";
+import { router, useRootNavigationState } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
@@ -138,12 +138,15 @@ export async function clearDailyReminder(): Promise<void> {
 
 /**
  * Opens the transaction editor when the user taps the reminder, including the
- * tap that cold-starts the app. Render it after the authenticated Stack so
- * the route exists; the last response is cleared so a remount (an app-lock
- * unlock, a workspace reopen) does not open the editor a second time.
+ * tap that cold-starts the app. Render it after the authenticated Stack. It
+ * waits until the root navigator is ready, because a push before that is
+ * dropped on a cold start. The last response is cleared so a remount (an
+ * app-lock unlock, a workspace reopen) does not open the editor a second time.
  */
 export function DailyReminderTapHandler() {
+  const navigationReady = Boolean(useRootNavigationState()?.key);
   useEffect(() => {
+    if (!navigationReady) return;
     const openEditor = (response: Notifications.NotificationResponse | null) => {
       if (response?.notification.request.identifier !== DAILY_REMINDER_ID) return;
       Notifications.clearLastNotificationResponse();
@@ -152,7 +155,7 @@ export function DailyReminderTapHandler() {
     openEditor(Notifications.getLastNotificationResponse());
     const subscription = Notifications.addNotificationResponseReceivedListener(openEditor);
     return () => subscription.remove();
-  }, []);
+  }, [navigationReady]);
   return null;
 }
 
