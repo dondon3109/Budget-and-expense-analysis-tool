@@ -53,7 +53,6 @@ export const OVERSIZE_CEILINGS = {
   "apps/web/src/pages/TransactionsPage.tsx": 1262,
   "apps/web/src/styles/foundation.css": 1012,
   "db/schema.ts": 1152,
-  "packages/shared/src/schemas.ts": 1442,
   "packages/shared/src/smsNotificationParser.ts": 1421,
 };
 

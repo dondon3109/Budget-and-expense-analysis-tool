@@ -2,7 +2,7 @@
 
 ## Safe to reuse directly
 
-- Zod schemas and domain types in `schemas.ts` and `types.ts`.
+- Zod schemas and domain types in `schemas/` and `types.ts`.
 - Integer-money parsing and normalization in `money.ts`.
 - Pure dashboard, budget, transfer, and account calculations in `calculations.ts`.
 - Debt, goal, and projection functions in `planning.ts`.

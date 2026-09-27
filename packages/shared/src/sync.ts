@@ -1,8 +1,10 @@
 import { z } from "zod";
 
+import { BUDGET_AND_SUBSCRIPTION_MAX_MINOR, GOAL_AND_DEBT_MAX_MINOR } from "./limits";
 import {
   accountInputSchema,
   accountUpdateWithInterestSchema,
+  budgetLimitMinorSchema,
   interestUpdateSchema,
   calendarEventInputSchema,
   calendarEventUpdateSchema,
@@ -169,7 +171,7 @@ export const mobileSyncBudgetSnapshotSchema = z
     id: resourceIdSchema,
     categoryId: resourceIdSchema,
     month: monthStartSchema,
-    limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+    limitMinor: budgetLimitMinorSchema,
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })
@@ -179,8 +181,8 @@ export const mobileSyncGoalSnapshotSchema = z
   .object({
     id: resourceIdSchema,
     name: z.string().min(1).max(80),
-    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000),
-    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    targetAmountMinor: z.number().int().safe().min(1).max(GOAL_AND_DEBT_MAX_MINOR),
+    currentAmountMinor: z.number().int().safe().min(0).max(GOAL_AND_DEBT_MAX_MINOR),
     targetDate: isoDateSchema,
     status: z.enum(financialGoalStatuses),
     revision: serverRevisionSchema,
@@ -193,9 +195,9 @@ export const mobileSyncDebtSnapshotSchema = z
     id: resourceIdSchema,
     name: z.string().min(1).max(80),
     type: z.enum(debtTypes),
-    balanceMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    balanceMinor: z.number().int().safe().min(0).max(GOAL_AND_DEBT_MAX_MINOR),
     aprBasisPoints: z.number().int().min(0).max(10_000),
-    minimumPaymentMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    minimumPaymentMinor: z.number().int().safe().min(0).max(GOAL_AND_DEBT_MAX_MINOR),
     balanceAsOf: isoDateSchema,
     status: z.enum(debtStatuses),
     revision: serverRevisionSchema,
@@ -207,7 +209,7 @@ export const mobileSyncSubscriptionSnapshotSchema = z
   .object({
     id: resourceIdSchema,
     name: z.string().min(1).max(120),
-    amountMinor: z.number().int().safe().min(1).max(1_000_000_000_00),
+    amountMinor: z.number().int().safe().min(1).max(BUDGET_AND_SUBSCRIPTION_MAX_MINOR),
     currency: z.enum(currencies),
     billingCycle: z.enum(subscriptionBillingCycles),
     nextBillingDate: isoDateSchema,
@@ -443,21 +445,21 @@ const mobileSyncBudgetInputSchema = z
   .object({
     categoryId: resourceIdSchema,
     month: monthStartSchema,
-    limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+    limitMinor: budgetLimitMinorSchema,
   })
   .strict();
 
 const mobileSyncBudgetUpdateSchema = z
   .object({
-    limitMinor: z.number().int().safe().min(0).max(1_000_000_000_00),
+    limitMinor: budgetLimitMinorSchema,
   })
   .strict();
 
 const mobileSyncGoalInputSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
-    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000),
-    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000),
+    targetAmountMinor: z.number().int().safe().min(1).max(GOAL_AND_DEBT_MAX_MINOR),
+    currentAmountMinor: z.number().int().safe().min(0).max(GOAL_AND_DEBT_MAX_MINOR),
     targetDate: isoDateSchema,
     status: z.enum(financialGoalStatuses),
   })
@@ -470,8 +472,8 @@ const mobileSyncGoalInputSchema = z
 const mobileSyncGoalUpdateSchema = z
   .object({
     name: z.string().trim().min(1).max(80).optional(),
-    targetAmountMinor: z.number().int().safe().min(1).max(900_000_000_000_000).optional(),
-    currentAmountMinor: z.number().int().safe().min(0).max(900_000_000_000_000).optional(),
+    targetAmountMinor: z.number().int().safe().min(1).max(GOAL_AND_DEBT_MAX_MINOR).optional(),
+    currentAmountMinor: z.number().int().safe().min(0).max(GOAL_AND_DEBT_MAX_MINOR).optional(),
     targetDate: isoDateSchema.optional(),
     status: z.enum(financialGoalStatuses).optional(),
   })

@@ -35,13 +35,12 @@ flowchart LR
 
 ## Mobile modules
 
-- `app/`: Expo Router public and authenticated groups, stacks, tabs, callbacks, and platform-specific routes.
+- `app/`: one-line route files that re-export a screen from `src/features/` (layouts excepted; `scripts/check-structure.mjs` enforces this for new routes).
 - `src/auth/`: Supabase client, SecureStore session adapter, lifecycle refresh, identity transition coordinator.
-- `src/db/`: SQLCipher open/key lifecycle, migrations, repositories, observable query invalidation, recovery states.
-- `src/sync/`: outbox, push/pull transport, retry classifier, cursor application, conflict materialization, background entrypoint.
-- `src/api/`: bearer-aware Worker client, Zod decoding, typed error normalization, no arbitrary URL surface.
-- `src/domain/`: React Native-safe shared exports and mobile-only orchestration types.
-- `src/features/`: vertical feature modules that depend on repositories rather than holding financial records in component state stores.
+- `src/db/`: SQLCipher open/key lifecycle, migrations, read repositories and hooks (`repository.ts`, `local-workspace-state.tsx`), the mutation facade (`transaction-mutation-repository.ts`) with its outbox, conflict, and model modules under `transaction-mutations/`, pull application (`sync-repository.ts`), and recovery states.
+- `src/sync/`: the push and pull loop (`sync-state.tsx`) and the background entrypoint (`background-sync-task.ts`). Outbox batching and retry scheduling live in `src/db/transaction-mutations/outbox.ts`.
+- `src/api/`: bearer-aware Worker client (`apiRequest`), Zod decoding, typed error normalization, no arbitrary URL surface.
+- `src/features/`: vertical feature modules (screens plus pure logic) that depend on repositories rather than holding financial records in component state stores.
 - `src/stores/`: small UI-only Zustand stores with selectors and validated/versioned allowlisted persistence.
 - `src/ui/`: tokens, themes, primitives, financial formatting, accessibility helpers, and product components.
 - `src/config/`: runtime-validated public configuration and app-variant metadata.
