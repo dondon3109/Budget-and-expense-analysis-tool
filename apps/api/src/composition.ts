@@ -97,8 +97,8 @@ export interface AppOptions {
 }
 
 /**
- * The Worker's single composition root: every repository, provider, and service the routes use,
- * with each default replaced by the matching `overrides` field when one is given.
+ * Composition root for `createApp`: resolves every repository, provider, and service the routes
+ * use, replacing each default with the matching `overrides` field when one is given.
  */
 export function createDependencies(overrides: AppOptions = {}) {
   const dashboardLoader = overrides.dashboardLoader ?? loadDashboard;
@@ -124,7 +124,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     overrides.assistantModelMemoryUsage ?? assistantModelMemoryUsageRepository;
   // Dynamic provider that resolves the active DB config on every request (with 30s cache).
   // Falls back to the env-configured provider when the DB is unavailable or before migration.
-  const dynamicAssistantProvider: AssistantProvider =
+  const assistantProvider: AssistantProvider =
     overrides.assistantProvider ??
     ({
       async complete(env, request) {
@@ -132,7 +132,6 @@ export function createDependencies(overrides: AppOptions = {}) {
         return provider.complete(env, request);
       },
     } satisfies AssistantProvider);
-  const assistantProvider = dynamicAssistantProvider;
   const supportProvider = overrides.supportProvider ?? assistantProvider;
   const assistantService =
     overrides.assistantService ??
