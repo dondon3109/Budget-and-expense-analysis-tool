@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { applyDailyReminder } from "@/features/reminders/daily-reminder";
-import { useDailyReminderStore } from "@/stores/daily-reminder-store";
+import {
+  useDailyReminderRestoredStore,
+  useDailyReminderStore,
+} from "@/stores/daily-reminder-store";
 import { DailyReminderCard } from "./DailyReminderCard";
 
 jest.mock("expo-secure-store", () => ({
@@ -24,7 +27,8 @@ jest.mock("expo-router", () => ({
 describe("DailyReminderCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useDailyReminderStore.setState({ time: "off", restored: true });
+    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderRestoredStore.setState({ restored: true });
   });
 
   it("is off by default and schedules the chosen time", async () => {
@@ -59,7 +63,7 @@ describe("DailyReminderCard", () => {
   });
 
   it("waits for the saved time before showing or changing it", async () => {
-    useDailyReminderStore.setState({ time: "off", restored: false });
+    useDailyReminderRestoredStore.setState({ restored: false });
     await render(<DailyReminderCard />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Loading…" }));

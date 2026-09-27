@@ -4,7 +4,10 @@ import { router, useRootNavigationState } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { createElement } from "react";
 
-import { useDailyReminderStore } from "@/stores/daily-reminder-store";
+import {
+  useDailyReminderRestoredStore,
+  useDailyReminderStore,
+} from "@/stores/daily-reminder-store";
 import {
   applyDailyReminder,
   clearDailyReminder,
@@ -74,6 +77,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   useDailyReminderStore.setState({ time: "off" });
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
+  jest.mocked(SecureStore.setItemAsync).mockResolvedValue(undefined);
 });
 
 describe("daily reminder scheduling", () => {
@@ -249,13 +253,34 @@ describe("daily reminder at launch", () => {
     expect(useDailyReminderStore.getState().time).toBe("off");
   });
 
+  it("keeps the saved time across a relaunch", async () => {
+    // A storage mock that keeps what is written: the restore must read the
+    // saved time before anything writes the in-memory default over it.
+    const storage = new Map([[REMINDER_STORAGE_KEY, savedTime("18:00")]]);
+    jest
+      .mocked(SecureStore.getItemAsync)
+      .mockImplementation(async (key) => storage.get(key) ?? null);
+    jest.mocked(SecureStore.setItemAsync).mockImplementation(async (key, value) => {
+      storage.set(key, value);
+    });
+    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
+
+    await startDailyReminder();
+
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ trigger: expect.objectContaining({ hour: 18, minute: 0 }) }),
+    );
+    expect(useDailyReminderStore.getState().time).toBe("18:00");
+    expect(storage.get(REMINDER_STORAGE_KEY)).toContain("18:00");
+  });
+
   it("marks the restore finished even when it fails", async () => {
     jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("18:00"));
     notifications.getPermissionsAsync.mockRejectedValueOnce(new Error("native failure"));
 
     await expect(startDailyReminder()).rejects.toThrow("native failure");
 
-    expect(useDailyReminderStore.getState().restored).toBe(true);
+    expect(useDailyReminderRestoredStore.getState().restored).toBe(true);
   });
 
   it("cancels a stray reminder when the saved time is off", async () => {

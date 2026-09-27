@@ -25,8 +25,6 @@ const secureDailyReminderStorage: StateStorage = {
 
 interface DailyReminderState {
   time: DailyReminderTime;
-  /** Not persisted: false until this session's restore has loaded the saved time. */
-  restored: boolean;
   setTime: (time: DailyReminderTime) => void;
 }
 
@@ -40,7 +38,6 @@ export const useDailyReminderStore = create<DailyReminderState>()(
   persist(
     (set) => ({
       time: "off",
-      restored: false,
       setTime: (time) => set({ time }),
     }),
     {
@@ -56,3 +53,13 @@ export const useDailyReminderStore = create<DailyReminderState>()(
     },
   ),
 );
+
+/**
+ * False until this session's restore has loaded the saved time. A separate,
+ * unpersisted store on purpose: persist writes the store to SecureStore on every
+ * setState, even before hydration, so flipping a flag on the persisted store at
+ * launch would overwrite the saved time with the in-memory default.
+ */
+export const useDailyReminderRestoredStore = create<{ restored: boolean }>()(() => ({
+  restored: false,
+}));

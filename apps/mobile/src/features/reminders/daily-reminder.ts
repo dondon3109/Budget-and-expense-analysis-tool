@@ -4,7 +4,11 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 
 import type { SessionStatus } from "@/auth/session-state";
-import { useDailyReminderStore, type DailyReminderTime } from "@/stores/daily-reminder-store";
+import {
+  useDailyReminderRestoredStore,
+  useDailyReminderStore,
+  type DailyReminderTime,
+} from "@/stores/daily-reminder-store";
 
 /** Fixed identifier, so rescheduling replaces the one reminder instead of stacking copies. */
 export const DAILY_REMINDER_ID = "zoption-daily-reminder";
@@ -88,11 +92,11 @@ export function useDailyReminderSession(status: SessionStatus): void {
  * the scheduled notification.
  */
 export function startDailyReminder(): Promise<void> {
-  useDailyReminderStore.setState({ restored: false });
+  useDailyReminderRestoredStore.setState({ restored: false });
   // `finally`, not a success path: a failed restore must not leave the card
   // waiting forever. It then shows whatever time was loaded, if any.
   restoring = restoreDailyReminder().finally(() => {
-    useDailyReminderStore.setState({ restored: true });
+    useDailyReminderRestoredStore.setState({ restored: true });
   });
   return restoring;
 }

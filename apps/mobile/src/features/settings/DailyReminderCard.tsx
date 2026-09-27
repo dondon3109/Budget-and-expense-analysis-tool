@@ -5,6 +5,7 @@ import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { applyDailyReminder, dailyReminderLabel } from "@/features/reminders/daily-reminder";
 import {
   DAILY_REMINDER_TIMES,
+  useDailyReminderRestoredStore,
   useDailyReminderStore,
   type DailyReminderTime,
 } from "@/stores/daily-reminder-store";
@@ -19,7 +20,7 @@ export function DailyReminderCard() {
   const theme = useZoptionTheme();
   const time = useDailyReminderStore((state) => state.time);
   // Until the saved time has loaded, "Off" could be wrong, so say nothing yet.
-  const restored = useDailyReminderStore((state) => state.restored);
+  const restored = useDailyReminderRestoredStore((state) => state.restored);
   const [pending, setPending] = useState<DailyReminderTime | null>(null);
   const busy = pending !== null || !restored;
   const [notice, setNotice] = useState<Notice | null>(null);

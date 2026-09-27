@@ -1,7 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { useThemeStore } from "@/stores/theme-store";
-import { useDailyReminderStore } from "@/stores/daily-reminder-store";
+import {
+  useDailyReminderRestoredStore,
+  useDailyReminderStore,
+} from "@/stores/daily-reminder-store";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { PreferenceCards } from "./PreferenceCards";
 
@@ -21,7 +24,8 @@ describe("PreferenceCards", () => {
   beforeEach(() => {
     useThemeStore.setState({ preference: "coffee" });
     useVoiceLanguageStore.setState({ language: "fil" });
-    useDailyReminderStore.setState({ time: "off", restored: true });
+    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderRestoredStore.setState({ restored: true });
   });
 
   it("folds both pickers to their current choice", async () => {
