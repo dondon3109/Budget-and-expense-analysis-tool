@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
-import TransactionsScreen from "../../../app/(app)/(tabs)/transactions";
+import { TransactionsScreen } from "./TransactionsScreen";
 import { useLocalTransactions } from "@/db/local-workspace-state";
 import type { LocalTransactionItem } from "@/db/repository";
 import { useSyncState } from "@/sync/sync-state";
