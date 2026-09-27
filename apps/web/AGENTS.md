@@ -42,7 +42,7 @@ pnpm test:e2e                      # Playwright, from the repo root
 - Adding a public route is a typed three place edit: the `PublicRoutePath` union, `PUBLIC_ROUTE_PATHS`, and `PUBLIC_ROUTE_METADATA` in `src/seo/siteMetadata.ts`, plus `PUBLIC_ROUTE_ELEMENTS` in `src/PublicRoutes.tsx`. The prerender list follows the manifest, so a missing entry is a missing page.
 - Private pages load lazily with the `lazy(async () => ({ default: module.X }))` shape. Public pages are eager so prerendering can reach them.
 - Public route code must be safe to render on the server: no `window` or `document` at module scope, and no Query or Auth provider in `src/entry-server.tsx`.
-- Sections split out of one long page (`components/landing/`, `components/admin/`) keep using that page's stylesheet rather than a sibling of their own, so their selectors stay in one file.
+- A section split out of a long page moves its rules into its own stylesheet beside it (`Component.css`) instead of growing the page stylesheet. Stylesheets are global, so keep the selectors unchanged and import the new file where the page imported the old block, which preserves cascade order. Older sections (`components/landing/`, `components/assistant/`, several dashboard cards) still rely on their page stylesheet; `node scripts/check-structure.mjs` stops those files from growing.
 - Name a component file in PascalCase with its own `Component.css` sibling, put hooks in `src/hooks` as `useX.ts`, and end page component names in `Page`.
 - Send authenticated requests only through `src/lib/api.ts` helpers. Components never call `fetch` for private data.
 - Keep server state in TanStack Query keyed through `queryKeys.*(workspace)` and derive values at render. Do not mirror query data into local state.
