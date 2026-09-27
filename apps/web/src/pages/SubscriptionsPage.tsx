@@ -5,7 +5,7 @@ import type {
   SubscriptionRecord,
   SubscriptionStatus,
 } from "@zoption/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -24,9 +24,6 @@ import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable
 import {
   createSubscription,
   deleteSubscription,
-  getAccounts,
-  getCategories,
-  getSubscriptions,
   setSubscriptionStatus,
   updateSubscription,
 } from "../lib/api";
@@ -35,6 +32,9 @@ import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { useAccounts } from "../queries/accounts";
+import { useCategories } from "../queries/categories";
+import { useSubscriptions } from "../queries/subscriptions";
 import "./SubscriptionsPage.css";
 
 function subscriptionMonthlyCost(item: Pick<SubscriptionRecord, "amountMinor" | "billingCycle">) {
@@ -72,18 +72,9 @@ export function SubscriptionsPage() {
   const viewMode: "table" | "calendar" | "forecast" =
     requestedView === "calendar" || requestedView === "forecast" ? requestedView : "table";
 
-  const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, monthStart),
-    queryFn: () => getSubscriptions(workspace, monthStart),
-  });
-  const categoriesQuery = useQuery({
-    queryKey: queryKeys.categories(workspace),
-    queryFn: () => getCategories(workspace),
-  });
-  const accountsQuery = useQuery({
-    queryKey: queryKeys.accounts(workspace),
-    queryFn: () => getAccounts(workspace),
-  });
+  const subscriptionsQuery = useSubscriptions(workspace, monthStart);
+  const categoriesQuery = useCategories(workspace);
+  const accountsQuery = useAccounts(workspace);
 
   const refreshSubscriptions = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) });

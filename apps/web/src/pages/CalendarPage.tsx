@@ -24,12 +24,7 @@ import {
   createCalendarEvent,
   createTransaction,
   deleteCalendarEvent,
-  getAccounts,
   getCalendarEvents,
-  getCategories,
-  getDebts,
-  getSubscriptions,
-  getTransactionCalendar,
   updateCalendarEvent,
 } from "../lib/api";
 import {
@@ -46,6 +41,14 @@ import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from ".
 import { optimisticTransaction } from "../lib/optimisticTransactions";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { useAccounts } from "../queries/accounts";
+import { useCategories } from "../queries/categories";
+import { useDebts } from "../queries/debts";
+import { useSubscriptions } from "../queries/subscriptions";
+import {
+  invalidateAfterTransactionWrite,
+  transactionCalendarQueryOptions,
+} from "../queries/transactions";
 import "./CalendarPage.css";
 
 function emptyCalendarDay(): CalendarDayData {
@@ -126,42 +129,25 @@ export function CalendarPage() {
     );
   }, [nextMonth, today, visibleMonth]);
 
-  const calendarQuery = useQuery({
-    queryKey: queryKeys.transactionCalendar(workspace, monthStart(visibleMonth)),
-    queryFn: () => getTransactionCalendar(workspace, monthStart(visibleMonth)),
-  });
-  const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, monthStart(visibleMonth)),
-    queryFn: () => getSubscriptions(workspace, monthStart(visibleMonth)),
-  });
+  const calendarQuery = useQuery(
+    transactionCalendarQueryOptions(workspace, monthStart(visibleMonth)),
+  );
+  const subscriptionsQuery = useSubscriptions(workspace, monthStart(visibleMonth));
   const eventsQuery = useQuery({
     queryKey: queryKeys.events(workspace, monthStart(visibleMonth)),
     queryFn: () => getCalendarEvents(workspace, monthStart(visibleMonth)),
   });
-  const nextCalendarQuery = useQuery({
-    queryKey: queryKeys.transactionCalendar(workspace, monthStart(nextMonth)),
-    queryFn: () => getTransactionCalendar(workspace, monthStart(nextMonth)),
-  });
-  const nextSubscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, monthStart(nextMonth)),
-    queryFn: () => getSubscriptions(workspace, monthStart(nextMonth)),
-  });
+  const nextCalendarQuery = useQuery(
+    transactionCalendarQueryOptions(workspace, monthStart(nextMonth)),
+  );
+  const nextSubscriptionsQuery = useSubscriptions(workspace, monthStart(nextMonth));
   const nextEventsQuery = useQuery({
     queryKey: queryKeys.events(workspace, monthStart(nextMonth)),
     queryFn: () => getCalendarEvents(workspace, monthStart(nextMonth)),
   });
-  const categoriesQuery = useQuery({
-    queryKey: queryKeys.categories(workspace, true),
-    queryFn: () => getCategories(workspace, true),
-  });
-  const accountsQuery = useQuery({
-    queryKey: queryKeys.accounts(workspace),
-    queryFn: () => getAccounts(workspace),
-  });
-  const debtsQuery = useQuery({
-    queryKey: queryKeys.debts(workspace),
-    queryFn: () => getDebts(workspace),
-  });
+  const categoriesQuery = useCategories(workspace, true);
+  const accountsQuery = useAccounts(workspace);
+  const debtsQuery = useDebts(workspace);
 
   const saveMutation = useMutation({
     mutationFn: (input: TransactionInput) => createTransaction(workspace, input),
@@ -203,13 +189,7 @@ export function CalendarPage() {
       );
     },
     onSettled: () => {
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
-        // A saved debt payment moves the linked debt's balance, so the planning page reads it fresh.
-        queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) }),
-      ]);
+      void invalidateAfterTransactionWrite(queryClient, workspace);
     },
   });
   const saveEventMutation = useMutation({

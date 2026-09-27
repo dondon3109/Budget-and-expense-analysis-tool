@@ -11,7 +11,6 @@ import {
   keepPreviousData,
   useInfiniteQuery,
   useMutation,
-  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import {
@@ -49,9 +48,6 @@ import {
   createTransaction,
   deleteTransaction,
   downloadTransactions,
-  getCategories,
-  getAccounts,
-  getDebts,
   getTransactions,
   isBillingEnforcementError,
   updateTransaction,
@@ -69,6 +65,10 @@ import {
   type TransactionFeed,
 } from "../lib/optimisticTransactions";
 import { userWorkspace } from "../lib/workspace";
+import { useAccounts } from "../queries/accounts";
+import { useCategories } from "../queries/categories";
+import { useDebts } from "../queries/debts";
+import { invalidateAfterTransactionWrite } from "../queries/transactions";
 import {
   persistSavedViews,
   readSavedViews,
@@ -287,18 +287,9 @@ export function TransactionsPage() {
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [activeViewId, setActiveViewId] = useState("");
 
-  const categoriesQuery = useQuery({
-    queryKey: queryKeys.categories(workspace, true),
-    queryFn: () => getCategories(workspace, true),
-  });
-  const accountsQuery = useQuery({
-    queryKey: queryKeys.accounts(workspace),
-    queryFn: () => getAccounts(workspace),
-  });
-  const debtsQuery = useQuery({
-    queryKey: queryKeys.debts(workspace),
-    queryFn: () => getDebts(workspace),
-  });
+  const categoriesQuery = useCategories(workspace, true);
+  const accountsQuery = useAccounts(workspace);
+  const debtsQuery = useDebts(workspace);
   const feedKey = queryKeys.transactionFeed(workspace, query);
   // An invalidation refetches every loaded page in sequence, so a user who has scrolled N pages
   // pays N 50-row reads after each save. Accepted: it keeps the scrolled list in place.
@@ -405,13 +396,7 @@ export function TransactionsPage() {
   }, [filtersKey]);
 
   const refreshProductData = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
-      // A saved debt payment moves the linked debt's balance, so the planning page reads it fresh.
-      queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) }),
-    ]);
+    await invalidateAfterTransactionWrite(queryClient, workspace);
   };
 
   const saveMutation = useMutation({

@@ -8,7 +8,7 @@ import type {
   FinancialGoalInput,
   FinancialGoalUpdate,
 } from "@zoption/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Landmark,
   Pencil,
@@ -33,9 +33,6 @@ import {
   createFinancialGoal,
   deleteDebt,
   deleteFinancialGoal,
-  getAssistantPreferences,
-  getDebts,
-  getFinancialGoals,
   updateAssistantResponsePreferences,
   updateDebt,
   updateFinancialGoal,
@@ -44,6 +41,9 @@ import { formatMoney } from "../lib/formatters";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { useAssistantPreferences } from "../queries/assistant";
+import { useDebts } from "../queries/debts";
+import { useFinancialGoals } from "../queries/goals";
 import "./FinancialPlanPage.css";
 
 function formatDate(value: string): string {
@@ -82,18 +82,9 @@ export function FinancialPlanPage() {
   const [goalToDelete, setGoalToDelete] = useState<FinancialGoal | null>(null);
   const [debtToDelete, setDebtToDelete] = useState<Debt | null>(null);
 
-  const goalsQuery = useQuery({
-    queryKey: queryKeys.financialGoals(workspace),
-    queryFn: () => getFinancialGoals(workspace),
-  });
-  const debtsQuery = useQuery({
-    queryKey: queryKeys.debts(workspace),
-    queryFn: () => getDebts(workspace),
-  });
-  const preferencesQuery = useQuery({
-    queryKey: queryKeys.assistantPreferences(workspace),
-    queryFn: () => getAssistantPreferences(workspace),
-  });
+  const goalsQuery = useFinancialGoals(workspace);
+  const debtsQuery = useDebts(workspace);
+  const preferencesQuery = useAssistantPreferences(workspace);
 
   const refreshGoals = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.financialGoals(workspace) });

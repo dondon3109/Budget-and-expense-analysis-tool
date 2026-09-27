@@ -30,7 +30,6 @@ import {
   deleteAllAssistantThreads,
   deleteAssistantThread,
   getAssistantMessages,
-  getAssistantPreferences,
   getAssistantThreads,
   getTransferFeeInsight,
   grantAssistantConsent,
@@ -41,6 +40,8 @@ import {
 } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { assistantPreferencesQueryOptions } from "../queries/assistant";
+import { invalidateBillingSummary } from "../queries/billing";
 import "./AssistantPage.css";
 
 function requestId(): string {
@@ -67,8 +68,7 @@ export function AssistantPage() {
   const [voiceOpen, setVoiceOpen] = useState(false);
 
   const preferences = useQuery({
-    queryKey: queryKeys.assistantPreferences(workspace),
-    queryFn: () => getAssistantPreferences(workspace),
+    ...assistantPreferencesQueryOptions(workspace),
     staleTime: Infinity,
     gcTime: Infinity,
   });
@@ -210,7 +210,7 @@ export function AssistantPage() {
       setSendError(nextError);
       if (isUsageLimitReachedError(nextError)) setLimitDialogOpen(true);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
+    onSettled: () => invalidateBillingSummary(queryClient, workspace),
   });
 
   const deleteMutation = useMutation({
