@@ -7,7 +7,6 @@ describe("planVerification", () => {
     expect(
       planVerification([
         "apps/api/src/routes/goals.ts",
-        "db/migrations/0050_example.sql",
         "apps/mobile/src/features/goals/GoalsScreen.tsx",
       ]),
     ).toEqual({ full: false, scopes: ["api", "mobile"] });
@@ -31,6 +30,8 @@ describe("planVerification", () => {
       "vitest.config.ts",
       "tests/vitest.setup.ts",
       "e2e/core-flow.spec.ts",
+      "db/migrations/0066_example.sql",
+      "db/schema.ts",
     ]) {
       expect(planVerification(["apps/web/src/App.tsx", path])).toEqual({ full: true, scopes: [] });
     }

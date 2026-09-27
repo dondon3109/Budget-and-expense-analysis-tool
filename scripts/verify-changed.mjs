@@ -21,10 +21,12 @@ const FULL_VERIFY = [
   /^tests\//,
   /^e2e\//,
   /^patches\//,
+  // The D1 schema and migrations also feed e2e and drizzle-kit, not only the api tests.
+  /^db\//,
 ];
 
 const SCOPES = [
-  { scope: "api", pattern: /^(apps\/api|db)\// },
+  { scope: "api", pattern: /^apps\/api\// },
   { scope: "web", pattern: /^apps\/web\// },
   { scope: "mobile", pattern: /^apps\/mobile\// },
   { scope: "scripts", pattern: /^(scripts|\.github)\// },
@@ -45,13 +47,19 @@ function git(root, args) {
   return execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
 }
 
-function changedPaths(root) {
-  let base;
-  try {
-    base = git(root, ["merge-base", "HEAD", "origin/main"]);
-  } catch {
-    base = git(root, ["merge-base", "HEAD", "main"]);
+/** The merge base with main, or null when neither origin/main nor main is available. */
+function mergeBase(root) {
+  for (const ref of ["origin/main", "main"]) {
+    try {
+      return git(root, ["merge-base", "HEAD", ref]);
+    } catch {
+      // Try the next ref.
+    }
   }
+  return null;
+}
+
+function changedPaths(root, base) {
   const committedAndStaged = git(root, ["diff", "--name-only", base]).split("\n");
   const untracked = git(root, ["ls-files", "--others", "--exclude-standard"]).split("\n");
   return [...new Set([...committedAndStaged, ...untracked].filter(Boolean))];
@@ -65,7 +73,13 @@ function run(root, command, args) {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const paths = changedPaths(root);
+  const base = mergeBase(root);
+  if (!base) {
+    console.log("No merge base with origin/main or main (shallow or detached checkout).");
+    run(root, "pnpm", ["verify"]);
+    process.exit(0);
+  }
+  const paths = changedPaths(root, base);
   const plan = planVerification(paths);
 
   const steps = plan.full
