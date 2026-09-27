@@ -23,6 +23,7 @@ import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import {
   decodeStoredResult,
   idempotencyInsert,
+  idempotencyKeyReused,
   readIdempotency,
   requestHash,
   requiredIdempotencyInsert,
@@ -85,11 +86,7 @@ function graphReplayResponse(
   hashes: string[],
 ): MobileSyncPushResponse | null {
   if (stored.some((row, index) => row !== null && row.requestHash !== hashes[index])) {
-    throw new HttpError(
-      409,
-      "idempotency_key_reused",
-      "This synchronization key was already used for another operation.",
-    );
+    throw idempotencyKeyReused();
   }
   if (stored.every((row, index) => row !== null && row.requestHash === hashes[index])) {
     return {

@@ -14,6 +14,19 @@ import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import { rejectedResult } from "./results";
 import type { AccountSnapshot, CategorySnapshot, EntitySnapshot } from "./snapshots";
 
+function nameTable(entityType: "account" | "category" | "goal" | "debt"): string {
+  switch (entityType) {
+    case "account":
+      return "accounts";
+    case "category":
+      return "categories";
+    case "goal":
+      return "financial_goals";
+    case "debt":
+      return "debts";
+  }
+}
+
 export async function hasNameConflict(
   env: Bindings,
   tenantId: string,
@@ -21,16 +34,8 @@ export async function hasNameConflict(
   name: string,
   excludeId?: string,
 ): Promise<boolean> {
-  const table =
-    entityType === "account"
-      ? "accounts"
-      : entityType === "category"
-        ? "categories"
-        : entityType === "goal"
-          ? "financial_goals"
-          : "debts";
   const row = await env.DB.prepare(
-    `SELECT id FROM ${table}
+    `SELECT id FROM ${nameTable(entityType)}
      WHERE tenant_id = ? AND lower(name) = lower(?)${excludeId ? " AND id != ?" : ""}
      LIMIT 1`,
   )
@@ -266,4 +271,39 @@ export async function businessRejection(
     return rejectedResult(operation, "plan_limit", "You have reached your custom category limit.");
   }
   return null;
+}
+
+/** Maps a `validateTransactionReferences` failure for a transaction or transfer to a rejection. */
+export function transactionReferenceRejection(
+  operation: MobileSyncPushOperation,
+  error: HttpError,
+): MobileSyncPushResult {
+  switch (error.code) {
+    case "invalid_category":
+    case "category_kind_mismatch":
+      return rejectedResult(operation, "invalid_category", error.message);
+    case "invalid_account":
+      return rejectedResult(operation, "invalid_account", error.message);
+    case "category_requires_pro":
+      return rejectedResult(operation, "plan_limit", error.message);
+    default:
+      return rejectedResult(operation, "invalid_operation", error.message);
+  }
+}
+
+/** Maps a `validateSubscriptionReferences` failure to a rejection. */
+export function subscriptionReferenceRejection(
+  operation: MobileSyncPushOperation,
+  error: HttpError,
+): MobileSyncPushResult {
+  switch (error.code) {
+    case "invalid_subscription_category":
+      return rejectedResult(operation, "invalid_category", error.message);
+    case "invalid_account":
+      return rejectedResult(operation, "invalid_account", error.message);
+    case "category_requires_pro":
+      return rejectedResult(operation, "plan_limit", error.message);
+    default:
+      return rejectedResult(operation, "invalid_operation", error.message);
+  }
 }

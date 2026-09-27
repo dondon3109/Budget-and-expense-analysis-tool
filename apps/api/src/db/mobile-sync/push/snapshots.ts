@@ -50,30 +50,62 @@ export function withCategoryLock(
     : snapshot;
 }
 
+type EntityType = MobileSyncPushOperation["entityType"];
+
+/** The view that renders an entity's rows as sync payloads. */
+function snapshotView(entityType: EntityType): string {
+  switch (entityType) {
+    case "account":
+      return "mobile_sync_account_rows";
+    case "category":
+      return "mobile_sync_category_rows";
+    case "transaction":
+      return "mobile_sync_transaction_rows";
+    case "budget":
+      return "mobile_sync_budget_rows";
+    case "goal":
+      return "mobile_sync_goal_rows";
+    case "debt":
+      return "mobile_sync_debt_rows";
+    case "subscription":
+      return "mobile_sync_subscription_rows";
+    case "event":
+      return "mobile_sync_event_rows";
+    case "transfer":
+      return "mobile_sync_transfer_rows";
+  }
+}
+
+function parseSnapshot(entityType: EntityType, payload: unknown): EntitySnapshot {
+  switch (entityType) {
+    case "account":
+      return mobileSyncAccountSnapshotSchema.parse(payload);
+    case "category":
+      return mobileSyncCategorySnapshotSchema.parse(payload);
+    case "transaction":
+      return mobileSyncTransactionSnapshotSchema.parse(payload);
+    case "budget":
+      return mobileSyncBudgetSnapshotSchema.parse(payload);
+    case "goal":
+      return mobileSyncGoalSnapshotSchema.parse(payload);
+    case "debt":
+      return mobileSyncDebtSnapshotSchema.parse(payload);
+    case "subscription":
+      return mobileSyncSubscriptionSnapshotSchema.parse(payload);
+    case "event":
+      return mobileSyncEventSnapshotSchema.parse(payload);
+    case "transfer":
+      return mobileSyncTransferSnapshotSchema.parse(payload);
+  }
+}
+
 export async function readEntitySnapshot(
   env: Bindings,
   tenantId: string,
-  entityType: MobileSyncPushOperation["entityType"],
+  entityType: EntityType,
   entityId: string,
 ): Promise<EntitySnapshot | null> {
-  const view =
-    entityType === "account"
-      ? "mobile_sync_account_rows"
-      : entityType === "category"
-        ? "mobile_sync_category_rows"
-        : entityType === "transaction"
-          ? "mobile_sync_transaction_rows"
-          : entityType === "budget"
-            ? "mobile_sync_budget_rows"
-            : entityType === "goal"
-              ? "mobile_sync_goal_rows"
-              : entityType === "debt"
-                ? "mobile_sync_debt_rows"
-                : entityType === "subscription"
-                  ? "mobile_sync_subscription_rows"
-                  : entityType === "event"
-                    ? "mobile_sync_event_rows"
-                    : "mobile_sync_transfer_rows";
+  const view = snapshotView(entityType);
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson FROM ${view} WHERE tenant_id = ? AND entity_id = ?`,
   )
@@ -81,24 +113,7 @@ export async function readEntitySnapshot(
     .first<EntitySyncRow>();
   if (!row) return null;
   try {
-    const payload = JSON.parse(row.payloadJson) as unknown;
-    return entityType === "account"
-      ? mobileSyncAccountSnapshotSchema.parse(payload)
-      : entityType === "category"
-        ? mobileSyncCategorySnapshotSchema.parse(payload)
-        : entityType === "transaction"
-          ? mobileSyncTransactionSnapshotSchema.parse(payload)
-          : entityType === "budget"
-            ? mobileSyncBudgetSnapshotSchema.parse(payload)
-            : entityType === "goal"
-              ? mobileSyncGoalSnapshotSchema.parse(payload)
-              : entityType === "debt"
-                ? mobileSyncDebtSnapshotSchema.parse(payload)
-                : entityType === "subscription"
-                  ? mobileSyncSubscriptionSnapshotSchema.parse(payload)
-                  : entityType === "event"
-                    ? mobileSyncEventSnapshotSchema.parse(payload)
-                    : mobileSyncTransferSnapshotSchema.parse(payload);
+    return parseSnapshot(entityType, JSON.parse(row.payloadJson) as unknown);
   } catch {
     throw new Error("Stored mobile synchronization entity failed validation.");
   }

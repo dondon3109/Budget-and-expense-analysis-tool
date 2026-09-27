@@ -41,15 +41,22 @@ import {
 } from "./mobile-sync/push/entities/transaction";
 import { pushCreateDependencyGraph } from "./mobile-sync/push/graph";
 import {
-  decodeStoredResult,
   idempotencyInsert,
   persistResult,
   readIdempotency,
+  replayedResult,
   requestHash,
 } from "./mobile-sync/push/idempotency";
-import { conflictResult, rejectedResult, type EntityMutation } from "./mobile-sync/push/results";
+import {
+  conflictResult,
+  rejectedResult,
+  revisionConflict,
+  type EntityMutation,
+} from "./mobile-sync/push/results";
 import {
   businessRejection,
+  subscriptionReferenceRejection,
+  transactionReferenceRejection,
   validateBudgetCategory,
   validateSubscriptionReferences,
 } from "./mobile-sync/push/rules";
@@ -160,14 +167,7 @@ export function createMobileSyncRepository(
           operation.idempotencyKey,
         );
         if (stored) {
-          if (stored.requestHash !== hash) {
-            throw new HttpError(
-              409,
-              "idempotency_key_reused",
-              "This synchronization key was already used for another operation.",
-            );
-          }
-          results.push(decodeStoredResult(stored));
+          results.push(replayedResult(stored, hash));
           continue;
         }
 
@@ -212,7 +212,8 @@ export function createMobileSyncRepository(
         if (operation.entityType === "category" && current) {
           current = withCategoryLock(current, await readEntitlement(env, tenantId));
         }
-        if (operation.operationType === "create" && current) {
+        const conflict = revisionConflict(operation, current);
+        if (conflict) {
           results.push(
             await persistResult(
               env,
@@ -220,37 +221,7 @@ export function createMobileSyncRepository(
               input.clientId,
               operation,
               hash,
-              conflictResult(operation, "entity_exists", current),
-            ),
-          );
-          continue;
-        }
-        if (operation.operationType !== "create" && !current) {
-          results.push(
-            await persistResult(
-              env,
-              tenantId,
-              input.clientId,
-              operation,
-              hash,
-              conflictResult(operation, "entity_missing", null),
-            ),
-          );
-          continue;
-        }
-        if (
-          operation.operationType !== "create" &&
-          current &&
-          current.revision !== operation.baseRevision
-        ) {
-          results.push(
-            await persistResult(
-              env,
-              tenantId,
-              input.clientId,
-              operation,
-              hash,
-              conflictResult(operation, "stale_revision", current),
+              conflictResult(operation, conflict, current),
             ),
           );
           continue;
@@ -312,14 +283,6 @@ export function createMobileSyncRepository(
             );
           } catch (error) {
             if (!(error instanceof HttpError)) throw error;
-            const code =
-              error.code === "invalid_subscription_category"
-                ? "invalid_category"
-                : error.code === "invalid_account"
-                  ? "invalid_account"
-                  : error.code === "category_requires_pro"
-                    ? "plan_limit"
-                    : "invalid_operation";
             results.push(
               await persistResult(
                 env,
@@ -327,7 +290,7 @@ export function createMobileSyncRepository(
                 input.clientId,
                 operation,
                 hash,
-                rejectedResult(operation, code, error.message),
+                subscriptionReferenceRejection(operation, error),
               ),
             );
             continue;
@@ -403,14 +366,6 @@ export function createMobileSyncRepository(
             );
           } catch (error) {
             if (!(error instanceof HttpError)) throw error;
-            const code =
-              error.code === "invalid_category" || error.code === "category_kind_mismatch"
-                ? "invalid_category"
-                : error.code === "invalid_account"
-                  ? "invalid_account"
-                  : error.code === "category_requires_pro"
-                    ? "plan_limit"
-                    : "invalid_operation";
             results.push(
               await persistResult(
                 env,
@@ -418,7 +373,7 @@ export function createMobileSyncRepository(
                 input.clientId,
                 operation,
                 hash,
-                rejectedResult(operation, code, error.message),
+                transactionReferenceRejection(operation, error),
               ),
             );
             continue;
@@ -461,14 +416,7 @@ export function createMobileSyncRepository(
             operation.idempotencyKey,
           );
           if (replay) {
-            if (replay.requestHash !== hash) {
-              throw new HttpError(
-                409,
-                "idempotency_key_reused",
-                "This synchronization key was already used for another operation.",
-              );
-            }
-            results.push(decodeStoredResult(replay));
+            results.push(replayedResult(replay, hash));
             continue;
           }
         }
@@ -482,16 +430,7 @@ export function createMobileSyncRepository(
         if (operation.entityType === "category" && concurrent) {
           concurrent = withCategoryLock(concurrent, await readEntitlement(env, tenantId));
         }
-        const concurrentCode =
-          operation.operationType === "create"
-            ? concurrent
-              ? "entity_exists"
-              : null
-            : !concurrent
-              ? "entity_missing"
-              : concurrent.revision !== operation.baseRevision
-                ? "stale_revision"
-                : null;
+        const concurrentCode = revisionConflict(operation, concurrent);
         if (
           operation.entityType === "budget" &&
           operation.operationType === "create" &&

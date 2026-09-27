@@ -43,49 +43,52 @@ export function transactionMutation(
   revision: number,
   timestamp: string,
 ): EntityMutation {
-  const mutation =
-    operation.operationType === "create" && transaction
-      ? env.DB.prepare(
-          `INSERT INTO transactions (
-            id, tenant_id, account_id, category_id, date, description, amount_minor,
-            currency, kind, notes, source_kind, revision, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 1, ?)`,
-        ).bind(
-          operation.entityId,
-          tenantId,
-          transaction.accountId,
-          transaction.categoryId,
-          transaction.date,
-          transaction.description,
-          normalizeSignedAmount(transaction.amountMinor, transaction.kind),
-          transaction.currency,
-          transaction.kind,
-          transaction.notes || null,
-          timestamp,
-        )
-      : operation.operationType === "update" && transaction
-        ? env.DB.prepare(
-            `UPDATE transactions SET
-              account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?,
-              currency = ?, kind = ?, notes = ?, revision = ?, updated_at = ?
-             WHERE id = ? AND tenant_id = ? AND revision = ?`,
-          ).bind(
-            transaction.accountId,
-            transaction.categoryId,
-            transaction.date,
-            transaction.description,
-            normalizeSignedAmount(transaction.amountMinor, transaction.kind),
-            transaction.currency,
-            transaction.kind,
-            transaction.notes || null,
-            revision,
-            timestamp,
-            operation.entityId,
-            tenantId,
-            operation.baseRevision,
-          )
-        : env.DB.prepare(
-            "DELETE FROM transactions WHERE id = ? AND tenant_id = ? AND revision = ?",
-          ).bind(operation.entityId, tenantId, operation.baseRevision);
+  if (operation.operationType === "create" && transaction) {
+    const mutation = env.DB.prepare(
+      `INSERT INTO transactions (
+        id, tenant_id, account_id, category_id, date, description, amount_minor,
+        currency, kind, notes, source_kind, revision, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 1, ?)`,
+    ).bind(
+      operation.entityId,
+      tenantId,
+      transaction.accountId,
+      transaction.categoryId,
+      transaction.date,
+      transaction.description,
+      normalizeSignedAmount(transaction.amountMinor, transaction.kind),
+      transaction.currency,
+      transaction.kind,
+      transaction.notes || null,
+      timestamp,
+    );
+    return { mutation, extraStatements: [] };
+  }
+  if (operation.operationType === "update" && transaction) {
+    const mutation = env.DB.prepare(
+      `UPDATE transactions SET
+        account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?,
+        currency = ?, kind = ?, notes = ?, revision = ?, updated_at = ?
+       WHERE id = ? AND tenant_id = ? AND revision = ?`,
+    ).bind(
+      transaction.accountId,
+      transaction.categoryId,
+      transaction.date,
+      transaction.description,
+      normalizeSignedAmount(transaction.amountMinor, transaction.kind),
+      transaction.currency,
+      transaction.kind,
+      transaction.notes || null,
+      revision,
+      timestamp,
+      operation.entityId,
+      tenantId,
+      operation.baseRevision,
+    );
+    return { mutation, extraStatements: [] };
+  }
+  const mutation = env.DB.prepare(
+    "DELETE FROM transactions WHERE id = ? AND tenant_id = ? AND revision = ?",
+  ).bind(operation.entityId, tenantId, operation.baseRevision);
   return { mutation, extraStatements: [] };
 }

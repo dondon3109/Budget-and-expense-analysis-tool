@@ -43,3 +43,17 @@ export function rejectedResult(
     message,
   };
 }
+
+/**
+ * The conflict an operation meets against the current server row, or null when it applies: a
+ * create needs no row, and an update or delete needs the row at its base revision.
+ */
+export function revisionConflict(
+  operation: MobileSyncPushOperation,
+  current: EntitySnapshot | null,
+): "entity_exists" | "entity_missing" | "stale_revision" | null {
+  if (operation.operationType === "create") return current ? "entity_exists" : null;
+  if (!current) return "entity_missing";
+  if (current.revision !== operation.baseRevision) return "stale_revision";
+  return null;
+}

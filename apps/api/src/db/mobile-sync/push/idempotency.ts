@@ -80,6 +80,20 @@ export function requiredIdempotencyInsert(
   );
 }
 
+export function idempotencyKeyReused(): HttpError {
+  return new HttpError(
+    409,
+    "idempotency_key_reused",
+    "This synchronization key was already used for another operation.",
+  );
+}
+
+/** The stored result for a replayed key; a key reused for a different operation is a 409. */
+export function replayedResult(row: IdempotencyRow, hash: string): MobileSyncPushResult {
+  if (row.requestHash !== hash) throw idempotencyKeyReused();
+  return decodeStoredResult(row);
+}
+
 export async function persistResult(
   env: Bindings,
   tenantId: string,
@@ -93,13 +107,7 @@ export async function persistResult(
     return result;
   } catch {
     const replay = await readIdempotency(env, tenantId, clientId, operation.idempotencyKey);
-    if (!replay || replay.requestHash !== hash) {
-      throw new HttpError(
-        409,
-        "idempotency_key_reused",
-        "This synchronization key was already used for another operation.",
-      );
-    }
-    return decodeStoredResult(replay);
+    if (!replay) throw idempotencyKeyReused();
+    return replayedResult(replay, hash);
   }
 }

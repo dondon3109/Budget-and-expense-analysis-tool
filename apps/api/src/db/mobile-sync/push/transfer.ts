@@ -13,30 +13,16 @@ import { validateTransactionReferences } from "../../transactions";
 import { mobileSyncServerTimestamp as serverTimestamp } from "../protocol";
 import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import {
-  decodeStoredResult,
   persistResult,
   readIdempotency,
+  replayedResult,
   requiredIdempotencyInsert,
 } from "./idempotency";
-import { conflictResult, rejectedResult } from "./results";
+import { conflictResult, rejectedResult, revisionConflict } from "./results";
+import { transactionReferenceRejection } from "./rules";
 import { readEntitySnapshot } from "./snapshots";
 
 type TransferOperation = Extract<MobileSyncPushOperation, { entityType: "transfer" }>;
-
-function transferValidationResult(
-  operation: TransferOperation,
-  error: HttpError,
-): MobileSyncPushResult {
-  const code =
-    error.code === "invalid_category" || error.code === "category_kind_mismatch"
-      ? "invalid_category"
-      : error.code === "invalid_account"
-        ? "invalid_account"
-        : error.code === "category_requires_pro"
-          ? "plan_limit"
-          : "invalid_operation";
-  return rejectedResult(operation, code, error.message);
-}
 
 export async function pushTransferOperation(
   env: Bindings,
@@ -47,38 +33,15 @@ export async function pushTransferOperation(
   readEntitlement: EntitlementReader,
 ): Promise<MobileSyncPushResult> {
   let current = await readEntitySnapshot(env, tenantId, "transfer", operation.entityId);
-  if (operation.operationType === "create" && current) {
+  const conflict = revisionConflict(operation, current);
+  if (conflict) {
     return persistResult(
       env,
       tenantId,
       clientId,
       operation,
       hash,
-      conflictResult(operation, "entity_exists", current),
-    );
-  }
-  if (operation.operationType !== "create" && !current) {
-    return persistResult(
-      env,
-      tenantId,
-      clientId,
-      operation,
-      hash,
-      conflictResult(operation, "entity_missing", null),
-    );
-  }
-  if (
-    operation.operationType !== "create" &&
-    current &&
-    current.revision !== operation.baseRevision
-  ) {
-    return persistResult(
-      env,
-      tenantId,
-      clientId,
-      operation,
-      hash,
-      conflictResult(operation, "stale_revision", current),
+      conflictResult(operation, conflict, current),
     );
   }
 
@@ -102,7 +65,7 @@ export async function pushTransferOperation(
         clientId,
         operation,
         hash,
-        transferValidationResult(operation, error),
+        transactionReferenceRejection(operation, error),
       );
     }
   }
@@ -243,29 +206,11 @@ export async function pushTransferOperation(
     if (Number(batch.at(-1)?.meta.changes ?? 0) === 1) return acknowledged;
   } catch {
     const replay = await readIdempotency(env, tenantId, clientId, operation.idempotencyKey);
-    if (replay) {
-      if (replay.requestHash !== hash) {
-        throw new HttpError(
-          409,
-          "idempotency_key_reused",
-          "This synchronization key was already used for another operation.",
-        );
-      }
-      return decodeStoredResult(replay);
-    }
+    if (replay) return replayedResult(replay, hash);
   }
 
   current = await readEntitySnapshot(env, tenantId, "transfer", operation.entityId);
-  const concurrentCode =
-    operation.operationType === "create"
-      ? current
-        ? "entity_exists"
-        : null
-      : !current
-        ? "entity_missing"
-        : current.revision !== operation.baseRevision
-          ? "stale_revision"
-          : null;
+  const concurrentCode = revisionConflict(operation, current);
   return persistResult(
     env,
     tenantId,
