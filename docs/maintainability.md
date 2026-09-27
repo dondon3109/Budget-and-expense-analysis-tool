@@ -62,6 +62,50 @@ removing it. Every reader applies the rule: the Worker's `budgetRepository.list`
 `buildDashboardSummary`, the mobile budget month view, the web budget editor's optimistic update,
 and the assistant's budget-versus-actual reader.
 
+## Adding an entity
+
+These lists name every file that knows about an entity. The easy ones to miss are the tenant purge, the archive export, and the second write path through mobile sync.
+
+### REST-only entity
+
+1. **Schema:** add a new `db/migrations/NNNN_<name>.sql`, with indexes that start with `tenant_id`, and mirror the table in `db/schema.ts`.
+2. **Shared:** add the record type and any enums to `packages/shared/src/types.ts`, and strict request schemas to `packages/shared/src/schemas.ts`.
+3. **Repository:** create `apps/api/src/db/<entity>.ts`. Every method takes `tenantId`.
+4. **Route:** create `apps/api/src/routes/<entity>.ts` with `createXRoutes(repository)`. In `apps/api/src/app.ts`, add the `AppOptions` field, the default, and the mount.
+5. **Account lifecycle:**
+   - Purge the table in `apps/api/src/db/account-deletion.ts`.
+   - Include its rows in `apps/api/src/exports/archive.ts`.
+6. **Assistant (optional):** to expose the entity to the assistant, add a reader in `apps/api/src/assistant/financial-reader.ts` and a tool in `apps/api/src/assistant/tools.ts`.
+7. **Web:**
+   - A call in `apps/web/src/lib/api.ts`.
+   - A key in `apps/web/src/lib/queryKeys.ts`.
+   - The page and its route.
+8. **Tests:**
+   - Repository tests in `apps/api/tests/` on `createD1TestDatabase`.
+   - Route coverage.
+   - Web page tests.
+
+### Synced entity
+
+Do everything in the REST list above, then add these steps:
+
+1. **Sync contract:** in `packages/shared/src/sync.ts`, add the entity type, the input, update, and snapshot schemas, and the money caps. Keep the caps in step with `schemas.ts`.
+2. **Server schema:** a migration adds the `revision` column and the change-log triggers. Copy `db/migrations/0039_mobile_sync_goals.sql`.
+3. **Server sync:** add the snapshot reader, business rejection, and push mutation in `apps/api/src/db/mobile-sync.ts`. Pull and snapshot in `apps/api/src/db/mobile-sync/read.ts` are generic over the change log. Edit read.ts only if the new entity must be applied before others: it orders accounts and categories first.
+4. **Mobile schema:** add a local table in `apps/mobile/src/db/migrations.ts`. It is append-only, so add the entry and bump `LOCAL_SCHEMA_VERSION`.
+5. **Mobile sync:**
+   - Add the entity-to-table map entries in `apps/mobile/src/db/sync-repository.ts` and `apps/mobile/src/db/transaction-mutations/model.ts`.
+   - Add an `applyX` function in `sync-repository.ts`.
+6. **Mobile write:**
+   - Create, update, and delete commands in `apps/mobile/src/db/transaction-mutation-repository.ts`. Each command writes the row and its outbox entry in one transaction.
+   - Conflict inspection and resolution in `apps/mobile/src/db/transaction-mutations/conflicts.ts`.
+7. **Mobile read:** a query in `apps/mobile/src/db/repository.ts` and a hook in `apps/mobile/src/db/local-workspace-state.tsx`.
+8. **Mobile UI:** screens in `apps/mobile/src/features/<area>/`, including a conflict screen, with one-line routes in `apps/mobile/app/`.
+9. **Rollout:** installed apps validate pull responses strictly. A new entity type or payload field needs a client release that understands it before the server sends it (`apps/api/AGENTS.md`). Document the protocol change in `docs/mobile/sync-protocol.md`.
+10. **Tests:**
+    - Server sync tests in `apps/api/tests/mobile-sync.test.ts`, which run the full D1 migration chain.
+    - Mobile repository tests with the real local migrations.
+
 ## Change rules for one maintainer
 
 1. Keep the route/UI-facing facades stable while extracting one responsibility at a time.

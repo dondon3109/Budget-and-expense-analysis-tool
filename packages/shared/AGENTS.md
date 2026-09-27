@@ -13,18 +13,36 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 
 ## Key files
 
-| File                    | Owns                                                           |
-| ----------------------- | -------------------------------------------------------------- |
-| `src/index.ts`          | The barrel; every public module except `workbook`              |
-| `src/schemas.ts`        | Request, response, and snapshot schemas for the API and sync   |
-| `src/types.ts`          | `as const` enums that the schemas consume                      |
-| `src/money.ts`          | Amount parsing and the only sanctioned sign flip               |
-| `src/sync.ts`           | Mobile sync protocol constants, cursors, and payload contracts |
-| `src/calculations.ts`   | Shared aggregate math for the dashboard                        |
-| `src/sharedBudget.ts`   | Unsigned share token encoding and masking                      |
-| `src/voiceLanguages.ts` | The single voice language catalog both clients render          |
-| `src/voiceCaption.ts`   | Caption tokenizer shared by the web and native renderers       |
-| `src/workbook.ts`       | XLS/XLSX conversion, deliberately outside the barrel           |
+| File                           | Owns                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| `src/index.ts`                 | The barrel; every public module except `workbook`                                    |
+| `src/schemas.ts`               | Request, response, and snapshot schemas for the API and sync                         |
+| `src/types.ts`                 | `as const` enums that the schemas consume, plus record and summary interfaces        |
+| `src/money.ts`                 | Amount parsing (`parseAmountToMinor`) and the only sanctioned sign flip              |
+| `src/sync.ts`                  | Mobile sync protocol constants, cursors, and payload contracts                       |
+| `src/calculations.ts`          | Dashboard summary and cashflow trend math                                            |
+| `src/planning.ts`              | Debt payoff, savings goal, recurring charge, and anomaly calculators                 |
+| `src/cashflowForecast.ts`      | Forward cashflow projection                                                          |
+| `src/safeToSpend.ts`           | Weekly safe-to-spend amount                                                          |
+| `src/subscriptions.ts`         | Subscription billing dates and monthly cost                                          |
+| `src/interest.ts`              | Automatic interest credit dates and amounts in Asia/Manila time                      |
+| `src/transactions.ts`          | Default account choice, balance adjustment, and `formatMinorAmount` for input fields |
+| `src/remittance.ts`            | Remittance provider comparison and dual currency balances                            |
+| `src/csv.ts`                   | CSV parsing limits and header normalization                                          |
+| `src/importDate.ts`            | Import date canonicalization                                                         |
+| `src/importPresets.ts`         | Bank import presets and preset detection                                             |
+| `src/importSubscriptions.ts`   | Subscription candidates detected in an import                                        |
+| `src/fingerprint.ts`           | Import duplicate fingerprints (needs `crypto.subtle`)                                |
+| `src/categoryMatcher.ts`       | Category matching for imports, receipts, and voice entry                             |
+| `src/smsNotificationParser.ts` | Bank SMS text parsing for clipboard paste entry                                      |
+| `src/receipts.ts`              | Receipt line item descriptions                                                       |
+| `src/redaction.ts`             | Sensitive text detection and bug report redaction                                    |
+| `src/sharedBudget.ts`          | Unsigned share token encoding and masking                                            |
+| `src/voiceLanguages.ts`        | The single voice language catalog both clients render                                |
+| `src/voiceCaption.ts`          | Caption tokenizer shared by the web and native renderers                             |
+| `src/cancellationGuides.ts`    | Subscription cancellation guide catalog                                              |
+| `src/financeGuides.ts`         | Public guide page content for the web                                                |
+| `src/workbook.ts`              | XLS/XLSX conversion, deliberately outside the barrel                                 |
 
 ## Commands
 

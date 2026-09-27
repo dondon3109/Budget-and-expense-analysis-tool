@@ -8,7 +8,7 @@ The Cloudflare Worker that owns authentication enforcement, tenant data, and fin
 
 - **Language / Runtime**: TypeScript on Cloudflare Workers
 - **Framework**: Hono
-- **Data**: Cloudflare D1 (SQLite) through hand written `env.DB.prepare` and `env.DB.batch`; the repo root Drizzle file `../../db/schema.ts` describes the tables but runs no queries
+- **Data**: Cloudflare D1 (SQLite). The core ledger repositories (`accounts`, `budgets`, `categories`, `dashboard`, `debts`, `events`, `goals`, `imports`, `subscriptions`, `transactions`) and `src/exports/archive.ts` build queries with Drizzle over the repo root `../../db/schema.ts`; everything else uses hand written `env.DB.prepare` and `env.DB.batch`. Match the style of the file you edit
 - **Key dependencies**: `@zoption/shared` for zod schemas, Wrangler for dev and deploy
 - **Tests**: Vitest, run from the repo root through the root `vitest.config.ts`
 
@@ -20,7 +20,7 @@ The Cloudflare Worker that owns authentication enforcement, tenant data, and fin
 | `src/app.ts`            | `createApp` factory: middleware, binding checks, route mounts, error handling  |
 | `src/auth.ts`           | Supabase JWT verification against the project JWKS                             |
 | `src/readiness.ts`      | Required binding validation for `/health`, the queue, and the cron entries     |
-| `src/db/`               | One repository object per entity, every method scoped by `tenantId`            |
+| `src/db/`               | One repository per entity; tenant data methods take `tenantId`                 |
 | `src/db/mobile-sync.ts` | Route facing sync facade; protocol, read, and compaction sit beside it         |
 | `src/routes/`           | Hono route modules, one per surface, mounted in `src/app.ts`                   |
 | `../../db/migrations/`  | Forward only SQL migrations that Wrangler applies in file name order           |
@@ -39,10 +39,10 @@ pnpm db:migrate:local                 # apply db/migrations to the local D1 data
 
 ## Conventions
 
-- Route modules export `createXRoutes(dependency)` and are mounted centrally in `src/app.ts`. Do not import a repository inside a route; pass it through the factory.
-- Validate at the boundary with a `@zoption/shared` zod schema through `parseInput(schema, value, <message>)` in `src/request.ts`, which answers `400 invalid_request` with the flattened field errors. Bodies go through `readJson`, path ids through `parsePathParameter`. Call `safeParse` directly only when a failure needs a different status, code, or detail.
+- Route modules export `createXRoutes(dependency)` and are mounted centrally in `src/app.ts`. Do not import a repository inside a route; pass it through the factory. `admin-provider-configs`, `provider-credentials`, and `voice-stream` still import singletons and are the only lint exceptions (`eslint.config.mjs`).
+- Validate at the boundary with a `@zoption/shared` zod schema through `parseInput(schema, value, <message>)` in `src/request.ts`, which answers `400 invalid_request` with the flattened field errors. Bodies go through `readJson`, path ids through `parsePathParameter`. Call `safeParse` directly only when a failure needs a different status, code, or detail. About 30 older handlers still call `safeParse` and answer `400 invalid_request` without `details`; switching them changes the response body, so do it deliberately rather than in passing.
 - Only `HttpError` carries a client visible message. An unexpected failure is logged as one structured JSON line and returned as a bare `500 internal_server_error`.
-- Every repository method takes `tenantId`. Handlers read it from `context.get("tenant").tenantId` and never from request input.
+- Every method that reads or writes tenant data takes `tenantId`. Handlers read it from `context.get("tenant").tenantId` and never from request input. System-scoped methods (subscription renewals, billing webhooks and due checkouts, bug reports, provider configs and credentials, platform admin, account deletion, voice tickets) take no tenant; never feed them one derived from request input.
 - Tables use snake_case columns; TypeScript fields are camelCase.
 - Tests live flat in `apps/api/tests/`, named in kebab case, with shared helpers under `tests/helpers/`. Repository tests build their database with `createD1TestDatabase`.
 
@@ -54,6 +54,7 @@ pnpm db:migrate:local                 # apply db/migrations to the local D1 data
 - Never insert into a view in tests. `effective_pro_access` (the Worker's entitlement view, including trials) and `effective_pro_entitlements` are recreated by migrations; seed the base tables instead.
 - Do not add fields to a mobile sync payload without an agreed client capability. Installed apps validate the whole pull response strictly and reject an unknown key. A data backfill migration must bump `revision`.
 - Money is integer centavos end to end (`amount_minor`). Expenses are negative, transfers count once, and assistant output must never show centavos or a peso symbol.
+- There are two loopback checks with different rules. `isLoopbackOrigin` in `src/auth.ts` gates the dev access token and accepts only `http://localhost`, `127.0.0.1`, and `[::1]`. `isLoopbackHost` in `src/readiness.ts` validates configured URLs and also accepts `*.localhost`. Use the stricter one for anything security related.
 - Tenant resolution is skipped for `DELETE /api/app/account` and `/api/app/admin/*`; `context.get("tenant")` is unset on those paths.
 - A deleted subject has a tombstone checked in the auth middleware on every authenticated path, so a retained token gets `410 account_deleted` instead of a new workspace, including on the routes where tenant resolution is skipped. The resolver keeps its own check; it is the redundant one.
 - The `dummy-dev-access-token` shortcut needs `DEV_ACCESS_TOKEN_ENABLED=true` **and** `POSTHOG_AI_ENVIRONMENT` other than `production` **and** a loopback request origin. It is never enabled in a deployed environment, and enabling it is an explicit opt-in rather than a side effect of adding a localhost origin.
