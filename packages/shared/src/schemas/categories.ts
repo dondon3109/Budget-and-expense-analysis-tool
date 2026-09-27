@@ -1,8 +1,15 @@
-// Category input, emoji defaults, and picker ordering.
+// Category list query, input, emoji defaults, and picker ordering.
 
 import { z } from "zod";
 
 import { transactionKinds } from "../types";
+
+export const categoryListQuerySchema = z
+  .object({
+    includeArchived: z.enum(["true", "false"]).optional().default("false"),
+  })
+  .strict()
+  .transform((value) => ({ includeArchived: value.includeArchived === "true" }));
 
 export const categoryIconEmojiSchema = z
   .string()

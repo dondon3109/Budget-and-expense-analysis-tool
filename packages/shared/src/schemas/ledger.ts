@@ -1,16 +1,9 @@
-// Accounts, transactions, dashboard, and calendar ledger queries.
+// Accounts, transactions, and the dashboard and calendar queries over them.
 
 import { z } from "zod";
 
 import { accountTypes, currencies, interestFrequencies, transactionKinds } from "../types";
 import { isoDateSchema, monthStartSchema, resourceIdSchema } from "./common";
-
-export const categoryListQuerySchema = z
-  .object({
-    includeArchived: z.enum(["true", "false"]).optional().default("false"),
-  })
-  .strict()
-  .transform((value) => ({ includeArchived: value.includeArchived === "true" }));
 
 export const dashboardQuerySchema = z
   .object({
