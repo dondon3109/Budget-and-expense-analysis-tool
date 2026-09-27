@@ -22,7 +22,7 @@ export async function readWorkspaceTransactionTotal(
 
   try {
     return await queryClient.fetchQuery({
-      queryKey: [...queryKeys.allTransactions(workspace), "total"],
+      queryKey: queryKeys.transactionTotal(workspace),
       queryFn: async () =>
         (
           await getTransactions(workspace, {

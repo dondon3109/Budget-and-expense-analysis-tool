@@ -120,7 +120,7 @@ function SpreadsheetMigrationDialog({
 
   // Accounts query
   const accountsQuery = useQuery({
-    queryKey: workspace ? queryKeys.accounts(workspace) : ["accounts"],
+    queryKey: workspace ? queryKeys.accounts(workspace) : queryKeys.withoutWorkspace("accounts"),
     queryFn: () => (workspace ? getAccounts(workspace) : Promise.resolve([])),
     enabled: Boolean(workspace),
   });

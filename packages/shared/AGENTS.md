@@ -31,7 +31,8 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 ```bash
 pnpm --filter @zoption/shared typecheck
 pnpm --filter @zoption/shared build      # declarations only
-pnpm test                                # from the repo root
+pnpm --filter @zoption/shared test       # the root Vitest `shared` project
+pnpm verify:shared                       # this package, then every workspace typecheck
 ```
 
 ## Conventions

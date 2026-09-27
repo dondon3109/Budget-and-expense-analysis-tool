@@ -3,6 +3,8 @@ import type { TransactionListQuery } from "@zoption/shared";
 import type { AuthenticatedWorkspace } from "./workspace";
 
 export const queryKeys = {
+  /** Placeholder for a query that stays disabled until a workspace exists. */
+  withoutWorkspace: <Scope extends string>(scope: Scope) => [scope] as const,
   workspace: (workspace: AuthenticatedWorkspace) => ["workspace", workspace.key] as const,
   billing: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "billing"] as const,
@@ -12,14 +14,18 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "bug-reports"] as const,
   adminBugReports: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "admin", "bug-reports"] as const,
+  allAdminCustomerReviews: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "admin", "customer-reviews"] as const,
   adminCustomerReviews: (
     workspace: AuthenticatedWorkspace,
     query?: { page: number; status?: string; rating?: number; search?: string },
-  ) => [...queryKeys.workspace(workspace), "admin", "customer-reviews", query] as const,
+  ) => [...queryKeys.allAdminCustomerReviews(workspace), query] as const,
   dashboard: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "dashboard"] as const,
+  allDashboardSummaries: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.dashboard(workspace), "summary"] as const,
   dashboardSummary: (workspace: AuthenticatedWorkspace, period: { from: string; to: string }) =>
-    [...queryKeys.dashboard(workspace), "summary", period] as const,
+    [...queryKeys.allDashboardSummaries(workspace), period] as const,
   cashflowTrend: (
     workspace: AuthenticatedWorkspace,
     query: { view: "weekly" | "monthly" | "sixMonth"; anchorDate: string },
@@ -30,6 +36,8 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "transactions", query] as const,
   allTransactions: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "transactions"] as const,
+  transactionTotal: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.allTransactions(workspace), "total"] as const,
   /** The Transactions page's infinite ledger; its cache holds pages, not a single page. */
   transactionFeed: (workspace: AuthenticatedWorkspace, query: TransactionListQuery) =>
     [...queryKeys.allTransactions(workspace), "feed", query] as const,

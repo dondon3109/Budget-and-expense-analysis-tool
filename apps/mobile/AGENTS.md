@@ -31,7 +31,8 @@ The Expo native client for Android and iOS. It keeps an encrypted local workspac
 
 ```bash
 pnpm --filter @zoption/mobile typecheck
-pnpm --filter @zoption/mobile test      # jest --runInBand
+pnpm --filter @zoption/mobile test      # jest --runInBand; append a path to filter
+pnpm verify:mobile                      # typecheck, lint, format, and Jest for this package
 pnpm --filter @zoption/mobile lint
 pnpm mobile:start                       # adb reverse, then expo start --dev-client
 pnpm mobile:android                     # adb reverse, then expo run:android

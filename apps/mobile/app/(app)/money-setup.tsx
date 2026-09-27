@@ -1,3 +1,1 @@
-import { MoneySetupScreen } from "@/features/setup/MoneySetupScreen";
-
-export default MoneySetupScreen;
+export { MoneySetupScreen as default } from "@/features/setup/MoneySetupScreen";

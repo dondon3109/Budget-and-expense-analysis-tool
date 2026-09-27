@@ -87,7 +87,7 @@ Open `http://localhost:5173`. The Worker API runs at `http://localhost:8787`. On
 ## Quality checks
 
 ```bash
-pnpm verify      # workspace links, typecheck, lint, format, Vitest, and mobile Jest
+pnpm verify      # workspace links, structure check, typecheck, lint, format, Vitest, and mobile Jest
 pnpm test:e2e
 pnpm build
 pnpm lighthouse

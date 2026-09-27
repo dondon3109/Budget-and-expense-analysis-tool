@@ -32,7 +32,8 @@ The browser product: a prerendered public site plus the signed in application un
 pnpm --filter @zoption/web dev     # vite on 5173, proxies /api and /health to 8787
 pnpm --filter @zoption/web build   # typecheck, client build, SSR build, prerender
 pnpm --filter @zoption/web typecheck
-pnpm test                          # from the repo root
+pnpm --filter @zoption/web test    # the root Vitest `web` project; append a path to filter
+pnpm verify:web                    # typecheck, lint, format, and tests for this package
 pnpm test:e2e                      # Playwright, from the repo root
 ```
 
@@ -50,7 +51,7 @@ pnpm test:e2e                      # Playwright, from the repo root
 
 ## Gotchas
 
-- `apps/web/tests/` is the only collected test directory. Vitest includes `apps/**/tests/**`, so a test placed beside its source never runs.
+- `apps/web/tests/` is the only collected test directory. The root Vitest `web` project includes `apps/web/tests/**`, so a test placed beside its source never runs.
 - Build order is load bearing: typecheck, client build, SSR build, then prerender. The prerender step deletes `dist-ssr` and reads `.zoption-build/deployment.json` written by the client build.
 - The build fails closed. `ZOPTION_DEPLOY_ENV` is required when `CF_PAGES=1`, a non production build must pass explicit `VITE_*` values, and production must point at `https://api.zoption.site`.
 - Any new external origin needs an entry in `deployment-config.ts`; the CSP check fails the build on an unapproved wildcard.

@@ -1,3 +1,1 @@
-import { CategoriesScreen } from "@/features/setup/CategoriesScreen";
-
-export default CategoriesScreen;
+export { CategoriesScreen as default } from "@/features/setup/CategoriesScreen";

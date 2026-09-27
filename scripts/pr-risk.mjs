@@ -24,13 +24,20 @@ const HIGH_RISK = [
   /(^|\/)tsconfig[^/]*\.json$/,
   /^e2e\/fixtures\//,
   // Auth, tenancy, money, billing, credentials, and sync.
-  /^apps\/api\/src\/(app|index|auth|request|rate-limit|rate-limit-do|platform-admin|account-deletion)\.ts$/,
+  /^apps\/api\/src\/(app|index|auth|request|rate-limit|rate-limit-do|platform-admin|account-deletion|composition)\.ts$/,
+  // Middleware policy (CORS, body limits, rate limits) split out of app.ts.
+  /^apps\/api\/src\/http\//,
   /^apps\/api\/src\/(billing|provider-credentials|entry)\//,
   /^apps\/api\/src\/db\/(billing|provider-credentials|mobile-sync|tenants|platform-admin|account-deletion|provider-configs)/,
-  /^apps\/api\/src\/routes\/(billing|paypal-webhooks|dodo-webhooks|provider-credentials|admin-provider-configs|platform-admin|account-deletion|ops-bug-report-egress|mobile-sync)\.ts$/,
-  /^packages\/shared\/src\/(money|sync|schemas)\.ts$/,
+  /^apps\/api\/src\/routes\/(billing|paypal-webhooks|dodo-webhooks|provider-credentials|admin-provider-configs|platform-admin|account-deletion|ops-bug-report-egress|mobile-sync|voice-stream|assistant-voice)\.ts$/,
+  // Single-use tickets authenticate the live voice WebSocket in place of the bearer token.
+  /^apps\/api\/src\/db\/voice-tickets/,
+  /^packages\/shared\/src\/(money|sync|schemas|limits)(\.ts$|\/)/,
   /^apps\/mobile\/src\/(auth|db|sync)\//,
   /^apps\/web\/src\/auth\//,
+  // Bearer attachment, refresh retry, and sign-out once lib/api.ts is split.
+  /^apps\/web\/src\/lib\/api\/transport\.ts$/,
+  /^apps\/mobile\/src\/features\/auth\//,
   /^apps\/web\/public\/_headers$/,
 ];
 
