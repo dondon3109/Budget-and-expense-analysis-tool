@@ -25,7 +25,8 @@ The Cloudflare Worker that owns authentication enforcement, tenant data, and fin
 | `src/auth.ts`                   | Supabase JWT verification against the project JWKS                                 |
 | `src/readiness.ts`              | Required binding validation for `/health`, the queue, and the cron entries         |
 | `src/db/`                       | One repository per entity; tenant data methods take `tenantId`                     |
-| `src/db/mobile-sync.ts`         | Route facing sync facade; protocol, read, and compaction sit beside it             |
+| `src/db/mobile-sync.ts`         | Route facing sync facade; owns the push loop and its batch                         |
+| `src/db/mobile-sync/`           | Protocol, read, compaction, and the `push/` handlers beside the facade             |
 | `src/routes/`                   | Hono route modules, one per surface, mounted in `src/app.ts`                       |
 | `../../db/migrations/`          | Forward only SQL migrations that Wrangler applies in file name order               |
 
