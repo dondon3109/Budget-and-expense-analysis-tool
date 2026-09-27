@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { GOAL_AND_DEBT_MAX_MINOR } from "../limits";
 import { assistantSpeechVoices, transactionKinds } from "../types";
 import { isoDateSchema } from "./common";
 
@@ -205,7 +206,8 @@ export const decimalMoneyStringSchema = z
   .string()
   .trim()
   .regex(/^\d+(?:\.\d{1,2})?$/, "Use a positive amount with no more than two decimals.")
-  .refine((value) => Number(value) <= 9_000_000_000_000, "The amount is too large.");
+  // Assistant tools take goal and debt amounts in major units, so the cap is the minor-unit cap / 100.
+  .refine((value) => Number(value) <= GOAL_AND_DEBT_MAX_MINOR / 100, "The amount is too large.");
 
 const assistantDebtProjectionItemSchema = z
   .object({
