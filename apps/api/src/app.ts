@@ -1,12 +1,4 @@
-import {
-  cashflowTrendQuerySchema,
-  dashboardQuerySchema,
-  type CashflowTrend,
-  type CashflowTrendQuery,
-  type DashboardSummary,
-  type TransferFeeInsight,
-  type redactBugReport,
-} from "@zoption/shared";
+import type { redactBugReport } from "@zoption/shared";
 import { Hono } from "hono";
 
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
@@ -74,7 +66,6 @@ import {
   createBillingWebhookRateLimit,
   createSupportRateLimit,
 } from "./http/rate-limit-policy";
-import { parseInput } from "./request";
 import { servePublicAvatar } from "./avatars";
 import { boundRateLimiter, type RateLimiter } from "./rate-limit";
 import { createAvatarRoutes } from "./routes/avatars";
@@ -92,6 +83,12 @@ import {
   createAuthenticatedCustomerReviewRoutes,
   createPublicCustomerReviewRoutes,
 } from "./routes/customer-reviews";
+import {
+  createDashboardRoutes,
+  type CashflowTrendLoader,
+  type DashboardLoader,
+  type TransferFeeLoader,
+} from "./routes/dashboard";
 import { createDebtRoutes } from "./routes/debts";
 import { createAiEntryRoutes } from "./routes/ai-entry";
 import { createCalendarEventRoutes } from "./routes/events";
@@ -116,25 +113,6 @@ import { createBugReportService, type BugReportService } from "./support/bug-rep
 import { createBugReportEgressRoutes } from "./routes/ops-bug-report-egress";
 import { createTransactionRoutes } from "./routes/transactions";
 import type { AppEnvironment, Bindings } from "./types";
-
-type DashboardLoader = (
-  env: Bindings,
-  tenantId: string,
-  period: { from: string; to: string },
-  accountId?: string,
-) => Promise<DashboardSummary>;
-
-type CashflowTrendLoader = (
-  env: Bindings,
-  tenantId: string,
-  query: CashflowTrendQuery,
-) => Promise<CashflowTrend>;
-
-type TransferFeeLoader = (
-  env: Bindings,
-  tenantId: string,
-  referenceDate: string,
-) => Promise<TransferFeeInsight>;
 
 export interface AppOptions {
   dashboardLoader?: DashboardLoader;
@@ -345,39 +323,13 @@ export function createApp(options: AppOptions = {}) {
     });
   });
 
-  app.get("/api/app/dashboard", async (context) => {
-    const input = parseInput(
-      dashboardQuerySchema,
-      context.req.query(),
-      "Choose a valid dashboard date range.",
-    );
-    return context.json(await dashboardLoader(context.env, context.get("tenant").tenantId, input));
-  });
-
-  app.get("/api/app/dashboard/cashflow-trend", async (context) => {
-    const input = parseInput(
-      cashflowTrendQuerySchema,
-      context.req.query(),
-      "Choose a valid cashflow trend view.",
-    );
-    if (input.view !== "weekly") {
-      await billingStore.requirePro(
-        context.env,
-        context.get("tenant").tenantId,
-        "cashflow_analytics",
-      );
-    }
-    return context.json(
-      await cashflowTrendLoader(context.env, context.get("tenant").tenantId, input),
-    );
-  });
-
-  app.get("/api/app/dashboard/transfer-fees", async (context) => {
-    const referenceDate = new Date().toISOString().slice(0, 10);
-    return context.json(
-      await transferFeeLoader(context.env, context.get("tenant").tenantId, referenceDate),
-    );
-  });
+  app.route(
+    "/api/app/dashboard",
+    createDashboardRoutes(
+      { dashboardLoader, cashflowTrendLoader, transferFeeLoader },
+      billingStore,
+    ),
+  );
 
   for (const [provider, routes] of [
     ["paypal", createPayPalWebhookRoutes(billingStore)],
