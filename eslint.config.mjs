@@ -159,7 +159,7 @@ export default tseslint.config(
         {
           patterns: [
             {
-              regex: "^\\.\\./db/",
+              regex: "^(\\.\\./)+db/",
               allowTypeImports: true,
               message:
                 "Pass the repository into createXRoutes from src/app.ts instead of importing it.",
