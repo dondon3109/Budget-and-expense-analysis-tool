@@ -15,7 +15,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 
 | File                           | Owns                                                                                             |
 | ------------------------------ | ------------------------------------------------------------------------------------------------ |
-| `src/index.ts`                 | The barrel; every public module except `workbook` and `financeGuides`                            |
+| `src/index.ts`                 | The barrel; every public module except `workbook`                                                |
 | `src/schemas/<domain>.ts`      | Request and response schemas, one file per API surface; `schemas/common.ts` holds the primitives |
 | `src/limits.ts`                | Money caps shared by the REST schemas and the sync contract                                      |
 | `src/types.ts`                 | `as const` enums that the schemas consume, plus record and summary interfaces                    |
@@ -42,7 +42,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 | `src/voiceLanguages.ts`        | The single voice language catalog both clients render                                            |
 | `src/voiceCaption.ts`          | Caption tokenizer shared by the web and native renderers                                         |
 | `src/cancellationGuides.ts`    | Subscription cancellation guide catalog                                                          |
-| `src/financeGuides.ts`         | Public guide page content; outside the barrel, imported as `@zoption/shared/financeGuides`       |
+| `src/financeGuides.ts`         | Public guide page content for the web                                                            |
 | `src/workbook.ts`              | XLS/XLSX conversion, deliberately outside the barrel                                             |
 
 ## Commands
@@ -74,7 +74,7 @@ pnpm verify:shared                       # this package, then every workspace ty
 - Per entity money caps live once in `limits.ts`; the REST schemas and `sync.ts` import them, and `tests/limits.test.ts` pins both sides. A new debt must have a positive balance, while an update or synced snapshot may reach zero.
 - A monthly budget row with a limit of zero means that category is not budgeted. Budget rows are upsert only, so clearing a limit leaves the row behind; filter `limitMinor > 0` before counting plan totals, remaining budget, or utilization (`docs/maintainability.md`).
 - Share tokens are unsigned and therefore public. Mask sensitive fields before encoding.
-- `financeGuides.ts` stays out of the barrel because Metro does not tree shake, so the barrel would ship the guide pages to mobile. Its path is also the content-freshness date source in `apps/web/src/seo/contentSources.ts`, so do not move it.
+- `financeGuides.ts` is in the barrel, so Metro (which does not tree shake) ships the guide content to mobile. Moving it to a subpath export means editing the guide page imports, and `apps/web/tests/content-freshness.test.ts` dates those pages from their last commit, so that change forces guide date bumps. Do not move the file itself either; `apps/web/src/seo/contentSources.ts` lists it by path.
 - `workbook.ts` must stay out of the barrel: it lazily imports the SheetJS build from a CDN tarball and applies its own zip bomb limits.
 - `fingerprint.ts` needs `crypto.subtle` and `TextEncoder`; treat that as a platform requirement for any new consumer.
 

@@ -1,6 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { getFinanceGuideBySlug } from "@zoption/shared/financeGuides";
+import { getFinanceGuideBySlug } from "@zoption/shared";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { FEATURE_PAGES_LAST_UPDATED, findFeaturePage, type FeaturePagePath } from "./featurePages";

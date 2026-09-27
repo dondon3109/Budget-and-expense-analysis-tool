@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ArrowRight, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
-import { FINANCE_GUIDES, type FinanceGuide } from "@zoption/shared/financeGuides";
+import { FINANCE_GUIDES, type FinanceGuide } from "@zoption/shared";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import "./GuidesIndexPage.css";

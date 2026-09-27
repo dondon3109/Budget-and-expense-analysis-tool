@@ -1,6 +1,6 @@
 import { ArrowRight, ChevronRight, Clock } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { FINANCE_GUIDES, getFinanceGuideBySlug } from "@zoption/shared/financeGuides";
+import { FINANCE_GUIDES, getFinanceGuideBySlug } from "@zoption/shared";
 
 import { Breadcrumbs } from "../../components/navigation/Breadcrumbs";
 import { PublicHeader } from "../../components/navigation/PublicHeader";

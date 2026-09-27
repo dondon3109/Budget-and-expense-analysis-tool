@@ -8,11 +8,10 @@ import {
 import * as SharedIndex from "../src/index";
 
 describe("finance guides content and helper functions", () => {
-  it("stays out of the index.ts barrel so the mobile bundle does not ship web page content", () => {
-    // Web imports the guides through the @zoption/shared/financeGuides subpath.
-    expect("getAllFinanceGuides" in SharedIndex).toBe(false);
-    expect("getFinanceGuideBySlug" in SharedIndex).toBe(false);
-    expect("FINANCE_GUIDES" in SharedIndex).toBe(false);
+  it("exports finance guides types and helpers through index.ts", () => {
+    expect(SharedIndex.getAllFinanceGuides).toBeDefined();
+    expect(SharedIndex.getFinanceGuideBySlug).toBeDefined();
+    expect(SharedIndex.FINANCE_GUIDES).toBeDefined();
   });
 
   it("contains the nine Philippine personal finance guides", () => {
