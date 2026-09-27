@@ -4,15 +4,13 @@ import {
   type CashflowForecastOptions,
   type CashflowForecastResult,
 } from "@zoption/shared";
-import { useQuery } from "@tanstack/react-query";
 import { CalendarClock, ChevronRight, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { getSubscriptions } from "../../lib/api";
 import { currentMonth, monthStart } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
-import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { useSubscriptions } from "../../queries/subscriptions";
 import "./DashboardToolCards.css";
 
 export interface DashboardToolCardsProps {
@@ -53,10 +51,7 @@ function projectionTone(forecast: CashflowForecastResult, renewalsLoaded: boolea
  */
 export function DashboardToolCards({ workspace, startingBalanceMinor }: DashboardToolCardsProps) {
   const subscriptionMonth = currentMonth();
-  const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, monthStart(subscriptionMonth)),
-    queryFn: () => getSubscriptions(workspace, monthStart(subscriptionMonth)),
-  });
+  const subscriptionsQuery = useSubscriptions(workspace, monthStart(subscriptionMonth));
 
   const subscriptions: CashflowForecastOptions["subscriptions"] = (
     subscriptionsQuery.data?.items ?? []

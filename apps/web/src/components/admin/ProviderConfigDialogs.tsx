@@ -12,8 +12,12 @@ import {
   previewProviderModels,
   updateProviderConfig,
 } from "../../lib/api";
-import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import {
+  invalidateAfterProviderConfigEdit,
+  invalidateAfterProviderRouteChange,
+  invalidateProviderCredentials,
+} from "../../queries/admin-providers";
 import {
   ASSISTANT_CREDENTIAL_LABELS,
   AdminProviderDialog,
@@ -335,7 +339,7 @@ export function AddConfigDialog({
             false,
           );
       if (!isCloudflare && credMode === "new") {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
+        void invalidateProviderCredentials(queryClient, workspace);
       }
       const created = await createProviderConfig(workspace, {
         service,
@@ -354,9 +358,7 @@ export function AddConfigDialog({
           message = `Added ${created.service} → ${created.displayName} (activation pending)`;
         }
       }
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerHealth(workspace) });
+      void invalidateAfterProviderRouteChange(queryClient, workspace);
       onSaved(message);
     } catch (err) {
       setError(errorMessage(err, "Failed to create configuration."));
@@ -634,10 +636,7 @@ export function EditConfigDialog({
         credentialId: linkedId,
         ...(model !== config.model ? { model } : {}),
       });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerHealth(workspace) });
+      void invalidateAfterProviderConfigEdit(queryClient, workspace);
       onSaved(`Updated configuration: ${updated.displayName}`);
     } catch (err) {
       setError(errorMessage(err, "Failed to update configuration."));

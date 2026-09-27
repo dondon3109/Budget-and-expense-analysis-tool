@@ -56,7 +56,6 @@ import {
   deleteAccount,
   getCashflowTrend,
   getDashboard,
-  getTransactions,
   getTransferFeeInsight,
   isBillingEnforcementError,
   updateAccount,
@@ -82,6 +81,8 @@ import {
   type OptimisticCacheSnapshot,
 } from "../lib/optimistic";
 import { userWorkspace } from "../lib/workspace";
+import { invalidateAfterAccountWrite } from "../queries/accounts";
+import { transactionsQueryOptions } from "../queries/transactions";
 import "./DashboardPage.css";
 
 export function isDashboardEmpty(
@@ -281,8 +282,7 @@ export function DashboardPage() {
     sortDirection: "desc",
   };
   const transactionHistoryQuery = useQuery({
-    queryKey: queryKeys.transactions(workspace, historyQuery),
-    queryFn: () => getTransactions(workspace, historyQuery),
+    ...transactionsQueryOptions(workspace, historyQuery),
     placeholderData: keepPreviousData,
   });
   const billingSummary = useBillingSummary(workspace);
@@ -360,11 +360,7 @@ export function DashboardPage() {
   }
 
   const refreshAccountData = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
-    ]);
+    await invalidateAfterAccountWrite(queryClient, workspace);
   };
   const dashboardSummaryKey = queryKeys.allDashboardSummaries(workspace);
 

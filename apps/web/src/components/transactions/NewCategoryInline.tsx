@@ -7,6 +7,7 @@ import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { createCategory, isBillingEnforcementError } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { invalidateCategoriesAndBilling } from "../../queries/categories";
 import { categoryPalette } from "./CategoryManager";
 
 interface NewCategoryInlineProps {
@@ -41,10 +42,7 @@ export function NewCategoryInline({
         (current) =>
           current && !current.some((item) => item.id === saved.id) ? [...current, saved] : current,
       );
-      void Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.allCategories(workspace) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
-      ]);
+      void invalidateCategoriesAndBilling(queryClient, workspace);
       onCreated(saved);
     },
     onError: (mutationError) => {

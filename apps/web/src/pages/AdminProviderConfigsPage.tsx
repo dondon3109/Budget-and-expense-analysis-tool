@@ -32,16 +32,20 @@ import {
   activateProviderConfig,
   deleteProviderConfig,
   deleteProviderCredential,
-  getProviderConfigAudits,
-  getProviderConfigs,
-  getProviderCredentials,
-  getProviderHealth,
   reorderProviderConfigs,
   testProviderCredential,
   updateProviderConfig,
 } from "../lib/api";
-import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import {
+  invalidateAfterProviderConfigUpdate,
+  invalidateAfterProviderRouteChange,
+  invalidateProviderCredentials,
+  providerConfigAuditsQueryOptions,
+  providerConfigsQueryOptions,
+  providerCredentialsQueryOptions,
+  providerHealthQueryOptions,
+} from "../queries/admin-providers";
 import type { ProviderConfig, ProviderCredentialWithUsage, ProviderService } from "@zoption/shared";
 import "./AdminProviderConfigsPage.css";
 
@@ -114,28 +118,24 @@ export function AdminProviderConfigsPage() {
   const [deleteCred, setDeleteCred] = useState<ProviderCredentialWithUsage | null>(null);
 
   const configsQuery = useQuery({
-    queryKey: queryKeys.providerConfigs(workspace),
-    queryFn: () => getProviderConfigs(workspace),
+    ...providerConfigsQueryOptions(workspace),
     enabled: isAdmin,
     refetchInterval: 15_000,
   });
 
   const credentialsQuery = useQuery({
-    queryKey: queryKeys.providerCredentials(workspace),
-    queryFn: () => getProviderCredentials(workspace),
+    ...providerCredentialsQueryOptions(workspace),
     enabled: isAdmin,
     refetchInterval: 15_000,
   });
 
   const auditsQuery = useQuery({
-    queryKey: queryKeys.providerConfigAudits(workspace),
-    queryFn: () => getProviderConfigAudits(workspace),
+    ...providerConfigAuditsQueryOptions(workspace),
     enabled: isAdmin,
   });
 
   const healthQuery = useQuery({
-    queryKey: queryKeys.providerHealth(workspace),
-    queryFn: () => getProviderHealth(workspace),
+    ...providerHealthQueryOptions(workspace),
     enabled: isAdmin,
     refetchInterval: 20_000,
   });
@@ -148,11 +148,7 @@ export function AdminProviderConfigsPage() {
       );
       setErrorMsg(undefined);
       setConfirmActivate(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
+      void invalidateAfterProviderRouteChange(queryClient, workspace);
     },
     onError: (err: unknown) => setErrorMsg(errorMessage(err, "Activation failed.")),
   });
@@ -163,8 +159,7 @@ export function AdminProviderConfigsPage() {
     onSuccess: () => {
       setFeedback("Updated enabled state.");
       setErrorMsg(undefined);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
+      void invalidateAfterProviderConfigUpdate(queryClient, workspace);
     },
     onError: (err: unknown) => setErrorMsg(errorMessage(err, "Update failed.")),
   });
@@ -175,8 +170,7 @@ export function AdminProviderConfigsPage() {
     onSuccess: () => {
       setFeedback("Fallback order updated.");
       setErrorMsg(undefined);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
+      void invalidateAfterProviderConfigUpdate(queryClient, workspace);
     },
     onError: (err: unknown) => setErrorMsg(errorMessage(err, "Reorder failed.")),
   });
@@ -187,11 +181,7 @@ export function AdminProviderConfigsPage() {
       setFeedback(`Deleted configuration: ${deleted.displayName}`);
       setErrorMsg(undefined);
       setDeleteConfig(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigAudits(workspace) });
-      void queryClient.invalidateQueries({
-        queryKey: queryKeys.providerHealth(workspace),
-      });
+      void invalidateAfterProviderRouteChange(queryClient, workspace);
     },
     onError: (err: unknown) => setErrorMsg(errorMessage(err, "Delete configuration failed.")),
   });
@@ -202,7 +192,7 @@ export function AdminProviderConfigsPage() {
       setFeedback("Credential deleted.");
       setErrorMsg(undefined);
       setDeleteCred(null);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
+      void invalidateProviderCredentials(queryClient, workspace);
     },
     onError: (err: unknown) => setErrorMsg(errorMessage(err, "Delete credential failed.")),
   });
