@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react-native";
+import { Text } from "react-native";
 
 import { useSessionSnapshot, type SessionContextValue } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
@@ -26,6 +27,9 @@ jest.mock("@/sync/sync-state", () => ({
   SyncProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+// Stands in for the route Stack the layout passes as children.
+const workspaceRoutes = <Text>Workspace routes</Text>;
+
 // The layout only reads status/subject; the provider value carries far more.
 const session = (snapshot: {
   status: SessionContextValue["status"];
@@ -52,10 +56,11 @@ describe("authenticated layout session gate", () => {
   it("holds a deep-linked route while the stored session is still loading", async () => {
     jest.mocked(useSessionSnapshot).mockReturnValue(session({ status: "loading", subject: null }));
 
-    await render(<AuthenticatedGate />);
+    await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
 
     // Redirecting here is what dropped the widget's payload and transcript.
     expect(screen.getByText("Restoring your session…")).toBeTruthy();
+    expect(screen.queryByText("Workspace routes")).toBeNull();
   });
 
   it("redirects only once the session has resolved signed-out", async () => {
@@ -63,9 +68,10 @@ describe("authenticated layout session gate", () => {
       .mocked(useSessionSnapshot)
       .mockReturnValue(session({ status: "signed-out", subject: null }));
 
-    await render(<AuthenticatedGate />);
+    await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
 
     expect(screen.queryByText("Restoring your session…")).toBeNull();
+    expect(screen.queryByText("Workspace routes")).toBeNull();
   });
 
   it("renders the authenticated workspace once signed in", async () => {
@@ -73,8 +79,9 @@ describe("authenticated layout session gate", () => {
       .mocked(useSessionSnapshot)
       .mockReturnValue(session({ status: "signed-in", subject: "user-1" }));
 
-    await render(<AuthenticatedGate />);
+    await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
 
     expect(screen.queryByText("Restoring your session…")).toBeNull();
+    expect(await screen.findByText("Workspace routes")).toBeTruthy();
   });
 });
