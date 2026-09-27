@@ -10,10 +10,10 @@ import {
   createAuthVerifier,
   createTenantResolver,
   createAccountDeletionService,
-  createAllowedRateLimiter,
   createAppWithFakes,
   privateHeaders,
 } from "./helpers/app-fakes";
+import { allowedRateLimiter } from "./helpers/rate-limiter";
 
 describe("API foundation", () => {
   it("reports readiness", async () => {
@@ -271,7 +271,7 @@ describe("API foundation", () => {
 
   it("uses the import-specific tenant rate limit", async () => {
     const imports = createImportStore();
-    const rateLimiter = createAllowedRateLimiter();
+    const rateLimiter = allowedRateLimiter();
     const app = createAppWithFakes({ imports, rateLimiter });
     await app.request("/api/app/imports/preview", {
       method: "POST",

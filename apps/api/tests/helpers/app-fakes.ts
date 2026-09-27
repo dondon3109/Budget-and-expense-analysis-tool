@@ -33,8 +33,8 @@ import type { ImportRepository } from "../../src/db/imports";
 import type { SubscriptionRepository } from "../../src/db/subscriptions";
 import type { TenantResolver } from "../../src/db/tenants";
 import type { TransactionRepository } from "../../src/db/transactions";
-import type { RateLimiter } from "../../src/rate-limit";
 import type { Bindings } from "../../src/types";
+import { allowedRateLimiter } from "./rate-limiter";
 
 // Fixtures and fake dependencies for the createApp route suites (app-*.test.ts). Each fake store
 // is a fresh set of vi.fn spies, so a test can assert on or override one without leaking.
@@ -374,17 +374,6 @@ export function createAccountDeletionService(): AccountDeletionService {
   };
 }
 
-export function createAllowedRateLimiter(): RateLimiter {
-  return {
-    consume: vi.fn(async () => ({
-      allowed: true,
-      limit: 60,
-      remaining: 59,
-      retryAfterSeconds: 60,
-    })),
-  };
-}
-
 export function createAllowedBillingRepository(): BillingRepository {
   return {
     getSummary: vi.fn(async () => ({
@@ -438,7 +427,7 @@ export function createAppWithFakes(options: AppOptions = {}) {
     readinessCheck: vi.fn().mockResolvedValue(undefined),
     authVerifier: createAuthVerifier(),
     tenantResolver: createTenantResolver(),
-    rateLimiter: createAllowedRateLimiter(),
+    rateLimiter: allowedRateLimiter(),
     billing: createAllowedBillingRepository(),
     ...options,
   });
