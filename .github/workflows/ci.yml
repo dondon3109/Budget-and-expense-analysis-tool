@@ -39,6 +39,8 @@ jobs:
       # setting lives in the command here exactly as it does in the root verify script.
       - run: NODE_OPTIONS=--max-old-space-size=8192 pnpm lint
       - run: pnpm format:check
+      # File size ceilings and one-line mobile routes (scripts/check-structure.mjs).
+      - run: node scripts/check-structure.mjs
       - run: pnpm typecheck
 
   unit:

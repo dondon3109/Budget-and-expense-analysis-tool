@@ -1,3 +1,1 @@
-import { SupportScreen } from "@/features/support/SupportScreen";
-
-export default SupportScreen;
+export { SupportScreen as default } from "@/features/support/SupportScreen";

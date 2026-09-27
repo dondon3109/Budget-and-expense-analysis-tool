@@ -1,3 +1,1 @@
-import { AssistantScreen } from "@/features/assistant/AssistantScreen";
-
-export default AssistantScreen;
+export { AssistantScreen as default } from "@/features/assistant/AssistantScreen";

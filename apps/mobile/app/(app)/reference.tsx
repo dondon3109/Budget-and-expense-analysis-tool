@@ -1,3 +1,1 @@
-import { ReferenceEditorScreen } from "@/features/setup/ReferenceEditorScreen";
-
-export default ReferenceEditorScreen;
+export { ReferenceEditorScreen as default } from "@/features/setup/ReferenceEditorScreen";

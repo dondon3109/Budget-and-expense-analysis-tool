@@ -51,7 +51,9 @@ export function AdjustBalanceModal({
     (account.balanceMinor != null ? account.balanceMinor : 0);
 
   const categoriesQuery = useQuery({
-    queryKey: workspace ? queryKeys.categories(workspace, true) : ["categories"],
+    queryKey: workspace
+      ? queryKeys.categories(workspace, true)
+      : queryKeys.withoutWorkspace("categories"),
     queryFn: () => (workspace ? getCategories(workspace, true) : Promise.resolve([])),
     enabled: Boolean(workspace),
   });

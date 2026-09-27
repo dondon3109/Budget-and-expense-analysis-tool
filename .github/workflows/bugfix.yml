@@ -118,7 +118,8 @@ jobs:
           Fix the underlying bug in this repository:
           - Follow the conventions in AGENTS.md and in the nearest nested AGENTS.md.
           - Reproduce the problem, find the root cause, and make the smallest change that fixes it.
-          - Add or update a focused test, run it with pnpm vitest run <paths>, and make it pass.
+          - Add or update a focused test, run it with pnpm vitest run <paths> (or
+            pnpm test:mobile <paths> for apps/mobile, whose tests are Jest), and make it pass.
             Do not run the end to end suite.
           - Any email address a test needs uses example.com or a .test domain.
           - Write the pull request body to .bugfix-pr-body.md in the repository root. Keep it
@@ -128,13 +129,13 @@ jobs:
           TASK
           )"
           # The agent reads user text and holds the model key, so it gets file tools and the
-          # focused test runner only, with no general shell and no network tool. A tool outside
+          # focused test runners only, with no general shell and no network tool. A tool outside
           # this list is refused, since no terminal can approve it. This narrows the exposure
           # rather than closing it: a test the agent writes still runs with the key in its
           # environment, and a subscription token has no spend cap, so revoke and reissue it at
           # any sign of misuse.
           claude -p "$task" --model claude-opus-5-5 --permission-mode acceptEdits \
-            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(pnpm vitest run:*),Bash(git diff:*),Bash(git status:*)"
+            --allowedTools "Read,Edit,Write,Glob,Grep,Bash(pnpm vitest run:*),Bash(pnpm test:mobile:*),Bash(git diff:*),Bash(git status:*)"
 
       - name: Collect the draft
         env:

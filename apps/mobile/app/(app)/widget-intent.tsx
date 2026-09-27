@@ -1,3 +1,1 @@
-import { WidgetIntentScreen } from "@/features/widget/WidgetIntentScreen";
-
-export default WidgetIntentScreen;
+export { WidgetIntentScreen as default } from "@/features/widget/WidgetIntentScreen";

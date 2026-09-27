@@ -366,7 +366,7 @@ export function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
     ]);
   };
-  const dashboardSummaryKey = [...queryKeys.dashboard(workspace), "summary"] as const;
+  const dashboardSummaryKey = queryKeys.allDashboardSummaries(workspace);
 
   const updateAccountOptimistically = async (
     updateAccounts: (current: AccountRecord[] | undefined) => AccountRecord[] | undefined,

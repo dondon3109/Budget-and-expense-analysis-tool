@@ -32,7 +32,8 @@ pnpm --filter @zoption/api dev        # wrangler dev on 127.0.0.1:8787
 pnpm --filter @zoption/api dev:lan    # wrangler dev on 0.0.0.0:8787, for device testing over Wi-Fi
 pnpm --filter @zoption/api build      # wrangler deploy --dry-run
 pnpm --filter @zoption/api typecheck
-pnpm test                             # from the repo root; there is no api level vitest config
+pnpm --filter @zoption/api test       # the root Vitest `api` project; append a path to filter
+pnpm verify:api                       # typecheck, lint, format, and tests for this package
 pnpm db:migrate:local                 # apply db/migrations to the local D1 database
 ```
 

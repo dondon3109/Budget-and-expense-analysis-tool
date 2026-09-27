@@ -1,5 +1,1 @@
-import { TutorialsScreen } from "@/features/tutorials/TutorialsScreen";
-
-export default function TutorialsRoute() {
-  return <TutorialsScreen />;
-}
+export { TutorialsScreen as default } from "@/features/tutorials/TutorialsScreen";

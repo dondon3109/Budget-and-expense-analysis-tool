@@ -1,3 +1,1 @@
-import { ReferenceConflictScreen } from "@/features/setup/ReferenceConflictScreen";
-
-export default ReferenceConflictScreen;
+export { ReferenceConflictScreen as default } from "@/features/setup/ReferenceConflictScreen";

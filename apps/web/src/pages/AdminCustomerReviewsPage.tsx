@@ -126,7 +126,7 @@ export function AdminCustomerReviewsPage() {
 
   async function refreshDashboard() {
     await queryClient.invalidateQueries({
-      queryKey: [...queryKeys.workspace(workspace), "admin", "customer-reviews"],
+      queryKey: queryKeys.allAdminCustomerReviews(workspace),
     });
   }
 

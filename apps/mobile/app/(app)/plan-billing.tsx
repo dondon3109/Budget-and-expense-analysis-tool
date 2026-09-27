@@ -1,3 +1,1 @@
-import { BillingScreen } from "@/features/billing/BillingScreen";
-
-export default BillingScreen;
+export { BillingScreen as default } from "@/features/billing/BillingScreen";

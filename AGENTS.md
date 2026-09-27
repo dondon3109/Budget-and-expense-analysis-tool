@@ -53,13 +53,18 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 
 ```bash
 pnpm install
-pnpm verify        # workspace links, typecheck, lint, format check, Vitest, mobile Jest; run before reporting done
-pnpm dev           # api, web, and mobile together
-pnpm test          # Vitest (apps/**/tests, packages/**/tests, scripts)
-pnpm test:mobile   # colocated mobile Jest suites
-pnpm test:e2e      # Playwright; applies local D1 migrations first
-pnpm format        # prettier --write
+pnpm verify          # workspace links, structure check, typecheck, lint, format check, Vitest, mobile Jest; run before reporting done
+pnpm verify:changed  # inner loop: only the scoped checks the current diff needs (--dry-run prints the plan)
+pnpm verify:api      # also verify:web, verify:mobile, verify:shared, verify:scripts
+pnpm dev             # api, web, and mobile together
+pnpm test            # Vitest projects: api, web, shared, scripts
+pnpm vitest run --project api tests/goals   # one project, filtered by path
+pnpm test:mobile     # colocated mobile Jest suites; pass a path to filter
+pnpm test:e2e        # Playwright; applies local D1 migrations first
+pnpm format          # prettier --write
 ```
+
+Always run Vitest from the repo root (or through a package `test` script, which points at the root config). `node scripts/check-structure.mjs` enforces a 1000 line limit per file and one-line mobile route files; split a file rather than raising its ceiling. [`scripts/README.md`](scripts/README.md) lists every script.
 
 ## Package guides
 
