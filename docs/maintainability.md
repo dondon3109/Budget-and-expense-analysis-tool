@@ -69,7 +69,7 @@ These lists name every file that knows about an entity. The easy ones to miss ar
 ### REST-only entity
 
 1. **Schema:** add a new `db/migrations/NNNN_<name>.sql`, with indexes that start with `tenant_id`, and mirror the table in `db/schema.ts`.
-2. **Shared:** add the record type and any enums to `packages/shared/src/types.ts`, and strict request schemas to `packages/shared/src/schemas.ts`.
+2. **Shared:** add the record type and any enums to `packages/shared/src/types.ts`, and strict request schemas to `packages/shared/src/schemas/<domain>.ts`.
 3. **Repository:** create `apps/api/src/db/<entity>.ts`. Every method takes `tenantId`.
 4. **Route:** create `apps/api/src/routes/<entity>.ts` with `createXRoutes(repository)`. In `apps/api/src/app.ts`, add the `AppOptions` field, the default, and the mount.
 5. **Account lifecycle:**
@@ -89,7 +89,7 @@ These lists name every file that knows about an entity. The easy ones to miss ar
 
 Do everything in the REST list above, then add these steps:
 
-1. **Sync contract:** in `packages/shared/src/sync.ts`, add the entity type, the input, update, and snapshot schemas, and the money caps. Keep the caps in step with `schemas.ts`.
+1. **Sync contract:** in `packages/shared/src/sync.ts`, add the entity type, the input, update, and snapshot schemas, and use the money caps from `packages/shared/src/limits.ts` rather than new literals.
 2. **Server schema:** a migration adds the `revision` column and the change-log triggers. Copy `db/migrations/0039_mobile_sync_goals.sql`.
 3. **Server sync:** add the snapshot reader, business rejection, and push mutation in `apps/api/src/db/mobile-sync.ts`. Pull and snapshot in `apps/api/src/db/mobile-sync/read.ts` are generic over the change log. Edit read.ts only if the new entity must be applied before others: it orders accounts and categories first.
 4. **Mobile schema:** add a local table in `apps/mobile/src/db/migrations.ts`. It is append-only, so add the entry and bump `LOCAL_SCHEMA_VERSION`.

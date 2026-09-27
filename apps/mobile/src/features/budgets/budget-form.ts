@@ -1,4 +1,8 @@
-import { MoneyParseError, parseAmountToMinor } from "@zoption/shared";
+import {
+  BUDGET_AND_SUBSCRIPTION_MAX_MINOR,
+  MoneyParseError,
+  parseAmountToMinor,
+} from "@zoption/shared";
 
 export interface BudgetFormValues {
   categoryId: string;
@@ -34,7 +38,7 @@ export function parseBudgetForm(
   if (limitMinor < 0) {
     return { success: false, errors: { amount: "Enter a positive budget amount." } };
   }
-  if (limitMinor > 1_000_000_000_00) {
+  if (limitMinor > BUDGET_AND_SUBSCRIPTION_MAX_MINOR) {
     return { success: false, errors: { amount: "That amount is above the supported limit." } };
   }
   if (!values.categoryId.trim()) {

@@ -1,6 +1,6 @@
 import { type ReactElement } from "react";
 import { Route, Routes } from "react-router-dom";
-import { FINANCE_GUIDES } from "@zoption/shared";
+import { FINANCE_GUIDES } from "@zoption/shared/financeGuides";
 
 import { CookiePolicyPage } from "./pages/legal/CookiePolicyPage";
 import { FaqPage } from "./pages/faq/FaqPage";

@@ -3,7 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { FINANCE_GUIDES, getFinanceGuideBySlug } from "@zoption/shared";
+import { FINANCE_GUIDES, getFinanceGuideBySlug } from "@zoption/shared/financeGuides";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 

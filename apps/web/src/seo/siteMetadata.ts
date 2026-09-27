@@ -6,7 +6,11 @@ import {
 } from "../pages/features/featurePages";
 import { findImportGuide } from "../pages/import/importGuides";
 import { ANDROID_RELEASE } from "../releases/androidRelease";
-import { FINANCE_GUIDES, getFinanceGuideBySlug, type FinanceGuide } from "@zoption/shared";
+import {
+  FINANCE_GUIDES,
+  getFinanceGuideBySlug,
+  type FinanceGuide,
+} from "@zoption/shared/financeGuides";
 
 export const SITE_ORIGIN = "https://zoption.site";
 export const SITE_NAME = "Zoption";

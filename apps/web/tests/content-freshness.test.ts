@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-import { FINANCE_GUIDES } from "@zoption/shared";
+import { FINANCE_GUIDES } from "@zoption/shared/financeGuides";
 import { describe, expect, it } from "vitest";
 
 import { CONTENT_SOURCES } from "../src/seo/contentSources";
