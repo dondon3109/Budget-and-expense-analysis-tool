@@ -892,5 +892,3 @@ export function createFinancialReader(
     },
   };
 }
-
-export const financialReader = createFinancialReader();

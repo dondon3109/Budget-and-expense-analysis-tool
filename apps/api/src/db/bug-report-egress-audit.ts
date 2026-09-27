@@ -44,11 +44,6 @@ function toCommaJoined(value: string | readonly string[] | undefined | null): st
   return String(value);
 }
 
-export function splitCommaSeparated(value: string): string[] {
-  if (!value) return [];
-  return value.split(",").filter((token) => token.length > 0);
-}
-
 export const bugReportEgressAuditRepository: BugReportEgressAuditRepository = {
   async record(env, entry) {
     const id = crypto.randomUUID();

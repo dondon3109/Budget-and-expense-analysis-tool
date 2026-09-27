@@ -342,12 +342,3 @@ export class AnthropicProvider implements AssistantProvider {
     };
   }
 }
-
-export function createAnthropicProvider(
-  model: string,
-  apiKey?: string,
-  endpoint?: string,
-  fetcher: typeof fetch = fetch,
-): AssistantProvider {
-  return new AnthropicProvider(model, apiKey, endpoint, fetcher);
-}

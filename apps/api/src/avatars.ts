@@ -78,10 +78,7 @@ export async function putAvatarObject(
   });
 }
 
-export async function getAvatarObject(
-  bucket: R2Bucket,
-  path: string,
-): Promise<R2ObjectBody | null> {
+async function getAvatarObject(bucket: R2Bucket, path: string): Promise<R2ObjectBody | null> {
   return bucket.get(avatarObjectKey(path));
 }
 
