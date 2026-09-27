@@ -2,16 +2,10 @@ import type { redactBugReport } from "@zoption/shared";
 import { Hono } from "hono";
 
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { deepSeekProvider } from "./assistant/deepseek";
 import { createFinancialReader } from "./assistant/financial-reader";
 import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
 import { createAssistantService, type AssistantService } from "./assistant/service";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { cloudflareWhisperProvider } from "./assistant/cloudflare-whisper";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { fishAudioProvider } from "./assistant/fish-audio";
 import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import { providerRegistry } from "./provider-registry";
@@ -179,7 +173,7 @@ export function createApp(options: AppOptions = {}) {
   const assistantModelMemoryUsage =
     options.assistantModelMemoryUsage ?? assistantModelMemoryUsageRepository;
   // Dynamic provider that resolves the active DB config on every request (with 30s cache).
-  // Falls back to env-based deepSeekProvider when DB is unavailable or before migration.
+  // Falls back to the env-configured provider when the DB is unavailable or before migration.
   const dynamicAssistantProvider: AssistantProvider =
     options.assistantProvider ??
     ({

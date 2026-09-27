@@ -22,7 +22,7 @@ const TAGALOG_COMPLIANCE_PATTERN = tagalogWordPattern(
   "abogado",
 );
 
-export function isTagalogComplianceMessage(message: string): boolean {
+function isTagalogComplianceMessage(message: string): boolean {
   return TAGALOG_COMPLIANCE_PATTERN.test(message);
 }
 

@@ -65,13 +65,3 @@ export class DeepSeekProvider implements AssistantProvider {
     }
   }
 }
-
-export const deepSeekProvider = new DeepSeekProvider();
-
-export function createDeepSeekProvider(
-  model?: string,
-  fetcher: typeof fetch = fetch,
-  apiKey?: string,
-): AssistantProvider {
-  return new DeepSeekProvider(fetcher, model, apiKey);
-}
