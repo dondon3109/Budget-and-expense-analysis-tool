@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import { BUDGET_AND_SUBSCRIPTION_MAX_MINOR, GOAL_AND_DEBT_MAX_MINOR } from "../src/limits";
-import { budgetLimitMinorSchema, debtInputSchema, debtUpdateSchema } from "../src/schemas/planning";
+import {
+  budgetLimitMinorSchema,
+  debtInputSchema,
+  debtUpdateSchema,
+  financialGoalInputSchema,
+  financialGoalUpdateSchema,
+} from "../src/schemas/planning";
+import { decimalMoneyStringSchema } from "../src/schemas/assistant";
 import { subscriptionInputSchema } from "../src/schemas/subscriptions";
 import {
   mobileSyncBudgetSnapshotSchema,
@@ -27,15 +34,29 @@ describe("money limits", () => {
     }
 
     const goalOrDebt = [
+      financialGoalInputSchema.shape.targetAmountMinor,
+      financialGoalInputSchema.shape.currentAmountMinor,
+      financialGoalUpdateSchema.shape.targetAmountMinor,
+      financialGoalUpdateSchema.shape.currentAmountMinor,
       mobileSyncGoalSnapshotSchema.shape.targetAmountMinor,
-      mobileSyncDebtSnapshotSchema.shape.balanceMinor,
+      mobileSyncGoalSnapshotSchema.shape.currentAmountMinor,
       debtInputSchema.shape.balanceMinor,
       debtInputSchema.shape.minimumPaymentMinor,
+      debtUpdateSchema.shape.balanceMinor,
+      debtUpdateSchema.shape.minimumPaymentMinor,
+      mobileSyncDebtSnapshotSchema.shape.balanceMinor,
+      mobileSyncDebtSnapshotSchema.shape.minimumPaymentMinor,
     ];
     for (const field of goalOrDebt) {
       expect(accepts(field, GOAL_AND_DEBT_MAX_MINOR)).toBe(true);
       expect(accepts(field, GOAL_AND_DEBT_MAX_MINOR + 1)).toBe(false);
     }
+  });
+
+  it("caps assistant tool amounts, given in major units, at the same goal and debt limit", () => {
+    const maxMajor = String(GOAL_AND_DEBT_MAX_MINOR / 100);
+    expect(decimalMoneyStringSchema.safeParse(maxMajor).success).toBe(true);
+    expect(decimalMoneyStringSchema.safeParse(`${maxMajor}.01`).success).toBe(false);
   });
 
   it("requires a positive balance to create a debt but allows a paid-off one afterwards", () => {
