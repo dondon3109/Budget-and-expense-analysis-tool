@@ -1,6 +1,6 @@
 import type { Currency } from "@zoption/shared";
 
-import type { LocalTransactionItem } from "@/db/repository";
+import type { LocalTransactionItem, TransactionKindFilter } from "@/db/repository";
 
 export interface TransactionTotals {
   incomeMinor: number;
@@ -73,4 +73,52 @@ export function transactionDayLabel(date: string): { day: string; weekday: strin
     day: String(parsed.getUTCDate()),
     weekday: parsed.toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" }),
   };
+}
+
+export const kindLabels: Record<TransactionKindFilter, string> = {
+  all: "All",
+  income: "Income",
+  expense: "Expenses",
+  transfer: "Transfers",
+};
+
+export interface CategorySummaryItem {
+  key: string;
+  name: string;
+  color: string;
+  iconEmoji: string | null;
+  currency: Currency;
+  incomeMinor: number;
+  expenseMinor: number;
+  transferMinor: number;
+}
+
+export function categorySummary(items: readonly LocalTransactionItem[]): CategorySummaryItem[] {
+  const rows = new Map<string, CategorySummaryItem>();
+  for (const item of items) {
+    const { transaction } = item;
+    const key = `${transaction.categoryId}:${transaction.currency}`;
+    const row = rows.get(key) ?? {
+      key,
+      name: transaction.categoryName,
+      color: transaction.categoryColor,
+      iconEmoji: transaction.categoryIconEmoji ?? null,
+      currency: transaction.currency,
+      incomeMinor: 0,
+      expenseMinor: 0,
+      transferMinor: 0,
+    };
+    if (transaction.kind === "income") row.incomeMinor += Math.abs(transaction.amountMinor);
+    if (transaction.kind === "expense") row.expenseMinor += Math.abs(transaction.amountMinor);
+    if (transaction.kind === "transfer") row.transferMinor += Math.abs(transaction.amountMinor);
+    rows.set(key, row);
+  }
+  return [...rows.values()].sort(
+    (left, right) =>
+      right.expenseMinor +
+        right.incomeMinor +
+        right.transferMinor -
+        (left.expenseMinor + left.incomeMinor + left.transferMinor) ||
+      left.name.localeCompare(right.name),
+  );
 }
