@@ -1,0 +1,349 @@
+import {
+  preferredTransactionAccount,
+  type AccountBalanceSummaryItem,
+  type AccountInput,
+  type DashboardSummary,
+} from "@zoption/shared";
+import { Pencil, Plus, SlidersHorizontal, Star, Trash2, WalletCards } from "lucide-react";
+
+import type { AccountMutations } from "../../hooks/useAccountMutations";
+import { isBillingEnforcementError } from "../../lib/api";
+import { trendState } from "../../lib/dashboard";
+import {
+  setDefaultSpendingAccountId,
+  useDefaultSpendingAccountId,
+} from "../../lib/defaultSpendingAccount";
+import { formatMoney } from "../../lib/formatters";
+import { UpgradePrompt } from "../billing/UpgradePrompt";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { AccountFormModal } from "./AccountFormModal";
+import { accountTypeLabel, accountTypes } from "./accountTypes";
+
+interface AccountsPanelProps {
+  accounts: AccountMutations;
+  accountBalances: DashboardSummary["accountBalances"];
+  activeAccounts: AccountBalanceSummaryItem[];
+  previousMetrics: DashboardSummary["metrics"] | undefined;
+  netChangePercent: number;
+  trendComparison: string;
+  isPro: boolean;
+  onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
+}
+
+/**
+ * The overall balance and the account list with its add form, plus the edit and remove dialogs
+ * the list opens. Styles live in AccountsPanel.css, which DashboardPage imports right after its
+ * own stylesheet to keep the cascade order.
+ */
+export function AccountsPanel({
+  accounts,
+  accountBalances,
+  activeAccounts,
+  previousMetrics,
+  netChangePercent,
+  trendComparison,
+  isPro,
+  onAdjustBalance,
+}: AccountsPanelProps) {
+  const {
+    isAddingAccount,
+    setIsAddingAccount,
+    accountName,
+    setAccountName,
+    accountType,
+    setAccountType,
+    editingAccount,
+    setEditingAccount,
+    setEditName,
+    setEditType,
+    setInterestEnabled,
+    setInterestRate,
+    setInterestFrequency,
+    setInterestPayDay,
+    removingAccount,
+    setRemovingAccount,
+    createAccountMutation,
+    updateAccountMutation,
+    removeAccountMutation,
+  } = accounts;
+  const defaultSpendingAccountId = useDefaultSpendingAccountId();
+  const defaultSpendingAccount = preferredTransactionAccount(
+    activeAccounts,
+    defaultSpendingAccountId,
+  );
+  const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
+  const overallBalanceMinor = accountBalances?.balancesByCurrency.PHP ?? 0;
+  const removalBalanceMinor = removingAccount?.balancesByCurrency.PHP ?? 0;
+  // A removed account stops being charged, so say which plans that affects before it happens.
+  const linkedSubscriptions = removingAccount?.activeSubscriptions ?? [];
+  const linkedSubscriptionWarning =
+    linkedSubscriptions.length === 1
+      ? `The active subscription ${linkedSubscriptions[0]} is paid from this account. It stops being charged once the account is removed, and Zoption emails you until you choose another account for it.`
+      : linkedSubscriptions.length > 1
+        ? `The active subscriptions ${linkedSubscriptions.join(", ")} are paid from this account. They stop being charged once the account is removed, and Zoption emails you until you choose another account for each.`
+        : null;
+
+  return (
+    <>
+      {accountBalances && (
+        <div className="dashboard-balance">
+          <section className="dashboard-balance-total" aria-labelledby="dashboard-balance-title">
+            <div className="dashboard-balance-heading">
+              <span className="dashboard-balance-icon" aria-hidden="true">
+                <WalletCards size={19} />
+              </span>
+              <div>
+                <p>All accounts</p>
+                <h2 id="dashboard-balance-title">Overall balance</h2>
+              </div>
+            </div>
+            <strong>{formatMoney(accountBalances.balancesByCurrency.PHP, "PHP")}</strong>
+            {previousMetrics && (
+              <div className="dashboard-balance-trend" data-state={trendState(netChangePercent)}>
+                <span>
+                  {netChangePercent > 0 ? "+" : ""}
+                  {netChangePercent}%
+                </span>
+                <small>net cash flow {trendComparison}</small>
+              </div>
+            )}
+            <span>Calculated from your recorded transactions</span>
+            <p className="dashboard-balance-usd">
+              {formatMoney(accountBalances.balancesByCurrency.USD, "USD")} in US dollars
+            </p>
+          </section>
+          <section className="dashboard-account-breakdown" aria-label="Account management">
+            <div className="dashboard-account-breakdown-heading">
+              <span>Account balances</span>
+              <div className="dashboard-account-heading-actions">
+                <button
+                  className="dashboard-account-adjust-quick"
+                  type="button"
+                  onClick={() => activeAccounts[0] && onAdjustBalance(activeAccounts[0])}
+                  disabled={activeAccounts.length === 0}
+                  title="Adjust balance to match your real cash or bank amount"
+                >
+                  <SlidersHorizontal size={14} aria-hidden="true" /> Adjust balance
+                </button>
+                <button
+                  className="dashboard-account-add"
+                  type="button"
+                  onClick={() => setIsAddingAccount((isAdding) => !isAdding)}
+                  aria-expanded={isAddingAccount}
+                  aria-controls="add-account-form"
+                >
+                  <Plus size={14} aria-hidden="true" /> {isAddingAccount ? "Close" : "Add account"}
+                </button>
+              </div>
+            </div>
+            {isAddingAccount && (
+              <form
+                id="add-account-form"
+                className="dashboard-account-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  createAccountMutation.mutate({ name: accountName, type: accountType });
+                }}
+              >
+                <label>
+                  <span>Account name</span>
+                  <input
+                    value={accountName}
+                    onChange={(event) => setAccountName(event.target.value)}
+                    placeholder="e.g. Maya Wallet"
+                    maxLength={80}
+                    required
+                  />
+                </label>
+                <label>
+                  <span>Account type</span>
+                  <select
+                    value={accountType}
+                    onChange={(event) => setAccountType(event.target.value as AccountInput["type"])}
+                  >
+                    {accountTypes.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className="button primary"
+                  type="submit"
+                  disabled={createAccountMutation.isPending}
+                >
+                  {createAccountMutation.isPending ? "Adding…" : "Add"}
+                </button>
+                <UpgradePrompt error={createAccountMutation.error} />
+                {createAccountMutation.error &&
+                  !isBillingEnforcementError(createAccountMutation.error) && (
+                    <p className="form-error" role="alert">
+                      {createAccountMutation.error.message}
+                    </p>
+                  )}
+              </form>
+            )}
+            <ul>
+              {activeAccounts.map((account) => {
+                const isDefaultBank = account.name === "Bank";
+                const canEdit = !account.system || isDefaultBank;
+                const canRemove = !account.system;
+                const isDefaultSpending = account.id === defaultSpendingAccount?.id;
+                return (
+                  <li key={account.id}>
+                    <div className="dashboard-account-details">
+                      <span className="dashboard-account-name">
+                        {account.name}
+                        {isDefaultSpending && <em>Default</em>}
+                      </span>
+                      <span className="dashboard-account-meta">
+                        {accountTypeLabel(account.type)}
+                        {account.system && <em>Permanent</em>}
+                      </span>
+                    </div>
+                    <div className="dashboard-account-value">
+                      <span className="dashboard-account-actions">
+                        <button
+                          type="button"
+                          className="dashboard-account-default"
+                          onClick={() => setDefaultSpendingAccountId(account.id)}
+                          aria-pressed={isDefaultSpending}
+                          aria-label={`Use ${account.name} as the default spending account`}
+                          title={
+                            isDefaultSpending
+                              ? `${account.name} is the default spending account`
+                              : `Use ${account.name} as the default spending account`
+                          }
+                        >
+                          <Star
+                            size={14}
+                            aria-hidden="true"
+                            fill={isDefaultSpending ? "currentColor" : "none"}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onAdjustBalance(account)}
+                          aria-label={`Adjust balance for ${account.name}`}
+                          title={`Adjust balance for ${account.name}`}
+                        >
+                          <SlidersHorizontal size={14} aria-hidden="true" />
+                        </button>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateAccountMutation.reset();
+                              setEditingAccount(account);
+                              setEditName(account.name);
+                              setEditType(account.type);
+                              const interest =
+                                account.type === "savings" ? account.interest : undefined;
+                              setInterestEnabled(interest?.enabled ?? false);
+                              setInterestRate(
+                                interest?.annualRateBasisPoints != null
+                                  ? String(interest.annualRateBasisPoints / 100)
+                                  : "",
+                              );
+                              setInterestFrequency(interest?.frequency ?? "monthly");
+                              setInterestPayDay(interest?.payDay ?? 15);
+                            }}
+                            aria-label={`Edit ${account.name}`}
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                          </button>
+                        )}
+                        {canRemove && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeAccountMutation.reset();
+                              setRemovingAccount(account);
+                            }}
+                            aria-label={`Remove ${account.name}`}
+                          >
+                            <Trash2 size={14} aria-hidden="true" />
+                          </button>
+                        )}
+                      </span>
+                      <span className="dashboard-account-balances">
+                        <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
+                        {account.balancesByCurrency.USD !== 0 && (
+                          <em>{formatMoney(account.balancesByCurrency.USD, "USD")} USD</em>
+                        )}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+            {accountBalances.items.some((account) => account.archived) && (
+              <details className="dashboard-removed-accounts">
+                <summary>
+                  Removed accounts (
+                  {accountBalances.items.filter((account) => account.archived).length})
+                </summary>
+                <p>Removed accounts stay read-only so historical transactions remain accurate.</p>
+                <ul>
+                  {accountBalances.items
+                    .filter((account) => account.archived)
+                    .map((account) => (
+                      <li key={account.id}>
+                        <span>{account.name}</span>
+                        <span className="dashboard-account-balances">
+                          <strong>{formatMoney(account.balancesByCurrency.PHP, "PHP")}</strong>
+                          {account.balancesByCurrency.USD !== 0 && (
+                            <em>{formatMoney(account.balancesByCurrency.USD, "USD")} USD</em>
+                          )}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </details>
+            )}
+            <UpgradePrompt error={accountActionError} />
+            {accountActionError && !isBillingEnforcementError(accountActionError) && (
+              <p className="dashboard-account-error" role="alert">
+                <strong>That account change did not go through.</strong>
+                <span>{accountActionError.message}</span>
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+
+      {editingAccount && (
+        <AccountFormModal
+          accounts={accounts}
+          editingAccount={editingAccount}
+          isPro={isPro}
+          onAdjustBalance={onAdjustBalance}
+        />
+      )}
+      {removingAccount && (
+        <ConfirmDialog
+          title={`Remove ${removingAccount.name}?`}
+          consequence={
+            <>
+              Removing <strong>{removingAccount.name}</strong> takes it out of your account list, so
+              it can no longer be chosen for new transactions. Its{" "}
+              {formatMoney(removalBalanceMinor, "PHP")} balance and every transaction recorded
+              against it stay in your history as read-only records, and because your overall balance
+              is calculated from recorded transactions, the{" "}
+              {formatMoney(overallBalanceMinor, "PHP")} total does not change. This cannot be
+              undone.
+              {linkedSubscriptionWarning ? <> {linkedSubscriptionWarning}</> : null}
+            </>
+          }
+          confirmLabel="Remove account"
+          busyLabel="Removing…"
+          busy={removeAccountMutation.isPending}
+          error={removeAccountMutation.error?.message}
+          onConfirm={() => removeAccountMutation.mutate(removingAccount.id)}
+          onClose={() => setRemovingAccount(undefined)}
+        />
+      )}
+    </>
+  );
+}
