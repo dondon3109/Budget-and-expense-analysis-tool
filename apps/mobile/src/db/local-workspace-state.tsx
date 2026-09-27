@@ -11,7 +11,7 @@ import {
 
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 
-import { subscribeToLocalChanges } from "./local-workspace/change-stream";
+import { useLocalQuery } from "./local-workspace/use-local-query";
 import {
   closeLocalWorkspace,
   describeWorkspaceOpenFailure,
@@ -106,49 +106,30 @@ export function useLocalWorkspace(): LocalWorkspaceSnapshot {
   return value;
 }
 
+// Every read hook below is a thin wrapper over useLocalQuery, which owns the read, the change
+// subscription, and retry. Each keeps its own return shape. Readers are memoized because a new
+// reader re-runs the query, and list hooks share NO_ROWS so a disabled query holds one stable
+// empty value.
+const NO_ROWS: never[] = [];
+
+const readStats = (workspace: LocalWorkspace) => workspace.repository.getStats();
+
+function describeStatsFailure(cause: unknown): string {
+  return cause instanceof Error ? cause.message : "Local data could not be read.";
+}
+
 export function useLocalWorkspaceStats(): {
   stats: LocalWorkspaceStats | null;
   error: string | null;
 } {
   const { workspace } = useLocalWorkspace();
-  const [stats, setStats] = useState<LocalWorkspaceStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setStats(null);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      void workspace.repository
-        .getStats()
-        .then((next) => {
-          if (active) {
-            setStats(next);
-            setError(null);
-          }
-        })
-        .catch((cause: unknown) => {
-          if (active) {
-            setError(cause instanceof Error ? cause.message : "Local data could not be read.");
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["accounts", "categories", "transactions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [workspace]);
-
-  return { stats, error };
+  const { data, error } = useLocalQuery(workspace, {
+    read: readStats,
+    tables: ["accounts", "categories", "transactions", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: describeStatsFailure,
+  });
+  return { stats: data, error };
 }
 
 /**
@@ -163,45 +144,21 @@ export function useDashboardData(anchorDate: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [data, setData] = useState<LocalDashboardData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setData(null);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      void workspace.repository
-        .getDashboardData(anchorDate)
-        .then((next) => {
-          if (active) {
-            markStartupPhase("dashboard:data");
-            setData(next);
-            setError(null);
-          }
-        })
-        .catch(() => {
-          if (active) setError("Dashboard data could not be read from encrypted local storage.");
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["accounts", "categories", "transactions"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-    // A local day rollover moves the dashboard window, so it is a dependency.
-  }, [anchorDate, attempt, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  // A local day rollover moves the dashboard window, so the reader depends on it.
+  const read = useCallback(
+    async (current: LocalWorkspace) => {
+      const next = await current.repository.getDashboardData(anchorDate);
+      markStartupPhase("dashboard:data");
+      return next;
+    },
+    [anchorDate],
+  );
+  const { data, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["accounts", "categories", "transactions"],
+    empty: null,
+    errorMessage: "Dashboard data could not be read from encrypted local storage.",
+  });
   return { data, error, retry };
 }
 
@@ -211,45 +168,20 @@ export function useBudgetMonth(month: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [data, setData] = useState<LocalBudgetMonthData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setData(null);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      void workspace.repository
-        .getBudgetMonth(month)
-        .then((next) => {
-          if (active) {
-            setData(next);
-            setError(null);
-          }
-        })
-        .catch(() => {
-          if (active) setError("Budgets could not be read from encrypted local storage.");
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["budgets", "categories", "transactions"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, month, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const read = useCallback(
+    (current: LocalWorkspace) => current.repository.getBudgetMonth(month),
+    [month],
+  );
+  const { data, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["budgets", "categories", "transactions"],
+    empty: null,
+    errorMessage: "Budgets could not be read from encrypted local storage.",
+  });
   return { data, error, retry };
 }
+
+const readGoals = (workspace: LocalWorkspace) => workspace.repository.getGoals();
 
 export function useGoals(): {
   goals: LocalGoalItem[];
@@ -258,51 +190,14 @@ export function useGoals(): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [goals, setGoals] = useState<LocalGoalItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setGoals([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getGoals()
-        .then((next) => {
-          if (active) {
-            setGoals(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("Goals could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["financial_goals", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { goals, loading, error, retry };
+  const { data, loading, error, retry } = useLocalQuery<LocalGoalItem[]>(workspace, {
+    read: readGoals,
+    tables: ["financial_goals", "sync_outbox", "sync_conflicts"],
+    empty: NO_ROWS,
+    errorMessage: "Goals could not be read from encrypted local storage.",
+    initialLoading: true,
+  });
+  return { goals: data, loading, error, retry };
 }
 
 export function useGoal(id?: string): {
@@ -312,51 +207,18 @@ export function useGoal(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [goal, setGoal] = useState<LocalGoalItem | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setGoal(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getGoal(id)
-        .then((next) => {
-          if (active) {
-            setGoal(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The goal could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["financial_goals", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { goal, loading, error, retry };
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.repository.getGoal(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["financial_goals", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The goal could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { goal: data, loading, error, retry };
 }
 
 export function useBudgetConflict(id?: string): {
@@ -366,51 +228,19 @@ export function useBudgetConflict(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalBudgetConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getBudgetConflict(id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The preserved budget conflict could not be read from encrypted storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["budgets", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () =>
+      id ? (current: LocalWorkspace) => current.transactionMutations.getBudgetConflict(id) : null,
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["budgets", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved budget conflict could not be read from encrypted storage.",
+    initialLoading: Boolean(id),
+  });
+  return { conflict: data, loading, error, retry };
 }
 
 export function useGoalConflict(id?: string): {
@@ -420,52 +250,22 @@ export function useGoalConflict(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalGoalConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getGoalConflict(id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The preserved goal conflict could not be read from encrypted storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["financial_goals", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () =>
+      id ? (current: LocalWorkspace) => current.transactionMutations.getGoalConflict(id) : null,
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["financial_goals", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved goal conflict could not be read from encrypted storage.",
+    initialLoading: Boolean(id),
+  });
+  return { conflict: data, loading, error, retry };
 }
+
+const readDebts = (workspace: LocalWorkspace) => workspace.repository.getDebts();
 
 export function useDebts(): {
   debts: LocalDebtItem[];
@@ -474,51 +274,14 @@ export function useDebts(): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [debts, setDebts] = useState<LocalDebtItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setDebts([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getDebts()
-        .then((next) => {
-          if (active) {
-            setDebts(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("Debts could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["debts", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { debts, loading, error, retry };
+  const { data, loading, error, retry } = useLocalQuery<LocalDebtItem[]>(workspace, {
+    read: readDebts,
+    tables: ["debts", "sync_outbox", "sync_conflicts"],
+    empty: NO_ROWS,
+    errorMessage: "Debts could not be read from encrypted local storage.",
+    initialLoading: true,
+  });
+  return { debts: data, loading, error, retry };
 }
 
 export function useDebt(id?: string): {
@@ -528,51 +291,18 @@ export function useDebt(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [debt, setDebt] = useState<LocalDebtItem | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setDebt(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getDebt(id)
-        .then((next) => {
-          if (active) {
-            setDebt(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The debt could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["debts", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { debt, loading, error, retry };
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.repository.getDebt(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["debts", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The debt could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { debt: data, loading, error, retry };
 }
 
 export function useDebtConflict(id?: string): {
@@ -582,52 +312,22 @@ export function useDebtConflict(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalDebtConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getDebtConflict(id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The preserved debt conflict could not be read from encrypted storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["debts", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () =>
+      id ? (current: LocalWorkspace) => current.transactionMutations.getDebtConflict(id) : null,
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["debts", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved debt conflict could not be read from encrypted storage.",
+    initialLoading: Boolean(id),
+  });
+  return { conflict: data, loading, error, retry };
 }
+
+const readSubscriptions = (workspace: LocalWorkspace) => workspace.repository.getSubscriptions();
 
 export function useSubscriptions(): {
   subscriptions: LocalSubscriptionItem[];
@@ -636,51 +336,14 @@ export function useSubscriptions(): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [subscriptions, setSubscriptions] = useState<LocalSubscriptionItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setSubscriptions([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getSubscriptions()
-        .then((next) => {
-          if (active) {
-            setSubscriptions(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("Subscriptions could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["subscriptions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { subscriptions, loading, error, retry };
+  const { data, loading, error, retry } = useLocalQuery<LocalSubscriptionItem[]>(workspace, {
+    read: readSubscriptions,
+    tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
+    empty: NO_ROWS,
+    errorMessage: "Subscriptions could not be read from encrypted local storage.",
+    initialLoading: true,
+  });
+  return { subscriptions: data, loading, error, retry };
 }
 
 export function useSubscription(id?: string): {
@@ -690,51 +353,18 @@ export function useSubscription(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [subscription, setSubscription] = useState<LocalSubscriptionItem | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setSubscription(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getSubscription(id)
-        .then((next) => {
-          if (active) {
-            setSubscription(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The subscription could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["subscriptions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { subscription, loading, error, retry };
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.repository.getSubscription(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The subscription could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { subscription: data, loading, error, retry };
 }
 
 export function useSubscriptionConflict(id?: string): {
@@ -744,53 +374,21 @@ export function useSubscriptionConflict(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalSubscriptionConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getSubscriptionConflict(id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError(
-              "The preserved subscription conflict could not be read from encrypted storage.",
-            );
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["subscriptions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () =>
+      id
+        ? (current: LocalWorkspace) => current.transactionMutations.getSubscriptionConflict(id)
+        : null,
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved subscription conflict could not be read from encrypted storage.",
+    initialLoading: Boolean(id),
+  });
+  return { conflict: data, loading, error, retry };
 }
 
 export function useCalendarEvents(month: string): {
@@ -800,51 +398,18 @@ export function useCalendarEvents(month: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [events, setEvents] = useState<LocalEventItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setEvents([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getCalendarEvents(month)
-        .then((next) => {
-          if (active) {
-            setEvents(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("Calendar events could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["calendar_events", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, month, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { events, loading, error, retry };
+  const read = useCallback(
+    (current: LocalWorkspace) => current.repository.getCalendarEvents(month),
+    [month],
+  );
+  const { data, loading, error, retry } = useLocalQuery<LocalEventItem[]>(workspace, {
+    read,
+    tables: ["calendar_events", "sync_outbox", "sync_conflicts"],
+    empty: NO_ROWS,
+    errorMessage: "Calendar events could not be read from encrypted local storage.",
+    initialLoading: true,
+  });
+  return { events: data, loading, error, retry };
 }
 
 export function useCalendarEvent(id?: string): {
@@ -854,51 +419,18 @@ export function useCalendarEvent(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [event, setEvent] = useState<LocalEventItem | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setEvent(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getCalendarEvent(id)
-        .then((next) => {
-          if (active) {
-            setEvent(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The calendar event could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["calendar_events", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { event, loading, error, retry };
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.repository.getCalendarEvent(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["calendar_events", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The calendar event could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { event: data, loading, error, retry };
 }
 
 export function useEventConflict(id?: string): {
@@ -908,53 +440,19 @@ export function useEventConflict(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalEventConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getEventConflict(id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError(
-              "The preserved calendar event conflict could not be read from encrypted storage.",
-            );
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["calendar_events", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () =>
+      id ? (current: LocalWorkspace) => current.transactionMutations.getEventConflict(id) : null,
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["calendar_events", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved calendar event conflict could not be read from encrypted storage.",
+    initialLoading: Boolean(id),
+  });
+  return { conflict: data, loading, error, retry };
 }
 
 export function useAccountModeling(id?: string): {
@@ -964,51 +462,18 @@ export function useAccountModeling(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [modeling, setModeling] = useState<LocalAccountModeling | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setModeling(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getAccountModeling(id)
-        .then((next) => {
-          if (active) {
-            setModeling(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The account modeling data could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["accounts", "transactions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { modeling, loading, error, retry };
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.repository.getAccountModeling(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["accounts", "transactions", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The account modeling data could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { modeling: data, loading, error, retry };
 }
 
 export function useCalendarMonth(month: string): {
@@ -1018,50 +483,17 @@ export function useCalendarMonth(month: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [data, setData] = useState<LocalCalendarMonth | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setData(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.repository
-        .getCalendarMonth(month)
-        .then((next) => {
-          if (active) {
-            setData(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The calendar could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["calendar_events", "subscriptions", "transactions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, month, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const read = useCallback(
+    (current: LocalWorkspace) => current.repository.getCalendarMonth(month),
+    [month],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["calendar_events", "subscriptions", "transactions", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The calendar could not be read from encrypted local storage.",
+    initialLoading: true,
+  });
   return { month: data, loading, error, retry };
 }
 
@@ -1075,45 +507,26 @@ export function useLocalTransactions(
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [items, setItems] = useState<LocalTransactionItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setItems(null);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      void workspace.repository
-        .queryTransactions({ search, kind, month, limit: month ? 200 : undefined })
-        .then((next) => {
-          if (active) {
-            setItems(next);
-            setError(null);
-          }
-        })
-        .catch(() => {
-          if (active) setError("Transactions could not be read from encrypted local storage.");
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["accounts", "categories", "transactions"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, workspace, search, kind, month]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { items, error, retry };
+  const read = useCallback(
+    (current: LocalWorkspace) =>
+      current.repository.queryTransactions({
+        search,
+        kind,
+        month,
+        limit: month ? 200 : undefined,
+      }),
+    [search, kind, month],
+  );
+  const { data, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["accounts", "categories", "transactions"],
+    empty: null,
+    errorMessage: "Transactions could not be read from encrypted local storage.",
+  });
+  return { items: data, error, retry };
 }
+
+const readReferenceData = (workspace: LocalWorkspace) => workspace.repository.getReferenceData();
 
 export function useLocalReferenceData(): {
   data: LocalReferenceData | null;
@@ -1121,91 +534,32 @@ export function useLocalReferenceData(): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [data, setData] = useState<LocalReferenceData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setData(null);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      void workspace.repository
-        .getReferenceData()
-        .then((next) => {
-          if (active) {
-            setData(next);
-            setError(null);
-          }
-        })
-        .catch(() => {
-          if (active) setError("Accounts and categories could not be read from encrypted storage.");
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["accounts", "categories", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const { data, error, retry } = useLocalQuery(workspace, {
+    read: readReferenceData,
+    tables: ["accounts", "categories", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "Accounts and categories could not be read from encrypted storage.",
+  });
   return { data, error, retry };
 }
 
+/** Form options for a new transaction, or for editing `id`; reads even without an id. */
 export function useTransactionFormData(id?: string): {
   data: TransactionFormData | null;
   error: string | null;
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [data, setData] = useState<TransactionFormData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace) {
-      setData(null);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      void workspace.repository
-        .getTransactionFormData(id)
-        .then((next) => {
-          if (active) {
-            setData(next);
-            setError(null);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("Transaction details could not be read from encrypted local storage.");
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["accounts", "categories", "transactions", "sync_outbox"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const read = useCallback(
+    (current: LocalWorkspace) => current.repository.getTransactionFormData(id),
+    [id],
+  );
+  const { data, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["accounts", "categories", "transactions", "sync_outbox"],
+    empty: null,
+    errorMessage: "Transaction details could not be read from encrypted local storage.",
+  });
   return { data, error, retry };
 }
 
@@ -1216,51 +570,18 @@ export function useTransactionConflict(id?: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalTransactionConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getConflict(id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The preserved conflict could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      ["transactions", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.transactionMutations.getConflict(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["transactions", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved conflict could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { conflict: data, loading, error, retry };
 }
 
 export function useReferenceConflict(
@@ -1273,49 +594,20 @@ export function useReferenceConflict(
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
-  const [attempt, setAttempt] = useState(0);
-  const [conflict, setConflict] = useState<LocalReferenceConflict | null>(null);
-  const [loading, setLoading] = useState(Boolean(entityType && id));
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!workspace || !entityType || !id) {
-      setConflict(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    let active = true;
-    const refresh = (): void => {
-      setLoading(true);
-      void workspace.transactionMutations
-        .getReferenceConflict(entityType, id)
-        .then((next) => {
-          if (active) {
-            setConflict(next);
-            setError(null);
-            setLoading(false);
-          }
-        })
-        .catch(() => {
-          if (active) {
-            setError("The preserved conflict could not be read from encrypted local storage.");
-            setLoading(false);
-          }
-        });
-    };
-    refresh();
-    const unsubscribe = subscribeToLocalChanges(
-      workspace.databaseName,
-      [entityType === "account" ? "accounts" : "categories", "sync_outbox", "sync_conflicts"],
-      refresh,
-    );
-    return () => {
-      active = false;
-      unsubscribe();
-    };
-  }, [attempt, entityType, id, workspace]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  return { conflict, loading, error, retry };
+  const read = useMemo(
+    () =>
+      entityType && id
+        ? (current: LocalWorkspace) =>
+            current.transactionMutations.getReferenceConflict(entityType, id)
+        : null,
+    [entityType, id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: [entityType === "account" ? "accounts" : "categories", "sync_outbox", "sync_conflicts"],
+    empty: null,
+    errorMessage: "The preserved conflict could not be read from encrypted local storage.",
+    initialLoading: Boolean(entityType && id),
+  });
+  return { conflict: data, loading, error, retry };
 }
