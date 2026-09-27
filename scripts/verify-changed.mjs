@@ -18,6 +18,7 @@ const FULL_VERIFY = [
   /^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml)$/,
   /^tsconfig[^/]*\.json$/,
   /^(eslint\.config\.mjs|vitest\.config\.ts|prettier\.config\.mjs|\.prettierignore)$/,
+  /^(playwright\.config\.ts|release\.config\.mjs|drizzle\.config\.ts)$/,
   /^tests\//,
   /^e2e\//,
   /^patches\//,
@@ -60,7 +61,8 @@ function mergeBase(root) {
 }
 
 function changedPaths(root, base) {
-  const committedAndStaged = git(root, ["diff", "--name-only", base]).split("\n");
+  // --no-renames lists both sides of a move, so the workspace a file left is checked too.
+  const committedAndStaged = git(root, ["diff", "--name-only", "--no-renames", base]).split("\n");
   const untracked = git(root, ["ls-files", "--others", "--exclude-standard"]).split("\n");
   return [...new Set([...committedAndStaged, ...untracked].filter(Boolean))];
 }
@@ -73,9 +75,14 @@ function run(root, command, args) {
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const dryRun = process.argv.includes("--dry-run");
   const base = mergeBase(root);
   if (!base) {
     console.log("No merge base with origin/main or main (shallow or detached checkout).");
+    if (dryRun) {
+      console.log("  pnpm verify");
+      process.exit(0);
+    }
     run(root, "pnpm", ["verify"]);
     process.exit(0);
   }
@@ -101,7 +108,7 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
       ? "Shared or root configuration changed: running the full verify."
       : `Scopes: ${plan.scopes.join(", ") || "none"}.`,
   );
-  if (process.argv.includes("--dry-run")) {
+  if (dryRun) {
     for (const [command, args] of steps) console.log(`  ${[command, ...args].join(" ")}`);
     process.exit(0);
   }
