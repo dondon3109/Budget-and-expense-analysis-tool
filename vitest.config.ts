@@ -25,14 +25,17 @@ export default defineConfig({
     __ASSISTANT_VOICE_REVIEW_REQUIRED__: true,
   },
   test: {
-    // One project per workspace so `--project <name>` scopes a run. Projects inherit this root
-    // config and Vitest concatenates arrays, so setupFiles, define, and the alias stay here and
-    // only include moves into each project.
+    // One project per workspace so `--project <name>` scopes a run. `extends: true` makes each
+    // project inherit this root config (setupFiles, define, and the alias). Vitest concatenates
+    // inherited arrays, so those stay here and only include moves into each project.
     projects: [
-      { test: { name: "api", include: ["apps/api/tests/**/*.test.{ts,tsx}"] } },
-      { test: { name: "web", include: ["apps/web/tests/**/*.test.{ts,tsx}"] } },
-      { test: { name: "shared", include: ["packages/shared/tests/**/*.test.{ts,tsx}"] } },
-      { test: { name: "scripts", include: ["scripts/**/*.test.mjs"] } },
+      { extends: true, test: { name: "api", include: ["apps/api/tests/**/*.test.{ts,tsx}"] } },
+      { extends: true, test: { name: "web", include: ["apps/web/tests/**/*.test.{ts,tsx}"] } },
+      {
+        extends: true,
+        test: { name: "shared", include: ["packages/shared/tests/**/*.test.{ts,tsx}"] },
+      },
+      { extends: true, test: { name: "scripts", include: ["scripts/**/*.test.mjs"] } },
     ],
     setupFiles: ["./tests/vitest.setup.ts"],
     coverage: {
