@@ -14,17 +14,20 @@ The browser product: a prerendered public site plus the signed in application un
 
 ## Key files
 
-| File                        | Owns                                                                                                               |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `src/App.tsx`               | Route table for the private app                                                                                    |
-| `src/PublicRoutes.tsx`      | Public route elements built from the metadata manifest                                                             |
-| `src/seo/siteMetadata.ts`   | `PublicRoutePath`, `PUBLIC_ROUTE_PATHS`, and per route metadata; the prerender list comes from here                |
-| `src/lib/api.ts`            | Every authenticated HTTP call, bearer attachment, one refresh retry, one timeout retry for reads, and typed errors |
-| `src/lib/queryKeys.ts`      | Workspace scoped query key roots                                                                                   |
-| `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                                             |
-| `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                                  |
-| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, `404.html`, and the `llms.txt` page lists      |
-| `tests/`                    | Flat Vitest suites for the whole app                                                                               |
+| File                        | Owns                                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/App.tsx`               | Route table for the private app                                                                                  |
+| `src/PublicRoutes.tsx`      | Public route elements built from the metadata manifest                                                           |
+| `src/seo/siteMetadata.ts`   | `PublicRoutePath`, `PUBLIC_ROUTE_PATHS`, and per route metadata; the prerender list comes from here              |
+| `src/lib/api/index.ts`      | The barrel every caller and every `vi.mock("../src/lib/api")` goes through                                       |
+| `src/lib/api/transport.ts`  | Bearer attachment, one refresh retry, sign-out on 410, the request timeout, and one timeout retry for reads      |
+| `src/lib/api/errors.ts`     | `ApiRequestError` and the billing limit guards                                                                   |
+| `src/lib/api/<domain>.ts`   | The calls for one API surface, named like the Worker route (`goals.ts`, `transactions.ts`, `admin-providers.ts`) |
+| `src/lib/queryKeys.ts`      | Workspace scoped query key roots                                                                                 |
+| `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                                           |
+| `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                                |
+| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, `404.html`, and the `llms.txt` page lists    |
+| `tests/`                    | Flat Vitest suites for the whole app                                                                             |
 
 ## Commands
 
@@ -44,7 +47,7 @@ pnpm test:e2e                      # Playwright, from the repo root
 - Public route code must be safe to render on the server: no `window` or `document` at module scope, and no Query or Auth provider in `src/entry-server.tsx`.
 - A section split out of a long page moves its rules into its own stylesheet beside it (`Component.css`) instead of growing the page stylesheet. Stylesheets are global, so keep the selectors unchanged and import the new file where the page imported the old block, which preserves cascade order. Older sections (`components/landing/`, `components/assistant/`, several dashboard cards) still rely on their page stylesheet; `node scripts/check-structure.mjs` stops those files from growing.
 - Name a component file in PascalCase with its own `Component.css` sibling, put hooks in `src/hooks` as `useX.ts`, and end page component names in `Page`.
-- Send authenticated requests only through `src/lib/api.ts` helpers. Components never call `fetch` for private data.
+- Send authenticated requests only through the `src/lib/api` helpers. Components never call `fetch` for private data. Import from `lib/api`, never a file inside it, because tests mock the barrel. Files inside the folder import each other with relative `./x` paths, and a new call goes in its domain file, which the barrel re-exports.
 - Keep server state in TanStack Query keyed through `queryKeys.*(workspace)` and derive values at render. Do not mirror query data into local state.
 - Validate at the boundary with the shared zod schema (`safeParse` in forms, `parse` for payloads).
 - Tests go in `apps/web/tests/` in kebab case, with `// @vitest-environment jsdom` as line 1 when the DOM is needed.
