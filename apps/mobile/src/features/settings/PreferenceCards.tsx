@@ -7,8 +7,9 @@ import { ThemePicker, themePreferenceLabel } from "@/ui/theme-picker";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
+import { DailyReminderCard } from "./DailyReminderCard";
 
-/** Theme and voice language pickers, folded to their current choice until opened. */
+/** Theme, voice language, and daily reminder pickers, folded to their current choice until opened. */
 export function PreferenceCards() {
   const theme = useZoptionTheme();
   const themePreference = useThemeStore((state) => state.preference);
@@ -35,6 +36,7 @@ export function PreferenceCards() {
         </Text>
         <VoiceLanguagePicker />
       </CollapsibleCard>
+      <DailyReminderCard />
     </>
   );
 }

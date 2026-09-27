@@ -18,6 +18,7 @@ import { AppState, Platform } from "react-native";
 import { isSupabaseConfigured } from "@/config/public-config";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
+import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 import { telemetry } from "@/telemetry/telemetry";
@@ -96,6 +97,9 @@ export function clearUserScopedRuntimeState(): void {
   useSheetStore.getState().close();
   useAssistantVoiceOptionsStore.getState().ensureSubject(null);
   clearPlanCache();
+  // Best-effort like the rest of this boundary: a native notification failure
+  // must never block an identity transition.
+  void clearDailyReminder().catch(() => undefined);
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {

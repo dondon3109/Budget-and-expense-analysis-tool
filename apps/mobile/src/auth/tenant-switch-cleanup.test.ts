@@ -1,10 +1,15 @@
 import { clearUserScopedRuntimeState } from "./session-state";
 import { clearPlanCache } from "@/auth/plan-state";
+import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 
 jest.mock("@/auth/plan-state", () => ({
   clearPlanCache: jest.fn(),
+}));
+
+jest.mock("@/features/reminders/daily-reminder", () => ({
+  clearDailyReminder: jest.fn(async () => undefined),
 }));
 
 jest.mock("@/stores/assistant-voice-store", () => ({
@@ -23,7 +28,7 @@ describe("identity transition cleanup", () => {
     jest.clearAllMocks();
   });
 
-  it("closes sheets, resets voice options and clears the plan cache", () => {
+  it("closes sheets, resets voice options, clears the plan cache and the daily reminder", () => {
     useSheetStore.setState({ openSheet: "theme-picker" });
     const voiceReset = jest.fn();
     (useAssistantVoiceOptionsStore.getState as unknown as jest.Mock).mockReturnValue({
@@ -36,5 +41,6 @@ describe("identity transition cleanup", () => {
     expect(useSheetStore.getState().openSheet).toBe(null);
     expect(voiceReset).toHaveBeenCalledWith(null);
     expect(mockedClearPlanCache).toHaveBeenCalled();
+    expect(clearDailyReminder).toHaveBeenCalled();
   });
 });
