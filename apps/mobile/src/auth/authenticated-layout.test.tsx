@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react-native";
 import { useSessionSnapshot, type SessionContextValue } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
-import AuthenticatedLayout from "../../app/(app)/_layout";
+import { AuthenticatedGate } from "./authenticated-layout";
 
 // The authenticated group must wait out the session restore instead of
 // redirecting: a deep link that opens the app cold (the home-screen mic
@@ -52,7 +52,7 @@ describe("authenticated layout session gate", () => {
   it("holds a deep-linked route while the stored session is still loading", async () => {
     jest.mocked(useSessionSnapshot).mockReturnValue(session({ status: "loading", subject: null }));
 
-    await render(<AuthenticatedLayout />);
+    await render(<AuthenticatedGate />);
 
     // Redirecting here is what dropped the widget's payload and transcript.
     expect(screen.getByText("Restoring your session…")).toBeTruthy();
@@ -63,7 +63,7 @@ describe("authenticated layout session gate", () => {
       .mocked(useSessionSnapshot)
       .mockReturnValue(session({ status: "signed-out", subject: null }));
 
-    await render(<AuthenticatedLayout />);
+    await render(<AuthenticatedGate />);
 
     expect(screen.queryByText("Restoring your session…")).toBeNull();
   });
@@ -73,7 +73,7 @@ describe("authenticated layout session gate", () => {
       .mocked(useSessionSnapshot)
       .mockReturnValue(session({ status: "signed-in", subject: "user-1" }));
 
-    await render(<AuthenticatedLayout />);
+    await render(<AuthenticatedGate />);
 
     expect(screen.queryByText("Restoring your session…")).toBeNull();
   });

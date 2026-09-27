@@ -17,8 +17,9 @@ The Expo native client for Android and iOS. It keeps an encrypted local workspac
 
 | File                                        | Owns                                                                         |
 | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| `app/`                                      | expo-router routes; each file is a one line re-export of a screen            |
+| `app/`                                      | expo-router routes; each file but a layout re-exports one screen             |
 | `src/features/`                             | Screens and pure logic modules, the real home of behavior                    |
+| `src/auth/authenticated-layout.tsx`         | Gate for `app/(app)`: session restore, app lock, local workspace, sync       |
 | `src/db/workspace.ts`                       | Subject scoped workspace open, recovery, and generation switching            |
 | `src/db/migrations.ts`                      | Append only local schema migrations and `LOCAL_SCHEMA_VERSION`               |
 | `src/db/transaction-mutation-repository.ts` | UI facing mutation facade; model, store, outbox, and conflicts sit beside it |
