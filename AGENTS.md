@@ -57,8 +57,8 @@ Start from the first file listed, then read the package guide for that area. Eve
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | API endpoint                     | `apps/api/src/routes/<surface>.ts` (`createXRoutes`), wired and mounted in `apps/api/src/app.ts`                                                                   |
 | Tenant data and SQL              | `apps/api/src/db/<entity>.ts`; a schema change is a new `db/migrations/NNNN_*.sql` plus `db/schema.ts`                                                             |
-| Request, response, or enum shape | `packages/shared/src/schemas.ts` and the `as const` enums in `packages/shared/src/types.ts`                                                                        |
-| Money parsing, caps, and display | `packages/shared/src/money.ts`; web `apps/web/src/lib/formatters.ts`; mobile `apps/mobile/src/ui/components/MoneyValue.tsx`                                        |
+| Request, response, or enum shape | `packages/shared/src/schemas/<domain>.ts` and the `as const` enums in `packages/shared/src/types.ts`                                                               |
+| Money parsing, caps, and display | `packages/shared/src/money.ts`, caps in `limits.ts`; web `apps/web/src/lib/formatters.ts`; mobile `apps/mobile/src/ui/components/MoneyValue.tsx`                   |
 | Dashboard, budget, and plan math | `packages/shared/src/calculations.ts`, `planning.ts`, `cashflowForecast.ts`, `safeToSpend.ts`                                                                      |
 | Mobile sync                      | Contract `packages/shared/src/sync.ts`; server `apps/api/src/db/mobile-sync.ts` and `db/mobile-sync/`; client `apps/mobile/src/sync/`, `src/db/sync-repository.ts` |
 | Web private page                 | `apps/web/src/pages/<Name>Page.tsx`, route in `apps/web/src/App.tsx`                                                                                               |
