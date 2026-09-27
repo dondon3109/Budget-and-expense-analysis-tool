@@ -17,12 +17,6 @@ import { ApiTransportError } from "@/api/authenticated";
 import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
-import {
-  reviewedItemsTotalMinor,
-  reviewItemsFromReceipt,
-  type ReceiptReviewCategory,
-  type ReceiptReviewItem,
-} from "@/features/receipts/receipt-review";
 import { localCalendarDate, parseTransactionForm } from "@/features/transactions/transaction-form";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
@@ -39,6 +33,15 @@ import { Screen } from "@/ui/screen";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
+import { ItemKindSelector, type ReceiptKind } from "./ItemKindSelector";
+import { ReceiptConsent } from "./ReceiptConsent";
+import {
+  reviewedItemsTotalMinor,
+  reviewItemsFromReceipt,
+  type ReceiptReviewCategory,
+  type ReceiptReviewItem,
+} from "./receipt-review";
+
 const MIME_BY_EXTENSION: Record<string, "image/jpeg" | "image/png" | "image/webp"> = {
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -47,25 +50,6 @@ const MIME_BY_EXTENSION: Record<string, "image/jpeg" | "image/png" | "image/webp
 };
 
 type PrefsPhase = "loading" | "consent" | "ready" | "unavailable" | "error";
-type ReceiptKind = "expense" | "income";
-
-const CONSENT_POINTS = [
-  {
-    icon: "format-list-bulleted",
-    title: "You review every entry",
-    text: "Zoption shows every drafted receipt line, PDF transaction, or spoken entry before anything is saved.",
-  },
-  {
-    icon: "delete-outline",
-    title: "Source files are never stored",
-    text: "Your photo, PDF, or recording is used only during the request that reads it and is then discarded.",
-  },
-  {
-    icon: "eye-outline",
-    title: "Stays off until you accept",
-    text: "AI-assisted entry never runs in the background. Manual entry remains available.",
-  },
-] as const;
 
 function defaultCategoryId(categories: ReceiptReviewCategory[], kind: ReceiptKind): string {
   const usable = categories.filter((category) => category.kind === kind);
@@ -78,63 +62,6 @@ function defaultCategoryId(categories: ReceiptReviewCategory[], kind: ReceiptKin
 
 function formatReceiptAmount(amountMinor: number, currency: Currency): string {
   return formatMoneyMinor(amountMinor, currency);
-}
-
-function ItemKindSelector({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: ReceiptKind;
-  disabled?: boolean;
-  onChange: (value: ReceiptKind) => void;
-}) {
-  const theme = useZoptionTheme();
-  return (
-    <View className="w-full gap-2">
-      <Text style={[typography.label, { color: theme.colors.text }]}>Type</Text>
-      <View
-        accessibilityRole="radiogroup"
-        style={[styles.kindGroup, { backgroundColor: theme.colors.canvasMuted }]}
-      >
-        {(["expense", "income"] as const).map((option) => {
-          const selected = value === option;
-          return (
-            <Pressable
-              key={option}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
-              disabled={disabled}
-              onPress={() => onChange(option)}
-              style={[
-                styles.kindOption,
-                {
-                  backgroundColor: selected ? theme.colors.surfaceRaised : "transparent",
-                  borderColor: selected ? theme.colors.border : "transparent",
-                  opacity: disabled ? 0.55 : 1,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                accessibilityElementsHidden
-                color={selected ? theme.colors.brand : theme.colors.textMuted}
-                name={option === "expense" ? "arrow-up-right" : "arrow-down-left"}
-                size={19}
-              />
-              <Text
-                style={[
-                  typography.label,
-                  { color: selected ? theme.colors.text : theme.colors.textMuted },
-                ]}
-              >
-                {option === "expense" ? "Expense" : "Income"}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
 }
 
 export function ReceiptScanScreen() {
@@ -533,51 +460,11 @@ export function ReceiptScanScreen() {
       ) : null}
 
       {phase === "consent" ? (
-        <View className="w-full gap-5 py-2">
-          <View className="gap-2">
-            <Text style={[typography.title, { color: theme.colors.text }]}>
-              Review first. Save only when it is right.
-            </Text>
-            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              Zoption sends only the photo, PDF, or recording you choose to AI during that request.
-              It drafts editable entries; you remain in control of every transaction.
-            </Text>
-          </View>
-          <View className="w-full gap-4">
-            {CONSENT_POINTS.map((point) => (
-              <View key={point.title} className="w-full flex-row items-start gap-3">
-                <MaterialCommunityIcons
-                  accessibilityElementsHidden
-                  color={theme.colors.brand}
-                  name={point.icon}
-                  size={21}
-                  style={{ marginTop: 1 }}
-                />
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text style={[typography.label, { color: theme.colors.text }]}>
-                    {point.title}
-                  </Text>
-                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                    {point.text}
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            AI can misread printed text. Check item amounts and the receipt total before saving.
-          </Text>
-          <Button
-            accessibilityLabel="Accept and enable receipt scanning"
-            loading={consentBusy}
-            onPress={() => void acceptConsent()}
-          >
-            Accept and enable receipt scanning
-          </Button>
-          {consentError ? (
-            <ErrorState title="Receipt scanning could not be enabled" message={consentError} />
-          ) : null}
-        </View>
+        <ReceiptConsent
+          busy={consentBusy}
+          error={consentError}
+          onAccept={() => void acceptConsent()}
+        />
       ) : null}
 
       {phase === "ready" ? (
@@ -885,23 +772,6 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     alignItems: "center",
     justifyContent: "center",
-  },
-  kindGroup: {
-    flexDirection: "row",
-    borderRadius: radii.md,
-    padding: spacing.xxs,
-    gap: spacing.xxs,
-  },
-  kindOption: {
-    minHeight: touchTarget - spacing.xs,
-    borderWidth: 1,
-    borderRadius: radii.sm,
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
   },
   reconciliation: {
     borderRadius: radii.md,
