@@ -32,6 +32,9 @@ describe("planVerification", () => {
       "e2e/core-flow.spec.ts",
       "db/migrations/0066_example.sql",
       "db/schema.ts",
+      "playwright.config.ts",
+      "release.config.mjs",
+      "drizzle.config.ts",
     ]) {
       expect(planVerification(["apps/web/src/App.tsx", path])).toEqual({ full: true, scopes: [] });
     }
