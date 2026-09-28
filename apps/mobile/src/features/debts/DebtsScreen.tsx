@@ -6,7 +6,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { calculateDebtPayoff, type DebtPayoffStrategy } from "@zoption/shared";
 
 import { useDebts, useLocalWorkspace } from "@/db/local-workspace-state";
-import type { LocalDebtItem } from "@/db/repository";
+import type { LocalDebtItem } from "@/db/view-models";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,

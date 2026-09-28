@@ -1,5 +1,5 @@
 import { resolveCategoryEmoji } from "@zoption/shared";
-import type { LocalBudgetMonthData } from "@/db/repository";
+import type { LocalBudgetMonthData } from "@/db/view-models";
 
 export interface BudgetMonthRow {
   id: string;

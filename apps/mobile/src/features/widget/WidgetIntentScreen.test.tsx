@@ -5,7 +5,7 @@ import {
   useLocalWorkspace,
   useTransactionFormData,
 } from "@/db/local-workspace-state";
-import type { LocalDashboardData, TransactionFormData } from "@/db/repository";
+import type { LocalDashboardData, TransactionFormData } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";

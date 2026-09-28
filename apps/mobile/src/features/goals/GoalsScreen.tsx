@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
 import { useGoals, useLocalWorkspace } from "@/db/local-workspace-state";
-import type { LocalGoalItem } from "@/db/repository";
+import type { LocalGoalItem } from "@/db/view-models";
 import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, EmptyState, ErrorState, MoneyValue, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";

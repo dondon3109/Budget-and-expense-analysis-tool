@@ -13,7 +13,8 @@ import {
 } from "./key-store";
 import { ensureLocalDataBackupProtection } from "./local-data-security";
 import { applyLocalMigrations, asMigrationDatabase } from "./migrations";
-import { LocalWorkspaceRepository, type LocalWorkspaceStats } from "./repository";
+import { LocalWorkspaceRepository } from "./repository";
+import type { LocalWorkspaceStats } from "./view-models";
 import { applySnapshotChange, LocalSyncRepository } from "./sync-repository";
 import { LocalDatabaseWriter } from "./database-writer";
 import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";

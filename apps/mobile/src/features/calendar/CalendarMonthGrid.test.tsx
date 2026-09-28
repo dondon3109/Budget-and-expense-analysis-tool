@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
-import type { LocalCalendarDay } from "@/db/repository";
+import type { LocalCalendarDay } from "@/db/view-models";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 
 const activeDay: LocalCalendarDay = {

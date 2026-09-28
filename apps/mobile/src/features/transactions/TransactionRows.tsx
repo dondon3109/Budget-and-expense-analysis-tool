@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveCategoryEmoji, type Currency } from "@zoption/shared";
-import type { LocalTransactionItem } from "@/db/repository";
+import type { LocalTransactionItem } from "@/db/view-models";
 import { MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";

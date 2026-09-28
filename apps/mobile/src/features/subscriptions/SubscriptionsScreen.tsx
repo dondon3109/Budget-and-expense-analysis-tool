@@ -11,7 +11,7 @@ import {
   useLocalWorkspace,
   useSubscriptions,
 } from "@/db/local-workspace-state";
-import type { LocalSubscriptionItem } from "@/db/repository";
+import type { LocalSubscriptionItem } from "@/db/view-models";
 import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";

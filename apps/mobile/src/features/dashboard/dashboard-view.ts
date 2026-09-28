@@ -7,7 +7,7 @@ import {
   type DashboardSummary,
 } from "@zoption/shared";
 
-import type { LocalDashboardData } from "@/db/repository";
+import type { LocalDashboardData } from "@/db/view-models";
 
 export interface DashboardView {
   summary: DashboardSummary;

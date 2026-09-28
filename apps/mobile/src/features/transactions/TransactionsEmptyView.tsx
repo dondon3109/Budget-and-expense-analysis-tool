@@ -2,7 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { TransactionKindFilter } from "@/db/repository";
+import type { TransactionKindFilter } from "@/db/view-models";
 import { monthLabel } from "@/features/calendar/event-form";
 import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
