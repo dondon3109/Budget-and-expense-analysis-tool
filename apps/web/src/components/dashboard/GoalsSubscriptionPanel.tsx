@@ -1,12 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
 import { Repeat2, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { getFinancialGoals, getSubscriptions } from "../../lib/api";
 import { currentMonth, monthStart } from "../../lib/calendar";
 import { formatMoney, formatMonth } from "../../lib/formatters";
-import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { useFinancialGoals } from "../../queries/goals";
+import { useSubscriptions } from "../../queries/subscriptions";
 
 interface GoalsSubscriptionPanelProps {
   workspace: AuthenticatedWorkspace;
@@ -23,14 +22,8 @@ function formatTargetDate(value: string): string {
 
 export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProps) {
   const subscriptionMonth = currentMonth();
-  const goalsQuery = useQuery({
-    queryKey: queryKeys.financialGoals(workspace),
-    queryFn: () => getFinancialGoals(workspace),
-  });
-  const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, monthStart(subscriptionMonth)),
-    queryFn: () => getSubscriptions(workspace, monthStart(subscriptionMonth)),
-  });
+  const goalsQuery = useFinancialGoals(workspace);
+  const subscriptionsQuery = useSubscriptions(workspace, monthStart(subscriptionMonth));
 
   const activeGoals = (goalsQuery.data?.items ?? []).filter((goal) => goal.status === "active");
   const subscriptionSummary = subscriptionsQuery.data;

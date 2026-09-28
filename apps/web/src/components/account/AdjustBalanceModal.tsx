@@ -19,6 +19,7 @@ import { createTransaction, deleteTransaction, getCategories } from "../../lib/a
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
 import { userWorkspace } from "../../lib/workspace";
+import { invalidateAfterAccountWrite } from "../../queries/accounts";
 import "./AdjustBalanceModal.css";
 
 export interface AdjustBalanceModalProps {
@@ -115,11 +116,7 @@ export function AdjustBalanceModal({
     onSuccess: (id) => {
       setAdjustmentId(id);
       setErrorMessage(null);
-      if (workspace) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
-      }
+      if (workspace) void invalidateAfterAccountWrite(queryClient, workspace);
     },
     onError: (error) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to save adjustment.");
@@ -135,11 +132,7 @@ export function AdjustBalanceModal({
       setAdjustmentId(null);
       setNewBalance("");
       setErrorMessage(null);
-      if (workspace) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) });
-        void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
-      }
+      if (workspace) void invalidateAfterAccountWrite(queryClient, workspace);
     },
     onError: (error) => {
       setErrorMessage(error instanceof Error ? error.message : "Failed to undo adjustment.");
