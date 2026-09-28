@@ -3,30 +3,12 @@ import {
   formatMinorAmount,
   importPreviewRequestSchema,
   inspectCsv,
-  normalizeSignedAmount,
   parseCsv,
-  transactionKinds,
-  type CategoryRecord,
   type ImportCommitRequest,
   type ImportMapping,
-  type TransactionKind,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  AlertTriangle,
-  Camera,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  FileCheck2,
-  FileSpreadsheet,
-  FileUp,
-  LoaderCircle,
-  RotateCcw,
-  ShieldCheck,
-  Tags,
-} from "lucide-react";
+import { Camera, CheckCircle2, Download, FileSpreadsheet, FileUp, RotateCcw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -35,25 +17,20 @@ import { readWorkspaceTransactionTotal } from "../analytics/workspaceTransaction
 import { useAuth } from "../auth/AuthProvider";
 import { ReceiptEntry, type ReceiptEntryDraft } from "../components/receipts/ReceiptEntry";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
-import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
-import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { SpreadsheetMigrationWizard } from "../components/onboarding/SpreadsheetMigrationWizard";
 import { AppShell } from "../components/layout/AppShell";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { emptyImportMapping, localToday, useImportDraft } from "../import/ImportDraftProvider";
 import "../import/import.css";
-import {
-  commitImport,
-  isBillingEnforcementError,
-  isMonthlyLimitReachedError,
-  previewImport,
-} from "../lib/api";
-import { ImportSubscriptionSuggestions } from "../components/import/ImportSubscriptionSuggestions";
-import { formatMoney } from "../lib/formatters";
+import { commitImport, isMonthlyLimitReachedError, previewImport } from "../lib/api";
+// The step components load after import.css, where ImportSubscriptionSuggestions used to be
+// imported, so its stylesheet keeps its place in the cascade.
+import { ImportFileStep } from "../components/import/ImportFileStep";
+import { ImportMappingStep } from "../components/import/ImportMappingStep";
+import { ImportReviewStep } from "../components/import/ImportReviewStep";
 import {
   detectImportPreset,
   getImportPreset,
-  importPresets,
   resolvePresetMapping,
   type ImportAmountMode,
   type ImportPreset,
@@ -70,7 +47,6 @@ import { subscriptionsQueryOptions } from "../queries/subscriptions";
 const MAX_CSV_FILE_BYTES = 1_000_000;
 const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
 const MAX_IMPORT_ROWS = 500;
-const PREVIEW_PAGE_SIZE = 100;
 
 function downloadTemplate() {
   const content = [
@@ -94,13 +70,6 @@ function mappingForAmountMode(
   return resolvePresetMapping(headers, { ...preset, preferredAmountMode: amountMode }).mapping;
 }
 
-function categoryName(
-  categories: CategoryRecord[],
-  categoryId: string | undefined,
-): string | undefined {
-  return categories.find((category) => category.id === categoryId)?.name;
-}
-
 export function ImportPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
@@ -113,7 +82,6 @@ export function ImportPage() {
     setFileName,
     csvText,
     setCsvText,
-    inspection,
     setInspection,
     headerRowNumber,
     setHeaderRowNumber,
@@ -123,7 +91,6 @@ export function ImportPage() {
     setHeaders,
     mapping,
     setMapping,
-    amountMode,
     setAmountMode,
     selectedPresetId,
     setSelectedPresetId,
@@ -133,35 +100,24 @@ export function ImportPage() {
     setPhpConfirmed,
     fallbackDate,
     setFallbackDate,
-    worksheetNames,
     setWorksheetNames,
     selectedWorksheet,
     setSelectedWorksheet,
-    worksheetRowCount,
     setWorksheetRowCount,
-    workbookWarnings,
     setWorkbookWarnings,
     workbookBusy,
     setWorkbookBusy,
-    fileError,
     setFileError,
-    previewError,
     setPreviewError,
     previewAttempted,
     setPreviewAttempted,
     preview,
     setPreview,
-    previewPage,
     setPreviewPage,
-    categoryOverrides,
     setCategoryOverrides,
-    kindOverrides,
     setKindOverrides,
-    bulkKind,
     setBulkKind,
-    selectedRows,
     setSelectedRows,
-    bulkCategoryId,
     setBulkCategoryId,
     result,
     setResult,
@@ -637,70 +593,6 @@ export function ImportPage() {
     previewMutation.mutate({ generation, input: parsed.data });
   }
 
-  const previewPages = preview
-    ? Math.max(1, Math.ceil(preview.rows.length / PREVIEW_PAGE_SIZE))
-    : 1;
-  const visibleRows = preview
-    ? preview.rows.slice((previewPage - 1) * PREVIEW_PAGE_SIZE, previewPage * PREVIEW_PAGE_SIZE)
-    : [];
-  const eligibleRows =
-    preview?.rows.filter(
-      (row) => row.status === "ready" && row.categoryIsUncategorized && row.kind,
-    ) ?? [];
-  const availableBulkCategories = categories.filter(
-    (category) => !category.archived && !category.system && category.kind === bulkKind,
-  );
-  const allEligibleSelected =
-    eligibleRows.length > 0 && eligibleRows.every((row) => selectedRows.includes(row.rowNumber));
-
-  function toggleRow(rowNumber: number) {
-    setSelectedRows((current) =>
-      current.includes(rowNumber)
-        ? current.filter((candidate) => candidate !== rowNumber)
-        : [...current, rowNumber],
-    );
-  }
-
-  function toggleAllEligible() {
-    setSelectedRows(allEligibleSelected ? [] : eligibleRows.map((row) => row.rowNumber));
-  }
-
-  function applyBulkChanges() {
-    if (!bulkKind || selectedRows.length === 0) return;
-    const selected = new Set(selectedRows);
-    setKindOverrides((current) => {
-      const next = { ...current };
-      for (const row of eligibleRows) {
-        if (!selected.has(row.rowNumber)) continue;
-        if (row.kind === bulkKind) delete next[row.rowNumber];
-        else next[row.rowNumber] = bulkKind;
-      }
-      return next;
-    });
-    setCategoryOverrides((current) => {
-      const next = { ...current };
-      for (const rowNumber of selectedRows) {
-        if (bulkCategoryId) next[rowNumber] = bulkCategoryId;
-        else delete next[rowNumber];
-      }
-      return next;
-    });
-    setSelectedRows([]);
-  }
-
-  const commitRequest: ImportCommitRequest | undefined = preview
-    ? {
-        token: preview.token,
-        categoryOverrides: Object.entries(categoryOverrides).map(([rowNumber, categoryId]) => ({
-          rowNumber: Number(rowNumber),
-          categoryId,
-        })),
-        kindOverrides: Object.entries(kindOverrides).map(([rowNumber, kind]) => ({
-          rowNumber: Number(rowNumber),
-          kind,
-        })),
-      }
-    : undefined;
   const importUsage = billingQuery.data?.usages.find((usage) => usage.feature === "file_import");
   const isFreePlan = billingQuery.data?.plan === "free";
 
@@ -771,585 +663,41 @@ export function ImportPage() {
         ) : (
           <>
             <div className="import-layout">
-              <section className="import-card">
-                <div className="import-step-heading">
-                  <span>1</span>
-                  <div>
-                    <strong>Choose a CSV or Excel file</strong>
-                    <small>CSV, Excel Workbook (.xlsx), or Excel 97–2003 (.xls)</small>
-                  </div>
-                </div>
-                <label
-                  className={[
-                    "file-drop",
-                    fileName ? "selected" : "",
-                    dragActive ? "drag-active" : "",
-                    fileError && !fileName ? "rejected" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  htmlFor="transaction-file-input"
-                  onDragEnter={handleDragEnter}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                >
-                  <FileUp size={27} />
-                  <strong>
-                    {dragActive
-                      ? "Drop one file to import"
-                      : fileName || "Choose or drag a CSV or Excel file"}
-                  </strong>
-                  <span id="transaction-file-help">
-                    {dragActive
-                      ? "CSV, XLSX, or XLS"
-                      : fileName
-                        ? "Choose or drop another file"
-                        : "CSV up to 1 MB · Excel up to 5 MB · maximum 500 data rows"}
-                  </span>
-                  <input
-                    id="transaction-file-input"
-                    type="file"
-                    aria-label="Choose transaction file"
-                    aria-describedby="transaction-file-help"
-                    accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
-                    onChange={chooseFile}
-                  />
-                </label>
-                {workbookBusy && worksheetNames.length === 0 && (
-                  <span className="worksheet-loading" role="status">
-                    <LoaderCircle className="spinning" size={16} /> Reading workbook…
-                  </span>
-                )}
-                {worksheetNames.length > 0 && (
-                  <div className="worksheet-picker">
-                    <label>
-                      <span>Worksheet</span>
-                      <select
-                        value={selectedWorksheet}
-                        disabled={workbookBusy}
-                        onChange={(event) => {
-                          const client = workbookClientRef.current;
-                          if (!client || !event.target.value) return;
-                          void convertWorkbookWorksheet(
-                            client,
-                            event.target.value,
-                            fileSelectionIdRef.current,
-                            fileName,
-                          );
-                        }}
-                      >
-                        <option value="">Choose a worksheet</option>
-                        {worksheetNames.map((worksheetName) => (
-                          <option key={worksheetName} value={worksheetName}>
-                            {worksheetName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {workbookBusy && (
-                      <span className="worksheet-loading" role="status">
-                        <LoaderCircle className="spinning" size={16} /> Reading worksheet…
-                      </span>
-                    )}
-                    {selectedWorksheet && worksheetRowCount !== undefined && (
-                      <span className="worksheet-summary">
-                        Worksheet: {selectedWorksheet} · {worksheetRowCount} data{" "}
-                        {worksheetRowCount === 1 ? "row" : "rows"}
-                      </span>
-                    )}
-                  </div>
-                )}
-                {workbookWarnings.length > 0 && (
-                  <div className="workbook-warning" role="status">
-                    {workbookWarnings.map((warning) => (
-                      <span key={warning}>{warning}</span>
-                    ))}
-                  </div>
-                )}
-                {fileError && (
-                  <p className="page-error" role="alert">
-                    {fileError}
-                  </p>
-                )}
-              </section>
+              <ImportFileStep
+                dragActive={dragActive}
+                handleDragEnter={handleDragEnter}
+                handleDragOver={handleDragOver}
+                handleDragLeave={handleDragLeave}
+                handleDrop={handleDrop}
+                chooseFile={chooseFile}
+                convertWorkbookWorksheet={convertWorkbookWorksheet}
+              />
 
-              <section className={`import-card ${headers.length === 0 ? "disabled-card" : ""}`}>
-                <div className="import-step-heading">
-                  <span>2</span>
-                  <div>
-                    <strong>Match your bank export</strong>
-                    <small>Choose the header, bank format, amount layout, and columns</small>
-                  </div>
-                </div>
+              <ImportMappingStep
+                resolvedPreset={resolvedPreset}
+                requiresPhpConfirmation={requiresPhpConfirmation}
+                canAttemptPreview={canAttemptPreview}
+                descriptionMappingMissing={descriptionMappingMissing}
+                previewPending={previewMutation.isPending}
+                applyPreset={applyPreset}
+                changeHeader={changeHeader}
+                changeAmountMode={changeAmountMode}
+                updateMapping={updateMapping}
+                invalidatePreview={invalidatePreview}
+                requestPreview={requestPreview}
+              />
 
-                <div className="source-controls-card">
-                  <div className="import-source-controls">
-                    <label>
-                      <span>Bank format</span>
-                      <select
-                        aria-label="Bank format"
-                        value={selectedPresetId}
-                        disabled={headers.length === 0}
-                        onChange={(event) => applyPreset(event.target.value as ImportPresetId)}
-                      >
-                        <option value="auto">Auto detect</option>
-                        {importPresets.map((preset) => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.label}
-                          </option>
-                        ))}
-                      </select>
-                      {selectedPresetId === "auto" && <small>Using {resolvedPreset.label}</small>}
-                    </label>
-                    <label>
-                      <span>Header row</span>
-                      <select
-                        aria-label="Header row"
-                        value={headerRowNumber ?? ""}
-                        disabled={!inspection}
-                        onChange={(event) => changeHeader(Number(event.target.value))}
-                      >
-                        {inspection?.candidates.map((candidate) => (
-                          <option key={candidate.rowNumber} value={candidate.rowNumber}>
-                            Row {candidate.rowNumber} — {candidate.values.slice(0, 4).join(" · ")}
-                          </option>
-                        ))}
-                      </select>
-                      {headerRowNumber !== undefined && headerRowNumber > 1 && (
-                        <small>
-                          Ignoring {headerRowNumber - 1} introductory{" "}
-                          {headerRowNumber === 2 ? "row" : "rows"}
-                        </small>
-                      )}
-                    </label>
-                    <label>
-                      <span>Amount format</span>
-                      <select
-                        aria-label="Amount format"
-                        value={amountMode}
-                        disabled={headers.length === 0}
-                        onChange={(event) =>
-                          changeAmountMode(event.target.value as ImportAmountMode)
-                        }
-                      >
-                        <option value="amount">One signed Amount column</option>
-                        <option value="debit-credit">Separate Debit and Credit columns</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <p className="import-preset-guidance">{resolvedPreset.guidance}</p>
-                </div>
-
-                <div className="mapping-grid">
-                  {(
-                    [
-                      ["date", "Date (optional)"],
-                      ["description", "Description"],
-                      ...(amountMode === "amount"
-                        ? ([["amount", "Amount"]] as const)
-                        : ([
-                            ["debit", "Debit"],
-                            ["credit", "Credit"],
-                          ] as const)),
-                      ["category", "Category (optional)"],
-                      ["kind", "Type (optional)"],
-                      ["currency", "Currency (optional)"],
-                    ] as Array<readonly [keyof ImportMapping, string]>
-                  ).map(([key, label]) => (
-                    <label
-                      key={key}
-                      className={
-                        key === "description" && descriptionMappingMissing
-                          ? "mapping-field-invalid"
-                          : undefined
-                      }
-                    >
-                      <span>{label}</span>
-                      <select
-                        value={mapping[key] ?? ""}
-                        disabled={headers.length === 0}
-                        aria-invalid={
-                          key === "description" && descriptionMappingMissing ? true : undefined
-                        }
-                        aria-describedby={
-                          key === "description" && descriptionMappingMissing
-                            ? "description-mapping-error"
-                            : undefined
-                        }
-                        onChange={(event) => updateMapping(key, event.target.value)}
-                      >
-                        <option value="">
-                          {key === "date"
-                            ? "Use one date for all rows"
-                            : key === "category"
-                              ? "Use Uncategorized"
-                              : key === "kind"
-                                ? "Infer from amount"
-                                : key === "currency"
-                                  ? "Assume PHP"
-                                  : "Choose column"}
-                        </option>
-                        {headers.map((header) => (
-                          <option key={header} value={header}>
-                            {header}
-                          </option>
-                        ))}
-                      </select>
-                      {key === "description" && descriptionMappingMissing && (
-                        <small id="description-mapping-error" className="mapping-field-error">
-                          Select a column before previewing.
-                        </small>
-                      )}
-                    </label>
-                  ))}
-                  {!mapping.date && (
-                    <label>
-                      <span>Date for every row</span>
-                      <input
-                        type="date"
-                        value={fallbackDate}
-                        disabled={headers.length === 0}
-                        onChange={(event) => {
-                          setFallbackDate(event.target.value);
-                          invalidatePreview();
-                        }}
-                      />
-                    </label>
-                  )}
-                </div>
-
-                {resolvedPreset.requiresPhpConfirmation && (
-                  <div className="php-import-warning" role="alert">
-                    <AlertTriangle size={20} />
-                    <div>
-                      <strong>PHP-only import</strong>
-                      <span>
-                        {resolvedPreset.label} exports commonly contain USD. Zoption does not
-                        convert currencies, and any mapped non-PHP currency will be rejected.
-                      </span>
-                      {requiresPhpConfirmation ? (
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={phpConfirmed}
-                            onChange={(event) => {
-                              setPhpConfirmed(event.target.checked);
-                              invalidatePreview();
-                            }}
-                          />
-                          Store these numeric values as PHP without currency conversion
-                        </label>
-                      ) : (
-                        <small>The mapped Currency column confirms that every row is PHP.</small>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <button
-                  className="button primary preview-import-button"
-                  type="button"
-                  disabled={!canAttemptPreview || previewMutation.isPending}
-                  onClick={requestPreview}
-                >
-                  <FileCheck2 size={17} />{" "}
-                  {previewMutation.isPending ? "Checking rows…" : "Preview import"}
-                </button>
-                {previewError && (
-                  <p className="page-error" role="alert">
-                    {previewError.message}
-                  </p>
-                )}
-              </section>
-
-              <section
-                className={`import-card import-preview-card ${preview ? "" : "disabled-card"}`}
-              >
-                <div className="import-step-heading">
-                  <span>3</span>
-                  <div>
-                    <strong>Review, categorize, and import</strong>
-                    <small>Invalid and duplicate rows will not be saved</small>
-                  </div>
-                </div>
-                {!preview && (
-                  <div className="preview-placeholder">
-                    Your row-by-row preview will appear here.
-                  </div>
-                )}
-                {preview && (
-                  <>
-                    <div className="import-counts">
-                      <div>
-                        <strong>{preview.acceptedCount}</strong>
-                        <span>Ready</span>
-                      </div>
-                      <div>
-                        <strong>{preview.rejectedCount - preview.duplicateCount}</strong>
-                        <span>Invalid</span>
-                      </div>
-                      <div>
-                        <strong>{preview.duplicateCount}</strong>
-                        <span>Duplicates</span>
-                      </div>
-                    </div>
-
-                    <ImportSubscriptionSuggestions
-                      preview={preview}
-                      categories={categories}
-                      accounts={accounts}
-                      workspace={workspace}
-                      existingSubscriptions={subscriptionsQuery.data?.items}
-                    />
-
-                    {eligibleRows.length > 0 && (
-                      <div className="bulk-category-toolbar">
-                        <div className="bulk-category-heading">
-                          <Tags size={18} />
-                          <div>
-                            <strong>Update Uncategorized rows</strong>
-                            <span>Selections include eligible rows on every preview page.</span>
-                          </div>
-                        </div>
-                        <div className="bulk-category-controls">
-                          <label>
-                            <span>Import selected rows as</span>
-                            <select
-                              value={bulkKind ?? ""}
-                              onChange={(event) => {
-                                setBulkKind(event.target.value as TransactionKind);
-                                setSelectedRows([]);
-                                setBulkCategoryId("");
-                              }}
-                            >
-                              {transactionKinds.map((kind) => (
-                                <option key={kind} value={kind}>
-                                  {kind.charAt(0).toUpperCase() + kind.slice(1)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <button
-                            className="button secondary"
-                            type="button"
-                            onClick={toggleAllEligible}
-                          >
-                            {allEligibleSelected
-                              ? "Clear selection"
-                              : `Select all ${eligibleRows.length}`}
-                          </button>
-                          <label>
-                            <span>New category (optional)</span>
-                            <select
-                              value={bulkCategoryId}
-                              onChange={(event) => setBulkCategoryId(event.target.value)}
-                            >
-                              <option value="">Use Uncategorized</option>
-                              {availableBulkCategories.map((category) => (
-                                <option
-                                  key={category.id}
-                                  value={category.id}
-                                  disabled={category.locked}
-                                >
-                                  {category.name}
-                                  {category.locked ? " — Pro required" : ""}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-                          <button
-                            className="button primary"
-                            type="button"
-                            disabled={!bulkKind || selectedRows.length === 0}
-                            onClick={applyBulkChanges}
-                          >
-                            Apply to {selectedRows.length} selected
-                          </button>
-                        </div>
-                        {categoriesQuery.isError && (
-                          <p className="page-error">Categories could not be loaded.</p>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="import-table-wrap">
-                      <table className="import-table">
-                        <caption className="sr-only">Import preview rows</caption>
-                        <thead>
-                          <tr>
-                            <th scope="col" className="import-select-column">
-                              Select
-                            </th>
-                            <th scope="col">Row</th>
-                            <th scope="col">Status</th>
-                            <th scope="col">Transaction</th>
-                            <th scope="col">Amount</th>
-                            <th scope="col">Details</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {visibleRows.map((row) => {
-                            const eligible =
-                              row.status === "ready" && row.categoryIsUncategorized && row.kind;
-                            const effectiveKind = kindOverrides[row.rowNumber] ?? row.kind;
-                            const effectiveAmount =
-                              row.amountMinor === undefined || !effectiveKind
-                                ? row.amountMinor
-                                : effectiveKind === "transfer"
-                                  ? row.amountMinor
-                                  : normalizeSignedAmount(row.amountMinor, effectiveKind);
-                            const overrideName = categoryName(
-                              categories,
-                              categoryOverrides[row.rowNumber],
-                            );
-                            const effectiveCategory =
-                              overrideName ||
-                              (effectiveKind !== row.kind ? "Uncategorized" : row.categoryName) ||
-                              "No category";
-                            const changed = Boolean(
-                              overrideName || (effectiveKind && effectiveKind !== row.kind),
-                            );
-                            return (
-                              <tr key={row.rowNumber}>
-                                <td className="import-select-column">
-                                  {row.status === "ready" && row.categoryIsUncategorized ? (
-                                    <input
-                                      type="checkbox"
-                                      aria-label={`Select row ${row.rowNumber}`}
-                                      checked={selectedRows.includes(row.rowNumber)}
-                                      disabled={!eligible}
-                                      onChange={() => toggleRow(row.rowNumber)}
-                                    />
-                                  ) : (
-                                    "—"
-                                  )}
-                                </td>
-                                <td>{row.rowNumber}</td>
-                                <td>
-                                  <span className={`import-status ${row.status}`}>
-                                    {row.status}
-                                  </span>
-                                </td>
-                                <td>
-                                  <strong>{row.description || "—"}</strong>
-                                  <small>
-                                    {row.date || "No valid date"} · {effectiveKind || "No type"} ·{" "}
-                                    {effectiveCategory}
-                                  </small>
-                                </td>
-                                <td>
-                                  {effectiveAmount === undefined
-                                    ? "—"
-                                    : formatMoney(effectiveAmount)}
-                                </td>
-                                <td>
-                                  {changed && effectiveKind
-                                    ? `Will import as ${effectiveKind} · ${effectiveCategory}`
-                                    : row.errors[0] || "Ready to import"}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {previewPages > 1 && (
-                      <div className="import-pagination">
-                        <button
-                          className="button secondary"
-                          type="button"
-                          disabled={previewPage === 1}
-                          onClick={() => setPreviewPage((page) => page - 1)}
-                        >
-                          <ChevronLeft size={16} /> Previous
-                        </button>
-                        <span>
-                          Page {previewPage} of {previewPages} · {preview.rows.length} rows
-                        </span>
-                        <button
-                          className="button secondary"
-                          type="button"
-                          disabled={previewPage === previewPages}
-                          onClick={() => setPreviewPage((page) => page + 1)}
-                        >
-                          Next <ChevronRight size={16} />
-                        </button>
-                      </div>
-                    )}
-
-                    <div className="import-commit-row">
-                      <span>
-                        <strong className="import-commit-usage">
-                          Saving uses 1 monthly file import.
-                        </strong>
-                        Preview expires in 15 minutes.
-                        {Object.keys(kindOverrides).length > 0 &&
-                          ` ${Object.keys(kindOverrides).length} transaction type ${Object.keys(kindOverrides).length === 1 ? "change" : "changes"} will be applied.`}
-                        {Object.keys(categoryOverrides).length > 0 &&
-                          ` ${Object.keys(categoryOverrides).length} category ${Object.keys(categoryOverrides).length === 1 ? "change" : "changes"} will be applied.`}
-                      </span>
-                      <button
-                        className="button primary"
-                        type="button"
-                        disabled={
-                          preview.acceptedCount === 0 || commitMutation.isPending || !commitRequest
-                        }
-                        onClick={() => {
-                          if (!commitRequest) return;
-                          limitTriggerRef.current =
-                            document.activeElement instanceof HTMLElement
-                              ? document.activeElement
-                              : null;
-                          commitMutation.mutate(commitRequest);
-                        }}
-                      >
-                        {commitMutation.isPending
-                          ? "Importing…"
-                          : `Import ${preview.acceptedCount} ready rows`}
-                      </button>
-                    </div>
-                    <UpgradePrompt error={commitMutation.error} />
-                    {commitMutation.isError && !isBillingEnforcementError(commitMutation.error) && (
-                      <p className="page-error" role="alert">
-                        {commitMutation.error.message}
-                      </p>
-                    )}
-                  </>
-                )}
-                <div className="import-safety-note">
-                  <ShieldCheck size={19} />
-                  <div>
-                    <strong>Review before saving</strong>
-                    <span>
-                      CSV files are limited to 1 MB, Excel files to 5 MB, and imports to 500 data
-                      rows. Previewing does not change your workspace.
-                    </span>
-                  </div>
-                </div>
-                {importUsage && (
-                  <div className="import-plan-usage">
-                    <PlanUsageIndicator
-                      label={
-                        isFreePlan
-                          ? "Free plan committed file imports this month"
-                          : "Committed file imports this month"
-                      }
-                      used={importUsage.used}
-                      limit={importUsage.limit}
-                      resetsAt={importUsage.resetsAt}
-                      detail={
-                        isFreePlan
-                          ? "Free includes 1 saved file import each month. Previewing files does not use it."
-                          : "One import is used only when ready rows are saved."
-                      }
-                      showUpgrade={isFreePlan}
-                    />
-                  </div>
-                )}
-              </section>
+              <ImportReviewStep
+                workspace={workspace}
+                categories={categories}
+                categoriesFailed={categoriesQuery.isError}
+                accounts={accounts}
+                existingSubscriptions={subscriptionsQuery.data?.items}
+                commitMutation={commitMutation}
+                limitTriggerRef={limitTriggerRef}
+                importUsage={importUsage}
+                isFreePlan={isFreePlan}
+              />
             </div>
           </>
         )}
