@@ -39,9 +39,14 @@ export const currentRelease: ProductRelease = {
         "Account balances refresh as soon as an import finishes, and the spreadsheet import refreshes archived categories too, so nothing shows stale numbers until a reload.",
     },
     {
+      title: "Budgets for removed categories",
+      description:
+        "In the Android and iOS app, a category whose budget you removed shows up again in Add budget, so you can give it a new limit. Home's balance card on Android also keeps each account's icon beside its name.",
+    },
+    {
       title: "Android Beta 0.2.38",
       description:
-        "The official Android Beta carries the daily reminder, the new app icon, and the balance adjustment and debt planner fixes.",
+        "The official Android Beta carries the daily reminder, the new app icon, the budget and balance card fixes, and the balance adjustment and debt planner fixes.",
     },
   ],
 };
