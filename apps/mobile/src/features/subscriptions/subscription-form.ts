@@ -1,4 +1,8 @@
-import { subscriptionInputSchema, type SubscriptionBillingCycle } from "@zoption/shared";
+import {
+  parseAmountToMinor,
+  subscriptionInputSchema,
+  type SubscriptionBillingCycle,
+} from "@zoption/shared";
 
 export interface SubscriptionFormValues {
   name: string;
@@ -46,14 +50,6 @@ function isValidIsoDate(value: string): boolean {
   );
 }
 
-function parseMinor(value: string): number | null {
-  const [wholeText, fractionText = ""] = value.split(".");
-  const whole = Number(wholeText);
-  const fraction = Number(fractionText.padEnd(2, "0").slice(0, 2) || 0);
-  if (!Number.isFinite(whole) || !Number.isFinite(fraction)) return null;
-  return Math.round(whole * 100) + fraction;
-}
-
 export function parseSubscriptionForm(values: SubscriptionFormValues):
   | {
       success: true;
@@ -75,7 +71,7 @@ export function parseSubscriptionForm(values: SubscriptionFormValues):
     errors.name = "Keep the name under 120 characters.";
   }
 
-  const amountMinor = amountPattern.test(values.amount) ? parseMinor(values.amount) : null;
+  const amountMinor = amountPattern.test(values.amount) ? parseAmountToMinor(values.amount) : null;
   if (amountMinor === null || amountMinor <= 0) {
     errors.amount = "Enter the charge amount as a positive value.";
   }

@@ -22,7 +22,7 @@ import {
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
-import { debtTypeLabels, todayIso } from "./debt-form";
+import { debtTypeLabels, parseExtraPaymentMinor, todayIso } from "./debt-form";
 
 const strategyOptions: Array<{ id: DebtPayoffStrategy; label: string; detail: string }> = [
   {
@@ -106,7 +106,7 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
   const projection = useMemo(() => {
     const active = debts.filter((debt) => debt.status === "active" && debt.balanceMinor > 0);
     if (active.length === 0) return null;
-    const extraMinor = parseFloat(extra) > 0 ? Math.round(parseFloat(extra) * 100) : 0;
+    const extraMinor = parseExtraPaymentMinor(extra);
     try {
       return calculateDebtPayoff(
         active.map((debt) => ({

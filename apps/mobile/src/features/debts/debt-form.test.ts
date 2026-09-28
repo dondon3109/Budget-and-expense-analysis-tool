@@ -2,6 +2,7 @@ import {
   debtTypeLabels,
   formatMinorForInput,
   parseDebtForm,
+  parseExtraPaymentMinor,
   type DebtFormValues,
 } from "./debt-form";
 
@@ -75,5 +76,19 @@ describe("debt form", () => {
   it("labels every debt type", () => {
     expect(Object.keys(debtTypeLabels)).toHaveLength(5);
     expect(debtTypeLabels.credit_card).toBe("Credit card");
+  });
+});
+
+describe("parseExtraPaymentMinor", () => {
+  it("reads a decimal amount as exact minor units", () => {
+    expect(parseExtraPaymentMinor("1,500.10")).toBe(150_010);
+    expect(parseExtraPaymentMinor("0.29")).toBe(29);
+  });
+
+  it("treats blank, negative, or malformed input as no extra payment", () => {
+    expect(parseExtraPaymentMinor("")).toBe(0);
+    expect(parseExtraPaymentMinor("-50")).toBe(0);
+    expect(parseExtraPaymentMinor("12abc")).toBe(0);
+    expect(parseExtraPaymentMinor("1.005")).toBe(0);
   });
 });

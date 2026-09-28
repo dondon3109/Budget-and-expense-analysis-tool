@@ -353,4 +353,19 @@ describe("WidgetIntentScreen adjustable reconcile", () => {
       }),
     );
   });
+
+  it("accepts a negative target balance for an overdrawn or credit account", async () => {
+    jest
+      .mocked(useDashboardData)
+      .mockReturnValue({ data: dashboardWithBalance(-500000), error: null, retry: jest.fn() });
+    await render(<WidgetIntentScreen />);
+
+    await fireEvent.changeText(screen.getByDisplayValue("5000.00"), "-250.50");
+    await fireEvent.press(screen.getByRole("button", { name: "Update balance" }));
+
+    await waitFor(() => expect(createTransaction).toHaveBeenCalledTimes(1));
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "income", amountMinor: 474950 }),
+    );
+  });
 });
