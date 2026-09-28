@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
-import HomeScreen from "../../../app/(app)/(tabs)/index";
+import { HomeScreen } from "./HomeScreen";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { usePlan } from "@/auth/plan-state";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
