@@ -4,7 +4,7 @@ import { MAX_LINES, checkStructure, countLines } from "./check-structure.mjs";
 
 const lines = (count) => "x\n".repeat(count);
 const thinRoute = 'export { HomeScreen as default } from "@/features/dashboard/HomeScreen";\n';
-const noCeilings = { oversizeCeilings: {}, routeBodyCeilings: {} };
+const noCeilings = { oversizeCeilings: {} };
 
 describe("countLines", () => {
   it("counts newlines like wc -l", () => {
@@ -39,7 +39,7 @@ describe("checkStructure", () => {
         { path: "apps/api/src/db/big.ts", text: lines(1501) },
         { path: "apps/api/src/db/shrunk.ts", text: lines(400) },
       ],
-      { oversizeCeilings, routeBodyCeilings: {} },
+      { oversizeCeilings },
     );
     expect(failures).toEqual([expect.stringContaining("apps/api/src/db/big.ts grew to 1501")]);
     expect(notices).toEqual([
@@ -75,23 +75,5 @@ describe("checkStructure", () => {
     expect(failures).toHaveLength(2);
     expect(failures[0]).toContain("apps/mobile/app/(app)/debts.tsx must be one line");
     expect(failures[1]).toContain("apps/mobile/app/(app)/elsewhere.tsx must be one line");
-  });
-
-  it("lets a legacy route body shrink but not grow", () => {
-    const routeBodyCeilings = {
-      "apps/mobile/app/(tabs)/more.tsx": 400,
-      "apps/mobile/app/(tabs)/done.tsx": 300,
-    };
-    const { failures, notices } = checkStructure(
-      [
-        { path: "apps/mobile/app/(tabs)/more.tsx", text: lines(401) },
-        { path: "apps/mobile/app/(tabs)/done.tsx", text: thinRoute },
-      ],
-      { oversizeCeilings: {}, routeBodyCeilings },
-    );
-    expect(failures).toEqual([
-      expect.stringContaining("apps/mobile/app/(tabs)/more.tsx grew to 401"),
-    ]);
-    expect(notices).toEqual([expect.stringContaining("done.tsx is now a thin re-export")]);
   });
 });
