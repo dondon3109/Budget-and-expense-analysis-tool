@@ -166,41 +166,44 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
                   accessibilityLabel={`${account.name}, balance ${account.balanceMinor / 100} ${account.currency}. Tap to adjust balance or edit.`}
                   accessibilityHint="Opens account editor to adjust balance"
                   android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                  // Android's NativeWind interop drops flex-direction from a callback
-                  // style, stacking the icon above the name; className keeps the row.
-                  className="flex-row items-center"
+                  // Android's NativeWind interop drops layout from a callback style,
+                  // so the row's size lives in className and its layout in the static
+                  // inner View; the callback only dims the row while pressed.
+                  className="flex-1"
                   onPress={() =>
                     router.push(`/(app)/reference?entityType=account&id=${account.id}`)
                   }
-                  style={({ pressed }) => [styles.accountRowMain, { opacity: pressed ? 0.75 : 1 }]}
+                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                 >
-                  <View
-                    accessibilityElementsHidden
-                    style={[styles.accountIconBox, { backgroundColor: theme.colors.canvasMuted }]}
-                  >
-                    <MaterialCommunityIcons
-                      name={ACCOUNT_TYPE_ICONS[account.type]}
-                      size={18}
-                      color={accent}
+                  <View style={styles.accountRowMain}>
+                    <View
+                      accessibilityElementsHidden
+                      style={[styles.accountIconBox, { backgroundColor: theme.colors.canvasMuted }]}
+                    >
+                      <MaterialCommunityIcons
+                        name={ACCOUNT_TYPE_ICONS[account.type]}
+                        size={18}
+                        color={accent}
+                      />
+                    </View>
+                    <View style={styles.accountText}>
+                      <Text
+                        numberOfLines={1}
+                        style={[typography.label, { color: theme.colors.text }]}
+                      >
+                        {account.name}
+                      </Text>
+                      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                        {accountSubtitle(account, slice?.sharePercent)}
+                      </Text>
+                    </View>
+                    <MoneyValue
+                      amountMinor={account.balanceMinor}
+                      currency={account.currency}
+                      tone={account.balanceMinor < 0 ? "expense" : "default"}
+                      style={styles.accountMoney}
                     />
                   </View>
-                  <View style={styles.accountText}>
-                    <Text
-                      numberOfLines={1}
-                      style={[typography.label, { color: theme.colors.text }]}
-                    >
-                      {account.name}
-                    </Text>
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      {accountSubtitle(account, slice?.sharePercent)}
-                    </Text>
-                  </View>
-                  <MoneyValue
-                    amountMinor={account.balanceMinor}
-                    currency={account.currency}
-                    tone={account.balanceMinor < 0 ? "expense" : "default"}
-                    style={styles.accountMoney}
-                  />
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
@@ -287,7 +290,6 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   accountRowMain: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
