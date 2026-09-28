@@ -2,28 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { loadTransferFeeInsight } from "../src/db/dashboard";
 import type { Bindings } from "../src/types";
-
-interface CapturedStatement {
-  query: string;
-  bindings: unknown[];
-}
-
-function createCapturingDatabase(statements: CapturedStatement[]): D1Database {
-  return {
-    prepare(query: string) {
-      return {
-        bind(...bindings: unknown[]) {
-          statements.push({ query, bindings });
-          return {
-            async all() {
-              return { results: [] };
-            },
-          };
-        },
-      };
-    },
-  } as unknown as D1Database;
-}
+import { createCapturingDatabase, type CapturedStatement } from "./helpers/capturing-database";
 
 describe("loadTransferFeeInsight", () => {
   it("queries all-time totals and recent transfer sender legs per tenant", async () => {
