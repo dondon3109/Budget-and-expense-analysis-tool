@@ -9,10 +9,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: production-release-main
-  cancel-in-progress: false
-
 jobs:
   # Preflight is deliberately outside the production environment. It decides whether this CI
   # result is still main and whether it owes a release, and a superseded result fails at the
@@ -30,6 +26,7 @@ jobs:
     # EGITNOPERMISSION and no release is ever owed. This job never publishes, persist-credentials
     # is off, and the main ruleset refuses a push from github-actions[bot] regardless.
     permissions:
+      actions: write
       contents: write
     outputs:
       release_needed: ${{ steps.next_release.outputs.release_needed }}
@@ -70,6 +67,22 @@ jobs:
             echo "::error::No semantic-release baseline tag is reachable from $RELEASE_COMMIT. Create the documented one-time v2.2.1 tag before enabling releases."
             exit 1
           fi
+      - name: Cancel superseded runs waiting for approval
+        # A run parked at the production gate holds the deploy job's concurrency group, and nobody
+        # approves a superseded one, so every later release would queue behind it indefinitely.
+        # Once this run is confirmed current, cancel older runs still waiting for approval: they
+        # never started deploying, and their gated guard would reject the stale commit anyway.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          gh run list --workflow release.yml --status waiting --json databaseId \
+            --jq ".[] | select(.databaseId < $RUN_ID) | .databaseId" |
+            while read -r id; do
+              echo "Cancelling superseded run $id, which is waiting for production approval."
+              gh run cancel "$id"
+            done
       - name: Determine the next semantic release
         id: next_release
         run: node scripts/next-semantic-release.mjs
@@ -80,10 +93,15 @@ jobs:
   # semantic-release publication. The production environment requires a reviewer, so a release
   # cannot reach production until a human approves the run. Keep "Prevent self-review" off; the
   # maintainer is the only human and acts on his own merges. Only a current CI result that owes
-  # a release reaches this job, so no other run ever waits on that reviewer.
+  # a release reaches this job; a newer run's preflight cancels it if it is still unapproved.
+  # The concurrency group lives here, not on the workflow, so a run parked at this gate can never
+  # stop a newer run's preflight from starting, while deploys still never overlap.
   deploy-and-release:
     needs: preflight
     if: needs.preflight.outputs.release_needed == 'true'
+    concurrency:
+      group: production-release-main
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production

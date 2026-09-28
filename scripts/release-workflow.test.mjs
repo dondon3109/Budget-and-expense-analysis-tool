@@ -28,3 +28,14 @@ describe("Production Release source guard", () => {
     expect(steps[0]?.trim()).toBe(steps[1]?.trim());
   });
 });
+
+describe("Production Release concurrency", () => {
+  // A workflow-level group let a run parked at the production gate block every later run's
+  // preflight, so releases queued for over a day behind a superseded approval.
+  it("holds the group on the gated job, not the workflow", async () => {
+    const workflow = await readFile(".github/workflows/release.yml", "utf8");
+    expect(workflow).not.toMatch(/^concurrency:/m);
+    const gatedJob = workflow.slice(workflow.indexOf("\n  deploy-and-release:"));
+    expect(gatedJob).toMatch(/^ {4}concurrency:\n {6}group: production-release-main$/m);
+  });
+});
