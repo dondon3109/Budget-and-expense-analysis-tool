@@ -4,10 +4,12 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.47.0 — 2026-09-28
+
 ### Added
 
 - The Android and iOS app can remind you once a day to record that day's expenses and income. Choose a time (8:00 AM, 12:00 PM, 6:00 PM, or 9:00 PM) under More → Preferences → Daily reminder; it is off until you pick one, it also shows while the app is open, tapping it opens a new transaction, and signing out turns it off.
-- Prepared Android Beta 0.2.38 (versionCode 20338) so the next signed build carries the daily reminder, the new app icon, and the fixes below.
+- Android Beta 0.2.38 (versionCode 20338) carries the daily reminder, the new app icon, and the fixes below, and the Android install page offers it.
 
 ### Changed
 
