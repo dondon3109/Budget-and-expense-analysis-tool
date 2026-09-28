@@ -19,11 +19,6 @@ export const currentRelease: ProductRelease = {
         "Choose a time under More, then Preferences, then Daily reminder, and the app reminds you once a day to record that day's expenses and income. It is off until you pick a time, tapping it opens a new transaction, and signing out turns it off.",
     },
     {
-      title: "A new Zoption logo",
-      description:
-        "A rounded Z on near-black whose last stroke ends in a mint budget bar now marks the web app, its browser and home-screen icons, and the Android and iOS app icon.",
-    },
-    {
       title: "Balances keep their minus sign",
       description:
         "Adjusting an overdrawn or credit account in the Android app now previews and notes the balance with its minus sign, and the mic widget accepts a negative target balance. Adjustments are dated on your local day, even just after midnight.",
@@ -41,7 +36,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "Android Beta 0.2.38",
       description:
-        "The official Android Beta carries the daily reminder, the new app icon, and the balance adjustment and debt planner fixes.",
+        "The official Android Beta carries the daily reminder and the balance adjustment and debt planner fixes.",
     },
   ],
 };

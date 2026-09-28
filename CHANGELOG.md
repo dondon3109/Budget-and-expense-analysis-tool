@@ -7,6 +7,15 @@ All notable product changes are documented here.
 ### Added
 
 - The Android and iOS app can remind you once a day to record that day's expenses and income. Choose a time (8:00 AM, 12:00 PM, 6:00 PM, or 9:00 PM) under More → Preferences → Daily reminder; it is off until you pick one, it also shows while the app is open, tapping it opens a new transaction, and signing out turns it off.
+- Prepared Android Beta 0.2.38 (versionCode 20338) so the next signed build carries the daily reminder and the fixes below.
+
+### Fixed
+
+- Adjusting an overdrawn or credit account in the Android app previews and notes the balance with its minus sign, and the mic widget's balance update accepts a negative target balance. Balance adjustments on the web and in the app are dated on the local day instead of the UTC one, so an adjustment just after midnight in the Philippines no longer lands on yesterday.
+- The Android debt payoff planner ignores an extra payment it cannot read (such as "12abc") instead of planning a 12.00 payment.
+- The web budget plan no longer reports an amount typed with commas, such as "8,500", as an unsaved change, and does report one that cannot be saved. SMS Quick Paste passes on the amount exactly as shown instead of rounding a decimal.
+- Account balances on the web refresh as soon as an import is committed, and the spreadsheet import also refreshes the archived category list.
+- The Android install page rejects release metadata whose download link uses a custom port, embedded credentials, or a traversal path, matching the in-app update check.
 
 ## 2.46.1 — 2026-09-26
 
