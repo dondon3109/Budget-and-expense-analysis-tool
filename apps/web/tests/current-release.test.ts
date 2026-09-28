@@ -30,6 +30,7 @@ describe("current release notes", () => {
       "Balances keep their minus sign",
       "Exact amounts in more places",
       "Imports update balances right away",
+      "Budgets for removed categories",
       "Android Beta 0.2.38",
     ]);
 
