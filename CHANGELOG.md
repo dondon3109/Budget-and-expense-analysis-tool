@@ -20,6 +20,8 @@ All notable product changes are documented here.
 - The web budget plan no longer reports an amount typed with commas, such as "8,500", as an unsaved change, and does report one that cannot be saved. SMS Quick Paste passes on the amount exactly as shown instead of rounding a decimal.
 - Account balances on the web refresh as soon as an import is committed, and the spreadsheet import also refreshes the archived category list.
 - The Android install page rejects release metadata whose download link uses a custom port, embedded credentials, or a traversal path, matching the in-app update check.
+- The Android and iOS app lets you add a budget again for a category whose budget was removed (or synced with a zero limit); before, that category disappeared from both the budget list and the Add budget sheet.
+- The Android Home balance card shows each account's icon beside its name and balance instead of stacking them on separate lines.
 
 ## 2.46.1 — 2026-09-26
 
