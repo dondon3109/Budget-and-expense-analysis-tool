@@ -103,10 +103,10 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
   const theme = useZoptionTheme();
   const [strategy, setStrategy] = useState<DebtPayoffStrategy>("avalanche");
   const [extra, setExtra] = useState("");
+  const extraMinor = parseExtraPaymentMinor(extra);
   const projection = useMemo(() => {
     const active = debts.filter((debt) => debt.status === "active" && debt.balanceMinor > 0);
     if (active.length === 0) return null;
-    const extraMinor = parseExtraPaymentMinor(extra);
     try {
       return calculateDebtPayoff(
         active.map((debt) => ({
@@ -117,13 +117,13 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
           minimumPaymentMinor: debt.minimumPaymentMinor,
         })),
         strategy,
-        extraMinor,
+        extraMinor ?? 0,
         todayIso(),
       );
     } catch {
       return null;
     }
-  }, [debts, extra, strategy]);
+  }, [debts, extraMinor, strategy]);
   return (
     <Card accessibilityLabel="Debt payoff plan">
       <View style={styles.stack}>
@@ -142,6 +142,11 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
           value={strategy}
         />
         <FormField
+          error={
+            extraMinor === null
+              ? "Enter a positive amount with up to two decimals. The plan uses no extra payment until then."
+              : undefined
+          }
           keyboardType="decimal-pad"
           label="Extra monthly payment"
           maxLength={16}

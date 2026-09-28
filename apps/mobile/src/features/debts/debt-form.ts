@@ -47,12 +47,17 @@ function isValidIsoDate(value: string): boolean {
   );
 }
 
-/** The payoff planner's optional extra monthly payment. Anything unparseable plans with none. */
-export function parseExtraPaymentMinor(value: string): number {
+/**
+ * The payoff planner's optional extra monthly payment. Blank means none; null means the input
+ * cannot be read (malformed, negative, or more than two decimals), so the planner can say so.
+ */
+export function parseExtraPaymentMinor(value: string): number | null {
+  if (value.trim() === "") return 0;
   try {
-    return Math.max(0, parseAmountToMinor(value));
+    const minor = parseAmountToMinor(value);
+    return minor < 0 ? null : minor;
   } catch {
-    return 0;
+    return null;
   }
 }
 

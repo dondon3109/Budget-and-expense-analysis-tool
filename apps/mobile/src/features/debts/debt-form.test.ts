@@ -85,10 +85,14 @@ describe("parseExtraPaymentMinor", () => {
     expect(parseExtraPaymentMinor("0.29")).toBe(29);
   });
 
-  it("treats blank, negative, or malformed input as no extra payment", () => {
+  it("reads blank as no extra payment", () => {
     expect(parseExtraPaymentMinor("")).toBe(0);
-    expect(parseExtraPaymentMinor("-50")).toBe(0);
-    expect(parseExtraPaymentMinor("12abc")).toBe(0);
-    expect(parseExtraPaymentMinor("1.005")).toBe(0);
+    expect(parseExtraPaymentMinor("  ")).toBe(0);
+  });
+
+  it("flags negative or malformed input as unreadable rather than guessing", () => {
+    expect(parseExtraPaymentMinor("-50")).toBeNull();
+    expect(parseExtraPaymentMinor("12abc")).toBeNull();
+    expect(parseExtraPaymentMinor("1.005")).toBeNull();
   });
 });
