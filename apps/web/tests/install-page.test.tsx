@@ -160,7 +160,10 @@ describe("Android APK download page", () => {
     await waitFor(() =>
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith(REMOTE_APK_SHA256),
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Checksum copied to the clipboard.");
+    // The status updates only after the clipboard write resolves, which can lag the call on CI.
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Checksum copied to the clipboard."),
+    );
   });
 
   it("provides a selectable-text fallback when clipboard access fails", async () => {
