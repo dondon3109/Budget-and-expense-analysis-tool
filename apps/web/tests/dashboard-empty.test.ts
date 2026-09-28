@@ -1,7 +1,7 @@
 import type { DashboardSummary } from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
-import { calculatePercentageChange, isDashboardEmpty } from "../src/pages/DashboardPage";
+import { calculatePercentageChange, isDashboardEmpty } from "../src/lib/dashboard";
 
 const emptyDashboard: DashboardSummary = {
   period: { from: "2026-07-01", to: "2026-07-31" },

@@ -1,11 +1,8 @@
 import {
   matchCategory,
   preferredTransactionAccount,
-  transactionKinds,
-  type TransactionExportQuery,
   type TransactionInput,
   type TransactionListItem,
-  type TransactionListQuery,
 } from "@zoption/shared";
 import {
   keepPreviousData,
@@ -22,9 +19,8 @@ import {
   RefreshCw,
   RotateCcw,
   Tags,
-  Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -32,6 +28,7 @@ import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { SkeletonStatus, SkeletonTableRows } from "../components/common/Skeleton";
 import { CategoryManager } from "../components/transactions/CategoryManager";
+import { SavedViewsBar } from "../components/transactions/SavedViewsBar";
 import {
   SmsQuickPasteModal,
   type ParsedSmsTransaction,
@@ -43,11 +40,12 @@ import {
 } from "../components/transactions/TransactionForm";
 import { TransactionTable } from "../components/transactions/TransactionTable";
 import { AppShell } from "../components/layout/AppShell";
+import { useBulkTransactionActions } from "../hooks/useBulkTransactionActions";
+import { SORT_OPTIONS, useTransactionFilters } from "../hooks/useTransactionFilters";
+import { useTransactionExport } from "../hooks/useTransactionExport";
 import { localIsoDate } from "../lib/calendar";
 import {
   createTransaction,
-  deleteTransaction,
-  downloadTransactions,
   getTransactions,
   isBillingEnforcementError,
   updateTransaction,
@@ -57,9 +55,7 @@ import { formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import {
-  deleteOptimisticTransaction,
   feedTransactions,
-  mapFeedTransactions,
   optimisticTransaction,
   saveOptimisticTransaction,
   type TransactionFeed,
@@ -69,169 +65,10 @@ import { useAccounts } from "../queries/accounts";
 import { useCategories } from "../queries/categories";
 import { useDebts } from "../queries/debts";
 import { invalidateAfterTransactionWrite } from "../queries/transactions";
-import {
-  persistSavedViews,
-  readSavedViews,
-  savedViewId,
-  SAVED_VIEW_NAME_MAX,
-  type SavedTransactionFilters,
-  type SavedTransactionView,
-} from "../transactions/savedViews";
-import {
-  DEFAULT_TRANSACTION_SORT,
-  persistTransactionSortPreference,
-  readTransactionSortPreference,
-  TRANSACTION_SORT_STORAGE_KEY,
-} from "../transactions/sortPreference";
 import "./TransactionsPage.css";
-
-// The ledger scrolls continuously: `page` stays 1 here and each loaded page supplies its own.
-const initialQuery: TransactionListQuery = {
-  page: 1,
-  pageSize: 50,
-  ...DEFAULT_TRANSACTION_SORT,
-};
-
-const SORT_OPTIONS = [
-  { value: "date-desc", label: "Date: newest first", sortBy: "date", sortDirection: "desc" },
-  { value: "date-asc", label: "Date: oldest first", sortBy: "date", sortDirection: "asc" },
-  {
-    value: "description-asc",
-    label: "Description: A–Z",
-    sortBy: "description",
-    sortDirection: "asc",
-  },
-  {
-    value: "description-desc",
-    label: "Description: Z–A",
-    sortBy: "description",
-    sortDirection: "desc",
-  },
-  { value: "amount-asc", label: "Amount: lowest first", sortBy: "amount", sortDirection: "asc" },
-  {
-    value: "amount-desc",
-    label: "Amount: highest first",
-    sortBy: "amount",
-    sortDirection: "desc",
-  },
-] satisfies Array<{
-  value: string;
-  label: string;
-  sortBy: TransactionListQuery["sortBy"];
-  sortDirection: TransactionListQuery["sortDirection"];
-}>;
-
-const SEARCH_DEBOUNCE_MS = 300;
-const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Filters currently applied to the ledger; the shape a saved view captures. */
-type TransactionFilterState = SavedTransactionFilters;
-
-const EMPTY_FILTERS: TransactionFilterState = {
-  search: undefined,
-  kind: undefined,
-  accountId: undefined,
-  categoryId: undefined,
-  from: undefined,
-  to: undefined,
-};
-
-function normalizeSearch(value: string): string | undefined {
-  return value.trim() || undefined;
-}
-
-function isTransactionKind(value: string | null): value is TransactionListQuery["kind"] & string {
-  return value !== null && (transactionKinds as readonly string[]).includes(value);
-}
-
-/** Reads the bookmarkable filter set from the URL, ignoring values the API would reject. */
-function readFiltersFromParams(params: URLSearchParams): TransactionFilterState {
-  const rawFrom = params.get("from");
-  const rawTo = params.get("to");
-  const validFrom = rawFrom && ISO_DATE_PATTERN.test(rawFrom) ? rawFrom : undefined;
-  const validTo = rawTo && ISO_DATE_PATTERN.test(rawTo) ? rawTo : undefined;
-  const range =
-    validFrom && validTo && validFrom > validTo
-      ? { from: undefined, to: undefined }
-      : { from: validFrom, to: validTo };
-  const kind = params.get("kind");
-  return {
-    search: normalizeSearch(params.get("search") ?? ""),
-    kind: isTransactionKind(kind) ? kind : undefined,
-    accountId: params.get("account") ?? undefined,
-    categoryId: params.get("category") ?? undefined,
-    ...range,
-  };
-}
-
-/** Writes only the filter params so unrelated deep links (?add=1, ?month=) survive. */
-function writeFiltersToParams(
-  params: URLSearchParams,
-  filters: TransactionFilterState,
-): URLSearchParams {
-  const next = new URLSearchParams(params);
-  const entries: Array<[string, string | undefined]> = [
-    ["search", filters.search],
-    ["kind", filters.kind],
-    ["account", filters.accountId],
-    ["category", filters.categoryId],
-    ["from", filters.from],
-    ["to", filters.to],
-  ];
-  for (const [key, value] of entries) {
-    if (value) next.set(key, value);
-    else next.delete(key);
-  }
-  return next;
-}
-
-function sameFilters(a: TransactionFilterState, b: TransactionFilterState): boolean {
-  return (
-    (a.search ?? undefined) === (b.search ?? undefined) &&
-    (a.kind ?? undefined) === (b.kind ?? undefined) &&
-    (a.accountId ?? undefined) === (b.accountId ?? undefined) &&
-    (a.categoryId ?? undefined) === (b.categoryId ?? undefined) &&
-    (a.from ?? undefined) === (b.from ?? undefined) &&
-    (a.to ?? undefined) === (b.to ?? undefined)
-  );
-}
-
-function filterStateOf(query: TransactionListQuery): TransactionFilterState {
-  return {
-    search: query.search,
-    kind: query.kind,
-    accountId: query.accountId,
-    categoryId: query.categoryId,
-    from: query.from,
-    to: query.to,
-  };
-}
-
-/** Rebuilds the create payload so an undone delete recreates the same record. */
-function transactionInputFromItem(item: TransactionListItem): TransactionInput | null {
-  const amountMinor = Math.abs(item.amountMinor);
-  if (amountMinor <= 0) return null;
-  const base = {
-    date: item.date,
-    description: item.description,
-    amountMinor,
-    currency: item.currency,
-    categoryId: item.categoryId,
-    notes: item.notes ?? undefined,
-  };
-  if (item.kind === "income" || item.kind === "expense") {
-    if (!item.accountId) return null;
-    return { ...base, kind: item.kind, accountId: item.accountId };
-  }
-  if (!item.fromAccountId || !item.toAccountId) return null;
-  return {
-    ...base,
-    kind: "transfer",
-    fromAccountId: item.fromAccountId,
-    toAccountId: item.toAccountId,
-    transferFeeMinor: item.transferFeeMinor ?? undefined,
-  };
-}
+// SavedViewsBar.css holds the saved-view rules that used to sit in TransactionsPage.css, so it
+// loads right after it to keep the cascade order.
+import "../components/transactions/SavedViewsBar.css";
 
 function deleteConsequence(items: TransactionListItem[]): string {
   if (items.length === 1) {
@@ -258,13 +95,21 @@ export function TransactionsPage() {
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [query, setQuery] = useState<TransactionListQuery>(() => ({
-    ...initialQuery,
-    ...readTransactionSortPreference(),
-    ...readFiltersFromParams(searchParams),
-  }));
-  const [searchDraft, setSearchDraft] = useState(() => searchParams.get("search") ?? "");
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const {
+    query,
+    filters,
+    filtersKey,
+    searchDraft,
+    setSearchDraft,
+    hasFilters,
+    updateFilters,
+    applySearchImmediately,
+    clearFilters,
+    applySavedFilters,
+    handleSort,
+    handleSortOption,
+    activeSortOption,
+  } = useTransactionFilters();
   const searchInputRef = useRef<HTMLInputElement>(null);
   const undoButtonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
@@ -273,19 +118,10 @@ export function TransactionsPage() {
   const [editing, setEditing] = useState<TransactionListItem>();
   const [formDraft, setFormDraft] = useState<TransactionFormDraft>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [exportError, setExportError] = useState<Error>();
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [bulkCategoryId, setBulkCategoryId] = useState("");
-  const [recentlyDeleted, setRecentlyDeleted] = useState<TransactionListItem[]>([]);
   const [pendingDelete, setPendingDelete] = useState<{
     items: TransactionListItem[];
     trigger: HTMLButtonElement | null;
   }>();
-  const [views, setViews] = useState<SavedTransactionView[]>(() => readSavedViews());
-  const [viewName, setViewName] = useState("");
-  const [saveViewOpen, setSaveViewOpen] = useState(false);
-  const [activeViewId, setActiveViewId] = useState("");
 
   const categoriesQuery = useCategories(workspace, true);
   const accountsQuery = useAccounts(workspace);
@@ -302,19 +138,26 @@ export function TransactionsPage() {
     placeholderData: keepPreviousData,
   });
 
-  useEffect(() => {
-    function syncTransactionSort(event: StorageEvent) {
-      if (event.key !== TRANSACTION_SORT_STORAGE_KEY) return;
-
-      const preference = readTransactionSortPreference({
-        getItem: () => event.newValue,
-      });
-      setQuery((current) => ({ ...current, ...preference }));
-    }
-
-    window.addEventListener("storage", syncTransactionSort);
-    return () => window.removeEventListener("storage", syncTransactionSort);
-  }, []);
+  const feed = transactionsQuery.data;
+  const items = useMemo(() => feedTransactions(feed), [feed]);
+  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
+  const {
+    selectedIds,
+    setSelectedIds,
+    bulkCategoryId,
+    setBulkCategoryId,
+    recentlyDeleted,
+    setRecentlyDeleted,
+    selectedItems,
+    bulkCategories,
+    deletingIds,
+    toggleSelect,
+    toggleSelectAll,
+    deleteMutation,
+    undoDeleteMutation,
+    bulkCategoryMutation,
+  } = useBulkTransactionActions({ workspace, feedKey, query, categories, items, filtersKey });
+  const { exporting, exportError, handleExport } = useTransactionExport(workspace, query);
 
   useEffect(() => {
     if (searchParams.get("add") !== "1") return;
@@ -330,70 +173,6 @@ export function TransactionsPage() {
       { replace: true },
     );
   }, [searchParams, setSearchParams]);
-
-  const filters = useMemo(() => filterStateOf(query), [query]);
-  const filtersKey = useMemo(() => JSON.stringify(filters), [filters]);
-  const activeView = views.find((view) => view.id === activeViewId);
-
-  // The Views select only reflects reality: a manual filter change drops the applied view.
-  useEffect(() => {
-    if (!activeViewId) return;
-    const applied = views.find((candidate) => candidate.id === activeViewId);
-    if (!applied || !sameFilters(filters, applied.filters)) setActiveViewId("");
-  }, [activeViewId, filters, views]);
-
-  // Filters write to the URL so a view can be bookmarked or reloaded. This effect only fires
-  // when the filters change; the read-back effect below owns external URL changes (back/forward).
-  const didMountRef = useRef(false);
-  useEffect(() => {
-    if (!didMountRef.current) {
-      didMountRef.current = true;
-      return;
-    }
-    setSearchParams(
-      (current) => {
-        const next = writeFiltersToParams(current, filters);
-        return next.toString() === current.toString() ? current : next;
-      },
-      { replace: true },
-    );
-  }, [filters, setSearchParams]);
-
-  useEffect(() => {
-    const fromUrl = readFiltersFromParams(searchParams);
-    setQuery((current) =>
-      sameFilters(filterStateOf(current), fromUrl)
-        ? current
-        : { ...current, ...EMPTY_FILTERS, ...fromUrl },
-    );
-    setSearchDraft((current) => {
-      const next = searchParams.get("search") ?? "";
-      return normalizeSearch(current) === normalizeSearch(next) ? current : next;
-    });
-  }, [searchParams]);
-
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-
-    const nextSearch = normalizeSearch(searchDraft);
-    if (nextSearch === query.search) return;
-
-    searchTimerRef.current = setTimeout(() => {
-      setQuery((current) =>
-        current.search === nextSearch ? current : { ...current, search: nextSearch },
-      );
-      searchTimerRef.current = undefined;
-    }, SEARCH_DEBOUNCE_MS);
-
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    };
-  }, [query.search, searchDraft]);
-
-  // A hidden row must never be acted on: drop the selection whenever the visible set changes.
-  useEffect(() => {
-    setSelectedIds((current) => (current.size === 0 ? current : new Set()));
-  }, [filtersKey]);
 
   const refreshProductData = async () => {
     await invalidateAfterTransactionWrite(queryClient, workspace);
@@ -439,127 +218,12 @@ export function TransactionsPage() {
       void refreshProductData();
     },
   });
-  const deleteMutation = useMutation({
-    mutationFn: async (items: TransactionListItem[]) => {
-      for (const item of items) await deleteTransaction(workspace, item.id);
-    },
-    onMutate: async (items) => {
-      const snapshot = await updateOptimistically<TransactionFeed>(
-        queryClient,
-        feedKey,
-        (current) =>
-          items.reduce<TransactionFeed | undefined>(
-            (feed, item) => deleteOptimisticTransaction(feed, item.id),
-            current,
-          ),
-      );
-      return { snapshot };
-    },
-    onError: (_error, _items, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
-    onSettled: () => {
-      void refreshProductData();
-    },
-  });
-  const undoDeleteMutation = useMutation({
-    mutationFn: async (items: TransactionListItem[]) => {
-      for (const item of items) {
-        const input = transactionInputFromItem(item);
-        if (!input) {
-          throw new Error(
-            `“${item.description}” can no longer be restored because its account is missing.`,
-          );
-        }
-        await createTransaction(workspace, input);
-      }
-    },
-    onMutate: async (items) => {
-      const snapshot = await updateOptimistically<TransactionFeed>(
-        queryClient,
-        feedKey,
-        (current) =>
-          items.reduce<TransactionFeed | undefined>(
-            (feed, item) => saveOptimisticTransaction(feed, query, item),
-            current,
-          ),
-      );
-      return { snapshot };
-    },
-    onError: (_error, _items, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
-    onSuccess: () => setRecentlyDeleted([]),
-    onSettled: () => {
-      void refreshProductData();
-    },
-  });
-  const bulkCategoryMutation = useMutation({
-    mutationFn: async (args: { ids: string[]; categoryId: string }) => {
-      for (const id of args.ids) {
-        await updateTransaction(workspace, { id, input: { categoryId: args.categoryId } });
-      }
-    },
-    onMutate: async ({ ids, categoryId }) => {
-      const category = categoriesQuery.data?.find((candidate) => candidate.id === categoryId);
-      const idSet = new Set(ids);
-      const snapshot = await updateOptimistically<TransactionFeed>(
-        queryClient,
-        feedKey,
-        (current) =>
-          mapFeedTransactions(current, (item) =>
-            idSet.has(item.id) && category
-              ? {
-                  ...item,
-                  categoryId,
-                  categoryName: category.name,
-                  categoryColor: category.color,
-                  categoryIconEmoji: category.iconEmoji ?? null,
-                }
-              : item,
-          ),
-      );
-      return { snapshot };
-    },
-    onError: (_error, _args, context) => restoreOptimisticSnapshot(queryClient, context?.snapshot),
-    onSuccess: () => {
-      setSelectedIds(new Set());
-      setBulkCategoryId("");
-    },
-    onSettled: () => {
-      void refreshProductData();
-    },
-  });
 
-  const categories = useMemo(() => categoriesQuery.data ?? [], [categoriesQuery.data]);
   const accounts = accountsQuery.data ?? [];
   const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const debts = debtsQuery.data?.items ?? [];
-  const feed = transactionsQuery.data;
-  const items = useMemo(() => feedTransactions(feed), [feed]);
   // The first page carries the freshest total; later pages may have been read before an edit.
   const total = feed?.pages[0]?.total;
-  const hasFilters = Boolean(
-    searchDraft.trim() ||
-    query.search ||
-    query.kind ||
-    query.categoryId ||
-    query.accountId ||
-    query.from ||
-    query.to,
-  );
-  const selectedItems = useMemo(
-    () => items.filter((item) => selectedIds.has(item.id)),
-    [items, selectedIds],
-  );
-  const selectedKinds = useMemo(
-    () => new Set(selectedItems.map((item) => item.kind)),
-    [selectedItems],
-  );
-  const bulkCategories = useMemo(
-    () => categories.filter((category) => !category.archived && selectedKinds.has(category.kind)),
-    [categories, selectedKinds],
-  );
-  const deletingIds = useMemo(() => {
-    if (!deleteMutation.isPending) return undefined;
-    return new Set((deleteMutation.variables ?? []).map((item) => item.id));
-  }, [deleteMutation.isPending, deleteMutation.variables]);
 
   // Loads the next page as the end of the ledger nears the viewport, the way the mobile list
   // scrolls. The footer's Load more button stays as the keyboard and fallback path.
@@ -588,12 +252,6 @@ export function TransactionsPage() {
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetching, isFetchNextPageError, items.length]);
 
-  useEffect(() => {
-    setBulkCategoryId((current) =>
-      current && bulkCategories.some((category) => category.id === current) ? current : "",
-    );
-  }, [bulkCategories]);
-
   // The confirmed delete removes the row that owned focus, so hand focus to Undo rather than
   // dropping it on <body>.
   useEffect(() => {
@@ -601,16 +259,6 @@ export function TransactionsPage() {
     if (document.activeElement !== document.body) return;
     undoButtonRef.current?.focus();
   }, [recentlyDeleted]);
-
-  // Keep the selection to rows that are still on screen.
-  useEffect(() => {
-    const visible = new Set(items.map((item) => item.id));
-    setSelectedIds((current) => {
-      if (current.size === 0) return current;
-      const next = new Set([...current].filter((id) => visible.has(id)));
-      return next.size === current.size ? current : next;
-    });
-  }, [items]);
 
   function openCreate() {
     setEditing(undefined);
@@ -693,81 +341,6 @@ export function TransactionsPage() {
     setIsSmsModalOpen(false);
   };
 
-  function updateFilters(change: Partial<TransactionListQuery>) {
-    setQuery((current) => ({ ...current, ...change }));
-  }
-
-  function applySearchImmediately() {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    const nextSearch = normalizeSearch(searchDraft);
-    setQuery((current) =>
-      current.search === nextSearch ? current : { ...current, search: nextSearch },
-    );
-  }
-
-  function clearFilters() {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = undefined;
-    setSearchDraft("");
-    setQuery((current) => ({
-      ...initialQuery,
-      pageSize: current.pageSize,
-      sortBy: current.sortBy,
-      sortDirection: current.sortDirection,
-    }));
-  }
-
-  function applySavedView(id: string) {
-    const view = views.find((candidate) => candidate.id === id);
-    if (!view) {
-      setActiveViewId("");
-      return;
-    }
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    searchTimerRef.current = undefined;
-    setSearchDraft(view.filters.search ?? "");
-    // Same state path as manual filtering, so the URL effect writes the filter params.
-    setQuery((current) => ({ ...current, ...view.filters }));
-    setActiveViewId(view.id);
-  }
-
-  function saveCurrentView(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const name = viewName.trim().slice(0, SAVED_VIEW_NAME_MAX);
-    if (!name) return;
-    const view: SavedTransactionView = { id: savedViewId(), name, filters };
-    // Saving under an existing name replaces that view instead of stacking duplicates.
-    const next = [...views.filter((candidate) => candidate.name !== name), view];
-    setViews(next);
-    persistSavedViews(next);
-    setActiveViewId(view.id);
-    setViewName("");
-    setSaveViewOpen(false);
-  }
-
-  function deleteSavedView(view: SavedTransactionView) {
-    const next = views.filter((candidate) => candidate.id !== view.id);
-    setViews(next);
-    persistSavedViews(next);
-    if (activeViewId === view.id) setActiveViewId("");
-  }
-
-  function toggleSelect(id: string) {
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }
-
-  function toggleSelectAll() {
-    setSelectedIds((current) => {
-      const allSelected = items.length > 0 && items.every((item) => current.has(item.id));
-      return allSelected ? new Set() : new Set(items.map((item) => item.id));
-    });
-  }
-
   function requestDelete(item: TransactionListItem, trigger: HTMLButtonElement) {
     deleteMutation.reset();
     setPendingDelete({ items: [item], trigger });
@@ -795,54 +368,6 @@ export function TransactionsPage() {
     setEditing(item);
     saveMutation.reset();
     setFormOpen(true);
-  }
-
-  function updateSort(
-    sortBy: TransactionListQuery["sortBy"],
-    sortDirection: TransactionListQuery["sortDirection"],
-  ) {
-    persistTransactionSortPreference({ sortBy, sortDirection });
-    setQuery((current) => ({ ...current, sortBy, sortDirection }));
-  }
-
-  function handleSort(sortBy: TransactionListQuery["sortBy"]) {
-    const sortDirection =
-      query.sortBy === sortBy && query.sortDirection === "desc" ? "asc" : "desc";
-    updateSort(sortBy, sortDirection);
-  }
-
-  function handleSortOption(value: string) {
-    const option = SORT_OPTIONS.find((candidate) => candidate.value === value);
-    if (option) updateSort(option.sortBy, option.sortDirection);
-  }
-
-  const activeSortOption =
-    SORT_OPTIONS.find(
-      (option) => option.sortBy === query.sortBy && option.sortDirection === query.sortDirection,
-    ) ?? SORT_OPTIONS[0]!;
-
-  async function handleExport() {
-    setExporting(true);
-    setExportError(undefined);
-    try {
-      const filters: TransactionExportQuery = {
-        search: query.search,
-        categoryId: query.categoryId,
-        accountId: query.accountId,
-        kind: query.kind,
-        from: query.from,
-        to: query.to,
-        sortBy: query.sortBy,
-        sortDirection: query.sortDirection,
-      };
-      await downloadTransactions(workspace, filters);
-    } catch (error) {
-      setExportError(
-        error instanceof Error ? error : new Error("The export could not be prepared."),
-      );
-    } finally {
-      setExporting(false);
-    }
   }
 
   return (
@@ -951,69 +476,7 @@ export function TransactionsPage() {
                 </select>
               </label>
               <span className="transaction-list-divider" aria-hidden="true" />
-              <div className="transaction-views">
-                <label className="transaction-sort-control">
-                  <span>Views</span>
-                  <select
-                    value={activeViewId}
-                    onChange={(event) => applySavedView(event.target.value)}
-                    disabled={views.length === 0}
-                  >
-                    <option value="">
-                      {views.length === 0 ? "No saved views" : "Select a view"}
-                    </option>
-                    {views.map((view) => (
-                      <option key={view.id} value={view.id}>
-                        {view.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {saveViewOpen ? (
-                  <form className="transaction-view-save" onSubmit={saveCurrentView}>
-                    <label className="transaction-view-name">
-                      <span className="sr-only">View name</span>
-                      <input
-                        value={viewName}
-                        maxLength={SAVED_VIEW_NAME_MAX}
-                        placeholder="Name this view"
-                        onChange={(event) => setViewName(event.target.value)}
-                      />
-                    </label>
-                    <button className="button secondary" type="submit" disabled={!viewName.trim()}>
-                      Save
-                    </button>
-                    <button
-                      className="button secondary"
-                      type="button"
-                      onClick={() => {
-                        setSaveViewOpen(false);
-                        setViewName("");
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </form>
-                ) : (
-                  <button
-                    className="button secondary"
-                    type="button"
-                    onClick={() => setSaveViewOpen(true)}
-                  >
-                    Save view
-                  </button>
-                )}
-                {activeView && (
-                  <button
-                    className="icon-button"
-                    type="button"
-                    aria-label={`Delete view ${activeView.name}`}
-                    onClick={() => deleteSavedView(activeView)}
-                  >
-                    <Trash2 size={15} aria-hidden="true" />
-                  </button>
-                )}
-              </div>
+              <SavedViewsBar filters={filters} onApply={applySavedFilters} />
             </div>
           </div>
 
