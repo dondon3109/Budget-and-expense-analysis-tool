@@ -5,6 +5,7 @@ import { clearPayPalAccessTokenCacheForTesting } from "../src/billing/paypal";
 import type { BillingRepository } from "../src/db/billing";
 import type { RateLimiter } from "../src/rate-limit";
 import type { Bindings } from "../src/types";
+import { allowedRateLimiter } from "./helpers/rate-limiter";
 
 function environment(): Bindings {
   return {
@@ -20,17 +21,6 @@ function repository(outcome: "applied" | "unmatched" = "applied") {
   return {
     applySubscriptionEvent: vi.fn(async () => outcome),
   } as unknown as BillingRepository;
-}
-
-function allowedRateLimiter(): RateLimiter {
-  return {
-    consume: vi.fn(async () => ({
-      allowed: true,
-      limit: 60,
-      remaining: 59,
-      retryAfterSeconds: 60,
-    })),
-  };
 }
 
 function payload() {

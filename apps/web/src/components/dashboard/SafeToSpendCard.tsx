@@ -4,15 +4,13 @@ import {
   safeToSpend,
   type CashflowForecastOptions,
 } from "@zoption/shared";
-import { useQuery } from "@tanstack/react-query";
 import { CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { getSubscriptions } from "../../lib/api";
 import { currentMonth, monthStart } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
-import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { useSubscriptions } from "../../queries/subscriptions";
 import "./SafeToSpendCard.css";
 
 export interface SafeToSpendCardProps {
@@ -53,10 +51,7 @@ export function SafeToSpendCard({
   remainingBudgetMinor,
 }: SafeToSpendCardProps) {
   const subscriptionMonth = currentMonth();
-  const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(workspace, monthStart(subscriptionMonth)),
-    queryFn: () => getSubscriptions(workspace, monthStart(subscriptionMonth)),
-  });
+  const subscriptionsQuery = useSubscriptions(workspace, monthStart(subscriptionMonth));
 
   // A pending or failed query projects no renewals rather than blocking the card; the guidance
   // line below says so instead of presenting the week as bill-free.
