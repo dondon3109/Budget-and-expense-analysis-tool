@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- New transactions on the web and in the Android and iOS app start on the Uncategorized category for their type (expense, income, or transfer) instead of the first category in the list or Salary. Switching the type, or an AI voice draft whose category does not match, also falls back to Uncategorized.
+
 ### Fixed
 
 - The default-account star on Home's balance card stays inside the card on Android instead of being pushed past its right edge.
