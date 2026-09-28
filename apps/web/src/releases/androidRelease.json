@@ -1,23 +1,24 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.37-beta",
-  "versionCode": 20337,
-  "filename": "zoption-beta-0.2.37.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.37.apk",
-  "sha256": "b304c87a199530473da8db5dce42542885f354905333c1e12fc3e4d57b7b9798",
-  "sizeBytes": 138039110,
-  "sizeLabel": "138,039,110 bytes (131.64 MiB)",
-  "releaseDate": "2026-09-26",
-  "releaseDateLabel": "September 26, 2026",
+  "versionName": "0.2.38-beta",
+  "versionCode": 20338,
+  "filename": "zoption-beta-0.2.38.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.38.apk",
+  "sha256": "6d3d51181c327a9bc6dee13667d81e4e32a4470ef10678d2e6ce151f4a9e24d5",
+  "sizeBytes": 139068216,
+  "sizeLabel": "139,068,216 bytes (132.63 MiB)",
+  "releaseDate": "2026-09-28",
+  "releaseDateLabel": "September 28, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Try Zoption Pro free for 7 days, no card needed",
-    "Lock the app with a 6-digit PIN instead of a password",
-    "A clearer Home screen with your balance split across accounts",
-    "Receipt scanning itemizes purchases, discounts included",
-    "Create a category right from the category picker"
+    "A daily reminder to record the day's expenses and income (More → Preferences → Daily reminder)",
+    "The new Zoption app icon",
+    "Add a budget again for a category whose budget you removed",
+    "Home's balance card keeps each account's icon beside its name",
+    "Overdrawn and credit balances keep their minus sign when adjusted",
+    "The debt payoff planner flags an extra payment it cannot read"
   ]
 }
