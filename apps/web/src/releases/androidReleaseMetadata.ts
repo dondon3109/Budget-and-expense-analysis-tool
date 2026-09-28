@@ -4,7 +4,8 @@
  *
  * The remote object is untrusted input. `parseRemoteAndroidRelease` returns
  * null unless every field matches the strict shape below, the download URL
- * is HTTPS on downloads.zoption.site, and both checksums are well-formed.
+ * is HTTPS on downloads.zoption.site with no custom port, credentials, or
+ * traversal segment, and both checksums are well-formed.
  */
 
 import type { AndroidRelease } from "./androidRelease";
@@ -93,6 +94,9 @@ export function parseRemoteAndroidRelease(input: unknown): AndroidRelease | null
   }
   if (parsedDownloadUrl.protocol !== "https:") return null;
   if (parsedDownloadUrl.hostname !== ANDROID_DOWNLOAD_HOST) return null;
+  if (parsedDownloadUrl.port !== "" && parsedDownloadUrl.port !== "443") return null;
+  if (parsedDownloadUrl.username || parsedDownloadUrl.password) return null;
+  if (parsedDownloadUrl.pathname.includes("..")) return null;
   const filename = parsedDownloadUrl.pathname.split("/").filter(Boolean).pop();
   if (!filename || !filename.endsWith(".apk")) return null;
 

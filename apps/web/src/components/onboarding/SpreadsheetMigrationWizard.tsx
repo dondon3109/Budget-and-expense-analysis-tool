@@ -315,7 +315,7 @@ function SpreadsheetMigrationDialog({
           queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
           queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
           queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
-          queryClient.invalidateQueries({ queryKey: queryKeys.categories(workspace) }),
+          queryClient.invalidateQueries({ queryKey: queryKeys.allCategories(workspace) }),
         ]);
       }
       setStep(4);

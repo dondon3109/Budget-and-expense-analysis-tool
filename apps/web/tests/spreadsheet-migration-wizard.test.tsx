@@ -72,14 +72,13 @@ const mockPreview: ImportPreview = {
 
 function renderWizard(
   props: { open?: boolean; onClose?: () => void; onComplete?: () => void } = {},
-) {
-  const queryClient = new QueryClient({
+  queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },
     },
-  });
-
+  }),
+) {
   return render(
     <QueryClientProvider client={queryClient}>
       <SpreadsheetMigrationWizard
@@ -203,7 +202,11 @@ describe("SpreadsheetMigrationWizard", () => {
       total: 1,
       totalPages: 1,
     });
-    renderWizard({ onComplete, onClose });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    renderWizard({ onComplete, onClose }, queryClient);
 
     const csvContent = [
       "Date,Description,Amount,Category",
@@ -258,6 +261,11 @@ describe("SpreadsheetMigrationWizard", () => {
     await waitFor(() =>
       expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("first_import_committed", {}),
     );
+    // The bare "categories" prefix refreshes every list, archived included.
+    const categoryKeys = invalidate.mock.calls
+      .map(([filters]) => filters?.queryKey)
+      .filter((key) => key?.includes("categories"));
+    expect(categoryKeys.map((key) => key?.at(-1))).toEqual(["categories"]);
 
     const finishBtn = screen.getByRole("button", { name: /view my populated dashboard/i });
     await user.click(finishBtn);

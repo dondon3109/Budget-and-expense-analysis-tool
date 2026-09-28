@@ -1,4 +1,5 @@
 import {
+  formatMinorAmount,
   parseAmountToMinor,
   subscriptionInputSchema,
   type AccountRecord,
@@ -34,8 +35,9 @@ function today(): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Whole amounts drop their ".00" so the field reads the way people type it. */
 function minorToInput(minor: number): string {
-  return minor % 100 === 0 ? String(minor / 100) : (minor / 100).toFixed(2);
+  return formatMinorAmount(minor).replace(/\.00$/, "");
 }
 
 export function SubscriptionForm({

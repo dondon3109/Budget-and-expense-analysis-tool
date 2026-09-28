@@ -307,7 +307,7 @@ export function TransactionsPage() {
   }, []);
 
   const handleApplySms = (parsed: ParsedSmsTransaction) => {
-    if (parsed.amount === undefined || isNaN(parsed.amount)) return;
+    if (parsed.amount.trim() === "") return;
     const kind = parsed.type;
     const matchedCategory = matchCategory(categories, parsed.suggestedCategory, {
       kind,
@@ -328,7 +328,7 @@ export function TransactionsPage() {
 
     setFormDraft({
       kind,
-      amount: parsed.amount.toFixed(2),
+      amount: parsed.amount.trim(),
       date: parsed.date || localIsoDate(),
       description: parsed.merchant || "SMS Transaction",
       categoryId,

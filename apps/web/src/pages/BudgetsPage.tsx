@@ -1,4 +1,9 @@
-import { parseAmountToMinor, type BudgetMonthPlan, type BudgetUpsert } from "@zoption/shared";
+import {
+  formatMinorAmount,
+  parseAmountToMinor,
+  type BudgetMonthPlan,
+  type BudgetUpsert,
+} from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
@@ -20,10 +25,6 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { useBudgets } from "../queries/budgets";
 import "./BudgetsPage.css";
-
-function toAmountText(amountMinor: number): string {
-  return (amountMinor / 100).toFixed(2);
-}
 
 export function BudgetsPage() {
   const { user } = useAuth();
@@ -49,7 +50,7 @@ export function BudgetsPage() {
     if (initializedDraftShapeRef.current === draftShape) return;
     initializedDraftShapeRef.current = draftShape;
     const seeded = Object.fromEntries(
-      budgetQuery.data.items.map((item) => [item.categoryId, toAmountText(item.limitMinor)]),
+      budgetQuery.data.items.map((item) => [item.categoryId, formatMinorAmount(item.limitMinor)]),
     );
     // A draft that outlived the component (Back button, refresh, a crashed tab) wins over
     // the saved plan, so returning to the page finds the work still there.
@@ -143,7 +144,7 @@ export function BudgetsPage() {
 
   const data = budgetQuery.data;
 
-  // Numeric comparison so "500" is not treated as a change to a saved "500.00".
+  // Parsed the way save parses, so "8,500" is not a change to a saved "8500.00".
   const hasUnsavedEdits =
     data !== undefined &&
     data.items.some((item) => {
@@ -152,8 +153,11 @@ export function BudgetsPage() {
       if (raw === undefined) return false;
       const draft = raw.trim();
       if (draft === "") return item.limitMinor !== 0;
-      const parsed = Number.parseFloat(draft);
-      return !Number.isFinite(parsed) || Math.round(parsed * 100) !== item.limitMinor;
+      try {
+        return parseAmountToMinor(draft) !== item.limitMinor;
+      } catch {
+        return true;
+      }
     });
 
   // One source of truth for "leaving this page now would lose the draft": the browser

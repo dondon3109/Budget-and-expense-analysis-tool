@@ -234,9 +234,11 @@ export function ImportPage() {
       ) {
         captureFunnelEvent("first_import_committed", {});
       }
+      // Account balances are sums of transactions, so they change with every committed row.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
       ]);
     },
     onError: (error) => {

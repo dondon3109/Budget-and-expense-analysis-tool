@@ -2,6 +2,7 @@ import {
   currencies,
   currencyMetadata,
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+  formatMinorAmount,
   matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
@@ -61,7 +62,7 @@ interface TransactionFormProps {
 const NEW_CATEGORY_OPTION = "__new_category__";
 
 function toAmountText(item?: TransactionListItem): string {
-  return item ? (Math.abs(item.amountMinor) / 100).toFixed(2) : "";
+  return item ? formatMinorAmount(Math.abs(item.amountMinor)) : "";
 }
 
 export function TransactionForm({
@@ -94,7 +95,7 @@ export function TransactionForm({
   const [notes, setNotes] = useState(initialDraft?.notes ?? item?.notes ?? "");
   const [debtId, setDebtId] = useState(initialDraft?.debtId ?? item?.debtId ?? "");
   const [transferFee, setTransferFee] = useState(
-    item?.transferFeeMinor ? (item.transferFeeMinor / 100).toFixed(2) : "",
+    item?.transferFeeMinor ? formatMinorAmount(item.transferFeeMinor) : "",
   );
   const [currency, setCurrency] = useState<Currency>(
     initialDraft?.currency ?? item?.currency ?? "PHP",
@@ -276,7 +277,7 @@ export function TransactionForm({
     setCategoryId(matchingCategory?.id ?? nextKindCategories[0]?.id ?? categoryId);
     setDate(draft.date);
     setDescription(draft.description);
-    setAmount((draft.amountMinor / 100).toFixed(2));
+    setAmount(formatMinorAmount(draft.amountMinor));
     setTransferFee("");
     setCurrency(draft.currency);
     if (!activeAccounts.some((account) => account.id === accountId)) {
