@@ -47,6 +47,7 @@ apps/web/.zoption-build/
 
 # Local-only agent settings. Shared project agent config stays tracked.
 .claude/settings.local.json
+.claude/launch.json
 
 # Credential material that must never be committed
 *.pem
