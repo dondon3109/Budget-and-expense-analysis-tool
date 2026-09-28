@@ -1,0 +1,17 @@
+/* DataPortabilitySettings section of Account Settings. SettingsPage imports this after SettingsPage.css,
+   where these rules used to sit, so keep it loading after it. */
+
+.settings-portability-content {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.settings-portability-content p {
+  max-width: 65ch;
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}

@@ -1,0 +1,100 @@
+/* ProfileSettings section of Account Settings. SettingsPage imports this after SettingsPage.css,
+   where these rules used to sit, so keep it loading after it. */
+
+.avatar-settings {
+  margin-top: 28px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
+}
+
+.avatar-settings-content {
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.avatar-settings-content label {
+  display: grid;
+  gap: 8px;
+}
+
+.avatar-settings-content label > span {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.avatar-settings-content input[type="file"] {
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-height);
+  padding: 6px;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  outline: 0;
+  background: var(--surface);
+  font-size: 12.5px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.avatar-settings-content input[type="file"]::file-selector-button {
+  min-height: 32px;
+  margin-right: 10px;
+  padding: 0 12px;
+  color: var(--solid-text);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--solid-bg);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 650;
+  transition: background-color 150ms ease;
+}
+
+.avatar-settings-content input[type="file"]:focus-visible {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
+}
+
+.avatar-settings-content input[type="file"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.avatar-settings-content small {
+  color: var(--subtle);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.avatar-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 760px) {
+  .avatar-settings {
+    grid-template-columns: 1fr;
+  }
+
+  .avatar-settings .user-avatar.large {
+    width: 76px;
+    height: 76px;
+  }
+
+  .avatar-settings-actions {
+    display: grid;
+  }
+}
