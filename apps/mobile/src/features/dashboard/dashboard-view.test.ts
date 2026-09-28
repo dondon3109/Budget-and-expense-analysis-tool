@@ -1,4 +1,4 @@
-import type { LocalDashboardData } from "@/db/repository";
+import type { LocalDashboardData } from "@/db/view-models";
 
 import { buildDashboardView } from "./dashboard-view";
 

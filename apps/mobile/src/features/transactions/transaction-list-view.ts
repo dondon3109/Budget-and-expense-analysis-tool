@@ -1,6 +1,6 @@
 import type { Currency } from "@zoption/shared";
 
-import type { LocalTransactionItem, TransactionKindFilter } from "@/db/repository";
+import type { LocalTransactionItem, TransactionKindFilter } from "@/db/view-models";
 
 export interface TransactionTotals {
   incomeMinor: number;

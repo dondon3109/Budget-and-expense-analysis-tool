@@ -6,7 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCalendarMonth, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
-import type { LocalCalendarDay } from "@/db/repository";
+import type { LocalCalendarDay } from "@/db/view-models";
 import { Button, Card, ErrorState, MoneyValue, Skeleton, SyncStatus } from "@/ui/components";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";

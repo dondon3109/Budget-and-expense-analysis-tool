@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import { useLocalReferenceData } from "@/db/local-workspace-state";
-import type { LocalCategoryItem } from "@/db/repository";
+import type { LocalCategoryItem } from "@/db/view-models";
 import { CategoriesScreen } from "./CategoriesScreen";
 
 jest.mock("expo-router", () => ({

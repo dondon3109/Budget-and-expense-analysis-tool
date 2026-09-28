@@ -4,15 +4,31 @@ import {
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
-  type AccountRecord,
-  type BudgetRecord,
   type InterestSettings,
-  type TransactionInput,
   type TransactionListItem,
   type TransactionRecord,
 } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
+
+import type {
+  LocalWorkspaceStats,
+  LocalTransactionItem,
+  LocalAccountOption,
+  LocalCategoryOption,
+  TransactionFormData,
+  LocalBudgetMonthData,
+  LocalGoalItem,
+  LocalSubscriptionItem,
+  LocalEventItem,
+  LocalAccountModeling,
+  LocalCalendarDay,
+  LocalCalendarMonth,
+  LocalDebtItem,
+  LocalReferenceData,
+  LocalDashboardData,
+  TransactionQuery,
+} from "./view-models";
 
 const workspaceStatsRowSchema = z.object({
   account_count: z.number().int().nonnegative(),
@@ -21,14 +37,6 @@ const workspaceStatsRowSchema = z.object({
   unsynced_operation_count: z.number().int().nonnegative(),
   unresolved_conflict_count: z.number().int().nonnegative(),
 });
-
-export interface LocalWorkspaceStats {
-  accountCount: number;
-  categoryCount: number;
-  transactionCount: number;
-  unsyncedOperationCount: number;
-  unresolvedConflictCount: number;
-}
 
 const localTransactionRowSchema = z.object({
   id: z.string(),
@@ -51,13 +59,6 @@ const localTransactionRowSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
-export interface LocalTransactionItem {
-  transaction: TransactionListItem;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
-
-type EditableTransactionInput = TransactionInput;
-
 const localAccountOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -69,7 +70,7 @@ const localAccountOptionSchema = z.object({
     .min(0)
     .max(1)
     .transform((value) => value === 1),
-});
+}) satisfies z.ZodType<LocalAccountOption>;
 
 const localCategoryOptionSchema = z
   .object({
@@ -88,7 +89,7 @@ const localCategoryOptionSchema = z
   .transform((row) => ({
     ...row,
     iconEmoji: resolveCategoryEmoji({ name: row.name, iconEmoji: row.iconEmoji, kind: row.kind }),
-  }));
+  })) satisfies z.ZodType<LocalCategoryOption>;
 
 const editableTransactionRowSchema = z.object({
   id: z.string(),
@@ -106,23 +107,6 @@ const editableTransactionRowSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
-export type LocalAccountOption = z.infer<typeof localAccountOptionSchema>;
-
-export type LocalCategoryOption = z.infer<typeof localCategoryOptionSchema>;
-
-export interface EditableLocalTransaction {
-  id: string;
-  input: EditableTransactionInput;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
-
-export interface TransactionFormData {
-  accounts: LocalAccountOption[];
-  categories: LocalCategoryOption[];
-  transaction: EditableLocalTransaction | null;
-  unavailableReason: string | null;
-}
-
 const budgetMonthItemSchema = z.object({
   id: z.string(),
   category_id: z.string(),
@@ -133,21 +117,6 @@ const budgetMonthItemSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
-export interface BudgetMonthItem {
-  id: string;
-  categoryId: string;
-  categoryName: string;
-  categoryColor: string;
-  limitMinor: number;
-  spentMinor: number;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
-
-export interface LocalBudgetMonthData {
-  budgets: BudgetMonthItem[];
-  categories: LocalCategoryOption[];
-}
-
 const goalItemSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -157,16 +126,6 @@ const goalItemSchema = z.object({
   status: z.enum(["active", "paused", "completed"]),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
-
-export interface LocalGoalItem {
-  id: string;
-  name: string;
-  targetAmountMinor: number;
-  currentAmountMinor: number;
-  targetDate: string;
-  status: "active" | "paused" | "completed";
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
 
 const debtItemSchema = z.object({
   id: z.string(),
@@ -192,19 +151,6 @@ const subscriptionItemSchema = z.object({
   account_id: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
-
-export interface LocalSubscriptionItem {
-  id: string;
-  name: string;
-  amountMinor: number;
-  currency: string;
-  billingCycle: "monthly" | "yearly";
-  nextBillingDate: string;
-  status: "active" | "canceled";
-  categoryId: string | null;
-  accountId: string | null;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
 
 const calendarTransactionItemSchema = z.object({
   id: z.string(),
@@ -239,55 +185,6 @@ const eventItemSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
-export interface LocalEventItem {
-  id: string;
-  title: string;
-  date: string;
-  startTime: string | null;
-  endTime: string | null;
-  notes: string | null;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
-
-export interface LocalAccountModeling {
-  currency: "PHP" | "USD";
-  balanceMinor: number;
-  interest: InterestSettings;
-}
-
-export interface LocalCalendarDay {
-  date: string;
-  transactions: {
-    id: string;
-    description: string;
-    amountMinor: number;
-    kind: "income" | "expense" | "transfer";
-  }[];
-  subscriptionBills: {
-    id: string;
-    name: string;
-    amountMinor: number;
-  }[];
-  events: LocalEventItem[];
-}
-
-export interface LocalCalendarMonth {
-  month: string;
-  days: LocalCalendarDay[];
-}
-
-export interface LocalDebtItem {
-  id: string;
-  name: string;
-  type: "credit_card" | "personal_loan" | "auto_loan" | "mortgage" | "other";
-  balanceMinor: number;
-  aprBasisPoints: number;
-  minimumPaymentMinor: number;
-  balanceAsOf: string;
-  status: "active" | "paid";
-  syncState: "synced" | "pending" | "failed" | "conflicted";
-}
-
 const localAccountItemSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -315,47 +212,6 @@ const localCategoryItemSchema = z
     ...row,
     iconEmoji: resolveCategoryEmoji({ name: row.name, iconEmoji: row.iconEmoji, kind: row.kind }),
   }));
-
-export interface LocalAccountItem {
-  id: string;
-  name: string;
-  type: z.infer<typeof localAccountItemSchema>["type"];
-  currency: z.infer<typeof localAccountItemSchema>["currency"];
-  system: boolean;
-  serverRevision: number;
-  syncState: z.infer<typeof localAccountItemSchema>["sync_state"];
-}
-
-export interface LocalCategoryItem {
-  id: string;
-  name: string;
-  kind: z.infer<typeof localCategoryItemSchema>["kind"];
-  color: string;
-  iconEmoji?: string | null;
-  system: boolean;
-  requiredPlan: z.infer<typeof localCategoryItemSchema>["required_plan"];
-  locked: boolean;
-  serverRevision: number;
-  syncState: z.infer<typeof localCategoryItemSchema>["sync_state"];
-}
-
-export interface LocalReferenceData {
-  accounts: LocalAccountItem[];
-  categories: LocalCategoryItem[];
-}
-
-export interface LocalDashboardData {
-  /** Transactions inside the dashboard window, newest first. */
-  transactions: TransactionRecord[];
-  /**
-   * The newest transactions overall, for the recent activity card. Read
-   * separately because that card must show the latest entries even when the
-   * ledger has been dormant for longer than the dashboard window.
-   */
-  recentTransactions: TransactionRecord[];
-  accounts: AccountRecord[];
-  budgets: BudgetRecord[];
-}
 
 /** Rows the recent activity card renders. */
 const RECENT_ACTIVITY_LIMIT = 3;
@@ -409,17 +265,6 @@ function decodeInterest(json: string | null): InterestSettings {
     // Interest is a display-only enrichment; a corrupt field must not hide balances.
     return { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null };
   }
-}
-
-export const transactionKindFilters = ["all", "income", "expense", "transfer"] as const;
-export type TransactionKindFilter = (typeof transactionKindFilters)[number];
-
-export interface TransactionQuery {
-  search?: string;
-  kind?: TransactionKindFilter;
-  accountId?: string;
-  month?: string;
-  limit?: number;
 }
 
 const transactionListSelect = `SELECT

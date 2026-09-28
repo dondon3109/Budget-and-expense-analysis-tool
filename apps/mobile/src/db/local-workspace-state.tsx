@@ -18,8 +18,8 @@ import {
   openLocalWorkspace,
   type LocalWorkspace,
 } from "./workspace";
-import type { LocalWorkspaceStats } from "./repository";
 import type {
+  LocalWorkspaceStats,
   LocalBudgetMonthData,
   LocalDashboardData,
   LocalAccountModeling,
@@ -32,7 +32,7 @@ import type {
   LocalTransactionItem,
   TransactionFormData,
   TransactionKindFilter,
-} from "./repository";
+} from "./view-models";
 import type {
   LocalBudgetConflict,
   LocalDebtConflict,

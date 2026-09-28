@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLocalTransactions } from "@/db/local-workspace-state";
-import { transactionKindFilters, type TransactionKindFilter } from "@/db/repository";
+import { transactionKindFilters, type TransactionKindFilter } from "@/db/view-models";
 import { monthLabel } from "@/features/calendar/event-form";
 import { useSyncState } from "@/sync/sync-state";
 import {

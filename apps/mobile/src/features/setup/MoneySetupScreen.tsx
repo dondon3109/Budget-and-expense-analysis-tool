@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
-import type { LocalAccountItem } from "@/db/repository";
+import type { LocalAccountItem } from "@/db/view-models";
 import { Button, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";

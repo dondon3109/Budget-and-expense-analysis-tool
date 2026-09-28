@@ -1,6 +1,6 @@
 import type { TransactionListItem } from "@zoption/shared";
 
-import type { LocalTransactionItem } from "@/db/repository";
+import type { LocalTransactionItem } from "@/db/view-models";
 import {
   categorySummary,
   groupTransactionsByDate,

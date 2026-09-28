@@ -7,7 +7,7 @@ import {
   useLocalWorkspace,
   useSubscriptions,
 } from "@/db/local-workspace-state";
-import type { LocalSubscriptionItem } from "@/db/repository";
+import type { LocalSubscriptionItem } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
 import { ReferenceEditorScreen } from "./ReferenceEditorScreen";
 

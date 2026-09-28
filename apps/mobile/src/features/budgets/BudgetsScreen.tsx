@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-na
 
 import { resolveCategoryEmoji } from "@zoption/shared";
 import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
-import type { BudgetMonthItem, LocalCategoryOption } from "@/db/repository";
+import type { BudgetMonthItem, LocalCategoryOption } from "@/db/view-models";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {

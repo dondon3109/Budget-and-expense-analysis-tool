@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { TransactionsScreen } from "./TransactionsScreen";
 import { useLocalTransactions } from "@/db/local-workspace-state";
-import type { LocalTransactionItem } from "@/db/repository";
+import type { LocalTransactionItem } from "@/db/view-models";
 import { useSyncState } from "@/sync/sync-state";
 
 jest.mock("expo-router", () => ({
