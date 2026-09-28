@@ -166,9 +166,10 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
                   accessibilityLabel={`${account.name}, balance ${account.balanceMinor / 100} ${account.currency}. Tap to adjust balance or edit.`}
                   accessibilityHint="Opens account editor to adjust balance"
                   android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                  // Android's NativeWind interop drops flex-direction from a callback
-                  // style, stacking the icon above the name; className keeps the row.
-                  className="flex-row items-center"
+                  // Android's NativeWind interop drops layout from a callback style:
+                  // without these the icon stacks above the name and the row grows
+                  // past the card, pushing the default-account star off the edge.
+                  className="flex-1 flex-row items-center"
                   onPress={() =>
                     router.push(`/(app)/reference?entityType=account&id=${account.id}`)
                   }
