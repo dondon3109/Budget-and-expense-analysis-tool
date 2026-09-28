@@ -21,7 +21,17 @@ The route-facing server facade remains `apps/api/src/db/mobile-sync.ts`.
   and canonical server timestamps.
 - `mobile-sync/read.ts` owns snapshot sessions, client acknowledgements, and incremental pull.
 - `mobile-sync/compaction.ts` owns retention-floor advancement and safe change/tombstone cleanup.
-- The facade continues to compose push handling behind the unchanged `MobileSyncRepository` contract.
+- `mobile-sync/push/` owns push handling:
+  - `idempotency.ts`: request hashes, stored results, and replay.
+  - `snapshots.ts`: current-row snapshot reads.
+  - `rules.ts`: name, reference, and plan checks, plus business rejections.
+  - `results.ts`: conflict and rejection results.
+  - `graph.ts`: the atomic create dependency graph.
+  - `transfer.ts`: the atomic two-leg transfer command.
+  - `entities/<entity>.ts`: builds each single-entity mutation as statements and never executes them.
+- The facade keeps the `MobileSyncRepository` contract and the push loop, and it owns the single
+  `env.DB.batch` that commits an entity mutation with its idempotency row. `graph.ts` and
+  `transfer.ts` each own the one batch for their command.
 
 The UI-facing native facade remains
 `apps/mobile/src/db/transaction-mutation-repository.ts`.

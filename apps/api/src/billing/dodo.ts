@@ -100,7 +100,7 @@ function apiKey(env: Bindings): string {
 }
 
 /** Dodo hosts its checkout pages on dodopayments.com subdomains in both modes. */
-export function isDodoCheckoutUrl(value: string): boolean {
+function isDodoCheckoutUrl(value: string): boolean {
   try {
     const url = new URL(value);
     return (
