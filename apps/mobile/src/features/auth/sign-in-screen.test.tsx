@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
-import SignInScreen from "../../../app/(public)/sign-in";
+import { SignInScreen } from "./SignInScreen";
 
 const mockSignInWithGoogle = jest.fn(async () => undefined);
 const mockSignInWithPassword = jest.fn(async () => undefined);
