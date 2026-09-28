@@ -28,3 +28,28 @@ describe("Production Release source guard", () => {
     expect(steps[0]?.trim()).toBe(steps[1]?.trim());
   });
 });
+
+describe("Production Release concurrency", () => {
+  // A workflow-level group let a run parked at the production gate block every later run's
+  // preflight, so releases queued for over a day behind a superseded approval.
+  it("holds the group on the gated job, not the workflow", async () => {
+    const workflow = await readFile(".github/workflows/release.yml", "utf8");
+    expect(workflow).not.toMatch(/^concurrency:/m);
+    const gatedJob = workflow.slice(workflow.indexOf("\n  deploy-and-release:"));
+    expect(gatedJob).toMatch(/^ {4}concurrency:\n {6}group: production-release-main$/m);
+  });
+
+  // The sweep must run only after preflight's source guard, touch only older runs of another
+  // commit, and hold the one actions: write token away from the dependency install.
+  it("cancels only older parked runs, after preflight, from a job that installs nothing", async () => {
+    const workflow = await readFile(".github/workflows/release.yml", "utf8");
+    const start = workflow.indexOf("\n  cancel-superseded:");
+    const sweep = workflow.slice(start, workflow.indexOf("\n  deploy-and-release:"));
+    expect(start).toBeGreaterThan(-1);
+    expect(sweep).toMatch(/^ {4}needs: preflight$/m);
+    expect(sweep).toMatch(/^ {4}permissions:\n {6}actions: write\n {4}steps:/m);
+    expect(sweep).not.toMatch(/checkout|pnpm install/);
+    expect(sweep).toContain('.databaseId < $RUN_ID and .headSha != \\"$RELEASE_COMMIT\\"');
+    expect(workflow.match(/^ +actions: write$/gm)).toHaveLength(1);
+  });
+});

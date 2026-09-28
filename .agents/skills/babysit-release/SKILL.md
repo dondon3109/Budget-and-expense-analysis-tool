@@ -120,8 +120,12 @@ node scripts/refresh-android-release-snapshot.mjs
 
 ## Web Track (`Production Release`, `.github/workflows/release.yml`)
 
-Trigger: `workflow_run` on `CI` success for a `main` push. Concurrency group
-`production-release-main`, `cancel-in-progress: false`.
+Trigger: `workflow_run` on `CI` success for a `main` push. Only the gated
+`deploy-and-release` job holds concurrency group `production-release-main`
+(`cancel-in-progress: false`), so a run parked at the approval gate never
+blocks a newer run's preflight. After preflight passes, the separate
+`cancel-superseded` job cancels older runs of another commit still `waiting` for
+production approval.
 
 Stage order: the ungated `preflight` job runs verify release source
 (stale-SHA + `vX.Y.Z` baseline tag) -> `scripts/next-semantic-release.mjs`
