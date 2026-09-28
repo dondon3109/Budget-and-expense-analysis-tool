@@ -6,7 +6,7 @@ import {
 } from "@zoption/shared";
 import { Pencil, Plus, SlidersHorizontal, Star, Trash2, WalletCards } from "lucide-react";
 
-import type { AccountMutations } from "../../hooks/useAccountMutations";
+import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
 import { trendState } from "../../lib/dashboard";
 import {

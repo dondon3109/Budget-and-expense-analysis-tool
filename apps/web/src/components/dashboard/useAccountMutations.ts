@@ -8,16 +8,16 @@ import type {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { createAccount, deleteAccount, updateAccount } from "../lib/api";
+import { createAccount, deleteAccount, updateAccount } from "../../lib/api";
 import {
   optimisticId,
   restoreOptimisticSnapshot,
   updateOptimistically,
   type OptimisticCacheSnapshot,
-} from "../lib/optimistic";
-import { queryKeys } from "../lib/queryKeys";
-import type { AuthenticatedWorkspace } from "../lib/workspace";
-import { invalidateAfterAccountWrite } from "../queries/accounts";
+} from "../../lib/optimistic";
+import { queryKeys } from "../../lib/queryKeys";
+import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { invalidateAfterAccountWrite } from "../../queries/accounts";
 
 interface AccountOptimisticContext {
   accountSnapshot: OptimisticCacheSnapshot;

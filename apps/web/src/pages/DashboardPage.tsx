@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
-import { useAccountMutations } from "../hooks/useAccountMutations";
+import { useAccountMutations } from "../components/dashboard/useAccountMutations";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
 import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";

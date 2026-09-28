@@ -11,7 +11,7 @@ import { Link } from "react-router-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
-import type { AccountMutations } from "../../hooks/useAccountMutations";
+import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { accountTypes } from "./accountTypes";
