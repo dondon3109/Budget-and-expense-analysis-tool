@@ -553,6 +553,18 @@ The gate protects against the model and the diff it reads, not against a branch 
 | `AUTO_MERGE_TOKEN`  | Repository secret. A fine grained personal access token of the maintainer with `Contents: write` and `Pull requests: write` on this repository only. A merge enabled with the run token would not start CI's `push` run on `main`, and Production Release follows only that run. It expires, so renew it before the date GitHub shows | `gh secret list`                                                                        |
 | Actions may approve | `can_approve_pull_request_reviews` must stay `true` for the approval step                                                                                                                                                                                                                                                             | `gh api repos/dondon3109/Budget-and-expense-analysis-tool/actions/permissions/workflow` |
 
+## Claude Code cloud environment
+
+Cloud sessions at claude.ai/code run in the environment configured under the session title bar's cloud environment menu, then **Edit**. Node 22 and pnpm come preinstalled.
+
+| Setting          | Value                                                                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Network access   | **Custom**, allowed domains `cdn.sheetjs.com` (the workspaces install `xlsx` from its tarball URL), with **Also include default list of common package managers** checked                |
+| Setup script     | `corepack enable`, `corepack prepare --activate`, then `pnpm install --frozen-lockfile` from the repo root, each `\|\| true` so a failed download never blocks the session from starting |
+| Environment vars | None. Checks need no secrets, and a `VITE_API_URL` or `VITE_SUPABASE_*` value there overrides the test defaults and fails web tests                                                      |
+
+The environment snapshots the setup script's result for about seven days, so the repo's `.claude/settings.json` `SessionStart` hook runs on every cloud session (`CLAUDE_CODE_REMOTE=true`) and is a no-op locally. It unshallows the clone and fetches tags, which the web release-note and content-freshness tests read, then runs `pnpm install --frozen-lockfile` to catch lockfile changes.
+
 ## Current hosted resources
 
 The intended production endpoints are:

@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ \"$CLAUDE_CODE_REMOTE\" = true ] || exit 0; cd \"$CLAUDE_PROJECT_DIR\" || exit 0; if [ \"$(git rev-parse --is-shallow-repository)\" = true ]; then git fetch --quiet --unshallow --tags origin || true; fi; pnpm install --frozen-lockfile --reporter=silent",
+            "timeout": 600
+          }
+        ]
+      }
+    ]
+  }
+}
