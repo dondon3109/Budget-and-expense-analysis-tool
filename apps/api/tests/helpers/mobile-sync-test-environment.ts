@@ -68,3 +68,19 @@ export function grantMobileSyncTestPro(database: DatabaseSync, tenantId: string)
     )
     .run(`test-subscription:${tenantId}`, tenantId, `test-event:${tenantId}`);
 }
+
+const openDatabases: DatabaseSync[] = [];
+
+/** A sync environment that `closeSyncEnvironments` closes; suites run it after every test. */
+export function createSyncEnvironment(beforeTransferMigration?: (database: DatabaseSync) => void): {
+  env: Bindings;
+  database: DatabaseSync;
+} {
+  const environment = createMobileSyncTestEnvironment(beforeTransferMigration);
+  openDatabases.push(environment.database);
+  return environment;
+}
+
+export function closeSyncEnvironments(): void {
+  for (const database of openDatabases.splice(0)) database.close();
+}
