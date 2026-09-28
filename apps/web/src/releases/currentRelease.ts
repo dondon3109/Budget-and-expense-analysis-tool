@@ -11,52 +11,37 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 26, 2026",
+  releasedOn: "September 28, 2026",
   changes: [
     {
-      title: "Try Zoption Pro free for 7 days",
+      title: "A daily reminder on Android and iOS",
       description:
-        "Every workspace gets a 7-day Pro trial with no card or payment setup. New sign-ups start theirs right away and existing Free accounts get one now. Zoption emails you when it starts, the day before it ends, and when it has ended, then moves you to the Free plan without charging anything.",
+        "Choose a time under More, then Preferences, then Daily reminder, and the app reminds you once a day to record that day's expenses and income. It is off until you pick a time, tapping it opens a new transaction, and signing out turns it off.",
     },
     {
-      title: "Create a category while adding a transaction",
+      title: "A new Zoption logo",
       description:
-        "Choose + New category in the category picker on the web or in the app, enter a name and an optional emoji, and it is selected for the transaction without losing what you already typed.",
+        "A rounded Z on near-black whose last stroke ends in a mint budget bar now marks the web app, its browser and home-screen icons, and the Android and iOS app icon.",
     },
     {
-      title: "A 6-digit PIN for the Android app lock",
+      title: "Balances keep their minus sign",
       description:
-        "The app lock now uses a 6-digit PIN on a number pad instead of a password. If you set an app password before, enter it once after updating and then choose a PIN.",
+        "Adjusting an overdrawn or credit account in the Android app now previews and notes the balance with its minus sign, and the mic widget accepts a negative target balance. Adjustments are dated on your local day, even just after midnight.",
     },
     {
-      title: "Transactions grouped by day on the web",
+      title: "Exact amounts in more places",
       description:
-        "Each day has a pinned header with its date and that day's income and expenses, and more transactions load as you scroll instead of on numbered pages.",
+        "The debt payoff planner ignores an extra payment it cannot read instead of guessing, the budget plan no longer flags an amount typed with commas as an unsaved change, and SMS Quick Paste passes on the amount exactly as shown.",
     },
     {
-      title: "Itemized receipts, discounts included",
+      title: "Imports update balances right away",
       description:
-        "Receipt scanning lists each item it reads so you can correct, remove, or add items, and each becomes its own transaction. Discounts, including senior citizen and PWD discounts, are shared across the items so they still add up to the receipt total.",
+        "Account balances refresh as soon as an import finishes, and the spreadsheet import refreshes archived categories too, so nothing shows stale numbers until a reload.",
     },
     {
-      title: "A clearer Home screen on Android",
+      title: "Android Beta 0.2.38",
       description:
-        "Home leads with Total Balance split across your accounts, then quick actions, safe to spend, this month, cash flow, spending, budgets, and recent activity. Theme and Voice language now fold under Preferences on the More tab.",
-    },
-    {
-      title: "Quick Paste reads more SMS alerts",
-      description:
-        "GCash withdrawals, cash ins, and payment messages are recognised, and unfamiliar alerts take the merchant from the message instead of showing Unknown Merchant.",
-    },
-    {
-      title: "A new loading animation",
-      description:
-        "Three ledger rows fill in turn while Zoption loads on the web and in the app. With reduced motion on, they stay still.",
-    },
-    {
-      title: "Android Beta 0.2.37",
-      description:
-        "The official Android Beta carries the free Pro trial, the 6-digit PIN app lock, the new Home screen, itemized receipts, and creating categories from the picker.",
+        "The official Android Beta carries the daily reminder, the new app icon, and the balance adjustment and debt planner fixes.",
     },
   ],
 };
@@ -71,6 +56,57 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.46.0",
+    releasedOn: "September 26, 2026",
+    changes: [
+      {
+        title: "Try Zoption Pro free for 7 days",
+        description:
+          "Every workspace gets a 7-day Pro trial with no card or payment setup. New sign-ups start theirs right away and existing Free accounts get one now. Zoption emails you when it starts, the day before it ends, and when it has ended, then moves you to the Free plan without charging anything.",
+      },
+      {
+        title: "Create a category while adding a transaction",
+        description:
+          "Choose + New category in the category picker on the web or in the app, enter a name and an optional emoji, and it is selected for the transaction without losing what you already typed.",
+      },
+      {
+        title: "A 6-digit PIN for the Android app lock",
+        description:
+          "The app lock now uses a 6-digit PIN on a number pad instead of a password. If you set an app password before, enter it once after updating and then choose a PIN.",
+      },
+      {
+        title: "Transactions grouped by day on the web",
+        description:
+          "Each day has a pinned header with its date and that day's income and expenses, and more transactions load as you scroll instead of on numbered pages.",
+      },
+      {
+        title: "Itemized receipts, discounts included",
+        description:
+          "Receipt scanning lists each item it reads so you can correct, remove, or add items, and each becomes its own transaction. Discounts, including senior citizen and PWD discounts, are shared across the items so they still add up to the receipt total.",
+      },
+      {
+        title: "A clearer Home screen on Android",
+        description:
+          "Home leads with Total Balance split across your accounts, then quick actions, safe to spend, this month, cash flow, spending, budgets, and recent activity. Theme and Voice language now fold under Preferences on the More tab.",
+      },
+      {
+        title: "Quick Paste reads more SMS alerts",
+        description:
+          "GCash withdrawals, cash ins, and payment messages are recognised, and unfamiliar alerts take the merchant from the message instead of showing Unknown Merchant.",
+      },
+      {
+        title: "A new loading animation",
+        description:
+          "Three ledger rows fill in turn while Zoption loads on the web and in the app. With reduced motion on, they stay still.",
+      },
+      {
+        title: "Android Beta 0.2.37",
+        description:
+          "The official Android Beta carries the free Pro trial, the 6-digit PIN app lock, the new Home screen, itemized receipts, and creating categories from the picker.",
+      },
+    ],
+  },
   {
     version: "2.45.0",
     releasedOn: "September 25, 2026",

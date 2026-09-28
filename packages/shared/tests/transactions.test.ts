@@ -111,15 +111,14 @@ describe("balance adjustment helpers", () => {
   });
 
   describe("default adjustment date", () => {
-    const originalTimeZone = process.env.TZ;
     afterEach(() => {
       vi.useRealTimers();
-      process.env.TZ = originalTimeZone;
+      vi.unstubAllEnvs();
     });
 
     it("books on the local calendar day, not the UTC one", () => {
       // 01:00 on Sept 28 in Manila is still Sept 27 in UTC.
-      process.env.TZ = "Asia/Manila";
+      vi.stubEnv("TZ", "Asia/Manila");
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-09-27T17:00:00Z"));
       const input = buildBalanceAdjustmentInput({
