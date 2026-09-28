@@ -209,6 +209,44 @@ describe("BudgetsScreen", () => {
     expect(setBudgetLimit).toHaveBeenCalledWith(expect.any(String), "food", 10_000);
   });
 
+  it("offers a category again after its budget was removed to a zero limit", async () => {
+    jest.mocked(useBudgetMonth).mockReturnValue({
+      data: {
+        budgets: [
+          {
+            id: "budget-food",
+            categoryId: "food",
+            categoryName: "Food & dining",
+            categoryColor: "#e87ba4",
+            limitMinor: 0,
+            spentMinor: 0,
+            syncState: "synced",
+          },
+        ],
+        categories: [
+          {
+            id: "food",
+            name: "Food & dining",
+            kind: "expense",
+            color: "#e87ba4",
+            iconEmoji: "🍔",
+            pending: false,
+          },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<BudgetsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Add budget" }));
+
+    expect(screen.getByRole("radio", { name: "🍔 Food & dining" })).toBeTruthy();
+    expect(
+      screen.queryByText("Every expense category already has a budget this month."),
+    ).toBeNull();
+  });
+
   it("navigates months and shows 'This month' quick return pill when shifted", async () => {
     jest.mocked(useBudgetMonth).mockReturnValue({
       data: {

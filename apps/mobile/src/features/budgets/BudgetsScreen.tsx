@@ -63,18 +63,14 @@ export function BudgetsScreen() {
     [budgetMonth.data],
   );
 
-  const budgetedCategoryIds = useMemo(
-    () => new Set((budgetMonth.data?.budgets ?? []).map((budget) => budget.categoryId)),
-    [budgetMonth.data],
-  );
-
-  const availableCategories = useMemo(
-    () =>
-      (budgetMonth.data?.categories ?? []).filter(
-        (category) => !budgetedCategoryIds.has(category.id),
-      ),
-    [budgetMonth.data, budgetedCategoryIds],
-  );
+  // Read from the view, not raw budgets: a removed budget stays as a zero-limit row,
+  // and counting it here hid that category from both the list and the add sheet.
+  const availableCategories = useMemo(() => {
+    const budgetedCategoryIds = new Set((view?.rows ?? []).map((row) => row.categoryId));
+    return (budgetMonth.data?.categories ?? []).filter(
+      (category) => !budgetedCategoryIds.has(category.id),
+    );
+  }, [budgetMonth.data, view]);
 
   const addOptions = useMemo(
     () =>
