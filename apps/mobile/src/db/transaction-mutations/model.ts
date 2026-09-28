@@ -19,6 +19,8 @@ import {
   type mobileSyncCategorySnapshotSchema,
 } from "@zoption/shared";
 
+import { SYNC_ENTITY_TABLES } from "../entity-tables";
+
 export type NonTransferInput = Extract<TransactionInput, { kind: "income" | "expense" }>;
 
 export const uuidSchema = z.string().uuid();
@@ -358,29 +360,13 @@ export class LocalMutationError extends Error {
 }
 
 export function syncEntityTable(entityType: MobileSyncPushOperation["entityType"]): string {
-  switch (entityType) {
-    case "account":
-      return "accounts";
-    case "category":
-      return "categories";
-    case "transaction":
-      return "transactions";
-    case "budget":
-      return "budgets";
-    case "goal":
-      return "financial_goals";
-    case "debt":
-      return "debts";
-    case "subscription":
-      return "subscriptions";
-    case "event":
-      return "calendar_events";
-    case "transfer":
-      throw new LocalMutationError(
-        "Transfers update two transaction rows and do not have a single entity table.",
-        "invalid_outbox",
-      );
+  if (entityType === "transfer") {
+    throw new LocalMutationError(
+      "Transfers update two transaction rows and do not have a single entity table.",
+      "invalid_outbox",
+    );
   }
+  return SYNC_ENTITY_TABLES[entityType];
 }
 
 export function accountSnapshot(row: z.infer<typeof accountRowSchema>): Record<string, unknown> {

@@ -14,6 +14,7 @@ import {
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
+import { SYNC_ENTITY_TABLES } from "./entity-tables";
 
 interface CursorRow {
   server_cursor: string | null;
@@ -47,33 +48,12 @@ export class LocalSyncApplyError extends Error {
   }
 }
 
-function entityTable(entityType: MobileSyncChange["entityType"]): string {
-  switch (entityType) {
-    case "account":
-      return "accounts";
-    case "category":
-      return "categories";
-    case "transaction":
-      return "transactions";
-    case "budget":
-      return "budgets";
-    case "goal":
-      return "financial_goals";
-    case "debt":
-      return "debts";
-    case "subscription":
-      return "subscriptions";
-    case "event":
-      return "calendar_events";
-  }
-}
-
 async function currentEntityState(
   database: SQLiteDatabase,
   change: MobileSyncChange,
 ): Promise<EntityStateRow | null> {
   return database.getFirstAsync<EntityStateRow>(
-    `SELECT server_revision, sync_state FROM ${entityTable(change.entityType)} WHERE id = ?`,
+    `SELECT server_revision, sync_state FROM ${SYNC_ENTITY_TABLES[change.entityType]} WHERE id = ?`,
     change.entityId,
   );
 }
@@ -409,7 +389,7 @@ async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange
     change.serverUpdatedAt,
   );
   await database.runAsync(
-    `UPDATE ${entityTable(change.entityType)}
+    `UPDATE ${SYNC_ENTITY_TABLES[change.entityType]}
      SET server_revision = ?, server_updated_at = ?, deleted_at = ?, sync_state = 'synced'
      WHERE id = ?`,
     change.revision,
