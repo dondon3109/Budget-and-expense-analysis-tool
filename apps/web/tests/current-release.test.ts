@@ -26,6 +26,7 @@ describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "A daily reminder on Android and iOS",
+      "A new Zoption logo",
       "Balances keep their minus sign",
       "Exact amounts in more places",
       "Imports update balances right away",
