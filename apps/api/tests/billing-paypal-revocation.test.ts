@@ -3,24 +3,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../src/app";
 import { clearPayPalAccessTokenCacheForTesting } from "../src/billing/paypal";
 import { billingRepository, type BillingRepository } from "../src/db/billing";
-import type { RateLimiter } from "../src/rate-limit";
 import type { Bindings } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
+import { allowedRateLimiter } from "./helpers/rate-limiter";
 
 const TENANT_ID = "tenant-1";
 const SUBSCRIPTION_ID = "I-subscription";
 const PLAN_ID = "P-monthly";
-
-function allowedRateLimiter(): RateLimiter {
-  return {
-    consume: vi.fn(async () => ({
-      allowed: true,
-      limit: 60,
-      remaining: 59,
-      retryAfterSeconds: 60,
-    })),
-  };
-}
 
 function tokenResponse() {
   return new Response(JSON.stringify({ access_token: "access-token", expires_in: 3_600 }), {

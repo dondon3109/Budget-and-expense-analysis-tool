@@ -27,7 +27,7 @@ import { ZoptionThemeProvider, useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
 // The splash auto-hides as soon as the first frame draws, which is the bare
-// spinner in app/index.tsx. Holding it is only possible from module scope,
+// spinner in SessionRedirectScreen. Holding it is only possible from module scope,
 // before that first frame; SplashRelease below lets it go once the route is
 // known, or after SPLASH_HOLD_LIMIT_MS if the session never settles.
 void SplashScreen.preventAutoHideAsync();

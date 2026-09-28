@@ -4,39 +4,9 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { buildTransferLegs, transactionRepository } from "../src/db/transactions";
 import type { Bindings } from "../src/types";
-
-interface CapturedStatement {
-  query: string;
-  bindings: unknown[];
-}
+import { createCapturingDatabase, type CapturedStatement } from "./helpers/capturing-database";
 
 const databases: DatabaseSync[] = [];
-
-function createCapturingDatabase(
-  statements: CapturedStatement[],
-  options: { allResults?: unknown[]; total?: number } = {},
-): D1Database {
-  return {
-    prepare(query: string) {
-      return {
-        bind(...bindings: unknown[]) {
-          statements.push({ query, bindings });
-          return {
-            async first() {
-              return query.includes("COUNT(*)") ? { total: options.total ?? 0 } : null;
-            },
-            async all() {
-              return { results: options.allResults ?? [] };
-            },
-          };
-        },
-      };
-    },
-    async batch(batchStatements: D1PreparedStatement[]) {
-      return batchStatements.map(() => ({ results: options.allResults ?? [] }));
-    },
-  } as unknown as D1Database;
-}
 
 function createSqliteEnvironment(): {
   env: Bindings;

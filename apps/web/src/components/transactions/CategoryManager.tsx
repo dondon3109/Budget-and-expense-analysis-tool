@@ -23,6 +23,7 @@ import {
 } from "../../lib/optimistic";
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { invalidateCategoriesAndBilling } from "../../queries/categories";
 
 interface CategoryManagerProps {
   workspace: AuthenticatedWorkspace;
@@ -80,10 +81,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
   });
 
   const refresh = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: queryKeys.allCategories(workspace) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
-    ]);
+    await invalidateCategoriesAndBilling(queryClient, workspace);
   };
   const createMutation = useMutation({
     mutationFn: (input: CategoryInput) => createCategory(workspace, input),

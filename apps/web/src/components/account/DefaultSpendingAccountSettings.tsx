@@ -1,23 +1,18 @@
 import { preferredTransactionAccount } from "@zoption/shared";
-import { useQuery } from "@tanstack/react-query";
 
-import { getAccounts } from "../../lib/api";
 import {
   setDefaultSpendingAccountId,
   useDefaultSpendingAccountId,
 } from "../../lib/defaultSpendingAccount";
-import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { useAccounts } from "../../queries/accounts";
 
 export function DefaultSpendingAccountSettings({
   workspace,
 }: {
   workspace: AuthenticatedWorkspace;
 }) {
-  const accountsQuery = useQuery({
-    queryKey: queryKeys.accounts(workspace),
-    queryFn: () => getAccounts(workspace),
-  });
+  const accountsQuery = useAccounts(workspace);
   const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const activeAccounts = (accountsQuery.data ?? []).filter((account) => !account.archived);
   const selected = preferredTransactionAccount(activeAccounts, defaultSpendingAccountId);

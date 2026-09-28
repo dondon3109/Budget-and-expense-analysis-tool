@@ -4,8 +4,11 @@ import type { ProviderCredentialWithUsage } from "@zoption/shared";
 import { useState } from "react";
 
 import { createProviderCredential, updateProviderCredential } from "../../lib/api";
-import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import {
+  invalidateAfterCredentialCreate,
+  invalidateAfterCredentialUpdate,
+} from "../../queries/admin-providers";
 import { AdminProviderDialog, SecretField, errorMessage } from "./AdminProviderDialog";
 
 // Every allowlisted provider except the Workers AI binding, which never takes a key.
@@ -29,8 +32,7 @@ export function AddCredentialDialog({ workspace, onClose, onSaved }: AddCredenti
     mutationFn: () => createProviderCredential(workspace, { provider, name: name.trim(), secret }),
     onSuccess: (c) => {
       onSaved(`Created credential ${c.provider} / ${c.name} ••••${c.apiKeyLast4}`);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerHealth(workspace) });
+      void invalidateAfterCredentialCreate(queryClient, workspace);
     },
   });
 
@@ -124,9 +126,7 @@ export function EditCredentialDialog({
       }),
     onSuccess: (c) => {
       onSaved(`Updated credential ${c.name} ••••${c.apiKeyLast4}`);
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerCredentials(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerHealth(workspace) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.providerConfigs(workspace) });
+      void invalidateAfterCredentialUpdate(queryClient, workspace);
     },
   });
 
