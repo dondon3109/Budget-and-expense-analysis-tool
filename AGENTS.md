@@ -53,27 +53,27 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 
 Start from the first file listed, then read the package guide for that area. Every path is repo-relative.
 
-| Task                             | Start here                                                                                                                                                         |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| API endpoint                     | `apps/api/src/routes/<surface>.ts` (`createXRoutes`), wired and mounted in `apps/api/src/app.ts`                                                                   |
-| Tenant data and SQL              | `apps/api/src/db/<entity>.ts`; a schema change is a new `db/migrations/NNNN_*.sql` plus `db/schema.ts`                                                             |
-| Request, response, or enum shape | `packages/shared/src/schemas/<domain>.ts` and the `as const` enums in `packages/shared/src/types.ts`                                                               |
-| Money parsing, caps, and display | `packages/shared/src/money.ts`, caps in `limits.ts`; web `apps/web/src/lib/formatters.ts`; mobile `apps/mobile/src/ui/components/MoneyValue.tsx`                   |
-| Dashboard, budget, and plan math | `packages/shared/src/calculations.ts`, `planning.ts`, `cashflowForecast.ts`, `safeToSpend.ts`                                                                      |
-| Mobile sync                      | Contract `packages/shared/src/sync.ts`; server `apps/api/src/db/mobile-sync.ts` and `db/mobile-sync/`; client `apps/mobile/src/sync/`, `src/db/sync-repository.ts` |
-| Web private page                 | `apps/web/src/pages/<Name>Page.tsx`, route in `apps/web/src/App.tsx`                                                                                               |
-| Web public or SEO page           | `apps/web/src/seo/siteMetadata.ts` and `apps/web/src/PublicRoutes.tsx`                                                                                             |
-| Web server call and cache key    | `apps/web/src/lib/api.ts`, `apps/web/src/lib/queryKeys.ts`                                                                                                         |
-| Mobile screen                    | `apps/mobile/src/features/<area>/<Name>Screen.tsx`, exposed by a one-line route in `apps/mobile/app/`                                                              |
-| Mobile local read                | Hooks in `apps/mobile/src/db/local-workspace-state.tsx`, queries in `apps/mobile/src/db/repository.ts`                                                             |
-| Mobile local write               | `apps/mobile/src/db/transaction-mutation-repository.ts`; local schema in `apps/mobile/src/db/migrations.ts`                                                        |
-| Mobile network call              | `apps/mobile/src/api/<area>.ts` through `apiRequest`                                                                                                               |
-| AI assistant and voice           | `apps/api/src/assistant/`, `docs/assistant.md`, `docs/voice-live.md`                                                                                               |
-| Billing                          | `apps/api/src/billing/`, `apps/api/src/db/billing.ts`, `apps/api/src/routes/{billing,paypal-webhooks,dodo-webhooks}.ts`                                            |
-| Adding an entity end to end      | The checklists in `docs/maintainability.md`                                                                                                                        |
-| Release notes and versions       | `apps/web/src/releases/currentRelease.ts`, `CHANGELOG.md`, `apps/mobile/package.json`, `apps/mobile/app.config.ts`                                                 |
-| CI and what forces a human merge | `.github/workflows/`, `scripts/pr-risk.mjs`                                                                                                                        |
-| Deployed dashboards and secrets  | `docs/deployment.md`                                                                                                                                               |
+| Task                             | Start here                                                                                                                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API endpoint                     | `apps/api/src/routes/<surface>.ts` (`createXRoutes`), wired and mounted in `apps/api/src/app.ts`                                                                                             |
+| Tenant data and SQL              | `apps/api/src/db/<entity>.ts`; a schema change is a new `db/migrations/NNNN_*.sql` plus `db/schema.ts`                                                                                       |
+| Request, response, or enum shape | `packages/shared/src/schemas/<domain>.ts` and the `as const` enums in `packages/shared/src/types.ts`                                                                                         |
+| Money parsing, caps, and display | `packages/shared/src/money.ts`, caps in `limits.ts`; web `apps/web/src/lib/formatters.ts`; mobile `apps/mobile/src/ui/components/MoneyValue.tsx`                                             |
+| Dashboard, budget, and plan math | `packages/shared/src/calculations.ts`, `planning.ts`, `cashflowForecast.ts`, `safeToSpend.ts`                                                                                                |
+| Mobile sync                      | Contract `packages/shared/src/sync.ts`; server facade `apps/api/src/db/mobile-sync.ts`, push handlers in `db/mobile-sync/push/`; client `apps/mobile/src/sync/`, `src/db/sync-repository.ts` |
+| Web private page                 | `apps/web/src/pages/<Name>Page.tsx`, route in `apps/web/src/App.tsx`                                                                                                                         |
+| Web public or SEO page           | `apps/web/src/seo/siteMetadata.ts` and `apps/web/src/PublicRoutes.tsx`                                                                                                                       |
+| Web server call and cache key    | Call in `apps/web/src/lib/api/<domain>.ts`; hook and invalidation in `apps/web/src/queries/<domain>.ts`; keys in `apps/web/src/lib/queryKeys.ts`                                             |
+| Mobile screen                    | `apps/mobile/src/features/<area>/<Name>Screen.tsx`, exposed by a one-line route in `apps/mobile/app/`                                                                                        |
+| Mobile local read                | Hooks in `apps/mobile/src/db/local-workspace-state.tsx`, queries in `apps/mobile/src/db/repository.ts`, shapes in `src/db/view-models.ts`                                                    |
+| Mobile local write               | Facade `apps/mobile/src/db/transaction-mutation-repository.ts` over `src/db/transaction-mutations/commands/<entity>.ts`; local schema in `src/db/migrations.ts`                              |
+| Mobile network call              | `apps/mobile/src/api/<area>.ts` through `apiRequest`                                                                                                                                         |
+| AI assistant and voice           | `apps/api/src/assistant/`, `docs/assistant.md`, `docs/voice-live.md`                                                                                                                         |
+| Billing                          | `apps/api/src/billing/`, `apps/api/src/db/billing.ts`, `apps/api/src/routes/{billing,paypal-webhooks,dodo-webhooks}.ts`                                                                      |
+| Adding an entity end to end      | The checklists in `docs/maintainability.md`                                                                                                                                                  |
+| Release notes and versions       | `apps/web/src/releases/currentRelease.ts`, `CHANGELOG.md`, `apps/mobile/package.json`, `apps/mobile/app.config.ts`                                                                           |
+| CI and what forces a human merge | `.github/workflows/`, `scripts/pr-risk.mjs`                                                                                                                                                  |
+| Deployed dashboards and secrets  | `docs/deployment.md`                                                                                                                                                                         |
 
 Pick the narrowest verify while iterating: `pnpm verify:changed` works it out from the diff. Finish with `pnpm verify`.
 
