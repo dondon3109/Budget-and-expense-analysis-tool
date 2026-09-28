@@ -1,0 +1,74 @@
+/* HelpAndContactSettings section of Account Settings. SettingsPage imports this after SettingsPage.css,
+   where these rules used to sit, so keep it loading after it. */
+
+.settings-support-list {
+  margin: 26px 0 0;
+  padding: 0;
+  border-block: 1px solid var(--line);
+  list-style: none;
+}
+
+.settings-support-item {
+  min-width: 0;
+  padding: 18px 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  scroll-margin-top: 84px;
+}
+
+.settings-support-item + .settings-support-item {
+  border-top: 1px solid var(--line);
+}
+
+.settings-support-item > svg {
+  color: var(--action-strong);
+}
+
+.settings-support-item > div {
+  min-width: 0;
+}
+
+.settings-support-item strong {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
+.settings-support-item p {
+  max-width: 62ch;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.settings-support-email {
+  color: var(--ink);
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.settings-support-item .settings-contact-feedback {
+  margin-top: 7px;
+  color: var(--success);
+  font-weight: 620;
+}
+
+.settings-support-item .button {
+  min-width: 116px;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  .settings-support-item {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .settings-support-item .button {
+    width: 100%;
+    grid-column: 1 / -1;
+  }
+}

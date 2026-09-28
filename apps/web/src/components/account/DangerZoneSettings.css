@@ -1,0 +1,63 @@
+/* DangerZoneSettings section of Account Settings. SettingsPage imports this after SettingsPage.css,
+   where these rules used to sit, so keep it loading after it. */
+
+.settings-danger-zone {
+  background: color-mix(in srgb, var(--danger-soft) 46%, var(--paper));
+}
+
+.settings-danger-zone .settings-section-heading > span {
+  color: var(--danger);
+}
+
+.settings-danger-zone-content {
+  margin-top: 28px;
+  padding: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  border: 1px solid color-mix(in srgb, var(--danger) 34%, var(--line));
+  border-radius: var(--radius-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-card);
+}
+
+.settings-danger-zone-content strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.settings-danger-zone-content p {
+  max-width: 58ch;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+.settings-danger-zone .button.danger {
+  flex: 0 0 auto;
+  /* --paper flips with the theme so the label stays legible on --danger. */
+  color: var(--paper);
+  border-color: var(--danger);
+  background: var(--danger);
+  box-shadow: none;
+}
+
+.settings-danger-zone .button.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+@media (max-width: 760px) {
+  .settings-danger-zone-content {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .settings-danger-zone-content .button {
+    width: 100%;
+  }
+}

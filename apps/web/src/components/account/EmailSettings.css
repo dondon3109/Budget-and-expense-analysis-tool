@@ -1,0 +1,21 @@
+/* EmailSettings section of Account Settings. SettingsPage imports this after SettingsPage.css,
+   where these rules used to sit, so keep it loading after it. */
+
+.current-account-value {
+  margin-top: 26px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.current-account-value strong {
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
