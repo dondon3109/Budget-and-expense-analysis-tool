@@ -44,9 +44,6 @@ import { emptyImportMapping, localToday, useImportDraft } from "../import/Import
 import "../import/import.css";
 import {
   commitImport,
-  getAccounts,
-  getCategories,
-  getSubscriptions,
   isBillingEnforcementError,
   isMonthlyLimitReachedError,
   previewImport,
@@ -65,6 +62,10 @@ import {
 import { queryKeys } from "../lib/queryKeys";
 import { WorkbookImportClient } from "../lib/workbookImportClient";
 import { userWorkspace } from "../lib/workspace";
+import { useAccounts } from "../queries/accounts";
+import { invalidateBillingSummary } from "../queries/billing";
+import { useCategories } from "../queries/categories";
+import { subscriptionsQueryOptions } from "../queries/subscriptions";
 
 const MAX_CSV_FILE_BYTES = 1_000_000;
 const MAX_WORKBOOK_FILE_BYTES = 5_000_000;
@@ -223,26 +224,15 @@ export function ImportPage() {
     setSearchParams({}, { replace: true });
   }
 
-  const categoriesQuery = useQuery({
-    queryKey: queryKeys.categories(workspace),
-    queryFn: () => getCategories(workspace),
-  });
+  const categoriesQuery = useCategories(workspace);
   const categories = categoriesQuery.data ?? [];
-  const accountsQuery = useQuery({
-    queryKey: queryKeys.accounts(workspace),
-    queryFn: () => getAccounts(workspace),
-  });
+  const accountsQuery = useAccounts(workspace);
   const accounts = accountsQuery.data ?? [];
   const subscriptionsQuery = useQuery({
-    queryKey: queryKeys.subscriptions(
+    ...subscriptionsQueryOptions(
       workspace,
       `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`,
     ),
-    queryFn: () =>
-      getSubscriptions(
-        workspace,
-        `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`,
-      ),
     enabled: Boolean(preview),
   });
 
@@ -294,7 +284,7 @@ export function ImportPage() {
     onError: (error) => {
       if (isMonthlyLimitReachedError(error)) setLimitDialogOpen(true);
     },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.billing(workspace) }),
+    onSettled: () => invalidateBillingSummary(queryClient, workspace),
   });
 
   function invalidatePreview() {
