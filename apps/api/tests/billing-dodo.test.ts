@@ -5,10 +5,10 @@ import { verifyDodoWebhook } from "../src/billing/dodo";
 import { reconcileBillingCheckout } from "../src/billing/reconciliation";
 import { billingRepository } from "../src/db/billing";
 import { HttpError } from "../src/errors";
-import type { RateLimiter } from "../src/rate-limit";
 import { createBillingRoutes } from "../src/routes/billing";
 import type { Bindings } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
+import { allowedRateLimiter } from "./helpers/rate-limiter";
 import { createTestApp } from "./helpers/test-app";
 
 const TENANT_ID = "tenant-1";
@@ -17,17 +17,6 @@ const SESSION_ID = "cks_session";
 const PAYMENT_ID = "pay_first";
 const SUBSCRIPTION_ID = "sub_first";
 const SIGNING_KEY = btoa("dodo-test-signing-key");
-
-function allowedRateLimiter(): RateLimiter {
-  return {
-    consume: vi.fn(async () => ({
-      allowed: true,
-      limit: 60,
-      remaining: 59,
-      retryAfterSeconds: 60,
-    })),
-  };
-}
 
 async function sign(id: string, timestamp: string, body: string): Promise<string> {
   const key = await crypto.subtle.importKey(

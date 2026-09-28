@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
-import WelcomeScreen from "../../../app/(public)/index";
+import { WelcomeScreen } from "./WelcomeScreen";
 
 const mockSignInWithDummyAccount = jest.fn(async () => undefined);
 const mockSignInWithPassword = jest.fn(async () => undefined);
