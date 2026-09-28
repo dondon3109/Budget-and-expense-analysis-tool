@@ -43,8 +43,9 @@ The UI-facing native facade remains
 - `transaction-mutations/model.ts` owns validated row shapes, snapshot encoding, conflict contracts,
   and pure conversion helpers.
 - `transaction-mutations/store.ts` owns database lookup and reference validation.
-- `transaction-mutations/conflicts.ts` owns conflict inspection and explicit keep-local/keep-server
-  resolution.
+- `transaction-mutations/conflicts/<entity>.ts` owns conflict inspection and explicit
+  keep-local/keep-server resolution. `conflicts.ts` keeps the `LocalConflictRepository` surface the
+  facade calls.
 - `transaction-mutations/outbox.ts` owns graph-safe batching, retry scheduling, permanent failure,
   and server acknowledgement application.
 - `src/db/entity-tables.ts` is the one entity-to-table map, shared by sync apply and the commands.
@@ -113,8 +114,8 @@ Do everything in the REST list above, then add these steps:
    - Add an `applyX` function in `sync-repository.ts`.
 6. **Mobile write:**
    - Create, update, and delete commands in `apps/mobile/src/db/transaction-mutations/commands/<entity>.ts`, with a delegating method on the `transaction-mutation-repository.ts` facade. Each command writes the row and its outbox entry in one transaction.
-   - Conflict inspection and resolution in `apps/mobile/src/db/transaction-mutations/conflicts.ts`.
-7. **Mobile read:** a query in `apps/mobile/src/db/repository.ts` and a hook in `apps/mobile/src/db/local-workspace-state.tsx`.
+   - Conflict inspection and resolution in `apps/mobile/src/db/transaction-mutations/conflicts/<entity>.ts`, exposed through `conflicts.ts`.
+7. **Mobile read:** a view-model type in `apps/mobile/src/db/view-models.ts`, a query in `apps/mobile/src/db/repository.ts`, and a `useLocalQuery` hook in `apps/mobile/src/db/local-workspace-state.tsx`.
 8. **Mobile UI:** screens in `apps/mobile/src/features/<area>/`, including a conflict screen, with one-line routes in `apps/mobile/app/`.
 9. **Rollout:** installed apps validate pull responses strictly. A new entity type or payload field needs a client release that understands it before the server sends it (`apps/api/AGENTS.md`). Document the protocol change in `docs/mobile/sync-protocol.md`.
 10. **Tests:**

@@ -15,20 +15,22 @@ The Expo native client for Android and iOS. It keeps an encrypted local workspac
 
 ## Key files
 
-| File                                        | Owns                                                                     |
-| ------------------------------------------- | ------------------------------------------------------------------------ |
-| `app/`                                      | expo-router routes; each file but a layout re-exports one screen         |
-| `src/features/`                             | Screens and pure logic modules, the real home of behavior                |
-| `src/auth/authenticated-layout.tsx`         | Gate for `app/(app)`: session restore, app lock, local workspace, sync   |
-| `src/db/workspace.ts`                       | Subject scoped workspace open, recovery, and generation switching        |
-| `src/db/migrations.ts`                      | Append only local schema migrations and `LOCAL_SCHEMA_VERSION`           |
-| `src/db/transaction-mutation-repository.ts` | UI facing mutation facade over `transaction-mutations/`                  |
-| `src/db/transaction-mutations/commands/`    | One module per entity; each command owns its row plus outbox transaction |
-| `src/db/entity-tables.ts`                   | The one synchronized entity to SQLite table map                          |
-| `src/sync/sync-state.tsx`                   | Push and pull loop; "synced" means the outbox is empty                   |
-| `src/config/public-config.ts`               | Strict `EXPO_PUBLIC_*` configuration parsing                             |
-| `plugins/`                                  | Config plugins that generate the Android signing and mic widget code     |
-| `modules/`                                  | Tracked Expo native modules                                              |
+| File                                            | Owns                                                                     |
+| ----------------------------------------------- | ------------------------------------------------------------------------ |
+| `app/`                                          | expo-router routes; each file but a layout re-exports one screen         |
+| `src/features/`                                 | Screens and pure logic modules, the real home of behavior                |
+| `src/auth/authenticated-layout.tsx`             | Gate for `app/(app)`: session restore, app lock, local workspace, sync   |
+| `src/db/workspace.ts`                           | Subject scoped workspace open, recovery, and generation switching        |
+| `src/db/migrations.ts`                          | Append only local schema migrations and `LOCAL_SCHEMA_VERSION`           |
+| `src/db/transaction-mutation-repository.ts`     | UI facing mutation facade over `transaction-mutations/`                  |
+| `src/db/transaction-mutations/commands/`        | One module per entity; each command owns its row plus outbox transaction |
+| `src/db/transaction-mutations/conflicts/`       | Per entity conflict inspection and keep-local/keep-server resolution     |
+| `src/db/repository.ts`, `src/db/view-models.ts` | Local workspace queries, and the shapes they return to hooks and screens |
+| `src/db/entity-tables.ts`                       | The one synchronized entity to SQLite table map                          |
+| `src/sync/sync-state.tsx`                       | Push and pull loop; "synced" means the outbox is empty                   |
+| `src/config/public-config.ts`                   | Strict `EXPO_PUBLIC_*` configuration parsing                             |
+| `plugins/`                                      | Config plugins that generate the Android signing and mic widget code     |
+| `modules/`                                      | Tracked Expo native modules                                              |
 
 ## Commands
 
