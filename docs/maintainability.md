@@ -36,6 +36,11 @@ The route-facing server facade remains `apps/api/src/db/mobile-sync.ts`.
 The UI-facing native facade remains
 `apps/mobile/src/db/transaction-mutation-repository.ts`.
 
+- `transaction-mutations/commands/<entity>.ts` owns the user mutation commands. Each command owns
+  its whole `writer.run` and `withTransactionAsync` block, so the row and its outbox entry commit
+  together. `commands/outbox-writes.ts` holds the shared guards and the common outbox writes, which
+  run inside the caller's transaction and never open one. Transaction and transfer commands write
+  some outbox rows inline because those rows carry dependency ids or a merged transfer payload.
 - `transaction-mutations/model.ts` owns validated row shapes, snapshot encoding, conflict contracts,
   and pure conversion helpers.
 - `transaction-mutations/store.ts` owns database lookup and reference validation.
@@ -43,7 +48,8 @@ The UI-facing native facade remains
   resolution.
 - `transaction-mutations/outbox.ts` owns graph-safe batching, retry scheduling, permanent failure,
   and server acknowledgement application.
-- The facade owns user mutation commands and remains the single public entry point used by screens.
+- `src/db/entity-tables.ts` is the one entity-to-table map, shared by sync apply and the commands.
+- The facade delegates to those modules and remains the single public entry point used by screens.
 
 ## Critical invariant evidence
 
@@ -104,10 +110,10 @@ Do everything in the REST list above, then add these steps:
 3. **Server sync:** add the snapshot reader, business rejection, and push mutation in `apps/api/src/db/mobile-sync.ts`. Pull and snapshot in `apps/api/src/db/mobile-sync/read.ts` are generic over the change log. Edit read.ts only if the new entity must be applied before others: it orders accounts and categories first.
 4. **Mobile schema:** add a local table in `apps/mobile/src/db/migrations.ts`. It is append-only, so add the entry and bump `LOCAL_SCHEMA_VERSION`.
 5. **Mobile sync:**
-   - Add the entity-to-table map entries in `apps/mobile/src/db/sync-repository.ts` and `apps/mobile/src/db/transaction-mutations/model.ts`.
+   - Add the entity-to-table entry in `apps/mobile/src/db/entity-tables.ts`.
    - Add an `applyX` function in `sync-repository.ts`.
 6. **Mobile write:**
-   - Create, update, and delete commands in `apps/mobile/src/db/transaction-mutation-repository.ts`. Each command writes the row and its outbox entry in one transaction.
+   - Create, update, and delete commands in `apps/mobile/src/db/transaction-mutations/commands/<entity>.ts`, with a delegating method on the `transaction-mutation-repository.ts` facade. Each command writes the row and its outbox entry in one transaction.
    - Conflict inspection and resolution in `apps/mobile/src/db/transaction-mutations/conflicts.ts`.
 7. **Mobile read:** a query in `apps/mobile/src/db/repository.ts` and a hook in `apps/mobile/src/db/local-workspace-state.tsx`.
 8. **Mobile UI:** screens in `apps/mobile/src/features/<area>/`, including a conflict screen, with one-line routes in `apps/mobile/app/`.
