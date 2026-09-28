@@ -17,8 +17,9 @@ The Expo native client for Android and iOS. It keeps an encrypted local workspac
 
 | File                                        | Owns                                                                         |
 | ------------------------------------------- | ---------------------------------------------------------------------------- |
-| `app/`                                      | expo-router routes; each file is a one line re-export of a screen            |
+| `app/`                                      | expo-router routes; each file but a layout re-exports one screen             |
 | `src/features/`                             | Screens and pure logic modules, the real home of behavior                    |
+| `src/auth/authenticated-layout.tsx`         | Gate for `app/(app)`: session restore, app lock, local workspace, sync       |
 | `src/db/workspace.ts`                       | Subject scoped workspace open, recovery, and generation switching            |
 | `src/db/migrations.ts`                      | Append only local schema migrations and `LOCAL_SCHEMA_VERSION`               |
 | `src/db/transaction-mutation-repository.ts` | UI facing mutation facade; model, store, outbox, and conflicts sit beside it |
@@ -44,7 +45,8 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - Screens and components use PascalCase `*Screen.tsx`; pure logic modules and their tests use kebab case.
 - Tests are colocated as `<module>.test.ts(x)`. Jest matches `src/**` and `plugins/**/*.test.js` only, so nothing under `app/` is collected.
 - Read through `useLocalWorkspace()` hooks and repositories. Reach the network only through `src/api/*` and `apiRequest`, which bounds every request at 30 seconds; an operation that legitimately runs longer passes its own `timeoutMs`.
-- Subscribe to SQLite changes through `subscribeToLocalChanges`, never `addDatabaseChangeListener` directly. One native listener per open database is shared by every hook and each subscriber's refresh is coalesced, so a sync page that writes N rows costs one re-query rather than N.
+- Subscribe to SQLite changes through `subscribeToLocalChanges` (`src/db/local-workspace/change-stream.ts`), never `addDatabaseChangeListener` directly. One native listener per open database is shared by every hook and each subscriber's refresh is coalesced, so a sync page that writes N rows costs one re-query rather than N.
+- A workspace read hook is a thin wrapper over `useLocalQuery` (`src/db/local-workspace/use-local-query.ts`), which owns the read, the change subscription, and retry. Export the hook from `src/db/local-workspace-state.tsx`, the path screen tests mock, and memoize its reader, because a new reader re-runs the query.
 - `useDashboardData(anchorDate)` bounds its ledger read to `cashflowWindowStart(anchorDate)`, the widest cashflow view, and reads the three newest transactions separately for recent activity. Pass the same local date to `buildDashboardView` so the chart cannot read a window the query never loaded.
 - Import icons from `@expo/vector-icons/MaterialCommunityIcons`, never the `@expo/vector-icons` barrel. The barrel registers all 16 font families as bundled assets (2.6 MB), of which the app uses one.
 - Keep financial rows out of Zustand. Stores hold UI state only.
