@@ -422,6 +422,12 @@ export function createAllowedBillingRepository(): BillingRepository {
   };
 }
 
+/**
+ * The full createApp stack (auth, tenancy, body and rate limits, routing) over fake
+ * repositories: a Pro tenant, an allow-all rate limiter, and a readiness check that passes.
+ * Override any dependency through `options`. To exercise one route factory without the app
+ * middleware, use `createTestApp` from `./test-app` instead.
+ */
 export function createAppWithFakes(options: AppOptions = {}) {
   return createApp({
     readinessCheck: vi.fn().mockResolvedValue(undefined),

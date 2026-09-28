@@ -8,7 +8,7 @@ import type { ReceiptService } from "../src/receipts/service";
 import { HttpError } from "../src/errors";
 import { AUTHORIZATION, TENANT_ID, createAppWithFakes, privateHeaders } from "./helpers/app-fakes";
 
-describe("API foundation", () => {
+describe("API assistant, voice, and entry routes", () => {
   it("accepts bounded multipart recordings on the authenticated voice route", async () => {
     const transcribe = vi.fn(async () => ({
       text: "Review this transcript",
