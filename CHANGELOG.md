@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- The default-account star on Home's balance card stays inside the card on Android instead of being pushed past its right edge.
+
 ## 2.47.0 — 2026-09-28
 
 ### Added
