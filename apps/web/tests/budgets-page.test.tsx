@@ -184,6 +184,30 @@ describe("BudgetsPage", () => {
     expect(dirtyUnload.defaultPrevented).toBe(true);
   });
 
+  it("reads a draft the way save does, so a formatted amount is not a change", async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/budgets?month=2026-07"]}>
+          <QueryClientProvider client={queryClient}>
+            <BudgetsPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    const amount = await screen.findByLabelText("Food & dining monthly budget");
+    await user.clear(amount);
+    await user.type(amount, "8,500.00");
+    expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+
+    // parseFloat would read this as the saved 8500; save rejects it, so it is an edit.
+    await user.clear(amount);
+    await user.type(amount, "8500abc");
+    expect(await screen.findByText("Unsaved changes")).toBeInTheDocument();
+  });
+
   it("restores a draft that outlived the page, so Back or a refresh cannot lose it", async () => {
     const user = userEvent.setup();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

@@ -1,4 +1,4 @@
-import { debtInputSchema, type DebtType } from "@zoption/shared";
+import { debtInputSchema, parseAmountToMinor, type DebtType } from "@zoption/shared";
 
 export interface DebtFormValues {
   name: string;
@@ -47,12 +47,18 @@ function isValidIsoDate(value: string): boolean {
   );
 }
 
-function parseMinor(value: string): number | null {
-  const [wholeText, fractionText = ""] = value.split(".");
-  const whole = Number(wholeText);
-  const fraction = Number(fractionText.padEnd(2, "0").slice(0, 2) || 0);
-  if (!Number.isFinite(whole) || !Number.isFinite(fraction)) return null;
-  return Math.round(whole * 100) + fraction;
+/**
+ * The payoff planner's optional extra monthly payment. Blank means none; null means the input
+ * cannot be read (malformed, negative, or more than two decimals), so the planner can say so.
+ */
+export function parseExtraPaymentMinor(value: string): number | null {
+  if (value.trim() === "") return 0;
+  try {
+    const minor = parseAmountToMinor(value);
+    return minor < 0 ? null : minor;
+  } catch {
+    return null;
+  }
 }
 
 function parseAprBasisPoints(value: string): number | null {
@@ -81,7 +87,9 @@ export function parseDebtForm(values: DebtFormValues):
     errors.name = "Keep the name under 80 characters.";
   }
 
-  const balanceMinor = amountPattern.test(values.balance) ? parseMinor(values.balance) : null;
+  const balanceMinor = amountPattern.test(values.balance)
+    ? parseAmountToMinor(values.balance)
+    : null;
   if (balanceMinor === null || balanceMinor <= 0) {
     errors.balance = "Enter the remaining balance as a positive amount.";
   }
@@ -95,7 +103,7 @@ export function parseDebtForm(values: DebtFormValues):
     values.minimumPayment.trim() === ""
       ? 0
       : amountPattern.test(values.minimumPayment)
-        ? parseMinor(values.minimumPayment)
+        ? parseAmountToMinor(values.minimumPayment)
         : null;
   if (minimumPaymentMinor === null) {
     errors.minimumPayment = "Enter the minimum monthly payment.";

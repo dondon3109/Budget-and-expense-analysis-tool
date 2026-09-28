@@ -12,7 +12,7 @@ describe("parseSmsText helper", () => {
     const text = "Your card ending in 4321 was charged $42.50 at Target on 2026-09-02.";
     const parsed = parseSmsText(text);
 
-    expect(parsed.amount).toBe(42.5);
+    expect(parsed.amount).toBe("42.50");
     expect(parsed.type).toBe("expense");
     expect(parsed.merchant).toBe("Target");
     expect(parsed.account).toBe("*4321");
@@ -23,7 +23,7 @@ describe("parseSmsText helper", () => {
     const text = "Salary credited $3,500.00 to account ending 9876 on 2026-09-01.";
     const parsed = parseSmsText(text);
 
-    expect(parsed.amount).toBe(3500);
+    expect(parsed.amount).toBe("3500.00");
     expect(parsed.type).toBe("income");
     expect(parsed.account).toBe("*9876");
   });
@@ -32,14 +32,14 @@ describe("parseSmsText helper", () => {
     const text = "Transfer of $150.00 sent to John Doe on 2026-09-02.";
     const parsed = parseSmsText(text);
 
-    expect(parsed.amount).toBe(150);
+    expect(parsed.amount).toBe("150.00");
     expect(parsed.type).toBe("transfer");
     expect(parsed.merchant).toBe("John Doe");
   });
 
   it("returns empty fallback structure for blank text", () => {
     const parsed = parseSmsText("");
-    expect(parsed.amount).toBeUndefined();
+    expect(parsed.amount).toBe("");
     expect(parsed.type).toBe("expense");
     expect(parsed.rawText).toBe("");
   });
@@ -112,7 +112,7 @@ describe("SmsQuickPasteModal component", () => {
     expect(onApply).toHaveBeenCalledTimes(1);
     expect(onApply).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 25.5,
+        amount: "25.50",
         merchant: "Starbucks",
       }),
     );
@@ -147,7 +147,7 @@ describe("SmsQuickPasteModal component", () => {
     await waitFor(() => {
       expect(clipboardMock.readText).toHaveBeenCalledTimes(1);
       const amountInput = screen.getByLabelText(/Amount/i) as HTMLInputElement;
-      expect(amountInput.value).toBe("55");
+      expect(amountInput.value).toBe("55.00");
     });
   });
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
   buildBalanceAdjustmentInput,
@@ -108,5 +108,28 @@ describe("balance adjustment helpers", () => {
       newBalanceMinor: 100_00,
     });
     expect(noChangeInput).toBeNull();
+  });
+
+  describe("default adjustment date", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    });
+
+    it("books on the local calendar day, not the UTC one", () => {
+      // 01:00 on Sept 28 in Manila is still Sept 27 in UTC.
+      vi.stubEnv("TZ", "Asia/Manila");
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-09-27T17:00:00Z"));
+      const input = buildBalanceAdjustmentInput({
+        accountId: "acc-1",
+        accountName: "Cash",
+        categoryId: "cat-uncat",
+        currency: "PHP",
+        currentBalanceMinor: 100_00,
+        newBalanceMinor: 90_00,
+      });
+      expect(input?.date).toBe("2026-09-28");
+    });
   });
 });

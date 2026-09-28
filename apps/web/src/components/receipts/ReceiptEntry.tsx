@@ -135,7 +135,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
       setDraft(extracted);
       setMerchant(extracted.merchant);
       setDate(extracted.date);
-      setAmountText((Math.abs(extracted.amountMinor) / 100).toFixed(2));
+      setAmountText(formatMinorAmount(Math.abs(extracted.amountMinor)));
       setKind(extracted.kind);
       const category =
         matchedCategory(categories, extracted.kind, extracted.categoryName) ??

@@ -1,11 +1,12 @@
 import {
   financialGoalInputSchema,
   financialGoalUpdateSchema,
+  formatMinorAmount,
   parseAmountToMinor,
   type FinancialGoal,
   type FinancialGoalInput,
-  type FinancialGoalUpdate,
   type FinancialGoalStatus,
+  type FinancialGoalUpdate,
 } from "@zoption/shared";
 import { X } from "lucide-react";
 import { useRef, useState, type FormEvent } from "react";
@@ -22,10 +23,6 @@ interface FinancialGoalFormProps {
   onClose: () => void;
 }
 
-function amountFromMinor(value: number): string {
-  return (value / 100).toFixed(2);
-}
-
 export function FinancialGoalForm({
   goal,
   busy,
@@ -35,10 +32,10 @@ export function FinancialGoalForm({
 }: FinancialGoalFormProps) {
   const [name, setName] = useState(goal?.name ?? "");
   const [targetAmount, setTargetAmount] = useState(
-    goal ? amountFromMinor(goal.targetAmountMinor) : "",
+    goal ? formatMinorAmount(goal.targetAmountMinor) : "",
   );
   const [currentAmount, setCurrentAmount] = useState(
-    goal ? amountFromMinor(goal.currentAmountMinor) : "0.00",
+    goal ? formatMinorAmount(goal.currentAmountMinor) : "0.00",
   );
   const [targetDate, setTargetDate] = useState(goal?.targetDate ?? "");
   const [status, setStatus] = useState<FinancialGoalStatus>(goal?.status ?? "active");

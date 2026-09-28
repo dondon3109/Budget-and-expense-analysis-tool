@@ -34,6 +34,11 @@ describe("computeBalanceAdjustment", () => {
   it("previews Old → New values", () => {
     expect(formatAdjustmentPreview(10000, 15000)).toBe("100.00 → 150.00");
   });
+
+  it("keeps the minus sign of an overdrawn or credit balance", () => {
+    expect(formatAdjustmentPreview(-50, 10000)).toBe("-0.50 → 100.00");
+    expect(formatAdjustmentPreview(-123_450, -100_000)).toBe("-1234.50 → -1000.00");
+  });
 });
 
 describe("buildBalanceAdjustmentInput", () => {
@@ -59,6 +64,12 @@ describe("buildBalanceAdjustmentInput", () => {
       kind: "expense",
       amountMinor: 1000,
     });
+  });
+
+  it("notes a negative starting balance with its sign", () => {
+    expect(
+      buildBalanceAdjustmentInput({ ...base, currentBalanceMinor: -2500, newBalanceMinor: 0 }),
+    ).toMatchObject({ kind: "income", amountMinor: 2500, notes: "Adjusted from -25.00 to 0.00." });
   });
 
   it("returns null when there is nothing to adjust", () => {

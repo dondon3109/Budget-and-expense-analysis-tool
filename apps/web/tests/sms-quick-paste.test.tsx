@@ -67,7 +67,7 @@ describe("SmsQuickPasteModal", () => {
     fireEvent.change(screen.getByLabelText("Amount"), { target: { value: "42.5" } });
     fireEvent.click(screen.getByRole("button", { name: "Apply Transaction" }));
 
-    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ amount: 42.5 }));
+    expect(onApply).toHaveBeenCalledWith(expect.objectContaining({ amount: "42.5" }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

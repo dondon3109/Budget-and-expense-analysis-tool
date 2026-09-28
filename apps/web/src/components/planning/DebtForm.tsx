@@ -1,6 +1,7 @@
 import {
   debtInputSchema,
   debtUpdateSchema,
+  formatMinorAmount,
   parseAmountToMinor,
   type Debt,
   type DebtInput,
@@ -23,17 +24,13 @@ interface DebtFormProps {
   onClose: () => void;
 }
 
-function amountFromMinor(value: number): string {
-  return (value / 100).toFixed(2);
-}
-
 export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFormProps) {
   const [name, setName] = useState(debt?.name ?? "");
   const [type, setType] = useState<DebtType>(debt?.type ?? "credit_card");
-  const [balance, setBalance] = useState(debt ? amountFromMinor(debt.balanceMinor) : "");
+  const [balance, setBalance] = useState(debt ? formatMinorAmount(debt.balanceMinor) : "");
   const [aprPercent, setAprPercent] = useState(debt ? (debt.aprBasisPoints / 100).toFixed(2) : "");
   const [minimumPayment, setMinimumPayment] = useState(
-    debt ? amountFromMinor(debt.minimumPaymentMinor) : "",
+    debt ? formatMinorAmount(debt.minimumPaymentMinor) : "",
   );
   const [balanceAsOf, setBalanceAsOf] = useState(debt?.balanceAsOf ?? "");
   const [status, setStatus] = useState<DebtStatus>(debt?.status ?? "active");

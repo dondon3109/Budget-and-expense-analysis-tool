@@ -119,8 +119,9 @@ const preview: ImportPreview = {
   ],
 };
 
-function renderPage() {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function renderPage(
+  queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
   return render(
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
@@ -916,5 +917,24 @@ describe("ImportPage", () => {
     await screen.findByText("Import complete");
     await waitFor(() => expect(getTransactions).toHaveBeenCalled());
     expect(funnel.captureFunnelEvent).not.toHaveBeenCalledWith("first_import_committed", {});
+  });
+
+  it("refreshes account balances after a commit", async () => {
+    const user = userEvent.setup();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(queryClient, "invalidateQueries");
+    const { container } = renderPage(queryClient);
+    const csv = "Date,Description,Amount,Category\n2026-07-20,Market,-50.00,Food & dining";
+
+    await user.upload(fileInput(container), fileWithBuffer("transactions.csv", csv, "text/csv"));
+    await user.click(screen.getByRole("button", { name: "Preview import" }));
+    await user.click(await screen.findByRole("button", { name: "Import 1 ready rows" }));
+
+    await screen.findByText("Import complete");
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: expect.arrayContaining(["accounts"]),
+      }),
+    );
   });
 });

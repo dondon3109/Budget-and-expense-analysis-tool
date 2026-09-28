@@ -1,6 +1,8 @@
 import React, { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
+  formatMinorAmount,
+  parseAmountToMinor,
   parseSmsNotification,
   type AccountRecord,
   type CategoryRecord,
@@ -12,7 +14,8 @@ import { useRootLock } from "../../hooks/useRootLock";
 import "./SmsQuickPasteModal.css";
 
 export interface ParsedSmsTransaction {
-  amount?: number;
+  /** Amount as typed, parsed with parseAmountToMinor. Empty when the alert had none. */
+  amount: string;
   type: "expense" | "income" | "transfer";
   merchant?: string;
   account?: string;
@@ -38,7 +41,7 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   const clean = text.trim();
   if (!clean) {
     return {
-      amount: undefined,
+      amount: "",
       type: "expense",
       merchant: undefined,
       account: undefined,
@@ -50,7 +53,7 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   const result = parseSmsNotification(clean);
   if (!result) {
     return {
-      amount: undefined,
+      amount: "",
       type: "expense",
       merchant: undefined,
       account: undefined,
@@ -60,7 +63,7 @@ export function parseSmsText(text: string): ParsedSmsTransaction {
   }
 
   return {
-    amount: result.amountMinor / 100,
+    amount: formatMinorAmount(result.amountMinor),
     type: result.type,
     merchant: result.payeeOrMerchant,
     account: result.accountSuffix,
@@ -118,10 +121,7 @@ const SmsQuickPasteDialog: React.FC<SmsQuickPasteDialogProps> = ({
     setParsedData(parseSmsText(""));
   };
 
-  const handleFieldChange = (
-    field: keyof ParsedSmsTransaction,
-    value: string | number | undefined,
-  ) => {
+  const handleFieldChange = (field: keyof ParsedSmsTransaction, value: string | undefined) => {
     setParsedData((prev) => ({
       ...prev,
       [field]: value,
@@ -135,8 +135,14 @@ const SmsQuickPasteDialog: React.FC<SmsQuickPasteDialogProps> = ({
   };
 
   const duplicateWarning = useMemo(() => {
-    if (!parsedData.amount || !existingTransactions?.length) return null;
-    const minor = Math.round(parsedData.amount * 100);
+    if (!existingTransactions?.length) return null;
+    let minor: number;
+    try {
+      minor = Math.abs(parseAmountToMinor(parsedData.amount));
+    } catch {
+      return null;
+    }
+    if (minor === 0) return null;
     return existingTransactions.find((tx) => {
       if (parsedData.referenceNumber && tx.notes?.includes(parsedData.referenceNumber)) {
         return true;
@@ -225,16 +231,10 @@ const SmsQuickPasteDialog: React.FC<SmsQuickPasteDialogProps> = ({
                   </label>
                   <input
                     id="sms-amount"
-                    type="number"
-                    step="any"
+                    inputMode="decimal"
                     className="sms-form-input"
-                    value={parsedData.amount ?? ""}
-                    onChange={(e) =>
-                      handleFieldChange(
-                        "amount",
-                        e.target.value ? parseFloat(e.target.value) : undefined,
-                      )
-                    }
+                    value={parsedData.amount}
+                    onChange={(e) => handleFieldChange("amount", e.target.value)}
                     placeholder="0.00"
                     required
                   />
@@ -329,7 +329,7 @@ const SmsQuickPasteDialog: React.FC<SmsQuickPasteDialogProps> = ({
             <button
               type="submit"
               className="sms-btn-apply"
-              disabled={parsedData.amount === undefined || isNaN(parsedData.amount)}
+              disabled={parsedData.amount.trim() === ""}
             >
               Apply Transaction
             </button>

@@ -108,6 +108,21 @@ describe("R2 android/latest.json metadata validation", () => {
     expect(ANDROID_DOWNLOAD_HOST).toBe("downloads.zoption.site");
   });
 
+  it("rejects a non-default port, embedded credentials, or a traversal path", () => {
+    for (const downloadUrl of [
+      "https://downloads.zoption.site:8443/zoption-beta-0.2.0.apk",
+      "https://user:secret@downloads.zoption.site/zoption-beta-0.2.0.apk",
+      "https://downloads.zoption.site/..%2fzoption-beta-0.2.0.apk",
+    ]) {
+      expect(parseRemoteAndroidRelease(validRemote({ downloadUrl }))).toBeNull();
+    }
+    expect(
+      parseRemoteAndroidRelease(
+        validRemote({ downloadUrl: "https://downloads.zoption.site:443/zoption-beta-0.2.0.apk" }),
+      ),
+    ).not.toBeNull();
+  });
+
   it("rejects invalid APK SHA-256 checksums", () => {
     expect(parseRemoteAndroidRelease(validRemote({ sha256: "abc" }))).toBeNull();
     expect(

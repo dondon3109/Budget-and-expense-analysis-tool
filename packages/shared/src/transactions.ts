@@ -87,6 +87,13 @@ export interface BalanceAdjustmentInput {
   date?: string;
 }
 
+// The user's calendar day. A UTC date books early-morning adjustments in UTC+8 on yesterday.
+function localCalendarDate(now: Date): string {
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
 /** Builds the Uncategorized Adjustment transaction for a nonzero delta. Null when there is nothing to book. */
 export function buildBalanceAdjustmentInput(
   input: BalanceAdjustmentInput,
@@ -97,7 +104,7 @@ export function buildBalanceAdjustmentInput(
     kind: preview.kind,
     accountId: input.accountId,
     categoryId: input.categoryId,
-    date: input.date ?? new Date().toISOString().slice(0, 10),
+    date: input.date ?? localCalendarDate(new Date()),
     description: `Balance adjustment for ${input.accountName}`,
     amountMinor: preview.magnitudeMinor,
     currency: input.currency,

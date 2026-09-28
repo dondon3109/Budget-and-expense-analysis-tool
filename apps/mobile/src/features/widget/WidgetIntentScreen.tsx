@@ -4,7 +4,9 @@ import { useMemo, useState } from "react";
 import { Text, View } from "react-native";
 
 import {
+  formatMinorAmount,
   matchCategory,
+  parseAmountToMinor,
   preferredTransactionAccount,
   transactionInputSchema,
 } from "@zoption/shared";
@@ -165,7 +167,7 @@ function TransactionConfirm({
     try {
       let amountMinor = 0;
       try {
-        amountMinor = parseAmountInput(amount);
+        amountMinor = parseAmountToMinor(amount);
       } catch {
         setMessage("Enter a valid amount with no more than two decimal places.");
         return;
@@ -339,15 +341,6 @@ function TransactionConfirm({
   );
 }
 
-function parseAmountInput(value: string): number {
-  const normalized = value.replaceAll(",", "").trim();
-  const [whole, fraction = ""] = normalized.split(".");
-  if (!/^\d+$/.test(whole ?? "") || !/^\d{0,2}$/.test(fraction)) {
-    throw new Error("Enter a valid amount with no more than two decimal places.");
-  }
-  return Number(whole) * 100 + Number((fraction + "00").slice(0, 2));
-}
-
 /** Current to new balance with the booked delta. Requires a known balance. */
 function BalanceDeltaPreview({
   currentBalanceMinor,
@@ -394,7 +387,7 @@ function ReconcileConfirm({
   const dashboard = useDashboardData(localIsoDate(new Date()));
   const [accountId, setAccountId] = useState<string | null>(null);
   const [targetAmountInput, setTargetAmountInput] = useState(() =>
-    formatMinorForInput(newBalanceMinor),
+    formatMinorAmount(newBalanceMinor),
   );
   const [saving, setSaving] = useState(false);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
@@ -410,7 +403,7 @@ function ReconcileConfirm({
 
   const effectiveNewBalanceMinor = useMemo(() => {
     try {
-      return parseAmountInput(targetAmountInput);
+      return parseAmountToMinor(targetAmountInput);
     } catch {
       return null;
     }
