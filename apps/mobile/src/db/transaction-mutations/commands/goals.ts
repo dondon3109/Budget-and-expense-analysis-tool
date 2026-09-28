@@ -7,6 +7,14 @@ import {
 
 import type { LocalCommandContext } from "../context";
 import { LocalMutationError, goalSnapshot, uuidSchema } from "../model";
+import {
+  assertRowSettled,
+  assertNotQueuedForRemoval,
+  assertNoAttemptInFlight,
+  queueCreate,
+  queueUpdate,
+  queueDelete,
+} from "./outbox-writes";
 
 export function createGoal(ctx: LocalCommandContext, value: FinancialGoalInput): Promise<string> {
   const input = financialGoalInputSchema.parse(value);
@@ -28,23 +36,13 @@ export function createGoal(ctx: LocalCommandContext, value: FinancialGoalInput):
         input.targetDate,
         input.status,
       );
-      await ctx.database.runAsync(
-        `INSERT INTO sync_outbox (
-          operation_id, idempotency_key, entity_type, entity_id, operation_type,
-          base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-        ) VALUES (?, ?, 'goal', ?, 'create', 0, ?, '[]', '{}', ?)`,
-        uuidSchema.parse(ctx.randomUuid()),
-        uuidSchema.parse(ctx.randomUuid()),
-        entityId,
-        JSON.stringify({
-          name: input.name,
-          targetAmountMinor: input.targetAmountMinor,
-          currentAmountMinor: input.currentAmountMinor,
-          targetDate: input.targetDate,
-          status: input.status,
-        }),
-        await ctx.store.nextSequence(),
-      );
+      await queueCreate(ctx, "goal", entityId, {
+        name: input.name,
+        targetAmountMinor: input.targetAmountMinor,
+        currentAmountMinor: input.currentAmountMinor,
+        targetDate: input.targetDate,
+        status: input.status,
+      });
     });
     return entityId;
   });
@@ -59,25 +57,10 @@ export function updateGoal(
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentGoalById(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this goal's synchronization state before editing it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "goal", "editing");
       const outbox = await ctx.store.currentOutbox("goal", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This goal is already waiting to be deleted.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this goal.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "goal", "deleted");
+      assertNoAttemptInFlight(outbox, "goal", "editing");
       const merged = {
         name: update.name ?? current.name,
         targetAmountMinor: update.targetAmountMinor ?? current.target_amount_minor,
@@ -92,28 +75,13 @@ export function updateGoal(
         );
       }
       if (update.name) await ctx.store.assertUniqueName("goal", update.name, id);
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
-            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
-          JSON.stringify(merged),
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'goal', ?, 'update', ?, ?, '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(merged),
-          JSON.stringify(goalSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueUpdate(ctx, outbox, {
+        entityType: "goal",
+        entityId: id,
+        baseRevision: current.server_revision,
+        payload: merged,
+        base: () => goalSnapshot(current),
+      });
       await ctx.database.runAsync(
         `UPDATE financial_goals SET
           name = ?, target_amount_minor = ?, current_amount_minor = ?, target_date = ?,
@@ -133,19 +101,9 @@ export function deleteGoal(ctx: LocalCommandContext, id: string): Promise<void> 
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentGoalById(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this goal's synchronization state before deleting it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "goal", "deleting");
       const outbox = await ctx.store.currentOutbox("goal", id);
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before deleting this goal.",
-          "mutation_blocked",
-        );
-      }
+      assertNoAttemptInFlight(outbox, "goal", "deleting");
       if (current.server_revision === 0 && outbox?.operation_type === "create") {
         await ctx.database.runAsync(
           "DELETE FROM sync_outbox WHERE operation_id = ?",
@@ -154,27 +112,12 @@ export function deleteGoal(ctx: LocalCommandContext, id: string): Promise<void> 
         await ctx.database.runAsync("DELETE FROM financial_goals WHERE id = ?", id);
         return;
       }
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
-            state = 'pending', attempt_count = 0, next_attempt_at = NULL,
-            last_error_code = NULL WHERE operation_id = ?`,
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'goal', ?, 'delete', ?, '{}', '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(goalSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueDelete(ctx, outbox, {
+        entityType: "goal",
+        entityId: id,
+        baseRevision: current.server_revision,
+        base: () => goalSnapshot(current),
+      });
       await ctx.database.runAsync(
         "UPDATE financial_goals SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
         ctx.now().toISOString(),

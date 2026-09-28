@@ -7,6 +7,12 @@ import {
 
 import type { LocalCommandContext } from "../context";
 import { LocalMutationError, categorySnapshot, uuidSchema } from "../model";
+import {
+  assertNotQueuedForRemoval,
+  assertNoAttemptInFlight,
+  queueCreate,
+  queueUpdate,
+} from "./outbox-writes";
 
 export function createCategory(ctx: LocalCommandContext, value: CategoryInput): Promise<string> {
   const input = categoryInputSchema.parse(value);
@@ -27,17 +33,7 @@ export function createCategory(ctx: LocalCommandContext, value: CategoryInput): 
         input.color,
         input.iconEmoji ?? null,
       );
-      await ctx.database.runAsync(
-        `INSERT INTO sync_outbox (
-          operation_id, idempotency_key, entity_type, entity_id, operation_type,
-          base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-        ) VALUES (?, ?, 'category', ?, 'create', 0, ?, '[]', '{}', ?)`,
-        uuidSchema.parse(ctx.randomUuid()),
-        uuidSchema.parse(ctx.randomUuid()),
-        entityId,
-        JSON.stringify(input),
-        await ctx.store.nextSequence(),
-      );
+      await queueCreate(ctx, "category", entityId, input);
     });
     return entityId;
   });
@@ -70,60 +66,28 @@ export function updateCategory(
       };
       if (next.name) await ctx.store.assertUniqueName("category", next.name, id);
       const outbox = await ctx.store.currentOutbox("category", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This category is already waiting to be archived.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this category.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "category", "archived");
+      assertNoAttemptInFlight(outbox, "category", "editing");
       const merged: CategoryInput = {
         name: next.name ?? current.name,
         kind: current.kind,
         color: next.color ?? current.color,
         iconEmoji: next.iconEmoji !== undefined ? next.iconEmoji : current.icon_emoji,
       };
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
-            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
-          JSON.stringify(
-            outbox.operation_type === "create"
-              ? merged
-              : {
-                  name: merged.name,
-                  color: merged.color,
-                  iconEmoji: merged.iconEmoji ?? null,
-                  archived: next.archived ?? current.archived === 1,
-                },
-          ),
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'category', ?, 'update', ?, ?, '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify({
-            name: merged.name,
-            color: merged.color,
-            iconEmoji: merged.iconEmoji ?? null,
-            archived: next.archived ?? current.archived === 1,
-          }),
-          JSON.stringify(categorySnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      const changes = {
+        name: merged.name,
+        color: merged.color,
+        iconEmoji: merged.iconEmoji ?? null,
+        archived: next.archived ?? current.archived === 1,
+      };
+      // An unsynced create still carries the full input; a queued update carries only changes.
+      await queueUpdate(ctx, outbox, {
+        entityType: "category",
+        entityId: id,
+        baseRevision: current.server_revision,
+        payload: outbox?.operation_type === "create" ? merged : changes,
+        base: () => categorySnapshot(current),
+      });
       await ctx.database.runAsync(
         `UPDATE categories SET name = ?, color = ?, icon_emoji = ?, archived = ?, sync_state = 'pending'
          WHERE id = ?`,

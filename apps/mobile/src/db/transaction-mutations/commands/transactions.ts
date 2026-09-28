@@ -21,6 +21,12 @@ import {
   validateLocalReferences,
   type NonTransferInput,
 } from "../model";
+import {
+  assertRowSettled,
+  assertNotQueuedForRemoval,
+  assertNoAttemptInFlight,
+  queueDelete,
+} from "./outbox-writes";
 
 /** Writes one ordinary transaction while the caller owns the SQLite transaction. */
 export async function createNonTransfer(
@@ -183,18 +189,8 @@ export function updateTransaction(
         }),
       );
       const outbox = await ctx.store.currentOutbox("transaction", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This transaction is already waiting to be deleted.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this transaction.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "transaction", "deleted");
+      assertNoAttemptInFlight(outbox, "transaction", "editing");
       const dependencyIds = await validateLocalReferences(
         ctx.database,
         merged,
@@ -265,12 +261,7 @@ export function deleteTransaction(ctx: LocalCommandContext, id: string): Promise
           );
         }
         const outbox = await ctx.store.currentOutbox("transfer", pair.groupId);
-        if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-          throw new LocalMutationError(
-            "Wait for the current synchronization attempt before deleting this transfer.",
-            "mutation_blocked",
-          );
-        }
+        assertNoAttemptInFlight(outbox, "transfer", "deleting");
         if (pair.from.server_revision === 0 && outbox?.operation_type === "create") {
           await ctx.database.runAsync(
             "DELETE FROM sync_outbox WHERE operation_id = ?",
@@ -282,27 +273,12 @@ export function deleteTransaction(ctx: LocalCommandContext, id: string): Promise
           );
           return;
         }
-        if (outbox) {
-          await ctx.database.runAsync(
-            `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
-              state = 'pending', attempt_count = 0, next_attempt_at = NULL,
-              last_error_code = NULL WHERE operation_id = ?`,
-            outbox.operation_id,
-          );
-        } else {
-          await ctx.database.runAsync(
-            `INSERT INTO sync_outbox (
-              operation_id, idempotency_key, entity_type, entity_id, operation_type,
-              base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-            ) VALUES (?, ?, 'transfer', ?, 'delete', ?, '{}', '[]', ?, ?)`,
-            uuidSchema.parse(ctx.randomUuid()),
-            uuidSchema.parse(ctx.randomUuid()),
-            pair.groupId,
-            pair.from.server_revision,
-            JSON.stringify(transferSnapshot(pair)),
-            await ctx.store.nextSequence(),
-          );
-        }
+        await queueDelete(ctx, outbox, {
+          entityType: "transfer",
+          entityId: pair.groupId,
+          baseRevision: pair.from.server_revision,
+          base: () => transferSnapshot(pair),
+        });
         await ctx.database.runAsync(
           `UPDATE transactions SET deleted_at = ?, sync_state = 'pending'
            WHERE transfer_group_id = ?`,
@@ -312,19 +288,9 @@ export function deleteTransaction(ctx: LocalCommandContext, id: string): Promise
         return;
       }
       if (current.deleted_at) return;
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this transaction's synchronization state before deleting it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "transaction", "deleting");
       const outbox = await ctx.store.currentOutbox("transaction", id);
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before deleting this transaction.",
-          "mutation_blocked",
-        );
-      }
+      assertNoAttemptInFlight(outbox, "transaction", "deleting");
       if (current.server_revision === 0 && outbox?.operation_type === "create") {
         await ctx.database.runAsync(
           "DELETE FROM sync_outbox WHERE operation_id = ?",
@@ -333,28 +299,12 @@ export function deleteTransaction(ctx: LocalCommandContext, id: string): Promise
         await ctx.database.runAsync("DELETE FROM transactions WHERE id = ?", id);
         return;
       }
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox
-           SET operation_type = 'delete', payload_json = '{}', state = 'pending',
-               attempt_count = 0, next_attempt_at = NULL, last_error_code = NULL
-           WHERE operation_id = ?`,
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'transaction', ?, 'delete', ?, '{}', '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(snapshotFromRow(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueDelete(ctx, outbox, {
+        entityType: "transaction",
+        entityId: id,
+        baseRevision: current.server_revision,
+        base: () => snapshotFromRow(current),
+      });
       await ctx.database.runAsync(
         "UPDATE transactions SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
         ctx.now().toISOString(),

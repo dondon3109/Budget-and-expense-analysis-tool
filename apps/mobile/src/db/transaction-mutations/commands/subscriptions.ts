@@ -6,7 +6,15 @@ import {
 } from "@zoption/shared";
 
 import type { LocalCommandContext } from "../context";
-import { LocalMutationError, subscriptionSnapshot, uuidSchema } from "../model";
+import { subscriptionSnapshot, uuidSchema } from "../model";
+import {
+  assertRowSettled,
+  assertNotQueuedForRemoval,
+  assertNoAttemptInFlight,
+  queueCreate,
+  queueUpdate,
+  queueDelete,
+} from "./outbox-writes";
 
 export function createSubscription(
   ctx: LocalCommandContext,
@@ -32,24 +40,14 @@ export function createSubscription(
         input.categoryId,
         input.accountId,
       );
-      await ctx.database.runAsync(
-        `INSERT INTO sync_outbox (
-          operation_id, idempotency_key, entity_type, entity_id, operation_type,
-          base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-        ) VALUES (?, ?, 'subscription', ?, 'create', 0, ?, '[]', '{}', ?)`,
-        uuidSchema.parse(ctx.randomUuid()),
-        uuidSchema.parse(ctx.randomUuid()),
-        entityId,
-        JSON.stringify({
-          name: input.name,
-          amountMinor: input.amountMinor,
-          billingCycle: input.billingCycle,
-          nextBillingDate: input.nextBillingDate,
-          categoryId: input.categoryId,
-          accountId: input.accountId,
-        }),
-        await ctx.store.nextSequence(),
-      );
+      await queueCreate(ctx, "subscription", entityId, {
+        name: input.name,
+        amountMinor: input.amountMinor,
+        billingCycle: input.billingCycle,
+        nextBillingDate: input.nextBillingDate,
+        categoryId: input.categoryId,
+        accountId: input.accountId,
+      });
     });
     return entityId;
   });
@@ -64,25 +62,10 @@ export function updateSubscription(
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentSubscriptionById(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this subscription's synchronization state before editing it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "subscription", "editing");
       const outbox = await ctx.store.currentOutbox("subscription", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This subscription is already waiting to be deleted.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this subscription.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "subscription", "deleted");
+      assertNoAttemptInFlight(outbox, "subscription", "editing");
       const merged = {
         name: update.name ?? current.name,
         amountMinor: update.amountMinor ?? current.amount_minor,
@@ -93,28 +76,13 @@ export function updateSubscription(
         status: update.status ?? current.status,
       };
       await ctx.store.validateSubscriptionReferences(merged);
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
-            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
-          JSON.stringify(merged),
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'subscription', ?, 'update', ?, ?, '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(merged),
-          JSON.stringify(subscriptionSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueUpdate(ctx, outbox, {
+        entityType: "subscription",
+        entityId: id,
+        baseRevision: current.server_revision,
+        payload: merged,
+        base: () => subscriptionSnapshot(current),
+      });
       await ctx.database.runAsync(
         `UPDATE subscriptions SET
           name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?,
@@ -137,19 +105,9 @@ export function deleteSubscription(ctx: LocalCommandContext, id: string): Promis
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentSubscriptionById(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this subscription's synchronization state before deleting it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "subscription", "deleting");
       const outbox = await ctx.store.currentOutbox("subscription", id);
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before deleting this subscription.",
-          "mutation_blocked",
-        );
-      }
+      assertNoAttemptInFlight(outbox, "subscription", "deleting");
       if (current.server_revision === 0 && outbox?.operation_type === "create") {
         await ctx.database.runAsync(
           "DELETE FROM sync_outbox WHERE operation_id = ?",
@@ -158,27 +116,12 @@ export function deleteSubscription(ctx: LocalCommandContext, id: string): Promis
         await ctx.database.runAsync("DELETE FROM subscriptions WHERE id = ?", id);
         return;
       }
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
-            state = 'pending', attempt_count = 0, next_attempt_at = NULL,
-            last_error_code = NULL WHERE operation_id = ?`,
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'subscription', ?, 'delete', ?, '{}', '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(subscriptionSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueDelete(ctx, outbox, {
+        entityType: "subscription",
+        entityId: id,
+        baseRevision: current.server_revision,
+        base: () => subscriptionSnapshot(current),
+      });
       await ctx.database.runAsync(
         "UPDATE subscriptions SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
         ctx.now().toISOString(),

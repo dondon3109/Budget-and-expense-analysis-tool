@@ -10,6 +10,13 @@ import {
 
 import type { LocalCommandContext } from "../context";
 import { LocalMutationError, accountSnapshot, uuidSchema } from "../model";
+import {
+  assertRowSettled,
+  assertNotQueuedForRemoval,
+  assertNoAttemptInFlight,
+  queueCreate,
+  queueUpdate,
+} from "./outbox-writes";
 
 export function createAccount(ctx: LocalCommandContext, value: AccountInput): Promise<string> {
   const input = accountInputSchema.parse(value);
@@ -34,17 +41,7 @@ export function createAccount(ctx: LocalCommandContext, value: AccountInput): Pr
           payDay: null,
         }),
       );
-      await ctx.database.runAsync(
-        `INSERT INTO sync_outbox (
-          operation_id, idempotency_key, entity_type, entity_id, operation_type,
-          base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-        ) VALUES (?, ?, 'account', ?, 'create', 0, ?, '[]', '{}', ?)`,
-        uuidSchema.parse(ctx.randomUuid()),
-        uuidSchema.parse(ctx.randomUuid()),
-        entityId,
-        JSON.stringify(input),
-        await ctx.store.nextSequence(),
-      );
+      await queueCreate(ctx, "account", entityId, input);
     });
     return entityId;
   });
@@ -59,29 +56,14 @@ export function updateAccount(
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentAccount(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this account's synchronization state before editing it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "account", "editing");
       if (current.system === 1 && update.name !== current.name) {
         throw new LocalMutationError("Permanent accounts cannot be renamed.", "mutation_blocked");
       }
       await ctx.store.assertUniqueName("account", update.name, id);
       const outbox = await ctx.store.currentOutbox("account", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This account is already waiting to be archived.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this account.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "account", "archived");
+      assertNoAttemptInFlight(outbox, "account", "editing");
       const pending = outbox
         ? mobileSyncAccountUpdateSchema.safeParse(JSON.parse(outbox.payload_json) as unknown)
         : null;
@@ -101,28 +83,13 @@ export function updateAccount(
       ) {
         next.interest = pending.data.interest;
       }
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
-            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
-          JSON.stringify(next),
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'account', ?, 'update', ?, ?, '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(next),
-          JSON.stringify(accountSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueUpdate(ctx, outbox, {
+        entityType: "account",
+        entityId: id,
+        baseRevision: current.server_revision,
+        payload: next,
+        base: () => accountSnapshot(current),
+      });
       if (update.interest !== undefined) {
         await ctx.database.runAsync(
           "UPDATE accounts SET name = ?, type = ?, interest_json = ?, sync_state = 'pending' WHERE id = ?",
@@ -203,56 +170,26 @@ export function updateAccountInterest(
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentAccount(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this account's synchronization state before editing it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "account", "editing");
       if (current.type !== "savings") {
         throw new LocalMutationError("Only savings accounts earn interest.", "mutation_blocked");
       }
       const outbox = await ctx.store.currentOutbox("account", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This account is already waiting to be archived.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this account.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "account", "archived");
+      assertNoAttemptInFlight(outbox, "account", "editing");
       const next = outbox
         ? {
             ...mobileSyncAccountUpdateSchema.parse(JSON.parse(outbox.payload_json) as unknown),
             interest,
           }
         : { name: current.name, type: current.type, interest };
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
-            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
-          JSON.stringify(next),
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'account', ?, 'update', ?, ?, '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(next),
-          JSON.stringify(accountSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueUpdate(ctx, outbox, {
+        entityType: "account",
+        entityId: id,
+        baseRevision: current.server_revision,
+        payload: next,
+        base: () => accountSnapshot(current),
+      });
       await ctx.database.runAsync(
         "UPDATE accounts SET interest_json = ?, sync_state = 'pending' WHERE id = ?",
         JSON.stringify({

@@ -7,6 +7,7 @@ import {
 
 import type { LocalCommandContext } from "../context";
 import { LocalMutationError, transferSnapshot, uuidSchema } from "../model";
+import { assertNotQueuedForRemoval, assertNoAttemptInFlight } from "./outbox-writes";
 
 export function updateTransfer(
   ctx: LocalCommandContext,
@@ -32,18 +33,8 @@ export function updateTransfer(
       }
       await ctx.store.validateTransferReferences(input);
       const outbox = await ctx.store.currentOutbox("transfer", pair.groupId);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This transfer is already waiting to be deleted.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this transfer.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "transfer", "deleted");
+      assertNoAttemptInFlight(outbox, "transfer", "editing");
       if (outbox) {
         let payload: unknown;
         try {

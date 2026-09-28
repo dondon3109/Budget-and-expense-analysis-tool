@@ -6,7 +6,15 @@ import {
 } from "@zoption/shared";
 
 import type { LocalCommandContext } from "../context";
-import { LocalMutationError, debtSnapshot, uuidSchema } from "../model";
+import { debtSnapshot, uuidSchema } from "../model";
+import {
+  assertRowSettled,
+  assertNotQueuedForRemoval,
+  assertNoAttemptInFlight,
+  queueCreate,
+  queueUpdate,
+  queueDelete,
+} from "./outbox-writes";
 
 export function createDebt(ctx: LocalCommandContext, value: DebtInput): Promise<string> {
   const input = debtInputSchema.parse(value);
@@ -30,25 +38,15 @@ export function createDebt(ctx: LocalCommandContext, value: DebtInput): Promise<
         input.balanceAsOf,
         input.status,
       );
-      await ctx.database.runAsync(
-        `INSERT INTO sync_outbox (
-          operation_id, idempotency_key, entity_type, entity_id, operation_type,
-          base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-        ) VALUES (?, ?, 'debt', ?, 'create', 0, ?, '[]', '{}', ?)`,
-        uuidSchema.parse(ctx.randomUuid()),
-        uuidSchema.parse(ctx.randomUuid()),
-        entityId,
-        JSON.stringify({
-          name: input.name,
-          type: input.type,
-          balanceMinor: input.balanceMinor,
-          aprBasisPoints: input.aprBasisPoints,
-          minimumPaymentMinor: input.minimumPaymentMinor,
-          balanceAsOf: input.balanceAsOf,
-          status: input.status,
-        }),
-        await ctx.store.nextSequence(),
-      );
+      await queueCreate(ctx, "debt", entityId, {
+        name: input.name,
+        type: input.type,
+        balanceMinor: input.balanceMinor,
+        aprBasisPoints: input.aprBasisPoints,
+        minimumPaymentMinor: input.minimumPaymentMinor,
+        balanceAsOf: input.balanceAsOf,
+        status: input.status,
+      });
     });
     return entityId;
   });
@@ -59,25 +57,10 @@ export function updateDebt(ctx: LocalCommandContext, id: string, value: DebtUpda
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentDebtById(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this debt's synchronization state before editing it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "debt", "editing");
       const outbox = await ctx.store.currentOutbox("debt", id);
-      if (outbox?.operation_type === "delete") {
-        throw new LocalMutationError(
-          "This debt is already waiting to be deleted.",
-          "mutation_blocked",
-        );
-      }
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before editing this debt.",
-          "mutation_blocked",
-        );
-      }
+      assertNotQueuedForRemoval(outbox, "debt", "deleted");
+      assertNoAttemptInFlight(outbox, "debt", "editing");
       const merged = {
         name: update.name ?? current.name,
         type: update.type ?? current.type,
@@ -88,28 +71,13 @@ export function updateDebt(ctx: LocalCommandContext, id: string, value: DebtUpda
         status: update.status ?? current.status,
       };
       if (update.name) await ctx.store.assertUniqueName("debt", update.name, id);
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
-            next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
-          JSON.stringify(merged),
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'debt', ?, 'update', ?, ?, '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(merged),
-          JSON.stringify(debtSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueUpdate(ctx, outbox, {
+        entityType: "debt",
+        entityId: id,
+        baseRevision: current.server_revision,
+        payload: merged,
+        base: () => debtSnapshot(current),
+      });
       await ctx.database.runAsync(
         `UPDATE debts SET
           name = ?, type = ?, balance_minor = ?, apr_basis_points = ?,
@@ -132,19 +100,9 @@ export function deleteDebt(ctx: LocalCommandContext, id: string): Promise<void> 
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const current = await ctx.store.currentDebtById(id);
-      if (current.sync_state === "failed" || current.sync_state === "conflicted") {
-        throw new LocalMutationError(
-          "Resolve this debt's synchronization state before deleting it.",
-          "mutation_blocked",
-        );
-      }
+      assertRowSettled(current.sync_state, "debt", "deleting");
       const outbox = await ctx.store.currentOutbox("debt", id);
-      if (outbox && (outbox.state !== "pending" || outbox.attempt_count > 0)) {
-        throw new LocalMutationError(
-          "Wait for the current synchronization attempt before deleting this debt.",
-          "mutation_blocked",
-        );
-      }
+      assertNoAttemptInFlight(outbox, "debt", "deleting");
       if (current.server_revision === 0 && outbox?.operation_type === "create") {
         await ctx.database.runAsync(
           "DELETE FROM sync_outbox WHERE operation_id = ?",
@@ -153,27 +111,12 @@ export function deleteDebt(ctx: LocalCommandContext, id: string): Promise<void> 
         await ctx.database.runAsync("DELETE FROM debts WHERE id = ?", id);
         return;
       }
-      if (outbox) {
-        await ctx.database.runAsync(
-          `UPDATE sync_outbox SET operation_type = 'delete', payload_json = '{}',
-            state = 'pending', attempt_count = 0, next_attempt_at = NULL,
-            last_error_code = NULL WHERE operation_id = ?`,
-          outbox.operation_id,
-        );
-      } else {
-        await ctx.database.runAsync(
-          `INSERT INTO sync_outbox (
-            operation_id, idempotency_key, entity_type, entity_id, operation_type,
-            base_revision, payload_json, dependency_ids_json, base_json, created_sequence
-          ) VALUES (?, ?, 'debt', ?, 'delete', ?, '{}', '[]', ?, ?)`,
-          uuidSchema.parse(ctx.randomUuid()),
-          uuidSchema.parse(ctx.randomUuid()),
-          id,
-          current.server_revision,
-          JSON.stringify(debtSnapshot(current)),
-          await ctx.store.nextSequence(),
-        );
-      }
+      await queueDelete(ctx, outbox, {
+        entityType: "debt",
+        entityId: id,
+        baseRevision: current.server_revision,
+        base: () => debtSnapshot(current),
+      });
       await ctx.database.runAsync(
         "UPDATE debts SET deleted_at = ?, sync_state = 'pending' WHERE id = ?",
         ctx.now().toISOString(),
