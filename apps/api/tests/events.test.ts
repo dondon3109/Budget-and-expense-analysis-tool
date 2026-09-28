@@ -2,28 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { calendarEventRepository } from "../src/db/events";
 import type { Bindings } from "../src/types";
-
-interface CapturedStatement {
-  query: string;
-  bindings: unknown[];
-}
-
-function createCapturingDatabase(statements: CapturedStatement[]): D1Database {
-  return {
-    prepare(query: string) {
-      return {
-        bind(...bindings: unknown[]) {
-          statements.push({ query, bindings });
-          return {
-            async raw() {
-              return [];
-            },
-          };
-        },
-      };
-    },
-  } as unknown as D1Database;
-}
+import { createCapturingDatabase, type CapturedStatement } from "./helpers/capturing-database";
 
 describe("calendarEventRepository", () => {
   it("lists only the requested tenant and month", async () => {

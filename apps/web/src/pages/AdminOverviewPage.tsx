@@ -13,15 +13,12 @@ import { SponsoredProSeatsSettings } from "../components/account/SponsoredProSea
 import { AppShell } from "../components/layout/AppShell";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { useBillingSummary } from "../hooks/useBillingSummary";
-import {
-  getAdminBugReports,
-  getAdminCustomerReviews,
-  getProviderHealth,
-  getSponsoredProSeats,
-} from "../lib/api";
+import { getAdminBugReports, getAdminCustomerReviews, getSponsoredProSeats } from "../lib/api";
+import type { getProviderHealth } from "../lib/api";
 import { LANDING_REVIEW_LIMIT } from "../lib/customerReviews";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { providerHealthQueryOptions } from "../queries/admin-providers";
 import "./AdminOverviewPage.css";
 
 const REVIEW_SUMMARY_QUERY = { page: 1, pageSize: 1 } as const;
@@ -279,8 +276,7 @@ export function AdminOverviewPage() {
     enabled: isAdmin,
   });
   const models = useQuery({
-    queryKey: queryKeys.providerHealth(workspace),
-    queryFn: () => getProviderHealth(workspace),
+    ...providerHealthQueryOptions(workspace),
     enabled: isAdmin,
   });
   const reports = useQuery({

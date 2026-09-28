@@ -1,5 +1,5 @@
 import { parseAmountToMinor, type BudgetMonthPlan, type BudgetUpsert } from "@zoption/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -10,7 +10,7 @@ import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
 import { AppShell } from "../components/layout/AppShell";
 import { MonthSelector } from "../components/month/MonthSelector";
-import { getBudgets, saveBudgets } from "../lib/api";
+import { saveBudgets } from "../lib/api";
 import { clearBudgetDraft, persistBudgetDraft, readBudgetDraft } from "../lib/budgetDraft";
 import { currentMonth, isMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
@@ -18,6 +18,7 @@ import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { useBudgets } from "../queries/budgets";
 import "./BudgetsPage.css";
 
 function toAmountText(amountMinor: number): string {
@@ -38,10 +39,7 @@ export function BudgetsPage() {
   const [pendingMonth, setPendingMonth] = useState<string>();
   const initializedDraftShapeRef = useRef<string | undefined>(undefined);
   const monthStart = `${month}-01`;
-  const budgetQuery = useQuery({
-    queryKey: queryKeys.budgets(workspace, monthStart),
-    queryFn: () => getBudgets(workspace, monthStart),
-  });
+  const budgetQuery = useBudgets(workspace, monthStart);
 
   useEffect(() => {
     if (!budgetQuery.data) return;
