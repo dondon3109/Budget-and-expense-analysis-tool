@@ -24,7 +24,9 @@ import { emptyImportMapping, localToday, useImportDraft } from "../import/Import
 import "../import/import.css";
 import { commitImport, isMonthlyLimitReachedError, previewImport } from "../lib/api";
 // The step components load after import.css, where ImportSubscriptionSuggestions used to be
-// imported, so its stylesheet keeps its place in the cascade.
+// imported, so its stylesheet keeps its place in the cascade. ImportReviewStep also brings
+// PlanUsageIndicator.css and UpgradePrompt.css, which now load after import.css too: an
+// import.css override of those components needs a more specific selector, not source order.
 import { ImportFileStep } from "../components/import/ImportFileStep";
 import { ImportMappingStep } from "../components/import/ImportMappingStep";
 import { ImportReviewStep } from "../components/import/ImportReviewStep";

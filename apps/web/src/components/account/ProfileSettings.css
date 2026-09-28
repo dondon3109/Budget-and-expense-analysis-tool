@@ -97,4 +97,8 @@
   .avatar-settings-actions {
     display: grid;
   }
+
+  .avatar-settings-actions .button {
+    width: 100%;
+  }
 }
