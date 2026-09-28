@@ -29,13 +29,6 @@ export const NON_TERMINAL_BILLING_STATUSES = ["active", "trialing", "past_due", 
 const PRO_STATUS_SET = new Set<BillingSubscriptionStatus>(PRO_BILLING_STATUSES);
 const NON_TERMINAL_STATUS_SET = new Set<BillingSubscriptionStatus>(NON_TERMINAL_BILLING_STATUSES);
 
-export const EFFECTIVE_PRO_SUBSCRIPTION_CONDITION = `current_period_ends_at IS NOT NULL
-  AND datetime(current_period_ends_at) > datetime('now')
-  AND (
-    status IN ('active', 'trialing')
-    OR (status = 'canceled' AND cancel_at_period_end = 1)
-  )`;
-
 export const CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION = `(
   status IN ('active', 'trialing', 'past_due', 'paused')
   OR (

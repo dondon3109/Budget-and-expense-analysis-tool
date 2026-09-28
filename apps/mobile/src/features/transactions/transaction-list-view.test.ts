@@ -2,6 +2,7 @@ import type { TransactionListItem } from "@zoption/shared";
 
 import type { LocalTransactionItem } from "@/db/repository";
 import {
+  categorySummary,
   groupTransactionsByDate,
   monthStartForDate,
   shiftMonthStart,
@@ -71,5 +72,39 @@ describe("transaction list view", () => {
     expect(shiftMonthStart("2026-12-01", 1)).toBe("2027-01-01");
     expect(monthStartForDate(new Date(2026, 7, 24))).toBe("2026-08-01");
     expect(transactionDayLabel("2026-08-24")).toEqual({ day: "24", weekday: "Mon" });
+  });
+
+  it("summarizes each category and currency with absolute totals, largest first", () => {
+    const inCategory = (
+      entry: LocalTransactionItem,
+      categoryId: string,
+      categoryName: string,
+    ): LocalTransactionItem => ({
+      ...entry,
+      transaction: { ...entry.transaction, categoryId, categoryName },
+    });
+    const rows = categorySummary([
+      inCategory(item("lunch", "2026-08-24", -3_000, "expense"), "food", "Food"),
+      inCategory(item("dinner", "2026-08-24", -2_000, "expense"), "food", "Food"),
+      inCategory(item("refund", "2026-08-24", 1_000, "income"), "food", "Food"),
+      inCategory(item("usd-lunch", "2026-08-24", -500, "expense", "USD"), "food", "Food"),
+      inCategory(item("move", "2026-08-24", -6_000, "transfer"), "transfer", "Transfer"),
+      inCategory(item("bus", "2026-08-24", -500, "expense"), "transit", "Bus"),
+    ]);
+
+    expect(
+      rows.map(({ key, incomeMinor, expenseMinor, transferMinor }) => ({
+        key,
+        incomeMinor,
+        expenseMinor,
+        transferMinor,
+      })),
+    ).toEqual([
+      { key: "food:PHP", incomeMinor: 1_000, expenseMinor: 5_000, transferMinor: 0 },
+      { key: "transfer:PHP", incomeMinor: 0, expenseMinor: 0, transferMinor: 6_000 },
+      // Equal totals fall back to the category name.
+      { key: "transit:PHP", incomeMinor: 0, expenseMinor: 500, transferMinor: 0 },
+      { key: "food:USD", incomeMinor: 0, expenseMinor: 500, transferMinor: 0 },
+    ]);
   });
 });

@@ -1,8 +1,5 @@
 import type { AssistantHistoryMessage } from "../db/assistant";
 
-export const PERIOD_CLARIFICATION_RESPONSE =
-  "Which month or date range should I use? For example, August 2026 or July 1 to August 2, 2026.";
-
 const AGGREGATE_TERM_PATTERN =
   /\b(?:income|earnings?|expenses?|spending|spent|spend|net|savings?|cash\s*flow|remaining|left|trends?|averages?|kita|kinita|sweldo|sahod|gastos|nagastos|nagasta|ipon|naipon|bayad|nagbayad|binayad|natira|natitira|kabuuan)\b/i;
 const AGGREGATE_REQUEST_PATTERN =

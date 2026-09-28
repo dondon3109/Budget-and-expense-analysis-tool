@@ -126,7 +126,7 @@ export const d1RateLimiter: RateLimiter = {
   },
 };
 
-export const durableRateLimiter: RateLimiter = {
+const durableRateLimiter: RateLimiter = {
   async consume(env, clientIdentifier, policy) {
     const namespace = env.RATE_LIMIT;
     if (!namespace) return d1RateLimiter.consume(env, clientIdentifier, policy);

@@ -373,7 +373,7 @@ export function deterministicExtract(message: string): ExtractionResult {
   };
 }
 
-export function scoreMemoryForQuery(memory: AssistantMemory, query: string): number {
+function scoreMemoryForQuery(memory: AssistantMemory, query: string): number {
   const haystack = `${memory.key} ${memory.value}`.toLowerCase();
   const tokens = query
     .toLowerCase()
