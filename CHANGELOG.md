@@ -17,6 +17,10 @@ All notable product changes are documented here.
 - Account balances on the web refresh as soon as an import is committed, and the spreadsheet import also refreshes the archived category list.
 - The Android install page rejects release metadata whose download link uses a custom port, embedded credentials, or a traversal path, matching the in-app update check.
 
+### Changed
+
+- New Zoption logo: a rounded Z on near-black whose last stroke ends in a mint budget bar. It replaces the old mark in the web app, favicon, installable web app icons, and the Android and iOS app icon.
+
 ## 2.46.1 — 2026-09-26
 
 ### Fixed

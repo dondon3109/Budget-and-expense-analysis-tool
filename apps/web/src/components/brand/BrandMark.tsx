@@ -7,7 +7,7 @@ export function BrandMark({ className = "brand-mark" }: BrandMarkProps) {
     <span className={className} aria-hidden="true">
       <img
         className="brand-logo-image"
-        src="/brand/favicon-64.png"
+        src="/brand/zoption-mark.svg"
         alt=""
         width="64"
         height="64"

@@ -35,7 +35,7 @@ const HIGH_RISK = [
   /^packages\/shared\/src\/(money|sync|schemas|limits)(\.ts$|\/)/,
   /^apps\/mobile\/src\/(auth|db|sync)\//,
   /^apps\/web\/src\/auth\//,
-  // Bearer attachment, refresh retry, and sign-out once lib/api.ts is split.
+  // Bearer attachment, refresh retry, and sign-out for every web API call.
   /^apps\/web\/src\/lib\/api\/transport\.ts$/,
   /^apps\/mobile\/src\/features\/auth\//,
   /^apps\/web\/public\/_headers$/,

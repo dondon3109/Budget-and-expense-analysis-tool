@@ -94,8 +94,9 @@ These lists name every file that knows about an entity. The easy ones to miss ar
    - Include its rows in `apps/api/src/exports/archive.ts`.
 6. **Assistant (optional):** to expose the entity to the assistant, add a reader in `apps/api/src/assistant/financial-reader.ts` and a tool in `apps/api/src/assistant/tools.ts`.
 7. **Web:**
-   - A call in `apps/web/src/lib/api.ts`.
+   - A call in `apps/web/src/lib/api/<entity>.ts`, re-exported from the `lib/api` barrel.
    - A key in `apps/web/src/lib/queryKeys.ts`.
+   - Query options, a `useX` hook, and invalidation helpers in `apps/web/src/queries/<entity>.ts`.
    - The page and its route.
 8. **Tests:**
    - Repository tests in `apps/api/tests/` on `createD1TestDatabase`.
@@ -108,7 +109,7 @@ Do everything in the REST list above, then add these steps:
 
 1. **Sync contract:** in `packages/shared/src/sync.ts`, add the entity type, the input, update, and snapshot schemas, and use the money caps from `packages/shared/src/limits.ts` rather than new literals.
 2. **Server schema:** a migration adds the `revision` column and the change-log triggers. Copy `db/migrations/0039_mobile_sync_goals.sql`.
-3. **Server sync:** add the snapshot reader, business rejection, and push mutation in `apps/api/src/db/mobile-sync.ts`. Pull and snapshot in `apps/api/src/db/mobile-sync/read.ts` are generic over the change log. Edit read.ts only if the new entity must be applied before others: it orders accounts and categories first.
+3. **Server sync:** add the snapshot reader in `apps/api/src/db/mobile-sync/push/snapshots.ts`, business rejections in `push/rules.ts`, and the push mutation in `push/entities/<entity>.ts`, dispatched from the `switch` in `apps/api/src/db/mobile-sync.ts`. Pull and snapshot in `apps/api/src/db/mobile-sync/read.ts` are generic over the change log. Edit read.ts only if the new entity must be applied before others: it orders accounts and categories first.
 4. **Mobile schema:** add a local table in `apps/mobile/src/db/migrations.ts`. It is append-only, so add the entry and bump `LOCAL_SCHEMA_VERSION`.
 5. **Mobile sync:**
    - Add the entity-to-table entry in `apps/mobile/src/db/entity-tables.ts`.
@@ -120,7 +121,7 @@ Do everything in the REST list above, then add these steps:
 8. **Mobile UI:** screens in `apps/mobile/src/features/<area>/`, including a conflict screen, with one-line routes in `apps/mobile/app/`.
 9. **Rollout:** installed apps validate pull responses strictly. A new entity type or payload field needs a client release that understands it before the server sends it (`apps/api/AGENTS.md`). Document the protocol change in `docs/mobile/sync-protocol.md`.
 10. **Tests:**
-    - Server sync tests in `apps/api/tests/mobile-sync.test.ts`, which run the full D1 migration chain.
+    - Server sync tests in `apps/api/tests/mobile-sync-*.test.ts`, which run the full D1 migration chain.
     - Mobile repository tests with the real local migrations.
 
 ## Change rules for one maintainer
