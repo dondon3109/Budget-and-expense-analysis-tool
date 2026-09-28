@@ -326,36 +326,40 @@ describe("TransactionForm", () => {
     expect(screen.getByLabelText("Category")).toHaveValue("food");
   });
 
-  it("defaults a new income entry to the Salary category when present", async () => {
+  it("defaults a new entry to the Uncategorized category of its kind", async () => {
+    const uncategorizedExpense: CategoryRecord = {
+      ...category,
+      id: "uncategorized-expense",
+      name: "Uncategorized",
+    };
     const salaryCategory: CategoryRecord = {
       ...category,
       id: "salary",
       name: "Salary",
       kind: "income",
     };
-    const otherIncome: CategoryRecord = {
+    const uncategorizedIncome: CategoryRecord = {
       ...category,
-      id: "other-income",
-      name: "Other income",
+      id: "uncategorized-income",
+      name: "Uncategorized",
       kind: "income",
     };
-    const onSubmit = vi.fn(async () => undefined);
     render(
       <TransactionForm
         workspace={workspace}
-        categories={[otherIncome, salaryCategory]}
+        categories={[category, uncategorizedExpense, salaryCategory, uncategorizedIncome]}
         accounts={accounts}
         debts={debts}
         busy={false}
-        onSubmit={onSubmit}
+        onSubmit={vi.fn(async () => undefined)}
         onClose={vi.fn()}
       />,
     );
 
+    expect(screen.getByLabelText("Category")).toHaveValue("uncategorized-expense");
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Transaction type"), "income");
-
-    expect(screen.getByLabelText("Category")).toHaveValue("salary");
+    expect(screen.getByLabelText("Category")).toHaveValue("uncategorized-income");
   });
 
   it("submits an income transaction without the expense-only debt link", async () => {

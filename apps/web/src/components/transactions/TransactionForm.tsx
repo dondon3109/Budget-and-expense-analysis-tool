@@ -2,6 +2,7 @@ import {
   currencies,
   currencyMetadata,
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+  defaultTransactionCategory,
   formatMinorAmount,
   matchCategory,
   parseAmountToMinor,
@@ -138,16 +139,11 @@ export function TransactionForm({
     [categories],
   );
 
-  /** Default pick for a fresh entry: income prefers the starter "Salary"
-   *  category (which is the natural home for earned money), then falls back
-   *  to the first selectable category of the chosen kind. */
-  const preferredDefaultCategory = useMemo(() => {
-    const incomeSalary =
-      kind === "income"
-        ? selectableCategories.find((category) => category.name === "Salary")
-        : undefined;
-    return incomeSalary ?? selectableCategories[0];
-  }, [kind, selectableCategories]);
+  /** Default pick for a fresh entry: the kind's Uncategorized, else its first selectable category. */
+  const preferredDefaultCategory = useMemo(
+    () => defaultTransactionCategory(selectableCategories, kind),
+    [kind, selectableCategories],
+  );
 
   /** The product-owned debt payment category is what turns on the "which debt" picker. */
   const debtPaymentSelected =
@@ -274,7 +270,11 @@ export function TransactionForm({
       ? accountId
       : (defaultAccount?.id ?? "");
     setKind(nextKind);
-    setCategoryId(matchingCategory?.id ?? nextKindCategories[0]?.id ?? categoryId);
+    setCategoryId(
+      matchingCategory?.id ??
+        defaultTransactionCategory(nextKindCategories, nextKind)?.id ??
+        categoryId,
+    );
     setDate(draft.date);
     setDescription(draft.description);
     setAmount(formatMinorAmount(draft.amountMinor));

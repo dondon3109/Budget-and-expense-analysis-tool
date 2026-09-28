@@ -62,19 +62,26 @@ export interface AdjustmentCategory {
 }
 
 /**
- * Mirrors the receipt-review fallback so adjustments always land somewhere
- * sensible: suggested name, then "Uncategorized", then the first of its kind.
+ * Default category for a new transaction: the kind's "Uncategorized", then the
+ * first category of that kind. Callers pass only the categories the user may pick.
  */
+export function defaultTransactionCategory<T extends { name: string; kind: string }>(
+  categories: readonly T[],
+  kind: T["kind"],
+): T | undefined {
+  const usable = categories.filter((category) => category.kind === kind);
+  return (
+    usable.find((category) => category.name.toLocaleLowerCase("en") === "uncategorized") ??
+    usable[0]
+  );
+}
+
+/** Adjustments land on the same default a new transaction gets. */
 export function resolveAdjustmentCategoryId(
   categories: readonly AdjustmentCategory[],
   kind: "income" | "expense",
 ): string | null {
-  const usable = categories.filter((category) => category.kind === kind);
-  return (
-    usable.find((category) => category.name.toLocaleLowerCase("en") === "uncategorized")?.id ??
-    usable[0]?.id ??
-    null
-  );
+  return defaultTransactionCategory(categories, kind)?.id ?? null;
 }
 
 export interface BalanceAdjustmentInput {

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  defaultTransactionCategory,
   matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
@@ -157,7 +158,7 @@ export function TransactionEditorScreen() {
 
     const category = existing
       ? formData.data.categories.find((item) => item.id === existing.categoryId)
-      : (matchedCategory ?? formData.data.categories.find((item) => item.kind === kind));
+      : (matchedCategory ?? defaultTransactionCategory(formData.data.categories, kind));
 
     const initialDate = existing?.date ?? paramDate ?? localCalendarDate();
     const initialDesc = existing?.description ?? paramDescription ?? "";
@@ -332,8 +333,9 @@ export function TransactionEditorScreen() {
       synchronizedAccounts,
       useDefaultSpendingAccountStore.getState().accountId,
     );
-    const defaultCategory = formData.data?.categories.find(
-      (item) => item.kind === "expense" && !item.pending,
+    const defaultCategory = defaultTransactionCategory(
+      formData.data?.categories.filter((item) => !item.pending) ?? [],
+      "expense",
     );
     setValues({
       kind: "expense",
@@ -513,7 +515,7 @@ export function TransactionEditorScreen() {
                   kind: nextKind,
                   contextText: draft.transcript,
                 });
-                const fallbackCategory = nextKindCategories[0];
+                const fallbackCategory = defaultTransactionCategory(nextKindCategories, nextKind);
                 const activeAccounts =
                   formData.data?.accounts.filter((account) => !account.pending) ?? [];
                 const fromAccount =
@@ -579,8 +581,11 @@ export function TransactionEditorScreen() {
               if (voicePreviewState.status === "pending") {
                 machineRef.current?.edit();
               }
-              const firstCategory = formData.data?.categories.find(
-                (category) => category.kind === kind && (kind !== "transfer" || !category.pending),
+              const firstCategory = defaultTransactionCategory(
+                formData.data?.categories.filter(
+                  (category) => kind !== "transfer" || !category.pending,
+                ) ?? [],
+                kind,
               );
               setValues((current) => {
                 const synchronizedAccounts =
