@@ -14,6 +14,8 @@ import { z } from "zod";
 import type {
   LocalWorkspaceStats,
   LocalTransactionItem,
+  LocalAccountOption,
+  LocalCategoryOption,
   TransactionFormData,
   LocalBudgetMonthData,
   LocalGoalItem,
@@ -68,7 +70,7 @@ const localAccountOptionSchema = z.object({
     .min(0)
     .max(1)
     .transform((value) => value === 1),
-});
+}) satisfies z.ZodType<LocalAccountOption>;
 
 const localCategoryOptionSchema = z
   .object({
@@ -87,7 +89,7 @@ const localCategoryOptionSchema = z
   .transform((row) => ({
     ...row,
     iconEmoji: resolveCategoryEmoji({ name: row.name, iconEmoji: row.iconEmoji, kind: row.kind }),
-  }));
+  })) satisfies z.ZodType<LocalCategoryOption>;
 
 const editableTransactionRowSchema = z.object({
   id: z.string(),

@@ -2,14 +2,27 @@ import type {
   AccountRecord,
   AccountType,
   BudgetRecord,
+  CategoryRequiredPlan,
+  Currency,
+  DebtStatus,
+  DebtType,
+  FinancialGoalStatus,
   InterestSettings,
+  SubscriptionBillingCycle,
+  SubscriptionStatus,
   TransactionInput,
+  TransactionKind,
   TransactionListItem,
   TransactionRecord,
 } from "@zoption/shared";
 
 // Shapes the local workspace repository returns to screens and hooks. The repository decodes
 // SQLite rows with its own zod schemas and maps them into these; screens import only this file.
+// Enum fields use the shared `as const` types, and repository.ts checks each schema against its
+// view model, so a new enum value cannot slip past the typecheck.
+
+/** A local row's synchronization state, stored in its `sync_state` column. */
+export type LocalSyncState = "synced" | "pending" | "failed" | "conflicted";
 
 export interface LocalWorkspaceStats {
   accountCount: number;
@@ -21,21 +34,21 @@ export interface LocalWorkspaceStats {
 
 export interface LocalTransactionItem {
   transaction: TransactionListItem;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface LocalAccountOption {
   id: string;
   name: string;
   type: AccountType;
-  currency: "PHP" | "USD";
+  currency: Currency;
   pending: boolean;
 }
 
 export interface LocalCategoryOption {
   id: string;
   name: string;
-  kind: "income" | "expense" | "transfer";
+  kind: TransactionKind;
   color: string;
   /** Resolved for display: the stored emoji, or a default for well-known category names. */
   iconEmoji: string | null;
@@ -45,7 +58,7 @@ export interface LocalCategoryOption {
 export interface EditableLocalTransaction {
   id: string;
   input: TransactionInput;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface TransactionFormData {
@@ -62,7 +75,7 @@ export interface BudgetMonthItem {
   categoryColor: string;
   limitMinor: number;
   spentMinor: number;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface LocalBudgetMonthData {
@@ -76,8 +89,8 @@ export interface LocalGoalItem {
   targetAmountMinor: number;
   currentAmountMinor: number;
   targetDate: string;
-  status: "active" | "paused" | "completed";
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  status: FinancialGoalStatus;
+  syncState: LocalSyncState;
 }
 
 export interface LocalSubscriptionItem {
@@ -85,12 +98,12 @@ export interface LocalSubscriptionItem {
   name: string;
   amountMinor: number;
   currency: string;
-  billingCycle: "monthly" | "yearly";
+  billingCycle: SubscriptionBillingCycle;
   nextBillingDate: string;
-  status: "active" | "canceled";
+  status: SubscriptionStatus;
   categoryId: string | null;
   accountId: string | null;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface LocalEventItem {
@@ -100,11 +113,11 @@ export interface LocalEventItem {
   startTime: string | null;
   endTime: string | null;
   notes: string | null;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface LocalAccountModeling {
-  currency: "PHP" | "USD";
+  currency: Currency;
   balanceMinor: number;
   interest: InterestSettings;
 }
@@ -115,7 +128,7 @@ export interface LocalCalendarDay {
     id: string;
     description: string;
     amountMinor: number;
-    kind: "income" | "expense" | "transfer";
+    kind: TransactionKind;
   }[];
   subscriptionBills: {
     id: string;
@@ -133,36 +146,36 @@ export interface LocalCalendarMonth {
 export interface LocalDebtItem {
   id: string;
   name: string;
-  type: "credit_card" | "personal_loan" | "auto_loan" | "mortgage" | "other";
+  type: DebtType;
   balanceMinor: number;
   aprBasisPoints: number;
   minimumPaymentMinor: number;
   balanceAsOf: string;
-  status: "active" | "paid";
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  status: DebtStatus;
+  syncState: LocalSyncState;
 }
 
 export interface LocalAccountItem {
   id: string;
   name: string;
-  type: "cash" | "checking" | "savings" | "credit" | "other";
-  currency: "PHP" | "USD";
+  type: AccountType;
+  currency: Currency;
   system: boolean;
   serverRevision: number;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface LocalCategoryItem {
   id: string;
   name: string;
-  kind: "income" | "expense" | "transfer";
+  kind: TransactionKind;
   color: string;
   iconEmoji?: string | null;
   system: boolean;
-  requiredPlan: "free" | "zoption_pro";
+  requiredPlan: CategoryRequiredPlan;
   locked: boolean;
   serverRevision: number;
-  syncState: "synced" | "pending" | "failed" | "conflicted";
+  syncState: LocalSyncState;
 }
 
 export interface LocalReferenceData {
