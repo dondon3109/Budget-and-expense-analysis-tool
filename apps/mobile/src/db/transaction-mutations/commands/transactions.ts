@@ -196,6 +196,7 @@ export function updateTransaction(
         merged,
         current.server_revision === 0 && outbox?.operation_type === "create",
       );
+      // Not queueUpdate: this rewrite also refreshes dependency_ids_json for unsynced references.
       if (outbox) {
         await ctx.database.runAsync(
           `UPDATE sync_outbox
