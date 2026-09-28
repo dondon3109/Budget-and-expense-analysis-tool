@@ -11,7 +11,7 @@ import {
   privateHeaders,
 } from "./helpers/app-fakes";
 
-describe("API foundation", () => {
+describe("API review routes", () => {
   it("lists only repository-approved public customer reviews without authentication", async () => {
     const customerReviews = createCustomerReviewStore();
     const app = createAppWithFakes({ customerReviews });

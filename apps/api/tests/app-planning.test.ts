@@ -12,7 +12,7 @@ import {
   privateHeaders,
 } from "./helpers/app-fakes";
 
-describe("API foundation", () => {
+describe("API planning routes", () => {
   it("lists, creates, and updates subscriptions for the resolved tenant", async () => {
     const subscriptions = createSubscriptionStore();
     const app = createAppWithFakes({ subscriptions });

@@ -17,7 +17,7 @@ import {
   privateHeaders,
 } from "./helpers/app-fakes";
 
-describe("API foundation", () => {
+describe("API ledger routes", () => {
   it("parses pagination and filters before listing tenant transactions", async () => {
     const transactions = createTransactionStore();
     const app = createAppWithFakes({ transactions });

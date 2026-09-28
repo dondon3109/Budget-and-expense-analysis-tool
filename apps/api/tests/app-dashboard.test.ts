@@ -10,7 +10,7 @@ import {
   createAppWithFakes,
 } from "./helpers/app-fakes";
 
-describe("API foundation", () => {
+describe("API dashboard routes", () => {
   it("validates dashboard date ranges", async () => {
     const app = createAppWithFakes({
       dashboardLoader: vi.fn().mockResolvedValue(dashboardFixture),
