@@ -1,13 +1,10 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import type { MobileSyncRepository } from "../src/db/mobile-sync";
 import type { TenantResolver } from "../src/db/tenants";
 import type { RateLimiter } from "../src/rate-limit";
-import { closeSyncEnvironments } from "./helpers/mobile-sync-test-environment";
-
-afterEach(closeSyncEnvironments);
 
 describe("mobile sync route", () => {
   it("derives the tenant and rejects ownership fields", async () => {
