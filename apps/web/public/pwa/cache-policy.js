@@ -1,4 +1,4 @@
-export const CACHE_VERSION = "zoption-pwa-v2";
+export const CACHE_VERSION = "zoption-pwa-v3";
 export const STATIC_CACHE_NAME = `${CACHE_VERSION}-static`;
 export const PUBLIC_PAGE_CACHE_NAME = `${CACHE_VERSION}-public-pages`;
 
