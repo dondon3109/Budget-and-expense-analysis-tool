@@ -26,7 +26,6 @@ jobs:
     # EGITNOPERMISSION and no release is ever owed. This job never publishes, persist-credentials
     # is off, and the main ruleset refuses a push from github-actions[bot] regardless.
     permissions:
-      actions: write
       contents: write
     outputs:
       release_needed: ${{ steps.next_release.outputs.release_needed }}
@@ -67,33 +66,47 @@ jobs:
             echo "::error::No semantic-release baseline tag is reachable from $RELEASE_COMMIT. Create the documented one-time v2.2.1 tag before enabling releases."
             exit 1
           fi
-      - name: Cancel superseded runs waiting for approval
-        # A run parked at the production gate holds the deploy job's concurrency group, and nobody
-        # approves a superseded one, so every later release would queue behind it indefinitely.
-        # Once this run is confirmed current, cancel older runs still waiting for approval: they
-        # never started deploying, and their gated guard would reject the stale commit anyway.
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN_ID: ${{ github.run_id }}
-        run: |
-          gh run list --workflow release.yml --status waiting --json databaseId \
-            --jq ".[] | select(.databaseId < $RUN_ID) | .databaseId" |
-            while read -r id; do
-              echo "Cancelling superseded run $id, which is waiting for production approval."
-              gh run cancel "$id"
-            done
       - name: Determine the next semantic release
         id: next_release
         run: node scripts/next-semantic-release.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # A run parked at the production gate holds the deploy job's concurrency group, and nobody
+  # approves a superseded one, so later releases would queue behind it indefinitely. Once this
+  # run's preflight has confirmed it is current main, cancel older runs of another commit that are
+  # still waiting for approval. It is its own job so the only actions: write token never sits
+  # beside a dependency install, and so it lists after preflight, by which point an older run that
+  # passed its own guard just before main moved has already reached the gate. A run approved
+  # between the list and the cancel can still be cut off mid-deploy; the begin/resume deployment
+  # checkpoints let the next release finish it.
+  cancel-superseded:
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Cancel superseded runs waiting for approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh run list --workflow release.yml --status waiting --json databaseId,headSha \
+            --jq ".[] | select(.databaseId < $RUN_ID and .headSha != \"$RELEASE_COMMIT\") | .databaseId" |
+            while read -r id; do
+              echo "Cancelling superseded run $id, which is waiting for production approval."
+              gh run cancel "$id" || echo "::warning::Could not cancel run $id; it may have just been approved or finished."
+            done
+
   # This job holds every production action: D1 migration, Worker and Pages deploys, and the
   # semantic-release publication. The production environment requires a reviewer, so a release
   # cannot reach production until a human approves the run. Keep "Prevent self-review" off; the
   # maintainer is the only human and acts on his own merges. Only a current CI result that owes
-  # a release reaches this job; a newer run's preflight cancels it if it is still unapproved.
+  # a release reaches this job; a newer run's cancel-superseded job cancels it if it is still
+  # unapproved.
   # The concurrency group lives here, not on the workflow, so a run parked at this gate can never
   # stop a newer run's preflight from starting, while deploys still never overlap.
   deploy-and-release:
