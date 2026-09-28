@@ -38,8 +38,9 @@ The UI-facing native facade remains
 
 - `transaction-mutations/commands/<entity>.ts` owns the user mutation commands. Each command owns
   its whole `writer.run` and `withTransactionAsync` block, so the row and its outbox entry commit
-  together. `commands/outbox-writes.ts` holds the shared guards and outbox writes, which run inside
-  the caller's transaction and never open one.
+  together. `commands/outbox-writes.ts` holds the shared guards and the common outbox writes, which
+  run inside the caller's transaction and never open one. Transaction and transfer commands write
+  some outbox rows inline because those rows carry dependency ids or a merged transfer payload.
 - `transaction-mutations/model.ts` owns validated row shapes, snapshot encoding, conflict contracts,
   and pure conversion helpers.
 - `transaction-mutations/store.ts` owns database lookup and reference validation.

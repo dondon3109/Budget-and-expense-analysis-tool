@@ -55,6 +55,7 @@ export function updateTransfer(
         if (operation.entityType !== "transfer" || operation.operationType === "delete") {
           throw new LocalMutationError("The encrypted outbox is invalid.", "invalid_outbox");
         }
+        // Not queueUpdate: a pending create's payload is merged so it keeps its leg ids.
         await ctx.database.runAsync(
           `UPDATE sync_outbox SET payload_json = ?, state = 'pending', attempt_count = 0,
             next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
