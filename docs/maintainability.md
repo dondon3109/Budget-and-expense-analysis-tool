@@ -113,7 +113,7 @@ Do everything in the REST list above, then add these steps:
 8. **Mobile UI:** screens in `apps/mobile/src/features/<area>/`, including a conflict screen, with one-line routes in `apps/mobile/app/`.
 9. **Rollout:** installed apps validate pull responses strictly. A new entity type or payload field needs a client release that understands it before the server sends it (`apps/api/AGENTS.md`). Document the protocol change in `docs/mobile/sync-protocol.md`.
 10. **Tests:**
-    - Server sync tests in `apps/api/tests/mobile-sync.test.ts`, which run the full D1 migration chain.
+    - Server sync tests in `apps/api/tests/mobile-sync-*.test.ts`, which run the full D1 migration chain.
     - Mobile repository tests with the real local migrations.
 
 ## Change rules for one maintainer

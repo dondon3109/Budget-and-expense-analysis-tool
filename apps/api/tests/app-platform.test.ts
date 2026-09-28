@@ -15,7 +15,7 @@ import {
 } from "./helpers/app-fakes";
 import { allowedRateLimiter } from "./helpers/rate-limiter";
 
-describe("API foundation", () => {
+describe("API platform routes", () => {
   it("reports readiness", async () => {
     const app = createAppWithFakes();
     const response = await app.request("/health");
