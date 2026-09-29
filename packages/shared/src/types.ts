@@ -4,11 +4,13 @@ export type TransactionKind = (typeof transactionKinds)[number];
 export const currencies = ["PHP", "USD"] as const;
 export type Currency = (typeof currencies)[number];
 
-export const currencyMetadata: Record<Currency, { label: string; symbol: string; locale: string }> =
-  {
-    PHP: { label: "Philippine Peso (PHP)", symbol: "₱", locale: "en-PH" },
-    USD: { label: "US Dollar (USD)", symbol: "$", locale: "en-US" },
-  };
+export const currencyMetadata: Record<
+  Currency,
+  { label: string; name: string; symbol: string; locale: string }
+> = {
+  PHP: { label: "Philippine Peso (PHP)", name: "Philippine Peso", symbol: "₱", locale: "en-PH" },
+  USD: { label: "US Dollar (USD)", name: "US Dollar", symbol: "$", locale: "en-US" },
+};
 
 export interface TransactionRecord {
   id: string;

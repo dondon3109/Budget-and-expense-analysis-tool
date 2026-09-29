@@ -30,6 +30,7 @@ export * from "./events";
 export * from "./exports";
 export * from "./goals";
 export * from "./imports";
+export * from "./onboarding";
 export * from "./platform-admin";
 export * from "./receipts";
 export * from "./reviews";

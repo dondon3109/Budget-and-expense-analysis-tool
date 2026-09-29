@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- New accounts on the web now complete a short first-run setup before the dashboard: choose the base currency, then enter the physical cash on hand, which becomes the opening balance of the Cash account. Existing accounts are not asked.
 - Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, new accounts, transactions, and subscriptions start in it, and the cashflow trend converts the other currency into it. Switching relabels those amounts; it does not convert them. The remittance calculator follows it too: a peso workspace compares sending pesos abroad, a dollar workspace compares sending money home to the Philippines.
 - Each subscription has its own currency (Philippine Peso or US Dollar), chosen in the subscription form and defaulting to the workspace currency. Its charges and renewals are recorded in that currency and checked against the account's balance in it. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and mention any plan billed in the other one. Existing subscriptions stay in pesos.
 - Android Beta 0.2.40 (versionCode 20340) carries the workspace currency setting, per-subscription currencies, and the currency fixes below, and the Android install page offers it.

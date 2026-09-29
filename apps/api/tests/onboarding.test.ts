@@ -1,0 +1,327 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { createApp } from "../src/app";
+import type { Bindings } from "../src/types";
+import { createAllowedBillingRepository } from "./helpers/app-fakes";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
+import { allowedRateLimiter } from "./helpers/rate-limiter";
+
+const databases: Array<{ close(): void }> = [];
+
+afterEach(() => {
+  for (const database of databases.splice(0)) database.close();
+});
+
+const ALICE = { Authorization: "Bearer alice", "Content-Type": "application/json" };
+const BOB = { Authorization: "Bearer bob", "Content-Type": "application/json" };
+const TODAY = "2026-09-29";
+
+// The real app over a real (SQLite) D1: real tenant bootstrap, gate, repositories, and SQL.
+function createHarness() {
+  const created = createD1TestDatabase();
+  databases.push(created.database);
+  const env = { DB: created.binding } as unknown as Bindings;
+  const app = createApp({
+    readinessCheck: vi.fn().mockResolvedValue(undefined),
+    authVerifier: {
+      verify: vi.fn(async (_env, token) => ({ id: token, email: `${token}@example.com` })),
+    },
+    rateLimiter: allowedRateLimiter(),
+    billing: createAllowedBillingRepository(),
+  });
+  const call = (path: string, headers: Record<string, string>, method = "GET", body?: unknown) =>
+    app.request(
+      path,
+      { method, headers, body: body === undefined ? undefined : JSON.stringify(body) },
+      env,
+    );
+  const rows = (sql: string, ...values: Array<string | number>) =>
+    created.database.prepare(sql).all(...values) as Array<Record<string, unknown>>;
+  return { call, rows, database: created.database };
+}
+
+async function json(response: Response) {
+  return (await response.json()) as Record<string, unknown>;
+}
+
+async function finishOnboarding(
+  call: ReturnType<typeof createHarness>["call"],
+  headers: Record<string, string>,
+  currency: string,
+  amountMinor: number,
+) {
+  await call("/api/app/onboarding/currency", headers, "POST", { currency });
+  return call("/api/app/onboarding/cash-balance", headers, "POST", { amountMinor, date: TODAY });
+}
+
+describe("onboarding gate", () => {
+  it("blocks data routes until onboarding completes and then opens them", async () => {
+    const { call } = createHarness();
+
+    const blocked = await call("/api/app/accounts", ALICE);
+    expect(blocked.status).toBe(403);
+    expect((await json(blocked)).error).toBe("onboarding_required");
+    expect((await call("/api/app/dashboard?from=2026-09-01&to=2026-09-30", ALICE)).status).toBe(
+      403,
+    );
+
+    // The routes the onboarding screens and the web shell need stay open.
+    expect((await call("/api/app/me", ALICE)).status).toBe(200);
+    expect((await call("/api/app/settings", ALICE)).status).toBe(200);
+    expect(await json(await call("/api/app/onboarding", ALICE))).toEqual({
+      step: "currency",
+      currency: "PHP",
+    });
+
+    expect((await finishOnboarding(call, ALICE, "PHP", 0)).status).toBe(200);
+    expect((await call("/api/app/accounts", ALICE)).status).toBe(200);
+  });
+
+  it("gates each user on their own onboarding state", async () => {
+    const { call } = createHarness();
+    await finishOnboarding(call, ALICE, "PHP", 0);
+
+    expect((await call("/api/app/accounts", ALICE)).status).toBe(200);
+    expect((await call("/api/app/accounts", BOB)).status).toBe(403);
+  });
+});
+
+describe("onboarding validation", () => {
+  it("rejects an unsupported currency and never stores it", async () => {
+    const { call } = createHarness();
+    for (const currency of ["EUR", "php", "", 5, null]) {
+      const response = await call("/api/app/onboarding/currency", ALICE, "POST", { currency });
+      expect(response.status).toBe(400);
+    }
+    expect(await json(await call("/api/app/onboarding", ALICE))).toEqual({
+      step: "currency",
+      currency: "PHP",
+    });
+  });
+
+  it("rejects an invalid amount or date before any account or entry is written", async () => {
+    const { call, rows } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+
+    const invalid = [
+      { amountMinor: -1, date: TODAY },
+      { amountMinor: 1.5, date: TODAY },
+      { amountMinor: "100", date: TODAY },
+      { amountMinor: null, date: TODAY },
+      { amountMinor: 1_000_000_000_01, date: TODAY },
+      { amountMinor: 100, date: "29/09/2026" },
+      { amountMinor: 100, date: "2026-02-30" },
+      { amountMinor: 100 },
+      { amountMinor: 100, date: TODAY, tenantId: "user:bob" },
+    ];
+    for (const body of invalid) {
+      const response = await call("/api/app/onboarding/cash-balance", ALICE, "POST", body);
+      expect(response.status, JSON.stringify(body)).toBe(400);
+    }
+    expect(rows("SELECT id FROM transactions")).toHaveLength(0);
+    expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("cash");
+  });
+
+  it("requires the currency step before the cash step", async () => {
+    const { call } = createHarness();
+    const response = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 100,
+      date: TODAY,
+    });
+    expect(response.status).toBe(409);
+    expect((await json(response)).error).toBe("onboarding_step_out_of_order");
+  });
+});
+
+describe("cash step", () => {
+  it("books the opening balance on the Cash account in the chosen currency", async () => {
+    const { call, rows } = createHarness();
+    expect((await finishOnboarding(call, ALICE, "USD", 12_345)).status).toBe(200);
+
+    expect(rows("SELECT name, currency FROM accounts ORDER BY name")).toEqual([
+      { name: "Bank", currency: "USD" },
+      { name: "Cash", currency: "USD" },
+      { name: "GCash", currency: "USD" },
+    ]);
+    expect(rows("SELECT account_id, amount_minor, currency, kind, date FROM transactions")).toEqual(
+      [
+        {
+          account_id: "user:alice:account:default",
+          amount_minor: 12_345,
+          currency: "USD",
+          kind: "income",
+          date: TODAY,
+        },
+      ],
+    );
+    const accounts = (await json(await call("/api/app/accounts", ALICE))).items as Array<{
+      name: string;
+      balanceMinor: number;
+    }>;
+    expect(accounts.find((account) => account.name === "Cash")?.balanceMinor).toBe(12_345);
+  });
+
+  it("creates no entry for a zero balance but still completes", async () => {
+    const { call, rows } = createHarness();
+    expect((await finishOnboarding(call, ALICE, "PHP", 0)).status).toBe(200);
+    expect(rows("SELECT id FROM transactions")).toHaveLength(0);
+    expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("complete");
+  });
+
+  it("is idempotent under a double submit, a retry, and a refresh", async () => {
+    const { call, rows } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    const submit = () =>
+      call("/api/app/onboarding/cash-balance", ALICE, "POST", { amountMinor: 5_000, date: TODAY });
+
+    const [first, second] = await Promise.all([submit(), submit()]);
+    expect([first.status, second.status]).toEqual([200, 200]);
+    const retry = await submit();
+    expect(retry.status).toBe(409);
+    expect((await json(retry)).error).toBe("onboarding_complete");
+
+    expect(rows("SELECT id FROM transactions")).toHaveLength(1);
+    expect(rows("SELECT id FROM accounts WHERE name = 'Cash'")).toHaveLength(1);
+    expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("complete");
+  });
+
+  it("lets the user go back and change the currency before finishing", async () => {
+    const { call } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "USD" });
+    const back = await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    expect(await json(back)).toEqual({ step: "cash", currency: "PHP" });
+  });
+
+  it("rejects both onboarding writes once onboarding is complete", async () => {
+    const { call } = createHarness();
+    await finishOnboarding(call, ALICE, "PHP", 100);
+
+    const currency = await call("/api/app/onboarding/currency", ALICE, "POST", {
+      currency: "USD",
+    });
+    expect(currency.status).toBe(409);
+    expect((await json(await call("/api/app/settings", ALICE))).currency).toBe("PHP");
+  });
+});
+
+describe("user scoping", () => {
+  it("keeps each user's state, accounts, and entries separate", async () => {
+    const { call, rows } = createHarness();
+    await finishOnboarding(call, ALICE, "USD", 10_000);
+
+    // Bob is untouched by Alice's progress, and a tenant id in the body is refused.
+    expect(await json(await call("/api/app/onboarding", BOB))).toEqual({
+      step: "currency",
+      currency: "PHP",
+    });
+    const forged = await call("/api/app/onboarding/currency", BOB, "POST", {
+      currency: "USD",
+      tenantId: "user:alice",
+    });
+    expect(forged.status).toBe(400);
+
+    await finishOnboarding(call, BOB, "PHP", 777);
+    expect(
+      rows("SELECT tenant_id, amount_minor, currency FROM transactions ORDER BY tenant_id"),
+    ).toEqual([
+      { tenant_id: "user:alice", amount_minor: 10_000, currency: "USD" },
+      { tenant_id: "user:bob", amount_minor: 777, currency: "PHP" },
+    ]);
+    expect(await json(await call("/api/app/settings", ALICE))).toEqual({ currency: "USD" });
+    expect(await json(await call("/api/app/settings", BOB))).toEqual({ currency: "PHP" });
+  });
+});
+
+describe("base currency source", () => {
+  it("is the same value onboarding and Account Settings write and read", async () => {
+    const { call, rows } = createHarness();
+
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "USD" });
+    expect(await json(await call("/api/app/settings", ALICE))).toEqual({ currency: "USD" });
+    expect(rows("SELECT currency FROM tenants WHERE id = 'user:alice'")).toEqual([
+      { currency: "USD" },
+    ]);
+
+    // Account Settings stays open during onboarding and is read back by the onboarding state.
+    await call("/api/app/settings", ALICE, "PUT", { currency: "PHP" });
+    expect(await json(await call("/api/app/onboarding", ALICE))).toEqual({
+      step: "cash",
+      currency: "PHP",
+    });
+  });
+});
+
+describe("changing currency in Account Settings after onboarding", () => {
+  it("treats the onboarding Cash account like any other account", async () => {
+    const { call } = createHarness();
+    await finishOnboarding(call, ALICE, "PHP", 10_000);
+
+    // A normally created account with an entry of its own.
+    const created = await json(
+      await call("/api/app/accounts", ALICE, "POST", { name: "Wallet", type: "cash" }),
+    );
+    await call("/api/app/transactions", ALICE, "POST", {
+      kind: "income",
+      accountId: created.id,
+      categoryId: "user:alice:category:uncategorized-income",
+      date: TODAY,
+      description: "Seed",
+      amountMinor: 10_000,
+      currency: "PHP",
+    });
+
+    const snapshot = async () => {
+      const items = (await json(await call("/api/app/accounts", ALICE))).items as Array<{
+        name: string;
+        currency: string;
+        balanceMinor: number;
+        balancesByCurrency: unknown;
+      }>;
+      const pick = (name: string) => {
+        const { currency, balanceMinor, balancesByCurrency } = items.find(
+          (item) => item.name === name,
+        )!;
+        return { currency, balanceMinor, balancesByCurrency };
+      };
+      return { cash: pick("Cash"), wallet: pick("Wallet") };
+    };
+
+    const before = await snapshot();
+    expect(before.cash).toEqual(before.wallet);
+    expect((await call("/api/app/settings", ALICE, "PUT", { currency: "USD" })).status).toBe(200);
+    const after = await snapshot();
+
+    // Settings relabels only: neither account's currency or amount moved, and they still match.
+    expect(after).toEqual(before);
+    const next = await json(
+      await call("/api/app/accounts", ALICE, "POST", { name: "New", type: "cash" }),
+    );
+    expect(next.currency).toBe("USD");
+  });
+});
+
+describe("0068_onboarding_step backfill", () => {
+  it("marks every existing workspace complete, keeps its currency, and leaves new ones to onboard", () => {
+    const { database } = createD1TestDatabase({
+      beforeMigration({ database: migrating, name }) {
+        if (name !== "0068_onboarding_step.sql") return;
+        migrating.exec(`
+          INSERT INTO tenants (id, kind, name, currency) VALUES ('existing-php', 'user', 'A', 'PHP');
+          INSERT INTO tenants (id, kind, name, currency) VALUES ('existing-usd', 'user', 'B', 'USD');
+        `);
+      },
+    });
+    databases.push(database);
+    database.exec("INSERT INTO tenants (id, kind, name) VALUES ('brand-new', 'user', 'C')");
+
+    expect(
+      database
+        .prepare("SELECT id, currency, onboarding_step AS step FROM tenants ORDER BY id")
+        .all(),
+    ).toEqual([
+      { id: "brand-new", currency: "PHP", step: "currency" },
+      { id: "existing-php", currency: "PHP", step: "complete" },
+      { id: "existing-usd", currency: "USD", step: "complete" },
+    ]);
+  });
+});

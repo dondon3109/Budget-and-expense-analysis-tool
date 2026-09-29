@@ -21,7 +21,7 @@ function makeApp(
   } as any);
   const app = createTestApp({
     user: { id: "user-1" },
-    tenant: { tenantId: "tenant-1", defaultAccountId: "acc-1" },
+    tenant: { tenantId: "tenant-1", defaultAccountId: "acc-1", onboardingComplete: true },
     env: {
       // The Pro gate reads one entitlement row; the transport tests below are about the socket.
       DB: {

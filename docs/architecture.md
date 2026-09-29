@@ -73,6 +73,7 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV/Excel-derived preview and atomic commit with validated category overrides.
 - `GET/PUT /api/app/budgets` — monthly budget plans.
 - `GET/PUT /api/app/settings` — the workspace currency (`{ currency: "PHP" | "USD" }`).
+- `GET /api/app/onboarding`, `POST /api/app/onboarding/currency`, `POST /api/app/onboarding/cash-balance` — first-run onboarding. State is `tenants.onboarding_step` (`currency`, `cash`, `complete`; migration `0068`, which backfills every existing workspace as `complete`). The currency step saves through the same repository as `PUT /api/app/settings`; the cash step sets the untouched system accounts to the workspace currency, books one deterministic-id opening income entry on Cash, and completes in one D1 batch. Both writes answer `409 onboarding_complete` afterwards. Until the step is `complete`, `requireOnboarding` (`src/http/onboarding-gate.ts`) answers `403 onboarding_required` on every `/api/app` path except onboarding, `me`, `settings`, `identity`, `account`, `support`, and `sync` (native apps have no onboarding screens).
 - `GET /api/app/exports/transactions.csv` — tenant-scoped CSV export.
 
 Also mounted in `apps/api/src/app.ts`, each documented in its own runbook:

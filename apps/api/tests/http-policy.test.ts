@@ -222,7 +222,7 @@ function capturingRateLimiter(consumed: Consumed[]): RateLimiter {
 function appWith(middleware: MiddlewareHandler<AppEnvironment>) {
   const app = createTestApp({
     user: { id: "user-1" },
-    tenant: { tenantId: "tenant-1", defaultAccountId: "account-1" },
+    tenant: { tenantId: "tenant-1", defaultAccountId: "account-1", onboardingComplete: true },
   });
   app.use("*", middleware);
   app.all("*", (context) => context.text("ok"));

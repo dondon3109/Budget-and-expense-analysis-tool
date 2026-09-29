@@ -49,7 +49,11 @@ describe("mobile sync route", () => {
       verify: vi.fn(async () => ({ id: "user-1", role: "authenticated" })),
     };
     const tenantResolver: TenantResolver = {
-      resolve: vi.fn(async () => ({ tenantId: "tenant-safe", defaultAccountId: "default" })),
+      resolve: vi.fn(async () => ({
+        tenantId: "tenant-safe",
+        defaultAccountId: "default",
+        onboardingComplete: true,
+      })),
     };
     const rateLimiter: RateLimiter = {
       consume: vi.fn(async () => ({

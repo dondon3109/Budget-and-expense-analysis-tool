@@ -74,6 +74,7 @@ describe("tenant bootstrap", () => {
     await expect(tenantBootstrapRepository.bootstrap(env, user)).resolves.toEqual({
       tenantId: "user:user-1",
       defaultAccountId: "user:user-1:account:default",
+      onboardingComplete: false,
     });
 
     expect(batches).toHaveLength(1);

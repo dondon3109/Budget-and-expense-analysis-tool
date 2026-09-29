@@ -196,7 +196,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
     if (!mapping || mapping.tenantId !== tenantId) {
       throw new Error("The personal workspace could not be initialized.");
     }
-    return { tenantId: mapping.tenantId, defaultAccountId };
+    return { tenantId: mapping.tenantId, defaultAccountId, onboardingComplete: false };
   },
 };
 
@@ -209,14 +209,17 @@ export function createTenantResolver(
       // authenticated path passes through before resolution. Keeping a second check here
       // would duplicate one indexed D1 read on every request.
       const existing = await env.DB.prepare(
-        "SELECT tenant_id AS tenantId FROM user_tenants WHERE user_id = ?",
+        `SELECT ut.tenant_id AS tenantId, t.onboarding_step AS onboardingStep
+         FROM user_tenants ut JOIN tenants t ON t.id = ut.tenant_id
+         WHERE ut.user_id = ?`,
       )
         .bind(user.id)
-        .first<{ tenantId: string }>();
+        .first<{ tenantId: string; onboardingStep: string }>();
       if (existing) {
         return {
           tenantId: existing.tenantId,
           defaultAccountId: defaultAccountIdForTenant(existing.tenantId),
+          onboardingComplete: existing.onboardingStep === "complete",
         };
       }
       return bootstrapRepository.bootstrap(env, user);

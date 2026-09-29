@@ -18,6 +18,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { userWorkspace } from "../../lib/workspace";
 import { setWorkspaceCurrency } from "../../lib/workspaceCurrency";
+import { useOnboarding } from "../../queries/onboarding";
 import { useWorkspaceSettings } from "../../queries/settings";
 import { useInitialDashboardExperience } from "../dashboard/InitialDashboardExperienceProvider";
 
@@ -45,11 +46,18 @@ type RouteCommitReporterProps = {
  * Renders the private page in the workspace currency. Amounts without their own currency read it
  * when they format, so the page is keyed by it and remounts on a change instead of keeping stale
  * labels. A user with no currency remembered in this browser waits for the first answer rather
- * than rendering in PHP and remounting (and dropping a started draft) when USD arrives.
+ * than rendering in PHP and remounting (and dropping a started draft) when USD arrives. A
+ * workspace that has not finished first-run onboarding is sent there instead of the private page.
  */
 function WorkspaceCurrencyBoundary({ user, children }: { user: User; children: ReactNode }) {
-  const settings = useWorkspaceSettings(userWorkspace(user));
-  if (settings.isPending) return null;
+  const workspace = userWorkspace(user);
+  const settings = useWorkspaceSettings(workspace);
+  const onboarding = useOnboarding(workspace);
+  if (settings.isPending || onboarding.isPending) return null;
+  // The Worker refuses private data until onboarding finishes; this sends the user to finish it.
+  if (onboarding.data && onboarding.data.step !== "complete") {
+    return <Navigate to="/onboarding" replace />;
+  }
   const currency = settings.data?.currency ?? "PHP";
   // Assigned before the keyed subtree renders; nothing subscribes, so this cannot loop.
   setWorkspaceCurrency(currency);

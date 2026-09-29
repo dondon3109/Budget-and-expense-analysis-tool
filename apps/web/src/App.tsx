@@ -17,6 +17,10 @@ const DashboardPage = lazy(async () => {
   const module = await import("./pages/DashboardPage");
   return { default: module.DashboardPage };
 });
+const OnboardingPage = lazy(async () => {
+  const module = await import("./pages/OnboardingPage");
+  return { default: module.OnboardingPage };
+});
 const AssistantPage = lazy(async () => {
   const module = await import("./pages/AssistantPage");
   return { default: module.AssistantPage };
@@ -192,6 +196,14 @@ export function App() {
             element={
               <Private>
                 <UpdatePasswordPage />
+              </Private>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <Private>
+                <OnboardingPage />
               </Private>
             }
           />

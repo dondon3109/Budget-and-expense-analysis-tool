@@ -10,6 +10,7 @@ import {
   supportBodyLimits,
 } from "./http/body-limits";
 import { corsAndSecurityHeaders } from "./http/cors";
+import { requireOnboarding } from "./http/onboarding-gate";
 import {
   createAppRateLimit,
   createBillingWebhookRateLimit,
@@ -38,6 +39,7 @@ import { createExportRoutes } from "./routes/exports";
 import { createFinancialGoalRoutes } from "./routes/goals";
 import { createImportRoutes } from "./routes/imports";
 import { createMobileSyncRoutes } from "./routes/mobile-sync";
+import { createOnboardingRoutes } from "./routes/onboarding";
 import { createBugReportEgressRoutes } from "./routes/ops-bug-report-egress";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
@@ -88,6 +90,7 @@ export function createApp(options: AppOptions = {}) {
         (method === "DELETE" && path === "/api/app/account") || path.startsWith("/api/app/admin/"),
     ),
   );
+  app.use("/api/app/*", requireOnboarding);
   app.use("/api/app/*", appBodyLimits);
   app.use("/api/app/*", createAppRateLimit(dependencies.rateLimiter));
 
@@ -194,6 +197,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/categories", createCategoryRoutes(dependencies.categories));
   app.route("/api/app/budgets", createBudgetRoutes(dependencies.budgets));
   app.route("/api/app/settings", createWorkspaceSettingsRoutes(dependencies.workspaceSettings));
+  app.route("/api/app/onboarding", createOnboardingRoutes(dependencies.onboarding));
   app.route("/api/app/billing", createBillingRoutes(dependencies.billing));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(dependencies.subscriptions));
   app.route("/api/app/events", createCalendarEventRoutes(dependencies.events));
