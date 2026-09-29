@@ -105,10 +105,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.9",
+      snapshotCursor: "s1.a",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.9",
+      resumeCursor: "v1.a",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -122,11 +122,11 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.9" });
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.a" });
     // A snapshot groups rows by entity, so the second category page precedes the budget.
     expect(second.changes.map((change) => change.entityId)).toEqual([
       "tenant-1:category:debt-payment",
-      "budget-1",
+      "tenant-1:category:opening-balance",
     ]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
@@ -335,6 +335,7 @@ describe("mobile sync pull repository", () => {
     expect(fifth).toMatchObject({ hasMore: false });
     expect(fifth.changes.map((change) => change.entityId)).toEqual([
       "tenant-1:category:debt-payment",
+      "tenant-1:category:opening-balance",
     ]);
   });
 
@@ -394,6 +395,13 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Debt payment", kind: "expense", origin: "system", system: true },
       },
       {
+        entityType: "category",
+        entityId: "tenant-1:category:opening-balance",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Opening balance", kind: "income", origin: "system", system: true },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -408,7 +416,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.b");
+    expect(pulled.nextCursor).toBe("v1.c");
   });
 
   it("delivers a web-created subscription and its linked charge as adjacent group rows", async () => {
@@ -435,6 +443,13 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Debt payment" },
       },
       {
+        entityType: "category",
+        entityId: "tenant-1:category:opening-balance",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Opening balance" },
+      },
+      {
         entityType: "subscription",
         entityId: "web-sub",
         revision: 1,
@@ -449,7 +464,7 @@ describe("mobile sync pull repository", () => {
         payload: { description: "Spotify", amountMinor: -19900 },
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.b");
+    expect(pulled.nextCursor).toBe("v1.c");
     expect(pulled.hasMore).toBe(false);
 
     const snapshot = await repository.snapshot(env, "tenant-1", {
