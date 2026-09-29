@@ -14,19 +14,29 @@ export const currentRelease: ProductRelease = {
   releasedOn: "September 29, 2026",
   changes: [
     {
-      title: "New transactions start on Uncategorized",
+      title: "Choose your workspace currency",
       description:
-        "On the web and in the Android and iOS app, a new expense, income, or transfer starts on the Uncategorized category for its type instead of the first category in the list or Salary. Switching the type, or an AI voice draft whose category does not match, also falls back to Uncategorized.",
+        "Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, and new accounts, transactions, and subscriptions start in it. Switching relabels amounts; it does not convert them. The remittance calculator follows it too.",
     },
     {
-      title: "The default-account star stays on the card",
+      title: "Subscriptions bill in their own currency",
       description:
-        "On Android, the star beside the default account on Home's balance card no longer gets pushed past the card's right edge.",
+        "Each subscription has its own currency, chosen in the subscription form. Its charges and renewals are recorded and checked against the account balance in that currency. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and say when a plan in the other currency is left out.",
     },
     {
-      title: "Android Beta 0.2.39",
+      title: "Dollar accounts and renewal emails use the right currency",
       description:
-        "The official Android Beta carries the Uncategorized default for new transactions and the balance card star fix.",
+        "Automatic interest on a US dollar savings account accrues and is credited in dollars, and subscription renewal emails show the subscription's own currency, kept as it was when the renewal was missed.",
+    },
+    {
+      title: "Currency stays separate per person and per chart",
+      description:
+        "The Android and iOS cashflow chart counts only entries in the workspace currency instead of adding pesos and dollars together, and the app picks up a currency changed on the web. On a shared browser, one person's currency no longer carries over to the next person.",
+    },
+    {
+      title: "Android Beta 0.2.40",
+      description:
+        "The official Android Beta carries the workspace currency setting, per-subscription currencies, and the currency fixes above.",
     },
   ],
 };
@@ -41,6 +51,27 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.48.0",
+    releasedOn: "September 29, 2026",
+    changes: [
+      {
+        title: "New transactions start on Uncategorized",
+        description:
+          "On the web and in the Android and iOS app, a new expense, income, or transfer starts on the Uncategorized category for its type instead of the first category in the list or Salary. Switching the type, or an AI voice draft whose category does not match, also falls back to Uncategorized.",
+      },
+      {
+        title: "The default-account star stays on the card",
+        description:
+          "On Android, the star beside the default account on Home's balance card no longer gets pushed past the card's right edge.",
+      },
+      {
+        title: "Android Beta 0.2.39",
+        description:
+          "The official Android Beta carries the Uncategorized default for new transactions and the balance card star fix.",
+      },
+    ],
+  },
   {
     version: "2.47.0",
     releasedOn: "September 28, 2026",
