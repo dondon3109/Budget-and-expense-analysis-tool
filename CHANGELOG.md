@@ -18,6 +18,7 @@ All notable product changes are documented here.
 - On a browser shared by several people, one person's workspace currency no longer carries over to the next person who signs in, and a started form is no longer cleared when the currency first loads.
 - A missed-renewal email keeps the currency the plan had when the renewal was missed, even if the plan's currency is changed before the email goes out.
 - The dashboard's subscription cost on the web and safe-to-spend in the Android and iOS app say when a plan billed in the other currency is left out, instead of dropping it silently.
+- The Android and iOS app shows the Currency setting under More → Preferences, beside Theme and Voice language, instead of inside the Account screen.
 
 ## 2.48.0 — 2026-09-29
 

@@ -1,16 +1,17 @@
 import { useNetInfo } from "@react-native-community/netinfo";
 import { currencies, currencyMetadata, type Currency } from "@zoption/shared";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Text } from "react-native";
 
 import { updateWorkspaceSettings } from "@/api/workspace-settings";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
-import { Card, SelectionField } from "@/ui/components";
+import { CollapsibleCard, SelectionField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
+/** Workspace currency picker, shared with the web; saving it needs a connection. */
 export function WorkspaceCurrencyCard() {
   const theme = useZoptionTheme();
   const session = useSessionSnapshot();
@@ -42,33 +43,34 @@ export function WorkspaceCurrencyCard() {
   };
 
   return (
-    <Card accessibilityLabel="Workspace currency">
-      <View className="gap-2">
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Currency</Text>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Changing the currency relabels budgets, goals, and totals. Stored amounts are not
-          converted.
-        </Text>
-        <SelectionField
-          label="Workspace currency"
-          value={currency}
-          options={currencies.map((item) => ({ id: item, label: currencyMetadata[item].label }))}
-          placeholder="Choose a currency"
-          sheetTitle="Workspace currency"
-          disabled={saving || offline || demo}
-          hint={
-            demo
-              ? "Not available in the demo workspace."
-              : offline
-                ? "Connect to the internet to change the currency."
-                : undefined
-          }
-          onSelect={(value) => void select(value)}
-        />
-        {error ? (
-          <Text style={[typography.caption, { color: theme.colors.danger }]}>{error}</Text>
-        ) : null}
-      </View>
-    </Card>
+    <CollapsibleCard
+      title="Currency"
+      summary={currencyMetadata[currency].label}
+      icon="cash-multiple"
+    >
+      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+        Budgets, goals, debts, and totals show in this currency on every device, and new accounts
+        start in it. Changing it relabels amounts; stored amounts are not converted.
+      </Text>
+      <SelectionField
+        label="Workspace currency"
+        value={currency}
+        options={currencies.map((item) => ({ id: item, label: currencyMetadata[item].label }))}
+        placeholder="Choose a currency"
+        sheetTitle="Workspace currency"
+        disabled={saving || offline || demo}
+        hint={
+          demo
+            ? "Not available in the demo workspace."
+            : offline
+              ? "Connect to the internet to change the currency."
+              : undefined
+        }
+        onSelect={(value) => void select(value)}
+      />
+      {error ? (
+        <Text style={[typography.caption, { color: theme.colors.danger }]}>{error}</Text>
+      ) : null}
+    </CollapsibleCard>
   );
 }
