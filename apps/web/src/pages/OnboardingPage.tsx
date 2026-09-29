@@ -258,8 +258,7 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
       {view === "complete" && (
         <div className="auth-form">
           <p className="onboarding-help" role="status">
-            Your Cash account has been created with your opening balance. You can add more accounts
-            from the dashboard.
+            Your Cash account is ready to use. You can add more accounts from the dashboard.
           </p>
           <button className="button primary" type="button" onClick={() => navigate("/app")}>
             Go to dashboard

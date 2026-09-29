@@ -32,6 +32,12 @@ async function loadState(env: Bindings, tenantId: string): Promise<OnboardingSta
   return { step, currency };
 }
 
+/** The client sends its local day, which is within a day of UTC today in every time zone. */
+function isNearToday(date: string): boolean {
+  const days = Math.abs(Date.parse(`${date}T00:00:00Z`) - Date.now()) / 86_400_000;
+  return days <= 2;
+}
+
 function rejectComplete(step: Step): void {
   if (step === "complete") {
     throw new HttpError(409, "onboarding_complete", "Onboarding is already complete.");
@@ -68,6 +74,9 @@ export const onboardingRepository: OnboardingRepository = {
   async saveCashBalance(env, tenantId, input) {
     const step = await loadStep(env, tenantId);
     rejectComplete(step);
+    if (!isNearToday(input.date)) {
+      throw new HttpError(400, "invalid_date", "Use today's date for your opening balance.");
+    }
     if (step !== "cash") {
       throw new HttpError(409, "onboarding_step_out_of_order", "Choose your currency first.");
     }
@@ -81,7 +90,8 @@ export const onboardingRepository: OnboardingRepository = {
       env.DB.prepare(
         `UPDATE accounts SET currency = (SELECT currency FROM tenants WHERE id = ?1)
            WHERE tenant_id = ?1 AND system_key IS NOT NULL
-             AND NOT EXISTS (SELECT 1 FROM transactions WHERE account_id = accounts.id)
+             AND NOT EXISTS (
+               SELECT 1 FROM transactions WHERE account_id = accounts.id AND deleted_at IS NULL)
              AND EXISTS (SELECT 1 FROM tenants WHERE id = ?1 AND onboarding_step = 'cash')`,
       ).bind(tenantId),
       ...(input.amountMinor > 0
@@ -93,7 +103,8 @@ export const onboardingRepository: OnboardingRepository = {
                  )
                  SELECT ?, id, ?, ?, ?, 'Opening cash balance', ?, currency, 'income', 'manual'
                  FROM tenants WHERE id = ? AND onboarding_step = 'cash'
-                   AND NOT EXISTS (SELECT 1 FROM transactions WHERE tenant_id = ?)`,
+                   AND NOT EXISTS (
+                   SELECT 1 FROM transactions WHERE tenant_id = ? AND deleted_at IS NULL)`,
             ).bind(
               `${tenantId}:transaction:opening-balance`,
               defaultAccountIdForTenant(tenantId),

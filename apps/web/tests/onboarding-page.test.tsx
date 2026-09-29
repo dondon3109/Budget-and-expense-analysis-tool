@@ -20,16 +20,17 @@ vi.mock("../src/components/auth/AuthLayout", () => ({
   ),
 }));
 
-vi.mock("../src/lib/api", async () => ({
+vi.mock("../src/lib/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../src/lib/api")>()),
   ...(await import("./helpers/api-mock")).createApiMock([
     "getOnboardingState",
     "saveOnboardingCurrency",
     "saveOnboardingCashBalance",
   ]),
-  isApiRequestError: () => false,
 }));
 
 import {
+  ApiRequestError,
   getOnboardingState,
   saveOnboardingCashBalance,
   saveOnboardingCurrency,
@@ -128,6 +129,18 @@ describe("OnboardingPage", () => {
     fireEvent.change(select, { target: { value: "PHP" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm currency" }));
     await waitFor(() => expect(screen.getByLabelText("PHP")).toHaveTextContent("₱"));
+  });
+
+  it("finishes when a repeated submit finds onboarding already complete", async () => {
+    vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
+    vi.mocked(saveOnboardingCashBalance).mockRejectedValue(
+      new ApiRequestError("Onboarding is already complete.", 409, "onboarding_complete"),
+    );
+    renderPage();
+
+    await screen.findByRole("textbox", { name: /Physical cash on hand/ });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+    expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
   });
 
   it("resumes on the saved step after a refresh", async () => {

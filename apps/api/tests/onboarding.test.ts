@@ -14,7 +14,7 @@ afterEach(() => {
 
 const ALICE = { Authorization: "Bearer alice", "Content-Type": "application/json" };
 const BOB = { Authorization: "Bearer bob", "Content-Type": "application/json" };
-const TODAY = "2026-09-29";
+const TODAY = new Date().toISOString().slice(0, 10);
 
 // The real app over a real (SQLite) D1: real tenant bootstrap, gate, repositories, and SQL.
 function createHarness() {
@@ -117,6 +117,7 @@ describe("onboarding validation", () => {
     const { call, rows } = createHarness();
     await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
 
+    // A syntactically valid date years away is refused too: it would move historical balances.
     const invalid = [
       { amountMinor: -1, date: TODAY },
       { amountMinor: 1.5, date: TODAY },
@@ -125,6 +126,7 @@ describe("onboarding validation", () => {
       { amountMinor: 1_000_000_000_01, date: TODAY },
       { amountMinor: 100, date: "29/09/2026" },
       { amountMinor: 100, date: "2026-02-30" },
+      { amountMinor: 100, date: "2020-01-01" },
       { amountMinor: 100 },
       { amountMinor: 100, date: TODAY, tenantId: "user:bob" },
     ];
@@ -193,6 +195,21 @@ describe("cash step", () => {
     ).toBe(200);
     expect(rows("SELECT id FROM transactions")).toEqual([{ id: "synced" }]);
     expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("complete");
+  });
+
+  it("ignores deleted entries when deciding whether the workspace has data", async () => {
+    const { call, rows, database } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    database.exec(`INSERT INTO transactions (id, tenant_id, account_id, category_id, date,
+      description, amount_minor, currency, kind, source_kind, deleted_at) VALUES ('gone',
+      'user:alice', 'user:alice:account:default', 'user:alice:category:uncategorized-income',
+      '2026-09-01', 'Deleted', 9000, 'PHP', 'income', 'manual', datetime('now'))`);
+
+    await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 5_000,
+      date: TODAY,
+    });
+    expect(rows("SELECT id FROM transactions WHERE deleted_at IS NULL")).toHaveLength(1);
   });
 
   it("creates no entry for a zero balance but still completes", async () => {

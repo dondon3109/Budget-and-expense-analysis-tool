@@ -23,10 +23,17 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/analytics/funnel", () => funnel);
 
-const onboarding = vi.hoisted(() => ({ step: "complete" as "currency" | "cash" | "complete" }));
+const onboarding = vi.hoisted(() => ({
+  step: "complete" as "currency" | "cash" | "complete",
+  failed: false,
+  refetch: vi.fn(),
+}));
 
 vi.mock("../src/queries/onboarding", () => ({
-  useOnboarding: () => ({ isPending: false, data: { step: onboarding.step, currency: "PHP" } }),
+  useOnboarding: () =>
+    onboarding.failed
+      ? { isPending: false, isError: true, data: undefined, refetch: onboarding.refetch }
+      : { isPending: false, isError: false, data: { step: onboarding.step, currency: "PHP" } },
 }));
 
 vi.mock("../src/queries/settings", () => ({
@@ -111,6 +118,8 @@ describe("PrivateAppStartupGate", () => {
     authState.loading = false;
     authState.user = { id: "user-1" };
     onboarding.step = "complete";
+    onboarding.failed = false;
+    onboarding.refetch.mockReset();
     funnel.captureFunnelEvent.mockReset();
     splash.readyCalls.length = 0;
   });
@@ -127,6 +136,16 @@ describe("PrivateAppStartupGate", () => {
       expect(screen.queryByText("Dashboard content")).not.toBeInTheDocument();
     },
   );
+
+  it("offers a retry instead of the dashboard when the onboarding state fails to load", () => {
+    onboarding.failed = true;
+    renderPrivateRoutes();
+
+    expect(screen.getByRole("alert", { hidden: true })).toHaveTextContent("could not be loaded");
+    expect(screen.queryByText("Dashboard content")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Try again", hidden: true }));
+    expect(onboarding.refetch).toHaveBeenCalledTimes(1);
+  });
 
   it("keeps one loader mounted until the route commits and the dashboard data settles", async () => {
     renderPrivateRoutes();
