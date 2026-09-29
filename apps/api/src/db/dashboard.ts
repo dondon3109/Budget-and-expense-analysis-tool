@@ -3,6 +3,7 @@ import {
   buildCashflowTrendFromDayTotals,
   buildDashboardSummary,
   buildTransferFeeInsight,
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   summarizeAccountBalances,
   type CashflowTrend,
   type CashflowTrendView,
@@ -58,6 +59,9 @@ export async function loadCashflowTrend(
                 END AS convertedMinor
          FROM transactions
          WHERE tenant_id = ?2 AND kind != 'transfer' AND date >= ?3 AND date <= ?4
+           AND category_id NOT IN (
+             SELECT id FROM categories
+             WHERE tenant_id = ?2 AND system_key = '${OPENING_BALANCE_CATEGORY_SYSTEM_KEY}')
        )
        GROUP BY date`,
   )
@@ -125,6 +129,7 @@ export async function loadDashboard(
           categoryName: categories.name,
           categoryColor: categories.color,
           categoryIconEmoji: categories.iconEmoji,
+          categorySystemKey: categories.systemKey,
           accountName: accounts.name,
         })
         .from(transactions)

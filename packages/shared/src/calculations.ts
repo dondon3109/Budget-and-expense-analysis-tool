@@ -9,6 +9,7 @@ import type {
   TransferFeeInsight,
 } from "./types";
 import { resolveCategoryEmoji, type TransferInput } from "./schemas";
+import { countsAsIncome } from "./types";
 
 function clampRoundPercent(value: number): number {
   return Math.round(value * 10) / 10;
@@ -169,7 +170,10 @@ export function cashflowWindowStart(anchorDate: string): string {
 }
 
 export function buildCashflowTrend(
-  transactions: readonly Pick<TransactionRecord, "date" | "kind" | "amountMinor">[],
+  transactions: readonly Pick<
+    TransactionRecord,
+    "date" | "kind" | "amountMinor" | "categorySystemKey"
+  >[],
   view: CashflowTrend["view"],
   anchorDate: string,
 ): CashflowTrend {
@@ -187,7 +191,7 @@ export function buildCashflowTrend(
     const point = points.get(bucketKeyFor(granularity, transaction.date));
     if (!point) continue;
 
-    if (transaction.kind === "income") point.incomeMinor += Math.abs(transaction.amountMinor);
+    if (countsAsIncome(transaction)) point.incomeMinor += Math.abs(transaction.amountMinor);
     if (transaction.kind === "expense") point.expenseMinor += Math.abs(transaction.amountMinor);
   }
 
@@ -237,7 +241,7 @@ export function buildDashboardSummary(
     (transaction) => transaction.date >= period.from && transaction.date <= period.to,
   );
   const moneyInMinor = inPeriod
-    .filter((transaction) => transaction.kind === "income")
+    .filter(countsAsIncome)
     .reduce((sum, transaction) => sum + Math.abs(transaction.amountMinor), 0);
   const moneyOutMinor = inPeriod
     .filter((transaction) => transaction.kind === "expense")
@@ -246,7 +250,7 @@ export function buildDashboardSummary(
   const incomeByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
   const expenseByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
   for (const transaction of inPeriod) {
-    if (transaction.kind === "income") {
+    if (countsAsIncome(transaction)) {
       incomeByCurrency[transaction.currency] += Math.abs(transaction.amountMinor);
     } else if (transaction.kind === "expense") {
       expenseByCurrency[transaction.currency] += Math.abs(transaction.amountMinor);
@@ -291,7 +295,7 @@ export function buildDashboardSummary(
     if (transaction.kind === "transfer") continue;
     const month = transaction.date.slice(0, 7);
     const current = monthly.get(month) ?? { incomeMinor: 0, expenseMinor: 0 };
-    if (transaction.kind === "income") current.incomeMinor += Math.abs(transaction.amountMinor);
+    if (countsAsIncome(transaction)) current.incomeMinor += Math.abs(transaction.amountMinor);
     if (transaction.kind === "expense") current.expenseMinor += Math.abs(transaction.amountMinor);
     monthly.set(month, current);
   }

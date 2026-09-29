@@ -23,7 +23,19 @@ export interface TransactionRecord {
   categoryName: string;
   categoryColor: string;
   categoryIconEmoji?: string | null;
+  /** The category's product key; absent on rows from older deployments and local-only storage. */
+  categorySystemKey?: string | null;
   accountName: string;
+}
+
+/** Income the user earned: an opening balance is money already held, so it never counts. */
+export function countsAsIncome(
+  transaction: Pick<TransactionRecord, "kind" | "categorySystemKey">,
+): boolean {
+  return (
+    transaction.kind === "income" &&
+    transaction.categorySystemKey !== OPENING_BALANCE_CATEGORY_SYSTEM_KEY
+  );
 }
 
 export interface TransactionListItem extends TransactionRecord {
@@ -133,6 +145,12 @@ export type CategoryRequiredPlan = (typeof categoryRequiredPlans)[number];
  * copy never silently disables the feature.
  */
 export const DEBT_PAYMENT_CATEGORY_SYSTEM_KEY = "debt:expense";
+
+/**
+ * The product-owned, archived income category that holds a workspace's opening cash balance. The
+ * amount adds to the account balance but is money the user already had, so income figures skip it.
+ */
+export const OPENING_BALANCE_CATEGORY_SYSTEM_KEY = "opening:income";
 
 export interface CategoryRecord {
   id: string;

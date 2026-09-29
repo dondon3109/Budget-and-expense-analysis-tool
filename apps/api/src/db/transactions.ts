@@ -55,6 +55,7 @@ type TransactionRow = {
   categoryName: string;
   categoryColor: string;
   categoryIconEmoji: string | null;
+  categorySystemKey: string | null;
   accountId: string | null;
   accountName: string | null;
   notes: string | null;
@@ -100,6 +101,7 @@ const LOGICAL_ROWS_SELECT = `SELECT
   c.name AS categoryName,
   c.color AS categoryColor,
   c.icon_emoji AS categoryIconEmoji,
+  c.system_key AS categorySystemKey,
   t.account_id AS accountId,
   a.name AS accountName,
   t.notes AS notes,

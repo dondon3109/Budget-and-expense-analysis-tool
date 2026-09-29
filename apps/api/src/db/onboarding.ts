@@ -103,7 +103,7 @@ export const onboardingRepository: OnboardingRepository = {
             ).bind(
               `${tenantId}:transaction:opening-balance`,
               defaultAccountIdForTenant(tenantId),
-              defaultCategoryIdForTenant(tenantId, "uncategorized-income"),
+              defaultCategoryIdForTenant(tenantId, "opening-balance"),
               input.date,
               input.amountMinor,
               tenantId,

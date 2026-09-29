@@ -304,6 +304,36 @@ describe("user scoping", () => {
   });
 });
 
+describe("opening balance in income figures", () => {
+  it("adds to the balance but is not counted as income on the dashboard or trend", async () => {
+    const { call, rows } = createHarness();
+    await finishOnboarding(call, ALICE, "PHP", 5_000_000);
+    const month = TODAY.slice(0, 7);
+
+    const dashboard = await json(
+      await call(`/api/app/dashboard?from=${month}-01&to=${month}-28`, ALICE),
+    );
+    const metrics = dashboard.metrics as { moneyInMinor: number };
+    expect(metrics.moneyInMinor).toBe(0);
+    const balances = dashboard.accountBalances as { balancesByCurrency: { PHP: number } };
+    expect(balances.balancesByCurrency.PHP).toBe(5_000_000);
+
+    const trend = await json(
+      await call(`/api/app/dashboard/cashflow-trend?view=weekly&anchorDate=${TODAY}`, ALICE),
+    );
+    const points = trend.points as Array<{ incomeMinor: number }>;
+    expect(points.reduce((sum, point) => sum + point.incomeMinor, 0)).toBe(0);
+
+    // The entry sits in the archived system category, so no picker offers it.
+    expect(
+      rows(
+        `SELECT c.system_key AS key, c.archived FROM transactions t
+         JOIN categories c ON c.id = t.category_id`,
+      ),
+    ).toEqual([{ key: "opening:income", archived: 1 }]);
+  });
+});
+
 describe("base currency source", () => {
   it("is the same value onboarding and Account Settings write and read", async () => {
     const { call, rows } = createHarness();
@@ -369,6 +399,31 @@ describe("changing currency in Account Settings after onboarding", () => {
       await call("/api/app/accounts", ALICE, "POST", { name: "New", type: "cash" }),
     );
     expect(next.currency).toBe("USD");
+  });
+});
+
+describe("0069_opening_balance_category backfill", () => {
+  it("gives every existing workspace the archived opening-balance category once", () => {
+    const { database } = createD1TestDatabase({
+      beforeMigration({ database: migrating, name }) {
+        if (name !== "0069_opening_balance_category.sql") return;
+        migrating.exec(
+          "INSERT INTO tenants (id, kind, name) VALUES ('old-a', 'user', 'A'), ('old-b', 'user', 'B')",
+        );
+      },
+    });
+    databases.push(database);
+
+    expect(
+      database
+        .prepare(
+          "SELECT id, tenant_id, archived FROM categories WHERE system_key = 'opening:income' ORDER BY id",
+        )
+        .all(),
+    ).toEqual([
+      { id: "old-a:category:opening-balance", tenant_id: "old-a", archived: 1 },
+      { id: "old-b:category:opening-balance", tenant_id: "old-b", archived: 1 },
+    ]);
   });
 });
 

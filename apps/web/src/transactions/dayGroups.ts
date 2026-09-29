@@ -1,4 +1,4 @@
-import type { Currency, TransactionListItem } from "@zoption/shared";
+import { countsAsIncome, type Currency, type TransactionListItem } from "@zoption/shared";
 
 export interface TransactionDayTotals {
   incomeMinor: number;
@@ -27,7 +27,7 @@ export function groupTransactionsByDay(
     }
     group.items.push(item);
     const totals = group.totals[item.currency] ?? { incomeMinor: 0, expenseMinor: 0 };
-    if (item.kind === "income") totals.incomeMinor += Math.abs(item.amountMinor);
+    if (countsAsIncome(item)) totals.incomeMinor += Math.abs(item.amountMinor);
     if (item.kind === "expense") totals.expenseMinor += Math.abs(item.amountMinor);
     group.totals[item.currency] = totals;
   }
