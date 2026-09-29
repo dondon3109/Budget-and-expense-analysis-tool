@@ -465,6 +465,25 @@ describe("Profile dashboard account management", () => {
     expect(within(accountManager).getByText("Old wallet")).toBeInTheDocument();
   });
 
+  it("ends every row's actions with star then adjust so they line up across rows", async () => {
+    renderPage();
+
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+    const rows = Array.from(accountManager.querySelectorAll(":scope > ul > li"));
+    expect(rows).toHaveLength(3);
+    for (const row of rows) {
+      const name = row.querySelector(".dashboard-account-name")!.firstChild!.textContent;
+      const actions = row.querySelector(".dashboard-account-actions")!;
+      const labels = Array.from(actions.querySelectorAll("button")).map((button) =>
+        button.getAttribute("aria-label"),
+      );
+      expect(labels.slice(-2)).toEqual([
+        `Use ${name} as the default spending account`,
+        `Adjust balance for ${name}`,
+      ]);
+    }
+  });
+
   it("moves the default spending account when another account is starred", async () => {
     renderPage();
 
