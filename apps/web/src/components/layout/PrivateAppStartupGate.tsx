@@ -54,7 +54,21 @@ function WorkspaceCurrencyBoundary({ user, children }: { user: User; children: R
   const settings = useWorkspaceSettings(workspace);
   const onboarding = useOnboarding(workspace);
   if (settings.isPending || onboarding.isPending) return null;
-  // The Worker refuses private data until onboarding finishes; this sends the user to finish it.
+  if (onboarding.isError) {
+    return (
+      <div role="alert" className="form-error">
+        <p>Your workspace setup could not be loaded.</p>
+        <button
+          className="button secondary"
+          type="button"
+          onClick={() => void onboarding.refetch()}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+  // The Worker refuses ledger data until onboarding finishes; this sends the user to finish it.
   if (onboarding.data && onboarding.data.step !== "complete") {
     return <Navigate to="/onboarding" replace />;
   }

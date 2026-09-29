@@ -15,17 +15,25 @@ export async function loadWorkspaceCurrency(env: Bindings, tenantId: string): Pr
   return row?.currency === "USD" ? "USD" : "PHP";
 }
 
+/** The one statement that writes the workspace currency; `guard` narrows it to extra conditions. */
+export function workspaceCurrencyStatement(
+  env: Bindings,
+  tenantId: string,
+  currency: Currency,
+  guard = "",
+): D1PreparedStatement {
+  return env.DB.prepare(
+    `UPDATE tenants SET currency = ?, updated_at = datetime('now') WHERE id = ?${guard}`,
+  ).bind(currency, tenantId);
+}
+
 export const workspaceSettingsRepository: WorkspaceSettingsRepository = {
   async get(env, tenantId) {
     return { currency: await loadWorkspaceCurrency(env, tenantId) };
   },
 
   async update(env, tenantId, input) {
-    await env.DB.prepare(
-      "UPDATE tenants SET currency = ?, updated_at = datetime('now') WHERE id = ?",
-    )
-      .bind(input.currency, tenantId)
-      .run();
+    await workspaceCurrencyStatement(env, tenantId, input.currency).run();
     return { currency: await loadWorkspaceCurrency(env, tenantId) };
   },
 };

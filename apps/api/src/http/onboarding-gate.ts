@@ -4,18 +4,19 @@ import { HttpError } from "../errors";
 import type { AppEnvironment } from "../types";
 
 /**
- * Paths a workspace can reach before onboarding finishes: onboarding itself, what the web shell
- * needs to start, identity sync, account deletion, and support. Sync stays open because the
- * native apps have no onboarding screens.
+ * The ledger routes the web app reads to draw the workspace. Only these wait for onboarding: the
+ * native apps have no onboarding screens and use sync, billing, assistant, imports, receipts, and
+ * entry from their first launch, so those stay open.
  */
-const OPEN_BEFORE_ONBOARDING = [
-  "/api/app/onboarding",
-  "/api/app/me",
-  "/api/app/settings",
-  "/api/app/identity",
-  "/api/app/account",
-  "/api/app/support",
-  "/api/app/sync",
+const GATED_UNTIL_ONBOARDED = [
+  "/api/app/dashboard",
+  "/api/app/accounts",
+  "/api/app/categories",
+  "/api/app/budgets",
+  "/api/app/goals",
+  "/api/app/debts",
+  "/api/app/events",
+  "/api/app/subscriptions",
 ];
 
 /** Runs after authentication. Skipped paths have no tenant and are never gated here. */
@@ -23,10 +24,10 @@ export const requireOnboarding: MiddlewareHandler<AppEnvironment> = async (conte
   const tenant = context.get("tenant");
   if (tenant && !tenant.onboardingComplete) {
     const path = context.req.path;
-    const open = OPEN_BEFORE_ONBOARDING.some(
+    const gated = GATED_UNTIL_ONBOARDED.some(
       (prefix) => path === prefix || path.startsWith(`${prefix}/`),
     );
-    if (!open) {
+    if (gated) {
       throw new HttpError(403, "onboarding_required", "Finish setting up your workspace first.");
     }
   }

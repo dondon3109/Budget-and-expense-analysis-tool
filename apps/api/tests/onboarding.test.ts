@@ -77,6 +77,20 @@ describe("onboarding gate", () => {
     expect((await call("/api/app/accounts", ALICE)).status).toBe(200);
   });
 
+  it("leaves the routes the native apps use open before onboarding", async () => {
+    const { call } = createHarness();
+    for (const path of [
+      "/api/app/billing",
+      "/api/app/sync/status",
+      "/api/app/assistant/threads",
+      "/api/app/imports",
+    ]) {
+      const response = await call(path, ALICE);
+      const body = (await response.json().catch(() => ({}))) as { error?: string };
+      expect(body.error, path).not.toBe("onboarding_required");
+    }
+  });
+
   it("gates each user on their own onboarding state", async () => {
     const { call } = createHarness();
     await finishOnboarding(call, ALICE, "PHP", 0);
@@ -159,6 +173,26 @@ describe("cash step", () => {
       balanceMinor: number;
     }>;
     expect(accounts.find((account) => account.name === "Cash")?.balanceMinor).toBe(12_345);
+  });
+
+  it("books no opening entry on a workspace that already has entries", async () => {
+    const { call, rows, database } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    database.exec(`INSERT INTO transactions (id, tenant_id, account_id, category_id, date,
+      description, amount_minor, currency, kind, source_kind) VALUES ('synced', 'user:alice',
+      'user:alice:account:default', 'user:alice:category:uncategorized-income', '2026-09-01',
+      'Synced', 9000, 'PHP', 'income', 'manual')`);
+
+    expect(
+      (
+        await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+          amountMinor: 5_000,
+          date: TODAY,
+        })
+      ).status,
+    ).toBe(200);
+    expect(rows("SELECT id FROM transactions")).toEqual([{ id: "synced" }]);
+    expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("complete");
   });
 
   it("creates no entry for a zero balance but still completes", async () => {
