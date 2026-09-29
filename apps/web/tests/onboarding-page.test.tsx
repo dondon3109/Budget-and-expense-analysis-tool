@@ -4,6 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import type * as Api from "../src/lib/api";
 import { Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -21,7 +22,7 @@ vi.mock("../src/components/auth/AuthLayout", () => ({
 }));
 
 vi.mock("../src/lib/api", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../src/lib/api")>()),
+  ...(await importOriginal<typeof Api>()),
   ...(await import("./helpers/api-mock")).createApiMock([
     "getOnboardingState",
     "saveOnboardingCurrency",
