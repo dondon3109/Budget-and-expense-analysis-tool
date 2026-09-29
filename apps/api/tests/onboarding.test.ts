@@ -165,7 +165,13 @@ describe("onboarding validation", () => {
 describe("cash step", () => {
   it("books the opening balance on the Cash account in the chosen currency", async () => {
     const { call, rows } = createHarness();
-    expect((await finishOnboarding(call, ALICE, "USD", 12_345)).status).toBe(200);
+    const finished = await finishOnboarding(call, ALICE, "USD", 12_345);
+    expect(finished.status).toBe(200);
+    expect(await json(finished)).toEqual({
+      step: "complete",
+      currency: "USD",
+      openingBalanceBooked: true,
+    });
 
     expect(rows("SELECT name, currency FROM accounts ORDER BY name")).toEqual([
       { name: "Bank", currency: "USD" },
@@ -198,15 +204,13 @@ describe("cash step", () => {
       'user:alice:account:default', 'user:alice:category:uncategorized-income', '2026-09-01',
       'Synced', 9000, 'PHP', 'income', 'manual')`);
 
-    expect(
-      (
-        await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
-          amountMinor: 5_000,
-          date: TODAY,
-        })
-      ).status,
-    ).toBe(200);
+    const booked = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 5_000,
+      date: TODAY,
+    });
+    expect(booked.status).toBe(200);
     expect(rows("SELECT id FROM transactions")).toEqual([{ id: "synced" }]);
+    expect((await json(booked)).openingBalanceBooked).toBe(false);
     expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("complete");
   });
 

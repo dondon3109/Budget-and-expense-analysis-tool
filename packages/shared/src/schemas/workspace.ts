@@ -30,6 +30,16 @@ export const onboardingStateSchema = z
 
 export type OnboardingState = z.infer<typeof onboardingStateSchema>;
 
+/**
+ * What the cash step answers: the new state, and whether the opening entry was booked. It is not
+ * booked for zero cash, or for a workspace that already has entries (synced from mobile).
+ */
+export const onboardingCashResultSchema = onboardingStateSchema
+  .extend({ openingBalanceBooked: z.boolean() })
+  .strict();
+
+export type OnboardingCashResult = z.infer<typeof onboardingCashResultSchema>;
+
 /** Step 1 saves the base currency exactly as Account Settings does. */
 export const onboardingCurrencySchema = workspaceSettingsUpdateSchema;
 

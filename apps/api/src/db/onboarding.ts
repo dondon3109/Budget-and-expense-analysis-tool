@@ -1,6 +1,7 @@
 import {
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   type OnboardingCashInput,
+  type OnboardingCashResult,
   type OnboardingState,
   type WorkspaceSettings,
 } from "@zoption/shared";
@@ -17,7 +18,7 @@ export interface OnboardingRepository {
     env: Bindings,
     tenantId: string,
     input: OnboardingCashInput,
-  ): Promise<OnboardingState>;
+  ): Promise<OnboardingCashResult>;
 }
 
 type Step = OnboardingState["step"];
@@ -141,6 +142,9 @@ export const onboardingRepository: OnboardingRepository = {
            WHERE id = ? AND onboarding_step = 'cash'`,
       ).bind(tenantId),
     ]);
-    return loadState(env, tenantId);
+    const booked = await env.DB.prepare("SELECT 1 AS found FROM transactions WHERE id = ?")
+      .bind(`${tenantId}:transaction:opening-balance`)
+      .first<{ found: number }>();
+    return { ...(await loadState(env, tenantId)), openingBalanceBooked: booked !== null };
   },
 };

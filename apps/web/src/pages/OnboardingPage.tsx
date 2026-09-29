@@ -98,6 +98,7 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const [submitted, setSubmitted] = useState(false);
   const [steppedBack, setSteppedBack] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [openingBalanceSkipped, setOpeningBalanceSkipped] = useState(false);
 
   if (stateQuery.isPending)
     return (
@@ -129,7 +130,9 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
 
   const state = stateQuery.data;
   // A finished workspace has nothing to set up, unless the user just finished it here.
-  if (state.step === "complete" && !finished) return <Navigate to="/app" replace />;
+  // The cash write flips the cached step before it resolves, so it is not "already finished" then.
+  const finishing = saveCash.isPending || saveCash.isSuccess;
+  if (state.step === "complete" && !finished && !finishing) return <Navigate to="/app" replace />;
 
   const view = finished ? "complete" : steppedBack ? "currency" : state.step;
   const selected = pickedCurrency ?? state.currency;
@@ -152,7 +155,11 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
     setSubmitted(true);
     if ("error" in amountCheck) return;
     try {
-      await saveCash.mutateAsync({ amountMinor: amountCheck.amountMinor, date: localDate() });
+      const result = await saveCash.mutateAsync({
+        amountMinor: amountCheck.amountMinor,
+        date: localDate(),
+      });
+      setOpeningBalanceSkipped(amountCheck.amountMinor > 0 && !result.openingBalanceBooked);
       setFinished(true);
     } catch (error) {
       // A repeat submit after a success already created the account; the state is complete.
@@ -266,6 +273,8 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
         <div className="auth-form">
           <p className="onboarding-help" role="status">
             Your Cash account is ready to use. You can add more accounts from the dashboard.
+            {openingBalanceSkipped &&
+              " Your cash amount was not added because this workspace already has transactions. You can adjust the balance from the dashboard."}
           </p>
           <button className="button primary" type="button" onClick={() => navigate("/app")}>
             Go to dashboard

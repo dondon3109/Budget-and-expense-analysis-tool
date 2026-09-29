@@ -1,6 +1,8 @@
 import {
+  onboardingCashResultSchema,
   onboardingStateSchema,
   type OnboardingCashInput,
+  type OnboardingCashResult,
   type OnboardingState,
   type WorkspaceSettings,
 } from "@zoption/shared";
@@ -29,8 +31,8 @@ export async function saveOnboardingCurrency(
 export async function saveOnboardingCashBalance(
   workspace: AuthenticatedWorkspace,
   input: OnboardingCashInput,
-): Promise<OnboardingState> {
-  return onboardingStateSchema.parse(
+): Promise<OnboardingCashResult> {
+  return onboardingCashResultSchema.parse(
     await requestJson(workspace, "/api/app/onboarding/cash-balance", {
       method: "POST",
       body: JSON.stringify(input),

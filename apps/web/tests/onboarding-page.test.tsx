@@ -5,6 +5,7 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import type * as Api from "../src/lib/api";
+import { useQuery } from "@tanstack/react-query";
 import { Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -56,7 +57,11 @@ describe("OnboardingPage", () => {
       step: "cash",
       currency: input.currency,
     }));
-    vi.mocked(saveOnboardingCashBalance).mockResolvedValue({ step: "complete", currency: "PHP" });
+    vi.mocked(saveOnboardingCashBalance).mockResolvedValue({
+      step: "complete",
+      currency: "PHP",
+      openingBalanceBooked: true,
+    });
   });
 
   afterEach(() => {
@@ -142,6 +147,49 @@ describe("OnboardingPage", () => {
     await screen.findByRole("textbox", { name: /Physical cash on hand/ });
     fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
     expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
+  });
+
+  it("says so when the cash amount was not added to a workspace that already has data", async () => {
+    vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
+    vi.mocked(saveOnboardingCashBalance).mockResolvedValue({
+      step: "complete",
+      currency: "PHP",
+      openingBalanceBooked: false,
+    });
+    renderPage();
+
+    const amount = await screen.findByRole("textbox", { name: /Physical cash on hand/ });
+    fireEvent.change(amount, { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("already has transactions");
+  });
+
+  it("shows the finished screen even while workspace data refetches after the save", async () => {
+    vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
+    // An active dashboard-like query makes the post-save invalidation take a moment.
+    function SlowWorkspaceQuery() {
+      useQuery({
+        queryKey: ["workspace", "user:user-1", "dashboard"],
+        queryFn: () => new Promise<string>((resolve) => setTimeout(() => resolve("data"), 300)),
+      });
+      return null;
+    }
+    renderWithProviders(
+      <>
+        <SlowWorkspaceQuery />
+        <Routes>
+          <Route path="/onboarding" element={<OnboardingPage />} />
+          <Route path="/app" element={<p>Dashboard page</p>} />
+        </Routes>
+      </>,
+      { route: "/onboarding" },
+    );
+
+    await screen.findByRole("textbox", { name: /Physical cash on hand/ });
+    await waitFor(() => expect(screen.queryByText("Dashboard page")).not.toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+    expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard page")).not.toBeInTheDocument();
   });
 
   it("offers a retry when the setup state fails to load", async () => {

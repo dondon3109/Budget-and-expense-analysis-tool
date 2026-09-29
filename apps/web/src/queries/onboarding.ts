@@ -21,14 +21,16 @@ export function useOnboarding(workspace: AuthenticatedWorkspace) {
 }
 
 /** Both steps return the new state, and the currency they save is the workspace currency. */
-function useOnboardingWrite<Input>(
+function useOnboardingWrite<Input, Result extends OnboardingState>(
   workspace: AuthenticatedWorkspace,
-  save: (workspace: AuthenticatedWorkspace, input: Input) => Promise<OnboardingState>,
+  save: (workspace: AuthenticatedWorkspace, input: Input) => Promise<Result>,
 ) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: Input) => save(workspace, input),
-    onSuccess: async (state) => {
+    onSuccess: async (result) => {
+      // The cache holds the state only, not what the cash step adds to it.
+      const state: OnboardingState = { step: result.step, currency: result.currency };
       rememberWorkspaceCurrency(workspace.userId, state.currency);
       queryClient.setQueryData(queryKeys.workspaceSettings(workspace), {
         currency: state.currency,
