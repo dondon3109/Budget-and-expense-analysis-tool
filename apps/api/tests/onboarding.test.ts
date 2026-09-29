@@ -225,6 +225,23 @@ describe("cash step", () => {
     expect(rows("SELECT id FROM transactions WHERE deleted_at IS NULL")).toHaveLength(1);
   });
 
+  it("creates the opening-balance category for a workspace that lacks it", async () => {
+    const { call, rows, database } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    // A workspace the previous Worker bootstrapped after migration 0069 has no such row.
+    database.exec("DELETE FROM categories WHERE system_key = 'opening:income'");
+
+    const response = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 5_000,
+      date: TODAY,
+    });
+    expect(response.status).toBe(200);
+    expect(rows("SELECT id, archived FROM categories WHERE system_key = 'opening:income'")).toEqual(
+      [{ id: "user:alice:category:opening-balance", archived: 1 }],
+    );
+    expect(rows("SELECT amount_minor FROM transactions")).toEqual([{ amount_minor: 5_000 }]);
+  });
+
   it("creates no entry for a zero balance but still completes", async () => {
     const { call, rows } = createHarness();
     expect((await finishOnboarding(call, ALICE, "PHP", 0)).status).toBe(200);

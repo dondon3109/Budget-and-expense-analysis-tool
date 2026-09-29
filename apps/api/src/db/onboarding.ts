@@ -1,4 +1,9 @@
-import type { OnboardingCashInput, OnboardingState, WorkspaceSettings } from "@zoption/shared";
+import {
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  type OnboardingCashInput,
+  type OnboardingState,
+  type WorkspaceSettings,
+} from "@zoption/shared";
 
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -76,9 +81,9 @@ export const onboardingRepository: OnboardingRepository = {
       throw new HttpError(409, "onboarding_step_out_of_order", "Choose your currency first.");
     }
 
-    // A workspace that already has entries (synced from mobile) keeps its balances: no opening
-    // entry is booked on top of them. Every write is guarded by the step still being 'cash', and the opening entry has a fixed id,
-    // so a double submit or a retry changes nothing the second time.
+    // Every write is guarded by the step still being 'cash', and the opening entry has a fixed id,
+    // so a double submit or a retry changes nothing the second time. A workspace that already has
+    // entries (synced from mobile) keeps its balances: no opening entry is booked on top of them.
     await env.DB.batch([
       // Cash, Bank, and GCash were created in PHP before the currency was chosen. Untouched, they
       // take the workspace currency exactly as a newly created account does.
@@ -91,6 +96,19 @@ export const onboardingRepository: OnboardingRepository = {
       ).bind(tenantId),
       ...(input.amountMinor > 0
         ? [
+            // A workspace the previous Worker created after migration 0069 has no such category.
+            env.DB.prepare(
+              `INSERT OR IGNORE INTO categories (
+                   id, tenant_id, name, kind, color, icon_emoji, system_key, origin, required_plan,
+                   archived
+                 )
+                 SELECT ?, id, 'Opening balance', 'income', '#6b7280', NULL, ?, 'system', 'free', 1
+                 FROM tenants WHERE id = ? AND onboarding_step = 'cash'`,
+            ).bind(
+              defaultCategoryIdForTenant(tenantId, "opening-balance"),
+              OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+              tenantId,
+            ),
             env.DB.prepare(
               `INSERT OR IGNORE INTO transactions (
                    id, tenant_id, account_id, category_id, date, description, amount_minor,
