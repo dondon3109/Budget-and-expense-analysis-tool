@@ -31,7 +31,7 @@ import {
 } from "../../lib/api";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { currentRelease } from "../../releases/currentRelease";
+import { currentRelease } from "@zoption/web-common/releases";
 import { BugReportReviewCard } from "./BugReportReviewCard";
 import { renderSupportMessage } from "./renderSupportMessage";
 import { OPEN_SUPPORT_CHAT_EVENT } from "./supportEvents";

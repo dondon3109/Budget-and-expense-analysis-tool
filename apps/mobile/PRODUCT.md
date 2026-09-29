@@ -45,7 +45,7 @@ Preserve the Zoption name, restrained green-led identity, integer-first financia
 - Server authorization and product rules: `apps/api/src`, `db/schema.ts`, and API tests.
 - Billing truth: `apps/web/src/components/billing/billingPlans.ts` plus Worker billing enforcement.
 - Incumbent visual tokens: `apps/web/src/styles/foundation.css`.
-- The production Beta APK metadata is maintained in `apps/web/src/releases/androidRelease.json`. There are no approved app-store records or mobile testimonials; future work must not invent them.
+- The production Beta APK metadata is maintained in `packages/web-common/src/releases/androidRelease.json`. There are no approved app-store records or mobile testimonials; future work must not invent them.
 
 ## Product Principles
 

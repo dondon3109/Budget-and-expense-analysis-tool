@@ -27,7 +27,7 @@ import {
   type FunnelEventProperties,
 } from "../src/analytics/funnel";
 import { resetPostHogForTests } from "../src/analytics/PostHogAnalytics";
-import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 

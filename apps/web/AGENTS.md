@@ -7,7 +7,7 @@ The browser product: a prerendered public site plus the signed in application un
 ## Stack
 
 - **Language / Runtime**: TypeScript, React 19, Vite 8
-- **Styling**: hand written semantic CSS; theme tokens and self-hosted fonts (Geist, Bricolage Grotesque) live in `src/styles/`, component CSS sits beside each component. Tailwind v4 is imported once in `foundation.css` but is not the design tool
+- **Styling**: hand written semantic CSS; theme tokens and self-hosted fonts (Geist, Bricolage Grotesque) come from `@zoption/web-common/tokens.css`, surface styles live in `src/styles/`, component CSS sits beside each component. Tailwind v4 is imported once in `foundation.css` but is not the design tool
 - **Server state**: TanStack Query, always keyed by workspace
 - **Validation**: `@zoption/shared` zod schemas
 - **Tests**: Vitest with jsdom opted in per file; Playwright specs live in the root `e2e/`

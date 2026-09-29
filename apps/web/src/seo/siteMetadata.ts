@@ -5,7 +5,7 @@ import {
   type FeaturePagePath,
 } from "../pages/features/featurePages";
 import { findImportGuide } from "../pages/import/importGuides";
-import { ANDROID_RELEASE } from "../releases/androidRelease";
+import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import { FINANCE_GUIDES, getFinanceGuideBySlug, type FinanceGuide } from "@zoption/shared";
 
 export const SITE_ORIGIN = "https://zoption.site";

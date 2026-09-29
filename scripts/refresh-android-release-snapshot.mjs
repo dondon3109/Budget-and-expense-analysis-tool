@@ -1,6 +1,6 @@
 /**
  * Refreshes the website's offline fallback snapshot
- * (apps/web/src/releases/androidRelease.json) from the live public
+ * (packages/web-common/src/releases/androidRelease.json) from the live public
  * android/latest.json metadata.
  *
  * The fallback exists for the window when R2 cannot be reached, so it must
@@ -27,7 +27,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { parseRemoteAndroidRelease } from "../apps/web/src/releases/androidReleaseMetadata.ts";
+import { parseRemoteAndroidRelease } from "../packages/web-common/src/releases/androidReleaseMetadata.ts";
 
 // The permanent Zoption signing certificate. A fallback signed by anything
 // else must never become trusted install metadata.
@@ -36,7 +36,7 @@ const REQUIRED_CERTIFICATE_SHA256 =
 
 const DEFAULT_TARGET = resolve(
   dirname(fileURLToPath(import.meta.url)),
-  "../apps/web/src/releases/androidRelease.json",
+  "../packages/web-common/src/releases/androidRelease.json",
 );
 
 /**

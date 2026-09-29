@@ -27,7 +27,7 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 - Prefer early returns and plain domain branches over clever maps or dense ternaries.
 - Comments explain constraints and non-obvious why. Keep existing ones current.
 - Match the local file's style.
-- Design: no gradients on cards, floating cards, or backgrounds. Colors come from the theme tokens (web `apps/web/src/styles/`, mobile `apps/mobile/src/ui/tokens.ts`).
+- Design: no gradients on cards, floating cards, or backgrounds. Colors come from the theme tokens (web `packages/web-common/src/styles/tokens.css`, mobile `apps/mobile/src/ui/tokens.ts`).
 
 ## Documentation
 
@@ -40,7 +40,7 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 - Conventional Commits, imperative subject, optional scope: `feat` (minor), `fix` (patch), `feat!` or a `BREAKING CHANGE:` footer (major). Use `docs`, `test`, `chore`, `refactor`, `style`, `ci`, `build` for non-releasing work; never label maintenance as `feat`/`fix` to force a release.
 - Never edit the web/product version by hand. semantic-release tags `main` after CI.
 - Never deploy production manually. The `Production Release` workflow runs D1 migrations, the Worker and Pages deploys, smoke checks, and semantic-release; approving its `production` environment gate is the deploy. Manual commands are emergency recovery only and never run alongside it.
-- Before a release, update the in-app patch notes so they match what ships: `apps/web/src/releases/currentRelease.ts` (the "What's new" list and `releaseHistory`), plus `apps/web/src/releases/androidRelease.json` once a new APK is published.
+- Before a release, update the in-app patch notes so they match what ships: `packages/web-common/src/releases/currentRelease.ts` (the "What's new" list and `releaseHistory`), plus `packages/web-common/src/releases/androidRelease.json` once a new APK is published.
 - Every release is a new web **and** mobile version. Bump `apps/mobile/package.json` `version` and `android.versionCode` in `apps/mobile/app.config.ts` (`0.2.34-beta` → `20334`). The signed APK is built and published by the `Android Beta Build` workflow (`docs/mobile/build-instructions.md`).
 - `CHANGELOG.md`: add notable user-facing changes under `Unreleased`. After semantic-release succeeds, move them under the exact released version and date in a follow-up `docs:` commit. Never guess a version or mark a failed release as published.
 
@@ -71,7 +71,7 @@ Start from the first file listed, then read the package guide for that area. Eve
 | AI assistant and voice           | `apps/api/src/assistant/`, `docs/assistant.md`, `docs/voice-live.md`                                                                                                                         |
 | Billing                          | `apps/api/src/billing/`, `apps/api/src/db/billing.ts`, `apps/api/src/routes/{billing,paypal-webhooks,dodo-webhooks}.ts`                                                                      |
 | Adding an entity end to end      | The checklists in `docs/maintainability.md`                                                                                                                                                  |
-| Release notes and versions       | `apps/web/src/releases/currentRelease.ts`, `CHANGELOG.md`, `apps/mobile/package.json`, `apps/mobile/app.config.ts`                                                                           |
+| Release notes and versions       | `packages/web-common/src/releases/currentRelease.ts`, `CHANGELOG.md`, `apps/mobile/package.json`, `apps/mobile/app.config.ts`                                                                |
 | CI and what forces a human merge | `.github/workflows/`, `scripts/pr-risk.mjs`                                                                                                                                                  |
 | Deployed dashboards and secrets  | `docs/deployment.md`                                                                                                                                                                         |
 
@@ -104,3 +104,4 @@ Read the one for the area you touch:
 - [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, CSP
 - [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, Android releases
 - [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, sync contracts
+- [packages/web-common/AGENTS.md](packages/web-common/AGENTS.md): theme tokens, fonts, consent, and release data shared by web surfaces

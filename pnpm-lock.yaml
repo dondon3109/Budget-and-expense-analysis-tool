@@ -311,6 +311,9 @@ importers:
       '@zoption/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@zoption/web-common':
+        specifier: workspace:*
+        version: link:../../packages/web-common
       lucide-react:
         specifier: ^1.24.0
         version: 1.24.0(react@19.2.7)
@@ -360,6 +363,8 @@ importers:
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+
+  packages/web-common: {}
 
 packages:
 

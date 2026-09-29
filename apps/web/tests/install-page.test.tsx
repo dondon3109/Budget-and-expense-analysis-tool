@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 // The committed fallback snapshot is the expected value wherever these tests
 // assert "the official R2 snapshot", so refreshing it never breaks the tests.
-import { ANDROID_RELEASE } from "../src/releases/androidRelease";
+import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import { InstallPage } from "../src/pages/InstallPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 

@@ -9,9 +9,9 @@ import { MemoryRouter } from "react-router-dom";
 
 import { CookieConsentExperience } from "../src/components/consent/CookieConsentExperience";
 import { ThemeChoiceDialog } from "../src/components/theme/ThemeChoiceDialog";
-import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
-import { resetConsentGateForTests } from "../src/consent/consentGate";
+import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../src/theme/ThemeProvider";
 
 function renderExperience(initialEntries = ["/"], onUnderlyingAction?: () => void) {

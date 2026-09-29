@@ -18,7 +18,7 @@ const SAFE_PUBLIC_PATHS = new Set([
   "/cookie-policy",
 ]);
 
-const STATIC_PATH_PREFIXES = ["/assets/", "/fonts/", "/brand/", "/og/"];
+const STATIC_PATH_PREFIXES = ["/assets/", "/brand/", "/og/"];
 const STATIC_PATHS = new Set([
   "/favicon.png",
   "/manifest.webmanifest",

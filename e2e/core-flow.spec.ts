@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
 const androidRelease = JSON.parse(
-  readFileSync(new URL("../apps/web/src/releases/androidRelease.json", import.meta.url), "utf8"),
+  readFileSync(
+    new URL("../packages/web-common/src/releases/androidRelease.json", import.meta.url),
+    "utf8",
+  ),
 ) as { downloadPath: string };
 
 test.beforeEach(async ({ page }) => {

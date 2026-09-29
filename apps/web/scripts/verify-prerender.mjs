@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import release from "../src/releases/androidRelease.json" with { type: "json" };
+import release from "@zoption/web-common/android-release.json" with { type: "json" };
 
 // No CSP wildcard source is approved, so the verifier below fails on any "*" the build
 // emits. Exact hosts only: this origin keeps the Supabase refresh token in localStorage, so

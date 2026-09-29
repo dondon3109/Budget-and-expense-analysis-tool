@@ -57,7 +57,7 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/install": ["apps/web/src/pages/InstallPage.tsx"],
   "/changelog": [
     "apps/web/src/pages/changelog/ChangelogPage.tsx",
-    "apps/web/src/releases/currentRelease.ts",
+    "packages/web-common/src/releases/currentRelease.ts",
   ],
   "/guides": [
     "apps/web/src/pages/guides/GuidesIndexPage.tsx",
