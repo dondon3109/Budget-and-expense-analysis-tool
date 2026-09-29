@@ -55,12 +55,7 @@ export const onboardingRepository: OnboardingRepository = {
     rejectComplete(await loadStep(env, tenantId));
     // Guarded, so a cash step that completes in between leaves the currency alone.
     await env.DB.batch([
-      workspaceCurrencyStatement(
-        env,
-        tenantId,
-        input.currency,
-        " AND onboarding_step IN ('currency', 'cash')",
-      ),
+      workspaceCurrencyStatement(env, tenantId, input.currency, { onlyDuringOnboarding: true }),
       env.DB.prepare(
         `UPDATE tenants SET onboarding_step = 'cash', updated_at = datetime('now')
            WHERE id = ? AND onboarding_step IN ('currency', 'cash')`,

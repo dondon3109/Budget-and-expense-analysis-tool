@@ -15,15 +15,15 @@ export async function loadWorkspaceCurrency(env: Bindings, tenantId: string): Pr
   return row?.currency === "USD" ? "USD" : "PHP";
 }
 
-/** The one statement that writes the workspace currency; `guard` narrows it to extra conditions. */
+/** The one statement that writes the workspace currency; `onlyDuringOnboarding` guards the step. */
 export function workspaceCurrencyStatement(
   env: Bindings,
   tenantId: string,
   currency: Currency,
-  guard = "",
+  { onlyDuringOnboarding = false } = {},
 ): D1PreparedStatement {
   return env.DB.prepare(
-    `UPDATE tenants SET currency = ?, updated_at = datetime('now') WHERE id = ?${guard}`,
+    `UPDATE tenants SET currency = ?, updated_at = datetime('now') WHERE id = ?${onlyDuringOnboarding ? " AND onboarding_step IN ('currency', 'cash')" : ""}`,
   ).bind(currency, tenantId);
 }
 

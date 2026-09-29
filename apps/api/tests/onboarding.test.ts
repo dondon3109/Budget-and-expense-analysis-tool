@@ -138,6 +138,19 @@ describe("onboarding validation", () => {
     expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("cash");
   });
 
+  it("accepts a date a day either side of today and refuses three days out", async () => {
+    const { call } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    const offset = (days: number) =>
+      new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+    const submit = (date: string) =>
+      call("/api/app/onboarding/cash-balance", ALICE, "POST", { amountMinor: 0, date });
+
+    expect((await submit(offset(3))).status).toBe(400);
+    expect((await submit(offset(-3))).status).toBe(400);
+    expect((await submit(offset(-1))).status).toBe(200);
+  });
+
   it("requires the currency step before the cash step", async () => {
     const { call } = createHarness();
     const response = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {

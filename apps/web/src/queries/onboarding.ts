@@ -12,7 +12,7 @@ export function onboardingQueryOptions(workspace: AuthenticatedWorkspace) {
     queryFn: () => getOnboardingState(workspace),
     // Once complete it never reverts; before that the page owns every change to it.
     staleTime: Infinity,
-    retry: false,
+    retry: 1,
   });
 }
 
