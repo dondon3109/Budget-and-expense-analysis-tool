@@ -497,6 +497,14 @@
   gap: 9px;
 }
 
+.pro-checkout-secure-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 .pro-checkout-continue {
   width: 100%;
   min-height: 50px;

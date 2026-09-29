@@ -286,19 +286,23 @@ export function BillingScreen() {
               onSelect={(value) => setIntervalChoice(value as BillingInterval)}
             />
             <Button
+              loading={busy === "dodo-checkout"}
+              disabled={busy !== null}
+              onPress={() => void runCheckout("dodo")}
+            >
+              Continue securely
+            </Button>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record for
+              this option.
+            </Text>
+            <Button
+              variant="secondary"
               loading={busy === "checkout"}
               disabled={busy !== null}
               onPress={() => void runCheckout("paypal")}
             >
               Continue with PayPal
-            </Button>
-            <Button
-              variant="secondary"
-              loading={busy === "dodo-checkout"}
-              disabled={busy !== null}
-              onPress={() => void runCheckout("dodo")}
-            >
-              Continue with Dodo Payments
             </Button>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
               Checkout opens in your browser. Payment confirmation is verified by the Zoption server
