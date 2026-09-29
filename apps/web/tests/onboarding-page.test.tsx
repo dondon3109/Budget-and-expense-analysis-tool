@@ -161,7 +161,7 @@ describe("OnboardingPage", () => {
     const amount = await screen.findByRole("textbox", { name: /Physical cash on hand/ });
     fireEvent.change(amount, { target: { value: "500" } });
     fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("already has transactions");
+    expect(await screen.findByRole("status")).toHaveTextContent("was not added");
   });
 
   it("shows the finished screen even while workspace data refetches after the save", async () => {

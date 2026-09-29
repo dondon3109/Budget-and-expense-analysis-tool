@@ -246,6 +246,25 @@ describe("cash step", () => {
     expect(rows("SELECT amount_minor FROM transactions")).toEqual([{ amount_minor: 5_000 }]);
   });
 
+  it("still completes when the opening-balance category cannot be created", async () => {
+    const { call, rows, database } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    // Both the plain and the fallback name are taken by the user's own categories.
+    database.exec("DELETE FROM categories WHERE system_key = 'opening:income'");
+    database.exec(`INSERT INTO categories (id, tenant_id, name, kind, color, required_plan) VALUES
+      ('mine-1', 'user:alice', 'Opening balance', 'income', '#111111', 'free'),
+      ('mine-2', 'user:alice', 'Opening balance (Zoption)', 'income', '#222222', 'free')`);
+
+    const response = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 5_000,
+      date: TODAY,
+    });
+    expect(response.status).toBe(200);
+    expect((await json(response)).openingBalanceBooked).toBe(false);
+    expect(rows("SELECT id FROM transactions")).toHaveLength(0);
+    expect((await json(await call("/api/app/onboarding", ALICE))).step).toBe("complete");
+  });
+
   it("creates no entry for a zero balance but still completes", async () => {
     const { call, rows } = createHarness();
     expect((await finishOnboarding(call, ALICE, "PHP", 0)).status).toBe(200);

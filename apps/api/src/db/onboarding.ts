@@ -38,7 +38,10 @@ async function loadState(env: Bindings, tenantId: string): Promise<OnboardingSta
   return { step, currency };
 }
 
-/** The client sends its local day, which is within a day of UTC today in every time zone. */
+/**
+ * The client sends its local day. Time zones span 26 hours, so that is within a day of UTC today;
+ * a second day of slack absorbs clock skew.
+ */
 function isNearToday(date: string): boolean {
   const days = Math.abs(Date.parse(`${date}T00:00:00Z`) - Date.now()) / 86_400_000;
   return days <= 2;
@@ -124,6 +127,7 @@ export const onboardingRepository: OnboardingRepository = {
                         (SELECT id FROM categories WHERE tenant_id = tenants.id AND system_key = ?),
                         ?, 'Opening cash balance', ?, currency, 'income', 'manual'
                  FROM tenants WHERE id = ? AND onboarding_step = 'cash'
+                   AND EXISTS (SELECT 1 FROM categories WHERE tenant_id = tenants.id AND system_key = ?)
                    AND NOT EXISTS (
                    SELECT 1 FROM transactions WHERE tenant_id = ? AND deleted_at IS NULL)`,
             ).bind(
@@ -133,6 +137,7 @@ export const onboardingRepository: OnboardingRepository = {
               input.date,
               input.amountMinor,
               tenantId,
+              OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
               tenantId,
             ),
           ]

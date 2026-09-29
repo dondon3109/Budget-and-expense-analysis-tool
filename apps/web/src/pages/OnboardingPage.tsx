@@ -274,7 +274,7 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
           <p className="onboarding-help" role="status">
             Your Cash account is ready to use. You can add more accounts from the dashboard.
             {openingBalanceSkipped &&
-              " Your cash amount was not added because this workspace already has transactions. You can adjust the balance from the dashboard."}
+              " Your cash amount was not added to the Cash account. You can adjust the balance from the dashboard."}
           </p>
           <button className="button primary" type="button" onClick={() => navigate("/app")}>
             Go to dashboard

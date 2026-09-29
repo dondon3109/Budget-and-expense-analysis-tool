@@ -65,7 +65,7 @@ function emptyCalendarDay(): CalendarDayData {
   };
 }
 
-function buildCalendarDays(
+export function buildCalendarDays(
   items: readonly TransactionListItem[],
   subscriptions: readonly SubscriptionMonthItem[],
   events: readonly CalendarEventRecord[],
