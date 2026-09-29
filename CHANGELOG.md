@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.48.0 — 2026-09-29
+
 ### Added
 
 - Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, subscriptions, and dashboard totals show in the chosen currency, new accounts and transactions start in it, and the cashflow trend converts the other currency into it. Switching relabels those amounts; it does not convert them. The remittance calculator follows it too: a peso workspace compares sending pesos abroad, a dollar workspace compares sending money home to the Philippines.
