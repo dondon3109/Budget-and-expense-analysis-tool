@@ -23,7 +23,9 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/analytics/funnel", () => funnel);
 
-vi.mock("../src/queries/settings", () => ({ useWorkspaceSettings: () => undefined }));
+vi.mock("../src/queries/settings", () => ({
+  useWorkspaceSettings: () => ({ isPending: false, data: { currency: "PHP" } }),
+}));
 
 vi.mock("../src/components/layout/FullPageLoadingStatus", () => ({
   // Mirrors the real handover: the surface reports back once the caller says the

@@ -1,3 +1,5 @@
+import type { Currency } from "./types";
+
 // ── Interfaces ──────────────────────────────────────────────────────────────
 
 export interface ForecastRecurringIncome {
@@ -53,6 +55,40 @@ export interface CashflowForecastOptions {
   horizonDays?: 30 | 60 | 90;
   safetyBufferMinor?: number;
   startDate?: string;
+}
+
+export interface ForecastSubscriptionSource {
+  id: string;
+  name: string;
+  amountMinor: number;
+  currency: Currency;
+  billingCycle: "monthly" | "yearly";
+  nextBillingDate: string;
+  billingDate?: string | null;
+  status: string;
+  categoryName?: string;
+}
+
+/**
+ * The subscriptions a forecast in `currency` can subtract: the active ones billed in it. The
+ * starting balance is in that currency, so a plan billed in the other one is left out instead of
+ * being subtracted as if pesos and dollars were the same money.
+ */
+export function forecastSubscriptions(
+  items: readonly ForecastSubscriptionSource[],
+  currency: Currency,
+): CashflowForecastOptions["subscriptions"] {
+  return items
+    .filter((item) => item.status === "active" && item.currency === currency)
+    .map((item) => ({
+      id: item.id,
+      name: item.name,
+      amountMinor: item.amountMinor,
+      billingCycle: item.billingCycle,
+      nextBillingDate: item.nextBillingDate || item.billingDate || "",
+      status: item.status,
+      categoryName: item.categoryName,
+    }));
 }
 
 export interface CashflowForecastResult {

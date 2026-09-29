@@ -2,7 +2,7 @@ import {
   getDaysLeftInWeek,
   projectCashflow,
   safeToSpend,
-  type CashflowForecastOptions,
+  forecastSubscriptions,
 } from "@zoption/shared";
 import { CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { currentMonth, monthStart } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import { useSubscriptions } from "../../queries/subscriptions";
 import "./SafeToSpendCard.css";
 
@@ -55,19 +56,9 @@ export function SafeToSpendCard({
 
   // A pending or failed query projects no renewals rather than blocking the card; the guidance
   // line below says so instead of presenting the week as bill-free.
-  const activeSubscriptions = (subscriptionsQuery.data?.items ?? []).filter(
-    (item) => item.status === "active",
-  );
-  const subscriptions: CashflowForecastOptions["subscriptions"] = activeSubscriptions.map(
-    (item) => ({
-      id: item.id,
-      name: item.name,
-      amountMinor: item.amountMinor,
-      billingCycle: item.billingCycle,
-      nextBillingDate: item.nextBillingDate || item.billingDate || "",
-      status: item.status,
-      categoryName: item.categoryName,
-    }),
+  const subscriptions = forecastSubscriptions(
+    subscriptionsQuery.data?.items ?? [],
+    workspaceCurrency(),
   );
 
   const daysLeftInWeek = getDaysLeftInWeek(new Date(), "monday");
@@ -105,7 +96,7 @@ export function SafeToSpendCard({
         </div>
       </div>
       <p className="safe-to-spend-guidance">
-        {guidanceText(renewalLookup, safeAmountMinor, activeSubscriptions.length)}
+        {guidanceText(renewalLookup, safeAmountMinor, subscriptions.length)}
       </p>
     </section>
   );

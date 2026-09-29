@@ -8,8 +8,12 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SubscriptionForm } from "../src/components/subscriptions/SubscriptionForm";
+import { setWorkspaceCurrency } from "../src/lib/workspaceCurrency";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setWorkspaceCurrency("PHP");
+});
 
 const accounts: AccountRecord[] = [
   {
@@ -104,11 +108,42 @@ describe("SubscriptionForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: "Annual cloud storage",
         amountMinor: 120_050,
+        currency: "PHP",
         billingCycle: "yearly",
         nextBillingDate: "2026-08-15",
         categoryId: "entertainment",
         accountId: "account-bank",
       }),
+    );
+  });
+
+  it("starts in the workspace currency and lets a plan bill in the other one", async () => {
+    setWorkspaceCurrency("USD");
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <SubscriptionForm
+        categories={categories}
+        accounts={accounts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText("Currency")).toHaveValue("USD");
+    expect(screen.getByText("$")).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Currency"), "PHP");
+    expect(screen.getByText("₱")).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText("Name"), "Local gym");
+    await user.type(screen.getByLabelText("Amount"), "1500");
+    await user.click(screen.getByRole("button", { name: "Add subscription" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Local gym", amountMinor: 150_000, currency: "PHP" }),
+      ),
     );
   });
 
@@ -200,6 +235,7 @@ describe("SubscriptionForm", () => {
       expect(onSubmit).toHaveBeenCalledWith({
         name: "Music streaming Plus",
         amountMinor: 249_00,
+        currency: "PHP",
         billingCycle: "monthly",
         nextBillingDate: "2026-07-25",
         categoryId: "entertainment",

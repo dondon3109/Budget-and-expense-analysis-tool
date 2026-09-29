@@ -46,6 +46,7 @@ function createDatabase(options: {
             return {
               results: options.accounts.map((account) => ({
                 accountId: account.id,
+                currency: "PHP",
                 balance: options.balance ?? 0,
               })),
             };
@@ -98,6 +99,7 @@ const accountRows = [
     annualRateBasisPoints: 500,
     interestFrequency: "daily",
     interestPayDay: null,
+    currency: "PHP",
     hasPro: 1,
   },
 ];
@@ -123,12 +125,13 @@ describe("creditDueInterest", () => {
       statement.query.includes("INSERT INTO transactions"),
     );
     expect(insert).toBeDefined();
-    const [, , accountId, categoryId, date, amountMinor, fingerprint] = insert!.bindings;
+    const [, , accountId, categoryId, date, amountMinor, currency, fingerprint] = insert!.bindings;
     expect(accountId).toBe("savings-1");
     expect(categoryId).toBe("cat-interest");
     expect(date).toBe("2026-08-06");
     // 1000000 * 0.05 / 365 floored = 136
     expect(amountMinor).toBe(136);
+    expect(currency).toBe("PHP");
     // fingerprint present and deterministic
     expect(fingerprint).toBe("interest:user:user-1:savings-1:2026-08-06:daily");
   });
@@ -142,6 +145,7 @@ describe("creditDueInterest", () => {
         annualRateBasisPoints: 500,
         interestFrequency: "daily",
         interestPayDay: null,
+        currency: "PHP",
         hasPro: 1,
       },
     ];
@@ -164,6 +168,7 @@ describe("creditDueInterest", () => {
         annualRateBasisPoints: 500,
         interestFrequency: "monthly",
         interestPayDay: 15,
+        currency: "PHP",
         hasPro: 1,
       },
     ];
@@ -185,6 +190,7 @@ describe("creditDueInterest", () => {
         annualRateBasisPoints: 500,
         interestFrequency: "monthly",
         interestPayDay: 15,
+        currency: "PHP",
         hasPro: 1,
       },
     ];
@@ -243,6 +249,7 @@ describe("creditDueInterest", () => {
       annualRateBasisPoints: 500,
       interestFrequency: "daily",
       interestPayDay: null,
+      currency: "PHP",
       hasPro: 1,
     }));
     const { statements, batchCalls, db } = createDatabase({
@@ -275,6 +282,7 @@ describe("creditDueInterest", () => {
           annualRateBasisPoints: 500,
           interestFrequency: "daily",
           interestPayDay: null,
+          currency: "PHP",
           hasPro: 1,
         },
       ],

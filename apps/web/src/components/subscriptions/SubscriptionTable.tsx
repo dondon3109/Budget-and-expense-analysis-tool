@@ -78,11 +78,11 @@ export function SubscriptionTable({
                 </td>
                 <td data-label="Amount">
                   <div className="subscription-amount">
-                    <strong>{formatMoney(item.amountMinor)}</strong>
+                    <strong>{formatMoney(item.amountMinor, item.currency)}</strong>
                     <span>
                       /{item.billingCycle === "monthly" ? "month" : "year"}
                       {item.billingCycle === "yearly"
-                        ? ` · ${formatMoney(item.monthlyCostMinor)}/month equivalent`
+                        ? ` · ${formatMoney(item.monthlyCostMinor, item.currency)}/month equivalent`
                         : ""}
                     </span>
                   </div>

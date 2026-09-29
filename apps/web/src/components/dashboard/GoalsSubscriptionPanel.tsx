@@ -6,6 +6,7 @@ import { formatMoney, formatMonth } from "../../lib/formatters";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { useFinancialGoals } from "../../queries/goals";
 import { useSubscriptions } from "../../queries/subscriptions";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 
 interface GoalsSubscriptionPanelProps {
   workspace: AuthenticatedWorkspace;
@@ -29,8 +30,10 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
   const subscriptionSummary = subscriptionsQuery.data;
   const activeSubscriptions =
     subscriptionSummary?.items.filter((item) => item.status === "active") ?? [];
+  // The total is in the workspace currency; a plan billed in the other currency is not added in.
   const totalSubscriptionCostMinor = activeSubscriptions.reduce(
-    (total, subscription) => total + subscription.monthlyCostMinor,
+    (total, subscription) =>
+      total + (subscription.currency === workspaceCurrency() ? subscription.monthlyCostMinor : 0),
     0,
   );
 

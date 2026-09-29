@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { CashflowForecastOptions } from "../src/cashflowForecast";
-import { projectCashflow } from "../src/cashflowForecast";
+import { forecastSubscriptions, projectCashflow } from "../src/cashflowForecast";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -881,5 +881,35 @@ describe("end-to-end integration", () => {
     expect(result.hasBufferDip).toBe(false);
     expect(result.upcomingBillRisks).toEqual([]);
     expect(result.dailyTimeline).toHaveLength(30);
+  });
+});
+
+describe("forecastSubscriptions", () => {
+  const plan = {
+    name: "Plan",
+    amountMinor: 1_000,
+    billingCycle: "monthly" as const,
+    nextBillingDate: "2026-10-01",
+    status: "active",
+  };
+
+  it("keeps only active plans billed in the forecast's currency", () => {
+    const result = forecastSubscriptions(
+      [
+        { ...plan, id: "peso", currency: "PHP" },
+        { ...plan, id: "dollar", currency: "USD" },
+        { ...plan, id: "canceled", currency: "USD", status: "canceled" },
+      ],
+      "USD",
+    );
+    expect(result.map((item) => item.id)).toEqual(["dollar"]);
+  });
+
+  it("falls back to this month's billing date when the next one is blank", () => {
+    const [item] = forecastSubscriptions(
+      [{ ...plan, id: "a", currency: "PHP", nextBillingDate: "", billingDate: "2026-10-05" }],
+      "PHP",
+    );
+    expect(item?.nextBillingDate).toBe("2026-10-05");
   });
 });

@@ -16,11 +16,9 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
 }));
 
 import { CurrencySettings } from "../src/components/account/CurrencySettings";
-import { formatMoney } from "../src/lib/formatters";
 import {
-  WORKSPACE_CURRENCY_STORAGE_KEY,
-  setWorkspaceCurrency,
-  workspaceCurrency,
+  rememberedWorkspaceCurrency,
+  workspaceCurrencyStorageKey,
 } from "../src/lib/workspaceCurrency";
 
 const workspace = { key: "user:user-1", userId: "user-1" } as const;
@@ -37,12 +35,11 @@ function renderSettings() {
 describe("CurrencySettings", () => {
   afterEach(() => {
     cleanup();
-    setWorkspaceCurrency("PHP");
     window.localStorage.clear();
     vi.clearAllMocks();
   });
 
-  it("switches the workspace to USD and formats unlabeled amounts in dollars", async () => {
+  it("saves USD and remembers it for this user only", async () => {
     // The save invalidates the workspace, so the refetch reads what the server now stores.
     getWorkspaceSettings.mockResolvedValueOnce({ currency: "PHP" });
     getWorkspaceSettings.mockResolvedValue({ currency: "USD" });
@@ -50,23 +47,25 @@ describe("CurrencySettings", () => {
     renderSettings();
 
     const select = await screen.findByRole("combobox", { name: "Workspace currency" });
-    expect(select).toHaveValue("PHP");
-    expect(formatMoney(150_000)).toBe("₱1,500");
+    await waitFor(() => expect(select).toHaveValue("PHP"));
 
     fireEvent.change(select, { target: { value: "USD" } });
 
-    await waitFor(() => expect(workspaceCurrency()).toBe("USD"));
+    await waitFor(() => expect(select).toHaveValue("USD"));
     expect(updateWorkspaceSettings).toHaveBeenCalledWith(workspace, { currency: "USD" });
-    expect(select).toHaveValue("USD");
-    expect(formatMoney(150_000)).toBe("$1,500");
-    expect(window.localStorage.getItem(WORKSPACE_CURRENCY_STORAGE_KEY)).toBe("USD");
+    expect(rememberedWorkspaceCurrency("user-1")).toBe("USD");
+    expect(rememberedWorkspaceCurrency("user-2")).toBeUndefined();
   });
 
-  it("adopts the server's currency when the settings load", async () => {
-    getWorkspaceSettings.mockResolvedValue({ currency: "USD" });
+  it("starts from the remembered currency and still asks the server", async () => {
+    window.localStorage.setItem(workspaceCurrencyStorageKey("user-1"), "USD");
+    getWorkspaceSettings.mockResolvedValue({ currency: "PHP" });
     renderSettings();
 
-    expect(await screen.findByRole("combobox", { name: "Workspace currency" })).toHaveValue("USD");
-    expect(workspaceCurrency()).toBe("USD");
+    expect(screen.getByRole("combobox", { name: "Workspace currency" })).toHaveValue("USD");
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Workspace currency" })).toHaveValue("PHP"),
+    );
+    expect(rememberedWorkspaceCurrency("user-1")).toBe("PHP");
   });
 });

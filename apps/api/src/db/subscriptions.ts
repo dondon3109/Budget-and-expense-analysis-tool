@@ -4,6 +4,7 @@ import {
   monthlySubscriptionCost,
   normalizeSignedAmount,
   subscriptionBillingDateForMonth,
+  type Currency,
   type SubscriptionBillingCycle,
   type SubscriptionInput,
   type SubscriptionMonthSummary,
@@ -19,6 +20,12 @@ import { accounts, categories, subscriptions } from "../../../../db/schema";
 import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
+import { loadWorkspaceCurrency } from "./workspace-settings";
+
+/** Rows only ever hold PHP or USD (a CHECK-free text column, so narrow on read). */
+function storedCurrency(value: string): Currency {
+  return value === "USD" ? "USD" : "PHP";
+}
 
 export interface SubscriptionRepository {
   list(env: Bindings, tenantId: string, month: string): Promise<SubscriptionMonthSummary>;
@@ -54,7 +61,7 @@ export interface SubscriptionRepository {
   ): Promise<void>;
   createRenewalNotification(
     env: Bindings,
-    notice: SubscriptionRenewalNotification,
+    notice: Omit<SubscriptionRenewalNotification, "currency">,
   ): Promise<boolean>;
   claimRenewalNotification(
     env: Bindings,
@@ -80,7 +87,7 @@ interface LinkedSubscriptionCharge {
   date: string;
   description: string;
   amountMinor: number;
-  currency: "PHP";
+  currency: Currency;
   kind: "expense";
   sourceKind: "manual";
   subscriptionId: string;
@@ -93,6 +100,7 @@ function buildLinkedSubscriptionCharge(args: {
   categoryId: string;
   name: string;
   amountMinor: number;
+  currency: Currency;
   nextBillingDate: string;
 }): LinkedSubscriptionCharge {
   return {
@@ -103,7 +111,7 @@ function buildLinkedSubscriptionCharge(args: {
     date: args.nextBillingDate,
     description: args.name,
     amountMinor: normalizeSignedAmount(args.amountMinor, "expense"),
-    currency: "PHP",
+    currency: args.currency,
     kind: "expense",
     sourceKind: "manual",
     subscriptionId: args.subscriptionId,
@@ -135,17 +143,19 @@ function updateLinkedChargeStatement(
     categoryId: string;
     name: string;
     amountMinor: number;
+    currency: Currency;
     nextBillingDate: string;
   },
 ) {
   return env.DB.prepare(
-    `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = 'PHP', kind = 'expense', updated_at = datetime('now') WHERE tenant_id = ? AND subscription_id = ?`,
+    `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'expense', updated_at = datetime('now') WHERE tenant_id = ? AND subscription_id = ?`,
   ).bind(
     input.accountId,
     input.categoryId,
     input.nextBillingDate,
     input.name,
     normalizeSignedAmount(input.amountMinor, "expense"),
+    input.currency,
     tenantId,
     subscriptionId,
   );
@@ -234,7 +244,7 @@ async function findSubscription(
   return row
     ? {
         ...row,
-        currency: "PHP",
+        currency: storedCurrency(row.currency),
         accountId: row.accountId ?? null,
         accountName: row.accountName ?? null,
       }
@@ -251,7 +261,7 @@ export interface DueSubscriptionRenewal {
   billingCycle: SubscriptionBillingCycle;
   amountMinor: number;
   nextBillingDate: string;
-  /** The linked account balance, summed the same way the accounts screen sums it. */
+  /** The linked account's balance in the subscription's currency, the one the charge posts in. */
   balanceMinor: number;
   /** True when the paying account was removed, so the cycle cannot be charged at all. */
   accountArchived: boolean;
@@ -266,6 +276,8 @@ export interface SubscriptionRenewalNotification {
   dueDate: string;
   subscriptionName: string;
   amountMinor: number;
+  /** The subscription's billing currency, read through its row; PHP once it is deleted. */
+  currency: Currency;
   accountName: string | null;
   reason: SubscriptionRenewalReason;
 }
@@ -315,19 +327,24 @@ async function findRenewalNotification(
   env: Bindings,
   id: string,
 ): Promise<SubscriptionRenewalNotification | null> {
-  return env.DB.prepare(
-    `SELECT id, tenant_id AS tenantId, subscription_id AS subscriptionId, due_date AS dueDate,
-            subscription_name AS subscriptionName, amount_minor AS amountMinor,
-            account_name AS accountName, reason
-     FROM subscription_renewal_notifications WHERE id = ?`,
+  const row = await env.DB.prepare(
+    `SELECT n.id, n.tenant_id AS tenantId, n.subscription_id AS subscriptionId,
+            n.due_date AS dueDate, n.subscription_name AS subscriptionName,
+            n.amount_minor AS amountMinor, s.currency AS currency,
+            n.account_name AS accountName, n.reason
+     FROM subscription_renewal_notifications n
+     LEFT JOIN subscriptions s ON s.id = n.subscription_id AND s.tenant_id = n.tenant_id
+     WHERE n.id = ?`,
   )
     .bind(id)
-    .first<SubscriptionRenewalNotification>();
+    .first<Omit<SubscriptionRenewalNotification, "currency"> & { currency: string | null }>();
+  return row ? { ...row, currency: storedCurrency(row.currency ?? "PHP") } : null;
 }
 
 export const subscriptionRepository: SubscriptionRepository = {
   async list(env, tenantId, month) {
     const db = drizzle(env.DB);
+    const workspaceCurrency = await loadWorkspaceCurrency(env, tenantId);
     const rows = await db
       .select({
         id: subscriptions.id,
@@ -361,7 +378,7 @@ export const subscriptionRepository: SubscriptionRepository = {
         const monthlyCostMinor = monthlySubscriptionCost(row.amountMinor, row.billingCycle);
         return {
           ...row,
-          currency: "PHP" as const,
+          currency: storedCurrency(row.currency),
           billingDate: subscriptionBillingDateForMonth(
             row.nextBillingDate,
             row.billingCycle,
@@ -377,9 +394,13 @@ export const subscriptionRepository: SubscriptionRepository = {
 
     return {
       month,
-      currency: "PHP",
+      currency: workspaceCurrency,
       totalMonthlyCostMinor: items.reduce(
-        (total, item) => total + (item.status === "active" ? item.monthlyCostMinor : 0),
+        (total, item) =>
+          total +
+          (item.status === "active" && item.currency === workspaceCurrency
+            ? item.monthlyCostMinor
+            : 0),
         0,
       ),
       items,
@@ -389,10 +410,11 @@ export const subscriptionRepository: SubscriptionRepository = {
   async create(env, tenantId, input) {
     await validateCategory(env, tenantId, input.categoryId);
     await validateAccount(env, tenantId, input.accountId);
+    const currency = input.currency ?? (await loadWorkspaceCurrency(env, tenantId));
     const id = crypto.randomUUID();
     await env.DB.batch([
       env.DB.prepare(
-        `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, last_charged_date, status) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, ?, 'active')`,
+        `INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, currency, billing_cycle, next_billing_date, last_charged_date, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
       ).bind(
         id,
         tenantId,
@@ -400,6 +422,7 @@ export const subscriptionRepository: SubscriptionRepository = {
         input.categoryId,
         input.name,
         input.amountMinor,
+        currency,
         input.billingCycle,
         input.nextBillingDate,
         input.nextBillingDate,
@@ -413,6 +436,7 @@ export const subscriptionRepository: SubscriptionRepository = {
           categoryId: input.categoryId,
           name: input.name,
           amountMinor: input.amountMinor,
+          currency,
           nextBillingDate: input.nextBillingDate,
         }),
       ),
@@ -475,13 +499,15 @@ export const subscriptionRepository: SubscriptionRepository = {
     }
     await validateCategory(env, tenantId, input.categoryId);
     await validateAccount(env, tenantId, input.accountId);
+    const currency = input.currency ?? existing.currency;
 
     const statements = [
       env.DB.prepare(
-        `UPDATE subscriptions SET name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?, account_id = ?, category_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
+        `UPDATE subscriptions SET name = ?, amount_minor = ?, currency = ?, billing_cycle = ?, next_billing_date = ?, account_id = ?, category_id = ?, updated_at = datetime('now') WHERE id = ? AND tenant_id = ?`,
       ).bind(
         input.name,
         input.amountMinor,
+        currency,
         input.billingCycle,
         input.nextBillingDate,
         input.accountId,
@@ -492,7 +518,7 @@ export const subscriptionRepository: SubscriptionRepository = {
     ];
     const linkedChargeId = await findLinkedChargeId(env, tenantId, id);
     if (linkedChargeId) {
-      statements.push(updateLinkedChargeStatement(env, tenantId, id, input));
+      statements.push(updateLinkedChargeStatement(env, tenantId, id, { ...input, currency }));
     }
     await env.DB.batch(statements);
 
@@ -523,7 +549,7 @@ export const subscriptionRepository: SubscriptionRepository = {
               COALESCE((
                 SELECT SUM(t.amount_minor) FROM transactions t
                 WHERE t.tenant_id = s.tenant_id AND t.account_id = s.account_id
-                  AND t.currency = a.currency
+                  AND t.currency = s.currency
                   AND (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL)
               ), 0) AS balanceMinor,
               (s.last_charged_date IS NOT NULL

@@ -15,6 +15,8 @@ const BIND_CHUNK_SIZE = 90;
 interface InterestDueAccount {
   id: string;
   tenantId: string;
+  /** Interest accrues on, and is credited in, the account's own currency. */
+  currency: "PHP" | "USD";
   annualRateBasisPoints: number;
   interestFrequency: "daily" | "monthly" | "yearly";
   interestPayDay: number | null;
@@ -56,6 +58,7 @@ export async function creditDueInterest(
   const rows = await env.DB.prepare(
     `SELECT id,
             tenant_id AS tenantId,
+            currency,
             annual_rate_basis_points AS annualRateBasisPoints,
             interest_frequency AS interestFrequency,
             interest_pay_day AS interestPayDay,
@@ -123,16 +126,20 @@ export async function creditDueInterest(
       const placeholders = accountIds.map(() => "?").join(", ");
       const balanceRows = await env.DB.prepare(
         `SELECT account_id AS accountId,
+                currency,
                 COALESCE(SUM(CASE
-                  WHEN (kind != 'transfer' OR transfer_group_id IS NOT NULL) AND currency = 'PHP'
+                  WHEN kind != 'transfer' OR transfer_group_id IS NOT NULL
                   THEN amount_minor ELSE 0 END), 0) AS balance
          FROM transactions
          WHERE tenant_id = ? AND date <= ? AND account_id IN (${placeholders})
-         GROUP BY account_id`,
+         GROUP BY account_id, currency`,
       )
         .bind(tenantId, today, ...accountIds)
-        .all<{ accountId: string; balance: number }>();
+        .all<{ accountId: string; currency: string; balance: number }>();
+      const currencyById = new Map(accounts.map((account) => [account.id, account.currency]));
       for (const row of balanceRows.results) {
+        // Only the account's own currency earns interest; a peso entry in a dollar account doesn't.
+        if (row.currency !== currencyById.get(row.accountId)) continue;
         balanceByAccountId.set(row.accountId, Number(row.balance));
       }
     }
@@ -195,7 +202,7 @@ export async function creditDueInterest(
   }: (typeof pending)[number]) =>
     env.DB.prepare(
       `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind)
-       VALUES (?, ?, ?, ?, ?, 'Interest', ?, 'PHP', 'income', ?, 'manual')`,
+       VALUES (?, ?, ?, ?, ?, 'Interest', ?, ?, 'income', ?, 'manual')`,
     ).bind(
       crypto.randomUUID(),
       account.tenantId,
@@ -203,6 +210,7 @@ export async function creditDueInterest(
       categoryId,
       today,
       amount,
+      account.currency === "USD" ? "USD" : "PHP",
       fingerprint,
     );
 
