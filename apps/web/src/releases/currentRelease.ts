@@ -11,42 +11,22 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 28, 2026",
+  releasedOn: "September 29, 2026",
   changes: [
     {
-      title: "A daily reminder on Android and iOS",
+      title: "New transactions start on Uncategorized",
       description:
-        "Choose a time under More, then Preferences, then Daily reminder, and the app reminds you once a day to record that day's expenses and income. It is off until you pick a time, tapping it opens a new transaction, and signing out turns it off.",
+        "On the web and in the Android and iOS app, a new expense, income, or transfer starts on the Uncategorized category for its type instead of the first category in the list or Salary. Switching the type, or an AI voice draft whose category does not match, also falls back to Uncategorized.",
     },
     {
-      title: "A new Zoption logo",
+      title: "The default-account star stays on the card",
       description:
-        "A rounded Z on near-black whose last stroke ends in a mint budget bar now marks the web app, its browser and home-screen icons, and the Android and iOS app icon.",
+        "On Android, the star beside the default account on Home's balance card no longer gets pushed past the card's right edge.",
     },
     {
-      title: "Balances keep their minus sign",
+      title: "Android Beta 0.2.39",
       description:
-        "Adjusting an overdrawn or credit account in the Android app now previews and notes the balance with its minus sign, and the mic widget accepts a negative target balance. Adjustments are dated on your local day, even just after midnight.",
-    },
-    {
-      title: "Exact amounts in more places",
-      description:
-        "The debt payoff planner says when it cannot read an extra payment instead of guessing, the budget plan no longer flags an amount typed with commas as an unsaved change, and SMS Quick Paste passes on the amount exactly as shown.",
-    },
-    {
-      title: "Imports update balances right away",
-      description:
-        "Account balances refresh as soon as an import finishes, and the spreadsheet import refreshes archived categories too, so nothing shows stale numbers until a reload.",
-    },
-    {
-      title: "Budgets for removed categories",
-      description:
-        "In the Android and iOS app, a category whose budget you removed shows up again in Add budget, so you can give it a new limit. Home's balance card on Android also keeps each account's icon beside its name.",
-    },
-    {
-      title: "Android Beta 0.2.38",
-      description:
-        "The official Android Beta carries the daily reminder, the new app icon, the budget and balance card fixes, and the balance adjustment and debt planner fixes.",
+        "The official Android Beta carries the Uncategorized default for new transactions and the balance card star fix.",
     },
   ],
 };
@@ -61,6 +41,47 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.47.0",
+    releasedOn: "September 28, 2026",
+    changes: [
+      {
+        title: "A daily reminder on Android and iOS",
+        description:
+          "Choose a time under More, then Preferences, then Daily reminder, and the app reminds you once a day to record that day's expenses and income. It is off until you pick a time, tapping it opens a new transaction, and signing out turns it off.",
+      },
+      {
+        title: "A new Zoption logo",
+        description:
+          "A rounded Z on near-black whose last stroke ends in a mint budget bar now marks the web app, its browser and home-screen icons, and the Android and iOS app icon.",
+      },
+      {
+        title: "Balances keep their minus sign",
+        description:
+          "Adjusting an overdrawn or credit account in the Android app now previews and notes the balance with its minus sign, and the mic widget accepts a negative target balance. Adjustments are dated on your local day, even just after midnight.",
+      },
+      {
+        title: "Exact amounts in more places",
+        description:
+          "The debt payoff planner says when it cannot read an extra payment instead of guessing, the budget plan no longer flags an amount typed with commas as an unsaved change, and SMS Quick Paste passes on the amount exactly as shown.",
+      },
+      {
+        title: "Imports update balances right away",
+        description:
+          "Account balances refresh as soon as an import finishes, and the spreadsheet import refreshes archived categories too, so nothing shows stale numbers until a reload.",
+      },
+      {
+        title: "Budgets for removed categories",
+        description:
+          "In the Android and iOS app, a category whose budget you removed shows up again in Add budget, so you can give it a new limit. Home's balance card on Android also keeps each account's icon beside its name.",
+      },
+      {
+        title: "Android Beta 0.2.38",
+        description:
+          "The official Android Beta carries the daily reminder, the new app icon, the budget and balance card fixes, and the balance adjustment and debt planner fixes.",
+      },
+    ],
+  },
   {
     version: "2.46.0",
     releasedOn: "September 26, 2026",
