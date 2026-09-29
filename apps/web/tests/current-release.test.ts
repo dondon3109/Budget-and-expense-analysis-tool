@@ -25,14 +25,28 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "New transactions start on Uncategorized",
-      "The default-account star stays on the card",
-      "Android Beta 0.2.39",
+      "Choose your workspace currency",
+      "Subscriptions bill in their own currency",
+      "Dollar accounts and renewal emails use the right currency",
+      "Currency stays separate per person and per chart",
+      "Android Beta 0.2.40",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
+    expect(copy).toMatch(/Philippine Peso or US Dollar/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.40/);
+  });
+
+  it("keeps the Uncategorized default and balance card notes as 2.48.0", () => {
+    expect(titles("2.48.0")).toEqual([
+      "New transactions start on Uncategorized",
+      "The default-account star stays on the card",
+      "Android Beta 0.2.39",
+    ]);
+
+    const copy = notes("2.48.0");
     expect(copy).toMatch(/Uncategorized category/i);
     expect(copy).toMatch(/Android Beta 0\.2\.39/);
   });
@@ -132,6 +146,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.48.0",
       "2.47.0",
       "2.46.0",
       "2.45.0",
