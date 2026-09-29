@@ -1,0 +1,16 @@
+---
+import { FINANCE_GUIDES, type FinanceGuide } from "@zoption/shared";
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { GuideDetailPage } from "../../views/guides/GuideDetailPage";
+
+export function getStaticPaths() {
+  return FINANCE_GUIDES.map((guide) => ({ params: { slug: guide.slug }, props: { guide } }));
+}
+
+const { guide } = Astro.props as { guide: FinanceGuide };
+---
+
+<BaseLayout path={`/guides/${guide.slug}`}>
+  <GuideDetailPage guide={guide} />
+</BaseLayout>

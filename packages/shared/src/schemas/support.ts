@@ -82,6 +82,24 @@ export const customerReviewLineupUpdateSchema = z
 
 export type CustomerReviewLineupUpdate = z.infer<typeof customerReviewLineupUpdateSchema>;
 
+/** `GET /api/reviews`: the published lineup the public site renders. */
+export const publicCustomerReviewsResponseSchema = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          id: z.string().min(1),
+          displayName: z.string(),
+          rating: z.number().int().min(1).max(5),
+          review: z.string(),
+          featuredOrder: z.number().int(),
+          updatedAt: z.string(),
+        })
+        .strict(),
+    ),
+  })
+  .strict();
+
 export const supportChatResponseSchema = z
   .object({
     message: z.string().max(20_000),

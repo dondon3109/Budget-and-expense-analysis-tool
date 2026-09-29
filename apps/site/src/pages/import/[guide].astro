@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { ImportGuidePage } from "../../views/import/ImportGuidePage";
+import { IMPORT_GUIDES, type ImportGuide } from "../../views/import/importGuides";
+
+export function getStaticPaths() {
+  return IMPORT_GUIDES.map((guide) => ({
+    params: { guide: guide.path.replace(/^\/import\//, "") },
+    props: { guide },
+  }));
+}
+
+const { guide } = Astro.props as { guide: ImportGuide };
+---
+
+<BaseLayout path={guide.path}>
+  <ImportGuidePage guide={guide} />
+</BaseLayout>

@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "tests",
+    "functions",
+    "astro.config.ts",
+    "deployment-config.ts",
+    ".astro/types.d.ts"
+  ]
+}

@@ -45,6 +45,9 @@ __pycache__/
 # Client build handoff for prerender (build-time only, outside the deployed dist)
 apps/web/.zoption-build/
 
+# Astro's generated types for the public site
+.astro/
+
 # Local-only agent settings. Shared project agent config stays tracked.
 .claude/settings.local.json
 .claude/launch.json

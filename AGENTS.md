@@ -85,7 +85,7 @@ Pick the narrowest verify while iterating: `pnpm verify:changed` works it out fr
 pnpm install
 pnpm verify          # workspace links, structure check, typecheck, lint, format check, Vitest, mobile Jest; run before reporting done
 pnpm verify:changed  # inner loop: only the scoped checks the current diff needs (--dry-run prints the plan)
-pnpm verify:api      # also verify:web, verify:mobile, verify:shared, verify:scripts
+pnpm verify:api      # also verify:web, verify:site, verify:mobile, verify:shared, verify:scripts
 pnpm dev             # api, web, and mobile together
 pnpm test            # Vitest projects: api, web, shared, scripts
 pnpm vitest run --project api tests/goals   # one project, filtered by path
@@ -102,6 +102,7 @@ Read the one for the area you touch:
 
 - [apps/api/AGENTS.md](apps/api/AGENTS.md): Worker API, D1 migrations, tenancy, sync protocol
 - [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, CSP
+- [apps/site/AGENTS.md](apps/site/AGENTS.md): public Astro site, SEO manifest, headers and CSP, analytics proxy
 - [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, Android releases
 - [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, sync contracts
 - [packages/web-common/AGENTS.md](packages/web-common/AGENTS.md): theme tokens, fonts, consent, and release data shared by web surfaces

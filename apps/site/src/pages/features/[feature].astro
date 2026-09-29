@@ -1,0 +1,18 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { FeaturePage } from "../../views/features/FeaturePage";
+import { FEATURE_PAGES, type FeaturePagePath } from "../../views/features/featurePages";
+
+export function getStaticPaths() {
+  return FEATURE_PAGES.map((page) => ({
+    params: { feature: page.path.replace(/^\/features\//, "") },
+    props: { path: page.path },
+  }));
+}
+
+const { path } = Astro.props as { path: FeaturePagePath };
+---
+
+<BaseLayout path={path}>
+  <FeaturePage path={path} />
+</BaseLayout>

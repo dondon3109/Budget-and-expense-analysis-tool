@@ -76,6 +76,7 @@ pnpm verify:shared                       # this package, then every workspace ty
 - Share tokens are unsigned and therefore public. Mask sensitive fields before encoding.
 - `financeGuides.ts` is in the barrel, so Metro (which does not tree shake) ships the guide content to mobile. Moving it to a subpath export means editing the guide page imports, and `apps/web/tests/content-freshness.test.ts` dates those pages from their last commit, so that change forces guide date bumps. Do not move the file itself either; `apps/web/src/seo/contentSources.ts` lists it by path.
 - `workbook.ts` must stay out of the barrel: it lazily imports the SheetJS build from a CDN tarball and applies its own zip bomb limits.
+- `money.ts` is also exported as `@zoption/shared/money` so browser islands can parse amounts without bundling the barrel (and zod). Keep it import free.
 - `fingerprint.ts` needs `crypto.subtle` and `TextEncoder`; treat that as a platform requirement for any new consumer.
 
 ## Related specs

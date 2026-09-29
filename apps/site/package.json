@@ -1,0 +1,31 @@
+{
+  "name": "@zoption/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev --port 4321",
+    "build": "astro check && astro build && node scripts/finalize-build.mjs",
+    "preview": "astro preview",
+    "typecheck": "astro check",
+    "test": "vitest run --root ../.. --project site"
+  },
+  "dependencies": {
+    "@astrojs/react": "^7.0.0",
+    "@zoption/shared": "workspace:*",
+    "@zoption/web-common": "workspace:*",
+    "astro": "^7.3.5",
+    "lucide-react": "^1.24.0",
+    "posthog-js": "^1.418.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@tailwindcss/vite": "^4.3.2",
+    "tailwindcss": "^4.3.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

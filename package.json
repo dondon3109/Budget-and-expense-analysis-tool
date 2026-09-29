@@ -14,6 +14,7 @@
     "verify:changed": "node scripts/verify-changed.mjs",
     "verify:api": "pnpm --filter @zoption/api typecheck && eslint apps/api && prettier --check apps/api && vitest run --project api",
     "verify:web": "pnpm --filter @zoption/web --filter @zoption/web-common typecheck && NODE_OPTIONS=--max-old-space-size=8192 eslint apps/web packages/web-common && prettier --check apps/web packages/web-common && vitest run --project web --project web-common",
+    "verify:site": "pnpm --filter @zoption/site typecheck && eslint apps/site && prettier --check apps/site && vitest run --project site",
     "verify:mobile": "pnpm --filter @zoption/mobile typecheck && NODE_OPTIONS=--max-old-space-size=8192 eslint apps/mobile && prettier --check apps/mobile && pnpm test:mobile",
     "verify:shared": "pnpm --filter @zoption/shared typecheck && eslint packages/shared && prettier --check packages/shared && vitest run --project shared && pnpm typecheck",
     "verify:scripts": "eslint scripts && prettier --check scripts .github && vitest run --project scripts",

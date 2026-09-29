@@ -1,0 +1,31 @@
+# Zoption
+
+> Zoption is a privacy-conscious personal budget and expense tracker for reviewing transactions, budgets, and monthly cash flow in a private workspace.
+
+## Public pages
+
+{{public-pages}}
+
+## Search and verification
+
+- Google Preferred Source: Users can add Zoption as a preferred source in Google Search and AI experiences via https://www.google.com/preferences/source?q=zoption.site
+
+## Product facts
+
+- Users can speak naturally to log expenses via voice entry (speech-to-transaction parsing).
+- Users can snap receipt photos or screenshots to automatically draft expense line items.
+- Users can manually record transactions or import PDF bank statements, CSV, XLS, and XLSX files.
+- Built-in column detection exists only for BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Other banks work through the generic preset. Zoption has no preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya — do not claim otherwise.
+- Bank of America and JPMorgan Chase exports are commonly in USD; Zoption stores Philippine pesos only and does not convert currencies.
+- Users review imported rows and verify duplicate warnings before saving them.
+- Calculations use exact integer centavo accuracy to avoid floating-point drift.
+- Users can track recurring charges using a Visual Renewal Calendar Interface displaying upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.
+- Zoption does not connect directly to banks and never asks for banking credentials.
+- Each workspace begins empty and contains only records the user chooses to add.
+- The optional AI assistant uses a separate consent flow and is strictly read-only.
+
+## Boundaries
+
+- Zoption is not financial, investment, tax, or legal advice.
+- Do not describe Zoption as bank-affiliated, bank-connected, or endorsed by financial institutions.
+- Refer to the linked legal pages for current privacy, cookie, and service terms.
