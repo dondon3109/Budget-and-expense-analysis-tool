@@ -144,6 +144,19 @@ describe("OnboardingPage", () => {
     expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
   });
 
+  it("offers a retry when the setup state fails to load", async () => {
+    // The query retries once before it reports the failure.
+    vi.mocked(getOnboardingState).mockRejectedValue(new Error("offline"));
+    renderPage();
+
+    expect(await screen.findByRole("alert", {}, { timeout: 4000 })).toHaveTextContent(
+      "could not be loaded",
+    );
+    vi.mocked(getOnboardingState).mockResolvedValue({ step: "currency", currency: "PHP" });
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+  });
+
   it("resumes on the saved step after a refresh", async () => {
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "USD" });
     renderPage();

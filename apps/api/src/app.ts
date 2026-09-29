@@ -90,9 +90,9 @@ export function createApp(options: AppOptions = {}) {
         (method === "DELETE" && path === "/api/app/account") || path.startsWith("/api/app/admin/"),
     ),
   );
-  app.use("/api/app/*", requireOnboarding);
   app.use("/api/app/*", appBodyLimits);
   app.use("/api/app/*", createAppRateLimit(dependencies.rateLimiter));
+  app.use("/api/app/*", requireOnboarding);
 
   app.get("/health", async (context) => {
     try {

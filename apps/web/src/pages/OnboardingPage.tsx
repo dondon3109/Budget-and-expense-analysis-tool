@@ -116,6 +116,13 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
         <p className="form-error" role="alert">
           Your setup could not be loaded.
         </p>
+        <button
+          className="button secondary"
+          type="button"
+          onClick={() => void stateQuery.refetch()}
+        >
+          Try again
+        </button>
       </AuthLayout>
     );
   }

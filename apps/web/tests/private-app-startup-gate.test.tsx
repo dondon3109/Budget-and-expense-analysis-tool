@@ -137,14 +137,12 @@ describe("PrivateAppStartupGate", () => {
     },
   );
 
-  it("offers a retry instead of the dashboard when the onboarding state fails to load", () => {
+  it("sends the user to onboarding, which can retry, when the state fails to load", async () => {
     onboarding.failed = true;
     renderPrivateRoutes();
 
-    expect(screen.getByRole("alert", { hidden: true })).toHaveTextContent("could not be loaded");
+    expect(await screen.findByText("Onboarding page")).toBeInTheDocument();
     expect(screen.queryByText("Dashboard content")).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Try again", hidden: true }));
-    expect(onboarding.refetch).toHaveBeenCalledTimes(1);
   });
 
   it("keeps one loader mounted until the route commits and the dashboard data settles", async () => {

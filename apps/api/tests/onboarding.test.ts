@@ -257,7 +257,7 @@ describe("cash step", () => {
   });
 
   it("rejects both onboarding writes once onboarding is complete", async () => {
-    const { call } = createHarness();
+    const { call, rows } = createHarness();
     await finishOnboarding(call, ALICE, "PHP", 100);
 
     const currency = await call("/api/app/onboarding/currency", ALICE, "POST", {
@@ -265,6 +265,14 @@ describe("cash step", () => {
     });
     expect(currency.status).toBe(409);
     expect((await json(await call("/api/app/settings", ALICE))).currency).toBe("PHP");
+
+    const cash = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 900,
+      date: TODAY,
+    });
+    expect(cash.status).toBe(409);
+    expect((await json(cash)).error).toBe("onboarding_complete");
+    expect(rows("SELECT amount_minor FROM transactions")).toEqual([{ amount_minor: 100 }]);
   });
 });
 
