@@ -5,7 +5,7 @@ import {
   usePayPalSubscriptionPaymentSession,
 } from "@paypal/react-paypal-js/sdk-v6";
 import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
-import { Check, CreditCard, LockKeyhole, Minus, ShieldCheck, X } from "lucide-react";
+import { Check, LockKeyhole, Minus, ShieldCheck, Wallet, X } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
@@ -180,17 +180,13 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
   return (
     <div className="pro-checkout-secure-action" aria-live="polite">
       <button
-        className="button primary pro-checkout-continue"
+        className="button secondary pro-checkout-continue"
         type="button"
         disabled={isPending || busy}
         onClick={() => void handleSecureCheckout()}
       >
-        <LockKeyhole size={15} aria-hidden="true" />
-        {isPending
-          ? "Preparing secure checkout…"
-          : busy
-            ? "Opening secure payment…"
-            : "Continue securely"}
+        <Wallet size={15} aria-hidden="true" />
+        {isPending ? "Preparing PayPal…" : busy ? "Opening PayPal…" : "Continue with PayPal"}
       </button>
       {visibleError && (
         <div className="pro-checkout-payment-error" role="alert">
@@ -238,9 +234,9 @@ function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalChe
 
   if (!sdkFailed) {
     return (
-      <button className="button primary pro-checkout-continue" type="button" disabled>
-        <LockKeyhole size={15} aria-hidden="true" />
-        Preparing secure checkout…
+      <button className="button secondary pro-checkout-continue" type="button" disabled>
+        <Wallet size={15} aria-hidden="true" />
+        Preparing PayPal…
       </button>
     );
   }
@@ -480,43 +476,25 @@ function ProCheckoutDialogContent({
                   </div>
                 </fieldset>
 
-                {providerConfig ? (
-                  <PayPalProvider
-                    clientId={providerConfig.clientId}
-                    environment={providerConfig.environment}
-                    components={[
-                      "paypal-payments",
-                      "paypal-subscriptions",
-                      "paypal-guest-payments",
-                      "card-fields",
-                    ]}
-                    pageType="checkout"
-                  >
-                    <PayPalCheckoutBoundary
-                      interval={selectedInterval}
-                      workspace={workspace}
-                      onBusyChange={setBusy}
-                    />
-                  </PayPalProvider>
-                ) : (
+                <div className="pro-checkout-secure-action">
                   <button
                     className="button primary pro-checkout-continue"
                     type="button"
-                    disabled={!error || busy}
-                    onClick={() => void handleFallbackCheckout()}
+                    disabled={busy}
+                    onClick={() => void handleDodoCheckout()}
                   >
                     <LockKeyhole size={15} aria-hidden="true" />
-                    {busy
-                      ? "Opening PayPal…"
-                      : error
-                        ? "Continue securely on PayPal"
-                        : "Preparing secure checkout…"}
+                    {dodoBusy ? "Opening secure payment…" : "Continue securely"}
                   </button>
-                )}
+                  <p className="pro-checkout-secure-note">
+                    Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record
+                    for this option.
+                  </p>
+                </div>
 
                 <section
                   className="pro-checkout-payment-methods"
-                  aria-labelledby="dodo-payment-methods-title"
+                  aria-labelledby="paypal-payment-methods-title"
                 >
                   <div className="pro-checkout-payment-methods-header">
                     <div className="pro-checkout-payment-methods-title-row">
@@ -525,22 +503,43 @@ function ProCheckoutDialogContent({
                         className="pro-checkout-shield-icon"
                         aria-hidden="true"
                       />
-                      <strong id="dodo-payment-methods-title">Or pay with Dodo Payments</strong>
+                      <strong id="paypal-payment-methods-title">Or pay with PayPal</strong>
                     </div>
-                    <span>
-                      Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record
-                      for this option.
-                    </span>
+                    <span>Pay with your PayPal balance or a card linked to PayPal.</span>
                   </div>
-                  <button
-                    className="button secondary pro-checkout-continue"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void handleDodoCheckout()}
-                  >
-                    <CreditCard size={15} aria-hidden="true" />
-                    {dodoBusy ? "Opening Dodo Payments…" : "Continue with Dodo Payments"}
-                  </button>
+                  {providerConfig ? (
+                    <PayPalProvider
+                      clientId={providerConfig.clientId}
+                      environment={providerConfig.environment}
+                      components={[
+                        "paypal-payments",
+                        "paypal-subscriptions",
+                        "paypal-guest-payments",
+                        "card-fields",
+                      ]}
+                      pageType="checkout"
+                    >
+                      <PayPalCheckoutBoundary
+                        interval={selectedInterval}
+                        workspace={workspace}
+                        onBusyChange={setBusy}
+                      />
+                    </PayPalProvider>
+                  ) : (
+                    <button
+                      className="button secondary pro-checkout-continue"
+                      type="button"
+                      disabled={!error || busy}
+                      onClick={() => void handleFallbackCheckout()}
+                    >
+                      <Wallet size={15} aria-hidden="true" />
+                      {busy && !dodoBusy
+                        ? "Opening PayPal…"
+                        : error
+                          ? "Continue on PayPal"
+                          : "Preparing PayPal…"}
+                    </button>
+                  )}
                 </section>
               </div>
             ) : (

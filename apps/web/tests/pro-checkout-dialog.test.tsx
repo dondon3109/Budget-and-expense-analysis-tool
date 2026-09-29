@@ -107,11 +107,11 @@ describe("ProCheckoutDialog", () => {
     vi.unstubAllGlobals();
   });
 
-  it("offers Dodo Payments as a hosted checkout for the selected interval", async () => {
+  it("starts Dodo Payments checkout from the primary action for the selected interval", async () => {
     renderDialog();
 
     fireEvent.click(screen.getByRole("radio", { name: /Annual/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue with Dodo Payments" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue securely" }));
 
     await vi.waitFor(() =>
       expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year", "dodo"),
@@ -119,7 +119,7 @@ describe("ProCheckoutDialog", () => {
     expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
   });
 
-  it("shows current plan and payment facts, then starts the selected secure subscription", async () => {
+  it("shows current plan and payment facts, then starts the selected PayPal subscription", async () => {
     renderDialog();
 
     expect(
@@ -132,7 +132,7 @@ describe("ProCheckoutDialog", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Payment handled by PayPal")).not.toBeInTheDocument();
     expect(screen.getByText(/Pay by card, Apple Pay, or Google Pay/i)).toBeInTheDocument();
-    const continueSecurely = await screen.findByRole("button", { name: "Continue securely" });
+    const continueWithPayPal = await screen.findByRole("button", { name: "Continue with PayPal" });
     expect(paypalMocks.providerProps).toHaveBeenCalledWith(
       expect.objectContaining({
         clientId: "public-client-id",
@@ -148,7 +148,7 @@ describe("ProCheckoutDialog", () => {
     expect(paypalMocks.providerProps.mock.calls.at(-1)?.[0]).not.toHaveProperty("locale");
 
     fireEvent.click(screen.getByRole("radio", { name: "Annual, ₱1,299/year" }));
-    fireEvent.click(continueSecurely);
+    fireEvent.click(continueWithPayPal);
 
     expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "year");
     expect(openBillingCheckout).not.toHaveBeenCalled();
@@ -202,7 +202,7 @@ describe("ProCheckoutDialog", () => {
     openBillingCheckout.mockResolvedValue(undefined);
     renderDialog();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Continue securely on PayPal" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Continue on PayPal" }));
 
     expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "month");
     expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
@@ -216,9 +216,7 @@ describe("ProCheckoutDialog", () => {
     });
     renderDialog();
 
-    expect(
-      await screen.findByRole("button", { name: "Preparing secure checkout…" }),
-    ).toBeDisabled();
+    expect(await screen.findByRole("button", { name: "Preparing PayPal…" })).toBeDisabled();
     expect(paypalMocks.useSubscriptionSession).not.toHaveBeenCalled();
     expect(screen.queryByText("no sdk instance available")).not.toBeInTheDocument();
   });

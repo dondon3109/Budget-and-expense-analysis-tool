@@ -10,6 +10,10 @@ All notable product changes are documented here.
 - Each subscription has its own currency (Philippine Peso or US Dollar), chosen in the subscription form and defaulting to the workspace currency. Its charges and renewals are recorded in that currency and checked against the account's balance in it. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and mention any plan billed in the other one. Existing subscriptions stay in pesos.
 - Android Beta 0.2.40 (versionCode 20340) carries the workspace currency setting, per-subscription currencies, and the currency fixes below, and the Android install page offers it.
 
+### Changed
+
+- Pro checkout on the web and in the Android and iOS app leads with Dodo Payments (card, Apple Pay, or Google Pay) as the primary "Continue securely" action, with PayPal offered below it.
+
 ### Fixed
 
 - Automatic interest on a US dollar savings account accrues on its dollar balance and is credited in dollars instead of pesos.
