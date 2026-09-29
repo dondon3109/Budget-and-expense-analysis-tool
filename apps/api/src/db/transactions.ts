@@ -1,6 +1,7 @@
 import {
   buildTransferLegs,
   normalizeSignedAmount,
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   transactionInputSchema,
   type Currency,
   type TransactionCalendarMonth,
@@ -233,12 +234,17 @@ export async function validateTransactionReferences(
     .select({
       kind: categories.kind,
       archived: categories.archived,
+      systemKey: categories.systemKey,
       requiredPlan: categories.requiredPlan,
     })
     .from(categories)
     .where(and(eq(categories.id, input.categoryId), eq(categories.tenantId, tenantId)))
     .limit(1);
-  if (!category || category.archived) {
+  // The opening balance sits in an archived category no picker offers; keeping it on an edit is fine.
+  const keepsOpeningCategory =
+    input.categoryId === existingCategoryId &&
+    category?.systemKey === OPENING_BALANCE_CATEGORY_SYSTEM_KEY;
+  if (!category || (category.archived && !keepsOpeningCategory)) {
     throw new HttpError(400, "invalid_category", "Choose an active category.");
   }
   if (category.kind !== input.kind) {

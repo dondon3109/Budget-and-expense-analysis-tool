@@ -351,6 +351,47 @@ describe("opening balance in income figures", () => {
   });
 });
 
+describe("editing the opening balance", () => {
+  it("lets the user correct the amount even though its category is archived", async () => {
+    const { call } = createHarness();
+    await finishOnboarding(call, ALICE, "PHP", 5_000);
+    const listed = await json(await call("/api/app/transactions", ALICE));
+    const entry = (
+      listed.items as Array<{ id: string; categoryId: string; accountId: string }>
+    )[0]!;
+
+    const edited = await call(`/api/app/transactions/${entry.id}`, ALICE, "PATCH", {
+      kind: "income",
+      accountId: entry.accountId,
+      categoryId: entry.categoryId,
+      date: TODAY,
+      description: "Opening cash balance",
+      amountMinor: 7_500,
+      currency: "PHP",
+    });
+    expect(edited.status).toBe(200);
+    expect((await json(edited)).amountMinor).toBe(7_500);
+  });
+
+  it("gives the category a distinct name when the user already has one called Opening balance", async () => {
+    const { call, rows, database } = createHarness();
+    await call("/api/app/onboarding/currency", ALICE, "POST", { currency: "PHP" });
+    database.exec("DELETE FROM categories WHERE system_key = 'opening:income'");
+    database.exec(`INSERT INTO categories (id, tenant_id, name, kind, color, required_plan)
+      VALUES ('mine', 'user:alice', 'Opening balance', 'income', '#123456', 'free')`);
+
+    const response = await call("/api/app/onboarding/cash-balance", ALICE, "POST", {
+      amountMinor: 5_000,
+      date: TODAY,
+    });
+    expect(response.status).toBe(200);
+    expect(rows("SELECT name FROM categories WHERE system_key = 'opening:income'")).toEqual([
+      { name: "Opening balance (Zoption)" },
+    ]);
+    expect(rows("SELECT amount_minor FROM transactions")).toEqual([{ amount_minor: 5_000 }]);
+  });
+});
+
 describe("base currency source", () => {
   it("is the same value onboarding and Account Settings write and read", async () => {
     const { call, rows } = createHarness();
@@ -427,6 +468,9 @@ describe("0069_opening_balance_category backfill", () => {
         migrating.exec(
           "INSERT INTO tenants (id, kind, name) VALUES ('old-a', 'user', 'A'), ('old-b', 'user', 'B')",
         );
+        // old-b already has its own income category with that name; names are unique per kind.
+        migrating.exec(`INSERT INTO categories (id, tenant_id, name, kind, color, required_plan)
+          VALUES ('mine', 'old-b', 'Opening balance', 'income', '#123456', 'free')`);
       },
     });
     databases.push(database);
@@ -441,6 +485,11 @@ describe("0069_opening_balance_category backfill", () => {
       { id: "old-a:category:opening-balance", tenant_id: "old-a", archived: 1 },
       { id: "old-b:category:opening-balance", tenant_id: "old-b", archived: 1 },
     ]);
+    expect(
+      database
+        .prepare("SELECT name FROM categories WHERE id = 'old-b:category:opening-balance'")
+        .get(),
+    ).toEqual({ name: "Opening balance (Zoption)" });
   });
 });
 

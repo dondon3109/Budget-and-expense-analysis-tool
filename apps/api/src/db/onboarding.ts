@@ -102,7 +102,12 @@ export const onboardingRepository: OnboardingRepository = {
                    id, tenant_id, name, kind, color, icon_emoji, system_key, origin, required_plan,
                    archived
                  )
-                 SELECT ?, id, 'Opening balance', 'income', '#6b7280', NULL, ?, 'system', 'free', 1
+                 SELECT ?, id,
+                        CASE WHEN EXISTS (
+                          SELECT 1 FROM categories
+                          WHERE tenant_id = tenants.id AND kind = 'income' AND name = 'Opening balance')
+                        THEN 'Opening balance (Zoption)' ELSE 'Opening balance' END,
+                        'income', '#6b7280', NULL, ?, 'system', 'free', 1
                  FROM tenants WHERE id = ? AND onboarding_step = 'cash'`,
             ).bind(
               defaultCategoryIdForTenant(tenantId, "opening-balance"),
@@ -114,14 +119,16 @@ export const onboardingRepository: OnboardingRepository = {
                    id, tenant_id, account_id, category_id, date, description, amount_minor,
                    currency, kind, source_kind
                  )
-                 SELECT ?, id, ?, ?, ?, 'Opening cash balance', ?, currency, 'income', 'manual'
+                 SELECT ?, id, ?,
+                        (SELECT id FROM categories WHERE tenant_id = tenants.id AND system_key = ?),
+                        ?, 'Opening cash balance', ?, currency, 'income', 'manual'
                  FROM tenants WHERE id = ? AND onboarding_step = 'cash'
                    AND NOT EXISTS (
                    SELECT 1 FROM transactions WHERE tenant_id = ? AND deleted_at IS NULL)`,
             ).bind(
               `${tenantId}:transaction:opening-balance`,
               defaultAccountIdForTenant(tenantId),
-              defaultCategoryIdForTenant(tenantId, "opening-balance"),
+              OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
               input.date,
               input.amountMinor,
               tenantId,
