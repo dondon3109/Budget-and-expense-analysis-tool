@@ -9,6 +9,7 @@ function validValues(): SubscriptionFormValues {
   return {
     name: "Netflix",
     amount: "549.00",
+    currency: "PHP",
     billingCycle: "monthly",
     nextBillingDate: "2026-09-01",
     categoryId: "category-1",
@@ -23,6 +24,7 @@ describe("subscription form", () => {
     expect(result.input).toEqual({
       name: "Netflix",
       amountMinor: 54_900,
+      currency: "PHP",
       billingCycle: "monthly",
       nextBillingDate: "2026-09-01",
       categoryId: "category-1",

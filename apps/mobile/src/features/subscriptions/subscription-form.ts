@@ -1,12 +1,14 @@
 import {
   parseAmountToMinor,
   subscriptionInputSchema,
+  type Currency,
   type SubscriptionBillingCycle,
 } from "@zoption/shared";
 
 export interface SubscriptionFormValues {
   name: string;
   amount: string;
+  currency: Currency;
   billingCycle: SubscriptionBillingCycle;
   nextBillingDate: string;
   categoryId: string;
@@ -56,6 +58,7 @@ export function parseSubscriptionForm(values: SubscriptionFormValues):
       input: {
         name: string;
         amountMinor: number;
+        currency: Currency;
         billingCycle: SubscriptionBillingCycle;
         nextBillingDate: string;
         categoryId: string;
@@ -93,6 +96,7 @@ export function parseSubscriptionForm(values: SubscriptionFormValues):
   const input = {
     name,
     amountMinor: amountMinor ?? 0,
+    currency: values.currency,
     billingCycle: values.billingCycle,
     nextBillingDate: values.nextBillingDate,
     categoryId: values.categoryId,

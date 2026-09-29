@@ -97,7 +97,7 @@ export interface LocalSubscriptionItem {
   id: string;
   name: string;
   amountMinor: number;
-  currency: string;
+  currency: Currency;
   billingCycle: SubscriptionBillingCycle;
   nextBillingDate: string;
   status: SubscriptionStatus;
@@ -134,6 +134,7 @@ export interface LocalCalendarDay {
     id: string;
     name: string;
     amountMinor: number;
+    currency: Currency;
   }[];
   events: LocalEventItem[];
 }

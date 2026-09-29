@@ -79,7 +79,7 @@ function DayCard({ date, day }: { date: string; day?: LocalCalendarDay }) {
           <Text style={[typography.body, { color: theme.colors.text }]}>{bill.name}</Text>
           <View style={styles.rowRight}>
             <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Billing day</Text>
-            <MoneyValue amountMinor={bill.amountMinor} />
+            <MoneyValue amountMinor={bill.amountMinor} currency={bill.currency} />
           </View>
         </View>
       ))}

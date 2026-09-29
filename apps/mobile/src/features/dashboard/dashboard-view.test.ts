@@ -103,3 +103,17 @@ describe("buildDashboardView", () => {
     expect(view.summary.monthlyTrend.map((point) => point.month)).toEqual(["2026-07", "2026-08"]);
   });
 });
+
+describe("buildDashboardView currency", () => {
+  it("leaves other-currency transactions out of the cash flow trend", () => {
+    const usdIncome = { ...income, id: "t-usd", currency: "USD" as const, amountMinor: 900_000 };
+    const view = buildDashboardView(
+      data({ transactions: [income, usdIncome, expense] }),
+      "2026-08-14",
+      "weekly",
+      "PHP",
+    );
+    const day = view.cashflow.points.find((point) => point.date === "2026-08-10");
+    expect(day).toMatchObject({ incomeMinor: 50_000 });
+  });
+});

@@ -153,6 +153,9 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
           <MoneyValue amountMinor={-expenseTotalMinor} tone="expense" style={styles.legendValue} />
         </View>
       </View>
+      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+        Only {currency} entries are included.
+      </Text>
       <GestureDetector gesture={gesture}>
         <View
           accessible

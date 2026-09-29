@@ -143,7 +143,7 @@ const subscriptionItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.string(),
+  currency: z.enum(["PHP", "USD"]),
   billing_cycle: z.enum(["monthly", "yearly"]),
   next_billing_date: z.string(),
   status: z.enum(["active", "canceled"]),
@@ -160,12 +160,11 @@ const calendarTransactionItemSchema = z.object({
   kind: z.enum(["income", "expense", "transfer"]),
 });
 
-const calendarSubscriptionItemSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  amount_minor: z.number().int().safe(),
-  billing_cycle: z.enum(["monthly", "yearly"]),
-  next_billing_date: z.string(),
+const calendarSubscriptionItemSchema = subscriptionItemSchema.omit({
+  category_id: true,
+  account_id: true,
+  status: true,
+  sync_state: true,
 });
 
 const accountModelingRowSchema = z.object({
@@ -931,7 +930,7 @@ LIMIT ?`;
         monthEnd,
       ),
       this.database.getAllAsync(
-        `SELECT id, name, amount_minor, billing_cycle, next_billing_date
+        `SELECT id, name, amount_minor, currency, billing_cycle, next_billing_date
          FROM subscriptions
          WHERE deleted_at IS NULL AND status = 'active'`,
       ),
@@ -969,6 +968,7 @@ LIMIT ?`;
           id: decoded.id,
           name: decoded.name,
           amountMinor: decoded.amount_minor,
+          currency: decoded.currency,
         });
       }
     }

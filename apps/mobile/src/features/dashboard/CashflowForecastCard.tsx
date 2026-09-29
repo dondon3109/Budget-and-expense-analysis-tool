@@ -3,9 +3,10 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
+  forecastSubscriptions,
   projectCashflow,
-  type CashflowForecastOptions,
   type Currency,
+  type ForecastSubscriptionSource,
   type ForecastRecurringIncome,
 } from "@zoption/shared";
 import { Card, MoneyValue } from "@/ui/components";
@@ -20,7 +21,7 @@ const MAX_BILLS_SHOWN = 5;
 
 export interface CashflowForecastCardProps {
   startingBalanceMinor: number;
-  subscriptions: CashflowForecastOptions["subscriptions"];
+  subscriptions: readonly ForecastSubscriptionSource[];
   recurringIncomes?: readonly ForecastRecurringIncome[];
   safetyBufferMinor?: number;
   startDate?: string;
@@ -36,7 +37,7 @@ function riskLabel(riskLevel: "safe" | "low_buffer" | "critical_deficit"): strin
 
 export function CashflowForecastCard({
   startingBalanceMinor,
-  subscriptions,
+  subscriptions: allSubscriptions,
   recurringIncomes,
   safetyBufferMinor = 0,
   startDate,
@@ -47,6 +48,14 @@ export function CashflowForecastCard({
   const workspaceCurrency = useWorkspaceCurrency();
   const currency = currencyProp ?? workspaceCurrency;
   const [horizon, setHorizon] = useState<HorizonDays>(30);
+  // The starting balance is in `currency`, so plans billed in the other one are left out.
+  const subscriptions = useMemo(
+    () => forecastSubscriptions(allSubscriptions, currency),
+    [allSubscriptions, currency],
+  );
+  const excludedCount = allSubscriptions.filter(
+    (sub) => sub.status === "active" && sub.currency !== currency,
+  ).length;
 
   const forecasts = useMemo(
     () =>
@@ -144,6 +153,14 @@ export function CashflowForecastCard({
           </Pressable>
         ) : null}
       </View>
+
+      {excludedCount > 0 ? (
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          {excludedCount} {excludedCount === 1 ? "plan" : "plans"} billed in{" "}
+          {currency === "PHP" ? "USD" : "PHP"} {excludedCount === 1 ? "isn't" : "aren't"} included
+          in this {currency} forecast.
+        </Text>
+      ) : null}
 
       <View
         accessibilityRole="tablist"

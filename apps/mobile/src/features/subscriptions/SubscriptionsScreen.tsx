@@ -279,16 +279,22 @@ function MonthlyCostCard({
   canceledCount: number;
 }) {
   const theme = useZoptionTheme();
-  const monthlyTotal = useMemo(
-    () =>
-      subscriptions
-        .filter((subscription) => subscription.status === "active")
-        .reduce(
-          (total, subscription) =>
-            total + monthlySubscriptionCost(subscription.amountMinor, subscription.billingCycle),
-          0,
-        ),
-    [subscriptions],
+  const workspaceCurrency = useWorkspaceCurrency();
+  // Pesos and dollars are never added: the other currency gets its own line.
+  const monthlyTotals = useMemo(() => {
+    const totals: Record<Currency, number> = { PHP: 0, USD: 0 };
+    for (const subscription of subscriptions) {
+      if (subscription.status !== "active") continue;
+      totals[subscription.currency] += monthlySubscriptionCost(
+        subscription.amountMinor,
+        subscription.billingCycle,
+      );
+    }
+    return totals;
+  }, [subscriptions]);
+  const otherCurrency: Currency = workspaceCurrency === "PHP" ? "USD" : "PHP";
+  const hasOtherCurrency = subscriptions.some(
+    (subscription) => subscription.status === "active" && subscription.currency === otherCurrency,
   );
 
   const yearlyCount = useMemo(
@@ -303,7 +309,17 @@ function MonthlyCostCard({
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
             Total monthly cost
           </Text>
-          <MoneyValue amountMinor={monthlyTotal} style={typography.display} />
+          <MoneyValue
+            amountMinor={monthlyTotals[workspaceCurrency]}
+            currency={workspaceCurrency}
+            style={typography.display}
+          />
+          {hasOtherCurrency ? (
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              <MoneyValue amountMinor={monthlyTotals[otherCurrency]} currency={otherCurrency} />
+              /mo billed in {otherCurrency}
+            </Text>
+          ) : null}
           <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 11 }]}>
             Active plans only · Yearly plans divided across 12 months
           </Text>
@@ -359,13 +375,12 @@ function SubscriptionRow({
   onHowToCancel: () => void;
 }) {
   const theme = useZoptionTheme();
-  const workspaceCurrency = useWorkspaceCurrency();
   const conflicted = subscription.syncState === "conflicted";
   const failed = subscription.syncState === "failed";
   const isCanceled = subscription.status === "canceled";
   const isYearly = subscription.billingCycle === "yearly";
   const monthlyEquivalent = isYearly ? Math.round(subscription.amountMinor / 12) : null;
-  const currency = (account?.currency as Currency) ?? workspaceCurrency;
+  const currency = subscription.currency;
 
   return (
     <Pressable
@@ -478,7 +493,7 @@ function SubscriptionRow({
             <View style={styles.amountWrap}>
               <MoneyValue
                 amountMinor={subscription.amountMinor}
-                currency={subscription.currency === "USD" ? "USD" : "PHP"}
+                currency={currency}
                 style={[
                   typography.headline,
                   {
@@ -524,7 +539,7 @@ function SubscriptionRow({
 
             {monthlyEquivalent !== null && !isCanceled ? (
               <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 11 }]}>
-                ≈ <MoneyValue amountMinor={monthlyEquivalent} />
+                ≈ <MoneyValue amountMinor={monthlyEquivalent} currency={currency} />
                 /mo
               </Text>
             ) : null}

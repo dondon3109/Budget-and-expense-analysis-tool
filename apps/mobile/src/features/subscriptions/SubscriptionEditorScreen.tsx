@@ -3,14 +3,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import type { SubscriptionBillingCycle, SubscriptionStatus } from "@zoption/shared";
-import { resolveCategoryEmoji } from "@zoption/shared";
+import type { Currency, SubscriptionBillingCycle, SubscriptionStatus } from "@zoption/shared";
+import { currencies, resolveCategoryEmoji } from "@zoption/shared";
 
 import {
   useLocalReferenceData,
   useLocalWorkspace,
   useSubscription,
 } from "@/db/local-workspace-state";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
@@ -38,6 +39,8 @@ const cycleOptions = (Object.keys(billingCycleLabels) as SubscriptionBillingCycl
   (cycle) => ({ id: cycle, label: billingCycleLabels[cycle] }),
 );
 
+const currencyOptions = currencies.map((code) => ({ id: code, label: code }));
+
 const statusOptions: Array<{ id: SubscriptionStatus; label: string }> = [
   { id: "active", label: "Active" },
   { id: "canceled", label: "Canceled" },
@@ -56,10 +59,14 @@ export function SubscriptionEditorScreen() {
   const referenceState = useLocalReferenceData();
   const sync = useSyncState();
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
   const initialized = useRef(false);
 
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
+  // null until the user picks one: a new plan follows the workspace currency, an edit its own.
+  const [pickedCurrency, setPickedCurrency] = useState<Currency | null>(null);
+  const currency = pickedCurrency ?? subscriptionState.subscription?.currency ?? workspaceCurrency;
   const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>("monthly");
   const [nextBillingDate, setNextBillingDate] = useState(() => todayIso());
   const [categoryId, setCategoryId] = useState("");
@@ -129,6 +136,7 @@ export function SubscriptionEditorScreen() {
     const parsed = parseSubscriptionForm({
       name,
       amount,
+      currency,
       billingCycle,
       nextBillingDate,
       categoryId,
@@ -250,8 +258,17 @@ export function SubscriptionEditorScreen() {
                   setMessage(null);
                 }}
                 placeholder="0.00"
-                trailing={<CurrencyCode />}
+                trailing={<CurrencyCode code={currency} />}
                 value={amount}
+              />
+              <SelectionField
+                disabled={saving}
+                label="Currency"
+                onSelect={(value) => setPickedCurrency(value as Currency)}
+                options={currencyOptions}
+                placeholder="Choose a currency"
+                sheetTitle="Choose a currency"
+                value={currency}
               />
               <SelectionField
                 disabled={saving}

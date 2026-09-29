@@ -18,6 +18,7 @@ All notable product changes are documented here.
 
 - Automatic interest on a US dollar savings account accrues on its dollar balance and is credited in dollars instead of pesos.
 - Subscription renewal emails show the subscription's currency instead of always PHP.
+- The Android and iOS app's cashflow chart counts only entries in the workspace currency and says so, instead of adding pesos and dollars together, and the app picks up a currency changed on the web when it returns to the foreground.
 - On a browser shared by several people, one person's workspace currency no longer carries over to the next person who signs in, and a started form is no longer cleared when the currency first loads.
 - The default-account star on Home's balance card stays inside the card on Android instead of being pushed past its right edge.
 

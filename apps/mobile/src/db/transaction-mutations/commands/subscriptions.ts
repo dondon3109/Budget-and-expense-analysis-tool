@@ -5,6 +5,8 @@ import {
   type SubscriptionStatus,
 } from "@zoption/shared";
 
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
+
 import type { LocalCommandContext } from "../context";
 import { subscriptionSnapshot, uuidSchema } from "../model";
 import {
@@ -25,16 +27,20 @@ export function createSubscription(
     let entityId = "";
     await ctx.database.withTransactionAsync(async () => {
       await ctx.store.validateSubscriptionReferences(input);
+      // Omitted means the workspace currency, which the server assigns on create;
+      // the local cache mirrors it so the row shows the right symbol before sync.
+      const currency = input.currency ?? useWorkspaceCurrencyStore.getState().currency;
       await ctx.clientId();
       entityId = uuidSchema.parse(ctx.randomUuid());
       await ctx.database.runAsync(
         `INSERT INTO subscriptions (
           id, name, amount_minor, currency, billing_cycle, next_billing_date, status,
           category_id, account_id, server_revision, server_updated_at, deleted_at, sync_state
-        ) VALUES (?, ?, ?, 'PHP', ?, ?, 'active', ?, ?, 0, NULL, NULL, 'pending')`,
+        ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, 0, NULL, NULL, 'pending')`,
         entityId,
         input.name,
         input.amountMinor,
+        currency,
         input.billingCycle,
         input.nextBillingDate,
         input.categoryId,
@@ -43,6 +49,7 @@ export function createSubscription(
       await queueCreate(ctx, "subscription", entityId, {
         name: input.name,
         amountMinor: input.amountMinor,
+        currency,
         billingCycle: input.billingCycle,
         nextBillingDate: input.nextBillingDate,
         categoryId: input.categoryId,
@@ -69,6 +76,7 @@ export function updateSubscription(
       const merged = {
         name: update.name ?? current.name,
         amountMinor: update.amountMinor ?? current.amount_minor,
+        currency: update.currency ?? current.currency,
         billingCycle: update.billingCycle ?? current.billing_cycle,
         nextBillingDate: update.nextBillingDate ?? current.next_billing_date,
         categoryId: update.categoryId ?? current.category_id,
@@ -85,11 +93,12 @@ export function updateSubscription(
       });
       await ctx.database.runAsync(
         `UPDATE subscriptions SET
-          name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?,
+          name = ?, amount_minor = ?, currency = ?, billing_cycle = ?, next_billing_date = ?,
           status = ?, category_id = ?, account_id = ?, sync_state = 'pending'
          WHERE id = ?`,
         merged.name,
         merged.amountMinor,
+        merged.currency,
         merged.billingCycle,
         merged.nextBillingDate,
         merged.status,

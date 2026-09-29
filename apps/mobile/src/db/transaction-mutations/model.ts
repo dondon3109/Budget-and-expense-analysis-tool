@@ -125,7 +125,7 @@ export const subscriptionRowSchema = z.object({
   id: z.string(),
   name: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.string(),
+  currency: z.enum(["PHP", "USD"]),
   billing_cycle: z.enum(["monthly", "yearly"]),
   next_billing_date: z.string(),
   status: z.enum(["active", "canceled"]),
