@@ -61,7 +61,7 @@ export interface SubscriptionRepository {
   ): Promise<void>;
   createRenewalNotification(
     env: Bindings,
-    notice: Omit<SubscriptionRenewalNotification, "currency">,
+    notice: SubscriptionRenewalNotification,
   ): Promise<boolean>;
   claimRenewalNotification(
     env: Bindings,
@@ -260,6 +260,7 @@ export interface DueSubscriptionRenewal {
   name: string;
   billingCycle: SubscriptionBillingCycle;
   amountMinor: number;
+  currency: Currency;
   nextBillingDate: string;
   /** The linked account's balance in the subscription's currency, the one the charge posts in. */
   balanceMinor: number;
@@ -276,7 +277,7 @@ export interface SubscriptionRenewalNotification {
   dueDate: string;
   subscriptionName: string;
   amountMinor: number;
-  /** The subscription's billing currency, read through its row; PHP once it is deleted. */
+  /** The subscription's billing currency when queued; notices queued by an older Worker fall back to the plan's. */
   currency: Currency;
   accountName: string | null;
   reason: SubscriptionRenewalReason;
@@ -330,15 +331,15 @@ async function findRenewalNotification(
   const row = await env.DB.prepare(
     `SELECT n.id, n.tenant_id AS tenantId, n.subscription_id AS subscriptionId,
             n.due_date AS dueDate, n.subscription_name AS subscriptionName,
-            n.amount_minor AS amountMinor, s.currency AS currency,
+            n.amount_minor AS amountMinor, COALESCE(n.currency, s.currency, 'PHP') AS currency,
             n.account_name AS accountName, n.reason
      FROM subscription_renewal_notifications n
      LEFT JOIN subscriptions s ON s.id = n.subscription_id AND s.tenant_id = n.tenant_id
      WHERE n.id = ?`,
   )
     .bind(id)
-    .first<Omit<SubscriptionRenewalNotification, "currency"> & { currency: string | null }>();
-  return row ? { ...row, currency: storedCurrency(row.currency ?? "PHP") } : null;
+    .first<Omit<SubscriptionRenewalNotification, "currency"> & { currency: string }>();
+  return row ? { ...row, currency: storedCurrency(row.currency) } : null;
 }
 
 export const subscriptionRepository: SubscriptionRepository = {
@@ -544,7 +545,7 @@ export const subscriptionRepository: SubscriptionRepository = {
     const rows = await env.DB.prepare(
       `SELECT s.id, s.tenant_id AS tenantId, s.account_id AS accountId, a.name AS accountName,
               s.category_id AS categoryId, s.name, s.billing_cycle AS billingCycle,
-              s.amount_minor AS amountMinor, s.next_billing_date AS nextBillingDate,
+              s.amount_minor AS amountMinor, s.currency, s.next_billing_date AS nextBillingDate,
               a.archived AS accountArchived,
               COALESCE((
                 SELECT SUM(t.amount_minor) FROM transactions t
@@ -563,13 +564,15 @@ export const subscriptionRepository: SubscriptionRepository = {
     )
       .bind(dueDate, Math.max(1, Math.min(200, Math.trunc(limit))))
       .all<
-        Omit<DueSubscriptionRenewal, "charged" | "accountArchived"> & {
+        Omit<DueSubscriptionRenewal, "charged" | "accountArchived" | "currency"> & {
+          currency: string;
           charged: number;
           accountArchived: number;
         }
       >();
     return rows.results.map((row) => ({
       ...row,
+      currency: storedCurrency(row.currency),
       charged: Boolean(row.charged),
       accountArchived: Boolean(row.accountArchived),
     }));
@@ -617,8 +620,8 @@ export const subscriptionRepository: SubscriptionRepository = {
     const result = await env.DB.prepare(
       `INSERT INTO subscription_renewal_notifications
          (id, tenant_id, subscription_id, due_date, subscription_name, amount_minor,
-          account_name, reason)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          currency, account_name, reason)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (subscription_id, due_date) DO NOTHING`,
     )
       .bind(
@@ -628,6 +631,7 @@ export const subscriptionRepository: SubscriptionRepository = {
         notice.dueDate,
         notice.subscriptionName,
         notice.amountMinor,
+        notice.currency,
         notice.accountName,
         notice.reason,
       )

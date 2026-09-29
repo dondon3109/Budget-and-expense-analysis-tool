@@ -1,3 +1,4 @@
+import type { Currency } from "@zoption/shared";
 import { Repeat2, Target } from "lucide-react";
 import { Link } from "react-router-dom";
 
@@ -30,12 +31,18 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
   const subscriptionSummary = subscriptionsQuery.data;
   const activeSubscriptions =
     subscriptionSummary?.items.filter((item) => item.status === "active") ?? [];
-  // The total is in the workspace currency; a plan billed in the other currency is not added in.
-  const totalSubscriptionCostMinor = activeSubscriptions.reduce(
-    (total, subscription) =>
-      total + (subscription.currency === workspaceCurrency() ? subscription.monthlyCostMinor : 0),
-    0,
-  );
+  // The total is in the workspace currency; plans billed in the other currency get their own
+  // line instead of being added in.
+  const currency = workspaceCurrency();
+  const otherCurrency: Currency = currency === "PHP" ? "USD" : "PHP";
+  const monthlyCostIn = (billing: Currency) =>
+    activeSubscriptions.reduce(
+      (total, subscription) =>
+        total + (subscription.currency === billing ? subscription.monthlyCostMinor : 0),
+      0,
+    );
+  const totalSubscriptionCostMinor = monthlyCostIn(currency);
+  const otherSubscriptionCostMinor = monthlyCostIn(otherCurrency);
 
   return (
     <section className="panel goals-panel" aria-labelledby="goals-title">
@@ -111,6 +118,12 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
                   {formatMonth(subscriptionMonth)} · {activeSubscriptions.length} active plan
                   {activeSubscriptions.length === 1 ? "" : "s"}
                 </span>
+                {otherSubscriptionCostMinor > 0 && (
+                  <span>
+                    Plus {formatMoney(otherSubscriptionCostMinor, otherCurrency)} billed in{" "}
+                    {otherCurrency}
+                  </span>
+                )}
               </div>
               <Link className="text-link" to="/app/subscriptions">
                 {activeSubscriptions.length === 0

@@ -400,6 +400,7 @@ export const subscriptionRenewalNotifications = sqliteTable(
     dueDate: text("due_date").notNull(),
     subscriptionName: text("subscription_name").notNull(),
     amountMinor: integer("amount_minor").notNull(),
+    currency: text("currency"),
     accountName: text("account_name"),
     reason: text("reason", { enum: ["insufficient_balance", "account_archived"] })
       .notNull()
@@ -763,8 +764,7 @@ export const importPreviews = sqliteTable(
   (table) => [index("import_previews_tenant_expiry_idx").on(table.tenantId, table.expiresAt)],
 );
 
-// This table intentionally has no foreign key to tenants: it blocks automatic
-// workspace recreation by a still-valid access token after account deletion.
+// No tenants foreign key on purpose: it stops a still-valid token recreating a deleted workspace.
 export const accountDeletions = sqliteTable(
   "account_deletions",
   {

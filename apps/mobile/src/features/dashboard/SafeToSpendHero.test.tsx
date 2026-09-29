@@ -58,4 +58,16 @@ describe("SafeToSpendHero (mobile)", () => {
       ),
     ).toBeTruthy();
   });
+  it("says when a plan billed in the other currency is left out", async () => {
+    await render(
+      <SafeToSpendHero
+        startingBalanceMinor={500_000}
+        remainingBudgetMinor={14_000}
+        currency="PHP"
+        subscriptions={[monthlyBill, { ...monthlyBill, id: "sub-usd", currency: "USD" as const }]}
+      />,
+    );
+
+    expect(screen.getByText("1 plan billed in USD isn't counted here.")).toBeTruthy();
+  });
 });

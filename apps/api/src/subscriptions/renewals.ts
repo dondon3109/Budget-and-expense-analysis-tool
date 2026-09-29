@@ -206,6 +206,7 @@ export function createSubscriptionRenewalService(
       dueDate: renewal.nextBillingDate,
       subscriptionName: renewal.name,
       amountMinor: renewal.amountMinor,
+      currency: renewal.currency,
       accountName: renewal.accountName,
       reason,
     });

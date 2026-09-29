@@ -437,6 +437,33 @@ describe("subscription renewals", () => {
     ).toEqual({ date: "2026-10-25" });
   });
 
+  it("states a dollar plan's missed renewal in dollars, as it was when queued", async () => {
+    const { env, database } = renewalEnvironment();
+    dueSubscription(database, 1_500);
+    // The account only holds pesos, so a dollar charge is uncovered.
+    database.exec("UPDATE subscriptions SET currency = 'USD' WHERE id = 'subscription-1'");
+    const sent: Array<Parameters<EmailSender["send"]>[0]> = [];
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send: async (message) => void sent.push(message) },
+      fetcher: recipientFetcher(),
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-25T08:00:00+08:00"));
+
+    await expect(service.runDueRenewals(env)).resolves.toMatchObject({
+      uncovered: 1,
+      notified: 1,
+    });
+    expect(sent[0]?.text).toContain("USD 15.00");
+    expect(sent[0]?.text).not.toContain("PHP");
+    // The notice keeps the currency it was queued with, whatever the plan changes to later.
+    database.exec("UPDATE subscriptions SET currency = 'PHP' WHERE id = 'subscription-1'");
+    expect(
+      database.prepare("SELECT currency FROM subscription_renewal_notifications").get(),
+    ).toEqual({ currency: "USD" });
+  });
+
   it("skips the charge and says so when the paying account was removed", async () => {
     const { env, database } = renewalEnvironment();
     // The balance comfortably covers the charge, so only the removed account holds it back.
