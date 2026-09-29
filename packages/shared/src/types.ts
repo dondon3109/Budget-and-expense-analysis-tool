@@ -160,7 +160,7 @@ export interface SubscriptionRecord {
   id: string;
   name: string;
   amountMinor: number;
-  currency: "PHP";
+  currency: Currency;
   billingCycle: SubscriptionBillingCycle;
   nextBillingDate: string;
   status: SubscriptionStatus;
@@ -180,7 +180,11 @@ export interface SubscriptionMonthItem extends SubscriptionRecord {
 
 export interface SubscriptionMonthSummary {
   month: string;
-  currency: "PHP";
+  /**
+   * The workspace currency. `totalMonthlyCostMinor` counts only active subscriptions billed in
+   * it; each item carries its own currency, so a caller totals any other currency from the items.
+   */
+  currency: Currency;
   totalMonthlyCostMinor: number;
   items: SubscriptionMonthItem[];
 }

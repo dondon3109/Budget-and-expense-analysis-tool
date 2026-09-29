@@ -11,6 +11,7 @@ const monthlyBill = {
   name: "Netflix",
   amountMinor: 54900,
   billingCycle: "monthly" as const,
+  currency: "PHP" as const,
   nextBillingDate: "2026-09-10",
   status: "active",
 };
@@ -80,6 +81,7 @@ describe("CashflowForecastCard", () => {
       name: "Domain renewal",
       amountMinor: 1_00000,
       billingCycle: "monthly" as const,
+      currency: "PHP" as const,
       nextBillingDate: "2026-10-20",
       status: "active",
     };
@@ -112,5 +114,16 @@ describe("CashflowForecastCard", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "View subscriptions" }));
     expect(onViewSubscriptions).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves out plans billed in the other currency and says so", async () => {
+    const usdPlan = { ...monthlyBill, id: "sub-usd", name: "Figma", currency: "USD" as const };
+    await render(<CashflowForecastCard {...baseProps} subscriptions={[monthlyBill, usdPlan]} />);
+
+    expect(screen.getByText("Netflix")).toBeTruthy();
+    expect(screen.queryByText("Figma")).toBeNull();
+    expect(
+      screen.getByText("1 plan billed in USD isn't included in this PHP forecast."),
+    ).toBeTruthy();
   });
 });

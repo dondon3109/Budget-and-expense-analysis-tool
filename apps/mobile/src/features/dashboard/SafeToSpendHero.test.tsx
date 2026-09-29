@@ -6,6 +6,7 @@ const monthlyBill = {
   name: "Netflix",
   amountMinor: 54900,
   billingCycle: "monthly" as const,
+  currency: "PHP" as const,
   nextBillingDate: "2026-09-10",
   status: "active",
 };

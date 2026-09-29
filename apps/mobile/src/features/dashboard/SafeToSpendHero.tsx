@@ -3,11 +3,12 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
+  forecastSubscriptions,
   getDaysLeftInWeek,
   projectCashflow,
   safeToSpend,
-  type CashflowForecastOptions,
   type Currency,
+  type ForecastSubscriptionSource,
   type ForecastRecurringIncome,
 } from "@zoption/shared";
 import { Card, MoneyValue } from "@/ui/components";
@@ -17,7 +18,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 
 export interface SafeToSpendHeroProps {
   startingBalanceMinor: number;
-  subscriptions: CashflowForecastOptions["subscriptions"];
+  subscriptions: readonly ForecastSubscriptionSource[];
   recurringIncomes?: readonly ForecastRecurringIncome[];
   remainingBudgetMinor?: number;
   safetyBufferMinor?: number;
@@ -27,7 +28,7 @@ export interface SafeToSpendHeroProps {
 
 export function SafeToSpendHero({
   startingBalanceMinor,
-  subscriptions,
+  subscriptions: allSubscriptions,
   recurringIncomes,
   remainingBudgetMinor,
   safetyBufferMinor = 0,
@@ -37,6 +38,10 @@ export function SafeToSpendHero({
   const theme = useZoptionTheme();
   const workspaceCurrency = useWorkspaceCurrency();
   const currency = currencyProp ?? workspaceCurrency;
+  const subscriptions = useMemo(
+    () => forecastSubscriptions(allSubscriptions, currency),
+    [allSubscriptions, currency],
+  );
   const daysLeftInWeek = useMemo(() => getDaysLeftInWeek(new Date(), "monday"), []);
 
   // 30-day forecast projection to identify safe liquidity limits

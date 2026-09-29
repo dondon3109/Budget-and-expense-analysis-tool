@@ -1,4 +1,4 @@
-import type { SubscriptionMonthItem } from "@zoption/shared";
+import type { Currency, SubscriptionMonthItem } from "@zoption/shared";
 import {
   ArrowDownRight,
   CalendarClock,
@@ -19,6 +19,7 @@ import {
   monthDates,
 } from "../../lib/calendar";
 import { formatFullMonth, formatMoney } from "../../lib/formatters";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 import "./SubscriptionRenewalCalendar.css";
 
 interface SubscriptionRenewalCalendarProps {
@@ -26,6 +27,19 @@ interface SubscriptionRenewalCalendarProps {
   items: SubscriptionMonthItem[];
   onEdit: (item: SubscriptionMonthItem) => void;
   onShowCancellationGuide?: (item: SubscriptionMonthItem) => void;
+}
+
+function amountIn(item: SubscriptionMonthItem, currency: Currency): number {
+  return item.currency === currency ? item.amountMinor : 0;
+}
+
+/** One day's renewals, summed per billing currency so pesos and dollars are never added. */
+function formatOutflow(renewals: readonly SubscriptionMonthItem[]): string {
+  const totals = new Map<Currency, number>();
+  for (const item of renewals) {
+    totals.set(item.currency, (totals.get(item.currency) ?? 0) + item.amountMinor);
+  }
+  return [...totals].map(([currency, amount]) => formatMoney(amount, currency)).join(" + ");
 }
 
 const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -56,6 +70,9 @@ export function SubscriptionRenewalCalendar({
   onShowCancellationGuide,
 }: SubscriptionRenewalCalendarProps) {
   const today = localIsoDate();
+  // Outflow totals are in the workspace currency; plans billed in another currency still show
+  // on the calendar with their own amount but are not added into these sums.
+  const currency = useWorkspaceCurrency();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   const dates = useMemo(() => monthDates(month), [month]);
@@ -85,24 +102,24 @@ export function SubscriptionRenewalCalendar({
 
   // Cash-flow impact metrics
   const totalBilledMinor = useMemo(
-    () => activeBilledItems.reduce((sum, item) => sum + item.amountMinor, 0),
-    [activeBilledItems],
+    () => activeBilledItems.reduce((sum, item) => sum + amountIn(item, currency), 0),
+    [activeBilledItems, currency],
   );
 
   const paidMinor = useMemo(
     () =>
       activeBilledItems
         .filter((item) => item.billingDate! <= today)
-        .reduce((sum, item) => sum + item.amountMinor, 0),
-    [activeBilledItems, today],
+        .reduce((sum, item) => sum + amountIn(item, currency), 0),
+    [activeBilledItems, today, currency],
   );
 
   const upcomingOutflowMinor = useMemo(
     () =>
       activeBilledItems
         .filter((item) => item.billingDate! > today)
-        .reduce((sum, item) => sum + item.amountMinor, 0),
-    [activeBilledItems, today],
+        .reduce((sum, item) => sum + amountIn(item, currency), 0),
+    [activeBilledItems, today, currency],
   );
 
   const unbilledActiveItems = useMemo(
@@ -228,7 +245,7 @@ export function SubscriptionRenewalCalendar({
                 const isToday = date === today;
                 const isSelected = date === selectedDate;
                 const hasRenewals = dayRenewals.length > 0;
-                const dailyOutflow = dayRenewals.reduce((sum, item) => sum + item.amountMinor, 0);
+                const dailyOutflow = formatOutflow(dayRenewals);
 
                 return (
                   <div className="renewal-day-cell" role="gridcell" key={date}>
@@ -242,7 +259,7 @@ export function SubscriptionRenewalCalendar({
                         hasRenewals
                           ? `, ${dayRenewals.length} subscription renewal${
                               dayRenewals.length === 1 ? "" : "s"
-                            } totaling ${formatMoney(dailyOutflow)}`
+                            } totaling ${dailyOutflow}`
                           : ", no renewals"
                       }`}
                       aria-pressed={isSelected}
@@ -257,8 +274,7 @@ export function SubscriptionRenewalCalendar({
                       {hasRenewals && (
                         <div className="renewal-day-body">
                           <span className="renewal-outflow-pill" title="Cash flow impact">
-                            <ArrowDownRight size={11} aria-hidden="true" />−
-                            {formatMoney(dailyOutflow)}
+                            <ArrowDownRight size={11} aria-hidden="true" />−{dailyOutflow}
                           </span>
 
                           <div className="renewal-day-badges">
@@ -270,6 +286,7 @@ export function SubscriptionRenewalCalendar({
                                   className={`renewal-badge ${isPaid ? "paid" : "due"}`}
                                   title={`${subscription.name} · ${formatMoney(
                                     subscription.amountMinor,
+                                    subscription.currency,
                                   )} · ${isPaid ? "Paid" : "Due"}`}
                                 >
                                   <i
@@ -366,7 +383,7 @@ export function SubscriptionRenewalCalendar({
                   <div className="timeline-amount-block">
                     <span className="timeline-amount-label">Cash-flow impact</span>
                     <strong className="timeline-amount-val">
-                      −{formatMoney(item.amountMinor)}
+                      −{formatMoney(item.amountMinor, item.currency)}
                     </strong>
                   </div>
 

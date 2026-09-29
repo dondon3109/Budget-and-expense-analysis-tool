@@ -16,7 +16,9 @@ const activeDay: LocalCalendarDay = {
       syncState: "synced",
     },
   ],
-  subscriptionBills: [{ id: "bill-1", name: "Internet", amountMinor: 150_000 }],
+  subscriptionBills: [
+    { id: "bill-1", name: "Internet", amountMinor: 150_000, currency: "PHP" as const },
+  ],
   transactions: [
     { id: "transaction-1", description: "Salary", amountMinor: 500_000, kind: "income" },
   ],

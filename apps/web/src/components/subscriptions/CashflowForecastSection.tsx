@@ -2,6 +2,7 @@ import {
   currencyMetadata,
   parseAmountToMinor,
   projectCashflow,
+  forecastSubscriptions,
   type CashflowForecastOptions,
   type CashflowForecastResult,
   type SubscriptionMonthItem,
@@ -23,7 +24,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { formatMoney } from "../../lib/formatters";
 import "./CashflowForecastSection.css";
-import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
+import { useWorkspaceCurrency, workspaceCurrency } from "../../lib/workspaceCurrency";
 
 export interface CashflowAccountOption {
   id: string;
@@ -505,23 +506,19 @@ export function CashflowForecastSection({
   }, [selectedAccountId, accounts, totalBalanceMinor]);
 
   // Filter subscriptions if a specific account is selected
-  const activeSubscriptions = useMemo(() => {
-    return items
-      .filter((item) => item.status === "active")
-      .filter((item) => {
-        if (selectedAccountId === "all") return true;
-        return item.accountId === selectedAccountId;
-      })
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        amountMinor: item.amountMinor,
-        billingCycle: item.billingCycle,
-        nextBillingDate: item.nextBillingDate || item.billingDate || "",
-        status: item.status,
-        categoryName: item.categoryName,
-      }));
-  }, [items, selectedAccountId]);
+  const accountItems = useMemo(
+    () =>
+      items.filter((item) => selectedAccountId === "all" || item.accountId === selectedAccountId),
+    [items, selectedAccountId],
+  );
+  const activeSubscriptions = useMemo(
+    () => forecastSubscriptions(accountItems, workspaceCurrency()),
+    [accountItems],
+  );
+  // Plans billed in the other currency can't be subtracted from this balance, so say so.
+  const otherCurrencyPlans = accountItems.filter(
+    (item) => item.status === "active" && item.currency !== workspaceCurrency(),
+  ).length;
 
   // All three horizons are projected together so the tiles can preview each ending balance.
   const forecasts = useMemo(() => {
@@ -569,6 +566,13 @@ export function CashflowForecastSection({
             Simulate your expected cash position based on current liquid balances and recurring
             subscription commitments.
           </p>
+          {otherCurrencyPlans > 0 && (
+            <p className="forecast-subheading">
+              {otherCurrencyPlans} plan{otherCurrencyPlans === 1 ? " is" : "s are"} billed in{" "}
+              {workspaceCurrency() === "PHP" ? "USD" : "PHP"} and not included in this{" "}
+              {workspaceCurrency()} forecast.
+            </p>
+          )}
         </div>
 
         <div className="forecast-controls">

@@ -8,7 +8,8 @@ All notable product changes are documented here.
 
 ### Added
 
-- Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, subscriptions, and dashboard totals show in the chosen currency, new accounts and transactions start in it, and the cashflow trend converts the other currency into it. Switching relabels those amounts; it does not convert them. The remittance calculator follows it too: a peso workspace compares sending pesos abroad, a dollar workspace compares sending money home to the Philippines.
+- Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, new accounts, transactions, and subscriptions start in it, and the cashflow trend converts the other currency into it. Switching relabels those amounts; it does not convert them. The remittance calculator follows it too: a peso workspace compares sending pesos abroad, a dollar workspace compares sending money home to the Philippines.
+- Each subscription has its own currency (Philippine Peso or US Dollar), chosen in the subscription form and defaulting to the workspace currency. Its charges and renewals are recorded in that currency and checked against the account's balance in it. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and mention any plan billed in the other one. Existing subscriptions stay in pesos.
 - Android Beta 0.2.39 (versionCode 20339) carries the Uncategorized default and the balance card fix below, and the Android install page offers it.
 
 ### Changed
@@ -17,6 +18,10 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Automatic interest on a US dollar savings account accrues on its dollar balance and is credited in dollars instead of pesos.
+- Subscription renewal emails show the subscription's currency instead of always PHP.
+- The Android and iOS app's cashflow chart counts only entries in the workspace currency and says so, instead of adding pesos and dollars together, and the app picks up a currency changed on the web when it returns to the foreground.
+- On a browser shared by several people, one person's workspace currency no longer carries over to the next person who signs in, and a started form is no longer cleared when the currency first loads.
 - The default-account star on Home's balance card stays inside the card on Android instead of being pushed past its right edge.
 
 ## 2.47.0 — 2026-09-28

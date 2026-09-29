@@ -1,10 +1,12 @@
 import {
+  currencies,
   currencyMetadata,
   formatMinorAmount,
   parseAmountToMinor,
   subscriptionInputSchema,
   type AccountRecord,
   type CategoryRecord,
+  type Currency,
   type SubscriptionBillingCycle,
   type SubscriptionInput,
   type SubscriptionRecord,
@@ -15,7 +17,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
-import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 
 interface SubscriptionFormProps {
   categories: CategoryRecord[];
@@ -53,8 +55,9 @@ export function SubscriptionForm({
   title,
   submitLabel,
 }: SubscriptionFormProps) {
-  const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
   const [name, setName] = useState(initial?.name ?? "");
+  // A subscription bills in its own currency; a new one starts in the workspace currency.
+  const [currency, setCurrency] = useState<Currency>(initial?.currency ?? workspaceCurrency());
   const [amount, setAmount] = useState(initial ? minorToInput(initial.amountMinor) : "");
   const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>(
     initial?.billingCycle ?? "monthly",
@@ -112,6 +115,7 @@ export function SubscriptionForm({
     const parsed = subscriptionInputSchema.safeParse({
       name,
       amountMinor,
+      currency,
       billingCycle,
       nextBillingDate,
       categoryId,
@@ -176,7 +180,7 @@ export function SubscriptionForm({
             <label>
               <span>Amount</span>
               <div className="money-input">
-                <b>{currencySymbol}</b>
+                <b>{currencyMetadata[currency].symbol}</b>
                 <input
                   aria-label="Amount"
                   inputMode="decimal"
@@ -200,6 +204,20 @@ export function SubscriptionForm({
               </select>
             </label>
           </div>
+
+          <label>
+            <span>Currency</span>
+            <select
+              value={currency}
+              onChange={(event) => setCurrency(event.target.value as Currency)}
+            >
+              {currencies.map((option) => (
+                <option key={option} value={option}>
+                  {currencyMetadata[option].label}
+                </option>
+              ))}
+            </select>
+          </label>
 
           <div className="form-row split">
             <label>

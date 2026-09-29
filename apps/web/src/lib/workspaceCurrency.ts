@@ -1,45 +1,48 @@
 import type { Currency } from "@zoption/shared";
-import { useSyncExternalStore } from "react";
 
 /**
  * The workspace currency that `formatMoney` falls back to for amounts with no currency of their
- * own. The server owns the setting; this store mirrors the last value the settings query read,
- * and remembers it in this browser so a USD workspace does not flash pesos on the next load.
+ * own. The server owns the setting; `WorkspaceCurrencyBoundary` assigns this value from the
+ * settings query before it renders the private page, and keys the page by it, so everything
+ * that reads it renders again (remounted) when it changes. Nothing subscribes to it.
  */
-export const WORKSPACE_CURRENCY_STORAGE_KEY = "zoption-workspace-currency";
-
-const listeners = new Set<() => void>();
-
-function readStored(): Currency {
-  try {
-    return window.localStorage.getItem(WORKSPACE_CURRENCY_STORAGE_KEY) === "USD" ? "USD" : "PHP";
-  } catch {
-    return "PHP";
-  }
-}
-
-let current: Currency = typeof window === "undefined" ? "PHP" : readStored();
+let current: Currency = "PHP";
 
 export function workspaceCurrency(): Currency {
   return current;
 }
 
 export function setWorkspaceCurrency(currency: Currency): void {
-  if (currency === current) return;
   current = currency;
-  try {
-    window.localStorage.setItem(WORKSPACE_CURRENCY_STORAGE_KEY, currency);
-  } catch {
-    // Private browsing or a full quota: the next load starts from PHP until the query answers.
-  }
-  for (const listener of listeners) listener();
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
+/** For components: the page remounts when the currency changes, so a plain read stays fresh. */
 export function useWorkspaceCurrency(): Currency {
-  return useSyncExternalStore(subscribe, workspaceCurrency, () => "PHP");
+  return current;
+}
+
+/**
+ * The last currency the server confirmed for one user, remembered in this browser so their next
+ * load renders at once in the right currency. Keyed by user: whoever signs in next on a shared
+ * browser never inherits it.
+ */
+export function workspaceCurrencyStorageKey(userId: string): string {
+  return `zoption-workspace-currency:${userId}`;
+}
+
+export function rememberedWorkspaceCurrency(userId: string): Currency | undefined {
+  try {
+    const stored = window.localStorage.getItem(workspaceCurrencyStorageKey(userId));
+    return stored === "PHP" || stored === "USD" ? stored : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function rememberWorkspaceCurrency(userId: string, currency: Currency): void {
+  try {
+    window.localStorage.setItem(workspaceCurrencyStorageKey(userId), currency);
+  } catch {
+    // Private browsing or a full quota: the next load waits for the settings request instead.
+  }
 }

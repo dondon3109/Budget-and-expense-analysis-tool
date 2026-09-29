@@ -95,7 +95,7 @@ export function HomeScreen() {
             <>
               <SafeToSpendHero
                 startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-                subscriptions={subscriptions.subscriptions.filter((sub) => sub.status === "active")}
+                subscriptions={subscriptions.subscriptions}
                 remainingBudgetMinor={
                   view.summary.budgetProgress.length > 0
                     ? Math.max(
@@ -121,7 +121,7 @@ export function HomeScreen() {
               <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
               <CashflowForecastCard
                 startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-                subscriptions={subscriptions.subscriptions.filter((sub) => sub.status === "active")}
+                subscriptions={subscriptions.subscriptions}
               />
               <RemittanceCalculatorCard />
             </>

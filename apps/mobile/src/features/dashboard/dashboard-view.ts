@@ -38,7 +38,12 @@ export function buildDashboardView(
       monthPeriod(anchorDate),
       accountBalances,
     ),
-    cashflow: buildCashflowTrend(data.transactions, cashflowView, anchorDate),
+    // Mobile has no exchange rate, so the trend counts only workspace-currency entries.
+    cashflow: buildCashflowTrend(
+      data.transactions.filter((transaction) => transaction.currency === workspaceCurrency),
+      cashflowView,
+      anchorDate,
+    ),
     accountBalances,
   };
 }

@@ -143,7 +143,7 @@ export function CalendarUpcomingEvents({
               const billingDate = subscription.billingDate;
               if (!billingDate) return null;
               const fullDate = formatCalendarDate(billingDate);
-              const amount = formatMoney(subscription.amountMinor);
+              const amount = formatMoney(subscription.amountMinor, subscription.currency);
               const cycle = subscription.billingCycle === "monthly" ? "Monthly" : "Yearly";
               return (
                 <li key={`${subscription.id}:${billingDate}`}>

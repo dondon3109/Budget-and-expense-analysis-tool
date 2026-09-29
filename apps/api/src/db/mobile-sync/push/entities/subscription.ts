@@ -21,11 +21,13 @@ export function subscriptionMutation(
   const extraStatements: D1PreparedStatement[] = [];
   if (operation.operationType === "create") {
     const payload = operation.payload;
+    // A client that predates subscription currency sends none; it bills in the workspace currency.
+    const currency = "COALESCE(?, (SELECT currency FROM tenants WHERE id = ?), 'PHP')";
     mutation = env.DB.prepare(
       `INSERT INTO subscriptions (
          id, tenant_id, account_id, category_id, name, amount_minor, currency,
          billing_cycle, next_billing_date, last_charged_date, status, revision, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, 'PHP', ?, ?, ?, 'active', 1, ?)`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ${currency}, ?, ?, ?, 'active', 1, ?)`,
     ).bind(
       operation.entityId,
       tenantId,
@@ -33,6 +35,8 @@ export function subscriptionMutation(
       payload.categoryId,
       payload.name,
       payload.amountMinor,
+      payload.currency ?? null,
+      tenantId,
       payload.billingCycle,
       payload.nextBillingDate,
       payload.nextBillingDate,
@@ -43,7 +47,7 @@ export function subscriptionMutation(
         `INSERT INTO transactions (
            id, tenant_id, account_id, category_id, date, description, amount_minor,
            currency, kind, source_kind, subscription_id, revision, updated_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'PHP', 'expense', 'manual', ?, 1, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ${currency}, 'expense', 'manual', ?, 1, ?)`,
       ).bind(
         crypto.randomUUID(),
         tenantId,
@@ -52,6 +56,8 @@ export function subscriptionMutation(
         payload.nextBillingDate,
         payload.name,
         normalizeSignedAmount(payload.amountMinor, "expense"),
+        payload.currency ?? null,
+        tenantId,
         operation.entityId,
         timestamp,
       ),
@@ -62,6 +68,7 @@ export function subscriptionMutation(
     const merged = {
       name: payload.name ?? sub.name,
       amountMinor: payload.amountMinor ?? sub.amountMinor,
+      currency: payload.currency ?? sub.currency,
       billingCycle: payload.billingCycle ?? sub.billingCycle,
       nextBillingDate: payload.nextBillingDate ?? sub.nextBillingDate,
       accountId: payload.accountId ?? sub.accountId,
@@ -70,12 +77,13 @@ export function subscriptionMutation(
     };
     mutation = env.DB.prepare(
       `UPDATE subscriptions SET
-         name = ?, amount_minor = ?, billing_cycle = ?, next_billing_date = ?,
+         name = ?, amount_minor = ?, currency = ?, billing_cycle = ?, next_billing_date = ?,
          account_id = ?, category_id = ?, status = ?, updated_at = ?
        WHERE id = ? AND tenant_id = ? AND revision = ?`,
     ).bind(
       merged.name,
       merged.amountMinor,
+      merged.currency,
       merged.billingCycle,
       merged.nextBillingDate,
       merged.accountId,
@@ -91,7 +99,7 @@ export function subscriptionMutation(
         env.DB.prepare(
           `UPDATE transactions SET
              account_id = ?, category_id = ?, date = ?, description = ?,
-             amount_minor = ?, currency = 'PHP', kind = 'expense', updated_at = datetime('now')
+             amount_minor = ?, currency = ?, kind = 'expense', updated_at = datetime('now')
            WHERE tenant_id = ? AND subscription_id = ?`,
         ).bind(
           merged.accountId,
@@ -99,6 +107,7 @@ export function subscriptionMutation(
           merged.nextBillingDate,
           merged.name,
           normalizeSignedAmount(merged.amountMinor, "expense"),
+          merged.currency,
           tenantId,
           operation.entityId,
         ),

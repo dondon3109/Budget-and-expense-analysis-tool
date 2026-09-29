@@ -1,4 +1,8 @@
-import { nextSubscriptionBillingDate, type SubscriptionRenewalReason } from "@zoption/shared";
+import {
+  nextSubscriptionBillingDate,
+  type Currency,
+  type SubscriptionRenewalReason,
+} from "@zoption/shared";
 
 import {
   subscriptionRepository,
@@ -46,8 +50,8 @@ export function manilaDate(now = new Date()): string {
   return new Date(now.getTime() + MANILA_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-function formatAmount(amountMinor: number): string {
-  return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
+function formatAmount(amountMinor: number, currency: Currency): string {
+  return `${currency} ${moneyFormatter.format(amountMinor / 100)}`;
 }
 
 function formatDate(date: string): string {
@@ -84,7 +88,7 @@ function notificationMessage(
   recipient: string,
 ) {
   const name = notification.subscriptionName;
-  const amount = formatAmount(notification.amountMinor);
+  const amount = formatAmount(notification.amountMinor, notification.currency);
   const account = notification.accountName ?? "the linked account";
   const dueDate = formatDate(notification.dueDate);
   const link = subscriptionsUrl(env);

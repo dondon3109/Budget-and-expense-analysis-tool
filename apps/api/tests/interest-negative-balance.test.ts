@@ -101,3 +101,30 @@ describe("creditDueInterest on a non-positive balance", () => {
     expect(row?.amountMinor).toBe(136);
   });
 });
+
+describe("creditDueInterest in the account's currency", () => {
+  it("accrues on the USD balance of a USD savings account and credits dollars", async () => {
+    const { env, database } = savingsEnvironment(0);
+    database.exec(`
+      UPDATE accounts SET currency = 'USD' WHERE id = 'savings-1';
+      INSERT INTO transactions (
+        id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind
+      ) VALUES
+        ('usd-1', '${TENANT_ID}', 'savings-1', 'interest-income', '2026-08-01', 'Dollars', 1000000, 'USD', 'income'),
+        ('php-1', '${TENANT_ID}', 'savings-1', 'interest-income', '2026-08-01', 'Pesos', 9000000, 'PHP', 'income');
+    `);
+
+    const result = await creditDueInterest(env, CREDIT_DATE);
+
+    expect(result.credited).toBe(1);
+    const credit = database
+      .prepare(
+        "SELECT amount_minor AS amountMinor, currency FROM transactions WHERE description = 'Interest'",
+      )
+      .get() as { amountMinor: number; currency: string };
+    expect(credit).toEqual({
+      amountMinor: interestAmountMinor(1_000_000, 500, "daily"),
+      currency: "USD",
+    });
+  });
+});

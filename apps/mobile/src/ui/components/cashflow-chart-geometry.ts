@@ -145,5 +145,5 @@ export function chartSummaryLabel(cashflow: CashflowTrend, currency: Currency = 
       return `${date}: income ${formatAxisTick(point.incomeMinor, currency)}, expense ${formatAxisTick(point.expenseMinor, currency)}`;
     })
     .join(". ");
-  return `Money in and out chart. ${perPoint}.`;
+  return `Money in and out chart. ${perPoint}. Only ${currency} entries are included.`;
 }

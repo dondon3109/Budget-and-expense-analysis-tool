@@ -1,4 +1,5 @@
 import type {
+  Currency,
   SubscriptionInput,
   SubscriptionMonthItem,
   SubscriptionMonthSummary,
@@ -29,6 +30,7 @@ import {
 } from "../lib/api";
 import { currentMonth } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
+import { workspaceCurrency } from "../lib/workspaceCurrency";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
@@ -49,11 +51,17 @@ function updateSubscriptionSummary(
   return {
     ...current,
     items,
-    totalMonthlyCostMinor: items.reduce(
-      (total, item) => total + (item.status === "active" ? item.monthlyCostMinor : 0),
-      0,
-    ),
+    totalMonthlyCostMinor: activeMonthlyCost(items, current.currency),
   };
+}
+
+/** Active monthly cost of the plans billed in one currency; the total never mixes currencies. */
+function activeMonthlyCost(items: readonly SubscriptionMonthItem[], currency: Currency): number {
+  return items.reduce(
+    (total, item) =>
+      total + (item.status === "active" && item.currency === currency ? item.monthlyCostMinor : 0),
+    0,
+  );
 }
 
 export function SubscriptionsPage() {
@@ -88,7 +96,7 @@ export function SubscriptionsPage() {
       const item: SubscriptionMonthItem = {
         ...input,
         id,
-        currency: "PHP",
+        currency: input.currency ?? workspaceCurrency(),
         status: "active",
         categoryName: category?.name ?? "Category",
         categoryColor: category?.color ?? "#64748b",
@@ -170,6 +178,7 @@ export function SubscriptionsPage() {
                 ? {
                     ...item,
                     ...input,
+                    currency: input.currency ?? item.currency,
                     categoryName: category?.name ?? item.categoryName,
                     categoryColor: category?.color ?? item.categoryColor,
                     accountName: account?.name ?? item.accountName,
@@ -216,6 +225,10 @@ export function SubscriptionsPage() {
   const formError = createMutation.error?.message ?? updateMutation.error?.message;
 
   const data = subscriptionsQuery.data;
+  // The headline total is the workspace currency; plans billed in the other one get a line of
+  // their own instead of being added into it.
+  const otherCurrency: Currency = data?.currency === "USD" ? "PHP" : "USD";
+  const otherMonthlyCostMinor = data ? activeMonthlyCost(data.items, otherCurrency) : 0;
   const categories = categoriesQuery.data ?? [];
   const accounts = accountsQuery.data ?? [];
   // The forecast projects in pesos, so an account contributes its peso balance. Reading the
@@ -309,8 +322,12 @@ export function SubscriptionsPage() {
             >
               <MetricCard
                 label="Total monthly cost"
-                value={formatMoney(data.totalMonthlyCostMinor)}
-                detail={`${formatFullMonth(month)} · Active plans only · Yearly plans divided across 12 months`}
+                value={formatMoney(data.totalMonthlyCostMinor, data.currency)}
+                detail={`${formatFullMonth(month)} · Active plans only · Yearly plans divided across 12 months${
+                  otherMonthlyCostMinor > 0
+                    ? ` · Plus ${formatMoney(otherMonthlyCostMinor, otherCurrency)} billed in ${otherCurrency}`
+                    : ""
+                }`}
                 icon={Repeat2}
                 tone="sage"
               />
@@ -322,7 +339,7 @@ export function SubscriptionsPage() {
                   <strong>
                     {data.items.length} subscription{data.items.length === 1 ? "" : "s"}
                   </strong>
-                  <span>{formatFullMonth(month)} · Philippine pesos</span>
+                  <span>{formatFullMonth(month)} · Each plan in its own currency</span>
                 </div>
                 <div className="subscriptions-panel-actions">
                   <div

@@ -1,7 +1,7 @@
 import {
   DEFAULT_OFW_EXCHANGE_RATES,
   projectCashflow,
-  type CashflowForecastOptions,
+  forecastSubscriptions,
   type CashflowForecastResult,
 } from "@zoption/shared";
 import { CalendarClock, ChevronRight, Coins } from "lucide-react";
@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { currentMonth, monthStart } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import { useSubscriptions } from "../../queries/subscriptions";
 import "./DashboardToolCards.css";
 
@@ -53,19 +54,10 @@ export function DashboardToolCards({ workspace, startingBalanceMinor }: Dashboar
   const subscriptionMonth = currentMonth();
   const subscriptionsQuery = useSubscriptions(workspace, monthStart(subscriptionMonth));
 
-  const subscriptions: CashflowForecastOptions["subscriptions"] = (
-    subscriptionsQuery.data?.items ?? []
-  )
-    .filter((item) => item.status === "active")
-    .map((item) => ({
-      id: item.id,
-      name: item.name,
-      amountMinor: item.amountMinor,
-      billingCycle: item.billingCycle,
-      nextBillingDate: item.nextBillingDate || item.billingDate || "",
-      status: item.status,
-      categoryName: item.categoryName,
-    }));
+  const subscriptions = forecastSubscriptions(
+    subscriptionsQuery.data?.items ?? [],
+    workspaceCurrency(),
+  );
 
   const forecast = projectCashflow({ startingBalanceMinor, subscriptions, horizonDays: 30 });
   const renewalsLoaded = subscriptionsQuery.data !== undefined;

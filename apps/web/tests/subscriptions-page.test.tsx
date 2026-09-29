@@ -288,6 +288,7 @@ describe("SubscriptionsPage", () => {
     const updateInput = {
       name: "Music streaming Plus",
       amountMinor: 249_00,
+      currency: "PHP",
       billingCycle: "monthly",
       nextBillingDate: "2026-07-25",
       categoryId: "entertainment",
