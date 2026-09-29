@@ -20,14 +20,18 @@ export interface SiteDeploymentConfig {
   posthogKey: string | undefined;
 }
 
-function httpsOrigin(value: string, name: string): string {
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1"]);
+
+/** An HTTPS origin, or a local http one outside Pages builds (the end-to-end suite). */
+function httpsOrigin(value: string, name: string, allowLocal: boolean): string {
   let url: URL;
   try {
     url = new URL(value);
   } catch {
     throw new Error(`${name} must be an absolute URL.`);
   }
-  if (url.protocol !== "https:") throw new Error(`${name} must use HTTPS.`);
+  const local = allowLocal && url.protocol === "http:" && LOCAL_HOSTS.has(url.hostname);
+  if (url.protocol !== "https:" && !local) throw new Error(`${name} must use HTTPS.`);
   if (url.username || url.password || url.pathname !== "/" || url.search || url.hash) {
     throw new Error(`${name} must be an HTTPS origin without credentials, a path, query, or hash.`);
   }
@@ -49,6 +53,7 @@ export function resolveSiteDeploymentConfig(
   }
 
   const production = deployEnvironment === "production";
+  const allowLocal = env.CF_PAGES !== "1";
   if (!production) {
     for (const name of ["PUBLIC_API_URL", "PUBLIC_APP_URL"] as const) {
       if (!env[name]?.trim()) {
@@ -60,10 +65,12 @@ export function resolveSiteDeploymentConfig(
   const apiOrigin = httpsOrigin(
     env.PUBLIC_API_URL?.trim() || PRODUCTION_API_ORIGIN,
     "PUBLIC_API_URL",
+    allowLocal,
   );
   const appOrigin = httpsOrigin(
     env.PUBLIC_APP_URL?.trim() || PRODUCTION_APP_ORIGIN,
     "PUBLIC_APP_URL",
+    allowLocal,
   );
   if (production && apiOrigin !== PRODUCTION_API_ORIGIN) {
     throw new Error(`Production builds must use the production API at ${PRODUCTION_API_ORIGIN}.`);

@@ -39,6 +39,21 @@ describe("site deployment config", () => {
     ).toBe(false);
   });
 
+  it("accepts local http origins for the end-to-end suite but never in a Pages build", () => {
+    const local = {
+      ZOPTION_DEPLOY_ENV: "preview",
+      PUBLIC_API_URL: "http://localhost:8787",
+      PUBLIC_APP_URL: "http://localhost:5173",
+    };
+    expect(resolveSiteDeploymentConfig(local).appOrigin).toBe("http://localhost:5173");
+    expect(() => resolveSiteDeploymentConfig({ ...local, CF_PAGES: "1" })).toThrow(
+      /must use HTTPS/,
+    );
+    expect(() =>
+      resolveSiteDeploymentConfig({ ...local, PUBLIC_API_URL: "http://api.example" }),
+    ).toThrow(/must use HTTPS/);
+  });
+
   it("rejects production pointed anywhere but the production API and app", () => {
     expect(() =>
       resolveSiteDeploymentConfig({ PUBLIC_API_URL: "https://api-preview.example" }),

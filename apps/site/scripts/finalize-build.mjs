@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
+import { assertPublicStructuredDataGraph } from "./structured-data.mjs";
 import {
   createSiteContentSecurityPolicy,
   resolveSiteDeploymentConfig,
@@ -83,6 +84,12 @@ function headersFile(policy) {
   return `${rules.map(([path, lines]) => `${path}\n${lines.map((line) => `  ${line}`).join("\n")}`).join("\n\n")}\n`;
 }
 
+function structuredDataOf(html) {
+  return /<script id="zoption-structured-data" type="application\/ld\+json">([\s\S]*?)<\/script>/.exec(
+    html,
+  )?.[1];
+}
+
 function canonicalOf(html) {
   return /<link rel="canonical" href="([^"]+)"/.exec(html)?.[1];
 }
@@ -104,7 +111,14 @@ async function main() {
 
   if (!config.indexingEnabled) await rm(join(dist, "sitemap.xml"), { force: true });
 
-  // Every page llms.txt lists must exist and declare itself canonical.
+  const sitemap = config.indexingEnabled ? await readFile(join(dist, "sitemap.xml"), "utf8") : "";
+  const lastModified = new Map(
+    [...sitemap.matchAll(/<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>/g)].map(
+      ([, url, date]) => [url, date],
+    ),
+  );
+
+  // Every page llms.txt lists must exist, declare itself canonical, and carry a valid graph.
   const llms = await readFile(join(dist, "llms.txt"), "utf8");
   const listed = [...llms.matchAll(/\]\((https:\/\/zoption\.site[^)]*)\)/g)].map(([, url]) => url);
   if (listed.length === 0) failures.push("llms.txt lists no pages.");
@@ -112,16 +126,28 @@ async function main() {
     const path = new URL(url).pathname;
     const file = path === "/" ? "index.html" : `${path.slice(1)}.html`;
     const html = pages.get(file);
-    if (!html) failures.push(`${url} is listed in llms.txt but ${file} was not built.`);
-    else if (canonicalOf(html) !== url)
+    if (!html) {
+      failures.push(`${url} is listed in llms.txt but ${file} was not built.`);
+      continue;
+    }
+    if (canonicalOf(html) !== url) {
       failures.push(`${file} canonical is ${canonicalOf(html)}, not ${url}.`);
-    else if (!config.indexingEnabled && !html.includes('content="noindex,nofollow"')) {
+    }
+    if (!config.indexingEnabled && !html.includes('content="noindex,nofollow"')) {
       failures.push(`${file} is indexable in a ${config.deployEnvironment} build.`);
+    }
+    try {
+      assertPublicStructuredDataGraph(JSON.parse(structuredDataOf(html) ?? "null"), {
+        path,
+        canonical: url,
+        dateModified: lastModified.get(url),
+      });
+    } catch (error) {
+      failures.push(`${file}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   if (config.indexingEnabled) {
-    const sitemap = await readFile(join(dist, "sitemap.xml"), "utf8");
     const locs = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map(([, url]) => url);
     const normalized = listed.map((url) => url.replace(/\/$/, ""));
     if (locs.join("\n") !== normalized.join("\n")) {

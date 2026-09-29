@@ -42,7 +42,7 @@ function environment({
     ],
     vars: {
       ALLOWED_ORIGINS: production
-        ? "https://zoption.site,https://www.zoption.site"
+        ? "https://zoption.site,https://www.zoption.site,https://app.zoption.site"
         : "https://preview.example.pages.dev",
       SUPABASE_URL: `https://${project}.supabase.co`,
       SUPABASE_PUBLISHABLE_KEY: key,
@@ -279,6 +279,15 @@ describe("Wrangler deployment config validation", () => {
     });
     expect(() => validateWranglerDeploymentConfig(wrongEnvironment)).toThrow(
       "preview POSTHOG_AI_ENVIRONMENT must be preview",
+    );
+  });
+
+  it("requires the app and both public site origins in production", () => {
+    const missingApp = validConfig();
+    missingApp.env.production.vars.ALLOWED_ORIGINS =
+      "https://zoption.site,https://www.zoption.site";
+    expect(() => validateWranglerDeploymentConfig(missingApp)).toThrow(
+      "production ALLOWED_ORIGINS must contain only the three production web origins",
     );
   });
 

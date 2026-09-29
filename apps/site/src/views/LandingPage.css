@@ -234,26 +234,6 @@
 /* ============================================================
    Account Deletion Notice
    ============================================================ */
-.account-deletion-notice {
-  width: min(1160px, calc(100% - 48px));
-  margin: 24px auto -20px;
-  padding: 16px 20px;
-  display: grid;
-  gap: 4px;
-  color: var(--lp-accent-strong);
-  border: 1px solid var(--lp-border);
-  border-radius: 14px;
-  background: var(--lp-accent-soft);
-  font-size: 13px;
-  line-height: 1.55;
-  box-shadow: var(--lp-shadow-sm);
-}
-
-.account-deletion-notice strong {
-  color: var(--lp-fg);
-  font-size: 14px;
-}
-
 /* ============================================================
    Hero Section
    ============================================================ */

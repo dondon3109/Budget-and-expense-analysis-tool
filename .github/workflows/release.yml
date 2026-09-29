@@ -260,6 +260,34 @@ jobs:
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The public site reads the published reviews from the API deployed above, so it builds
+      # after the Worker. It uses the same PostHog project key as the app.
+      - name: Build versioned production public site
+        if: steps.deployment.outputs.site_deployed != 'true'
+        run: pnpm --filter @zoption/site build
+        env:
+          CF_PAGES: "1"
+          ZOPTION_DEPLOY_ENV: production
+          ZOPTION_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          PUBLIC_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+      # Deployed from apps/site so wrangler compiles its functions/ directory (the /ingest proxy).
+      - name: Deploy production public site
+        if: steps.deployment.outputs.site_deployed != 'true'
+        working-directory: apps/site
+        run: >-
+          ../api/node_modules/.bin/wrangler pages deploy dist
+          --project-name=zoption-site --branch=main
+          --commit-hash="${{ github.event.workflow_run.head_sha }}"
+          --commit-message="Release v${{ needs.preflight.outputs.version }}"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Checkpoint production public site deployment
+        if: steps.deployment.outputs.site_deployed != 'true'
+        run: node scripts/github-production-deployment.mjs stage site
+        env:
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Wait for production Pages propagation
         if: steps.deployment.outputs.skip_deploy != 'true'
         run: node scripts/wait-for-production-release.mjs

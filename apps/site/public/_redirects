@@ -5,3 +5,23 @@
 /pricing/ /pricing 301
 /install/ /install 301
 /changelog/ /changelog 301
+
+# The signed-in app moved to app.zoption.site. Pages keeps the query string on a
+# redirect, so an in-flight ?code= sign-in callback still completes there.
+# Static rules stay above the splat rules, which Pages matches more slowly.
+/login https://app.zoption.site/login 301
+/signup https://app.zoption.site/signup 301
+/forgot-password https://app.zoption.site/forgot-password 301
+/update-password https://app.zoption.site/update-password 301
+/app https://app.zoption.site/app 301
+/thank-you https://app.zoption.site/thank-you 301
+/dashboard https://app.zoption.site/app 301
+/assistant https://app.zoption.site/app/assistant 301
+/accounts https://app.zoption.site/app 301
+/calendar https://app.zoption.site/app/calendar 301
+/transactions https://app.zoption.site/app/transactions 301
+/budgets https://app.zoption.site/app/budgets 301
+/subscriptions https://app.zoption.site/app/subscriptions 301
+/auth/* https://app.zoption.site/auth/:splat 301
+/app/* https://app.zoption.site/app/:splat 301
+/shared/budget/* https://app.zoption.site/shared/budget/:splat 301

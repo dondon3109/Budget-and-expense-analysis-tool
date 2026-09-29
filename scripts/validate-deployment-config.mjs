@@ -43,7 +43,12 @@ const secretVariableNames = [
   "OPS_EGRESS_TOKEN",
   "GITHUB_BUGFIX_DISPATCH_TOKEN",
 ];
-const productionWebOrigins = ["https://www.zoption.site", "https://zoption.site"];
+// The app, plus the public site (which calls the public reviews and support chat routes).
+const productionWebOrigins = [
+  "https://app.zoption.site",
+  "https://www.zoption.site",
+  "https://zoption.site",
+];
 
 /** Dodo Payments is optional: checkout answers billing_not_configured until all three are set. */
 function validateDodoConfig(vars, environment) {
@@ -341,7 +346,7 @@ function validateEnvironment(environment, config) {
     const actualOrigins = [...allowedOrigins].sort();
     if (JSON.stringify(actualOrigins) !== JSON.stringify(productionWebOrigins)) {
       throw new Error(
-        "production ALLOWED_ORIGINS must contain only the two production web origins.",
+        "production ALLOWED_ORIGINS must contain only the three production web origins.",
       );
     }
     const routes = Array.isArray(config.routes) ? config.routes : [];
