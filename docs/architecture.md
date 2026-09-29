@@ -20,7 +20,7 @@ The public landing page contains a static dashboard illustration only. It does n
 
 ## Other engineering decisions
 
-- Currency is Philippine pesos (`PHP`) stored as integer centavos.
+- Money is stored as integer minor units (centavos or cents). Each workspace has a currency, `PHP` (default) or `USD`, stored on `tenants.currency`. It labels every amount without its own currency (budgets, goals, debts, plans, subscriptions, dashboard totals), is the base the cashflow trend converts the other currency into with the daily `fx_rates` rate, and is the currency new accounts start in. Changing it never converts or rewrites a stored amount. Transactions keep their own `currency`. The remittance calculator sends from the workspace currency: pesos abroad from `PHP`, a foreign currency home from `USD`.
 - Dashboard calculations are pure and shared between API tests and UI contracts.
 - CSV/XLS/XLSX import is preview-first. Excel bytes stay in a browser Web Worker; the API receives canonical CSV, an explicit header row, and editable column mappings.
 - Import normalization accepts signed Amount or Debit/Credit columns and canonicalizes ISO or U.S. slash dates before fingerprinting.
@@ -72,6 +72,7 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `GET/POST/PATCH /api/app/categories/*` — category management.
 - `POST /api/app/imports/preview` and `POST /api/app/imports/commit` — tenant-scoped CSV/Excel-derived preview and atomic commit with validated category overrides.
 - `GET/PUT /api/app/budgets` — monthly budget plans.
+- `GET/PUT /api/app/settings` — the workspace currency (`{ currency: "PHP" | "USD" }`).
 - `GET /api/app/exports/transactions.csv` — tenant-scoped CSV export.
 
 Also mounted in `apps/api/src/app.ts`, each documented in its own runbook:

@@ -80,6 +80,11 @@ describe("account balance calculations", () => {
       overallBalanceMinor: 100_000,
       balancesByCurrency: { PHP: 100_000, USD: 50_000 },
     });
+    expect(summarizeAccountBalances(accounts, "USD")).toMatchObject({
+      currency: "USD",
+      overallBalanceMinor: 50_000,
+      balancesByCurrency: { PHP: 100_000, USD: 50_000 },
+    });
   });
 });
 

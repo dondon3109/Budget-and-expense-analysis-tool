@@ -1,4 +1,5 @@
 import {
+  currencyMetadata,
   formatMinorAmount,
   parseAmountToMinor,
   type BudgetMonthPlan,
@@ -25,8 +26,10 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { useBudgets } from "../queries/budgets";
 import "./BudgetsPage.css";
+import { useWorkspaceCurrency } from "../lib/workspaceCurrency";
 
 export function BudgetsPage() {
+  const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
@@ -339,7 +342,7 @@ export function BudgetsPage() {
                           <label className="budget-amount-input">
                             <span>Monthly limit</span>
                             <div>
-                              <b>₱</b>
+                              <b>{currencySymbol}</b>
                               <input
                                 inputMode="decimal"
                                 value={drafts[item.categoryId] ?? ""}

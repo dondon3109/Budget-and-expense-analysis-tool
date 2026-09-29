@@ -56,8 +56,10 @@ function buildRecurringExpenses(transactions: readonly TransactionRecord[]) {
     .slice(0, 3);
 }
 
+/** The overall balance is the workspace-currency total; the other currency stays in `balancesByCurrency`. */
 export function summarizeAccountBalances(
   accounts: readonly AccountRecord[],
+  currency: Currency = "PHP",
 ): AccountBalanceSummary {
   const items = accounts.map((account) => {
     const balanceMinor = account.balanceMinor ?? 0;
@@ -85,8 +87,8 @@ export function summarizeAccountBalances(
   }
 
   return {
-    currency: "PHP",
-    overallBalanceMinor: balancesByCurrency.PHP,
+    currency,
+    overallBalanceMinor: balancesByCurrency[currency],
     balancesByCurrency,
     items,
   };
@@ -201,7 +203,7 @@ export interface CashflowDayTotals {
 
 /**
  * Builds the same trend as buildCashflowTrend from per-day SQL aggregates. The
- * totals must already exclude transfers and be normalized to a PHP base.
+ * totals must already exclude transfers and be normalized to the workspace currency.
  */
 export function buildCashflowTrendFromDayTotals(
   totals: readonly CashflowDayTotals[],
@@ -296,7 +298,7 @@ export function buildDashboardSummary(
 
   return {
     period,
-    currency: "PHP",
+    currency: accountBalances.currency,
     accountBalances,
     metrics: {
       moneyInMinor,

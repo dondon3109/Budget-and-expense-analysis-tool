@@ -11,6 +11,7 @@ import {
   type ForecastRecurringIncome,
 } from "@zoption/shared";
 import { Card, MoneyValue } from "@/ui/components";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
@@ -30,10 +31,12 @@ export function SafeToSpendHero({
   recurringIncomes,
   remainingBudgetMinor,
   safetyBufferMinor = 0,
-  currency = "PHP",
+  currency: currencyProp,
   onViewRenewals,
 }: SafeToSpendHeroProps) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
+  const currency = currencyProp ?? workspaceCurrency;
   const daysLeftInWeek = useMemo(() => getDaysLeftInWeek(new Date(), "monday"), []);
 
   // 30-day forecast projection to identify safe liquidity limits

@@ -4,6 +4,7 @@ import { Dimensions, StyleSheet, Text, View, type LayoutChangeEvent } from "reac
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Svg, { Circle, Line, Path, Text as SvgText } from "react-native-svg";
 
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { MoneyValue } from "./MoneyValue";
@@ -39,6 +40,7 @@ interface CashflowChartProps {
  */
 export function CashflowChart({ cashflow }: CashflowChartProps) {
   const theme = useZoptionTheme();
+  const currency = useWorkspaceCurrency();
   const [width, setWidth] = useState(() =>
     Math.max(0, Dimensions.get("window").width - spacing.md * 4),
   );
@@ -155,7 +157,7 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
         <View
           accessible
           accessibilityRole="image"
-          accessibilityLabel={chartSummaryLabel(cashflow)}
+          accessibilityLabel={chartSummaryLabel(cashflow, currency)}
           collapsable={false}
         >
           <Svg width={width} height={CHART_HEIGHT}>
@@ -182,7 +184,7 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
                 fill={theme.colors.textMuted}
                 textAnchor="end"
               >
-                {formatAxisTick(tick)}
+                {formatAxisTick(tick, currency)}
               </SvgText>
             ))}
             {width > 0 ? (

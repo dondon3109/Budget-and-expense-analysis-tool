@@ -19,6 +19,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { accounts, budgets, categories, transactions } from "../../../../db/schema";
 import { loadUsdToPhp } from "../fx/rates";
 import { accountRepository } from "./accounts";
+import { loadWorkspaceCurrency } from "./workspace-settings";
 import type { Bindings } from "../types";
 
 function sixMonthWindowStart(to: string): string {
@@ -33,12 +34,16 @@ export async function loadCashflowTrend(
   query: { view: CashflowTrendView; anchorDate: string },
 ): Promise<CashflowTrend> {
   const preview = buildCashflowTrend([], query.view, query.anchorDate);
-  // Aggregate per day in SQL and convert USD subtotals to a PHP base with the
-  // stored daily rate. FLOOR(x + 0.5) mirrors Math.round exactly in IEEE
-  // doubles, keeping per-row conversion identical to the JS implementation.
+  // Aggregate per day in SQL and convert the other currency's subtotals into the workspace
+  // currency with the stored daily rate. FLOOR(x + 0.5) mirrors Math.round exactly in IEEE
+  // doubles, keeping per-row conversion identical to the JS implementation. USD converts
+  // into whole pesos, as it always has; pesos convert into cents.
   // Transfers are excluded by buildCashflowTrendFromDayTotals' input contract.
   // A missing rate row falls back to the latest stored rate.
-  const usdToPhp = await loadUsdToPhp(env);
+  const [usdToPhp, workspaceCurrency] = await Promise.all([
+    loadUsdToPhp(env),
+    loadWorkspaceCurrency(env, tenantId),
+  ]);
   const totalsResult = await env.DB.prepare(
     `SELECT date,
               COALESCE(SUM(CASE WHEN kind = 'income' THEN convertedMinor ELSE 0 END), 0) AS incomeMinor,
@@ -46,16 +51,17 @@ export async function loadCashflowTrend(
        FROM (
          SELECT date,
                 kind,
-                CASE WHEN currency = 'USD'
+                CASE WHEN currency = ?5 THEN ABS(amount_minor)
+                     WHEN ?5 = 'PHP'
                      THEN ABS(CAST(FLOOR((amount_minor / 100.0) * ?1 + 0.5) AS INTEGER) * 100)
-                     ELSE ABS(amount_minor)
+                     ELSE ABS(CAST(FLOOR(amount_minor / ?1 + 0.5) AS INTEGER))
                 END AS convertedMinor
          FROM transactions
          WHERE tenant_id = ?2 AND kind != 'transfer' AND date >= ?3 AND date <= ?4
        )
        GROUP BY date`,
   )
-    .bind(usdToPhp, tenantId, preview.range.from, preview.range.to)
+    .bind(usdToPhp, tenantId, preview.range.from, preview.range.to, workspaceCurrency)
     .all<{ date: string; incomeMinor: number; expenseMinor: number }>();
 
   return buildCashflowTrendFromDayTotals(
@@ -105,55 +111,57 @@ export async function loadDashboard(
   const trendFrom = sixMonthWindowStart(period.to);
   const queryFrom = period.from < trendFrom ? period.from : trendFrom;
   const budgetMonth = `${period.from.slice(0, 7)}-01`;
-  const [transactionRows, budgetRows, accountRows, overallBalances] = await Promise.all([
-    db
-      .select({
-        id: transactions.id,
-        date: transactions.date,
-        description: transactions.description,
-        amountMinor: transactions.amountMinor,
-        currency: transactions.currency,
-        kind: transactions.kind,
-        categoryId: categories.id,
-        categoryName: categories.name,
-        categoryColor: categories.color,
-        categoryIconEmoji: categories.iconEmoji,
-        accountName: accounts.name,
-      })
-      .from(transactions)
-      .innerJoin(
-        categories,
-        and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
-      )
-      .leftJoin(
-        accounts,
-        and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
-      )
-      .where(
-        and(
-          eq(transactions.tenantId, tenantId),
-          ...(accountId ? [eq(transactions.accountId, accountId)] : []),
-          gte(transactions.date, queryFrom),
-          lte(transactions.date, period.to),
+  const [transactionRows, budgetRows, accountRows, overallBalances, workspaceCurrency] =
+    await Promise.all([
+      db
+        .select({
+          id: transactions.id,
+          date: transactions.date,
+          description: transactions.description,
+          amountMinor: transactions.amountMinor,
+          currency: transactions.currency,
+          kind: transactions.kind,
+          categoryId: categories.id,
+          categoryName: categories.name,
+          categoryColor: categories.color,
+          categoryIconEmoji: categories.iconEmoji,
+          accountName: accounts.name,
+        })
+        .from(transactions)
+        .innerJoin(
+          categories,
+          and(eq(transactions.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+        )
+        .leftJoin(
+          accounts,
+          and(eq(transactions.accountId, accounts.id), eq(accounts.tenantId, tenantId)),
+        )
+        .where(
+          and(
+            eq(transactions.tenantId, tenantId),
+            ...(accountId ? [eq(transactions.accountId, accountId)] : []),
+            gte(transactions.date, queryFrom),
+            lte(transactions.date, period.to),
+          ),
         ),
-      ),
-    db
-      .select({
-        categoryId: categories.id,
-        categoryName: categories.name,
-        categoryColor: categories.color,
-        month: budgets.month,
-        limitMinor: budgets.limitMinor,
-      })
-      .from(budgets)
-      .innerJoin(
-        categories,
-        and(eq(budgets.categoryId, categories.id), eq(categories.tenantId, tenantId)),
-      )
-      .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth))),
-    accountRepository.list(env, tenantId),
-    loadBalancesByCurrency(env, tenantId),
-  ]);
+      db
+        .select({
+          categoryId: categories.id,
+          categoryName: categories.name,
+          categoryColor: categories.color,
+          month: budgets.month,
+          limitMinor: budgets.limitMinor,
+        })
+        .from(budgets)
+        .innerJoin(
+          categories,
+          and(eq(budgets.categoryId, categories.id), eq(categories.tenantId, tenantId)),
+        )
+        .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth))),
+      accountRepository.list(env, tenantId),
+      loadBalancesByCurrency(env, tenantId),
+      loadWorkspaceCurrency(env, tenantId),
+    ]);
 
   const normalizedTransactions: TransactionRecord[] = transactionRows.map((row) => ({
     ...row,
@@ -161,11 +169,11 @@ export async function loadDashboard(
     accountName: row.accountName ?? "Unassigned",
   }));
 
-  const accountSummary = summarizeAccountBalances(accountRows);
+  const accountSummary = summarizeAccountBalances(accountRows, workspaceCurrency);
 
   return buildDashboardSummary(normalizedTransactions, budgetRows, period, {
     ...accountSummary,
-    overallBalanceMinor: overallBalances.PHP,
+    overallBalanceMinor: overallBalances[workspaceCurrency],
     balancesByCurrency: overallBalances,
   });
 }

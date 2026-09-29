@@ -26,6 +26,7 @@ import {
   Skeleton,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
 
@@ -358,12 +359,13 @@ function SubscriptionRow({
   onHowToCancel: () => void;
 }) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
   const conflicted = subscription.syncState === "conflicted";
   const failed = subscription.syncState === "failed";
   const isCanceled = subscription.status === "canceled";
   const isYearly = subscription.billingCycle === "yearly";
   const monthlyEquivalent = isYearly ? Math.round(subscription.amountMinor / 12) : null;
-  const currency = (account?.currency as Currency) ?? "PHP";
+  const currency = (account?.currency as Currency) ?? workspaceCurrency;
 
   return (
     <Pressable

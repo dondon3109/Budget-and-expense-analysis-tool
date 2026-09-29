@@ -1,3 +1,5 @@
+import type { Currency } from "./types";
+
 export type OfwCurrency = "USD" | "EUR" | "SGD" | "AED" | "SAR" | "JPY" | "CAD" | "GBP" | "AUD";
 
 export type RemittanceProvider = "mid_market" | "wise" | "remitly" | "western_union" | "bank_wire";
@@ -15,28 +17,54 @@ export interface ExchangeRateBenchmark {
   lastUpdated: string; // ISO date
 }
 
+/**
+ * Which way money moves across the peso border. `to_php` sends a foreign currency home to the
+ * Philippines; `from_php` sends pesos out. The workspace currency picks the direction: a
+ * PHP workspace sends pesos abroad, a USD workspace sends dollars home.
+ */
+export type RemittanceDirection = "to_php" | "from_php";
+
+export type RemittanceCurrency = OfwCurrency | "PHP";
+
+export function remittanceDirectionFor(workspaceCurrency: Currency): RemittanceDirection {
+  return workspaceCurrency === "PHP" ? "from_php" : "to_php";
+}
+
 export interface RemittanceCalculationOptions {
-  sendAmountMinor: number; // Amount in foreign currency minor units (e.g. 500.00 USD -> 50000)
-  fromCurrency: OfwCurrency;
-  toCurrency?: "PHP";
-  transferFeeMinor?: number; // In foreign currency minor units (default 0)
-  customExchangeRate?: number; // Optional user override for rate
+  /** In send-currency minor units (e.g. 500.00 USD -> 50000). */
+  sendAmountMinor: number;
+  /** The non-peso side of the corridor. */
+  foreignCurrency: OfwCurrency;
+  /** Defaults to `to_php`. */
+  direction?: RemittanceDirection;
+  /** In send-currency minor units (default 0). */
+  transferFeeMinor?: number;
+  /** Optional user override: receive-currency units per one send-currency unit. */
+  customExchangeRate?: number;
   provider?: RemittanceProvider;
 }
 
 export interface RemittanceCalculationResult {
   sendAmountMinor: number;
-  fromCurrency: OfwCurrency;
-  toCurrency: "PHP";
+  sendCurrency: RemittanceCurrency;
+  receiveCurrency: RemittanceCurrency;
+  /** Receive-currency units per one send-currency unit, after the provider spread. */
   effectiveRate: number;
   midMarketRate: number;
-  grossConvertedPhpMinor: number; // Converted at mid-market
-  netPhpReceivedMinor: number; // Converted at effective rate (deducting spread)
-  transferFeeMinor: number; // Foreign currency fee
-  transferFeeInPhpMinor: number; // Fee converted to PHP
-  spreadLossPhpMinor: number; // Money lost to FX markup
-  totalCostInPhpMinor: number; // transferFeeInPhpMinor + spreadLossPhpMinor
-  effectiveLossPercent: number; // (totalCost / grossConverted) * 100
+  /** Converted at mid-market, in receive-currency minor units. */
+  grossConvertedMinor: number;
+  /** Converted at the effective rate (after the spread), in receive-currency minor units. */
+  netReceivedMinor: number;
+  /** In send-currency minor units. */
+  transferFeeMinor: number;
+  /** The fee converted at mid-market, in receive-currency minor units. */
+  transferFeeConvertedMinor: number;
+  /** Money lost to FX markup, in receive-currency minor units. */
+  spreadLossMinor: number;
+  /** transferFeeConvertedMinor + spreadLossMinor. */
+  totalCostMinor: number;
+  /** (totalCost / grossConverted) * 100 */
+  effectiveLossPercent: number;
 }
 
 export interface DualCurrencyBalance {
@@ -181,55 +209,65 @@ function roundRate(rate: number): number {
   return Math.round(rate * 1_000_000) / 1_000_000;
 }
 
+/**
+ * Mid-market receive units per one send unit. The benchmarks are quoted as pesos per foreign
+ * unit, so sending pesos out reads the inverse.
+ */
+export function remittanceMidMarketRate(
+  foreignCurrency: OfwCurrency,
+  direction: RemittanceDirection = "to_php",
+): number {
+  const benchmark = DEFAULT_OFW_EXCHANGE_RATES[foreignCurrency];
+  const pesosPerForeignUnit = benchmark ? benchmark.midMarketRate : 1;
+  return direction === "to_php" ? pesosPerForeignUnit : roundRate(1 / pesosPerForeignUnit);
+}
+
+function providerSpread(benchmark: ExchangeRateBenchmark, provider: RemittanceProvider): number {
+  if (provider === "wise") return benchmark.providerSpreadEstimates.wise;
+  if (provider === "remitly") return benchmark.providerSpreadEstimates.remitly;
+  if (provider === "western_union") return benchmark.providerSpreadEstimates.westernUnion;
+  if (provider === "bank_wire") return benchmark.providerSpreadEstimates.bankWire;
+  return 0;
+}
+
 export function calculateRemittance(
   options: RemittanceCalculationOptions,
 ): RemittanceCalculationResult {
-  const benchmark = DEFAULT_OFW_EXCHANGE_RATES[options.fromCurrency];
-  const midMarketRate = benchmark ? benchmark.midMarketRate : 1;
+  const direction = options.direction ?? "to_php";
+  const benchmark = DEFAULT_OFW_EXCHANGE_RATES[options.foreignCurrency];
+  const midMarketRate = remittanceMidMarketRate(options.foreignCurrency, direction);
   const provider = options.provider ?? "mid_market";
 
   let effectiveRate = options.customExchangeRate ?? midMarketRate;
-  if (options.customExchangeRate == null && benchmark) {
-    if (provider === "wise") {
-      effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.wise));
-    } else if (provider === "remitly") {
-      effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.remitly));
-    } else if (provider === "western_union") {
-      effectiveRate = roundRate(
-        midMarketRate * (1 - benchmark.providerSpreadEstimates.westernUnion),
-      );
-    } else if (provider === "bank_wire") {
-      effectiveRate = roundRate(midMarketRate * (1 - benchmark.providerSpreadEstimates.bankWire));
-    } else {
-      effectiveRate = midMarketRate;
-    }
+  if (options.customExchangeRate == null && benchmark && provider !== "mid_market") {
+    effectiveRate = roundRate(midMarketRate * (1 - providerSpread(benchmark, provider)));
   }
 
   const sendAmountMinor = Math.max(0, options.sendAmountMinor);
   const transferFeeMinor = Math.max(0, options.transferFeeMinor ?? 0);
 
-  const grossConvertedPhpMinor = Math.round(sendAmountMinor * midMarketRate);
-  const netPhpReceivedMinor = Math.round(sendAmountMinor * effectiveRate);
-  const transferFeeInPhpMinor = Math.round(transferFeeMinor * midMarketRate);
-  const spreadLossPhpMinor = Math.max(0, grossConvertedPhpMinor - netPhpReceivedMinor);
-  const totalCostInPhpMinor = transferFeeInPhpMinor + spreadLossPhpMinor;
+  const grossConvertedMinor = Math.round(sendAmountMinor * midMarketRate);
+  const netReceivedMinor = Math.round(sendAmountMinor * effectiveRate);
+  const transferFeeConvertedMinor = Math.round(transferFeeMinor * midMarketRate);
+  const spreadLossMinor = Math.max(0, grossConvertedMinor - netReceivedMinor);
+  const totalCostMinor = transferFeeConvertedMinor + spreadLossMinor;
   const effectiveLossPercent =
-    grossConvertedPhpMinor > 0
-      ? Math.round((totalCostInPhpMinor / grossConvertedPhpMinor) * 100 * 100) / 100
+    grossConvertedMinor > 0
+      ? Math.round((totalCostMinor / grossConvertedMinor) * 100 * 100) / 100
       : 0;
 
   return {
     sendAmountMinor: options.sendAmountMinor,
-    fromCurrency: options.fromCurrency,
-    toCurrency: "PHP",
+    sendCurrency: direction === "to_php" ? options.foreignCurrency : "PHP",
+    receiveCurrency: direction === "to_php" ? "PHP" : options.foreignCurrency,
     effectiveRate,
     midMarketRate,
-    grossConvertedPhpMinor,
-    netPhpReceivedMinor,
+    grossConvertedMinor,
+    netReceivedMinor,
     transferFeeMinor,
-    transferFeeInPhpMinor,
-    spreadLossPhpMinor,
-    totalCostInPhpMinor,
+    transferFeeConvertedMinor,
+    spreadLossMinor,
+    totalCostMinor,
     effectiveLossPercent,
   };
 }
@@ -253,7 +291,8 @@ export function calculateDualCurrencyBalance(
 
 export function compareRemittanceProviders(
   sendAmountMinor: number,
-  fromCurrency: OfwCurrency,
+  foreignCurrency: OfwCurrency,
+  direction: RemittanceDirection = "to_php",
 ): Record<string, RemittanceCalculationResult> {
   const providers: RemittanceProvider[] = [
     "mid_market",
@@ -267,7 +306,8 @@ export function compareRemittanceProviders(
   for (const provider of providers) {
     results[provider] = calculateRemittance({
       sendAmountMinor,
-      fromCurrency,
+      foreignCurrency,
+      direction,
       provider,
     });
   }

@@ -5,10 +5,62 @@ import {
   compareRemittanceProviders,
   DEFAULT_OFW_EXCHANGE_RATES,
 } from "@zoption/shared";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { formatMoneyMinor } from "@/ui/components/MoneyValue";
 import { RemittanceCalculatorCard } from "./RemittanceCalculatorCard";
 
-describe("RemittanceCalculatorCard", () => {
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+  deleteItemAsync: jest.fn(async () => undefined),
+}));
+
+describe("RemittanceCalculatorCard sending pesos out (PHP workspace)", () => {
+  beforeEach(() => useWorkspaceCurrencyStore.setState({ currency: "PHP" }));
+
+  it("sends PHP and shows the chosen foreign currency as the result", async () => {
+    await render(<RemittanceCalculatorCard />);
+
+    expect(screen.getByText("PHP → USD")).toBeTruthy();
+    expect(screen.getByLabelText("Send amount (PHP)")).toBeTruthy();
+    expect(screen.getByLabelText("Transfer fee (PHP)")).toBeTruthy();
+    expect(screen.getByLabelText("Destination currency")).toBeTruthy();
+
+    const expected = calculateRemittance({
+      sendAmountMinor: 50000,
+      foreignCurrency: "USD",
+      direction: "from_php",
+      provider: "wise",
+      transferFeeMinor: 0,
+    });
+    expect(expected.receiveCurrency).toBe("USD");
+    expect(screen.getAllByText(formatMoneyMinor(expected.netReceivedMinor, "USD"))[0]).toBeTruthy();
+    expect(
+      screen.getByText(`Effective rate: 1 PHP = ${expected.effectiveRate.toFixed(6)} USD`),
+    ).toBeTruthy();
+  });
+
+  it("formats results in a non-USD destination currency", async () => {
+    await render(<RemittanceCalculatorCard />);
+
+    await fireEvent.press(screen.getByRole("tab", { name: "AED, UAE Dirham" }));
+
+    expect(screen.getByText("PHP → AED")).toBeTruthy();
+    const expected = calculateRemittance({
+      sendAmountMinor: 50000,
+      foreignCurrency: "AED",
+      direction: "from_php",
+      provider: "wise",
+    });
+    expect(expected.receiveCurrency).toBe("AED");
+    expect(screen.getAllByText(/AED/).length).toBeGreaterThan(0);
+  });
+});
+
+describe("RemittanceCalculatorCard sending home (USD workspace)", () => {
+  beforeEach(() => useWorkspaceCurrencyStore.setState({ currency: "USD" }));
+  afterEach(() => useWorkspaceCurrencyStore.setState({ currency: "PHP" }));
+
   it("renders the dual-currency route with the mid-market benchmark and default net PHP", async () => {
     await render(<RemittanceCalculatorCard />);
 
@@ -21,13 +73,11 @@ describe("RemittanceCalculatorCard", () => {
 
     const expected = calculateRemittance({
       sendAmountMinor: 50000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "wise",
       transferFeeMinor: 0,
     });
-    expect(
-      screen.getAllByText(formatMoneyMinor(expected.netPhpReceivedMinor, "PHP"))[0],
-    ).toBeTruthy();
+    expect(screen.getAllByText(formatMoneyMinor(expected.netReceivedMinor, "PHP"))[0]).toBeTruthy();
     expect(
       screen.getByText(`Effective rate: 1 USD = ₱${expected.effectiveRate.toFixed(4)}`),
     ).toBeTruthy();
@@ -40,13 +90,11 @@ describe("RemittanceCalculatorCard", () => {
 
     const expected = calculateRemittance({
       sendAmountMinor: 100000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "wise",
       transferFeeMinor: 0,
     });
-    expect(
-      screen.getAllByText(formatMoneyMinor(expected.netPhpReceivedMinor, "PHP"))[0],
-    ).toBeTruthy();
+    expect(screen.getAllByText(formatMoneyMinor(expected.netReceivedMinor, "PHP"))[0]).toBeTruthy();
   });
 
   it("shows the transfer fee breakdown converted to PHP with spread loss", async () => {
@@ -56,16 +104,14 @@ describe("RemittanceCalculatorCard", () => {
 
     const expected = calculateRemittance({
       sendAmountMinor: 50000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "wise",
       transferFeeMinor: 500,
     });
     expect(
-      screen.getByText(`−${formatMoneyMinor(expected.transferFeeInPhpMinor, "PHP")}`),
+      screen.getByText(`−${formatMoneyMinor(expected.transferFeeConvertedMinor, "PHP")}`),
     ).toBeTruthy();
-    expect(
-      screen.getByText(`−${formatMoneyMinor(expected.spreadLossPhpMinor, "PHP")}`),
-    ).toBeTruthy();
+    expect(screen.getByText(`−${formatMoneyMinor(expected.spreadLossMinor, "PHP")}`)).toBeTruthy();
     expect(
       screen.getByText(`Total cost · ${expected.effectiveLossPercent.toFixed(2)}% drag`),
     ).toBeTruthy();
@@ -78,13 +124,11 @@ describe("RemittanceCalculatorCard", () => {
 
     const expected = calculateRemittance({
       sendAmountMinor: 50000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "remitly",
       transferFeeMinor: 0,
     });
-    expect(
-      screen.getAllByText(formatMoneyMinor(expected.netPhpReceivedMinor, "PHP"))[0],
-    ).toBeTruthy();
+    expect(screen.getAllByText(formatMoneyMinor(expected.netReceivedMinor, "PHP"))[0]).toBeTruthy();
     expect(
       screen.getByText(`Effective rate: 1 USD = ₱${expected.effectiveRate.toFixed(4)}`),
     ).toBeTruthy();
@@ -104,11 +148,11 @@ describe("RemittanceCalculatorCard", () => {
       const entry = comparison[provider];
       expect(entry).toBeDefined();
       expect(
-        screen.getAllByText(formatMoneyMinor(entry!.netPhpReceivedMinor, "PHP")).length,
+        screen.getAllByText(formatMoneyMinor(entry!.netReceivedMinor, "PHP")).length,
       ).toBeGreaterThan(0);
       expect(
         screen.getByLabelText(
-          `${labels[provider]}: net ${formatMoneyMinor(entry!.netPhpReceivedMinor, "PHP")}${provider === "wise" ? ", best value" : ""}`,
+          `${labels[provider]}: net ${formatMoneyMinor(entry!.netReceivedMinor, "PHP")}${provider === "wise" ? ", best value" : ""}`,
         ),
       ).toBeTruthy();
     }
@@ -126,12 +170,10 @@ describe("RemittanceCalculatorCard", () => {
     expect(screen.getByText("AED → PHP")).toBeTruthy();
     const expected = calculateRemittance({
       sendAmountMinor: 50000,
-      fromCurrency: "AED",
+      foreignCurrency: "AED",
       provider: "wise",
       transferFeeMinor: 0,
     });
-    expect(
-      screen.getAllByText(formatMoneyMinor(expected.netPhpReceivedMinor, "PHP"))[0],
-    ).toBeTruthy();
+    expect(screen.getAllByText(formatMoneyMinor(expected.netReceivedMinor, "PHP"))[0]).toBeTruthy();
   });
 });

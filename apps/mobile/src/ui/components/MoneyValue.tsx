@@ -2,6 +2,7 @@ import { Text, type TextProps } from "react-native";
 
 import { currencyMetadata, type Currency } from "@zoption/shared";
 import { typography } from "@/ui/tokens";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 export function formatMoneyMinor(amountMinor: number, currency: Currency): string {
@@ -24,6 +25,7 @@ export function moneyAccessibilityLabel(amountMinor: number, currency: Currency)
   return `${amountMinor < 0 ? "negative " : ""}${formatted} ${unit}`;
 }
 
+/** Without `currency` the amount is labeled in the workspace currency. */
 interface MoneyValueProps extends TextProps {
   amountMinor: number;
   currency?: Currency;
@@ -32,12 +34,14 @@ interface MoneyValueProps extends TextProps {
 
 export function MoneyValue({
   amountMinor,
-  currency = "PHP",
+  currency,
   tone = "default",
   style,
   ...props
 }: MoneyValueProps) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
+  const resolvedCurrency = currency ?? workspaceCurrency;
   const color =
     tone === "income"
       ? theme.colors.income
@@ -46,11 +50,11 @@ export function MoneyValue({
         : theme.colors.text;
   return (
     <Text
-      accessibilityLabel={moneyAccessibilityLabel(amountMinor, currency)}
+      accessibilityLabel={moneyAccessibilityLabel(amountMinor, resolvedCurrency)}
       style={[typography.money, { color }, style]}
       {...props}
     >
-      {formatMoneyMinor(amountMinor, currency)}
+      {formatMoneyMinor(amountMinor, resolvedCurrency)}
     </Text>
   );
 }

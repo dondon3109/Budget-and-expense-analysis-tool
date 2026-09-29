@@ -1,3 +1,4 @@
+import type { User } from "@supabase/supabase-js";
 import {
   Suspense,
   createContext,
@@ -13,6 +14,9 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { captureFunnelEvent } from "../../analytics/funnel";
 import { useAuth } from "../../auth/AuthProvider";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
+import { userWorkspace } from "../../lib/workspace";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
+import { useWorkspaceSettings } from "../../queries/settings";
 import { useInitialDashboardExperience } from "../dashboard/InitialDashboardExperienceProvider";
 
 import { FullPageLoadingStatus, type LoadingPhase } from "./FullPageLoadingStatus";
@@ -34,6 +38,12 @@ type RouteCommitReporterProps = {
   locationKey: string;
   onCommit: (locationKey: string) => void;
 };
+
+/** Loads the workspace currency so `formatMoney` and currency defaults follow the setting. */
+function WorkspaceSettingsLoader({ user }: { user: User }) {
+  useWorkspaceSettings(userWorkspace(user));
+  return null;
+}
 
 function RouteCommitReporter({ locationKey, onCommit }: RouteCommitReporterProps) {
   useEffect(() => {
@@ -57,6 +67,7 @@ export function PrivateAppStartupGate() {
   const [dashboardSettled, setDashboardSettled] = useState(false);
   const [safeguardUserId, setSafeguardUserId] = useState<string>();
   const safeguardRef = useRef<number>(undefined);
+  const currency = useWorkspaceCurrency();
 
   const startupActive = !hasCompletedInitialDashboardExperience;
   const isDashboardRoute = location.pathname === "/app" || location.pathname === "/app/";
@@ -124,7 +135,10 @@ export function PrivateAppStartupGate() {
               ) : null
             }
           >
-            <Outlet />
+            <WorkspaceSettingsLoader user={user} />
+            {/* Amounts without their own currency read the workspace currency when they format,
+                so a currency change remounts the page instead of leaving stale labels behind. */}
+            <Outlet key={currency} />
             <RouteCommitReporter locationKey={location.key} onCommit={handleRouteCommit} />
           </Suspense>
         )}

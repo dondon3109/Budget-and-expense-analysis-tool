@@ -1,4 +1,5 @@
 import {
+  currencyMetadata,
   debtInputSchema,
   debtUpdateSchema,
   formatMinorAmount,
@@ -15,6 +16,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 
 interface DebtFormProps {
   debt?: Debt;
@@ -25,6 +27,7 @@ interface DebtFormProps {
 }
 
 export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFormProps) {
+  const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
   const [name, setName] = useState(debt?.name ?? "");
   const [type, setType] = useState<DebtType>(debt?.type ?? "credit_card");
   const [balance, setBalance] = useState(debt ? formatMinorAmount(debt.balanceMinor) : "");
@@ -145,7 +148,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
             <label>
               <span>Current balance</span>
               <div className="money-input">
-                <b>₱</b>
+                <b>{currencySymbol}</b>
                 <input
                   aria-label="Current balance"
                   inputMode="decimal"
@@ -159,7 +162,7 @@ export function DebtForm({ debt, busy, serverError, onSubmit, onClose }: DebtFor
             <label>
               <span>Minimum monthly payment</span>
               <div className="money-input">
-                <b>₱</b>
+                <b>{currencySymbol}</b>
                 <input
                   aria-label="Minimum monthly payment"
                   inputMode="decimal"

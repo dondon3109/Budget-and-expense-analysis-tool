@@ -43,6 +43,10 @@ import { receiptRepository } from "./db/receipts";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
+import {
+  workspaceSettingsRepository,
+  type WorkspaceSettingsRepository,
+} from "./db/workspace-settings";
 import { createAiEntryService, type AiEntryService } from "./entry/ai-entry-service";
 import { createPlatformAdminService, type PlatformAdminService } from "./platform-admin";
 import { providerRegistry } from "./provider-registry";
@@ -64,6 +68,7 @@ export interface AppOptions {
   categories?: CategoryRepository;
   accounts?: AccountRepository;
   budgets?: BudgetRepository;
+  workspaceSettings?: WorkspaceSettingsRepository;
   billing?: BillingRepository;
   subscriptions?: SubscriptionRepository;
   events?: CalendarEventRepository;
@@ -108,6 +113,7 @@ export function createDependencies(overrides: AppOptions = {}) {
   const categoryStore = overrides.categories ?? categoryRepository;
   const accountStore = overrides.accounts ?? accountRepository;
   const budgetStore = overrides.budgets ?? budgetRepository;
+  const workspaceSettingsStore = overrides.workspaceSettings ?? workspaceSettingsRepository;
   const billingStore = overrides.billing ?? billingRepository;
   const subscriptionStore = overrides.subscriptions ?? subscriptionRepository;
   const eventStore = overrides.events ?? calendarEventRepository;
@@ -218,6 +224,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     categories: categoryStore,
     accounts: accountStore,
     budgets: budgetStore,
+    workspaceSettings: workspaceSettingsStore,
     billing: billingStore,
     subscriptions: subscriptionStore,
     events: eventStore,

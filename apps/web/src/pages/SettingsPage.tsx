@@ -3,6 +3,7 @@ import { useLocation, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { BillingSettings } from "../components/account/BillingSettings";
+import { CurrencySettings } from "../components/account/CurrencySettings";
 import { DangerZoneSettings } from "../components/account/DangerZoneSettings";
 import { DataPortabilitySettings } from "../components/account/DataPortabilitySettings";
 import { DefaultSpendingAccountSettings } from "../components/account/DefaultSpendingAccountSettings";
@@ -33,6 +34,7 @@ const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#contact": "contact",
   "#data-portability": "data-portability",
   "#default-spending-account": "default-spending-account",
+  "#workspace-currency": "workspace-currency",
   "#voice-language": "voice-language",
   "#voice-settings": "voice-language",
 };
@@ -89,6 +91,8 @@ export function SettingsPage() {
           <PasswordSettings hasPasswordIdentity={hasPasswordIdentity} />
 
           <VoiceLanguageSettings />
+
+          {user && <CurrencySettings workspace={userWorkspace(user)} />}
 
           {user && <DefaultSpendingAccountSettings workspace={userWorkspace(user)} />}
 

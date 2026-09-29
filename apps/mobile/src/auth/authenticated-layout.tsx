@@ -4,6 +4,7 @@ import { Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
+import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
@@ -51,6 +52,7 @@ function LocalWorkspaceGate({
   children,
 }: PropsWithChildren<{ identity: ReturnType<typeof useWorkerIdentity> }>) {
   const local = useLocalWorkspace();
+  useWorkspaceCurrencySync();
   const theme = useZoptionTheme();
   if (local.status === "opening") {
     return (

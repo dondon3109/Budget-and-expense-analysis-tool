@@ -1,4 +1,5 @@
 import {
+  currencyMetadata,
   formatMinorAmount,
   parseAmountToMinor,
   subscriptionInputSchema,
@@ -14,6 +15,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 
 interface SubscriptionFormProps {
   categories: CategoryRecord[];
@@ -51,6 +53,7 @@ export function SubscriptionForm({
   title,
   submitLabel,
 }: SubscriptionFormProps) {
+  const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
   const [name, setName] = useState(initial?.name ?? "");
   const [amount, setAmount] = useState(initial ? minorToInput(initial.amountMinor) : "");
   const [billingCycle, setBillingCycle] = useState<SubscriptionBillingCycle>(
@@ -173,7 +176,7 @@ export function SubscriptionForm({
             <label>
               <span>Amount</span>
               <div className="money-input">
-                <b>₱</b>
+                <b>{currencySymbol}</b>
                 <input
                   aria-label="Amount"
                   inputMode="decimal"

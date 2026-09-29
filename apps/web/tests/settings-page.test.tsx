@@ -40,6 +40,10 @@ vi.mock("../src/components/account/BillingSettings", () => ({
   ),
 }));
 
+vi.mock("../src/components/account/CurrencySettings", () => ({
+  CurrencySettings: () => null,
+}));
+
 vi.mock("../src/components/account/DefaultSpendingAccountSettings", () => ({
   DefaultSpendingAccountSettings: () => null,
 }));

@@ -1,4 +1,5 @@
 import {
+  currencyMetadata,
   financialGoalInputSchema,
   financialGoalUpdateSchema,
   formatMinorAmount,
@@ -14,6 +15,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 
 interface FinancialGoalFormProps {
   goal?: FinancialGoal;
@@ -30,6 +32,7 @@ export function FinancialGoalForm({
   onSubmit,
   onClose,
 }: FinancialGoalFormProps) {
+  const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
   const [name, setName] = useState(goal?.name ?? "");
   const [targetAmount, setTargetAmount] = useState(
     goal ? formatMinorAmount(goal.targetAmountMinor) : "",
@@ -125,7 +128,7 @@ export function FinancialGoalForm({
             <label>
               <span>Target amount</span>
               <div className="money-input">
-                <b>₱</b>
+                <b>{currencySymbol}</b>
                 <input
                   aria-label="Target amount"
                   inputMode="decimal"
@@ -139,7 +142,7 @@ export function FinancialGoalForm({
             <label>
               <span>Saved so far</span>
               <div className="money-input">
-                <b>₱</b>
+                <b>{currencySymbol}</b>
                 <input
                   aria-label="Saved so far"
                   inputMode="decimal"

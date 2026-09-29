@@ -21,6 +21,7 @@ import { useDefaultSpendingAccountStore } from "@/stores/default-spending-accoun
 import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, ErrorState, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { KindSelector } from "@/features/transactions/KindSelector";
@@ -179,7 +180,7 @@ function TransactionConfirm({
         date,
         description: resolvedDescription.trim(),
         amountMinor,
-        currency: account?.currency ?? "PHP",
+        currency: account?.currency ?? useWorkspaceCurrencyStore.getState().currency,
       });
       if (!parsed.success || !resolvedAccountId || !resolvedCategoryId) {
         setMessage("Check the highlighted details before saving.");

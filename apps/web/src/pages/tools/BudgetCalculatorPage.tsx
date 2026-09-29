@@ -140,9 +140,9 @@ export function BudgetCalculatorPage() {
           ? BUCKET_COPY.map((bucket) => (
               <article className="calc-result" key={bucket.key}>
                 <h2 className="calc-result-label">{bucket.label}</h2>
-                <p className="calc-result-amount">{formatMoney(allocation[bucket.key])}</p>
+                <p className="calc-result-amount">{formatMoney(allocation[bucket.key], "PHP")}</p>
                 <p className="calc-result-pct">
-                  {percentages[bucket.key]}% of {formatMoney(allocation.total)}
+                  {percentages[bucket.key]}% of {formatMoney(allocation.total, "PHP")}
                 </p>
                 <p className="calc-result-blurb">{bucket.blurb}</p>
               </article>
@@ -152,9 +152,9 @@ export function BudgetCalculatorPage() {
 
       {allocation ? (
         <p className="calc-exact">
-          These three amounts add up to exactly {formatMoney(allocation.total)}. Nothing is lost to
-          rounding: every centavo is assigned, so the split always reconciles with the number you
-          typed.
+          These three amounts add up to exactly {formatMoney(allocation.total, "PHP")}. Nothing is
+          lost to rounding: every centavo is assigned, so the split always reconciles with the
+          number you typed.
         </p>
       ) : null}
 
@@ -173,10 +173,10 @@ export function BudgetCalculatorPage() {
             const example = allocateBudget(incomeMinor, DEFAULT_PERCENTAGES);
             return (
               <tr key={incomeMinor}>
-                <th scope="row">{formatMoney(incomeMinor)}</th>
-                <td>{formatMoney(example.needs)}</td>
-                <td>{formatMoney(example.wants)}</td>
-                <td>{formatMoney(example.savings)}</td>
+                <th scope="row">{formatMoney(incomeMinor, "PHP")}</th>
+                <td>{formatMoney(example.needs, "PHP")}</td>
+                <td>{formatMoney(example.wants, "PHP")}</td>
+                <td>{formatMoney(example.savings, "PHP")}</td>
               </tr>
             );
           })}

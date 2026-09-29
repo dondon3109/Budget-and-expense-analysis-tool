@@ -18,6 +18,7 @@ import {
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { invalidateAfterAccountWrite } from "../../queries/accounts";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 
 interface AccountOptimisticContext {
   accountSnapshot: OptimisticCacheSnapshot;
@@ -97,7 +98,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
       const account: AccountRecord = {
         ...input,
         id,
-        currency: "PHP",
+        currency: workspaceCurrency(),
         balanceMinor: 0,
         balancesByCurrency: { PHP: 0, USD: 0 },
         archived: false,

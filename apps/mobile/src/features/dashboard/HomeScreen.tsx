@@ -22,6 +22,7 @@ import { QuickActionBar } from "./QuickActionBar";
 import { QuickStartGuideCard } from "./QuickStartGuideCard";
 import { RecentActivityCard } from "./RecentActivityCard";
 import { SafeToSpendHero } from "./SafeToSpendHero";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { SpendingByCategory } from "./SpendingByCategory";
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
@@ -39,10 +40,14 @@ export function HomeScreen() {
   const subscriptions = useSubscriptions();
   const sync = useSyncState();
   const planState = usePlan();
+  const workspaceCurrency = useWorkspaceCurrency();
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
-    () => (dashboard.data ? buildDashboardView(dashboard.data, today, cashflowView) : null),
-    [dashboard.data, today, cashflowView],
+    () =>
+      dashboard.data
+        ? buildDashboardView(dashboard.data, today, cashflowView, workspaceCurrency)
+        : null,
+    [dashboard.data, today, cashflowView, workspaceCurrency],
   );
   const hasTransactions = Boolean(
     view &&

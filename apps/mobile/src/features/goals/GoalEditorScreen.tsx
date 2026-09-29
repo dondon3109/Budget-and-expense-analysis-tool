@@ -12,9 +12,10 @@ import {
   Button,
   Card,
   ConfirmationDialog,
+  CurrencyCode,
   ErrorState,
-  FormField,
   formatDateInput,
+  FormField,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -189,9 +190,7 @@ export function GoalEditorScreen() {
                   setMessage(null);
                 }}
                 placeholder="0.00"
-                trailing={
-                  <Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>
-                }
+                trailing={<CurrencyCode />}
                 value={targetAmount}
               />
               <FormField
@@ -206,9 +205,7 @@ export function GoalEditorScreen() {
                   setMessage(null);
                 }}
                 placeholder="0.00"
-                trailing={
-                  <Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>
-                }
+                trailing={<CurrencyCode />}
                 value={currentAmount}
               />
               <FormField

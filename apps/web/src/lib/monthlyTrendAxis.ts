@@ -1,7 +1,11 @@
+import { currencyMetadata, type Currency } from "@zoption/shared";
+
+import { workspaceCurrency } from "./workspaceCurrency";
+
 const TICK_COUNT = 5;
 const INTERVAL_COUNT = TICK_COUNT - 1;
 const DEFAULT_MAXIMUM_MINOR = 1_000_000;
-const pesoFormatter = new Intl.NumberFormat("en-PH", {
+const tickFormatter = new Intl.NumberFormat("en-PH", {
   maximumFractionDigits: 0,
 });
 
@@ -36,6 +40,9 @@ export function createMonthlyTrendAxis(maxMinor: number): MonthlyTrendAxis {
   };
 }
 
-export function formatMonthlyTrendTick(valueMinor: number): string {
-  return `₱${pesoFormatter.format(valueMinor / 100)}`;
+export function formatMonthlyTrendTick(
+  valueMinor: number,
+  currency: Currency = workspaceCurrency(),
+): string {
+  return `${currencyMetadata[currency].symbol}${tickFormatter.format(valueMinor / 100)}`;
 }

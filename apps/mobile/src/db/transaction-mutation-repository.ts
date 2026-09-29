@@ -19,6 +19,7 @@ import type {
   TransactionInput,
   TransactionUpdate,
   TransferInput,
+  Currency,
 } from "@zoption/shared";
 
 import { LocalDatabaseWriter } from "./database-writer";
@@ -130,8 +131,8 @@ export class LocalTransactionMutationRepository {
     return generated;
   }
 
-  createAccount(value: AccountInput): Promise<string> {
-    return createAccount(this.commands, value);
+  createAccount(value: AccountInput, currency?: Currency): Promise<string> {
+    return createAccount(this.commands, value, currency);
   }
 
   updateAccount(id: string, value: AccountUpdateWithInterest): Promise<void> {

@@ -14,6 +14,7 @@ import { createPortal } from "react-dom";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { formatFullMonth, formatMoney } from "../../lib/formatters";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import "./ShareBudgetModal.css";
 
 interface ShareBudgetCategory {
@@ -120,6 +121,7 @@ function ShareBudgetDialog({ onClose, month, categories }: ShareBudgetDialogProp
     const payload = createSharedBudgetPayload({
       title: title.trim() || defaultShareTitle(month),
       month,
+      currency: workspaceCurrency(),
       categories: selectedCategories,
       ...(ownerDisplayName.trim() ? { ownerDisplayName: ownerDisplayName.trim() } : {}),
       ...(notes.trim() ? { notes: notes.trim() } : {}),

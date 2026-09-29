@@ -1,4 +1,4 @@
-import type { CashflowTrend } from "@zoption/shared";
+import { currencyMetadata, type CashflowTrend, type Currency } from "@zoption/shared";
 
 const MONTHS_SHORT = [
   "Jan",
@@ -52,7 +52,7 @@ function niceStep(roughStep: number): number {
 /**
  * Five labeled gridlines from zero, matching the website chart's axis so the
  * same numbers appear on both platforms. A quiet period still gets a readable
- * ₱10,000 ceiling.
+ * 10,000 ceiling in the workspace currency.
  */
 export function createCashflowAxis(maxMinor: number): CashflowAxis {
   const safeMaximum = Number.isFinite(maxMinor) ? Math.max(0, maxMinor) : 0;
@@ -64,8 +64,8 @@ export function createCashflowAxis(maxMinor: number): CashflowAxis {
   };
 }
 
-export function formatAxisTick(valueMinor: number): string {
-  return `₱${Math.round(valueMinor / 100).toLocaleString("en-US")}`;
+export function formatAxisTick(valueMinor: number, currency: Currency = "PHP"): string {
+  return `${currencyMetadata[currency].symbol}${Math.round(valueMinor / 100).toLocaleString("en-US")}`;
 }
 
 export function compactDateLabel(date: string, granularity: CashflowTrend["granularity"]): string {
@@ -138,11 +138,11 @@ export function linePathD(
     .join("");
 }
 
-export function chartSummaryLabel(cashflow: CashflowTrend): string {
+export function chartSummaryLabel(cashflow: CashflowTrend, currency: Currency = "PHP"): string {
   const perPoint = cashflow.points
     .map((point) => {
       const date = fullDateLabel(point.date, cashflow.granularity);
-      return `${date}: income ${formatAxisTick(point.incomeMinor)}, expense ${formatAxisTick(point.expenseMinor)}`;
+      return `${date}: income ${formatAxisTick(point.incomeMinor, currency)}, expense ${formatAxisTick(point.expenseMinor, currency)}`;
     })
     .join(". ");
   return `Money in and out chart. ${perPoint}.`;

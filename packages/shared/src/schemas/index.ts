@@ -12,3 +12,4 @@ export * from "./billing";
 export * from "./support";
 export * from "./user-account";
 export * from "./admin";
+export * from "./workspace";

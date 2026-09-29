@@ -69,6 +69,7 @@ import "./TransactionsPage.css";
 // SavedViewsBar.css holds the saved-view rules that used to sit in TransactionsPage.css, so it
 // loads right after it to keep the cascade order.
 import "../components/transactions/SavedViewsBar.css";
+import { workspaceCurrency } from "../lib/workspaceCurrency";
 
 function deleteConsequence(items: TransactionListItem[]): string {
   if (items.length === 1) {
@@ -334,7 +335,7 @@ export function TransactionsPage() {
       categoryId,
       accountId: matchedAccount?.id ?? "",
       notes,
-      currency: parsed.currency === "USD" ? "USD" : matchedAccount?.currency || "PHP",
+      currency: parsed.currency === "USD" ? "USD" : matchedAccount?.currency || workspaceCurrency(),
     });
     setEditing(undefined);
     setFormOpen(true);

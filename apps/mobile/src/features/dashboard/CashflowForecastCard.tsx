@@ -9,6 +9,7 @@ import {
   type ForecastRecurringIncome,
 } from "@zoption/shared";
 import { Card, MoneyValue } from "@/ui/components";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
@@ -39,10 +40,12 @@ export function CashflowForecastCard({
   recurringIncomes,
   safetyBufferMinor = 0,
   startDate,
-  currency = "PHP",
+  currency: currencyProp,
   onViewSubscriptions,
 }: CashflowForecastCardProps) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
+  const currency = currencyProp ?? workspaceCurrency;
   const [horizon, setHorizon] = useState<HorizonDays>(30);
 
   const forecasts = useMemo(

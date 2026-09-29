@@ -11,6 +11,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { accounts, transactions } from "../../../../db/schema";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
+import { loadWorkspaceCurrency } from "./workspace-settings";
 
 export interface AccountRepository {
   list(env: Bindings, tenantId: string): Promise<AccountRecord[]>;
@@ -187,13 +188,15 @@ export const accountRepository: AccountRepository = {
   async create(env, tenantId, input) {
     await ensureUniqueName(env, tenantId, input.name);
     const id = crypto.randomUUID();
-    await drizzle(env.DB).insert(accounts).values({
-      id,
-      tenantId,
-      name: input.name,
-      type: input.type,
-      currency: "PHP",
-    });
+    await drizzle(env.DB)
+      .insert(accounts)
+      .values({
+        id,
+        tenantId,
+        name: input.name,
+        type: input.type,
+        currency: await loadWorkspaceCurrency(env, tenantId),
+      });
     const created = await findAccount(env, tenantId, id);
     if (!created) throw new Error("Created account could not be read back.");
     return created;

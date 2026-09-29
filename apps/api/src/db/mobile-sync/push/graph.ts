@@ -265,12 +265,19 @@ function createGraphMutation(
     const values = interest ? ", ?, ?, ?, ?" : "";
     const statement = env.DB.prepare(
       `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at${columns})
-       SELECT ?, ?, ?, ?, 'PHP', 1, ?${values}
+       SELECT ?, ?, ?, ?, COALESCE((SELECT currency FROM tenants WHERE id = ?), 'PHP'), 1, ?${values}
        WHERE NOT EXISTS (
          SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
        )`,
     );
-    const binds: unknown[] = [operation.entityId, tenantId, payload.name, payload.type, timestamp];
+    const binds: unknown[] = [
+      operation.entityId,
+      tenantId,
+      payload.name,
+      payload.type,
+      tenantId,
+      timestamp,
+    ];
     if (interest) {
       binds.push(
         interest.enabled ? 1 : 0,

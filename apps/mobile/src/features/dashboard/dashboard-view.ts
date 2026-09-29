@@ -4,6 +4,7 @@ import {
   summarizeAccountBalances,
   type AccountBalanceSummary,
   type CashflowTrend,
+  type Currency,
   type DashboardSummary,
 } from "@zoption/shared";
 
@@ -27,8 +28,9 @@ export function buildDashboardView(
   data: LocalDashboardData,
   anchorDate: string,
   cashflowView: CashflowTrend["view"] = "weekly",
+  workspaceCurrency: Currency = "PHP",
 ): DashboardView {
-  const accountBalances = summarizeAccountBalances(data.accounts);
+  const accountBalances = summarizeAccountBalances(data.accounts, workspaceCurrency);
   return {
     summary: buildDashboardSummary(
       data.transactions,

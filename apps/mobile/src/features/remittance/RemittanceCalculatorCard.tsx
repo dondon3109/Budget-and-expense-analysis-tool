@@ -4,14 +4,17 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   calculateRemittance,
   compareRemittanceProviders,
-  DEFAULT_OFW_EXCHANGE_RATES,
   OFW_CURRENCIES,
   parseAmountToMinor,
+  remittanceDirectionFor,
+  remittanceMidMarketRate,
   type OfwCurrency,
+  type RemittanceCurrency,
   type RemittanceProvider,
 } from "@zoption/shared";
-import { Card, FormField, MoneyValue } from "@/ui/components";
+import { Card, FormField } from "@/ui/components";
 import { formatMoneyMinor } from "@/ui/components/MoneyValue";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
@@ -43,7 +46,7 @@ const CURRENCY_NAMES: Record<OfwCurrency, string> = {
 };
 
 export interface RemittanceCalculatorCardProps {
-  initialFromCurrency?: OfwCurrency;
+  initialForeignCurrency?: OfwCurrency;
   initialSendAmountMinor?: number;
   initialTransferFeeMinor?: number;
 }
@@ -75,13 +78,34 @@ export function formatForeignMinor(amountMinor: number, currency: OfwCurrency): 
   }
 }
 
+/** Peso benchmarks read fine at two decimals; a peso sent out buys a fraction of a unit. */
+function formatRate(rate: number, toPhp: boolean, digits: number): string {
+  return rate.toFixed(toPhp ? digits : 6);
+}
+
+function formatRemittanceMinor(amountMinor: number, currency: RemittanceCurrency): string {
+  return currency === "PHP"
+    ? formatMoneyMinor(amountMinor, "PHP")
+    : formatForeignMinor(amountMinor, currency);
+}
+
+function currencyName(currency: RemittanceCurrency): string {
+  return currency === "PHP" ? "Philippine pesos" : CURRENCY_NAMES[currency];
+}
+
 export function RemittanceCalculatorCard({
-  initialFromCurrency = "USD",
+  initialForeignCurrency = "USD",
   initialSendAmountMinor = 50000,
   initialTransferFeeMinor = 0,
 }: RemittanceCalculatorCardProps) {
   const theme = useZoptionTheme();
-  const [fromCurrency, setFromCurrency] = useState<OfwCurrency>(initialFromCurrency);
+  const workspaceCurrency = useWorkspaceCurrency();
+  // A PHP workspace sends pesos abroad; a USD workspace sends dollars home.
+  const direction = remittanceDirectionFor(workspaceCurrency);
+  const toPhp = direction === "to_php";
+  const [foreignCurrency, setForeignCurrency] = useState<OfwCurrency>(initialForeignCurrency);
+  const sendCurrency: RemittanceCurrency = toPhp ? foreignCurrency : "PHP";
+  const receiveCurrency: RemittanceCurrency = toPhp ? "PHP" : foreignCurrency;
   const [amountText, setAmountText] = useState(() => formatMinorToInput(initialSendAmountMinor));
   const [feeText, setFeeText] = useState(() => formatMinorToInput(initialTransferFeeMinor));
   const [provider, setProvider] = useState<RemittanceProvider>("wise");
@@ -93,23 +117,24 @@ export function RemittanceCalculatorCard({
     () =>
       calculateRemittance({
         sendAmountMinor,
-        fromCurrency,
+        foreignCurrency,
+        direction,
         provider,
         transferFeeMinor,
       }),
-    [sendAmountMinor, fromCurrency, provider, transferFeeMinor],
+    [sendAmountMinor, foreignCurrency, direction, provider, transferFeeMinor],
   );
 
   const comparison = useMemo(
-    () => compareRemittanceProviders(sendAmountMinor, fromCurrency),
-    [sendAmountMinor, fromCurrency],
+    () => compareRemittanceProviders(sendAmountMinor, foreignCurrency, direction),
+    [sendAmountMinor, foreignCurrency, direction],
   );
 
   const bestProvider = useMemo<RemittanceProvider>(() => {
     let best: RemittanceProvider = "wise";
-    let maxReceived = comparison.wise?.netPhpReceivedMinor ?? 0;
+    let maxReceived = comparison.wise?.netReceivedMinor ?? 0;
     for (const candidate of COMMERCIAL_PROVIDERS) {
-      const received = comparison[candidate]?.netPhpReceivedMinor ?? 0;
+      const received = comparison[candidate]?.netReceivedMinor ?? 0;
       if (received > maxReceived) {
         maxReceived = received;
         best = candidate;
@@ -118,7 +143,12 @@ export function RemittanceCalculatorCard({
     return best;
   }, [comparison]);
 
-  const benchmark = DEFAULT_OFW_EXCHANGE_RATES[fromCurrency];
+  const benchmarkRate = remittanceMidMarketRate(foreignCurrency, direction);
+  // "1 USD = ₱56.50" when sending home; "1 PHP = 0.017699 USD" when sending pesos out.
+  const rateLine = (rate: number, digits: number) =>
+    toPhp
+      ? `1 ${foreignCurrency} = ₱${formatRate(rate, toPhp, digits)}`
+      : `1 PHP = ${formatRate(rate, toPhp, digits)} ${foreignCurrency}`;
 
   return (
     <Card accessibilityLabel="Remittance calculator">
@@ -127,24 +157,24 @@ export function RemittanceCalculatorCard({
           Remittance calculator
         </Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Compare what arrives in PHP after transfer fees and provider FX spread.
+          Compare what arrives in {receiveCurrency} after transfer fees and provider FX spread.
         </Text>
       </View>
 
       <View
         accessibilityRole="tablist"
-        accessibilityLabel="Origin currency"
+        accessibilityLabel={toPhp ? "Origin currency" : "Destination currency"}
         style={styles.chipGrid}
       >
         {OFW_CURRENCIES.map((currency) => {
-          const selected = currency === fromCurrency;
+          const selected = currency === foreignCurrency;
           return (
             <Pressable
               key={currency}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={`${currency}, ${CURRENCY_NAMES[currency]}`}
-              onPress={() => setFromCurrency(currency)}
+              onPress={() => setForeignCurrency(currency)}
               style={[
                 styles.chip,
                 {
@@ -171,27 +201,27 @@ export function RemittanceCalculatorCard({
 
       <View
         accessible
-        accessibilityLabel={`Converting ${fromCurrency} to Philippine pesos`}
+        accessibilityLabel={`Converting ${currencyName(sendCurrency)} to ${currencyName(receiveCurrency)}`}
         style={[styles.routeRow, { backgroundColor: theme.colors.canvasMuted }]}
       >
         <Text style={[typography.headline, { color: theme.colors.text }]}>
-          {fromCurrency} → PHP
+          {sendCurrency} → {receiveCurrency}
         </Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Mid-market benchmark: 1 {fromCurrency} = ₱{benchmark?.midMarketRate.toFixed(2) ?? "—"}
+          Mid-market benchmark: {rateLine(benchmarkRate, 2)}
         </Text>
       </View>
 
       <FormField
-        label={`Send amount (${fromCurrency})`}
+        label={`Send amount (${sendCurrency})`}
         value={amountText}
         onChangeText={setAmountText}
         placeholder="500"
         keyboardType="decimal-pad"
-        hint={`Available balance shown in ${fromCurrency}; converted below at the provider rate.`}
+        hint={`Available balance shown in ${sendCurrency}; converted below at the provider rate.`}
       />
       <FormField
-        label={`Transfer fee (${fromCurrency})`}
+        label={`Transfer fee (${sendCurrency})`}
         value={feeText}
         onChangeText={setFeeText}
         placeholder="0.00"
@@ -246,9 +276,11 @@ export function RemittanceCalculatorCard({
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           Recipient receives · {PROVIDER_LABELS[provider]}
         </Text>
-        <MoneyValue amountMinor={result.netPhpReceivedMinor} style={styles.resultMoney} />
+        <Text style={[typography.money, { color: theme.colors.text }, styles.resultMoney]}>
+          {formatRemittanceMinor(result.netReceivedMinor, receiveCurrency)}
+        </Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Effective rate: 1 {fromCurrency} = ₱{result.effectiveRate.toFixed(4)}
+          Effective rate: {rateLine(result.effectiveRate, 4)}
         </Text>
       </View>
 
@@ -258,7 +290,7 @@ export function RemittanceCalculatorCard({
             Gross value (mid-market)
           </Text>
           <Text style={[typography.body, { color: theme.colors.text, fontWeight: "600" }]}>
-            {formatMoneyMinor(result.grossConvertedPhpMinor, "PHP")}
+            {formatRemittanceMinor(result.grossConvertedMinor, receiveCurrency)}
           </Text>
         </View>
         <View style={styles.breakdownRow}>
@@ -266,15 +298,15 @@ export function RemittanceCalculatorCard({
             Provider spread loss
           </Text>
           <Text style={[typography.body, { color: theme.colors.expense, fontWeight: "600" }]}>
-            −{formatMoneyMinor(result.spreadLossPhpMinor, "PHP")}
+            −{formatRemittanceMinor(result.spreadLossMinor, receiveCurrency)}
           </Text>
         </View>
         <View style={styles.breakdownRow}>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Transfer fee ({formatForeignMinor(transferFeeMinor, fromCurrency)})
+            Transfer fee ({formatRemittanceMinor(transferFeeMinor, sendCurrency)})
           </Text>
           <Text style={[typography.body, { color: theme.colors.expense, fontWeight: "600" }]}>
-            −{formatMoneyMinor(result.transferFeeInPhpMinor, "PHP")}
+            −{formatRemittanceMinor(result.transferFeeConvertedMinor, receiveCurrency)}
           </Text>
         </View>
         <View style={styles.breakdownRow}>
@@ -282,14 +314,14 @@ export function RemittanceCalculatorCard({
             Total cost · {result.effectiveLossPercent.toFixed(2)}% drag
           </Text>
           <Text style={[typography.body, { color: theme.colors.text, fontWeight: "700" }]}>
-            {formatMoneyMinor(result.totalCostInPhpMinor, "PHP")}
+            {formatRemittanceMinor(result.totalCostMinor, receiveCurrency)}
           </Text>
         </View>
       </View>
 
       <View style={{ gap: spacing.xs }}>
         <Text style={[typography.caption, { color: theme.colors.textMuted, fontWeight: "600" }]}>
-          Provider spread comparison · {formatForeignMinor(sendAmountMinor, fromCurrency)}
+          Provider spread comparison · {formatRemittanceMinor(sendAmountMinor, sendCurrency)}
         </Text>
         {COMMERCIAL_PROVIDERS.map((option) => {
           const entry = comparison[option];
@@ -300,7 +332,7 @@ export function RemittanceCalculatorCard({
             <Pressable
               key={option}
               accessibilityRole="button"
-              accessibilityLabel={`${PROVIDER_LABELS[option]}: net ${formatMoneyMinor(entry.netPhpReceivedMinor, "PHP")}${isBest ? ", best value" : ""}`}
+              accessibilityLabel={`${PROVIDER_LABELS[option]}: net ${formatRemittanceMinor(entry.netReceivedMinor, receiveCurrency)}${isBest ? ", best value" : ""}`}
               onPress={() => setProvider(option)}
               style={[
                 styles.comparisonRow,
@@ -329,12 +361,12 @@ export function RemittanceCalculatorCard({
                   ) : null}
                 </View>
                 <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  1 {fromCurrency} = ₱{entry.effectiveRate.toFixed(4)} · spread loss{" "}
-                  {formatMoneyMinor(entry.spreadLossPhpMinor, "PHP")}
+                  {rateLine(entry.effectiveRate, 4)} · spread loss{" "}
+                  {formatRemittanceMinor(entry.spreadLossMinor, receiveCurrency)}
                 </Text>
               </View>
               <Text style={[typography.body, { color: theme.colors.text, fontWeight: "700" }]}>
-                {formatMoneyMinor(entry.netPhpReceivedMinor, "PHP")}
+                {formatRemittanceMinor(entry.netReceivedMinor, receiveCurrency)}
               </Text>
             </Pressable>
           );

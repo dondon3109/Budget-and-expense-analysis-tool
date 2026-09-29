@@ -16,3 +16,4 @@ export * from "./Skeleton";
 export * from "./SyncPausedBanner";
 export * from "./SyncStatus";
 export * from "./TransactionRow";
+export * from "./CurrencyCode";

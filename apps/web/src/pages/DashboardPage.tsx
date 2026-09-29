@@ -1,5 +1,6 @@
 import type {
   AccountBalanceSummaryItem,
+  Currency,
   CashflowTrendView,
   TransactionListQuery,
 } from "@zoption/shared";
@@ -250,32 +251,37 @@ export function DashboardPage() {
   const empty =
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
-  const overallBalanceMinor = accountBalances?.balancesByCurrency.PHP ?? 0;
+  // Totals lead with the workspace currency; the other currency follows as a secondary line.
+  const baseCurrency = data.currency;
+  const otherCurrency: Currency = baseCurrency === "PHP" ? "USD" : "PHP";
+  const overallBalanceMinor = accountBalances?.balancesByCurrency[baseCurrency] ?? 0;
   const transferFeeInsight = transferFeeInsightQuery.data;
   const transferNoun =
     transferFeeInsight?.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
-  const transferFeeUsdMinor = transferFeeInsight?.feesByCurrency.USD ?? 0;
+  const transferFeeOtherMinor = transferFeeInsight?.feesByCurrency[otherCurrency] ?? 0;
   const previousMetrics = previousSummaryQuery.data?.metrics;
-  const currentNetPhpMinor = metrics.incomeByCurrency.PHP - metrics.expenseByCurrency.PHP;
-  const previousNetPhpMinor = previousMetrics
-    ? previousMetrics.incomeByCurrency.PHP - previousMetrics.expenseByCurrency.PHP
+  const currentNetMinor =
+    metrics.incomeByCurrency[baseCurrency] - metrics.expenseByCurrency[baseCurrency];
+  const previousNetMinor = previousMetrics
+    ? previousMetrics.incomeByCurrency[baseCurrency] -
+      previousMetrics.expenseByCurrency[baseCurrency]
     : 0;
   const incomeChangePercent = calculatePercentageChange(
-    metrics.incomeByCurrency.PHP,
-    previousMetrics?.incomeByCurrency.PHP ?? 0,
+    metrics.incomeByCurrency[baseCurrency],
+    previousMetrics?.incomeByCurrency[baseCurrency] ?? 0,
   );
   const expenseChangePercent = calculatePercentageChange(
-    metrics.expenseByCurrency.PHP,
-    previousMetrics?.expenseByCurrency.PHP ?? 0,
+    metrics.expenseByCurrency[baseCurrency],
+    previousMetrics?.expenseByCurrency[baseCurrency] ?? 0,
   );
-  const netChangePercent = calculatePercentageChange(currentNetPhpMinor, previousNetPhpMinor);
+  const netChangePercent = calculatePercentageChange(currentNetMinor, previousNetMinor);
   const trendComparison = `vs ${formatMonth(previousSummaryMonth)}`;
   const overviewItems: OverviewStatItem[] = [
     {
       label: "Income",
       amounts: [
-        { amountMinor: metrics.incomeByCurrency.PHP, currency: "PHP" },
-        { amountMinor: metrics.incomeByCurrency.USD, currency: "USD" },
+        { amountMinor: metrics.incomeByCurrency[baseCurrency], currency: baseCurrency },
+        { amountMinor: metrics.incomeByCurrency[otherCurrency], currency: otherCurrency },
       ],
       detail: `Income received in ${selectedMonthLabel}`,
       icon: ArrowDownRight,
@@ -291,8 +297,8 @@ export function DashboardPage() {
     {
       label: "Expenses",
       amounts: [
-        { amountMinor: metrics.expenseByCurrency.PHP, currency: "PHP" },
-        { amountMinor: metrics.expenseByCurrency.USD, currency: "USD" },
+        { amountMinor: metrics.expenseByCurrency[baseCurrency], currency: baseCurrency },
+        { amountMinor: metrics.expenseByCurrency[otherCurrency], currency: otherCurrency },
       ],
       detail:
         metrics.moneyInMinor === 0
@@ -311,9 +317,12 @@ export function DashboardPage() {
     {
       label: "Transfer fees (all time)",
       amounts: [
-        { amountMinor: transferFeeInsight?.feesByCurrency.PHP ?? 0, currency: "PHP" },
-        ...(transferFeeUsdMinor > 0
-          ? [{ amountMinor: transferFeeUsdMinor, currency: "USD" as const }]
+        {
+          amountMinor: transferFeeInsight?.feesByCurrency[baseCurrency] ?? 0,
+          currency: baseCurrency,
+        },
+        ...(transferFeeOtherMinor > 0
+          ? [{ amountMinor: transferFeeOtherMinor, currency: otherCurrency }]
           : []),
       ],
       detail: transferFeeInsightQuery.isPending
@@ -332,7 +341,7 @@ export function DashboardPage() {
     },
     {
       label: "Remaining budget",
-      amounts: [{ amountMinor: metrics.remainingBudgetMinor, currency: "PHP" }],
+      amounts: [{ amountMinor: metrics.remainingBudgetMinor, currency: baseCurrency }],
       detail: `${metrics.budgetUsedPercent}% of plan used`,
       icon: PiggyBank,
       tone: "plum",
