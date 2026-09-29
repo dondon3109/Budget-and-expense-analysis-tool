@@ -277,7 +277,7 @@ export interface SubscriptionRenewalNotification {
   dueDate: string;
   subscriptionName: string;
   amountMinor: number;
-  /** The subscription's billing currency when the notice was queued. */
+  /** The subscription's billing currency when queued; notices queued by an older Worker fall back to the plan's. */
   currency: Currency;
   accountName: string | null;
   reason: SubscriptionRenewalReason;
@@ -329,10 +329,13 @@ async function findRenewalNotification(
   id: string,
 ): Promise<SubscriptionRenewalNotification | null> {
   const row = await env.DB.prepare(
-    `SELECT id, tenant_id AS tenantId, subscription_id AS subscriptionId, due_date AS dueDate,
-            subscription_name AS subscriptionName, amount_minor AS amountMinor, currency,
-            account_name AS accountName, reason
-     FROM subscription_renewal_notifications WHERE id = ?`,
+    `SELECT n.id, n.tenant_id AS tenantId, n.subscription_id AS subscriptionId,
+            n.due_date AS dueDate, n.subscription_name AS subscriptionName,
+            n.amount_minor AS amountMinor, COALESCE(n.currency, s.currency, 'PHP') AS currency,
+            n.account_name AS accountName, n.reason
+     FROM subscription_renewal_notifications n
+     LEFT JOIN subscriptions s ON s.id = n.subscription_id AND s.tenant_id = n.tenant_id
+     WHERE n.id = ?`,
   )
     .bind(id)
     .first<Omit<SubscriptionRenewalNotification, "currency"> & { currency: string }>();

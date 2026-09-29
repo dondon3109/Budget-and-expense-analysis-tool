@@ -400,7 +400,7 @@ export const subscriptionRenewalNotifications = sqliteTable(
     dueDate: text("due_date").notNull(),
     subscriptionName: text("subscription_name").notNull(),
     amountMinor: integer("amount_minor").notNull(),
-    currency: text("currency").notNull().default("PHP"),
+    currency: text("currency"),
     accountName: text("account_name"),
     reason: text("reason", { enum: ["insufficient_balance", "account_archived"] })
       .notNull()
