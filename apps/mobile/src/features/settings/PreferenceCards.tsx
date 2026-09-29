@@ -8,8 +8,9 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 import { DailyReminderCard } from "./DailyReminderCard";
+import { WorkspaceCurrencyCard } from "./WorkspaceCurrencyCard";
 
-/** Theme, voice language, and daily reminder pickers, folded to their current choice until opened. */
+/** Currency, theme, voice language, and daily reminder pickers, folded to their current choice until opened. */
 export function PreferenceCards() {
   const theme = useZoptionTheme();
   const themePreference = useThemeStore((state) => state.preference);
@@ -18,6 +19,7 @@ export function PreferenceCards() {
     VOICE_LANGUAGES.find((option) => option.code === voiceLanguage)?.label ?? "Auto";
   return (
     <>
+      <WorkspaceCurrencyCard />
       <CollapsibleCard
         title="Theme"
         summary={themePreferenceLabel(themePreference)}
