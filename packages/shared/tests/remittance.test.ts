@@ -313,9 +313,7 @@ describe("compareRemittanceProviders", () => {
     expect(comparison.mid_market!.netReceivedMinor).toBeGreaterThan(
       comparison.wise!.netReceivedMinor,
     );
-    expect(comparison.wise!.netReceivedMinor).toBeGreaterThan(
-      comparison.remitly!.netReceivedMinor,
-    );
+    expect(comparison.wise!.netReceivedMinor).toBeGreaterThan(comparison.remitly!.netReceivedMinor);
     expect(comparison.remitly!.netReceivedMinor).toBeGreaterThan(
       comparison.western_union!.netReceivedMinor,
     );
