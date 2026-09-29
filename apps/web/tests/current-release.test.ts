@@ -25,6 +25,20 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "New transactions start on Uncategorized",
+      "The default-account star stays on the card",
+      "Android Beta 0.2.39",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/Uncategorized category/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.39/);
+  });
+
+  it("keeps the daily reminder and new logo notes as 2.47.0", () => {
+    expect(titles("2.47.0")).toEqual([
       "A daily reminder on Android and iOS",
       "A new Zoption logo",
       "Balances keep their minus sign",
@@ -34,9 +48,7 @@ describe("current release notes", () => {
       "Android Beta 0.2.38",
     ]);
 
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
+    const copy = notes("2.47.0");
     expect(copy).toMatch(/signing out turns it off/i);
     expect(copy).toMatch(/Android Beta 0\.2\.38/);
   });
@@ -120,6 +132,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "2.47.0",
       "2.46.0",
       "2.45.0",
       "2.44.0",

@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Android Beta 0.2.39 (versionCode 20339) carries the Uncategorized default and the balance card fix below, and the Android install page offers it.
+
 ### Changed
 
 - New transactions on the web and in the Android and iOS app start on the Uncategorized category for their type (expense, income, or transfer) instead of the first category in the list or Salary. Switching the type, or an AI voice draft whose category does not match, also falls back to Uncategorized.
