@@ -6,8 +6,8 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../src/pages/LandingPage", () => ({
-  LandingPage: () => <div>Marketing landing page</div>,
+vi.mock("../src/components/layout/PrivateAppStartupGate", () => ({
+  PrivateAppStartupGate: () => <div>Workspace</div>,
 }));
 
 vi.mock("../src/pages/AuthCallbackPage", () => ({
@@ -90,12 +90,12 @@ describe("root authentication entry", () => {
   });
 
   it.each(["/", "/?utm_source=email#features"])(
-    "preserves ordinary landing visits for %s",
+    "sends a plain root visit to the workspace from %s",
     async (initialEntry) => {
       renderApp(initialEntry);
 
-      expect(await screen.findByText("Marketing landing page")).toBeInTheDocument();
-      expect(screen.getByTestId("current-location")).toHaveTextContent(initialEntry);
+      expect(await screen.findByText("Workspace")).toBeInTheDocument();
+      expect(screen.getByTestId("current-location")).toHaveTextContent(/^\/app$/);
     },
   );
 });

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { siteUrl } from "./fixtures/site";
+
 /**
  * The landing header puts ten in-page links beside the wordmark, the theme control,
  * Sign in, and Start free. Those labels plus the controls need roughly 1420px, and
@@ -112,7 +114,7 @@ test.describe("public header layout", () => {
   for (const width of [FULL_ROW_MIN_WIDTH, 1728]) {
     test(`keeps every landing link in one row at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto("/", { waitUntil: "domcontentloaded" });
+      await page.goto(siteUrl("/"), { waitUntil: "domcontentloaded" });
       await expect(page.locator("header.public-header")).toBeVisible();
 
       const metrics = await measureHeader(page);
@@ -126,7 +128,7 @@ test.describe("public header layout", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.goto(siteUrl("/"), { waitUntil: "domcontentloaded" });
     await expect(page.locator("header.public-header")).toBeVisible();
 
     const metrics = await measureHeader(page);
@@ -137,7 +139,7 @@ test.describe("public header layout", () => {
 
   test("hands the row to the drawer at 1024px and still lists every link", async ({ page }) => {
     await page.setViewportSize({ width: 1024, height: 900 });
-    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await page.goto(siteUrl("/"), { waitUntil: "domcontentloaded" });
     await expect(page.locator("header.public-header")).toBeVisible();
 
     const metrics = await measureHeader(page);
@@ -156,7 +158,7 @@ test.describe("public header layout", () => {
 
   test("leaves a public route whose links are all primary on its full row", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.goto("/pricing", { waitUntil: "domcontentloaded" });
+    await page.goto(siteUrl("/pricing"), { waitUntil: "domcontentloaded" });
     await expect(page.locator("header.public-header")).toBeVisible();
 
     const metrics = await measureHeader(page);

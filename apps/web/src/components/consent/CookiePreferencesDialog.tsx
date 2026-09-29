@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
+import { siteUrl } from "../../lib/siteUrl";
 
 /**
  * The open dialog is a separate component so it mounts together with its markup:
@@ -131,7 +132,7 @@ function CookiePreferencesDialogContent() {
 
         <p className="cookie-preferences-policy-note">
           Learn what each category covers in the{" "}
-          <Link to="/cookie-policy" onClick={() => closePreferences()}>
+          <Link to={siteUrl("/cookie-policy")} onClick={() => closePreferences()}>
             Cookie Policy
           </Link>
           .

@@ -37,7 +37,7 @@ describe("NotFoundPage", () => {
     const headerNavigation = screen.getByRole("navigation", { name: "Learn more" });
     expect(within(headerNavigation).getByRole("link", { name: "FAQ" })).toHaveAttribute(
       "href",
-      "/faq",
+      "https://zoption.site/faq",
     );
     expect(screen.getByRole("navigation", { name: "Legal and privacy" })).toBeInTheDocument();
   });

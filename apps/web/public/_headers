@@ -5,33 +5,10 @@
   Cross-Origin-Opener-Policy: same-origin-allow-popups
   Permissions-Policy: camera=(), microphone=(), geolocation=()
   X-Frame-Options: DENY
-
-/login
   X-Robots-Tag: noindex, nofollow
 
-/signup
-  X-Robots-Tag: noindex, nofollow
-
-/forgot-password
-  X-Robots-Tag: noindex, nofollow
-
-/update-password
-  X-Robots-Tag: noindex, nofollow
-
-/auth/*
-  X-Robots-Tag: noindex, nofollow
-
-/app
-  X-Robots-Tag: noindex, nofollow
-
-/app/*
-  X-Robots-Tag: noindex, nofollow
-
-/spa.html
-  X-Robots-Tag: noindex, nofollow
-
-/spa
-  X-Robots-Tag: noindex, nofollow
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
 
 /service-worker.js
   Cache-Control: no-cache

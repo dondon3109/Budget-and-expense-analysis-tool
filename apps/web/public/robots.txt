@@ -1,0 +1,5 @@
+# The app is never indexed: every response carries X-Robots-Tag: noindex, nofollow.
+# Crawling stays allowed so crawlers can see that header; a Disallow would hide it
+# and could leave linked URLs indexed without content. The public site is zoption.site.
+User-agent: *
+Allow: /

@@ -80,7 +80,7 @@ describe("cookie consent interface", () => {
     expect(accept).toHaveClass("primary");
     expect(reject).toHaveClass("primary");
     const cookiePolicy = screen.getByRole("link", { name: "Cookie Policy" });
-    expect(cookiePolicy).toHaveAttribute("href", "/cookie-policy");
+    expect(cookiePolicy).toHaveAttribute("href", "https://zoption.site/cookie-policy");
     expect(cookiePolicy).toHaveAttribute("target", "_blank");
     expect(cookiePolicy).toHaveAttribute("rel", "noopener noreferrer");
   });
@@ -176,7 +176,6 @@ describe("cookie consent interface", () => {
 
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.getElementById("root")?.inert).toBe(false);
-    expect(screen.queryByRole("heading", { name: "Choose what this browser may use" })).toBeNull();
   });
 
   it("traps focus, closes with Escape, and restores the trigger focus", async () => {
@@ -198,18 +197,6 @@ describe("cookie consent interface", () => {
       expect(screen.getByRole("button", { name: "Manage Preferences" })).toHaveFocus(),
     );
   });
-
-  it.each(["/cookie-policy", "/privacy-policy", "/terms-of-service"])(
-    "does not show the first-visit banner on %s",
-    (path) => {
-      window.localStorage.setItem(THEME_STORAGE_KEY, "light");
-      renderExperience([path]);
-
-      expect(
-        screen.queryByRole("heading", { name: "Choose what this browser may use" }),
-      ).toBeNull();
-    },
-  );
 
   it("does not show the first-visit banner for a current saved decision", () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "coffee");

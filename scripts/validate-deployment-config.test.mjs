@@ -47,7 +47,7 @@ function environment({
       SUPABASE_URL: `https://${project}.supabase.co`,
       SUPABASE_PUBLISHABLE_KEY: key,
       SUPABASE_JWT_AUDIENCE: "authenticated",
-      WEB_APP_URL: production ? "https://zoption.site" : "https://preview.example.pages.dev",
+      WEB_APP_URL: production ? "https://app.zoption.site" : "https://preview.example.pages.dev",
       EMAIL_FROM: "hello@zoption.site",
       BUG_REPORT_TO: "support@zoption.site",
       PAYPAL_ENVIRONMENT: paypalEnvironment,
@@ -279,6 +279,14 @@ describe("Wrangler deployment config validation", () => {
     });
     expect(() => validateWranglerDeploymentConfig(wrongEnvironment)).toThrow(
       "preview POSTHOG_AI_ENVIRONMENT must be preview",
+    );
+  });
+
+  it("requires production links to point at the app origin", () => {
+    const siteOrigin = validConfig();
+    siteOrigin.env.production.vars.WEB_APP_URL = "https://zoption.site";
+    expect(() => validateWranglerDeploymentConfig(siteOrigin)).toThrow(
+      "production WEB_APP_URL must be https://app.zoption.site",
     );
   });
 

@@ -8,18 +8,19 @@
 /dashboard /app 301
 /app/accounts /app 301
 
-/terms-of-service/ /terms-of-service 301
-/privacy-policy/ /privacy-policy 301
-/cookie-policy/ /cookie-policy 301
-/faq/ /faq 301
-/pricing/ /pricing 301
-/install/ /install 301
-/changelog/ /changelog 301
+# Public pages live on zoption.site. A link that still points here lands there.
+/pricing https://zoption.site/pricing 301
+/faq https://zoption.site/faq 301
+/install https://zoption.site/install 301
+/changelog https://zoption.site/changelog 301
+/tutorials https://zoption.site/tutorials 301
+/terms-of-service https://zoption.site/terms-of-service 301
+/privacy-policy https://zoption.site/privacy-policy 301
+/cookie-policy https://zoption.site/cookie-policy 301
+/guides https://zoption.site/guides 301
+/guides/* https://zoption.site/guides/:splat 301
+/features/* https://zoption.site/features/:splat 301
+/tools/* https://zoption.site/tools/:splat 301
 
-/login /spa 200
-/signup /spa 200
-/forgot-password /spa 200
-/update-password /spa 200
-/auth/callback /spa 200
-/app /spa 200
-/app/* /spa 200
+# Every other path is the single-page app; the router decides what it shows.
+/* /index.html 200

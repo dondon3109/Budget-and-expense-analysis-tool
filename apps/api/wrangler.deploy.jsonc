@@ -111,7 +111,7 @@
         "SUPABASE_URL": "https://tsgfhhmpkvzmcxzbdtic.supabase.co",
         "SUPABASE_PUBLISHABLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRzZ2ZoaG1wa3Z6bWN4emJkdGljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMzEwNzUsImV4cCI6MjA5OTkwNzA3NX0.lIbM8zxc3srRZlcIN0PMb6akGWD8Lu5cXflQRFdY2J4",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
-        "WEB_APP_URL": "https://zoption.site",
+        "WEB_APP_URL": "https://app.zoption.site",
         "EMAIL_FROM": "hello@zoption.site",
         "BUG_REPORT_TO": "support@zoption.site",
         "ASSISTANT_ENABLED": "true",

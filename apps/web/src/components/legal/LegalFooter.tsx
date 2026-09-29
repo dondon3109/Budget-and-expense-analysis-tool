@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { useOptionalCookieConsent } from "../../consent/CookieConsentProvider";
 import { currentRelease } from "@zoption/web-common/releases";
+import { siteUrl } from "../../lib/siteUrl";
 import "./LegalFooter.css";
 
 export function LegalFooter() {
@@ -11,7 +12,7 @@ export function LegalFooter() {
     <footer className="legal-footer">
       <div className="legal-footer-meta">
         <p>© 2026 Zoption</p>
-        <Link to="/changelog" className="legal-footer-version">
+        <Link to={siteUrl("/changelog")} className="legal-footer-version">
           v{currentRelease.version} · What’s new
         </Link>
       </div>
@@ -25,15 +26,15 @@ export function LegalFooter() {
         >
           Google Preferred Source
         </a>
-        <Link to="/pricing">Pricing</Link>
-        <Link to="/guides">Guides</Link>
-        <Link to="/tutorials">Tutorials</Link>
-        <Link to="/faq">FAQ</Link>
-        <Link to="/install">Android Beta</Link>
-        <Link to="/changelog">Changelog</Link>
-        <Link to="/terms-of-service">Terms of Service</Link>
-        <Link to="/privacy-policy">Privacy Policy</Link>
-        <Link to="/cookie-policy">Cookie Policy</Link>
+        <Link to={siteUrl("/pricing")}>Pricing</Link>
+        <Link to={siteUrl("/guides")}>Guides</Link>
+        <Link to={siteUrl("/tutorials")}>Tutorials</Link>
+        <Link to={siteUrl("/faq")}>FAQ</Link>
+        <Link to={siteUrl("/install")}>Android Beta</Link>
+        <Link to={siteUrl("/changelog")}>Changelog</Link>
+        <Link to={siteUrl("/terms-of-service")}>Terms of Service</Link>
+        <Link to={siteUrl("/privacy-policy")}>Privacy Policy</Link>
+        <Link to={siteUrl("/cookie-policy")}>Cookie Policy</Link>
         <button
           type="button"
           data-cookie-preferences-trigger

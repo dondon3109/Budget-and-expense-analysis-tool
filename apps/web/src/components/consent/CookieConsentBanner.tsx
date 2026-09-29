@@ -1,21 +1,16 @@
 import { ShieldCheck } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
 import { useTheme } from "../../theme/ThemeProvider";
+import { siteUrl } from "../../lib/siteUrl";
 
 export function CookieConsentBanner() {
-  const location = useLocation();
   const { hasThemePreference } = useTheme();
   const { hasDecision, preferencesOpen, acceptAll, rejectAll, openPreferences } =
     useCookieConsent();
 
-  if (
-    !hasThemePreference ||
-    hasDecision ||
-    preferencesOpen ||
-    ["/cookie-policy", "/privacy-policy", "/terms-of-service"].includes(location.pathname)
-  ) {
+  if (!hasThemePreference || hasDecision || preferencesOpen) {
     return null;
   }
 
@@ -36,7 +31,7 @@ export function CookieConsentBanner() {
         <p id="cookie-consent-description">
           Necessary storage keeps Zoption working. Analytics and Marketing are off unless you choose
           otherwise, and neither category currently has a provider connected. Read the{" "}
-          <Link to="/cookie-policy" target="_blank" rel="noopener noreferrer">
+          <Link to={siteUrl("/cookie-policy")} target="_blank" rel="noopener noreferrer">
             Cookie Policy
           </Link>
           .

@@ -42,9 +42,6 @@ __pycache__/
 *.idsig
 .worktrees/
 
-# Client build handoff for prerender (build-time only, outside the deployed dist)
-apps/web/.zoption-build/
-
 # Astro's generated types for the public site
 .astro/
 

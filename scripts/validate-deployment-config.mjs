@@ -49,6 +49,7 @@ const productionWebOrigins = [
   "https://www.zoption.site",
   "https://zoption.site",
 ];
+const productionAppOrigin = "https://app.zoption.site";
 
 /** Dodo Payments is optional: checkout answers billing_not_configured until all three are set. */
 function validateDodoConfig(vars, environment) {
@@ -348,6 +349,10 @@ function validateEnvironment(environment, config) {
       throw new Error(
         "production ALLOWED_ORIGINS must contain only the three production web origins.",
       );
+    }
+    // Email, billing-return, and renewal links are built from it, so it must be the app.
+    if (requiredString(vars, "WEB_APP_URL", environment) !== productionAppOrigin) {
+      throw new Error(`production WEB_APP_URL must be ${productionAppOrigin}.`);
     }
     const routes = Array.isArray(config.routes) ? config.routes : [];
     if (

@@ -1,16 +1,9 @@
 import posthog, { type BeforeSendFn } from "posthog-js";
-import { useEffect, useRef, useSyncExternalStore } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect } from "react";
 
 import { sanitizeAnalyticsProperties } from "@zoption/web-common/analytics-sanitize";
-import {
-  getConsentGatePreferences,
-  registerOptionalIntegration,
-  subscribeToConsentGate,
-} from "@zoption/web-common/consent-gate";
+import { registerOptionalIntegration } from "@zoption/web-common/consent-gate";
 import { readConsentRecord } from "@zoption/web-common/consent-storage";
-
-import { isEligiblePublicUrl } from "../seo/siteMetadata";
 
 function getPostHogKey(): string | undefined {
   return import.meta.env.VITE_POSTHOG_KEY?.trim();
@@ -124,34 +117,13 @@ function startAnalytics(): (() => void) | undefined {
   };
 }
 
+/**
+ * Registers PostHog with the consent gate. The app sends no pageviews (every route
+ * is private and the public site counts its own); only the anonymous funnel events
+ * in `funnel.ts` go out, and only after analytics consent.
+ */
 export function PostHogAnalytics() {
-  const location = useLocation();
-  const lastTrackedPathname = useRef<string | null>(null);
-  const analyticsConsented = useSyncExternalStore(
-    subscribeToConsentGate,
-    () => getConsentGatePreferences().analytics,
-  );
-  const eligible = isEligiblePublicUrl(location.pathname, location.search, location.hash);
-
   useEffect(() => registerOptionalIntegration("analytics", startAnalytics), []);
-
-  useEffect(() => {
-    if (!analyticsConsented || !eligible) {
-      lastTrackedPathname.current = null;
-      return;
-    }
-
-    const initialized = ensurePostHogInitialized();
-    if (!initialized) return;
-
-    if (lastTrackedPathname.current !== location.pathname) {
-      lastTrackedPathname.current = location.pathname;
-      posthog.capture("$pageview", {
-        $current_url: `${window.location.origin}${location.pathname}`,
-        source: "web",
-      });
-    }
-  }, [analyticsConsented, eligible, location.pathname]);
 
   return null;
 }

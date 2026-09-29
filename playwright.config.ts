@@ -63,5 +63,20 @@ export default defineConfig({
       reuseExistingServer: false,
       timeout: 120_000,
     },
+    // The public site, linked to the local app and API above. Public-page specs reach it
+    // through SITE_URL in e2e/fixtures/site.ts. --ignore-lock keeps it in the foreground:
+    // Astro otherwise detaches when it detects an AI agent, and Playwright reads that exit
+    // as a crash.
+    {
+      command: "pnpm --filter @zoption/site exec astro dev --port 4321 --ignore-lock",
+      url: "http://localhost:4321",
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: {
+        ZOPTION_DEPLOY_ENV: "preview",
+        PUBLIC_API_URL: "http://localhost:8787",
+        PUBLIC_APP_URL: "http://localhost:5173",
+      },
+    },
   ],
 });

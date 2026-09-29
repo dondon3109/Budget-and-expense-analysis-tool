@@ -14,6 +14,16 @@ export const currentRelease: ProductRelease = {
   releasedOn: "September 30, 2026",
   changes: [
     {
+      title: "Your workspace moved to app.zoption.site",
+      description:
+        "The signed-in web app now lives at app.zoption.site, and zoption.site is the public site. Old links, bookmarks, and sign-in emails still work and forward to the app. Because the address changed, sign in once more on the web.",
+    },
+    {
+      title: "Faster public pages",
+      description:
+        "Guides, pricing, the FAQ, the calculator, and the legal pages on zoption.site now load as plain pages without the full app, so they open noticeably faster on mobile data.",
+    },
+    {
       title: "A short setup for new workspaces",
       description:
         "A new account on the web now chooses its currency and enters the cash on hand before the dashboard opens. That amount becomes the Cash account's opening balance and is not counted as income on the web dashboard, cashflow trend, or calendar. Existing accounts are not asked.",
@@ -37,6 +47,10 @@ export const currentRelease: ProductRelease = {
       title: "Android Beta 0.2.41",
       description:
         "The official Android Beta carries the Currency setting under Preferences and the Dodo Payments checkout.",
+    },
+    {
+      title: "Android Beta 0.2.42",
+      description: "Budget share links created in the Android app open on app.zoption.site.",
     },
   ],
 };

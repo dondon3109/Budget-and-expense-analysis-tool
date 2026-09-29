@@ -4,7 +4,7 @@ import { TutorialsPage } from "./TutorialsPage";
 export function AppTutorialsPage() {
   return (
     <AppShell>
-      <TutorialsPage inAppShell />
+      <TutorialsPage />
     </AppShell>
   );
 }

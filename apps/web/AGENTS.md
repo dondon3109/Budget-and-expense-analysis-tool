@@ -2,7 +2,7 @@
 
 ## Overview
 
-The browser product: a prerendered public site plus the signed in application under `/app`. It is one React and Vite bundle that talks to the Worker API with a Supabase bearer token. It owns browser workflows, previews, and consent UI, never financial authority.
+The signed-in browser app at `app.zoption.site`: sign-in and recovery, the workspace under `/app`, shared budget links, and the billing return page. It is a React and Vite single-page app that talks to the Worker API with a Supabase bearer token. It owns browser workflows, previews, and consent UI, never financial authority. Public pages (landing, pricing, guides, legal, install) live in `apps/site` on `zoption.site`; link to them with `siteUrl()`.
 
 ## Stack
 
@@ -16,9 +16,9 @@ The browser product: a prerendered public site plus the signed in application un
 
 | File                        | Owns                                                                                                             |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `src/App.tsx`               | Route table for the private app                                                                                  |
-| `src/PublicRoutes.tsx`      | Public route elements built from the metadata manifest                                                           |
-| `src/seo/siteMetadata.ts`   | `PublicRoutePath`, `PUBLIC_ROUTE_PATHS`, and per route metadata; the prerender list comes from here              |
+| `src/App.tsx`               | Route table; `/` sends a visit to `/app` and forwards Supabase auth codes and errors to `/auth/callback`         |
+| `src/RouteTitle.tsx`        | The tab title per route; the app has no other per-route head state because it is never indexed                   |
+| `src/lib/siteUrl.ts`        | Absolute links to the public site (`VITE_SITE_URL` overrides the origin)                                         |
 | `src/lib/api/index.ts`      | The barrel every caller and every `vi.mock("../src/lib/api")` goes through                                       |
 | `src/lib/api/transport.ts`  | Bearer attachment, one refresh retry, sign-out on 410, the request timeout, and one timeout retry for reads      |
 | `src/lib/api/errors.ts`     | `ApiRequestError` and the billing limit guards                                                                   |
@@ -27,14 +27,14 @@ The browser product: a prerendered public site plus the signed in application un
 | `src/queries/<domain>.ts`   | Query options, `useX` hooks, and the invalidation helper for each write                                          |
 | `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                                           |
 | `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                                |
-| `scripts/prerender.mjs`     | Prerender step that writes `_headers`, `robots.txt`, `sitemap.xml`, `404.html`, and the `llms.txt` page lists    |
+| `public/_redirects`         | Legacy workspace paths to `/app`, public page paths to `zoption.site`, everything else to `index.html`           |
 | `tests/`                    | Flat Vitest suites for the whole app                                                                             |
 
 ## Commands
 
 ```bash
 pnpm --filter @zoption/web dev     # vite on 5173, proxies /api and /health to 8787
-pnpm --filter @zoption/web build   # typecheck, client build, SSR build, prerender
+pnpm --filter @zoption/web build   # typecheck, then vite build
 pnpm --filter @zoption/web typecheck
 pnpm --filter @zoption/web test    # the root Vitest `web` project; append a path to filter
 pnpm verify:web                    # typecheck, lint, format, and tests for this package
@@ -43,10 +43,9 @@ pnpm test:e2e                      # Playwright, from the repo root
 
 ## Conventions
 
-- Adding a public route is a typed three place edit: the `PublicRoutePath` union, `PUBLIC_ROUTE_PATHS`, and `PUBLIC_ROUTE_METADATA` in `src/seo/siteMetadata.ts`, plus `PUBLIC_ROUTE_ELEMENTS` in `src/PublicRoutes.tsx`. The prerender list follows the manifest, so a missing entry is a missing page.
-- Private pages load lazily with the `lazy(async () => ({ default: module.X }))` shape. Public pages are eager so prerendering can reach them.
-- Public route code must be safe to render on the server: no `window` or `document` at module scope, and no Query or Auth provider in `src/entry-server.tsx`.
-- A section split out of a long page moves its rules into its own stylesheet beside it (`Component.css`) instead of growing the page stylesheet. Stylesheets are global, so keep the selectors unchanged and import the new file where the page imported the old block, which preserves cascade order. Older sections (`components/landing/`, `components/assistant/`, several dashboard cards) still rely on their page stylesheet; `node scripts/check-structure.mjs` stops those files from growing.
+- A public, indexable page belongs in `apps/site`, not here. Link to one with `siteUrl("/path")`; React Router's `Link` treats the absolute URL as a full navigation.
+- Pages load lazily with the `lazy(async () => ({ default: module.X }))` shape.
+- A section split out of a long page moves its rules into its own stylesheet beside it (`Component.css`) instead of growing the page stylesheet. Stylesheets are global, so keep the selectors unchanged and import the new file where the page imported the old block, which preserves cascade order. Older sections (`components/assistant/`, several dashboard cards) still rely on their page stylesheet; `node scripts/check-structure.mjs` stops those files from growing.
 - Name a component file in PascalCase with its own `Component.css` sibling, put hooks in `src/hooks` as `useX.ts`, and end page component names in `Page`.
 - Send authenticated requests only through the `src/lib/api` helpers. Components never call `fetch` for private data. Import from `lib/api`, never a file inside it, because tests mock the barrel. Files inside the folder import each other with relative `./x` paths, and a new call goes in its domain file, which the barrel re-exports.
 - Server state: read through the `useX` hook or `xQueryOptions` factory in `src/queries/<domain>.ts`. Spread the options when a screen needs its own `enabled`, `refetchInterval`, or `placeholderData`. Keys come only from `queryKeys.*(workspace)`. After a write, call the `invalidate*` helper in the same module that matches the write. The helpers refresh different key sets on purpose, so check the screens that depend on a set before merging two. Derive values at render and never mirror query data into local state.
@@ -58,10 +57,11 @@ pnpm test:e2e                      # Playwright, from the repo root
 ## Gotchas
 
 - `apps/web/tests/` is the only collected test directory. The root Vitest `web` project includes `apps/web/tests/**`, so a test placed beside its source never runs.
-- Build order is load bearing: typecheck, client build, SSR build, then prerender. The prerender step deletes `dist-ssr` and reads `.zoption-build/deployment.json` written by the client build.
+- Every response carries `X-Robots-Tag: noindex, nofollow` and `index.html` says the same; `robots.txt` still allows crawling so crawlers can see it.
+- Browser storage is per origin: the theme, consent record, and session here are separate from the public site's, so a visitor decides consent once on each.
 - The build fails closed. `ZOPTION_DEPLOY_ENV` is required when `CF_PAGES=1`, a non production build must pass explicit `VITE_*` values, and production must point at `https://api.zoption.site`.
 - Any new external origin needs an entry in `deployment-config.ts`; the CSP check fails the build on an unapproved wildcard.
-- The service worker caches only static assets and public pages. `/api`, `/app`, auth routes, billing, any request with an `Authorization` header, and URLs carrying tokens are always network only.
+- The service worker caches only static assets. `/api`, `/app`, auth routes, billing, any request with an `Authorization` header, and URLs carrying tokens are always network only.
 - Optimistic transaction rows must mirror the server `ORDER BY` and filters in `src/lib/optimisticTransactions.ts`.
 - There are no inline scripts. The theme is applied by `public/theme-bootstrap.js` because the CSP allows `script-src 'self'`.
 - `src/main.tsx` keeps `<BrowserRouter>` outside the providers that remount when the signed-in user changes (`AssistantSessionProvider` keys its subtree by user id). A router inside them restarts on sign-in and re-reads `window.location`, which is how the sign-in callback used to report a successful sign-in as a failure.
@@ -69,4 +69,4 @@ pnpm test:e2e                      # Playwright, from the repo root
 
 ## Related specs
 
-- `docs/scope/web/scope.md`, `docs/seo.md`, `docs/deployment.md`, `docs/specs/web/0001-search-demand-pages.md`
+- `docs/scope/web/scope.md`, `docs/deployment.md`, `apps/site/AGENTS.md` for the public site

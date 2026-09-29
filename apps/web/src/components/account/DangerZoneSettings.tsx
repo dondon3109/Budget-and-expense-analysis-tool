@@ -19,7 +19,7 @@ export function DangerZoneSettings({ hasPasswordIdentity }: { hasPasswordIdentit
     setDeletionError(undefined);
     try {
       const result = await deleteAccount(password);
-      void navigate(`/?accountDeleted=${result.status}`, { replace: true });
+      void navigate(`/login?accountDeleted=${result.status}`, { replace: true });
     } catch (error) {
       setDeletionError(error);
     } finally {

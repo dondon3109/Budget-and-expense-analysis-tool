@@ -4,7 +4,7 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
   page,
 }) => {
   await page.emulateMedia({ colorScheme: "dark" });
-  await page.goto("/");
+  await page.goto("/login");
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#080b0a");
@@ -100,7 +100,7 @@ test("previews and confirms Coffee on a first visit, then keeps all themes reach
 
 test("migrates a saved legacy theme to the Zoption storage key", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("clarity-theme", "dark"));
-  await page.goto("/");
+  await page.goto("/login");
 
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.getByRole("dialog")).toHaveCount(0);

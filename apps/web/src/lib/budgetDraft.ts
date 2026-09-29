@@ -4,10 +4,10 @@
  * Why storage rather than interception alone: pressing the browser Back button fires
  * popstate, react-router navigates at once, and this page unmounts before any guard of
  * ours can run — taking the draft with it. Blocking that reliably needs a data router and
- * `useBlocker`, which this app cannot adopt without reworking its prerender pipeline
- * (createBrowserRouter has no static-render equivalent here). Persisting the draft removes
- * the data-loss risk instead of trying to prevent the navigation, and it also covers a
- * crashed tab, a refresh, and any future path we have not thought of.
+ * `useBlocker`, which this app does not use (it renders a plain `<BrowserRouter>`).
+ * Persisting the draft removes the data-loss risk instead of trying to prevent the
+ * navigation, and it also covers a crashed tab, a refresh, and any future path we have
+ * not thought of.
  *
  * Cleared on a successful save and whenever the user explicitly confirms a discard.
  */

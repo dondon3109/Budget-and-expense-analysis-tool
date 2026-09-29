@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { expect, test } from "@playwright/test";
 
+import { siteUrl } from "./fixtures/site";
+
 const androidRelease = JSON.parse(
   readFileSync(
     new URL("../packages/web-common/src/releases/androidRelease.json", import.meta.url),
@@ -19,17 +21,17 @@ test("landing page leads visitors to account creation or sign in", async ({ page
     if (browserRequest.url().includes("/api/demo/")) demoRequests.push(browserRequest.url());
   });
 
-  await page.goto("/");
+  await page.goto(siteUrl("/"));
   await expect(
     page.getByRole("heading", { name: "Zoption makes your money clear. Decide what comes next." }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Start free", exact: true })).toHaveAttribute(
     "href",
-    "/signup",
+    "http://localhost:5173/signup",
   );
   await expect(page.getByRole("link", { name: "Sign in" }).first()).toHaveAttribute(
     "href",
-    "/login",
+    "http://localhost:5173/login",
   );
   await expect(
     page.getByRole("img", { name: "Illustrative preview of the Zoption monthly dashboard" }),
@@ -118,7 +120,7 @@ test("Android download page renders as a public deep link with exact release gui
     }),
   );
 
-  await page.goto("/install");
+  await page.goto(siteUrl("/install"));
 
   await expect(page).toHaveURL(/\/install$/);
   await expect(
@@ -156,7 +158,7 @@ test("Android download page keeps the official R2 snapshot when live metadata is
     route.fulfill({ status: 404, contentType: "application/json", body: "not found" }),
   );
 
-  await page.goto("/install");
+  await page.goto(siteUrl("/install"));
 
   await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
     "href",

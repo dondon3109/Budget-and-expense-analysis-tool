@@ -1,30 +1,14 @@
-export const CACHE_VERSION = "zoption-pwa-v3";
+export const CACHE_VERSION = "zoption-pwa-v4";
 export const STATIC_CACHE_NAME = `${CACHE_VERSION}-static`;
-export const PUBLIC_PAGE_CACHE_NAME = `${CACHE_VERSION}-public-pages`;
 
 export const PRECACHE_URLS = Object.freeze([
-  "/offline.html",
   "/manifest.webmanifest",
   "/brand/zoption-pwa-192.png",
   "/brand/zoption-mark-512.png",
 ]);
 
-const SAFE_PUBLIC_PATHS = new Set([
-  "/",
-  "/install",
-  "/faq",
-  "/terms-of-service",
-  "/privacy-policy",
-  "/cookie-policy",
-]);
-
-const STATIC_PATH_PREFIXES = ["/assets/", "/brand/", "/og/"];
-const STATIC_PATHS = new Set([
-  "/favicon.png",
-  "/manifest.webmanifest",
-  "/offline.html",
-  "/theme-bootstrap.js",
-]);
+const STATIC_PATH_PREFIXES = ["/assets/", "/brand/"];
+const STATIC_PATHS = new Set(["/favicon.png", "/manifest.webmanifest", "/theme-bootstrap.js"]);
 
 const SENSITIVE_PATH_PREFIXES = [
   "/api",
@@ -85,13 +69,6 @@ export function isStaticAssetRequest(request, appOrigin) {
   const url = new URL(request.url);
   if (url.origin !== appOrigin || url.search) return false;
   return STATIC_PATHS.has(url.pathname) || hasPathPrefix(url.pathname, STATIC_PATH_PREFIXES);
-}
-
-export function isSafePublicNavigation(request, appOrigin) {
-  if (request.method !== "GET" || request.mode !== "navigate") return false;
-
-  const url = new URL(request.url);
-  return url.origin === appOrigin && !url.search && SAFE_PUBLIC_PATHS.has(url.pathname);
 }
 
 export function isCacheableResponse(response) {
