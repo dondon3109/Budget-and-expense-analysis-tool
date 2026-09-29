@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 2.48.0 — 2026-09-29
+
 ### Added
 
 - Android Beta 0.2.39 (versionCode 20339) carries the Uncategorized default and the balance card fix below, and the Android install page offers it.
