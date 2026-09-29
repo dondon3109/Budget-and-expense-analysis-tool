@@ -285,6 +285,28 @@
   border-top: 1px solid var(--line);
 }
 
+/* Active rows share one grid so the action icons and balances each line up in a column, whatever
+   buttons a row has and however wide its amount is. */
+.dashboard-account-breakdown > ul {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.dashboard-account-breakdown > ul > li {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  column-gap: 10px;
+}
+
+.dashboard-account-breakdown > ul .dashboard-account-value {
+  display: contents;
+}
+
+.dashboard-account-breakdown > ul .dashboard-account-actions {
+  justify-self: end;
+}
+
 .dashboard-account-details {
   min-width: 0;
   display: grid;
@@ -493,9 +515,19 @@
 @media (max-width: 470px) {
   /* Four 44px account actions leave no room for the name on a phone, so the
      balance and actions drop below it instead of squeezing it to nothing. */
-  .dashboard-account-breakdown li {
+  .dashboard-account-breakdown > ul {
+    display: block;
+  }
+
+  .dashboard-account-breakdown li,
+  .dashboard-account-breakdown > ul > li {
+    display: flex;
     flex-wrap: wrap;
     row-gap: 8px;
+  }
+
+  .dashboard-account-breakdown > ul .dashboard-account-value {
+    display: flex;
   }
 
   .dashboard-account-details {

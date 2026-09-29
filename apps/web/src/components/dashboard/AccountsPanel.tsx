@@ -209,32 +209,6 @@ export function AccountsPanel({
                     </div>
                     <div className="dashboard-account-value">
                       <span className="dashboard-account-actions">
-                        <button
-                          type="button"
-                          className="dashboard-account-default"
-                          onClick={() => setDefaultSpendingAccountId(account.id)}
-                          aria-pressed={isDefaultSpending}
-                          aria-label={`Use ${account.name} as the default spending account`}
-                          title={
-                            isDefaultSpending
-                              ? `${account.name} is the default spending account`
-                              : `Use ${account.name} as the default spending account`
-                          }
-                        >
-                          <Star
-                            size={14}
-                            aria-hidden="true"
-                            fill={isDefaultSpending ? "currentColor" : "none"}
-                          />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onAdjustBalance(account)}
-                          aria-label={`Adjust balance for ${account.name}`}
-                          title={`Adjust balance for ${account.name}`}
-                        >
-                          <SlidersHorizontal size={14} aria-hidden="true" />
-                        </button>
                         {canEdit && (
                           <button
                             type="button"
@@ -271,6 +245,32 @@ export function AccountsPanel({
                             <Trash2 size={14} aria-hidden="true" />
                           </button>
                         )}
+                        <button
+                          type="button"
+                          className="dashboard-account-default"
+                          onClick={() => setDefaultSpendingAccountId(account.id)}
+                          aria-pressed={isDefaultSpending}
+                          aria-label={`Use ${account.name} as the default spending account`}
+                          title={
+                            isDefaultSpending
+                              ? `${account.name} is the default spending account`
+                              : `Use ${account.name} as the default spending account`
+                          }
+                        >
+                          <Star
+                            size={14}
+                            aria-hidden="true"
+                            fill={isDefaultSpending ? "currentColor" : "none"}
+                          />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onAdjustBalance(account)}
+                          aria-label={`Adjust balance for ${account.name}`}
+                          title={`Adjust balance for ${account.name}`}
+                        >
+                          <SlidersHorizontal size={14} aria-hidden="true" />
+                        </button>
                       </span>
                       <span className="dashboard-account-balances">
                         <strong>
