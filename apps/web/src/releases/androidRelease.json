@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.39-beta",
-  "versionCode": 20339,
-  "filename": "zoption-beta-0.2.39.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.39.apk",
-  "sha256": "cd005a94b02affafceabd9597c55d2efc09cbf7cc7a8901fa96c4a5a70aee732",
-  "sizeBytes": 139068236,
-  "sizeLabel": "139,068,236 bytes (132.63 MiB)",
+  "versionName": "0.2.40-beta",
+  "versionCode": 20340,
+  "filename": "zoption-beta-0.2.40.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.40.apk",
+  "sha256": "6e364f894cf26f7a9d8ee97602124d1a9260009a1ae1866ee05d15198e25717f",
+  "sizeBytes": 139080168,
+  "sizeLabel": "139,080,168 bytes (132.64 MiB)",
   "releaseDate": "2026-09-29",
   "releaseDateLabel": "September 29, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,7 +14,8 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "New transactions start on the Uncategorized category",
-    "Home's balance card keeps the default-account star inside the card"
+    "Choose Philippine Peso or US Dollar as the workspace currency in Account Settings",
+    "Each subscription bills in its own currency",
+    "The cashflow chart counts only entries in the workspace currency"
   ]
 }
