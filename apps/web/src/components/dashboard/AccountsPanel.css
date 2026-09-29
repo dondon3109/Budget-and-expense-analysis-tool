@@ -380,6 +380,8 @@
 
 .dashboard-account-balances {
   flex: 0 0 auto;
+  /* Keeps the star and adjust icons in one column across rows despite differing amounts. */
+  min-width: 72px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
