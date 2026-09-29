@@ -51,6 +51,7 @@ import {
 } from "./routes/support";
 import { createTransactionRoutes } from "./routes/transactions";
 import { createVoiceStreamRoutes } from "./routes/voice-stream";
+import { createWorkspaceSettingsRoutes } from "./routes/workspace-settings";
 import type { AppEnvironment } from "./types";
 
 export type { AppOptions } from "./composition";
@@ -192,6 +193,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/accounts", createAccountRoutes(dependencies.accounts, dependencies.billing));
   app.route("/api/app/categories", createCategoryRoutes(dependencies.categories));
   app.route("/api/app/budgets", createBudgetRoutes(dependencies.budgets));
+  app.route("/api/app/settings", createWorkspaceSettingsRoutes(dependencies.workspaceSettings));
   app.route("/api/app/billing", createBillingRoutes(dependencies.billing));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(dependencies.subscriptions));
   app.route("/api/app/events", createCalendarEventRoutes(dependencies.events));

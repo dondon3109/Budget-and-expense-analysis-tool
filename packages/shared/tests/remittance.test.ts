@@ -6,6 +6,8 @@ import {
   compareRemittanceProviders,
   DEFAULT_OFW_EXCHANGE_RATES,
   OFW_CURRENCIES,
+  remittanceDirectionFor,
+  remittanceMidMarketRate,
   type OfwCurrency,
 } from "../src/remittance";
 
@@ -56,22 +58,22 @@ describe("calculateRemittance", () => {
   it("calculates mid-market remittance with zero fee and zero spread", () => {
     const result = calculateRemittance({
       sendAmountMinor: 50_000, // 500.00 USD
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "mid_market",
     });
 
     expect(result).toEqual({
       sendAmountMinor: 50_000,
-      fromCurrency: "USD",
-      toCurrency: "PHP",
+      sendCurrency: "USD",
+      receiveCurrency: "PHP",
       effectiveRate: 56.5,
       midMarketRate: 56.5,
-      grossConvertedPhpMinor: 2_825_000, // 500 * 56.50 * 100
-      netPhpReceivedMinor: 2_825_000,
+      grossConvertedMinor: 2_825_000, // 500 * 56.50 * 100
+      netReceivedMinor: 2_825_000,
       transferFeeMinor: 0,
-      transferFeeInPhpMinor: 0,
-      spreadLossPhpMinor: 0,
-      totalCostInPhpMinor: 0,
+      transferFeeConvertedMinor: 0,
+      spreadLossMinor: 0,
+      totalCostMinor: 0,
       effectiveLossPercent: 0,
     });
   });
@@ -79,72 +81,72 @@ describe("calculateRemittance", () => {
   it("calculates Wise remittance with 0.5% FX spread", () => {
     const result = calculateRemittance({
       sendAmountMinor: 50_000, // 500.00 USD
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "wise",
     });
 
     // 56.50 * (1 - 0.005) = 56.2175
     expect(result.effectiveRate).toBe(56.2175);
     expect(result.midMarketRate).toBe(56.5);
-    expect(result.grossConvertedPhpMinor).toBe(2_825_000);
+    expect(result.grossConvertedMinor).toBe(2_825_000);
     // 50000 * 56.2175 = 2810875
-    expect(result.netPhpReceivedMinor).toBe(2_810_875);
-    expect(result.spreadLossPhpMinor).toBe(14_125);
+    expect(result.netReceivedMinor).toBe(2_810_875);
+    expect(result.spreadLossMinor).toBe(14_125);
     expect(result.transferFeeMinor).toBe(0);
-    expect(result.transferFeeInPhpMinor).toBe(0);
-    expect(result.totalCostInPhpMinor).toBe(14_125);
+    expect(result.transferFeeConvertedMinor).toBe(0);
+    expect(result.totalCostMinor).toBe(14_125);
     expect(result.effectiveLossPercent).toBe(0.5);
   });
 
   it("calculates Remitly, Western Union, and Bank Wire spreads correctly", () => {
     const remitly = calculateRemittance({
       sendAmountMinor: 50_000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "remitly",
     });
     // 56.50 * (1 - 0.015) = 55.6525
     expect(remitly.effectiveRate).toBe(55.6525);
-    expect(remitly.netPhpReceivedMinor).toBe(2_782_625);
-    expect(remitly.spreadLossPhpMinor).toBe(42_375);
+    expect(remitly.netReceivedMinor).toBe(2_782_625);
+    expect(remitly.spreadLossMinor).toBe(42_375);
     expect(remitly.effectiveLossPercent).toBe(1.5);
 
     const westernUnion = calculateRemittance({
       sendAmountMinor: 50_000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "western_union",
     });
     // 56.50 * (1 - 0.025) = 55.0875
     expect(westernUnion.effectiveRate).toBe(55.0875);
-    expect(westernUnion.netPhpReceivedMinor).toBe(2_754_375);
-    expect(westernUnion.spreadLossPhpMinor).toBe(70_625);
+    expect(westernUnion.netReceivedMinor).toBe(2_754_375);
+    expect(westernUnion.spreadLossMinor).toBe(70_625);
     expect(westernUnion.effectiveLossPercent).toBe(2.5);
 
     const bankWire = calculateRemittance({
       sendAmountMinor: 50_000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "bank_wire",
     });
     // 56.50 * (1 - 0.035) = 54.5225
     expect(bankWire.effectiveRate).toBe(54.5225);
-    expect(bankWire.netPhpReceivedMinor).toBe(2_726_125);
-    expect(bankWire.spreadLossPhpMinor).toBe(98_875);
+    expect(bankWire.netReceivedMinor).toBe(2_726_125);
+    expect(bankWire.spreadLossMinor).toBe(98_875);
     expect(bankWire.effectiveLossPercent).toBe(3.5);
   });
 
   it("incorporates upfront transfer fees into total cost and effective loss", () => {
     const result = calculateRemittance({
       sendAmountMinor: 50_000, // 500.00 USD
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       provider: "wise",
       transferFeeMinor: 500, // 5.00 USD fee
     });
 
     expect(result.transferFeeMinor).toBe(500);
     // 500 * 56.50 = 28250 PHP minor
-    expect(result.transferFeeInPhpMinor).toBe(28_250);
-    expect(result.spreadLossPhpMinor).toBe(14_125);
+    expect(result.transferFeeConvertedMinor).toBe(28_250);
+    expect(result.spreadLossMinor).toBe(14_125);
     // 28250 + 14125 = 42375
-    expect(result.totalCostInPhpMinor).toBe(42_375);
+    expect(result.totalCostMinor).toBe(42_375);
     // 42375 / 2825000 * 100 = 1.5%
     expect(result.effectiveLossPercent).toBe(1.5);
   });
@@ -152,61 +154,103 @@ describe("calculateRemittance", () => {
   it("honors custom exchange rates over provider defaults", () => {
     const result = calculateRemittance({
       sendAmountMinor: 100_000, // 1000.00 USD
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       customExchangeRate: 55.0,
       provider: "wise", // should be overridden by customExchangeRate
     });
 
     expect(result.effectiveRate).toBe(55.0);
     expect(result.midMarketRate).toBe(56.5);
-    expect(result.grossConvertedPhpMinor).toBe(5_650_000);
-    expect(result.netPhpReceivedMinor).toBe(5_500_000);
-    expect(result.spreadLossPhpMinor).toBe(150_000);
-    expect(result.totalCostInPhpMinor).toBe(150_000);
+    expect(result.grossConvertedMinor).toBe(5_650_000);
+    expect(result.netReceivedMinor).toBe(5_500_000);
+    expect(result.spreadLossMinor).toBe(150_000);
+    expect(result.totalCostMinor).toBe(150_000);
     expect(result.effectiveLossPercent).toBe(2.65);
   });
 
   it("handles custom exchange rates better than mid-market gracefully without negative loss", () => {
     const result = calculateRemittance({
       sendAmountMinor: 100_000,
-      fromCurrency: "USD",
+      foreignCurrency: "USD",
       customExchangeRate: 58.0,
     });
 
     expect(result.effectiveRate).toBe(58.0);
     expect(result.midMarketRate).toBe(56.5);
-    expect(result.grossConvertedPhpMinor).toBe(5_650_000);
-    expect(result.netPhpReceivedMinor).toBe(5_800_000);
-    expect(result.spreadLossPhpMinor).toBe(0);
-    expect(result.totalCostInPhpMinor).toBe(0);
+    expect(result.grossConvertedMinor).toBe(5_650_000);
+    expect(result.netReceivedMinor).toBe(5_800_000);
+    expect(result.spreadLossMinor).toBe(0);
+    expect(result.totalCostMinor).toBe(0);
     expect(result.effectiveLossPercent).toBe(0);
   });
 
   it("handles edge case of zero send amount", () => {
     const result = calculateRemittance({
       sendAmountMinor: 0,
-      fromCurrency: "AED",
+      foreignCurrency: "AED",
       provider: "wise",
     });
 
-    expect(result.grossConvertedPhpMinor).toBe(0);
-    expect(result.netPhpReceivedMinor).toBe(0);
-    expect(result.spreadLossPhpMinor).toBe(0);
-    expect(result.totalCostInPhpMinor).toBe(0);
+    expect(result.grossConvertedMinor).toBe(0);
+    expect(result.netReceivedMinor).toBe(0);
+    expect(result.spreadLossMinor).toBe(0);
+    expect(result.totalCostMinor).toBe(0);
     expect(result.effectiveLossPercent).toBe(0);
   });
 
   it("handles zero send amount with a flat transfer fee without dividing by zero", () => {
     const result = calculateRemittance({
       sendAmountMinor: 0,
-      fromCurrency: "SAR",
+      foreignCurrency: "SAR",
       transferFeeMinor: 200, // 2.00 SAR
     });
 
-    expect(result.grossConvertedPhpMinor).toBe(0);
-    expect(result.transferFeeInPhpMinor).toBe(3_012); // 200 * 15.06
-    expect(result.totalCostInPhpMinor).toBe(3_012);
+    expect(result.grossConvertedMinor).toBe(0);
+    expect(result.transferFeeConvertedMinor).toBe(3_012); // 200 * 15.06
+    expect(result.totalCostMinor).toBe(3_012);
     expect(result.effectiveLossPercent).toBe(0);
+  });
+});
+
+describe("peso-outbound remittance", () => {
+  it("follows the workspace currency: pesos go out from PHP, dollars come home from USD", () => {
+    expect(remittanceDirectionFor("PHP")).toBe("from_php");
+    expect(remittanceDirectionFor("USD")).toBe("to_php");
+  });
+
+  it("inverts the peso benchmark when sending pesos abroad", () => {
+    expect(remittanceMidMarketRate("USD", "to_php")).toBe(56.5);
+    // 1 / 56.50 rounded to six places
+    expect(remittanceMidMarketRate("USD", "from_php")).toBe(0.017699);
+  });
+
+  it("converts a PHP send amount into the foreign currency with the provider spread", () => {
+    const result = calculateRemittance({
+      sendAmountMinor: 5_650_000, // 56,500.00 PHP
+      foreignCurrency: "USD",
+      direction: "from_php",
+      provider: "wise",
+      transferFeeMinor: 10_000, // 100.00 PHP
+    });
+
+    expect(result.sendCurrency).toBe("PHP");
+    expect(result.receiveCurrency).toBe("USD");
+    expect(result.midMarketRate).toBe(0.017699);
+    // 0.017699 * (1 - 0.005) = 0.0176105 -> 0.017611 (six places)
+    expect(result.effectiveRate).toBe(0.017611);
+    expect(result.grossConvertedMinor).toBe(99_999); // 5650000 * 0.017699 = 99999.35
+    expect(result.netReceivedMinor).toBe(99_502); // 5650000 * 0.017611 = 99502.15
+    expect(result.spreadLossMinor).toBe(497);
+    expect(result.transferFeeConvertedMinor).toBe(177); // 10000 * 0.017699
+    expect(result.totalCostMinor).toBe(674);
+  });
+
+  it("compares providers in the peso-outbound direction", () => {
+    const comparison = compareRemittanceProviders(5_650_000, "USD", "from_php");
+    expect(comparison.mid_market!.receiveCurrency).toBe("USD");
+    expect(comparison.mid_market!.netReceivedMinor).toBeGreaterThan(
+      comparison.bank_wire!.netReceivedMinor,
+    );
   });
 });
 
@@ -260,23 +304,23 @@ describe("compareRemittanceProviders", () => {
       "bank_wire",
     ]);
 
-    expect(comparison.mid_market!.netPhpReceivedMinor).toBe(5_650_000);
-    expect(comparison.wise!.netPhpReceivedMinor).toBe(5_621_750);
-    expect(comparison.remitly!.netPhpReceivedMinor).toBe(5_565_250);
-    expect(comparison.western_union!.netPhpReceivedMinor).toBe(5_508_750);
-    expect(comparison.bank_wire!.netPhpReceivedMinor).toBe(5_452_250);
+    expect(comparison.mid_market!.netReceivedMinor).toBe(5_650_000);
+    expect(comparison.wise!.netReceivedMinor).toBe(5_621_750);
+    expect(comparison.remitly!.netReceivedMinor).toBe(5_565_250);
+    expect(comparison.western_union!.netReceivedMinor).toBe(5_508_750);
+    expect(comparison.bank_wire!.netReceivedMinor).toBe(5_452_250);
 
-    expect(comparison.mid_market!.netPhpReceivedMinor).toBeGreaterThan(
-      comparison.wise!.netPhpReceivedMinor,
+    expect(comparison.mid_market!.netReceivedMinor).toBeGreaterThan(
+      comparison.wise!.netReceivedMinor,
     );
-    expect(comparison.wise!.netPhpReceivedMinor).toBeGreaterThan(
-      comparison.remitly!.netPhpReceivedMinor,
+    expect(comparison.wise!.netReceivedMinor).toBeGreaterThan(
+      comparison.remitly!.netReceivedMinor,
     );
-    expect(comparison.remitly!.netPhpReceivedMinor).toBeGreaterThan(
-      comparison.western_union!.netPhpReceivedMinor,
+    expect(comparison.remitly!.netReceivedMinor).toBeGreaterThan(
+      comparison.western_union!.netReceivedMinor,
     );
-    expect(comparison.western_union!.netPhpReceivedMinor).toBeGreaterThan(
-      comparison.bank_wire!.netPhpReceivedMinor,
+    expect(comparison.western_union!.netReceivedMinor).toBeGreaterThan(
+      comparison.bank_wire!.netReceivedMinor,
     );
 
     expect(comparison.wise!.effectiveLossPercent).toBe(0.5);

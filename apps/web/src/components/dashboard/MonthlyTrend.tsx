@@ -1,4 +1,4 @@
-import type { CashflowTrend, CashflowTrendView } from "@zoption/shared";
+import { currencyMetadata, type CashflowTrend, type CashflowTrendView } from "@zoption/shared";
 import {
   Area,
   AreaChart,
@@ -21,6 +21,7 @@ import { formatMoney, formatPeriod } from "../../lib/formatters";
 import { createMonthlyTrendAxis, formatMonthlyTrendTick } from "../../lib/monthlyTrendAxis";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { MobileCashflowChart } from "./MobileCashflowChart";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 
 const trendOptions: Array<{ value: CashflowTrendView; label: string }> = [
   { value: "weekly", label: "Weekly" },
@@ -77,6 +78,9 @@ export function MonthlyTrend({
   onSubscribeToPro,
 }: Props) {
   const reduceMotion = useReducedMotion();
+  // The server converts the other currency into the workspace currency before it sums.
+  const currency = useWorkspaceCurrency();
+  const otherCurrency = currency === "PHP" ? "USD" : "PHP";
   const narrowViewport = useNarrowViewport();
   const optionRefs = useRef<Partial<Record<CashflowTrendView, HTMLButtonElement | null>>>({});
   const maximumMinor = data?.points.reduce(
@@ -118,7 +122,10 @@ export function MonthlyTrend({
           {data && (
             <p className="trend-period">
               {formatPeriod(data.range.from, data.range.to)}
-              <span className="trend-currency-note"> · USD converted to ₱</span>
+              <span className="trend-currency-note">
+                {" "}
+                · {otherCurrency} converted to {currencyMetadata[currency].symbol}
+              </span>
             </p>
           )}
         </div>
@@ -310,8 +317,8 @@ export function MonthlyTrend({
             <thead>
               <tr>
                 <th scope="col">Period</th>
-                <th scope="col">Income (₱)</th>
-                <th scope="col">Expenses (₱)</th>
+                <th scope="col">Income ({currencyMetadata[currency].symbol})</th>
+                <th scope="col">Expenses ({currencyMetadata[currency].symbol})</th>
               </tr>
             </thead>
             <tbody>

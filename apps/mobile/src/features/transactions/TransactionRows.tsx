@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveCategoryEmoji, type Currency } from "@zoption/shared";
 import type { LocalTransactionItem } from "@/db/view-models";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -26,8 +27,9 @@ export function TotalsValue({
   field: keyof TransactionTotals;
   tone: "default" | "income" | "expense";
 }) {
+  const workspaceCurrency = useWorkspaceCurrency();
   const populated = currencies.filter((currency) => totals[currency] !== undefined);
-  const visibleCurrencies = populated.length > 0 ? populated : (["PHP"] as Currency[]);
+  const visibleCurrencies = populated.length > 0 ? populated : ([workspaceCurrency] as Currency[]);
   return (
     <View style={styles.totalValues}>
       {visibleCurrencies.map((currency) => {

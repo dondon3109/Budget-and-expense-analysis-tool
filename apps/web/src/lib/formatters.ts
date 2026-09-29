@@ -1,4 +1,5 @@
 import { currencyMetadata, type Currency } from "@zoption/shared";
+import { workspaceCurrency } from "./workspaceCurrency";
 
 const currencyFormatterCache = new Map<Currency, Intl.NumberFormat>();
 
@@ -15,13 +16,13 @@ function currencyFormatterFor(currency: Currency): Intl.NumberFormat {
   return formatter;
 }
 
-export function formatMoney(amountMinor: number, currency: Currency = "PHP"): string {
+export function formatMoney(amountMinor: number, currency: Currency = workspaceCurrency()): string {
   return currencyFormatterFor(currency).format(amountMinor / 100);
 }
 
 export function formatMoneyParts(
   amountMinor: number,
-  currency: Currency = "PHP",
+  currency: Currency = workspaceCurrency(),
 ): Intl.NumberFormatPart[] {
   return currencyFormatterFor(currency).formatToParts(amountMinor / 100);
 }

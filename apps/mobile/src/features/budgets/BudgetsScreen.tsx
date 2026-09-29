@@ -12,12 +12,14 @@ import {
   BottomSheet,
   Button,
   Card,
+  CurrencyCode,
   ErrorState,
   FormField,
-  MoneyValue,
   moneyAccessibilityLabel,
+  MoneyValue,
   Skeleton,
 } from "@/ui/components";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -712,6 +714,7 @@ function SummaryCard({
 
 function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => void }) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
   const emoji =
     row.categoryIconEmoji ?? resolveCategoryEmoji({ name: row.categoryName, kind: "expense" });
 
@@ -722,7 +725,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
           ? "Review this budget conflict"
           : `Edit ${row.categoryName} budget`
       }
-      accessibilityLabel={`${row.categoryName} budget: spent ${moneyAccessibilityLabel(row.spentMinor, "PHP")} of ${moneyAccessibilityLabel(row.limitMinor, "PHP")}, ${row.remainingMinor >= 0 ? `${moneyAccessibilityLabel(row.remainingMinor, "PHP")} remaining` : `${moneyAccessibilityLabel(Math.abs(row.remainingMinor), "PHP")} over budget`}`}
+      accessibilityLabel={`${row.categoryName} budget: spent ${moneyAccessibilityLabel(row.spentMinor, workspaceCurrency)} of ${moneyAccessibilityLabel(row.limitMinor, workspaceCurrency)}, ${row.remainingMinor >= 0 ? `${moneyAccessibilityLabel(row.remainingMinor, workspaceCurrency)} remaining` : `${moneyAccessibilityLabel(Math.abs(row.remainingMinor), workspaceCurrency)} over budget`}`}
       accessible
       style={[
         styles.budgetCard,
@@ -1028,7 +1031,7 @@ function BudgetEditorSheet({
         maxLength={18}
         onChangeText={onAmountChange}
         placeholder="0.00"
-        trailing={<Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>}
+        trailing={<CurrencyCode />}
         value={value.amount}
       />
 

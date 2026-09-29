@@ -4,13 +4,38 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { RemittanceCalculatorSection } from "../src/components/planning/RemittanceCalculatorSection";
+import { setWorkspaceCurrency } from "../src/lib/workspaceCurrency";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  setWorkspaceCurrency("PHP");
+});
 
-describe("RemittanceCalculatorSection", () => {
+describe("RemittanceCalculatorSection from a PHP workspace", () => {
+  it("sends pesos abroad and prices what arrives in the chosen currency", async () => {
+    const user = userEvent.setup();
+    render(<RemittanceCalculatorSection />);
+
+    expect(screen.getByLabelText("Receive Currency")).toHaveValue("USD");
+    expect(screen.getByText("1 PHP = $0.017699")).toBeInTheDocument();
+    expect(screen.getByText("Recipient Receives in United States")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Net Received (USD)" })).toBeInTheDocument();
+
+    const amountInput = screen.getByLabelText(/Send Amount \(₱\)/);
+    await user.clear(amountInput);
+    await user.type(amountInput, "56500");
+
+    // 5,650,000 centavos * 0.017611 (Wise) = 99,502 cents
+    expect(screen.getAllByText("$995.02").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("RemittanceCalculatorSection from a USD workspace", () => {
+  beforeEach(() => setWorkspaceCurrency("USD"));
+
   it("renders header, mid-market rate benchmark, and default values", () => {
     render(<RemittanceCalculatorSection />);
 

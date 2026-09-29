@@ -26,7 +26,15 @@ export function accountMutation(
       interest !== undefined
         ? ", interest_enabled, annual_rate_basis_points, interest_frequency, interest_pay_day"
         : "";
-    const binds: unknown[] = [operation.entityId, tenantId, payload.name, payload.type, timestamp];
+    // New accounts start in the workspace currency.
+    const binds: unknown[] = [
+      operation.entityId,
+      tenantId,
+      payload.name,
+      payload.type,
+      tenantId,
+      timestamp,
+    ];
     if (interest !== undefined) {
       interestUpdateSchema.parse(interest);
       binds.push(
@@ -39,7 +47,7 @@ export function accountMutation(
     binds.push(tenantId, payload.name);
     mutation = env.DB.prepare(
       `INSERT INTO accounts (id, tenant_id, name, type, currency, revision, updated_at${interestColumns})
-       SELECT ?, ?, ?, ?, 'PHP', 1, ?${interest !== undefined ? ", ?, ?, ?, ?" : ""}
+       SELECT ?, ?, ?, ?, COALESCE((SELECT currency FROM tenants WHERE id = ?), 'PHP'), 1, ?${interest !== undefined ? ", ?, ?, ?, ?" : ""}
        WHERE NOT EXISTS (
          SELECT 1 FROM accounts WHERE tenant_id = ? AND lower(name) = lower(?)
        )`,

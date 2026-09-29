@@ -33,6 +33,7 @@ import {
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
@@ -276,7 +277,10 @@ export function ReferenceEditorScreen() {
             ...(interest !== undefined && { interest }),
           });
         } else {
-          await local.workspace.transactionMutations.createAccount(parsed.data);
+          await local.workspace.transactionMutations.createAccount(
+            parsed.data,
+            useWorkspaceCurrencyStore.getState().currency,
+          );
         }
       } else if (entityType === "category") {
         const parsed = categoryInputSchema.safeParse({

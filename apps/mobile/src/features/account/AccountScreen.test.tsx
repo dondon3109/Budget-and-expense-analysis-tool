@@ -5,6 +5,10 @@ import { AccountScreen } from "./AccountScreen";
 import { downloadAccountArchive } from "@/api/account";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 
+jest.mock("@react-native-community/netinfo", () => ({
+  useNetInfo: () => ({ isInternetReachable: true, isConnected: true }),
+}));
+
 jest.mock("expo-router", () => ({
   router: {
     back: jest.fn(),

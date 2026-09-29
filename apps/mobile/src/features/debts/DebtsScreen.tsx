@@ -11,14 +11,16 @@ import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
   Card,
+  CurrencyCode,
   EmptyState,
   ErrorState,
   FormField,
-  MoneyValue,
   moneyAccessibilityLabel,
+  MoneyValue,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -152,7 +154,7 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
           maxLength={16}
           onChangeText={setExtra}
           placeholder="0.00"
-          trailing={<Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>}
+          trailing={<CurrencyCode />}
           value={extra}
         />
         {projection && projection.status === "paid_off" && projection.payoffMonths !== null ? (
@@ -188,6 +190,7 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
 
 function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
   const conflicted = debt.syncState === "conflicted";
   const failed = debt.syncState === "failed";
   return (
@@ -197,7 +200,7 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
       onPress={onPress}
     >
       <Card
-        accessibilityLabel={`${debt.name}, balance ${moneyAccessibilityLabel(debt.balanceMinor, "PHP")}`}
+        accessibilityLabel={`${debt.name}, balance ${moneyAccessibilityLabel(debt.balanceMinor, workspaceCurrency)}`}
         style={{
           borderColor: conflicted ? theme.colors.warning : failed ? theme.colors.danger : undefined,
         }}

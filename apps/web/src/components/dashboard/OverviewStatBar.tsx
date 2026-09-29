@@ -28,7 +28,6 @@ interface OverviewStatBarProps {
   items: OverviewStatItem[];
 }
 
-const CURRENCY_PREFERENCE: Currency[] = ["PHP", "USD"];
 const percentageFormatter = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 1 });
 
 function formatPercentageChange(percentage: number): string {
@@ -41,11 +40,9 @@ export function OverviewStatBar({ items }: OverviewStatBarProps) {
     <section className="overview-stat-bar" aria-label="Monthly summary">
       {items.map((item) => {
         const Icon = item.icon;
-        const orderedAmounts = CURRENCY_PREFERENCE.map((currency) =>
-          item.amounts.find((amount) => amount.currency === currency),
-        ).filter((amount): amount is OverviewStatAmount => amount !== undefined);
-        const primary = orderedAmounts[0];
-        const secondary = orderedAmounts.slice(1);
+        // Callers list the workspace currency first.
+        const primary = item.amounts[0];
+        const secondary = item.amounts.slice(1);
 
         return (
           <article className={`overview-stat tone-${item.tone}`} key={item.label}>

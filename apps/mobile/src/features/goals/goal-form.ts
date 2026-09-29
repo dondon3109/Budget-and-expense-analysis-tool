@@ -70,7 +70,7 @@ export function parseGoalForm(values: GoalFormValues):
         : "Enter a valid target amount with no more than two decimal places.";
   }
   if (targetAmountMinor !== null && targetAmountMinor < 1) {
-    errors.targetAmount = "Enter a target amount of at least ₱0.01.";
+    errors.targetAmount = "Enter a target amount of at least 0.01.";
   }
 
   let currentAmountMinor: number | null = null;
@@ -84,7 +84,7 @@ export function parseGoalForm(values: GoalFormValues):
         : "Enter a valid current amount with no more than two decimal places.";
   }
   if (currentAmountMinor !== null && currentAmountMinor < 0) {
-    errors.currentAmount = "Enter a current amount of at least ₱0.00.";
+    errors.currentAmount = "Enter a current amount of at least 0.00.";
   }
 
   if (!values.targetDate) {

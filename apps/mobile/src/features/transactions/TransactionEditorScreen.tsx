@@ -27,6 +27,7 @@ import {
   SyncStatus,
 } from "@/ui/components";
 import { spacing, typography } from "@/ui/tokens";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import {
   formatMinorForInput,
@@ -169,7 +170,7 @@ export function TransactionEditorScreen() {
       existing?.currency ??
       (paramCurrency === "PHP" || paramCurrency === "USD"
         ? paramCurrency
-        : (account?.currency ?? "PHP"));
+        : (account?.currency ?? useWorkspaceCurrencyStore.getState().currency));
     const initialNotes = existing ? (existing.notes ?? "") : paramRef ? `Ref: ${paramRef}` : "";
 
     setValues({
@@ -346,7 +347,7 @@ export function TransactionEditorScreen() {
       description: "",
       amount: "",
       transferFee: "",
-      currency: defaultAccount?.currency ?? "PHP",
+      currency: defaultAccount?.currency ?? useWorkspaceCurrencyStore.getState().currency,
       notes: "",
     });
     setErrors({});

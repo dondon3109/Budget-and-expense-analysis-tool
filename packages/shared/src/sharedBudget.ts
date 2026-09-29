@@ -1,3 +1,5 @@
+import type { Currency } from "./types";
+
 export interface SharedEnvelopeItem {
   categoryId: string;
   categoryName: string;
@@ -13,7 +15,7 @@ export interface SharedBudgetPayload {
   shareId: string;
   title: string;
   month: string;
-  currency: "PHP";
+  currency: Currency;
   envelopes: SharedEnvelopeItem[];
   totalAllocatedMinor: number;
   totalSpentMinor: number;
@@ -28,7 +30,7 @@ export interface SharedBudgetPayload {
 export interface CreateShareTokenOptions {
   title: string;
   month: string;
-  currency?: "PHP";
+  currency?: Currency;
   categories: {
     id: string;
     name: string;
@@ -121,7 +123,7 @@ function parseSharedBudgetPayload(
     !isString(value.shareId) ||
     !isString(value.title) ||
     !isString(value.month) ||
-    value.currency !== "PHP" ||
+    (value.currency !== "PHP" && value.currency !== "USD") ||
     !Array.isArray(value.envelopes) ||
     !value.envelopes.every(isSharedEnvelopeItem) ||
     !isNumber(value.totalAllocatedMinor) ||
@@ -143,7 +145,7 @@ function parseSharedBudgetPayload(
     shareId: value.shareId,
     title: value.title,
     month: value.month,
-    currency: "PHP",
+    currency: value.currency,
     envelopes: value.envelopes,
     totalAllocatedMinor: value.totalAllocatedMinor,
     totalSpentMinor: value.totalSpentMinor,

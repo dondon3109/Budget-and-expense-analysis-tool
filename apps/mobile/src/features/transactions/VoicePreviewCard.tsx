@@ -54,7 +54,7 @@ export function VoicePreviewCard({
         </View>
         <MoneyValue
           amountMinor={draft.amountMinor}
-          currency={draft.currency ?? "PHP"}
+          currency={draft.currency}
           tone={tone}
           style={typography.title}
         />

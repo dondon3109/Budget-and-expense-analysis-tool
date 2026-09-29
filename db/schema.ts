@@ -24,6 +24,7 @@ export const tenants = sqliteTable("tenants", {
   id: text("id").primaryKey(),
   kind: text("kind", { enum: ["user"] }).notNull(),
   name: text("name").notNull(),
+  currency: text("currency").notNull().default("PHP"),
   ...timestamps,
 });
 
@@ -385,8 +386,7 @@ export const subscriptions = sqliteTable(
   ],
 );
 
-// One row per billing cycle that could not be charged for lack of balance. The unique
-// index on subscription and due date is what keeps the email to the first failed day.
+// A billing cycle left uncharged for lack of balance; the unique index emails only its first day.
 export const subscriptionRenewalNotifications = sqliteTable(
   "subscription_renewal_notifications",
   {

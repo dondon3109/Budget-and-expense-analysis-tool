@@ -21,6 +21,7 @@ import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/wor
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { telemetry } from "@/telemetry/telemetry";
 
 import { clearAppLock } from "./app-lock";
@@ -97,6 +98,7 @@ export function clearUserScopedRuntimeState(): void {
   useSheetStore.getState().close();
   useAssistantVoiceOptionsStore.getState().ensureSubject(null);
   clearPlanCache();
+  useWorkspaceCurrencyStore.getState().setCurrency("PHP");
   // Best-effort like the rest of this boundary: a native notification failure
   // must never block an identity transition.
   void clearDailyReminder().catch(() => undefined);

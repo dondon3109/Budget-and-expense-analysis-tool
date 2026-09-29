@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
-import type { OfwCurrency, RemittanceProvider } from "@zoption/shared";
+import type { OfwCurrency, RemittanceCurrency, RemittanceProvider } from "@zoption/shared";
 import {
   calculateRemittance,
   compareRemittanceProviders,
-  DEFAULT_OFW_EXCHANGE_RATES,
   MoneyParseError,
   OFW_CURRENCIES,
   parseAmountToMinor,
   REMITTANCE_PROVIDERS,
+  remittanceDirectionFor,
+  remittanceMidMarketRate,
 } from "@zoption/shared";
 import {
   Building2,
@@ -20,6 +21,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { formatMoney } from "../../lib/formatters";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 import "./RemittanceCalculatorSection.css";
 
 const CURRENCY_LABELS: Record<OfwCurrency, { name: string; symbol: string; country: string }> = {
@@ -33,6 +35,32 @@ const CURRENCY_LABELS: Record<OfwCurrency, { name: string; symbol: string; count
   GBP: { name: "British Pound", symbol: "£", country: "United Kingdom" },
   AUD: { name: "Australian Dollar", symbol: "A$", country: "Australia" },
 };
+
+const PESO_LABEL = { name: "Philippine Peso", symbol: "₱", country: "Philippines" };
+
+function currencyLabel(currency: RemittanceCurrency) {
+  return currency === "PHP" ? PESO_LABEL : CURRENCY_LABELS[currency];
+}
+
+/**
+ * Received amounts can land in any corridor currency, not only the two workspace currencies
+ * `formatMoney` knows. Pesos keep the app's whole-peso format; a foreign currency keeps cents,
+ * since pesos sent abroad often arrive as small amounts.
+ */
+function formatCorridorMoney(amountMinor: number, currency: RemittanceCurrency): string {
+  if (currency === "PHP") return formatMoney(amountMinor, "PHP");
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amountMinor / 100);
+}
+
+/** A peso-outbound rate is a small fraction (1 PHP = 0.0177 USD), so it keeps more places. */
+function formatRate(rate: number): string {
+  return rate >= 1 ? rate.toFixed(4) : rate.toFixed(6);
+}
 
 const PROVIDER_NAMES: Record<RemittanceProvider, string> = {
   mid_market: "Mid-Market (Zero Spread)",
@@ -86,24 +114,27 @@ function parseCustomRateField(
   if (!Number.isFinite(rate) || rate <= 0) {
     return {
       rate: fallbackRate,
-      error: "Enter an exchange rate greater than zero, such as 56.50.",
+      error: `Enter an exchange rate greater than zero, such as ${fallbackRate >= 1 ? fallbackRate.toFixed(2) : fallbackRate.toFixed(6)}.`,
     };
   }
   return { rate, error: null };
 }
 
 export function RemittanceCalculatorSection() {
+  // The workspace currency is the side money leaves from: a PHP workspace sends pesos abroad,
+  // a USD workspace sends dollars (or another corridor currency) home to the Philippines.
+  const direction = remittanceDirectionFor(useWorkspaceCurrency());
   const [sendAmountText, setSendAmountText] = useState("1000");
-  const [fromCurrency, setFromCurrency] = useState<OfwCurrency>("USD");
+  const [foreignCurrency, setForeignCurrency] = useState<OfwCurrency>("USD");
   const [selectedProvider, setSelectedProvider] = useState<RemittanceProvider>("wise");
   const [transferFeeText, setTransferFeeText] = useState("");
   const [useCustomRate, setUseCustomRate] = useState<boolean>(false);
   const [customRate, setCustomRate] = useState<string>("");
 
-  const benchmark = DEFAULT_OFW_EXCHANGE_RATES[fromCurrency];
-  const customRateField = useCustomRate
-    ? parseCustomRateField(customRate, benchmark.midMarketRate)
-    : null;
+  const sendCurrency: RemittanceCurrency = direction === "to_php" ? foreignCurrency : "PHP";
+  const receiveCurrency: RemittanceCurrency = direction === "to_php" ? "PHP" : foreignCurrency;
+  const midMarketRate = remittanceMidMarketRate(foreignCurrency, direction);
+  const customRateField = useCustomRate ? parseCustomRateField(customRate, midMarketRate) : null;
   const customExchangeRate = customRateField?.rate;
   const customRateError = customRateField?.error ?? null;
 
@@ -126,16 +157,24 @@ export function RemittanceCalculatorSection() {
   const singleResult = useMemo(() => {
     return calculateRemittance({
       sendAmountMinor,
-      fromCurrency,
+      foreignCurrency,
+      direction,
       provider: selectedProvider,
       transferFeeMinor,
       customExchangeRate,
     });
-  }, [sendAmountMinor, fromCurrency, selectedProvider, transferFeeMinor, customExchangeRate]);
+  }, [
+    sendAmountMinor,
+    foreignCurrency,
+    direction,
+    selectedProvider,
+    transferFeeMinor,
+    customExchangeRate,
+  ]);
 
   const providerComparison = useMemo(() => {
-    return compareRemittanceProviders(sendAmountMinor, fromCurrency);
-  }, [sendAmountMinor, fromCurrency]);
+    return compareRemittanceProviders(sendAmountMinor, foreignCurrency, direction);
+  }, [sendAmountMinor, foreignCurrency, direction]);
 
   const bestProvider = useMemo(() => {
     // Exclude mid_market theoretical baseline from best commercial provider
@@ -146,10 +185,10 @@ export function RemittanceCalculatorSection() {
       "bank_wire",
     ];
     let best: RemittanceProvider = "wise";
-    let maxReceived = providerComparison[best]?.netPhpReceivedMinor ?? 0;
+    let maxReceived = providerComparison[best]?.netReceivedMinor ?? 0;
 
     for (const p of commercialProviders) {
-      const received = providerComparison[p]?.netPhpReceivedMinor ?? 0;
+      const received = providerComparison[p]?.netReceivedMinor ?? 0;
       if (received > maxReceived) {
         maxReceived = received;
         best = p;
@@ -158,7 +197,9 @@ export function RemittanceCalculatorSection() {
     return best;
   }, [providerComparison]);
 
-  const currentCurrencyInfo = CURRENCY_LABELS[fromCurrency];
+  const sendInfo = currencyLabel(sendCurrency);
+  const receiveInfo = currencyLabel(receiveCurrency);
+  const foreignInfo = CURRENCY_LABELS[foreignCurrency];
 
   return (
     <section
@@ -176,15 +217,17 @@ export function RemittanceCalculatorSection() {
             Remittance & FX Fee Calculator
           </h2>
           <p className="remittance-subheading">
-            Simulate international transfers, uncover hidden FX markup spreads, and maximize the PHP
-            arriving home to your family or savings ledger.
+            {direction === "to_php"
+              ? "Simulate international transfers, uncover hidden FX markup spreads, and maximize the PHP arriving home to your family or savings ledger."
+              : "Simulate sending pesos abroad, uncover hidden FX markup spreads, and maximize what arrives on the other side."}
           </p>
         </div>
 
         <div className="remittance-rate-pill">
           <span className="rate-label">Mid-market Benchmark:</span>
           <strong>
-            1 {fromCurrency} = ₱{benchmark?.midMarketRate.toFixed(2) ?? "—"}
+            1 {sendCurrency} = {receiveInfo.symbol}
+            {direction === "to_php" ? midMarketRate.toFixed(2) : formatRate(midMarketRate)}
           </strong>
         </div>
       </div>
@@ -195,19 +238,18 @@ export function RemittanceCalculatorSection() {
           <h3 className="remittance-card-title">Transfer Parameters</h3>
 
           <div className="remittance-field">
-            <label htmlFor="remittance-from-currency">Send Currency</label>
+            <label htmlFor="remittance-from-currency">
+              {direction === "to_php" ? "Send Currency" : "Receive Currency"}
+            </label>
             <div className="remittance-select-wrapper">
               <select
                 id="remittance-from-currency"
-                value={fromCurrency}
+                value={foreignCurrency}
                 onChange={(e) => {
-                  setFromCurrency(e.target.value as OfwCurrency);
+                  const next = e.target.value as OfwCurrency;
+                  setForeignCurrency(next);
                   if (useCustomRate) {
-                    setCustomRate(
-                      DEFAULT_OFW_EXCHANGE_RATES[
-                        e.target.value as OfwCurrency
-                      ]?.midMarketRate.toString() || "",
-                    );
+                    setCustomRate(remittanceMidMarketRate(next, direction).toString());
                   }
                 }}
               >
@@ -221,11 +263,9 @@ export function RemittanceCalculatorSection() {
           </div>
 
           <div className="remittance-field">
-            <label htmlFor="remittance-send-amount">
-              Send Amount ({currentCurrencyInfo.symbol})
-            </label>
+            <label htmlFor="remittance-send-amount">Send Amount ({sendInfo.symbol})</label>
             <div className="remittance-input-wrapper">
-              <span className="input-currency-prefix">{currentCurrencyInfo.symbol}</span>
+              <span className="input-currency-prefix">{sendInfo.symbol}</span>
               <input
                 id="remittance-send-amount"
                 type="text"
@@ -263,11 +303,9 @@ export function RemittanceCalculatorSection() {
           </div>
 
           <div className="remittance-field">
-            <label htmlFor="remittance-fee-input">
-              Upfront Transfer Fee ({currentCurrencyInfo.symbol})
-            </label>
+            <label htmlFor="remittance-fee-input">Upfront Transfer Fee ({sendInfo.symbol})</label>
             <div className="remittance-input-wrapper">
-              <span className="input-currency-prefix">{currentCurrencyInfo.symbol}</span>
+              <span className="input-currency-prefix">{sendInfo.symbol}</span>
               <input
                 id="remittance-fee-input"
                 type="text"
@@ -294,7 +332,7 @@ export function RemittanceCalculatorSection() {
                 onChange={(e) => {
                   setUseCustomRate(e.target.checked);
                   if (e.target.checked && !customRate) {
-                    setCustomRate(benchmark?.midMarketRate.toString() || "");
+                    setCustomRate(midMarketRate.toString());
                   }
                 }}
               />
@@ -302,7 +340,9 @@ export function RemittanceCalculatorSection() {
             </label>
             {useCustomRate && (
               <div className="custom-rate-input-box">
-                <label htmlFor="remittance-custom-rate">Custom 1 {fromCurrency} in PHP</label>
+                <label htmlFor="remittance-custom-rate">
+                  Custom 1 {sendCurrency} in {receiveCurrency}
+                </label>
                 {/* A number input drops "12abc" before the parser sees it, which would hide the
                     rejection behind a silently empty field. */}
                 <input
@@ -310,7 +350,7 @@ export function RemittanceCalculatorSection() {
                   type="text"
                   inputMode="decimal"
                   value={customRate}
-                  placeholder={benchmark?.midMarketRate.toString() ?? "56.50"}
+                  placeholder={midMarketRate.toString()}
                   aria-invalid={customRateError !== null}
                   aria-describedby={customRateError ? "remittance-custom-rate-error" : undefined}
                   onChange={(e) => setCustomRate(e.target.value)}
@@ -338,8 +378,8 @@ export function RemittanceCalculatorSection() {
               <div>
                 <strong>Waiting for a valid amount</strong>
                 <p>
-                  Fix the highlighted field to see the projected peso value, effective rate, and fee
-                  breakdown.
+                  Fix the highlighted field to see the projected received value, effective rate, and
+                  fee breakdown.
                 </p>
               </div>
             </div>
@@ -348,13 +388,15 @@ export function RemittanceCalculatorSection() {
           {!hasBlockingError && (
             <>
               <div className="results-highlight-box">
-                <span className="results-highlight-label">Recipient Receives in Philippines</span>
+                <span className="results-highlight-label">
+                  Recipient Receives in {receiveInfo.country}
+                </span>
                 <strong className="results-highlight-amount">
-                  {formatMoney(singleResult.netPhpReceivedMinor)}
+                  {formatCorridorMoney(singleResult.netReceivedMinor, receiveCurrency)}
                 </strong>
                 <div className="results-highlight-sub">
-                  Effective exchange rate: 1 {fromCurrency} = ₱
-                  {singleResult.effectiveRate.toFixed(4)}
+                  Effective exchange rate: 1 {sendCurrency} = {receiveInfo.symbol}
+                  {formatRate(singleResult.effectiveRate)}
                 </div>
               </div>
 
@@ -365,7 +407,7 @@ export function RemittanceCalculatorSection() {
                     <span>Gross Value (Mid-Market)</span>
                   </div>
                   <strong className="breakdown-value">
-                    {formatMoney(singleResult.grossConvertedPhpMinor)}
+                    {formatCorridorMoney(singleResult.grossConvertedMinor, receiveCurrency)}
                   </strong>
                 </div>
 
@@ -375,10 +417,10 @@ export function RemittanceCalculatorSection() {
                     <span>Hidden FX Spread Loss</span>
                   </div>
                   <strong
-                    className={`breakdown-value ${singleResult.spreadLossPhpMinor > 0 ? "loss" : ""}`}
+                    className={`breakdown-value ${singleResult.spreadLossMinor > 0 ? "loss" : ""}`}
                   >
-                    {singleResult.spreadLossPhpMinor > 0 ? "−" : ""}
-                    {formatMoney(singleResult.spreadLossPhpMinor)}
+                    {singleResult.spreadLossMinor > 0 ? "−" : ""}
+                    {formatCorridorMoney(singleResult.spreadLossMinor, receiveCurrency)}
                   </strong>
                 </div>
 
@@ -388,10 +430,10 @@ export function RemittanceCalculatorSection() {
                     <span>Upfront Transfer Fee</span>
                   </div>
                   <strong
-                    className={`breakdown-value ${singleResult.transferFeeInPhpMinor > 0 ? "loss" : ""}`}
+                    className={`breakdown-value ${singleResult.transferFeeConvertedMinor > 0 ? "loss" : ""}`}
                   >
-                    {singleResult.transferFeeInPhpMinor > 0 ? "−" : ""}
-                    {formatMoney(singleResult.transferFeeInPhpMinor)}
+                    {singleResult.transferFeeConvertedMinor > 0 ? "−" : ""}
+                    {formatCorridorMoney(singleResult.transferFeeConvertedMinor, receiveCurrency)}
                   </strong>
                 </div>
 
@@ -406,13 +448,15 @@ export function RemittanceCalculatorSection() {
                 </div>
               </div>
 
-              {singleResult.spreadLossPhpMinor > 0 && (
+              {singleResult.spreadLossMinor > 0 && (
                 <div className="remittance-loss-callout">
                   <HelpCircle size={16} aria-hidden="true" />
                   <p>
                     <strong>Hidden Markup Warning:</strong> You lose approximately{" "}
-                    <strong>{formatMoney(singleResult.spreadLossPhpMinor)}</strong> in rate spread
-                    alone compared to the true mid-market rate.
+                    <strong>
+                      {formatCorridorMoney(singleResult.spreadLossMinor, receiveCurrency)}
+                    </strong>{" "}
+                    in rate spread alone compared to the true mid-market rate.
                   </p>
                 </div>
               )}
@@ -432,9 +476,13 @@ export function RemittanceCalculatorSection() {
               </p>
             ) : (
               <p className="comparison-subtitle">
-                Based on sending {currentCurrencyInfo.symbol}
-                {(sendAmountMinor / 100).toLocaleString("en-US")} {fromCurrency} converted directly
-                to Philippine Pesos.
+                Based on sending {sendInfo.symbol}
+                {(sendAmountMinor / 100).toLocaleString("en-US")} {sendCurrency} converted directly
+                to{" "}
+                {direction === "to_php"
+                  ? "Philippine Pesos"
+                  : `${foreignInfo.name} (${foreignCurrency})`}
+                .
               </p>
             )}
           </div>
@@ -462,7 +510,7 @@ export function RemittanceCalculatorSection() {
                 <th scope="col">Effective Rate</th>
                 <th scope="col">Estimated Spread Loss</th>
                 <th scope="col" className="text-right">
-                  Net Received (PHP)
+                  Net Received ({receiveCurrency})
                 </th>
                 <th scope="col" className="text-right">
                   Total Drag
@@ -496,19 +544,24 @@ export function RemittanceCalculatorSection() {
                           {isMidMarket && <span className="tag-baseline">Benchmark</span>}
                         </div>
                       </td>
-                      <td className="rate-cell">₱{res.effectiveRate.toFixed(4)}</td>
+                      <td className="rate-cell">
+                        {receiveInfo.symbol}
+                        {formatRate(res.effectiveRate)}
+                      </td>
                       <td className="spread-cell">
-                        {res.spreadLossPhpMinor > 0 ? (
+                        {res.spreadLossMinor > 0 ? (
                           <span className="spread-loss">
-                            −{formatMoney(res.spreadLossPhpMinor)}
+                            −{formatCorridorMoney(res.spreadLossMinor, receiveCurrency)}
                           </span>
                         ) : (
-                          <span className="spread-zero">₱0 (0%)</span>
+                          <span className="spread-zero">
+                            {formatCorridorMoney(0, receiveCurrency)} (0%)
+                          </span>
                         )}
                       </td>
                       <td className="received-cell text-right">
                         <strong className="received-amount">
-                          {formatMoney(res.netPhpReceivedMinor)}
+                          {formatCorridorMoney(res.netReceivedMinor, receiveCurrency)}
                         </strong>
                       </td>
                       <td className="drag-cell text-right">

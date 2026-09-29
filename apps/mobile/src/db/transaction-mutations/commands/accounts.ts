@@ -6,6 +6,7 @@ import {
   type AccountInput,
   type AccountInterestUpdate,
   type AccountUpdateWithInterest,
+  type Currency,
 } from "@zoption/shared";
 
 import type { LocalCommandContext } from "../context";
@@ -18,7 +19,15 @@ import {
   queueUpdate,
 } from "./outbox-writes";
 
-export function createAccount(ctx: LocalCommandContext, value: AccountInput): Promise<string> {
+/**
+ * `currency` is the workspace currency, which the Worker also assigns when the create syncs, so
+ * the local row reads the same before and after the round trip.
+ */
+export function createAccount(
+  ctx: LocalCommandContext,
+  value: AccountInput,
+  currency: Currency = "PHP",
+): Promise<string> {
   const input = accountInputSchema.parse(value);
   return ctx.writer.run(async () => {
     let entityId = "";
@@ -30,10 +39,11 @@ export function createAccount(ctx: LocalCommandContext, value: AccountInput): Pr
         `INSERT INTO accounts (
           id, name, type, currency, archived, system, interest_json,
           server_revision, server_updated_at, deleted_at, sync_state
-        ) VALUES (?, ?, ?, 'PHP', 0, 0, ?, 0, NULL, NULL, 'pending')`,
+        ) VALUES (?, ?, ?, ?, 0, 0, ?, 0, NULL, NULL, 'pending')`,
         entityId,
         input.name,
         input.type,
+        currency,
         JSON.stringify({
           enabled: false,
           annualRateBasisPoints: null,

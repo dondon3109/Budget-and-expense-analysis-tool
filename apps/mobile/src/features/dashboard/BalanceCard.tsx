@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Card, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -10,6 +11,7 @@ import {
   preferredTransactionAccount,
   type AccountBalanceSummaryItem,
   type AccountType,
+  type Currency,
   type DashboardSummary,
 } from "@zoption/shared";
 
@@ -27,9 +29,10 @@ const ACCOUNT_TYPE_ICONS: Record<AccountType, keyof typeof MaterialCommunityIcon
 function accountSubtitle(
   account: AccountBalanceSummaryItem,
   sharePercent: number | undefined,
+  workspaceCurrency: Currency,
 ): string {
   if (account.archived) return "Archived";
-  if (account.currency === "USD") return "Held in USD";
+  if (account.currency !== workspaceCurrency) return `Held in ${account.currency}`;
   if (account.balanceMinor < 0) return "Owed";
   if (sharePercent === undefined) return "No balance";
   return `${sharePercent}% of assets`;
@@ -41,14 +44,16 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const items = balances?.items ?? [];
   const netMinor = summary.metrics.netMinor;
   const isNetPositive = netMinor >= 0;
-  const usdMinor = balances?.balancesByCurrency.USD ?? 0;
+  const workspaceCurrency = useWorkspaceCurrency();
+  const otherCurrency: Currency = workspaceCurrency === "PHP" ? "USD" : "PHP";
+  const otherMinor = balances?.balancesByCurrency[otherCurrency] ?? 0;
   const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
   const setDefaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.setAccountId);
   const defaultSpendingAccount = preferredTransactionAccount(
     items.filter((account) => !account.archived),
     defaultSpendingAccountId,
   );
-  const allocation = balanceAllocation(items);
+  const allocation = balanceAllocation(items, workspaceCurrency);
   // Series colors come from theme tokens so the bar reads in every theme. The
   // expense tone is left out so no account reads as negative; any account past
   // the fifth shares the muted tone.
@@ -108,15 +113,15 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
               this month
             </Text>
           </View>
-          {usdMinor !== 0 ? (
+          {otherMinor !== 0 ? (
             <View style={styles.usdMeta}>
-              {usdMinor > 0 ? (
+              {otherMinor > 0 ? (
                 <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
               ) : null}
               <MoneyValue
-                amountMinor={usdMinor}
-                currency="USD"
-                tone={usdMinor < 0 ? "expense" : "default"}
+                amountMinor={otherMinor}
+                currency={otherCurrency}
+                tone={otherMinor < 0 ? "expense" : "default"}
                 style={styles.metaMoney}
               />
             </View>
@@ -194,7 +199,7 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
                         {account.name}
                       </Text>
                       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                        {accountSubtitle(account, slice?.sharePercent)}
+                        {accountSubtitle(account, slice?.sharePercent, workspaceCurrency)}
                       </Text>
                     </View>
                     <MoneyValue

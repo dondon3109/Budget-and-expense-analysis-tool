@@ -12,9 +12,10 @@ import {
   Button,
   Card,
   ConfirmationDialog,
+  CurrencyCode,
   ErrorState,
-  FormField,
   formatDateInput,
+  FormField,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -211,9 +212,7 @@ export function DebtEditorScreen() {
                   setMessage(null);
                 }}
                 placeholder="0.00"
-                trailing={
-                  <Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>
-                }
+                trailing={<CurrencyCode />}
                 value={balance}
               />
               <FormField
@@ -245,9 +244,7 @@ export function DebtEditorScreen() {
                   setMessage(null);
                 }}
                 placeholder="0.00"
-                trailing={
-                  <Text style={[typography.label, { color: theme.colors.textMuted }]}>PHP</Text>
-                }
+                trailing={<CurrencyCode />}
                 value={minimumPayment}
               />
               <FormField

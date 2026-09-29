@@ -75,7 +75,7 @@ function DayTotal({
       <small>{label}</small>
       <span className={`amount-${tone}`}>
         {currencies.length === 0
-          ? formatMoney(0, "PHP")
+          ? formatMoney(0)
           : currencies
               .map((currency) => formatMoney(totals[currency]![field], currency))
               .join(" · ")}

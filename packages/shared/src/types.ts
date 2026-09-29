@@ -113,7 +113,7 @@ export interface AccountBalanceSummaryItem {
 }
 
 export interface AccountBalanceSummary {
-  currency: "PHP";
+  currency: Currency;
   overallBalanceMinor: number;
   balancesByCurrency: Record<Currency, number>;
   items: AccountBalanceSummaryItem[];
@@ -325,7 +325,7 @@ export interface CashflowTrend {
 
 export interface DashboardSummary {
   period: { from: string; to: string };
-  currency: "PHP";
+  currency: Currency;
   accountBalances?: AccountBalanceSummary;
   metrics: {
     moneyInMinor: number;

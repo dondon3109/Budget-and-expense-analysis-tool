@@ -18,6 +18,7 @@ import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
@@ -111,6 +112,7 @@ export default function RootLayout() {
     void useAssistantVoiceOptionsStore.persist.rehydrate();
     void useMicCaptureConsentStore.persist.rehydrate();
     void useDefaultSpendingAccountStore.persist.rehydrate();
+    void useWorkspaceCurrencyStore.persist.rehydrate();
   }, []);
 
   return (

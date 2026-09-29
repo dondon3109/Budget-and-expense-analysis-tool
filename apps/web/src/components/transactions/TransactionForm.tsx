@@ -31,6 +31,7 @@ import { localIsoDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 
 export interface TransactionFormDraft {
   kind?: TransactionKind;
@@ -99,7 +100,7 @@ export function TransactionForm({
     item?.transferFeeMinor ? formatMinorAmount(item.transferFeeMinor) : "",
   );
   const [currency, setCurrency] = useState<Currency>(
-    initialDraft?.currency ?? item?.currency ?? "PHP",
+    initialDraft?.currency ?? item?.currency ?? workspaceCurrency(),
   );
   const [clientError, setClientError] = useState<string>();
   const [creatingCategory, setCreatingCategory] = useState(false);

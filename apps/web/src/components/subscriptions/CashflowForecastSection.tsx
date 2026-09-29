@@ -1,4 +1,5 @@
 import {
+  currencyMetadata,
   parseAmountToMinor,
   projectCashflow,
   type CashflowForecastOptions,
@@ -22,6 +23,7 @@ import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { formatMoney } from "../../lib/formatters";
 import "./CashflowForecastSection.css";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 
 export interface CashflowAccountOption {
   id: string;
@@ -268,7 +270,7 @@ function CashflowProjectionChart({ forecast, safetyBufferMinor }: CashflowProjec
         {zeroY !== null && (
           <span className="legend-item">
             <span className="legend-swatch legend-deficit" aria-hidden="true" />
-            Below ₱0
+            Below {formatMoney(0)}
           </span>
         )}
       </div>
@@ -480,6 +482,7 @@ export function CashflowForecastSection({
   accounts,
   totalBalanceMinor,
 }: CashflowForecastSectionProps) {
+  const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
   const [horizonDays, setHorizonDays] = useState<ForecastHorizon>(30);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [safetyBufferText, setSafetyBufferText] = useState("");
@@ -627,7 +630,7 @@ export function CashflowForecastSection({
               Safety buffer
             </label>
             <div className="forecast-money-input">
-              <b aria-hidden="true">₱</b>
+              <b aria-hidden="true">{currencySymbol}</b>
               <input
                 id="safety-buffer-input"
                 inputMode="decimal"
