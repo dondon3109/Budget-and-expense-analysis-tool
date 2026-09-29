@@ -109,6 +109,31 @@ describe("GoalsSubscriptionPanel", () => {
     expect(screen.getByText(/2 active plans/)).toBeInTheDocument();
   });
 
+  it("keeps a plan billed in the other currency out of the total and says so", async () => {
+    vi.mocked(getFinancialGoals).mockResolvedValue({ items: [] });
+    vi.mocked(getSubscriptions).mockResolvedValue({
+      month: "2026-08",
+      currency: "PHP",
+      totalMonthlyCostMinor: 4_990_00,
+      items: [
+        subscriptionItem,
+        {
+          ...subscriptionItem,
+          id: "sub-usd",
+          name: "US streaming",
+          currency: "USD",
+          amountMinor: 15_00,
+          monthlyCostMinor: 15_00,
+        },
+      ],
+    });
+
+    renderPanel();
+
+    expect(await screen.findByText("₱4,990")).toBeInTheDocument();
+    expect(screen.getByText(/Plus \$15 billed in USD/)).toBeInTheDocument();
+  });
+
   it("shows empty states when there are no goals or subscriptions", async () => {
     vi.mocked(getFinancialGoals).mockResolvedValue({ items: [] });
     vi.mocked(getSubscriptions).mockResolvedValue({

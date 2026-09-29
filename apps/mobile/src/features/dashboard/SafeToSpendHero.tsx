@@ -42,6 +42,10 @@ export function SafeToSpendHero({
     () => forecastSubscriptions(allSubscriptions, currency),
     [allSubscriptions, currency],
   );
+  // Plans billed in the other currency can't come out of this balance, so say they're left out.
+  const excludedCount = allSubscriptions.filter(
+    (sub) => sub.status === "active" && sub.currency !== currency,
+  ).length;
   const daysLeftInWeek = useMemo(() => getDaysLeftInWeek(new Date(), "monday"), []);
 
   // 30-day forecast projection to identify safe liquidity limits
@@ -132,6 +136,13 @@ export function SafeToSpendHero({
           ? `Forward guidance accounting for ${upcomingBilledCount} active recurring bill${upcomingBilledCount === 1 ? "" : "s"} and scheduled obligations.`
           : "Keep spending minimal until your next planned deposit or balance adjustment."}
       </Text>
+      {excludedCount > 0 ? (
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          {excludedCount} {excludedCount === 1 ? "plan" : "plans"} billed in{" "}
+          {currency === "PHP" ? "USD" : "PHP"} {excludedCount === 1 ? "isn't" : "aren't"} counted
+          here.
+        </Text>
+      ) : null}
     </Card>
   );
 }
