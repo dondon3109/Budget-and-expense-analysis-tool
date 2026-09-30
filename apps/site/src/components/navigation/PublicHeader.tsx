@@ -1,7 +1,7 @@
 import { Check, Coffee, Menu, Moon, Sun, X } from "lucide-react";
 
 import { BrandMark } from "../brand/BrandMark";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 import "../theme/ThemeToggle.css";
 import "./PublicHeader.css";
 
@@ -45,12 +45,10 @@ export function PublicHeader({
   links = DEFAULT_LINKS,
   navLabel = "Learn more",
   ctaLabel = "Start free",
-  ctaHref = appUrl("/signup"),
 }: {
   links?: PublicHeaderLink[];
   navLabel?: string;
   ctaLabel?: string;
-  ctaHref?: string;
 } = {}) {
   // The toggle only earns its place next to a trimmed row; without secondary links
   // the row keeps every link at every width and stays hamburger-free until 960px.
@@ -87,13 +85,15 @@ export function PublicHeader({
           <button
             className="theme-toggle"
             type="button"
-            aria-label="Choose theme"
             aria-haspopup="menu"
             aria-expanded="false"
             aria-controls={THEME_MENU_ID}
             title="Choose theme"
             data-theme-trigger
           >
+            {/* The accessible name must contain the visible theme label (WCAG 2.5.3),
+                so it is built from this text plus that label, not an aria-label. */}
+            <span className="sr-only">Choose theme: </span>
             {THEME_OPTIONS.map((option) => {
               const Icon = option.icon;
               return (
@@ -134,10 +134,10 @@ export function PublicHeader({
             })}
           </div>
         </div>
-        <a className="public-header-sign-in" href={appUrl("/login")}>
+        <a className="public-header-sign-in" href={appUrl("/login")} {...NEW_TAB}>
           Sign in
         </a>
-        <a className="button primary public-header-cta" href={ctaHref}>
+        <a className="button primary public-header-cta" href={appUrl("/signup")} {...NEW_TAB}>
           {ctaLabel}
         </a>
         <button
@@ -169,10 +169,10 @@ export function PublicHeader({
           ))}
         </nav>
         <div className="public-header-drawer-actions">
-          <a className="public-header-sign-in" href={appUrl("/login")}>
+          <a className="public-header-sign-in" href={appUrl("/login")} {...NEW_TAB}>
             Sign in
           </a>
-          <a className="button primary" href={appUrl("/signup")}>
+          <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
             Start free
           </a>
         </div>

@@ -1,7 +1,7 @@
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { IMPORT_GUIDES } from "./importGuides";
 import "./ImportGuidePage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 const SUPPORTED_FORMATS = [
   {
@@ -101,7 +101,7 @@ export function ImportHubPage() {
 
       <section className="import-guide-cta">
         <p>Turn a downloaded statement into a clear monthly picture.</p>
-        <a className="button" href={appUrl("/signup")}>
+        <a className="button" href={appUrl("/signup")} {...NEW_TAB}>
           Create your workspace
         </a>
       </section>

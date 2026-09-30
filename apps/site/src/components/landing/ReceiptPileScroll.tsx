@@ -5,7 +5,7 @@ import { useReducedMotion } from "../../hooks/useReducedMotion";
 
 import receiptPile768 from "../../assets/receipt-pile-768.webp";
 import receiptPile1536 from "../../assets/receipt-pile-1536.webp";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /**
  * Loose receipts that fly into one ledger as the visitor scrolls. `dx`/`dy`/`r` are the
@@ -84,7 +84,7 @@ export function ReceiptPileScroll() {
             <li>Sorted</li>
             <li>Clear</li>
           </ol>
-          <a className="button primary" href={appUrl("/signup")}>
+          <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
             Clear the pile for free <ArrowRight size={17} aria-hidden="true" />
           </a>
         </div>

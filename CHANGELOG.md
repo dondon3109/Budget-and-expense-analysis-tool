@@ -8,6 +8,14 @@ All notable product changes are documented here.
 
 - Android place prompts (off by default, under More → Preferences): after you stay at least five minutes at a store, restaurant, market, mall, school, hospital, or similar place and then leave, Zoption asks "Did you spend at …?" and opens a prefilled expense. Each place is asked about at most once every four hours, never between 10 PM and 7 AM, and "Don't ask here" excludes a place.
 
+### Changed
+
+- Sign in and Start free links on zoption.site open app.zoption.site in a new tab, so the public page stays open behind the app.
+
+### Fixed
+
+- On zoption.site, the theme button and the "Ask Zoption" support button announce their visible text to screen readers and voice control, and the assistant preview on the home page keeps readable contrast on phones. Headline and label fonts load earlier, so the hero no longer shifts when they arrive.
+
 ## 3.0.0 — 2026-09-30
 
 ### Added

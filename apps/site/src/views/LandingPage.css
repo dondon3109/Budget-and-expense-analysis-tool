@@ -715,8 +715,10 @@
 /* ============================================================
    Zero-Typing Financial Input Spotlight Section
    ============================================================ */
+/* Deferred rendering for below-the-fold sections. .facet-modules stays out: it runs far
+   taller than the 800px placeholder on phones, so skipping it lets the next band's dark
+   background overlap its chat bubbles and fail contrast checks. */
 .spotlight-section,
-.facet-modules,
 .calculator-section,
 .comparison-section,
 .install-promo,

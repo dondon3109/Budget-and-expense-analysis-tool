@@ -1,5 +1,6 @@
 import "react-native-gesture-handler";
 import "@/styles/global.css";
+import "@/sync/background-sync-task-definition";
 // Defines the place visit location task; must stay a bare, eager import.
 import "@/features/place-visits/place-visit-task";
 

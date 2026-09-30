@@ -8,7 +8,7 @@ import { BrandMark } from "../components/brand/BrandMark";
 import { CustomerReviews } from "../components/landing/CustomerReviews";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { PublicHeader, type PublicHeaderLink } from "../components/navigation/PublicHeader";
-import { appUrl } from "../lib/appUrl";
+import { appUrl, NEW_TAB } from "../lib/appUrl";
 
 /**
  * In-page anchors for the long marketing page; the shared header renders them.
@@ -86,7 +86,7 @@ export function LandingPage({
               understanding monthly cash flow — without connecting to your bank.
             </p>
             <div className="hero-actions">
-              <a className="button primary" href={appUrl("/signup")}>
+              <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
                 Start for free <ArrowRight size={18} aria-hidden="true" />
               </a>
               <a className="button secondary" href="#fast-entry">
@@ -530,10 +530,10 @@ export function LandingPage({
             </article>
           </div>
           <div className="final-cta-actions">
-            <a className="button primary" href={appUrl("/signup")}>
+            <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
               Start for free <ArrowRight size={17} aria-hidden="true" />
             </a>
-            <a className="button secondary" href={appUrl("/login")}>
+            <a className="button secondary" href={appUrl("/login")} {...NEW_TAB}>
               Sign in
             </a>
           </div>
@@ -649,7 +649,7 @@ function StickyMobileCta() {
           <span>100% private · No card needed</span>
         </div>
         <div className="sticky-mobile-cta-actions">
-          <a className="button primary compact" href={appUrl("/signup")}>
+          <a className="button primary compact" href={appUrl("/signup")} {...NEW_TAB}>
             Create account <ArrowRight size={14} aria-hidden="true" />
           </a>
         </div>

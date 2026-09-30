@@ -3,7 +3,7 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { currentRelease, releaseHistory } from "@zoption/web-common/releases";
 import "./ChangelogPage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 export function ChangelogPage() {
   return (
@@ -47,7 +47,7 @@ export function ChangelogPage() {
           exact centavo accuracy — starting completely free and private.
         </p>
         <div className="changelog-cta-actions">
-          <a className="button primary" href={appUrl("/signup")}>
+          <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
             Create your workspace <ArrowRight size={16} aria-hidden="true" />
           </a>
           <a className="button secondary" href="/install">

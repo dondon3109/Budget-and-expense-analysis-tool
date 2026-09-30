@@ -1,7 +1,7 @@
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { detectedColumnLabels, IMPORT_GUIDES, type ImportGuide } from "./importGuides";
 import "./ImportGuidePage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 export const IMPORT_GUIDE_LAST_UPDATED = "August 30, 2026";
 
@@ -72,7 +72,7 @@ function ImportGuideBody({ guide }: { guide: ImportGuide }) {
 
       <section className="import-guide-cta">
         <p>Import your {guide.shortName} history into a private peso workspace.</p>
-        <a className="button" href={appUrl("/signup")}>
+        <a className="button" href={appUrl("/signup")} {...NEW_TAB}>
           Create your workspace
         </a>
       </section>

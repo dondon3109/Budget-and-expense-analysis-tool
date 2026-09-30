@@ -4,7 +4,7 @@ import { LegalFooter } from "../../components/legal/LegalFooter";
 import { Breadcrumbs } from "../../components/navigation/Breadcrumbs";
 import { PublicHeader } from "../../components/navigation/PublicHeader";
 import "./PricingPage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 const COMPARISON_ROWS = [
   {
@@ -207,7 +207,7 @@ export function PricingPage() {
             </div>
 
             <div className="pricing-card-cta">
-              <a className="button secondary" href={appUrl("/signup")}>
+              <a className="button secondary" href={appUrl("/signup")} {...NEW_TAB}>
                 Create free workspace <ArrowRight size={16} aria-hidden="true" />
               </a>
             </div>
@@ -264,7 +264,7 @@ export function PricingPage() {
             </div>
 
             <div className="pricing-card-cta">
-              <a className="button primary" href={appUrl("/signup")}>
+              <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
                 Start with Pro <ArrowRight size={16} aria-hidden="true" />
               </a>
             </div>
@@ -381,7 +381,7 @@ export function PricingPage() {
             sharing, no ads, and no spreadsheets that break.
           </p>
           <div className="pricing-bottom-actions">
-            <a className="button primary" href={appUrl("/signup")}>
+            <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
               Create your free workspace <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a className="button secondary" href="/install">
