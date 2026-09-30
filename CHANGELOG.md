@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Sign in and Start free links on zoption.site open app.zoption.site in a new tab, so the public page stays open behind the app.
+
 ## 3.0.0 — 2026-09-30
 
 ### Added

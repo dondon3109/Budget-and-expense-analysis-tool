@@ -5,7 +5,7 @@ import { Breadcrumbs } from "../../components/navigation/Breadcrumbs";
 import { PublicHeader } from "../../components/navigation/PublicHeader";
 import { LegalFooter } from "../../components/legal/LegalFooter";
 import "./GuideDetailPage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /** Only published guides are built, so an unknown slug is the site 404, not a page state. */
 export function GuideDetailPage({ guide }: { guide: FinanceGuide }) {
@@ -143,7 +143,7 @@ export function GuideDetailPage({ guide }: { guide: FinanceGuide }) {
                 complete privacy for your Philippine financial records.
               </p>
               <div className="guides-cta-actions">
-                <a className="button primary" href={appUrl("/signup")}>
+                <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
                   Create your workspace <ArrowRight size={16} aria-hidden="true" />
                 </a>
                 <a className="button secondary" href="/install">

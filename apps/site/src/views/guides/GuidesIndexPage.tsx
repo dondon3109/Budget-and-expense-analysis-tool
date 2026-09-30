@@ -3,7 +3,7 @@ import { FINANCE_GUIDES, type FinanceGuide } from "@zoption/shared";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import "./GuidesIndexPage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 const CATEGORY_LABELS: Record<FinanceGuide["category"] | "all", string> = {
   all: "All Guides",
@@ -81,7 +81,7 @@ export function GuidesIndexPage() {
             CSVs, scan receipts, and forecast cashflow with exact centavo precision.
           </p>
           <div className="guides-cta-actions">
-            <a className="button primary" href={appUrl("/signup")}>
+            <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
               Create your free workspace <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a className="button secondary" href="/install">
