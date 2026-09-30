@@ -182,7 +182,7 @@ const TUTORIALS_DATA: TutorialSection[] = [
   {
     id: "privacy-and-offline",
     category: "Privacy & Sync",
-    title: "Offline Use & Zero-Knowledge Encryption",
+    title: "Offline Use & Data Protection",
     icon: ShieldCheck,
     summary:
       "Understand how your financial data is protected and how to use Zoption anywhere, even without an internet connection.",
@@ -198,9 +198,9 @@ const TUTORIALS_DATA: TutorialSection[] = [
           "When you reconnect to Wi-Fi or cellular data, Zoption syncs your changes automatically with conflict resolution.",
       },
       {
-        title: "Client-Side Encryption",
+        title: "Private, Isolated Workspaces",
         description:
-          "Your sensitive financial ledger is encrypted before it leaves your device. Only you possess the credentials to decrypt your records.",
+          "Synced records are sent over encrypted connections and stored on Zoption's servers in a workspace isolated from every other account.",
       },
     ],
   },

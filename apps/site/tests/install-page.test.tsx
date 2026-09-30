@@ -72,8 +72,7 @@ beforeEach(() => {
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/140.0.0.0 Safari/537.36",
   );
   setNavigatorValue("clipboard", { writeText: vi.fn().mockResolvedValue(undefined) });
-  // Default: the R2 metadata endpoint is unreachable. The page must show the
-  // safe download-unavailable state and never offer a fallback artifact.
+  // Default: the R2 metadata endpoint is unreachable, so the shipped snapshot stays.
   vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network failure")));
 });
 
@@ -196,7 +195,6 @@ describe("R2 remote release metadata", () => {
       "href",
       ANDROID_RELEASE.downloadPath,
     );
-    expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
   });
 
   it.each([
@@ -229,7 +227,6 @@ describe("R2 remote release metadata", () => {
           ANDROID_RELEASE.downloadPath,
         ),
       );
-      expect(screen.queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
       expect(screen.queryByRole("link", { name: /github/i })).not.toBeInTheDocument();
     },
   );

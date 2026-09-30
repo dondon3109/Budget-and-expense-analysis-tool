@@ -6,13 +6,6 @@ import {
   parseRemoteAndroidRelease,
 } from "@zoption/web-common/android-release-metadata";
 
-export type AndroidReleaseStatus = "loading" | "remote" | "unavailable";
-
-export interface AndroidReleaseSource {
-  release: AndroidRelease | null;
-  status: AndroidReleaseStatus;
-}
-
 const FETCH_TIMEOUT_MS = 8_000;
 
 function isAbortError(error: unknown): boolean {
@@ -22,23 +15,14 @@ function isAbortError(error: unknown): boolean {
 }
 
 /**
- * Loads the authoritative Android release metadata from R2. The page only
- * ever renders metadata that passed the strict untrusted-input validation;
- * while the request is in flight the status is "loading", and every failure
- * (network, timeout, malformed JSON, invalid shape, wrong host, bad
- * checksum) ends in "unavailable" so the UI shows a safe download-
- * unavailable state instead of any fallback artifact link.
- *
- * Start from the last shipped snapshot so the official R2 APK stays
- * downloadable if the live latest.json request is blocked. A successful
- * remote parse replaces the snapshot. Unmount/StrictMode aborts are
- * ignored so they cannot clear a working card.
+ * The Android release to offer: the last shipped snapshot, replaced by R2's
+ * latest.json once it passes the strict untrusted-input validation. Every
+ * failure (network, timeout, malformed JSON, invalid shape, wrong host, bad
+ * checksum) keeps the snapshot, so the official R2 APK stays downloadable and
+ * no fallback artifact link is ever offered.
  */
-export function useAndroidRelease(): AndroidReleaseSource {
-  const [source, setSource] = useState<AndroidReleaseSource>({
-    release: ANDROID_RELEASE,
-    status: "remote",
-  });
+export function useAndroidRelease(): AndroidRelease {
+  const [release, setRelease] = useState<AndroidRelease>(ANDROID_RELEASE);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -54,9 +38,9 @@ export function useAndroidRelease(): AndroidReleaseSource {
         });
         if (cancelled) return;
         if (!response.ok) return;
-        const release = parseRemoteAndroidRelease(await response.json());
-        if (cancelled || !release) return;
-        setSource({ release, status: "remote" });
+        const remote = parseRemoteAndroidRelease(await response.json());
+        if (cancelled || !remote) return;
+        setRelease(remote);
       } catch (error) {
         if (cancelled || isAbortError(error)) {
           return;
@@ -73,5 +57,5 @@ export function useAndroidRelease(): AndroidReleaseSource {
     };
   }, []);
 
-  return source;
+  return release;
 }

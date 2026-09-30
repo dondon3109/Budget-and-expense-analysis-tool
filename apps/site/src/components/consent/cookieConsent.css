@@ -377,7 +377,7 @@
  * Reserve its height instead. The value tracks the banner's own layout — a single row on wide
  * screens, more once it wraps — so it is calibrated rather than derived.
  */
-body:has(.cookie-consent-banner) {
+body:has(.cookie-consent-banner:not([hidden])) {
   padding-bottom: var(--consent-bar-clearance);
 }
 
