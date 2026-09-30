@@ -4,15 +4,16 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 3.0.0 — 2026-09-30
+
 ### Added
 
 - New accounts on the web now complete a short first-run setup before the dashboard: choose the base currency, then enter the physical cash on hand, which becomes the opening balance of the Cash account. Existing accounts are not asked. The opening balance adds to the Cash account but is not counted as income on the web dashboard, cashflow trend, calendar, or transaction day totals. The Android and iOS app still count it as income until they are updated.
-- Android Beta 0.2.41 (versionCode 20341) carries the Currency setting under Preferences and the Dodo Payments checkout.
 
 ### Changed
 
 - The signed-in web app moved to https://app.zoption.site, and https://zoption.site is now the public site: a separate static build whose content pages load no app code. Old app links, bookmarks, sign-in callbacks, and budget share links on zoption.site forward to the app with their query intact. Web users sign in once more after the move, because a session belongs to one address.
-- Android Beta 0.2.42 (versionCode 20342) creates budget share links on app.zoption.site.
+- Android Beta 0.2.42 (versionCode 20342) carries the Currency setting under Preferences and the Dodo Payments checkout, and creates budget share links on app.zoption.site. It supersedes 0.2.41, which was never published.
 - Pro checkout on the web and in the Android and iOS app leads with Dodo Payments (card, Apple Pay, or Google Pay) as the primary "Continue securely" action, with PayPal offered below it.
 
 ### Fixed

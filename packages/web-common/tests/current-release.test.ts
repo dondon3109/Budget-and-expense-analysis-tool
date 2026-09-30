@@ -31,7 +31,6 @@ describe("current release notes", () => {
       "Checkout leads with Dodo Payments",
       "Currency moved to Preferences on Android and iOS",
       "Tidier account rows and settings menus",
-      "Android Beta 0.2.41",
       "Android Beta 0.2.42",
     ]);
 
