@@ -332,7 +332,8 @@ export function SupportChat() {
         className="support-chat-launcher"
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-label={open ? "Close Zoption Support" : "Open Zoption Support"}
+        // Keeps the visible "Ask Zoption" text inside the accessible name (WCAG 2.5.3).
+        aria-label={open ? "Close Ask Zoption" : "Ask Zoption support"}
         aria-expanded={open}
       >
         {open ? (

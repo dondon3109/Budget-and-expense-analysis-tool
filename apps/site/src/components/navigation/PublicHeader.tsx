@@ -87,13 +87,15 @@ export function PublicHeader({
           <button
             className="theme-toggle"
             type="button"
-            aria-label="Choose theme"
             aria-haspopup="menu"
             aria-expanded="false"
             aria-controls={THEME_MENU_ID}
             title="Choose theme"
             data-theme-trigger
           >
+            {/* The accessible name must contain the visible theme label (WCAG 2.5.3),
+                so it is built from this text plus that label, not an aria-label. */}
+            <span className="sr-only">Choose theme: </span>
             {THEME_OPTIONS.map((option) => {
               const Icon = option.icon;
               return (

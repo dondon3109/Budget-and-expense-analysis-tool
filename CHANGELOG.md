@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- On zoption.site, the theme button and the "Ask Zoption" support button announce their visible text to screen readers and voice control, and the assistant preview on the home page keeps readable contrast on phones. Headline and label fonts load earlier, so the hero no longer shifts when they arrive.
+
 ## 3.0.0 — 2026-09-30
 
 ### Added
