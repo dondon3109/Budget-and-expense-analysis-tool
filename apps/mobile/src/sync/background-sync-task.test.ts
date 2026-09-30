@@ -2,6 +2,7 @@ import NetInfo from "@react-native-community/netinfo";
 import * as BackgroundTask from "expo-background-task";
 import * as TaskManager from "expo-task-manager";
 
+import "./background-sync-task-definition";
 import {
   BACKGROUND_SYNC_MINIMUM_INTERVAL_MINUTES,
   BACKGROUND_SYNC_TASK_NAME,
@@ -31,7 +32,7 @@ const mockedBackgroundTask = jest.mocked(BackgroundTask);
 const mockedTaskManager = jest.mocked(TaskManager);
 const mockedNetInfo = jest.mocked(NetInfo);
 
-// defineTask must run at module scope of background-sync-task, which executes
+// defineTask must run at module scope of background-sync-task-definition, which executes
 // while this file's imports load — before any beforeEach clearAllMocks. Copy
 // the call out now so the assertion survives the reset.
 const firstDefinitionCall = (

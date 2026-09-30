@@ -70,12 +70,11 @@ export async function runBackgroundSync(): Promise<BackgroundTask.BackgroundTask
   }
 }
 
-// Registered at module scope per the expo-background-task contract: the task
-// must be defined before registerTaskAsync is called and before the app
-// finishes launching.
-TaskManager.defineTask(BACKGROUND_SYNC_TASK_NAME, async () => runBackgroundSync());
-
-/** Registers the OS-level task exactly once per app lifetime. */
+/**
+ * Registers the OS-level task exactly once per app lifetime. The task itself is
+ * defined by `./background-sync-task-definition`, which app/_layout.tsx imports
+ * bare so it runs before this does.
+ */
 export async function registerBackgroundSyncTask(): Promise<void> {
   if (Platform.OS === "web") return;
   if (registrationPromise) return registrationPromise;

@@ -1,5 +1,6 @@
 import "react-native-gesture-handler";
 import "@/styles/global.css";
+import "@/sync/background-sync-task-definition";
 
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
