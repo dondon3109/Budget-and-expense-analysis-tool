@@ -30,14 +30,25 @@ describe("PublicHeader", () => {
     for (const link of within(navigation).getAllByRole("link")) {
       expect(link).toHaveAttribute("href");
     }
-    expect(screen.getByRole("link", { name: "Start free" })).toHaveAttribute(
-      "href",
-      "https://app.zoption.site/signup",
-    );
-    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
-      "href",
-      "https://app.zoption.site/login",
-    );
+  });
+
+  it("opens Start free and Sign in on the app origin in a new tab, header and drawer alike", () => {
+    renderHeader();
+
+    const appLinks = [
+      ["Start free", "https://app.zoption.site/signup"],
+      ["Sign in", "https://app.zoption.site/login"],
+    ] as const;
+    for (const [name, href] of appLinks) {
+      // The drawer starts hidden, so include hidden links to cover both copies.
+      const links = screen.getAllByRole("link", { name, hidden: true });
+      expect(links).toHaveLength(2);
+      for (const link of links) {
+        expect(link).toHaveAttribute("href", href);
+        expect(link).toHaveAttribute("target", "_blank");
+        expect(link).toHaveAttribute("rel", "noopener");
+      }
+    }
   });
 
   it("opens and closes the mobile menu, restoring focus to the trigger", async () => {
