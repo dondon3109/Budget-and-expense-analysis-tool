@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="September 24, 2026"
+      lastUpdated="September 30, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -46,6 +46,16 @@ export function PrivacyPolicyPage() {
             receipt photo or screenshot, spoken transaction note or its transcript, or PDF statement
             you choose, together with your category names, used to draft transactions for your
             review. Nothing is added to your workspace until you review and save the draft.
+          </li>
+          <li>
+            <strong>Place prompts (Android, off by default):</strong> only if you turn them on and
+            allow location all the time, the Android app reads your location in the background,
+            including while the app is closed, to notice when you stay at a place such as a store or
+            restaurant. After you leave, the coordinates of that place are sent through Zoption to
+            Google Maps to find its name so the app can ask whether you spent money there. Zoption
+            does not store or log those coordinates and keeps no visit history. The phone keeps only
+            the stay in progress, when it last asked about a place, and places you chose not to be
+            asked about. Turning prompts off, or signing out, stops location access.
           </li>
           <li>
             <strong>Android app on your device:</strong> a local copy of your financial workspace
@@ -201,6 +211,11 @@ export function PrivacyPolicyPage() {
             (mobile_crash) with coarse exception types and hashed stack frame shapes. PostHog
             person-profile processing is disabled ($process_person_profile: false), and no user
             identities, financial records, prompts, or conversation contents are ever sent.
+          </li>
+          <li>
+            <strong>Google Maps Platform</strong> for place prompts, only when you turn them on: it
+            receives the coordinates of a place you just left, without your name, email, or
+            financial records, and returns the nearest store, restaurant, or similar place.
           </li>
           <li>
             <strong>Cloudflare Workers AI</strong> for AI entry after separate AI entry consent: it

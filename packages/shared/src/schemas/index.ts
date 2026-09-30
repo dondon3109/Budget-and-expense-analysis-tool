@@ -8,6 +8,7 @@ export * from "./calendar";
 export * from "./imports";
 export * from "./assistant";
 export * from "./receipts";
+export * from "./places";
 export * from "./billing";
 export * from "./support";
 export * from "./user-account";

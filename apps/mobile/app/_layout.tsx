@@ -1,5 +1,7 @@
 import "react-native-gesture-handler";
 import "@/styles/global.css";
+// Defines the place visit location task; must stay a bare, eager import.
+import "@/features/place-visits/place-visit-task";
 
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Stack, type ErrorBoundaryProps } from "expo-router";
@@ -15,6 +17,7 @@ import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
+import { usePlaceVisitSession } from "@/features/place-visits/place-visits";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -62,9 +65,14 @@ function SplashRelease() {
   return null;
 }
 
-/** Restores the daily reminder for a signed-in session and clears it otherwise. */
+/**
+ * Restores the daily reminder for a signed-in session and clears it otherwise;
+ * a signed-out session also stops place visit prompts.
+ */
 function DailyReminderSession() {
-  useDailyReminderSession(useSessionSnapshot().status);
+  const { status } = useSessionSnapshot();
+  useDailyReminderSession(status);
+  usePlaceVisitSession(status);
   return null;
 }
 

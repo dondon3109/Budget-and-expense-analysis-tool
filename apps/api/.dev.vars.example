@@ -59,3 +59,7 @@ DODO_PAYMENTS_WEBHOOK_KEY=
 # Resend transactional email (sponsored-seat invitations). Verify the sender domain in
 # Resend and keep the API key in this ignored file or a `wrangler secret put` value.
 RESEND_API_KEY=
+
+# Google Places API (New) key for the mobile visit prompt (POST /api/app/places/nearby).
+# Without it the route answers 503 places_unavailable and the phone stays silent.
+GOOGLE_PLACES_API_KEY=

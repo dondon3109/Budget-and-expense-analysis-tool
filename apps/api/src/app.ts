@@ -44,6 +44,7 @@ import { createBugReportEgressRoutes } from "./routes/ops-bug-report-egress";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createProviderCredentialRoutes } from "./routes/provider-credentials";
+import { createPlaceRoutes } from "./routes/places";
 import { createReceiptRoutes } from "./routes/receipts";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import {
@@ -207,6 +208,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/entry", createAiEntryRoutes(dependencies.aiEntryService));
   app.route("/api/app/sync", createMobileSyncRoutes(dependencies.mobileSync));
   app.route("/api/app/receipts", createReceiptRoutes(dependencies.receiptService));
+  app.route("/api/app/places", createPlaceRoutes(dependencies.placesProvider));
   app.route(
     "/api/app/exports",
     createExportRoutes(dependencies.transactions, dependencies.billing),

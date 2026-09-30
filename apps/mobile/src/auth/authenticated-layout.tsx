@@ -6,6 +6,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
+import { PlaceVisitTapHandler } from "@/features/place-visits/place-visits";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
@@ -87,6 +88,7 @@ function LocalWorkspaceGate({
     >
       {children}
       <DailyReminderTapHandler />
+      <PlaceVisitTapHandler />
     </SyncProvider>
   );
 }

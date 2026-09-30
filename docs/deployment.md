@@ -181,6 +181,15 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
     `OPS_EGRESS_TOKEN` authenticates outbound automation callers for `GET /api/ops/bug-reports`. It must be set as a **secret**, never a plain `vars` value. The endpoint `GET /api/ops/bug-reports` is the only path the outbound automation may call. The admin bug-report route returns raw content and reporter email and is off limits to this flow.
 
+17. Store `GOOGLE_PLACES_API_KEY` as a Worker secret in each environment for Android place prompts (`POST /api/app/places/nearby`). Without it the route answers `503 places_unavailable` and the phone shows no prompt. Create the key in a Google Cloud project with billing enabled and only **Places API (New)** enabled. Restrict it to that API; it is used server-side only, so it needs no application restriction and never ships in the app. Each lookup is one Nearby Search Pro call (the field mask asks for `id`, `displayName`, `primaryType`, and `types` only). The Worker caps each user at 2 lookups a minute and 6 a day (`apps/api/src/http/rate-limit-policy.ts`); set a daily quota on the Google project as a second ceiling.
+
+    ```bash
+    pnpm --filter @zoption/api exec wrangler secret put GOOGLE_PLACES_API_KEY --config wrangler.deploy.jsonc --env preview
+    pnpm --filter @zoption/api exec wrangler secret put GOOGLE_PLACES_API_KEY --config wrangler.deploy.jsonc --env production
+    ```
+
+    Place prompts use background location, so the Play Console needs, before an APK with them ships to the store: the **Location permissions** declaration (background access, with a short video of the in-app disclosure on the Place prompts card and the prompt it leads to), and the **Foreground service** declaration for the `location` type.
+
 ### Optional PayPal Sandbox provisioning utility
 
 The repository setup utility is intentionally locked to PayPal Sandbox and the approved Preview Worker webhook endpoint. It never calls the live PayPal API, patches/deletes existing resources, or changes Cloudflare by itself. It reconciles the `Zoption Pro` product, the ₱149 monthly and ₱1,299 annual PHP plans, and the ten-event Preview webhook. A conflicting same-name resource, duplicate webhook, or mismatched webhook event set stops the operation for review.

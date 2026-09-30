@@ -166,6 +166,20 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // The daily reminder's Android status bar icon must be a white silhouette;
       // without one Android draws the full-colour launcher icon as a blank square.
       ["expo-notifications", { icon: "./assets/zoption-notification-icon.png", color: "#0a7556" }],
+      // Place visit prompts (Android only for now). The foreground service keeps
+      // location updates flowing with the app closed; Android otherwise throttles
+      // background fixes to a few an hour, too sparse to tell a visit from a drive-by.
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "Zoption uses your location to notice when you visit a store or restaurant.",
+          locationAlwaysAndWhenInUsePermission:
+            "Zoption uses your location in the background to ask whether you spent money after you leave a store, restaurant, or market.",
+          isAndroidBackgroundLocationEnabled: true,
+          isAndroidForegroundServiceEnabled: true,
+        },
+      ],
       [
         "expo-audio",
         {

@@ -94,6 +94,13 @@ export function appRateLimitFor(method: string, path: string): AppRateLimit {
           limit: 6,
           windowSeconds: MINUTE,
         });
+      // Each lookup is a paid Places call. The daily cap bounds the bill per
+      // user; the phone only asks after a visit it detected itself.
+      case "/api/app/places/nearby":
+        return byUser(
+          { scope: "user-places-minute", limit: 2, windowSeconds: MINUTE },
+          { scope: "user-places-day", limit: 6, windowSeconds: DAY },
+        );
       case "/api/app/entry/voice":
         return byTenant({ scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: MINUTE });
       case "/api/app/entry/pdf-preview":

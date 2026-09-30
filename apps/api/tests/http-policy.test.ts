@@ -61,6 +61,15 @@ const APP_RATE_LIMITS: [string, string, RateLimitIdentity, RateLimitPolicy[]][] 
   ],
   [
     "POST",
+    "/api/app/places/nearby",
+    "user",
+    [
+      { scope: "user-places-minute", limit: 2, windowSeconds: MINUTE },
+      { scope: "user-places-day", limit: 6, windowSeconds: DAY },
+    ],
+  ],
+  [
+    "POST",
     "/api/app/entry/voice",
     "tenant",
     [{ scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: MINUTE }],

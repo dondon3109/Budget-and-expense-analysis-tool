@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Android place prompts (off by default, under More → Preferences): after you stay at least five minutes at a store, restaurant, market, mall, school, hospital, or similar place and then leave, Zoption asks "Did you spend at …?" and opens a prefilled expense. Each place is asked about at most once every four hours, never between 10 PM and 7 AM, and "Don't ask here" excludes a place.
+
 ## 3.0.0 — 2026-09-30
 
 ### Added

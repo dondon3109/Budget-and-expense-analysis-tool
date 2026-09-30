@@ -54,6 +54,7 @@ import { providerRegistry } from "./provider-registry";
 import { boundRateLimiter, type RateLimiter } from "./rate-limit";
 import { checkApiReadiness } from "./readiness";
 import { cloudflareVisionProvider } from "./receipts/cloudflare-vision";
+import { createGooglePlacesProvider, type PlacesProvider } from "./places/google-places";
 import { createReceiptService, type ReceiptService } from "./receipts/service";
 import type { CashflowTrendLoader, DashboardLoader, TransferFeeLoader } from "./routes/dashboard";
 import { createBugReportService, type BugReportService } from "./support/bug-reports";
@@ -92,6 +93,7 @@ export interface AppOptions {
   assistantVoiceProviders?: AssistantVoiceProviders;
   assistantVoiceService?: AssistantVoiceService;
   receiptService?: ReceiptService;
+  placesProvider?: PlacesProvider;
   aiEntryService?: AiEntryService;
   accountDeletionService?: AccountDeletionService;
   platformAdmins?: PlatformAdminRepository;
@@ -202,6 +204,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     );
   const receiptService =
     overrides.receiptService ?? createReceiptService(receiptRepository, cloudflareVisionProvider);
+  const placesProvider = overrides.placesProvider ?? createGooglePlacesProvider();
   const aiEntryService =
     overrides.aiEntryService ??
     createAiEntryService(receiptRepository, importStore, dynamicVoiceProviders.transcription);
@@ -243,6 +246,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     assistantService,
     assistantVoiceService,
     receiptService,
+    placesProvider,
     aiEntryService,
     accountDeletionService,
     platformAdminService,

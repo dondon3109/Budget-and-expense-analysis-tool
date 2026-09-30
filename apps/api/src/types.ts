@@ -20,6 +20,7 @@ export interface Bindings {
   SUPABASE_PUBLISHABLE_KEY?: string;
   SUPABASE_SERVICE_ROLE_KEY?: string;
   RESEND_API_KEY?: string;
+  GOOGLE_PLACES_API_KEY?: string;
   WEB_APP_URL?: string;
   DEV_USER_ID?: string;
   DEV_ACCESS_TOKEN_ENABLED?: string;

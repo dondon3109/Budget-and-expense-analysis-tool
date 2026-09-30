@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 
 import type { SessionStatus } from "@/auth/session-state";
+import { PLACE_VISIT_NOTIFICATION_PREFIX } from "@/features/place-visits/visit-rules";
 import {
   useDailyReminderRestoredStore,
   useDailyReminderStore,
@@ -104,7 +105,9 @@ export function startDailyReminder(): Promise<void> {
 async function restoreDailyReminder(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: (notification) => {
-      const show = notification.request.identifier === DAILY_REMINDER_ID;
+      const { identifier } = notification.request;
+      const show =
+        identifier === DAILY_REMINDER_ID || identifier.startsWith(PLACE_VISIT_NOTIFICATION_PREFIX);
       return Promise.resolve({
         shouldShowBanner: show,
         shouldShowList: show,
