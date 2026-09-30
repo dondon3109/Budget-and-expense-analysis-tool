@@ -6,7 +6,7 @@ import type { PostHog } from "posthog-js";
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type * as PostHogAnalyticsModule from "../src/analytics/PostHogAnalytics";
-import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 const POSTHOG_HOST = "https://us.i.posthog.com";

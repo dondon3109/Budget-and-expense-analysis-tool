@@ -2,7 +2,7 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
-import { currentRelease, releaseHistory } from "../../releases/currentRelease";
+import { currentRelease, releaseHistory } from "@zoption/web-common/releases";
 import "./ChangelogPage.css";
 
 export function ChangelogPage() {

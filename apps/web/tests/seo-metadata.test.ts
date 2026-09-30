@@ -11,7 +11,7 @@ import {
   SITE_ORIGIN,
 } from "../src/seo/siteMetadata";
 
-import { ANDROID_RELEASE } from "../src/releases/androidRelease";
+import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 
 type SchemaNode = Record<string, unknown>;
 

@@ -13,7 +13,7 @@
     "verify": "node scripts/verify-workspace-links.mjs && node scripts/check-structure.mjs && pnpm typecheck && NODE_OPTIONS=--max-old-space-size=8192 pnpm lint && pnpm format:check && pnpm test --maxWorkers=4 && pnpm test:mobile",
     "verify:changed": "node scripts/verify-changed.mjs",
     "verify:api": "pnpm --filter @zoption/api typecheck && eslint apps/api && prettier --check apps/api && vitest run --project api",
-    "verify:web": "pnpm --filter @zoption/web typecheck && NODE_OPTIONS=--max-old-space-size=8192 eslint apps/web && prettier --check apps/web && vitest run --project web",
+    "verify:web": "pnpm --filter @zoption/web --filter @zoption/web-common typecheck && NODE_OPTIONS=--max-old-space-size=8192 eslint apps/web packages/web-common && prettier --check apps/web packages/web-common && vitest run --project web --project web-common",
     "verify:mobile": "pnpm --filter @zoption/mobile typecheck && NODE_OPTIONS=--max-old-space-size=8192 eslint apps/mobile && prettier --check apps/mobile && pnpm test:mobile",
     "verify:shared": "pnpm --filter @zoption/shared typecheck && eslint packages/shared && prettier --check packages/shared && vitest run --project shared && pnpm typecheck",
     "verify:scripts": "eslint scripts && prettier --check scripts .github && vitest run --project scripts",

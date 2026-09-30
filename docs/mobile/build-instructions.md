@@ -122,7 +122,7 @@ fallback from the repository root:
 
 ```bash
 node scripts/refresh-android-release-snapshot.mjs --write
-git diff -- apps/web/src/releases/androidRelease.json
+git diff -- packages/web-common/src/releases/androidRelease.json
 ```
 
 Commit the reviewed snapshot as `fix(web): refresh Android install snapshot`

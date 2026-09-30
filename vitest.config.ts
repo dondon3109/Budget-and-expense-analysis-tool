@@ -35,6 +35,10 @@ export default defineConfig({
         extends: true,
         test: { name: "shared", include: ["packages/shared/tests/**/*.test.{ts,tsx}"] },
       },
+      {
+        extends: true,
+        test: { name: "web-common", include: ["packages/web-common/tests/**/*.test.ts"] },
+      },
       { extends: true, test: { name: "scripts", include: ["scripts/**/*.test.mjs"] } },
     ],
     setupFiles: ["./tests/vitest.setup.ts"],

@@ -10,9 +10,9 @@ import {
   CONSENT_STORAGE_KEY,
   createConsentRecord,
   type ConsentPreferences,
-} from "../src/consent/consent";
+} from "@zoption/web-common/consent";
 import { CookieConsentProvider, useCookieConsent } from "../src/consent/CookieConsentProvider";
-import { resetConsentGateForTests } from "../src/consent/consentGate";
+import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
 
 function ConsentProbe() {
   const consent = useCookieConsent();

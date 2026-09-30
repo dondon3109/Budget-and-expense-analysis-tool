@@ -15,9 +15,13 @@ import {
   createConsentRecord,
   type ConsentPreferences,
   type ConsentRecord,
-} from "./consent";
-import { updateConsentGate } from "./consentGate";
-import { parseConsentRecord, persistConsentRecord, readConsentRecord } from "./consentStorage";
+} from "@zoption/web-common/consent";
+import { updateConsentGate } from "@zoption/web-common/consent-gate";
+import {
+  parseConsentRecord,
+  persistConsentRecord,
+  readConsentRecord,
+} from "@zoption/web-common/consent-storage";
 
 interface CookieConsentContextValue {
   consent: ConsentRecord | null;

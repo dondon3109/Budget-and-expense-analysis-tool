@@ -50,7 +50,7 @@ describe("checkStructure", () => {
 
   it("exempts data catalogs", () => {
     const { failures } = checkStructure(
-      [{ path: "apps/web/src/releases/currentRelease.ts", text: lines(5000) }],
+      [{ path: "packages/web-common/src/releases/currentRelease.ts", text: lines(5000) }],
       noCeilings,
     );
     expect(failures).toEqual([]);

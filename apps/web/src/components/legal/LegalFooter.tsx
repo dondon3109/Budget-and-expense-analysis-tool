@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { useOptionalCookieConsent } from "../../consent/CookieConsentProvider";
-import { currentRelease } from "../../releases/currentRelease";
+import { currentRelease } from "@zoption/web-common/releases";
 import "./LegalFooter.css";
 
 export function LegalFooter() {

@@ -28,7 +28,7 @@ const FULL_VERIFY = [
 
 const SCOPES = [
   { scope: "api", pattern: /^apps\/api\// },
-  { scope: "web", pattern: /^apps\/web\// },
+  { scope: "web", pattern: /^(apps\/web|packages\/web-common)\// },
   { scope: "mobile", pattern: /^apps\/mobile\// },
   { scope: "scripts", pattern: /^(scripts|\.github)\// },
 ];

@@ -10,8 +10,8 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PostHogAnalytics, resetPostHogForTests } from "../src/analytics/PostHogAnalytics";
-import { CONSENT_STORAGE_KEY, createConsentRecord } from "../src/consent/consent";
-import { resetConsentGateForTests, updateConsentGate } from "../src/consent/consentGate";
+import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
+import { resetConsentGateForTests, updateConsentGate } from "@zoption/web-common/consent-gate";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 const POSTHOG_HOST = "https://us.i.posthog.com";

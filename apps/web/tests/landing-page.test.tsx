@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 // Assert against the committed fallback snapshot so refreshing it never
 // breaks this test.
-import { ANDROID_RELEASE } from "../src/releases/androidRelease";
+import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import { LandingPage } from "../src/pages/LandingPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 

@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { useCookieConsent } from "../../consent/CookieConsentProvider";
-import { currentRelease, releaseHistory } from "../../releases/currentRelease";
+import { currentRelease, releaseHistory } from "@zoption/web-common/releases";
 import {
   hasAcknowledgedRelease,
   persistReleaseAwarenessRecord,

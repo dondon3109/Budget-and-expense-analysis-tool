@@ -1,0 +1,22 @@
+{
+  "name": "@zoption/web-common",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tokens.css": "./src/styles/tokens.css",
+    "./fonts/*": "./fonts/*",
+    "./consent": "./src/consent/consent.ts",
+    "./consent-storage": "./src/consent/consentStorage.ts",
+    "./consent-gate": "./src/consent/consentGate.ts",
+    "./analytics-sanitize": "./src/analytics/sanitize.ts",
+    "./releases": "./src/releases/currentRelease.ts",
+    "./android-release": "./src/releases/androidRelease.ts",
+    "./android-release-metadata": "./src/releases/androidReleaseMetadata.ts",
+    "./android-release.json": "./src/releases/androidRelease.json"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --root ../.. --project web-common"
+  }
+}

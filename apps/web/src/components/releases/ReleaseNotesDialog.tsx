@@ -4,7 +4,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
-import type { ProductRelease } from "../../releases/currentRelease";
+import type { ProductRelease } from "@zoption/web-common/releases";
 
 import "./releaseNotes.css";
 

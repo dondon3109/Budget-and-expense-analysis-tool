@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/shared" },
+    { "path": "./packages/web-common" },
     { "path": "./apps/api" },
     { "path": "./apps/web" },
     { "path": "./apps/mobile" }

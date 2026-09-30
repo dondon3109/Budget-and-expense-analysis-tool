@@ -3,7 +3,7 @@
 import { cleanup, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import shippedReleaseJson from "../src/releases/androidRelease.json";
+import shippedReleaseJson from "@zoption/web-common/android-release.json";
 import { useAndroidRelease } from "../src/releases/useAndroidRelease";
 
 const VALID_METADATA = {

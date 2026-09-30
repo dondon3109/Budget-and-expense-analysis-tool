@@ -14,6 +14,10 @@ describe("planVerification", () => {
       full: false,
       scopes: ["web"],
     });
+    expect(planVerification(["packages/web-common/src/consent/consent.ts"])).toEqual({
+      full: false,
+      scopes: ["web"],
+    });
     expect(planVerification([".github/workflows/ci.yml"])).toEqual({
       full: false,
       scopes: ["scripts"],
