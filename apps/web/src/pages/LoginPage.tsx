@@ -20,6 +20,8 @@ export function LoginPage() {
   const [busyProvider, setBusyProvider] = useState<SocialAuthProvider | null>(null);
   const [error, setError] = useState<string>();
   const authenticationBusy = busy || busyProvider !== null;
+  // Set by account deletion, which signs out and lands here.
+  const accountDeleted = searchParams.get("accountDeleted");
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -58,6 +60,17 @@ export function LoginPage() {
         </p>
       }
     >
+      {accountDeleted && (
+        <div className="auth-success" role="status">
+          <strong>Account deletion requested</strong>
+          <p>
+            Your Zoption workspace is no longer available.{" "}
+            {accountDeleted === "cleanup_pending"
+              ? "Remaining account cleanup will continue securely."
+              : "Your account has been deleted."}
+          </p>
+        </div>
+      )}
       <SocialAuthButtons
         busyProvider={busyProvider}
         disabled={authenticationBusy || !configured}

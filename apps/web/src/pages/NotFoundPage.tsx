@@ -2,13 +2,14 @@ import { Link } from "react-router-dom";
 
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { PublicHeader } from "../components/navigation/PublicHeader";
+import { siteUrl } from "../lib/siteUrl";
 import "./NotFoundPage.css";
 
 const POPULAR_DESTINATIONS = [
-  { label: "Pricing", to: "/pricing" },
-  { label: "Guides", to: "/guides" },
-  { label: "Tutorials", to: "/tutorials" },
-  { label: "FAQ", to: "/faq" },
+  { label: "Pricing", to: siteUrl("/pricing") },
+  { label: "Guides", to: siteUrl("/guides") },
+  { label: "Tutorials", to: siteUrl("/tutorials") },
+  { label: "FAQ", to: siteUrl("/faq") },
 ];
 
 export function NotFoundPage() {
@@ -27,7 +28,7 @@ export function NotFoundPage() {
             <Link className="button primary" to="/">
               Go to Zoption home
             </Link>
-            <Link className="button secondary" to="/faq">
+            <Link className="button secondary" to={siteUrl("/faq")}>
               Read common questions
             </Link>
           </div>

@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { type ConsoleMessage, type Page } from "@playwright/test";
 
+import { siteUrl } from "./site";
+
 /**
  * Shared accessibility helpers for the desktop and mobile specs.
  *
@@ -8,17 +10,19 @@ import { type ConsoleMessage, type Page } from "@playwright/test";
  */
 export const BLOCKING = new Set(["serious", "critical"]);
 
+/** Signed-out pages: the public site by absolute URL, then the app's own signed-out routes. */
 export const PUBLIC_ROUTES = [
-  "/",
-  "/pricing",
-  "/faq",
-  "/guides",
-  "/guides/budget-monthly-salary-philippines",
-  "/guides/50-30-20-rule-pesos",
-  "/features/receipt-scanning",
-  "/features/voice-expense-entry",
-  "/changelog",
-  "/install",
+  siteUrl("/"),
+  siteUrl("/pricing"),
+  siteUrl("/faq"),
+  siteUrl("/guides"),
+  siteUrl("/guides/budget-monthly-salary-philippines"),
+  siteUrl("/guides/50-30-20-rule-pesos"),
+  siteUrl("/features/receipt-scanning"),
+  siteUrl("/features/voice-expense-entry"),
+  siteUrl("/changelog"),
+  siteUrl("/install"),
+  siteUrl("/does-not-exist"),
   "/login",
   "/signup",
   "/does-not-exist",

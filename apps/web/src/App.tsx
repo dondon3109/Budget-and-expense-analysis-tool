@@ -8,11 +8,9 @@ import { PrivateAppStartupGate } from "./components/layout/PrivateAppStartupGate
 import { ScrollToTop } from "./components/layout/ScrollToTop";
 import { syncVerifiedIdentity } from "./lib/api";
 import { userWorkspace } from "./lib/workspace";
-import { LandingPage } from "./pages/LandingPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { ConnectivityStatus } from "./pwa/ConnectivityStatus";
-import { publicRouteElements } from "./PublicRoutes";
-import { SeoHead } from "./seo/SeoHead";
+import { RouteTitle } from "./RouteTitle";
 const DashboardPage = lazy(async () => {
   const module = await import("./pages/DashboardPage");
   return { default: module.DashboardPage };
@@ -121,7 +119,8 @@ export function RootRoute() {
     return <Navigate to={`/auth/callback?${callbackParams.toString()}`} replace />;
   }
 
-  return <LandingPage />;
+  // The public site lives on its own origin; the app root is the workspace, which signs in first.
+  return <Navigate to="/app" replace />;
 }
 
 function Private({ children }: { children: React.ReactNode }) {
@@ -149,7 +148,7 @@ export function App() {
   return (
     <>
       <ScrollToTop />
-      <SeoHead />
+      <RouteTitle />
       <ConnectivityStatus />
       <VerifiedIdentitySync />
       <Suspense
@@ -163,7 +162,7 @@ export function App() {
         }
       >
         <Routes>
-          {publicRouteElements(<RootRoute />)}
+          <Route path="/" element={<RootRoute />} />
           <Route
             path="/login"
             element={

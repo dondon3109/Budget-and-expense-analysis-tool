@@ -3,16 +3,12 @@
 import {
   CACHE_VERSION,
   PRECACHE_URLS,
-  PUBLIC_PAGE_CACHE_NAME,
   STATIC_CACHE_NAME,
   isCacheableResponse,
-  isSafePublicNavigation,
   isSameOriginRequest,
   isSensitiveRequest,
   isStaticAssetRequest,
 } from "/pwa/cache-policy.js";
-
-const OFFLINE_FALLBACK_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(STATIC_CACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
@@ -45,26 +41,12 @@ async function cacheFirstStatic(request) {
   return response;
 }
 
-async function networkFirstPublicPage(request) {
-  try {
-    const response = await fetch(request);
-    if (isCacheableResponse(response)) {
-      const cache = await caches.open(PUBLIC_PAGE_CACHE_NAME);
-      await cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return (await caches.match(request)) ?? (await caches.match(OFFLINE_FALLBACK_URL));
-  }
-}
-
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   const appOrigin = self.location.origin;
 
-  // Cross-origin requests (R2 latest.json, analytics) must stay with the
-  // page. Re-fetching them here breaks CORS and leaves /install without a
-  // download button.
+  // Cross-origin requests (the API, Supabase, analytics) stay with the page;
+  // re-fetching them here would break CORS.
   if (!isSameOriginRequest(request, appOrigin)) {
     return;
   }
@@ -76,10 +58,5 @@ self.addEventListener("fetch", (event) => {
 
   if (isStaticAssetRequest(request, appOrigin)) {
     event.respondWith(cacheFirstStatic(request));
-    return;
-  }
-
-  if (isSafePublicNavigation(request, appOrigin)) {
-    event.respondWith(networkFirstPublicPage(request));
   }
 });

@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect, useState } from "react";
-import { createRoot, hydrateRoot } from "react-dom/client";
+import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 
 import { PostHogAnalytics } from "./analytics/PostHogAnalytics";
@@ -87,11 +87,6 @@ function BrowserApplication() {
 const root = document.getElementById("root");
 if (!root) throw new Error("Zoption could not find the application root.");
 
-const application = <BrowserApplication />;
-if (root.hasChildNodes()) {
-  hydrateRoot(root, application);
-} else {
-  createRoot(root).render(application);
-}
+createRoot(root).render(<BrowserApplication />);
 
 registerZoptionServiceWorker();

@@ -25,18 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Your workspace moved to app.zoption.site",
+      "Faster public pages",
       "A short setup for new workspaces",
       "Checkout leads with Dodo Payments",
       "Currency moved to Preferences on Android and iOS",
       "Tidier account rows and settings menus",
       "Android Beta 0.2.41",
+      "Android Beta 0.2.42",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/opening balance/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.41/);
+    expect(copy).toMatch(/Android Beta 0\.2\.42/);
+    expect(copy).toMatch(/sign in once more/i);
   });
 
   it("keeps the workspace currency notes as 2.49.0", () => {

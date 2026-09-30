@@ -89,25 +89,6 @@ describe("TutorialsPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("renders in public layout when signed out", () => {
-    mockUseOptionalAuth.mockReturnValue(null);
-
-    render(
-      <ThemeProvider>
-        <MemoryRouter initialEntries={["/tutorials"]}>
-          <TutorialsPage />
-        </MemoryRouter>
-      </ThemeProvider>,
-    );
-
-    expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Start free" })).toHaveAttribute("href", "/signup");
-    expect(screen.getByRole("button", { name: "Open navigation menu" })).toBeInTheDocument();
-    expect(screen.getByTestId("legal-footer")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "How to Use Zoption" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Get Started Free" })).toBeInTheDocument();
-  });
-
   it("renders inside AppShell for AppTutorialsPage", () => {
     render(
       <ThemeProvider>

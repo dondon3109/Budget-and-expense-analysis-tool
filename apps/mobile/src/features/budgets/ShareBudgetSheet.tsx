@@ -10,7 +10,7 @@ import type { BudgetMonthRow } from "./budget-month-view";
 
 export type ShareExpiry = "7" | "30" | "permanent";
 
-export const SHARED_BUDGET_BASE_URL = "https://zoption.site/shared/budget";
+export const SHARED_BUDGET_BASE_URL = "https://app.zoption.site/shared/budget";
 
 const EXPIRY_OPTIONS: { value: ShareExpiry; label: string }[] = [
   { value: "7", label: "7 days" },

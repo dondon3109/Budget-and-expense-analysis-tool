@@ -11,6 +11,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { PublicHeader } from "../components/navigation/PublicHeader";
+import { siteUrl } from "../lib/siteUrl";
 import "./ThankYouPage.css";
 
 interface FlowContent {
@@ -69,7 +70,7 @@ export function ThankYouPage() {
           description:
             "Your private financial workspace is ready. Start by logging an expense with voice, snapping a receipt, or mapping your first bank statement.",
           primaryAction: { label: "Open your workspace", to: "/app" },
-          secondaryAction: { label: "Read the FAQ", to: "/faq" },
+          secondaryAction: { label: "Read the FAQ", to: siteUrl("/faq") },
           note: "No bank passwords required. Your data starts empty and stays private.",
         };
       default:

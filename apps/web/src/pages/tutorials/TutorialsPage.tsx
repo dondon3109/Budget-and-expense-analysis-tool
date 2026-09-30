@@ -13,9 +13,7 @@ import {
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useOptionalAuth } from "../../auth/AuthProvider";
-import { LegalFooter } from "../../components/legal/LegalFooter";
-import { PublicHeader } from "../../components/navigation/PublicHeader";
+import { siteUrl } from "../../lib/siteUrl";
 import "./TutorialsPage.css";
 
 interface TutorialSection {
@@ -209,9 +207,8 @@ const TUTORIALS_DATA: TutorialSection[] = [
   },
 ];
 
-export function TutorialsPage({ inAppShell = false }: { inAppShell?: boolean } = {}) {
-  const auth = useOptionalAuth();
-  const user = auth?.user ?? null;
+/** The in-app tutorials view; the public version lives on the site (`apps/site`). */
+export function TutorialsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("All");
 
@@ -237,7 +234,7 @@ export function TutorialsPage({ inAppShell = false }: { inAppShell?: boolean } =
     });
   }, [searchQuery, activeCategory]);
 
-  const content = (
+  return (
     <div className="tutorials-page">
       <header className="tutorials-hero">
         <div className="tutorials-hero-badge">
@@ -356,34 +353,14 @@ export function TutorialsPage({ inAppShell = false }: { inAppShell?: boolean } =
           <p>Our support team and AI Assistant are available 24/7 to answer your questions.</p>
         </div>
         <div className="tutorials-help-actions">
-          {user ? (
-            <Link to="/app/assistant" className="button primary">
-              Ask AI Assistant
-            </Link>
-          ) : (
-            <Link to="/signup" className="button primary">
-              Get Started Free
-            </Link>
-          )}
-          <Link to="/faq" className="button secondary">
+          <Link to="/app/assistant" className="button primary">
+            Ask AI Assistant
+          </Link>
+          <Link to={siteUrl("/faq")} className="button secondary">
             Read FAQ
           </Link>
         </div>
       </section>
-    </div>
-  );
-
-  if (inAppShell) {
-    return content;
-  }
-
-  return (
-    <div className="public-tutorials-layout">
-      <PublicHeader />
-      <main id="main-content" tabIndex={-1}>
-        {content}
-      </main>
-      <LegalFooter />
     </div>
   );
 }

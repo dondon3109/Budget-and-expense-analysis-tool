@@ -8,7 +8,6 @@ import { describe, expect, it } from "vitest";
 interface CachePolicyModule {
   PRECACHE_URLS: readonly string[];
   isCacheableResponse(response: Response): boolean;
-  isSafePublicNavigation(request: Request, appOrigin: string): boolean;
   isSameOriginRequest(request: Request, appOrigin: string): boolean;
   isSensitiveRequest(request: Request, appOrigin: string): boolean;
   isStaticAssetRequest(request: Request, appOrigin: string): boolean;
@@ -95,7 +94,7 @@ describe("PWA foundation", () => {
 
   it("keeps sensitive traffic network-only and limits caches to explicit paths", async () => {
     const policy = await loadCachePolicy();
-    const origin = "https://zoption.site";
+    const origin = "https://app.zoption.site";
 
     for (const sensitive of [
       request(`${origin}/api/app/transactions`),
@@ -108,7 +107,6 @@ describe("PWA foundation", () => {
     ]) {
       expect(policy.isSensitiveRequest(sensitive, origin)).toBe(true);
       expect(policy.isStaticAssetRequest(sensitive, origin)).toBe(false);
-      expect(policy.isSafePublicNavigation(sensitive, origin)).toBe(false);
     }
 
     expect(policy.isStaticAssetRequest(request(`${origin}/assets/index.abc123.js`), origin)).toBe(
@@ -122,15 +120,6 @@ describe("PWA foundation", () => {
     expect(
       policy.isSameOriginRequest(
         request("https://downloads.zoption.site/android/latest.json"),
-        origin,
-      ),
-    ).toBe(false);
-    expect(
-      policy.isSafePublicNavigation(request(`${origin}/install`, { mode: "navigate" }), origin),
-    ).toBe(true);
-    expect(
-      policy.isSafePublicNavigation(
-        request(`${origin}/?code=secret`, { mode: "navigate" }),
         origin,
       ),
     ).toBe(false);

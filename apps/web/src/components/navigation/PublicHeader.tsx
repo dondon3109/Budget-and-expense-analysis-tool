@@ -6,6 +6,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
 import { BrandMark } from "../brand/BrandMark";
 import { ThemeToggle } from "../theme/ThemeToggle";
+import { siteUrl } from "../../lib/siteUrl";
 import "./PublicHeader.css";
 
 export interface PublicHeaderLink {
@@ -27,11 +28,11 @@ export interface PublicHeaderLink {
  * inherits this default set so the public header never differs per route.
  */
 const DEFAULT_LINKS: PublicHeaderLink[] = [
-  { label: "Pricing", to: "/pricing" },
-  { label: "Guides", to: "/guides" },
-  { label: "Tutorials", to: "/tutorials" },
-  { label: "FAQ", to: "/faq" },
-  { label: "Android Beta", to: "/install" },
+  { label: "Pricing", to: siteUrl("/pricing") },
+  { label: "Guides", to: siteUrl("/guides") },
+  { label: "Tutorials", to: siteUrl("/tutorials") },
+  { label: "FAQ", to: siteUrl("/faq") },
+  { label: "Android Beta", to: siteUrl("/install") },
 ];
 
 const DRAWER_ID = "public-header-mobile-nav";
@@ -121,7 +122,7 @@ export function PublicHeader({
         Skip to content
       </a>
 
-      <Link className="brand public-header-brand" to="/" aria-label="Zoption home">
+      <Link className="brand public-header-brand" to={siteUrl("/")} aria-label="Zoption home">
         <BrandMark className="brand-mark public-header-brand-mark" />
         <span className="brand-wordmark">Zoption</span>
       </Link>

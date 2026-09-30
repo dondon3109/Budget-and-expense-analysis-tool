@@ -1,6 +1,6 @@
 # Scope: Zoption web app
 
-The browser product in `apps/web`: a public site that explains Zoption and brings people in, and the signed in app where someone records, reads, and plans their money. This scope covers that workspace only. The Worker and the native app get their own scopes.
+The browser product: the public site in `apps/site` (`zoption.site`) that explains Zoption and brings people in, and the signed in app in `apps/web` (`app.zoption.site`) where someone records, reads, and plans their money. This scope covers those two workspaces only. The Worker and the native app get their own scopes.
 
 **Build approach:** Tracer Bullet (each feature runs end to end through every layer and works, then widens).
 **Workflow:** GA (after `/develop`: `/check verify`, `/test`, a fresh model `/check review`, then `/document`). A feature tagged `· Beta` stops after `/test`. `/architect` is the recommended first stop for a feature with a real decision, and skippable when you already know the build, so any feature can also carry a tag to do more or less.
@@ -36,12 +36,12 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 ### A. Public marketing site · existing
 
 Landing page with product tours, a private versus bank linked comparison, an Android install promo, and customer reviews, plus pricing, FAQ, changelog, install, thank you, and the three legal pages.
-Code in `apps/web/src/pages/LandingPage.tsx`, `apps/web/src/pages/pricing/`, `apps/web/src/pages/legal/`
+Code in `apps/site/src/views/LandingPage.tsx`, `apps/site/src/views/pricing/`, `apps/site/src/views/legal/`
 
 ### B. Search content library and page pipeline · existing
 
-Hubs and long form pages that target search demand, meaning the guides, one import guide per supported bank, the 50/30/20 peso calculator, and tutorials, together with the machinery that publishes them: per route metadata, prerendered HTML, structured data, sitemap, robots, and `llms.txt`.
-Code in `apps/web/src/pages/guides/`, `apps/web/src/pages/import/`, `apps/web/src/pages/tools/`, `packages/shared/src/financeGuides.ts`, `apps/web/src/seo/siteMetadata.ts`, `apps/web/scripts/prerender.mjs`
+Hubs and long form pages that target search demand, meaning the guides, one import guide per supported bank, the 50/30/20 peso calculator, and tutorials, together with the machinery that publishes them: per route metadata, static HTML, structured data, sitemap, robots, and `llms.txt`.
+Code in `apps/site/src/views/guides/`, `apps/site/src/views/import/`, `apps/site/src/views/tools/`, `packages/shared/src/financeGuides.ts`, `apps/site/src/seo/siteMetadata.ts`, `apps/site/scripts/finalize-build.mjs`
 
 ### C. Signup, sign in, and recovery · existing
 
@@ -111,14 +111,14 @@ Code in `apps/web/src/pages/AdminOverviewPage.tsx`, `apps/web/src/pages/AdminCus
 ### P. Consent, analytics, and install · existing
 
 Versioned cookie consent with a preferences dialog, cookieless PostHog pageviews, and the install page with direct Android beta links.
-Code in `apps/web/src/components/consent/`, `apps/web/src/analytics/PostHogAnalytics.tsx`, `apps/web/src/pages/InstallPage.tsx`
+Code in `apps/web/src/components/consent/`, `apps/web/src/analytics/PostHogAnalytics.tsx`, `apps/site/src/client/`, `apps/site/src/views/InstallPage.tsx`
 
 ## Slice 1: Search to signup thread
 
 ### 1. Search demand pages · done · Beta
 
 New public pages that answer demand `docs/seo.md` named and never built: the Philippine budgeting guides and the feature explainers. Each page has to point at a strength the product really has, such as centavo accuracy, statement import, GCash and Maya tracking, or no bank connection.
-**Done when:** the first page is live and crawlable through the whole pipeline (metadata manifest, prerender, sitemap, internal links), the rest of the chosen set follows the same path, and no page claims something the web app cannot do.
+**Done when:** the first page is live and crawlable through the whole pipeline (metadata manifest, static build, sitemap, internal links), the rest of the chosen set follows the same path, and no page claims something the web app cannot do.
 
 - [x] Design it (spec): `/architect search demand pages`
 - [x] Build it: `/develop search demand pages`
@@ -129,7 +129,7 @@ New public pages that answer demand `docs/seo.md` named and never built: the Phi
 - [x] Verify it: `/check verify search demand pages`
 - [x] Test it: `/test search demand pages`
 
-Spec [0001](../specs/web/0001-search-demand-pages.md) · code in `apps/web/src/pages/features/`, `packages/shared/src/financeGuides.ts`, `apps/web/src/seo/siteMetadata.ts`
+Spec [0001](../specs/web/0001-search-demand-pages.md) · code in `apps/site/src/views/features/`, `packages/shared/src/financeGuides.ts`, `apps/site/src/seo/siteMetadata.ts`
 
 ### 2. Signup funnel measurement · done
 
@@ -158,7 +158,7 @@ Every public page declares a last modified date, `docs/seo.md` requires that dat
 
 - [x] Build it: `/develop content freshness guard`
 
-Code in `apps/web/src/seo/contentSources.ts`, `apps/web/tests/content-freshness.test.ts`
+Code in `apps/site/src/seo/contentSources.ts`, `apps/site/tests/content-freshness.test.ts`
 
 ## Deferred
 

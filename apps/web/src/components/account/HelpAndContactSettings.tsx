@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { openSupportChat } from "../support/supportEvents";
+import { siteUrl } from "../../lib/siteUrl";
 
 const SUPPORT_EMAIL = "support@zoption.site";
 
@@ -54,7 +55,7 @@ export function HelpAndContactSettings() {
             <strong>Help</strong>
             <p>Browse clear answers about accounts, imports, privacy, plans, and the app.</p>
           </div>
-          <Link className="button secondary compact" to="/faq">
+          <Link className="button secondary compact" to={siteUrl("/faq")}>
             Browse FAQ
           </Link>
         </li>

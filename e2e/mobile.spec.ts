@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test";
 
+import { siteUrl } from "./fixtures/site";
+
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
 });
 
 test("mobile landing keeps account actions and preview usable", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
-  await page.goto("/");
+  await page.goto(siteUrl("/"));
 
   await expect(
     page.getByRole("heading", { name: "Zoption makes your money clear. Decide what comes next." }),
@@ -42,9 +44,7 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   await installSection.scrollIntoViewIfNeeded();
   await expect(installSection.getByRole("link", { name: "Download Android APK" })).toBeVisible();
 
-  const themeToggle = page.getByRole("button", {
-    name: "Choose theme. Current theme: Light",
-  });
+  const themeToggle = page.getByRole("button", { name: "Choose theme" });
   await themeToggle.scrollIntoViewIfNeeded();
   await expect(themeToggle).toBeVisible();
   await themeToggle.click();
@@ -56,16 +56,16 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   );
   expect(hasHorizontalOverflow).toBe(false);
 
+  // The app is another origin, so it keeps its own theme choice.
   await startFree.click();
-  await expect(page).toHaveURL(/\/signup$/);
-  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page).toHaveURL(`http://localhost:5173/signup`);
   await expect(page.locator(".auth-card")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Create your Zoption account" })).toBeVisible();
 });
 
 test("first-visit bottom sheet previews and confirms Coffee without overflow", async ({ page }) => {
   await page.addInitScript(() => localStorage.clear());
-  await page.goto("/");
+  await page.goto("/login");
 
   const dialog = page.getByRole("dialog", { name: "Choose how Zoption looks" });
   await expect(dialog).toBeVisible();
@@ -94,7 +94,7 @@ test("first-visit bottom sheet previews and confirms Coffee without overflow", a
 
 test("supported formats marquee becomes static with reduced motion", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto(siteUrl("/"));
 
   const formatsSection = page.getByRole("region").filter({
     hasText: "Bring a bank or spreadsheet export.",

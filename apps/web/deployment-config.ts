@@ -170,11 +170,6 @@ export function validateDeploymentConfigForBuild(
 }
 
 /**
- * Exact origin of the public R2 Android download bucket. The install page
- * fetches android/latest.json from this origin, so connect-src must include it.
- */
-export const ANDROID_DOWNLOAD_ORIGIN = "https://downloads.zoption.site";
-/**
  * Exact PayPal origins the SDK may frame, fetch from, or draw assets from.
  * Braintree and Venmo are deliberately absent: this integration mounts only the
  * PayPal, guest and card field components, so no Venmo funding source is offered.
@@ -226,7 +221,6 @@ export function createContentSecurityPolicy(config: ResolvedDeploymentConfig): s
     config.supabaseOrigin,
     config.apiOrigin,
     apiWebSocketOrigin,
-    ANDROID_DOWNLOAD_ORIGIN,
     ...PAYPAL_CSP_SOURCES,
   ];
 

@@ -37,7 +37,6 @@ export const OVERSIZE_CEILINGS = {
   "apps/web/src/pages/AssistantPage.css": 2947,
   "apps/web/src/pages/CalendarPage.css": 1124,
   "apps/web/src/pages/DashboardPage.css": 1048,
-  "apps/web/src/pages/LandingPage.css": 3568,
   "db/schema.ts": 1152,
   "packages/shared/src/smsNotificationParser.ts": 1421,
 };

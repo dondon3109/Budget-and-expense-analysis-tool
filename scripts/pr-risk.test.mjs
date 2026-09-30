@@ -61,7 +61,7 @@ describe("highRiskPaths", () => {
   it("leaves ordinary feature and docs changes eligible", () => {
     expect(
       highRiskPaths([
-        "apps/web/src/components/landing/ReceiptPileScroll.tsx",
+        "apps/site/src/components/landing/ReceiptPileScroll.tsx",
         "apps/api/src/db/budgets.ts",
         "apps/api/src/routes/budgets.ts",
         "apps/api/tests/budgets.test.ts",

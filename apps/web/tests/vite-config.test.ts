@@ -160,7 +160,8 @@ describe("environment-derived CSP", () => {
       `connect-src 'self' ${supabaseUrl} ${productionApiUrl} wss://api.zoption.site`,
     );
     expect(policy).toContain("connect-src");
-    expect(policy).toContain("https://downloads.zoption.site");
+    // The Android release card moved to the public site, so the app never fetches from R2.
+    expect(policy).not.toContain("https://downloads.zoption.site");
     // Only the exact host @paypal/paypal-js loads /web-sdk/v6/core from, and only the live
     // one in a production build. The negative assertion matters as much as the positive one:
     // the guard that used to approve PayPal wildcards was built from the list it validated, so

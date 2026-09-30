@@ -8,7 +8,7 @@ Legacy third-party tracking mechanisms—specifically **Google Analytics 4** and
 
 PostHog serves three distinct, privacy-isolated telemetry channels:
 
-1. **Public Web Analytics & Core Web Vitals** (Client-side, cookieless, memory-only)
+1. **Public site pageviews, web funnel events, and Core Web Vitals** (Client-side, cookieless, memory-only)
 2. **AI Observability** (Server-side Worker metadata, `$ai_generation`)
 3. **Android Crash Telemetry** (Client-side mobile, sanitized `mobile_crash`)
 
@@ -21,8 +21,9 @@ All telemetry is strictly bounded to protect financial privacy, avoid collecting
 ### 2.1 Public vs. Authenticated Web Surfaces
 
 - **Consent first**: nothing is captured until the visitor grants the Analytics cookie category. Without that stored decision, or without a configured key, every capture is a silent no-op.
-- **Pageviews on public routes only**: `$pageview` fires only for routes in the public metadata manifest (`isEligiblePublicUrl` in `apps/web/src/seo/siteMetadata.ts`), and never for a URL carrying authentication query parameters or hash fragments (e.g., `?code=`, `#access_token=`).
-- **Six funnel events elsewhere**: the signup page and the signed-in app send only the closed set in `apps/web/src/analytics/funnel.ts` (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`). Their only properties are fixed enums, and the page-load events fire at most once per page load.
+- **Pageviews on the public site only**: `zoption.site` (`apps/site/src/client/analytics.ts`) sends one `$pageview` per page load, only on a built manifest page (not the 404), and never when the query carries anything but campaign parameters or the fragment carries auth state (`isTrackableUrl` in `apps/site/src/lib/trackableUrl.ts`). The module itself downloads only after consent. When an AI answer engine sent the visit (ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Meta AI, You.com), the pageview carries `ai_referrer` with the engine's name and nothing else from the referrer.
+- **Same-origin ingestion on the site**: the site posts to its own `/ingest` Pages Function (`apps/site/functions/ingest/[[path]].ts`), which forwards only PostHog capture endpoints to `us.i.posthog.com` and strips cookies and client address headers, so the site CSP keeps `connect-src 'self'` for analytics and blocklists aimed at the PostHog host do not drop consented events.
+- **Six funnel events in the app**: the app at `app.zoption.site` sends no pageviews. Its signup page and signed-in app send only the closed set in `apps/web/src/analytics/funnel.ts` (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`). Their only properties are fixed enums, and the page-load events fire at most once per page load.
 - **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, account IDs, tenant IDs, or user IDs are ever captured or transmitted.
 
 ### 2.2 Client-Side Cookieless Web SDK Configuration
@@ -35,7 +36,7 @@ posthog.init(posthogKey, {
   cookieless_mode: "always",
   persistence: "memory",
   person_profiles: "never",
-  capture_pageview: false, // Manual SPA pageviews on eligible public routes only
+  capture_pageview: false, // The site sends its one pageview manually; the app sends none
   capture_pageleave: false,
   autocapture: false,
   disable_session_recording: true,
@@ -52,7 +53,7 @@ posthog.init(posthogKey, {
 - **No Cookies or LocalStorage**: `cookieless_mode: "always"` and `persistence: "memory"` ensure no cookies or localStorage/sessionStorage persistence keys are set.
 - **No Person Profiles**: `person_profiles: "never"` prevents PostHog from stitching anonymous sessions or creating user records.
 - **No Session Replay / Heatmaps**: Remote recording scripts and network payload capture are completely disabled.
-- **No External Script Ingestion**: `disable_external_dependency_loading: true` ensures that PostHog does not load external CDN scripts dynamically at runtime, maintaining full compliance with the strict Pages CSP (`script-src 'self'`).
+- **No External Script Ingestion**: `disable_external_dependency_loading: true` ensures that PostHog does not load external CDN scripts dynamically at runtime, maintaining full compliance with the strict Pages CSP (`script-src 'self'`). On the site, `api_host` is the same-origin `/ingest` proxy.
 
 ### 2.3 Server-Side AI Observability (`$ai_generation`)
 

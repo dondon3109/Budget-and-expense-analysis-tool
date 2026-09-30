@@ -2,6 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
+import { siteUrl } from "./fixtures/site";
+
 /**
  * The four public pages this slice added: two Philippine peso budgeting guides and two
  * feature explainers. The accessibility suite walks a hand written PUBLIC_ROUTES list, so
@@ -21,17 +23,15 @@ const CONTENT_ROUTES = [
   { path: "/features/voice-expense-entry", heading: "Log spending by voice" },
 ] as const;
 
-const BUILT_SITEMAP = new URL("../apps/web/dist/sitemap.xml", import.meta.url);
+const BUILT_SITEMAP = new URL("../apps/site/dist/sitemap.xml", import.meta.url);
 
 /**
- * The sitemap is a build artifact, not an application route: apps/web/scripts/prerender.mjs
- * writes it into apps/web/dist during a production build, and Cloudflare Pages serves that file
- * at /sitemap.xml. So read the served document first, which is what a built or deployed origin
- * returns, and fall back to the build output it would serve. Null means the origin serves no
- * sitemap and nothing has been built in this checkout.
+ * The public site generates /sitemap.xml from its route manifest, in its dev server and in
+ * the build Cloudflare Pages serves. Read the served document first and fall back to the build
+ * output. Null means the site serves no sitemap and nothing has been built in this checkout.
  */
 async function publishedSitemap(request: APIRequestContext): Promise<string | null> {
-  const response = await request.get("/sitemap.xml");
+  const response = await request.get(siteUrl("/sitemap.xml"));
   const served = response.ok() ? await response.text() : "";
   if (served.includes("<urlset")) return served;
 
@@ -47,7 +47,7 @@ test.beforeEach(async ({ page }) => {
 test.describe("published public content routes", () => {
   for (const route of CONTENT_ROUTES) {
     test(`${route.path} renders its heading and canonical URL`, async ({ page }) => {
-      await page.goto(route.path, { waitUntil: "domcontentloaded" });
+      await page.goto(siteUrl(route.path), { waitUntil: "domcontentloaded" });
 
       await expect(page.getByRole("heading", { level: 1, name: route.heading })).toBeVisible();
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
@@ -60,11 +60,9 @@ test.describe("published public content routes", () => {
   test("the published sitemap lists every new route", async ({ request }) => {
     const sitemap = await publishedSitemap(request);
     if (sitemap === null) {
-      // The suite runs against the Vite dev server, which serves public/ and no sitemap; in CI
-      // both web builds run first, so the production build output this reads is the one the
-      // workflow just wrote. A fresh checkout with no build has nothing to read, and skipping
-      // names that gap instead of failing an environment that never had a sitemap, or passing on
-      // one nobody published.
+      // Only reachable when the site server is down and nothing was built. Skipping names that
+      // gap instead of failing an environment that never had a sitemap, or passing on one
+      // nobody published.
       test.skip(
         true,
         "No sitemap is served at /sitemap.xml and no production build output exists.",

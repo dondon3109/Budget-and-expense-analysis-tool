@@ -11,6 +11,8 @@ All notable product changes are documented here.
 
 ### Changed
 
+- The signed-in web app moved to https://app.zoption.site, and https://zoption.site is now the public site: a separate static build whose content pages load no app code. Old app links, bookmarks, sign-in callbacks, and budget share links on zoption.site forward to the app with their query intact. Web users sign in once more after the move, because a session belongs to one address.
+- Android Beta 0.2.42 (versionCode 20342) creates budget share links on app.zoption.site.
 - Pro checkout on the web and in the Android and iOS app leads with Dodo Payments (card, Apple Pay, or Google Pay) as the primary "Continue securely" action, with PayPal offered below it.
 
 ### Fixed

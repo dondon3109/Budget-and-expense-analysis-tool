@@ -1,13 +1,13 @@
 # Cloudflare and Supabase deployment runbook
 
-Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worker at <https://api.zoption.site> with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository contains the public production domains but deliberately contains no account IDs, private tokens, or service-role keys.
+Zoption deploys as two Cloudflare Pages projects and a Worker: the public site (`apps/site`, Pages project `zoption-site`) at <https://zoption.site>, the signed-in web app (`apps/web`, Pages project `clarity-budget`) at <https://app.zoption.site>, and the API Worker at <https://api.zoption.site> with a D1 binding. Supabase Auth supplies user identity and sessions; private financial data remains in D1 and is partitioned by the tenant resolved from a verified Supabase JWT. The repository contains the public production domains but deliberately contains no account IDs, private tokens, or service-role keys.
 
 ## One-time Supabase setup
 
 1. Create separate Supabase projects for Preview and Production. Deployment validation fails closed when environments reuse a normalized Supabase origin or publishable key, preventing Preview authentication traffic from reaching Production and vice versa.
 2. In each project's **Authentication > URL configuration**, keep environments isolated:
    - Preview: set the site URL to `https://PREVIEW_WEB_HOST` and allow only `http://localhost:5173/auth/callback` (when this project is used locally) plus `https://PREVIEW_WEB_HOST/auth/callback`.
-   - Production: set the site URL to `https://zoption.site` and allow only `https://zoption.site/auth/callback` plus `https://www.zoption.site/auth/callback` while the alias is served.
+   - Production: set the site URL to `https://app.zoption.site` and allow `https://app.zoption.site/auth/callback`. Sign-in lives only on the app origin; the public site permanently redirects `/auth/*` there with the query string intact, so a link issued for the old `https://zoption.site/auth/callback` still completes.
 3. Keep email/password enabled. Configure confirmation email delivery and templates before inviting users. The Site URL is only a fallback; password recovery should return through `/auth/callback?next=%2Fupdate-password`. In the recovery email template, link the reset action to `{{ .ConfirmationURL }}` so Supabase preserves the `redirectTo` supplied by the app. Do not link recovery mail directly to `{{ .SiteURL }}`. Compare the reset request's actual `redirectTo` with the dashboard allow-list and add the query-bearing production callback explicitly if Supabase does not accept the base callback entry. New Free-plan projects using Supabase's default SMTP cannot customize Auth templates, so configure custom SMTP when template editing or delivery to non-team addresses is required.
 
    Both hosted projects run custom SMTP through Resend, configured identically. These are the live values, read back from the project rather than assumed:
@@ -15,7 +15,7 @@ Zoption deploys as a Cloudflare Pages app at <https://zoption.site> plus a Worke
    - Host `smtp.resend.com`, port `465`, user `resend`, password set to a Resend API key that has sending access for `zoption.site`.
    - Sender address `auth@zoption.site` with sender name `Zoption`.
    - Recovery, confirmation, email change, invite, and magic link templates link to `{{ .ConfirmationURL }}`. Reauthentication uses the raw `{{ .Token }}`, which is correct for a code rather than a link.
-   - The redirect allow list carries `https://zoption.site/auth/callback`, `https://www.zoption.site/auth/callback`, the Preview Pages callback, the local callback, and the `zoption://`, `zoption-dev://`, and `zoption-preview://` mobile schemes.
+   - The redirect allow list carries `https://app.zoption.site/auth/callback`, the Preview Pages callback, the local callback, and the `zoption://`, `zoption-dev://`, and `zoption-preview://` mobile schemes.
    - `mailer_autoconfirm` is false, so every signup depends on this delivery path working.
    - `rate_limit_email_sent` is 30 per hour. Raise it before a launch that could send more than 30 confirmation or recovery messages in an hour.
    - The SMTP password is its own Resend key, named `Supabase Auth SMTP`, deliberately separate from the Worker's `Send SMTP` key in step 12 so rotating one cannot break the other. Rotate it in the Resend dashboard, then set it here and verify delivery. A stale password fails every confirmation and recovery email silently, because the app surfaces no error for a message Supabase never delivered.
@@ -108,7 +108,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
    It checks Preview and Production D1 bindings, RATE_LIMIT Durable Object, AVATARS R2, and JOBS queue bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins, keys, R2 buckets, and queues across environments, PayPal namespace and distinct monthly/annual plan variables, optional Dodo Payments mode and product variables, optional PostHog enable/environment values and the exact approved US Cloud origin, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
 
-7. Create separate preview and production Pages projects for each surface: `clarity-budget` for the web app and `zoption-site` for the public site (`apps/site`). Custom domains are dashboard-managed; the section _Subdomain cutover_ below records which project carries which host. `apps/site/wrangler.jsonc` is the source of truth for the site project's build output and runtime (it has no bindings or secrets); the app project has no Wrangler file.
+7. Create separate preview and production Pages projects for each surface. Production: `zoption-site` (public site) carries the custom domains `zoption.site` and `www.zoption.site`; `clarity-budget` (web app) carries `app.zoption.site`. Custom domains are dashboard-managed. `apps/site/wrangler.jsonc` is the source of truth for the site project's build output and runtime (it has no bindings or secrets); the app project has no Wrangler file.
 8. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
 9. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
 
@@ -127,7 +127,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
     PostHog is server-side and metadata-only. Do not add a browser SDK, `VITE_POSTHOG_*`, PostHog web cookies, identify/group events, or Pages CSP origins. The Worker uses random trace IDs, disables person-profile processing and GeoIP enrichment, replaces the capture source address with the non-routable `0.0.0.0` placeholder, and excludes questions, answers, financial records, tool payloads, credentials, and internal IDs.
 
-12. Before enabling sponsored-seat invitations, bug-report notifications, or Pro trial emails, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS Pages origin, `EMAIL_FROM` to the verified sender address, and `BUG_REPORT_TO` to the private support inbox; none belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation and bug report to addresses you manage before enabling production use. Pro trial emails (started, ending tomorrow, ended) go out from the five-minute cron and look up the recipient in Supabase Auth with `SUPABASE_SERVICE_ROLE_KEY`; a send that fails five times is dropped.
+12. Before enabling sponsored-seat invitations, bug-report notifications, or Pro trial emails, onboard the sender domain in Resend and store the `RESEND_API_KEY` as a Worker secret in each deployment environment. Set `WEB_APP_URL` to the exact HTTPS app origin (`https://app.zoption.site` in Production, which the validator enforces), `EMAIL_FROM` to the verified sender address, and `BUG_REPORT_TO` to the private support inbox; none belongs in browser `VITE_*` configuration. This works on the Cloudflare Free plan because delivery goes through the Resend REST API (no `send_email` binding). Send a controlled invitation and bug report to addresses you manage before enabling production use. Pro trial emails (started, ending tomorrow, ended) go out from the five-minute cron and look up the recipient in Supabase Auth with `SUPABASE_SERVICE_ROLE_KEY`; a send that fails five times is dropped.
 
     ```bash
     pnpm --filter @zoption/api exec wrangler secret put RESEND_API_KEY --config wrangler.deploy.jsonc --env preview
@@ -276,9 +276,9 @@ Build Pages with environment-specific public values. The committed `apps/web/.en
 
 The public Android metadata bucket `zoption-android-beta` must allow CORS from the exact Pages origins `https://zoption.site` and `https://www.zoption.site` for `GET`/`HEAD` only. The install page fetch sends `Accept: application/json` and `cache: "no-store"` (browsers may preflight `Accept`, `Cache-Control`, and `Pragma`); those request headers must be listed. Do not use wildcard origins. The source-of-truth policy is `scripts/r2-android-cors.json`; apply it with `wrangler r2 bucket cors set zoption-android-beta --file scripts/r2-android-cors.json`.
 
-The client build derives the Pages CSP from the validated API and Supabase origins, writes those exact origins into `connect-src`, writes the exact Supabase origin into `img-src`, always includes the exact R2 Android download origin `https://downloads.zoption.site` in `connect-src` (the install page fetches `android/latest.json` from it), and rejects every wildcard source. Production Pages builds require `VITE_POSTHOG_KEY`; Preview and local builds may omit it. Store the browser-visible project token as the GitHub Actions secret `VITE_POSTHOG_KEY` by running `gh secret set VITE_POSTHOG_KEY` and entering the token at the prompt. Only the exact `VITE_POSTHOG_HOST` origin (currently `https://us.i.posthog.com`) is added to `connect-src`. PostHog Web Analytics operates in cookieless, memory-only mode without setting cookies or creating person profiles, Cookieless `$pageview` capture stays limited to public routes; six anonymous funnel events (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`) also fire from the signup and signed-in surfaces, carrying fixed enum values only, no financial or identity detail, and nothing written to the device. Server-side PostHog AI Observability runs only in the Worker, so it adds no browser environment variable, script, request, cookie, or Pages CSP origin. Prerender verifies that the final `_headers` contains exactly the generated policy before deployment, and the smoke check requires the PostHog origin in Production and in any non-indexed deployment that sets `EXPECTED_POSTHOG_HOST`. Production client and SSR source maps are explicitly disabled, and a successful build must leave no `.map` files in `apps/web/dist`. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`.
+The app build derives its Pages CSP from the validated API and Supabase origins, writes those exact origins into `connect-src`, writes the exact Supabase origin into `img-src`, and rejects every wildcard source. The app never fetches the Android release metadata, so `downloads.zoption.site` is not in its policy. Production Pages builds require `VITE_POSTHOG_KEY`; Preview and local builds may omit it. Store the browser-visible project token as the GitHub Actions secret `VITE_POSTHOG_KEY` by running `gh secret set VITE_POSTHOG_KEY` and entering the token at the prompt. Only the exact `VITE_POSTHOG_HOST` origin (currently `https://us.i.posthog.com`) is added to `connect-src`. PostHog operates in cookieless, memory-only mode without setting cookies or creating person profiles. The app sends no `$pageview`; six anonymous funnel events (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`) also fire from the signup and signed-in surfaces, carrying fixed enum values only, no financial or identity detail, and nothing written to the device. Server-side PostHog AI Observability runs only in the Worker, so it adds no browser environment variable, script, request, cookie, or Pages CSP origin. The build verifies that the final `_headers` contains exactly the generated policy before deployment, and the smoke check requires the PostHog origin in Production and in any non-indexed deployment that sets `EXPECTED_POSTHOG_HOST`. Production source maps are disabled in both builds, and a successful build must leave no `.map` files in `apps/web/dist` or `apps/site/dist`. The pre-render theme setup loads from same-origin `/theme-bootstrap.js`; do not reintroduce an inline script or weaken `script-src 'self'`.
 
-Set `ZOPTION_DEPLOY_ENV` explicitly in every Pages build: `production` for the production project and `preview` or `staging` for non-production projects. Preview/staging builds keep the public content and production canonicals for realistic review, but force HTML and HTTP `noindex,nofollow`, do not publish `sitemap.xml`, and do not advertise a sitemap in `robots.txt`. Production intentionally allows crawlers to fetch private routes rather than disallowing them in `robots.txt`, so crawlers can observe their HTML and `X-Robots-Tag` noindex directives. Vite embeds public environment variables in the generated assets, so changing `VITE_API_URL` or another `VITE_*` value requires a fresh build before deploying; re-uploading an existing `dist` directory does not update it.
+Set `ZOPTION_DEPLOY_ENV` explicitly in every Pages build: `production` for the production projects and `preview` or `staging` for non-production projects. The app is never indexable: every response carries `X-Robots-Tag: noindex, nofollow`, and its `robots.txt` allows crawling so crawlers can see that header. Preview/staging site builds keep the public content and production canonicals for realistic review, but force HTML and HTTP `noindex,nofollow`, do not publish `sitemap.xml`, and do not advertise a sitemap in `robots.txt`. Vite embeds public environment variables in the generated assets, so changing `VITE_API_URL` or another `VITE_*` value requires a fresh build before deploying; re-uploading an existing `dist` directory does not update it.
 
 ```bash
 VITE_API_URL=https://PREVIEW_API_HOST \
@@ -291,11 +291,20 @@ pnpm --filter @zoption/web build
 
 The publishable key is intended for browser use. It does not grant access to D1; the Worker still verifies every access token and chooses tenant scope server-side.
 
-Public canonical URLs do not use trailing slashes. The three legal trailing-slash variants permanently redirect to their canonical path. Public pages accept only standard UTM and ad-click identifiers (`utm_*`, `gclid`, `dclid`, `fbclid`, `msclkid`) as indexable query strings; their canonical remains query-free. Any other query parameter and any authentication/error URL state is noindex. Update a public route's manually maintained sitemap `lastModified` value only when its user-visible content changes materially; the same value feeds legal-page structured-data `dateModified`.
+The public site build (`apps/site`) validates its own, smaller configuration in `apps/site/deployment-config.ts`. Production defaults `PUBLIC_API_URL` to `https://api.zoption.site` and `PUBLIC_APP_URL` to `https://app.zoption.site` and rejects anything else; Preview and staging builds must pass both explicitly and must not use the production API. A production Pages build (`CF_PAGES=1`) requires `PUBLIC_POSTHOG_KEY`, which the release workflow fills from the same `VITE_POSTHOG_KEY` secret, and fails if `GET /api/reviews` fails, because the landing page renders the published reviews at build time. `scripts/finalize-build.mjs` then writes `dist/_headers`: a CSP of `script-src 'self'` plus a SHA-256 hash for each inline script Astro emitted (the island bootstrap), `connect-src` limited to the site, the API, and `https://downloads.zoption.site`, a `Speculation-Rules` header for same-origin prefetch, and cache rules (`/_astro/*` immutable for a year, brand and social images for a day, discovery files for an hour, `release.json` never). Site analytics posts to the same-origin `/ingest` Pages Function, which forwards only PostHog capture endpoints to `us.i.posthog.com` and strips cookies and client address headers.
+
+```bash
+PUBLIC_API_URL=https://PREVIEW_API_HOST \
+PUBLIC_APP_URL=https://PREVIEW_WEB_HOST \
+ZOPTION_DEPLOY_ENV=preview \
+pnpm --filter @zoption/site build
+```
+
+Public canonical URLs do not use trailing slashes, and the legal, pricing, FAQ, install, and changelog trailing-slash variants permanently redirect to their canonical path. Every public page is static HTML with a query-free canonical, so any query string consolidates onto the clean URL. Analytics counts a view only when the query carries nothing but standard UTM and ad-click identifiers (`utm_*`, `gclid`, `dclid`, `fbclid`, `msclkid`) and the fragment carries no auth state. Update a public route's manually maintained sitemap `lastModified` value only when its user-visible content changes materially; the same value feeds legal-page structured-data `dateModified`.
 
 ## Automated production release
 
-CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck), `unit` (Vitest and mobile Jest), and `e2e` (shared, API, preview and production web builds, Playwright, then Lighthouse against the production build). The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, Worker and Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
+CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck), `unit` (Vitest and mobile Jest), and `e2e` (shared and API builds, preview and production builds of the app and the public site, Playwright against the app, site, and API dev servers, then Lighthouse against the production site build). The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, the Worker and both Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
 
 For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
 
@@ -303,10 +312,11 @@ For a release-producing commit, the workflow uses one version and commit SHA thr
 2. Create or resume a GitHub production deployment record for duplicate protection.
 3. Apply pending production D1 migrations. Wrangler captures the documented backup automatically in non-interactive CI.
 4. Deploy the production Worker, tagged with the selected semantic version.
-5. Build Pages with that same version, deploy the output with the exact Git SHA, wait until the custom domain serves its versioned deployment marker, and run the non-mutating production smoke gate.
-6. Mark the GitHub deployment successful, then let semantic-release create the matching `v*` tag and GitHub Release.
+5. Build the app with that same version and deploy it to `clarity-budget` with the exact Git SHA, then build the public site (after the Worker, because it reads the published reviews) and deploy it to `zoption-site` from `apps/site`, so its `/ingest` Pages Function is included. Each deploy is checkpointed (`worker`, `pages`, `site`) so a rerun skips what already shipped.
+6. Wait until both custom domains serve the versioned `release.json` marker, and run the non-mutating production smoke gate against the site, the app, and the API.
+7. Mark the GitHub deployment successful, then let semantic-release create the matching `v*` tag and GitHub Release.
 
-If semantic-release publication fails after a successful Cloudflare deployment, rerunning the failed workflow while that commit is still `main` reuses the successful GitHub deployment record and does not deploy Worker or Pages again. Semantic-release is also idempotent once the tag exists.
+If semantic-release publication fails after a successful Cloudflare deployment, rerunning the failed workflow while that commit is still `main` reuses the successful GitHub deployment record and does not deploy the Worker or either Pages project again. Semantic-release is also idempotent once the tag exists.
 
 Version selection remains:
 
@@ -386,11 +396,22 @@ pnpm --filter @zoption/web build
 pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
 ```
 
+Build and deploy the public site from `apps/site`, so the `/ingest` function deploys with it:
+
+```bash
+PUBLIC_API_URL=https://PREVIEW_API_HOST \
+PUBLIC_APP_URL=https://PREVIEW_WEB_HOST \
+ZOPTION_DEPLOY_ENV=preview \
+pnpm --filter @zoption/site build
+cd apps/site && ../api/node_modules/.bin/wrangler pages deploy dist --project-name=PREVIEW_SITE_PROJECT --branch=main && cd ../..
+```
+
 Run the non-mutating smoke gate:
 
 ```bash
 EXPECT_SEARCH_INDEXING=0 \
-WEB_URL=https://PREVIEW_WEB_HOST \
+SITE_URL=https://PREVIEW_SITE_HOST \
+APP_URL=https://PREVIEW_WEB_HOST \
 API_URL=https://PREVIEW_API_HOST \
 EXPECTED_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 FORBIDDEN_SUPABASE_ORIGINS=https://PRODUCTION_PROJECT_REF.supabase.co \
@@ -419,7 +440,7 @@ Before publishing the legal routes, business and legal reviewers must resolve ev
 
 ## Production release
 
-After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`: its ungated `preflight` job fails at `Verify release source` when `main` has moved on, and otherwise proceeds only when semantic-release finds a release owed, so a superseded or non-releasing commit never reaches `production` environment approval. Only when both hold does `deploy-and-release` run, and it waits for that approval before it migrates, deploys, or publishes. Operators approve and monitor the workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `app.zoption.site`, `zoption.site`, and `www.zoption.site` (the public site calls the public reviews and support chat routes).
+After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`: its ungated `preflight` job fails at `Verify release source` when `main` has moved on, and otherwise proceeds only when semantic-release finds a release owed, so a superseded or non-releasing commit never reaches `production` environment approval. Only when both hold does `deploy-and-release` run, and it waits for that approval before it migrates, deploys, or publishes. Operators approve and monitor the workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `app.zoption.site`, `zoption.site`, and `www.zoption.site` (the site calls the public reviews and support chat routes).
 
 The following commands are emergency recovery references only. Disable or wait for the Actions deployment before running them; never use them concurrently with `Production Release` or while Cloudflare's old Git deployment is enabled.
 
@@ -431,7 +452,7 @@ pnpm exec wrangler deploy --config wrangler.deploy.jsonc --env production
 cd ../..
 ```
 
-For an emergency Pages recovery, build and deploy the frontend with production Supabase values. `VITE_API_URL` defaults to `https://api.zoption.site`. Set `ZOPTION_DEPLOY_ENV=production`; the web build rejects Cloudflare Pages builds without this explicit environment value so a preview project cannot accidentally publish indexable pages.
+For an emergency Pages recovery, build and deploy the app with production Supabase values, then the public site. `VITE_API_URL` defaults to `https://api.zoption.site`. Set `ZOPTION_DEPLOY_ENV=production`; the web build rejects Cloudflare Pages builds without this explicit environment value so a preview project cannot accidentally publish indexable pages.
 
 ```bash
 VITE_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
@@ -439,8 +460,12 @@ VITE_SUPABASE_PUBLISHABLE_KEY=PRODUCTION_PUBLISHABLE_KEY \
 VITE_POSTHOG_KEY=phc_APPROVED_POSTHOG_KEY \
 ZOPTION_DEPLOY_ENV=production \
 pnpm --filter @zoption/web build
-pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PRODUCTION_PAGES_PROJECT --branch=main
-WEB_URL=https://zoption.site \
+pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=clarity-budget --branch=main
+ZOPTION_DEPLOY_ENV=production PUBLIC_POSTHOG_KEY=phc_APPROVED_POSTHOG_KEY CF_PAGES=1 \
+pnpm --filter @zoption/site build
+cd apps/site && ../api/node_modules/.bin/wrangler pages deploy dist --project-name=zoption-site --branch=main && cd ../..
+SITE_URL=https://zoption.site \
+APP_URL=https://app.zoption.site \
 API_URL=https://api.zoption.site \
 EXPECTED_SUPABASE_URL=https://PRODUCTION_PROJECT_REF.supabase.co \
 FORBIDDEN_SUPABASE_ORIGINS=https://PREVIEW_PROJECT_REF.supabase.co \
@@ -448,13 +473,13 @@ EXPECTED_POSTHOG_HOST=https://us.i.posthog.com \
 pnpm smoke:production
 ```
 
-Verify both production web origins appear in `ALLOWED_ORIGINS` and Supabase's redirect allow-list before inviting users. The deployed output pre-renders `/`, `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`; it also publishes `/sitemap.xml`, `/robots.txt`, `/llms.txt`, and a branded `404.html`. The committed `_redirects` file routes only authentication and private application paths to the `spa.html` shell, sends legacy application paths through permanent redirects, and leaves unknown public paths as HTTP 404 responses. PostHog Web Analytics operates in cookieless, memory-only mode without setting cookies or creating person profiles, `$pageview` capture still tracks only public route transitions; the six anonymous funnel events also fire from the signup and signed-in surfaces with fixed enum values and no financial or identity detail. Verify that private application routes (`/app/*`) send only those funnel events, and confirm that the Cloudflare Web Analytics beacon and GA4 scripts are completely removed. The retired `/demo` route should return HTTP 404.
+Verify the three production web origins appear in `ALLOWED_ORIGINS` and the app callback is in Supabase's redirect allow-list before inviting users. The public site serves every manifest route as static HTML plus `/sitemap.xml`, `/robots.txt`, `/llms.txt`, `/llms-full.txt`, and a branded `404.html`; its `_redirects` hands `/login`, `/signup`, `/auth/*`, `/app/*`, `/thank-you`, `/shared/budget/*`, and the legacy workspace paths to `app.zoption.site` with the query string intact. The app's `_redirects` serves `index.html` for every path, redirects legacy workspace paths to `/app`, and sends public page paths back to `zoption.site`. The site counts cookieless pageviews after consent; the app sends only the six anonymous funnel events. Confirm neither origin loads the Cloudflare Web Analytics beacon or GA4.
 
 The normal workflow publishes semantic release metadata automatically only after both Cloudflare deployments and smoke verification succeed. Do not create a release tag manually after automation is enabled.
 
 ## Rollback
 
-- **Pages:** promote the previously verified frontend deployment.
+- **Pages:** promote the previously verified deployment of each project (`clarity-budget` for the app, `zoption-site` for the public site).
 - **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
 - **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
@@ -464,9 +489,9 @@ The normal workflow publishes semantic release metadata automatically only after
 
 Before treating the domain migration as complete:
 
-1. In the Pages project, confirm `zoption.site` serves the frontend and no Worker route or Worker Custom Domain claims the apex host. If `https://zoption.site/health` returns the API health response, the apex is still routed to the Worker.
+1. Confirm `zoption.site` is attached to the `zoption-site` Pages project, `app.zoption.site` to `clarity-budget`, and that no Worker route or Worker Custom Domain claims either host. If `https://zoption.site/health` returns the API health response, the apex is still routed to the Worker.
 2. Deploy the production Worker with `apps/api/wrangler.deploy.jsonc` so its Custom Domain is `api.zoption.site`, then confirm `https://api.zoption.site/health` returns `200`.
-3. Add `www.zoption.site` to Pages and configure the canonical redirect, or remove the alias from `ALLOWED_ORIGINS` and Supabase if it will not be served.
+3. Add `www.zoption.site` to the `zoption-site` project and configure the canonical redirect, or remove the alias from `ALLOWED_ORIGINS` if it will not be served.
 4. Run the Production smoke command above, including `EXPECTED_SUPABASE_URL`, after DNS and custom-domain changes have propagated.
 
 ## Search visibility verification
@@ -569,11 +594,12 @@ The environment snapshots the setup script's result for about seven days, so the
 
 The intended production endpoints are:
 
-- Production web: <https://zoption.site>
-- Production web alias: <https://www.zoption.site>
+- Production public site: <https://zoption.site> (Pages project `zoption-site`)
+- Production public site alias: <https://www.zoption.site>
+- Production web app: <https://app.zoption.site> (Pages project `clarity-budget`)
 - Production API: <https://api.zoption.site>
 
-Preview endpoints are deployment-specific. Supply them through `PREVIEW_WEB_HOST` and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
+Preview endpoints are deployment-specific. Supply them through `PREVIEW_SITE_HOST`, `PREVIEW_WEB_HOST`, and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
 
 ## Cloudflare dashboard and repository sync
 
@@ -585,7 +611,7 @@ To re-verify, compare the dashboard's list of names against `apps/api/wrangler.d
 
 ## Legacy origin cleanup
 
-The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://app.zoption.site`, `https://zoption.site`, and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun the documented Production smoke command with the expected Supabase origin after deployment or routing changes.
+The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://app.zoption.site`, `https://zoption.site`, and `https://www.zoption.site`. Keep only the app's custom-domain callback URL in Supabase once the cutover below is complete, and rerun the documented Production smoke command with the expected Supabase origin after deployment or routing changes.
 
 ## Subdomain cutover (one time)
 

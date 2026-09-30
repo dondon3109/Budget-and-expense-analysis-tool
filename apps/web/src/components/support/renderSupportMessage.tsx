@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { siteUrl } from "../../lib/siteUrl";
 
 interface SupportDestination {
   label: string;
@@ -11,14 +12,14 @@ const SUPPORT_DESTINATIONS: SupportDestination[] = [
   { label: "Help and contact", to: "/app/settings#help-and-contact" },
   { label: "Help & contact", to: "/app/settings#help-and-contact" },
   { label: "Profile dashboard", to: "/app" },
-  { label: "Terms of service", to: "/terms-of-service" },
-  { label: "Privacy policy", to: "/privacy-policy" },
-  { label: "Cookie policy", to: "/cookie-policy" },
+  { label: "Terms of service", to: siteUrl("/terms-of-service") },
+  { label: "Privacy policy", to: siteUrl("/privacy-policy") },
+  { label: "Cookie policy", to: siteUrl("/cookie-policy") },
   { label: "Plan and billing", to: "/app/settings#plan-and-billing" },
   { label: "Account settings", to: "/app/settings" },
   { label: "Goals & debt", to: "/app/plan" },
   { label: "AI Assistant", to: "/app/assistant" },
-  { label: "Android APK", to: "/install" },
+  { label: "Android APK", to: siteUrl("/install") },
   { label: "Start free", to: "/signup" },
   { label: "Sign in", to: "/login" },
   { label: "Transactions", to: "/app/transactions" },
@@ -29,7 +30,7 @@ const SUPPORT_DESTINATIONS: SupportDestination[] = [
   { label: "Profile", to: "/app" },
   { label: "Contact", to: "/app/settings#contact" },
   { label: "Help", to: "/app/settings#help" },
-  { label: "FAQ", to: "/faq" },
+  { label: "FAQ", to: siteUrl("/faq") },
 ];
 
 function escapePattern(value: string): string {

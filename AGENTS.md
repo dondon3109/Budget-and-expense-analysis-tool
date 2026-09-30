@@ -1,6 +1,6 @@
 # Agent guidance
 
-Zoption is a budget and expense tracker: a React web app, an Expo Android/iOS app, and a Cloudflare Worker API that owns all financial data. Don prefers complex systems implemented as simply as possible.
+Zoption is a budget and expense tracker: a public Astro site at `zoption.site`, a React web app at `app.zoption.site`, an Expo Android/iOS app, and a Cloudflare Worker API that owns all financial data. Don prefers complex systems implemented as simply as possible.
 
 ## Working style
 
@@ -62,7 +62,7 @@ Start from the first file listed, then read the package guide for that area. Eve
 | Dashboard, budget, and plan math | `packages/shared/src/calculations.ts`, `planning.ts`, `cashflowForecast.ts`, `safeToSpend.ts`                                                                                                |
 | Mobile sync                      | Contract `packages/shared/src/sync.ts`; server facade `apps/api/src/db/mobile-sync.ts`, push handlers in `db/mobile-sync/push/`; client `apps/mobile/src/sync/`, `src/db/sync-repository.ts` |
 | Web private page                 | `apps/web/src/pages/<Name>Page.tsx`, route in `apps/web/src/App.tsx`                                                                                                                         |
-| Web public or SEO page           | `apps/web/src/seo/siteMetadata.ts` and `apps/web/src/PublicRoutes.tsx`                                                                                                                       |
+| Public page, SEO, or `llms.txt`  | `apps/site/src/seo/siteMetadata.ts` and a route file in `apps/site/src/pages/`                                                                                                               |
 | Web server call and cache key    | Call in `apps/web/src/lib/api/<domain>.ts`; hook and invalidation in `apps/web/src/queries/<domain>.ts`; keys in `apps/web/src/lib/queryKeys.ts`                                             |
 | Mobile screen                    | `apps/mobile/src/features/<area>/<Name>Screen.tsx`, exposed by a one-line route in `apps/mobile/app/`                                                                                        |
 | Mobile local read                | Hooks in `apps/mobile/src/db/local-workspace-state.tsx`, queries in `apps/mobile/src/db/repository.ts`, shapes in `src/db/view-models.ts`                                                    |
@@ -101,7 +101,7 @@ Always run Vitest from the repo root (or through a package `test` script, which 
 Read the one for the area you touch:
 
 - [apps/api/AGENTS.md](apps/api/AGENTS.md): Worker API, D1 migrations, tenancy, sync protocol
-- [apps/web/AGENTS.md](apps/web/AGENTS.md): browser app, public routes, prerender, CSP
+- [apps/web/AGENTS.md](apps/web/AGENTS.md): signed-in browser app, auth flows, CSP
 - [apps/site/AGENTS.md](apps/site/AGENTS.md): public Astro site, SEO manifest, headers and CSP, analytics proxy
 - [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md): Expo client, local workspace, outbox, Android releases
 - [packages/shared/AGENTS.md](packages/shared/AGENTS.md): shared schemas, money rules, sync contracts

@@ -2,10 +2,8 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import posthog from "posthog-js";
-import { StrictMode } from "react";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -79,13 +77,9 @@ function AnalyticsApp({ initialEntry = "/" }: { initialEntry?: string }) {
           path="*"
           element={
             <nav>
-              <Link to="/">Public home</Link>
-              <Link to="/faq">Public FAQ</Link>
-              <Link to="/install">Public Install</Link>
               <Link to="/app">Private Dashboard</Link>
               <Link to="/app/transactions">Private Transactions</Link>
               <Link to="/login">Private Login</Link>
-              <Link to="/?code=secret">Sensitive parameter route</Link>
             </nav>
           }
         />
@@ -117,8 +111,8 @@ afterEach(() => {
 });
 
 describe("PostHog Web Analytics", () => {
-  it("initializes with privacy-preserving, cookieless configuration on eligible public routes", async () => {
-    render(<AnalyticsApp initialEntry="/" />);
+  it("initializes with a privacy-preserving, cookieless configuration once consented", async () => {
+    render(<AnalyticsApp initialEntry="/app" />);
 
     await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
 
@@ -141,16 +135,12 @@ describe("PostHog Web Analytics", () => {
       },
     });
 
-    const pageviews = mockedPostHog.__getCapturedEvents().filter((e) => e.event === "$pageview");
-    expect(pageviews).toHaveLength(1);
-    expect(pageviews[0]?.properties).toMatchObject({
-      $current_url: "http://localhost:3000/",
-      source: "web",
-    });
+    // Every app route is private; the public site on zoption.site counts its own pageviews.
+    expect(pageviews()).toHaveLength(0);
   });
 
   it("reduces the URL and referrer posthog attaches to origin and path", async () => {
-    render(<AnalyticsApp initialEntry="/" />);
+    render(<AnalyticsApp initialEntry="/app" />);
     await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
 
     const options = mockedPostHog.__getInitOptions();
@@ -192,7 +182,7 @@ describe("PostHog Web Analytics", () => {
 
   it("does not initialize or capture when VITE_POSTHOG_KEY is not configured", async () => {
     vi.stubEnv("VITE_POSTHOG_KEY", "");
-    render(<AnalyticsApp initialEntry="/" />);
+    render(<AnalyticsApp initialEntry="/app" />);
 
     expect(mockedPostHog.init).not.toHaveBeenCalled();
     expect(mockedPostHog.__getCapturedEvents()).toHaveLength(0);
@@ -214,32 +204,8 @@ describe("PostHog Web Analytics", () => {
     expect(pageviews()).toHaveLength(0);
   });
 
-  it("stops pageview tracking when navigating from a public route to private financial routes", async () => {
-    const user = userEvent.setup();
-    render(<AnalyticsApp initialEntry="/" />);
-
-    await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(1);
-
-    await user.click(screen.getByRole("link", { name: "Private Dashboard" }));
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(1); // No new event
-
-    await user.click(screen.getByRole("link", { name: "Private Transactions" }));
-    expect(mockedPostHog.__getCapturedEvents()).toHaveLength(1); // No new event
-
-    await user.click(screen.getByRole("link", { name: "Public FAQ" }));
-    await waitFor(() => expect(mockedPostHog.__getCapturedEvents()).toHaveLength(2));
-
-    const events = mockedPostHog.__getCapturedEvents();
-    expect(events[1]?.event).toBe("$pageview");
-    expect(events[1]?.properties).toMatchObject({
-      $current_url: "http://localhost:3000/faq",
-      source: "web",
-    });
-  });
-
   it("drops every event in the before_send hook once the consent is revoked", async () => {
-    render(<AnalyticsApp initialEntry="/" />);
+    render(<AnalyticsApp initialEntry="/app" />);
     await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
 
     // The real hook, not a mock: this is the only place that sees the SDK's own events too,
@@ -268,66 +234,16 @@ describe("PostHog Web Analytics", () => {
     expect(beforeSend(event)).not.toBeNull();
   });
 
-  it("stops capturing on revocation and starts again when consent returns", async () => {
-    const user = userEvent.setup();
-    render(<AnalyticsApp initialEntry="/" />);
-    await waitFor(() => expect(pageviews()).toHaveLength(1));
+  it("opts out on revocation and back in when consent returns", async () => {
+    render(<AnalyticsApp initialEntry="/app" />);
+    await waitFor(() => expect(mockedPostHog.opt_in_capturing).toHaveBeenCalledTimes(1));
 
     storeAnalyticsConsent(false);
     await waitFor(() => expect(mockedPostHog.opt_out_capturing).toHaveBeenCalledTimes(1));
 
-    await user.click(screen.getByRole("link", { name: "Public FAQ" }));
-    expect(pageviews()).toHaveLength(1);
-
     mockedPostHog.opt_in_capturing.mockClear();
     storeAnalyticsConsent(true);
     await waitFor(() => expect(mockedPostHog.opt_in_capturing).toHaveBeenCalledTimes(1));
-    // Re-granting consent makes the current page trackable again.
-    await waitFor(() => expect(pageviews()).toHaveLength(2));
-
-    await user.click(screen.getByRole("link", { name: "Public Install" }));
-    await waitFor(() => expect(pageviews()).toHaveLength(3));
-  });
-
-  it("excludes public URLs with sensitive query parameters from tracking", async () => {
-    render(<AnalyticsApp initialEntry="/?code=secret" />);
-
     expect(pageviews()).toHaveLength(0);
-  });
-
-  it("captures public SPA pageview transitions without duplication", async () => {
-    const user = userEvent.setup();
-    render(<AnalyticsApp initialEntry="/" />);
-
-    await waitFor(() => expect(mockedPostHog.__getCapturedEvents()).toHaveLength(1));
-
-    await user.click(screen.getByRole("link", { name: "Public FAQ" }));
-    await waitFor(() => expect(mockedPostHog.__getCapturedEvents()).toHaveLength(2));
-
-    await user.click(screen.getByRole("link", { name: "Public Install" }));
-    await waitFor(() => expect(mockedPostHog.__getCapturedEvents()).toHaveLength(3));
-
-    await user.click(screen.getByRole("link", { name: "Public home" }));
-    await waitFor(() => expect(mockedPostHog.__getCapturedEvents()).toHaveLength(4));
-
-    const paths = mockedPostHog
-      .__getCapturedEvents()
-      .map((e) => (e.properties?.$current_url as string).replace("http://localhost:3000", ""));
-
-    expect(paths).toEqual(["/", "/faq", "/install", "/"]);
-  });
-
-  it("emits only one pageview across a StrictMode double render", async () => {
-    render(
-      <StrictMode>
-        <AnalyticsApp initialEntry="/faq" />
-      </StrictMode>,
-    );
-
-    await waitFor(() => expect(mockedPostHog.__getCapturedEvents()).toHaveLength(1));
-
-    const pageviews = mockedPostHog.__getCapturedEvents().filter((e) => e.event === "$pageview");
-    expect(pageviews).toHaveLength(1);
-    expect(pageviews[0]?.properties?.$current_url).toBe("http://localhost:3000/faq");
   });
 });

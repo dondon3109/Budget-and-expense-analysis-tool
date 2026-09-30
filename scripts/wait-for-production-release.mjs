@@ -23,10 +23,10 @@ async function main() {
           cache: "no-store",
         });
         if (!homeResponse.ok) {
-          throw new Error(`Production landing page failed with HTTP ${homeResponse.status}.`);
+          throw new Error(`${webUrl} home page failed with HTTP ${homeResponse.status}.`);
         }
         await fetchFrontendScriptGraph(await homeResponse.text(), webUrl);
-        console.log(`Production Pages is serving v${expectedVersion}.`);
+        console.log(`${webUrl} is serving v${expectedVersion}.`);
         return;
       }
     } catch (error) {
@@ -34,7 +34,7 @@ async function main() {
     }
     if (attempt < 30) await delay(5_000);
   }
-  throw new Error(`Production Pages did not serve v${expectedVersion} within 150 seconds.`);
+  throw new Error(`${webUrl} did not serve v${expectedVersion} within 150 seconds.`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

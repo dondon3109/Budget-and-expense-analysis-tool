@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,18 +17,8 @@ import {
   type ResolvedDeploymentConfig,
 } from "./deployment-config";
 
-const webRoot = fileURLToPath(new URL(".", import.meta.url));
 const rootPackagePath = fileURLToPath(new URL("../../package.json", import.meta.url));
 const rootPackage = JSON.parse(readFileSync(rootPackagePath, "utf8")) as { version?: unknown };
-
-/**
- * Scratch space for the client build's handoff to `prerender.mjs`.
- *
- * This deliberately lives outside `dist/`: `dist/` is what gets deployed, and while the
- * manifest is build-time only, anything written there has to be deleted again before
- * deployment. Deleting it is what made `prerender` a single-shot command.
- */
-const buildScratchDirectory = resolve(webRoot, ".zoption-build");
 
 if (typeof rootPackage.version !== "string" || !rootPackage.version.trim()) {
   throw new Error("The root package.json must provide a valid version.");
@@ -57,11 +47,6 @@ function deploymentHeadersPlugin(deploymentConfig: ResolvedDeploymentConfig): Pl
       );
       verifyContentSecurityPolicy(headers, contentSecurityPolicy);
       writeFileSync(headersPath, headers);
-      mkdirSync(buildScratchDirectory, { recursive: true });
-      writeFileSync(
-        resolve(buildScratchDirectory, "deployment.json"),
-        `${JSON.stringify({ ...deploymentConfig, appVersion, contentSecurityPolicy }, null, 2)}\n`,
-      );
       writeFileSync(
         resolve(outputDirectory, "release.json"),
         `${JSON.stringify({ appVersion }, null, 2)}\n`,
@@ -70,7 +55,7 @@ function deploymentHeadersPlugin(deploymentConfig: ResolvedDeploymentConfig): Pl
   };
 }
 
-export default defineConfig(({ command, mode, isSsrBuild }) => {
+export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const deployEnvironment = resolveDeployEnvironment(env);
   const deploymentConfig = validateDeploymentConfigForBuild({
@@ -91,11 +76,10 @@ export default defineConfig(({ command, mode, isSsrBuild }) => {
     plugins: [
       react(),
       tailwindcss(),
-      ...(!isSsrBuild && deploymentConfig ? [deploymentHeadersPlugin(deploymentConfig)] : []),
+      ...(deploymentConfig ? [deploymentHeadersPlugin(deploymentConfig)] : []),
     ],
     define: {
       __APP_VERSION__: JSON.stringify(appVersion),
-      __SEARCH_INDEXING_ENABLED__: JSON.stringify(deployEnvironment === "production"),
       __ASSISTANT_VOICE_ENABLED__: JSON.stringify(
         deployEnvironment === "preview" || deployEnvironment === "production",
       ),

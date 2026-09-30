@@ -144,7 +144,10 @@ describe("SettingsPage", () => {
     renderSettings();
 
     expect(screen.getByRole("heading", { name: "Help & contact" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Browse FAQ" })).toHaveAttribute("href", "/faq");
+    expect(screen.getByRole("link", { name: "Browse FAQ" })).toHaveAttribute(
+      "href",
+      "https://zoption.site/faq",
+    );
     expect(screen.getByRole("link", { name: "View reports" })).toHaveAttribute(
       "href",
       "/app/support/reports",
