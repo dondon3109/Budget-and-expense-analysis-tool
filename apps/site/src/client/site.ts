@@ -156,7 +156,8 @@ export function setupFilters() {
       for (const item of items) {
         const visible =
           (category === "all" || item.dataset.filterValue === category) &&
-          (!query || (item.dataset.filterText ?? item.textContent ?? "").includes(query));
+          (!query ||
+            (item.dataset.filterText ?? item.textContent ?? "").toLowerCase().includes(query));
         item.hidden = !visible;
         if (visible) shown += 1;
       }

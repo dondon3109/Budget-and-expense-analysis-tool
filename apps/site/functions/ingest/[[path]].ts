@@ -5,20 +5,15 @@
  * silently dropping consented events.
  *
  * It is not an open proxy: only the capture endpoints posthog-js uses are
- * forwarded, and the visitor's cookies and address headers are stripped, so
- * PostHog only ever sees Cloudflare's egress address.
+ * forwarded, with only the headers PostHog needs, so it never sees the
+ * visitor's cookies, page URL, or address, only Cloudflare's egress address.
  */
 const CAPTURE_HOST = "us.i.posthog.com";
 const CAPTURE_PATHS = [/^\/e\/?$/, /^\/i\/v0\/e\/?$/, /^\/batch\/?$/, /^\/capture\/?$/];
-const STRIPPED_HEADERS = [
-  "cookie",
-  "cf-connecting-ip",
-  "cf-connecting-ipv6",
-  "cf-ipcountry",
-  "true-client-ip",
-  "x-forwarded-for",
-  "x-real-ip",
-];
+// Only what PostHog needs to decode the payload and classify the device. An
+// allowlist, so the visitor's cookies, address headers, and Referer (the full
+// page URL, which before_send's sanitizing never sees) cannot leak through.
+const FORWARDED_HEADERS = ["content-type", "content-encoding", "user-agent"];
 
 export async function onRequest({ request }: { request: Request }): Promise<Response> {
   const url = new URL(request.url);
@@ -27,8 +22,11 @@ export async function onRequest({ request }: { request: Request }): Promise<Resp
     return new Response("Not found", { status: 404 });
   }
 
-  const headers = new Headers(request.headers);
-  for (const name of STRIPPED_HEADERS) headers.delete(name);
+  const headers = new Headers();
+  for (const name of FORWARDED_HEADERS) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
 
   return fetch(`https://${CAPTURE_HOST}${path}${url.search}`, {
     method: "POST",

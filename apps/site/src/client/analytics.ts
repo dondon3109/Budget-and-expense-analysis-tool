@@ -58,7 +58,8 @@ export function startAnalytics(): (() => void) | undefined {
 
   if (!initialized) {
     posthog.init(key, {
-      api_host: import.meta.env.PUBLIC_POSTHOG_HOST?.trim() || "/ingest",
+      // Same-origin proxy only: the CSP allows connect-src 'self' and no PostHog origin.
+      api_host: "/ingest",
       ui_host: "https://us.posthog.com",
       cookieless_mode: "always",
       persistence: "memory",

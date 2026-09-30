@@ -14,9 +14,9 @@ export function CookiePolicyPage() {
           pixels, iframes, and related browser technologies. Zoption currently uses browser storage
           for theme choice, this consent record, a remembered transaction sort preference,
           release-update acknowledgments, the product-support chat for the current tab, and Supabase
-          authentication/session operation. A service worker also caches the site&apos;s static
-          files and public pages so they load offline; it never caches your financial workspace,
-          private app pages, or account requests.
+          authentication/session operation. In the web app, a service worker also caches static
+          files so the app loads offline; it never caches your financial workspace, private data, or
+          account requests. The public website uses no service worker.
         </p>
       </section>
 
@@ -35,9 +35,10 @@ export function CookiePolicyPage() {
           Vitals (LCP, CLS, INP) performance measurement on public pages. PostHog operates in
           cookieless, memory-only mode without setting analytics cookies, storing persistent device
           identifiers, or creating person profiles. Zoption does not send your financial workspace
-          data, account credentials, or assistant conversations to the analytics platform. Because
-          nothing is stored on your device and nothing identifies you, this measurement runs without
-          an Analytics choice, and the Analytics and Marketing categories stay off and gate any
+          data, account credentials, or assistant conversations to the analytics platform. On the
+          public website, this measurement loads only after you allow Analytics. In the web app,
+          because nothing is stored on your device and nothing identifies you, it runs without an
+          Analytics choice, and the Analytics and Marketing categories stay off and gate any
           provider connected in the future.
         </p>
         <p>

@@ -48,6 +48,7 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
     "apps/site/src/components/landing/CustomerReviews.tsx",
     "apps/site/src/components/landing/FastEntrySpotlight.tsx",
     "apps/site/src/components/landing/FeatureModules.tsx",
+    "apps/site/src/components/landing/ReceiptPileScroll.tsx",
   ],
   "/pricing": ["apps/site/src/views/pricing/PricingPage.tsx"],
   "/terms-of-service": ["apps/site/src/views/legal/TermsOfServicePage.tsx"],
