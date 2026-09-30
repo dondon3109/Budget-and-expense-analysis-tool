@@ -2,8 +2,9 @@ import { expect, test } from "@playwright/test";
 
 import { siteUrl } from "./fixtures/site";
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
+test.beforeEach(async ({ context }) => {
+  // Seeded on the context so the app tab Start free opens skips the first-visit theme sheet.
+  await context.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
 });
 
 test("mobile landing keeps account actions and preview usable", async ({ page }) => {
@@ -56,11 +57,13 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   );
   expect(hasHorizontalOverflow).toBe(false);
 
-  // The app is another origin, so it keeps its own theme choice.
-  await startFree.click();
-  await expect(page).toHaveURL(`http://localhost:5173/signup`);
-  await expect(page.locator(".auth-card")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Create your Zoption account" })).toBeVisible();
+  // Start free opens the app, another origin with its own theme choice, in a new tab
+  // and leaves the landing page in place.
+  const [signup] = await Promise.all([page.waitForEvent("popup"), startFree.click()]);
+  await expect(signup).toHaveURL(`http://localhost:5173/signup`);
+  await expect(signup.locator(".auth-card")).toBeVisible();
+  await expect(signup.getByRole("heading", { name: "Create your Zoption account" })).toBeVisible();
+  await expect(page).toHaveURL(siteUrl("/"));
 });
 
 test("first-visit bottom sheet previews and confirms Coffee without overflow", async ({ page }) => {
