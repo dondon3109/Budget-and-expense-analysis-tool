@@ -9,7 +9,10 @@ import {
   assistantSavingsGoalToolSchema,
   assistantSpendingAnomaliesToolSchema,
   assistantSpendingByCategoryToolSchema,
+  assistantTransactionDraftToolSchema,
+  assistantTransactionSuggestionToolSchema,
   assistantTransactionToolSchema,
+  type AssistantTransactionDraft,
 } from "@zoption/shared";
 import type { z } from "zod";
 
@@ -200,6 +203,57 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "suggest_transaction_details",
+      description:
+        "Suggest what to enter for a new transaction from the user's own history: past entries at a named place (category, account, typical and last amount), otherwise their most frequent entries, plus active categories and accounts with recorded balances.",
+      parameters: {
+        type: "object",
+        properties: {
+          through: { type: "string", description: "Trusted current ISO date" },
+          place: {
+            type: "string",
+            description: "Where the user went or what they bought, in their words",
+          },
+          kind: { type: "string", enum: ["income", "expense"], default: "expense" },
+        },
+        required: ["through"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "draft_transaction",
+      description:
+        "Prepare an income or expense for the user to review and save. It does not save anything. Give either amount, or balanceAfter (what the account holds after the transaction) so the amount is worked out from balanceBefore or the recorded balance.",
+      parameters: {
+        type: "object",
+        properties: {
+          kind: { type: "string", enum: ["income", "expense"] },
+          description: { type: "string", description: "Short description, e.g. the place" },
+          categoryName: { type: "string", description: "Exact active category name" },
+          accountName: { type: "string", description: "Exact active account name" },
+          date: { type: "string", description: "ISO date the transaction happened" },
+          amount: { type: "string", description: "Exact decimal amount the user stated" },
+          balanceAfter: {
+            type: "string",
+            description: "Exact decimal amount left in the account after the transaction",
+          },
+          balanceBefore: {
+            type: "string",
+            description: "Optional exact decimal amount the account held before, if the user said",
+          },
+          currentDate: { type: "string", description: "Trusted current ISO date" },
+        },
+        required: ["kind", "description", "categoryName", "accountName", "date", "currentDate"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 export class AssistantToolError extends Error {
@@ -214,6 +268,8 @@ export interface AssistantToolExecution {
   arguments: unknown;
   result: unknown;
   content: string;
+  /** Kept out of `result`, so its record ids never reach the model or the audit trail. */
+  transactionDraft?: AssistantTransactionDraft;
 }
 
 function parseArguments(raw: string): unknown {
@@ -250,6 +306,7 @@ export async function executeAssistantToolDetailed(
   try {
     let args: unknown;
     let result: unknown;
+    let transactionDraft: AssistantTransactionDraft | undefined;
     const validate = (parsed: unknown) => {
       const errorCode = validateArguments?.(name, parsed);
       if (errorCode) throw new AssistantToolError(errorCode);
@@ -332,10 +389,32 @@ export async function executeAssistantToolDetailed(
         result = await reader.listCategories(context, parsed.kind);
         break;
       }
+      case "suggest_transaction_details": {
+        const parsed = parseWithSchema(assistantTransactionSuggestionToolSchema, rawArguments);
+        args = parsed;
+        validate(parsed);
+        result = await reader.suggestTransactionDetails(context, parsed);
+        break;
+      }
+      case "draft_transaction": {
+        const parsed = parseWithSchema(assistantTransactionDraftToolSchema, rawArguments);
+        args = parsed;
+        validate(parsed);
+        const drafted = await reader.draftTransaction(context, parsed);
+        result = drafted.envelope;
+        transactionDraft = drafted.draft;
+        break;
+      }
       default:
         throw new AssistantToolError("This tool is not available.");
     }
-    return { name, arguments: args, result, content: compactResult(result) };
+    return {
+      name,
+      arguments: args,
+      result,
+      content: compactResult(result),
+      ...(transactionDraft ? { transactionDraft } : {}),
+    };
   } catch (error) {
     if (error instanceof AssistantToolError) throw error;
     throw new AssistantToolError("The financial lookup could not be completed.");

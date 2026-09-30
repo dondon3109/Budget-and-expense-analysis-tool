@@ -10,7 +10,9 @@ import type { AssistantResponseMetadata } from "@zoption/shared";
 import {
   canonicalizePesoAmounts,
   correctivePrompt,
+  deterministicDraftAnswer,
   deterministicPeriodSummaryAnswer,
+  latestTransactionDraft,
   requiredGroupToolCall,
   safeFallback,
   sanitizedAuditJson,
@@ -200,7 +202,10 @@ function responseMetadata(
   const sources = executions
     .map(sourceFromExecution)
     .filter((source): source is NonNullable<typeof source> => source !== null);
-  return responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
+  const metadata = responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
+  const transactionDraft = latestTransactionDraft(executions)?.transactionDraft;
+  // A draft keeps the flow open, so a follow-up correction ("make it 300") drafts again.
+  return transactionDraft ? { ...metadata, transactionEntry: true, transactionDraft } : metadata;
 }
 
 export function createAssistantOrchestrator(
@@ -261,7 +266,9 @@ export function createAssistantOrchestrator(
       // with good tool data still gets its verified total instead of a
       // refusal when the model drafts keep failing grounding validation.
       const finishFallback = (): AssistantAnswer => {
-        const deterministic = deterministicPeriodSummaryAnswer(policy, executions, satisfiedGroups);
+        const deterministic =
+          deterministicPeriodSummaryAnswer(policy, executions, satisfiedGroups) ??
+          deterministicDraftAnswer(policy, executions, satisfiedGroups);
         if (deterministic) {
           totals.content = deterministic;
           totals.finishReason = "deterministic";

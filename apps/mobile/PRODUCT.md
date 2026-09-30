@@ -16,7 +16,7 @@ Zoption turns user-entered or imported financial records into useful budgeting a
 
 ## Positioning
 
-Philippine-peso-first budgeting with preview-first imports, privacy-conscious server boundaries, and a consent-gated read-only AI assistant grounded in the authenticated user's own records.
+Philippine-peso-first budgeting with preview-first imports, privacy-conscious server boundaries, and a consent-gated AI assistant that never writes without the user's tap grounded in the authenticated user's own records.
 
 ## Operating Context
 
@@ -31,7 +31,7 @@ Users record transactions and transfers, review monthly budgets and trends, impo
 - Money uses integer minor units. PHP is the product default; existing shared contracts also represent USD where current account/ledger behavior requires it.
 - Transfers are atomic logical operations and do not contribute to income or expense totals.
 - Free and Pro policy stays server-authoritative.
-- The AI Financial Assistant remains online-only, consent-gated, read-only, and server-grounded.
+- The AI Financial Assistant remains online-only, consent-gated, and server-grounded. It can draft a transaction for review; only the user's Save tap adds it, and the new row arrives through sync.
 - Development, preview, and production variants use separate native identifiers. The production Android variant is the website-linked Zoption Beta APK; no app-store listing is part of this release.
 
 ## Brand Commitments

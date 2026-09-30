@@ -2,6 +2,7 @@ import {
   assistantMemoryItemSchema,
   assistantMemoryPreferencesResponseSchema,
   assistantMessagePageSchema,
+  assistantMessageSchema,
   assistantPreferencesResponseSchema,
   assistantThreadPageSchema,
   assistantTurnResultSchema,
@@ -325,6 +326,24 @@ export async function sendAssistantTurn(
     }
     throw error;
   }
+}
+
+/**
+ * Saves the transaction an assistant reply drafted. The server writes its own stored draft at
+ * most once, so the new row reaches the local workspace through the next sync pull.
+ */
+export async function confirmAssistantTransactionDraft(
+  api: AssistantApi,
+  messageId: string,
+): Promise<AssistantWireMessage> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/assistant/messages/" + encodeURIComponent(messageId) + "/transaction",
+    method: "POST",
+    body: {},
+    fallback: "The transaction could not be saved. Try again.",
+    decode: (value) => assistantMessageSchema.parse(value),
+  });
 }
 
 export async function deleteAssistantThread(api: AssistantApi, threadId: string): Promise<void> {

@@ -17,9 +17,13 @@ const COUNT_OR_DURATION_PATTERN =
 const SHAMING_PATTERN =
   /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless|iresponsable|bobo sa pera|aksaya sa pera|pabaya sa pera)\b/i;
 const INTERNAL_TOOL_PATTERN =
-  /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories)\b/i;
+  /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories|suggest_transaction_details|draft_transaction)\b/i;
 const REGULATED_RECOMMENDATION_PATTERN =
   /\b(?:you should|i recommend|best for you|right choice for you|dapat kang|inirerekomenda ko|pinakamainam para sa iyo)\b.{0,80}\b(?:buy|sell|invest|allocate|file|deduct|insurance|coverage|retirement|will|trust|legal structure|bumili|ibenta|mamuhunan|mag-invest|seguro|buwis|huling habilin|pensyon)\b/i;
+
+// The draft is not saved until the user taps Save, so the reply must never say it was.
+const WRITE_CLAIM_PATTERN =
+  /\b(?:i(?:'ve| have)?\s+(?:already\s+)?(?:saved|added|logged|recorded|created)|(?:has|have|was|were)\s+been\s+(?:saved|added|logged|recorded|created)|(?:is|are)\s+now\s+(?:saved|added|logged|recorded)|na-?save ko na|nai-?save ko na|naidagdag ko na|naitala ko na)\b/i;
 
 const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   get_account_balances: "account_balance",
@@ -32,6 +36,8 @@ const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   detect_spending_anomalies: "anomaly",
   calculate_debt_payoff: "debt_projection",
   calculate_savings_goal: "savings_projection",
+  suggest_transaction_details: "transaction_entry",
+  draft_transaction: "transaction_entry",
 };
 
 /**
@@ -52,6 +58,7 @@ const TOOL_FOR_GROUP: Record<RequiredToolGroup, string | null> = {
   anomaly: "detect_spending_anomalies",
   debt_projection: null,
   savings_projection: null,
+  transaction_entry: "suggest_transaction_details",
 };
 
 const PERIOD_TOOL_NAMES = new Set([
@@ -59,7 +66,6 @@ const PERIOD_TOOL_NAMES = new Set([
   "get_spending_by_category",
   "get_budget_vs_actual",
   "detect_spending_anomalies",
-  "list_transactions",
 ]);
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -73,6 +79,8 @@ const SOURCE_LABELS: Record<string, string> = {
   detect_spending_anomalies: "Spending anomalies",
   calculate_debt_payoff: "Debt payoff projection",
   calculate_savings_goal: "Savings goal projection",
+  suggest_transaction_details: "Your past entries",
+  draft_transaction: "Transaction draft",
 };
 
 const SENSITIVE_KEY_PATTERN =
@@ -146,7 +154,19 @@ export function validateToolArguments(
       return "untrusted_period";
     }
   }
-  if (name === "detect_recurring_charges" && values.through !== policy.currentDate) {
+  if (name === "list_transactions") {
+    // Dated rows use exactly the trusted period. With no period resolved, only the
+    // undated newest-first page is allowed, so the model never picks its own window.
+    const period = policy.resolvedPeriod;
+    const matches = period
+      ? values.from === period.from && values.to === period.to
+      : values.from === undefined && values.to === undefined;
+    if (!matches) return "untrusted_period";
+  }
+  if (
+    (name === "detect_recurring_charges" || name === "suggest_transaction_details") &&
+    values.through !== policy.currentDate
+  ) {
     return "untrusted_current_date";
   }
   if (name === "calculate_debt_payoff" && values.startDate !== policy.currentDate) {
@@ -154,6 +174,12 @@ export function validateToolArguments(
   }
   if (name === "calculate_savings_goal" && values.currentDate !== policy.currentDate) {
     return "untrusted_current_date";
+  }
+  if (name === "draft_transaction") {
+    if (values.currentDate !== policy.currentDate) return "untrusted_current_date";
+    if (typeof values.date !== "string" || values.date > policy.currentDate) {
+      return "future_transaction_date";
+    }
   }
   return null;
 }
@@ -180,10 +206,12 @@ export function requiredGroupToolCall(
     case "get_spending_by_category":
     case "get_budget_vs_actual":
     case "detect_spending_anomalies":
-    case "list_transactions":
       // validateToolArguments fails closed unless these carry the trusted period.
       return period ? { name, arguments: { from: period.from, to: period.to } } : null;
+    case "list_transactions":
+      return { name, arguments: period ? { from: period.from, to: period.to } : {} };
     case "detect_recurring_charges":
+    case "suggest_transaction_details":
       return { name, arguments: { through: policy.currentDate } };
     default:
       return null;
@@ -252,6 +280,10 @@ export function validateAssistantAnswer(
   }
   if (INTERNAL_TOOL_PATTERN.test(content)) reasons.push("internal_tool_name");
   if (SHAMING_PATTERN.test(content)) reasons.push("shaming_language");
+  const entryTurn =
+    policy.requiredToolGroups.includes("transaction_entry") ||
+    executions.some((execution) => TOOL_GROUPS[execution.name] === "transaction_entry");
+  if (entryTurn && WRITE_CLAIM_PATTERN.test(content)) reasons.push("unconfirmed_write_claim");
   if (/[₱$€£¥]/.test(content)) reasons.push("unsupported_currency_format");
   if (
     policy.compliance.posture === "restricted_topic_education" &&
@@ -366,6 +398,10 @@ const REPAIR_GUIDANCE: ReadonlyArray<readonly [string[], string]> = [
     "If the requested record was not found, say so plainly instead of substituting other data.",
   ],
   [
+    ["unconfirmed_write_claim"],
+    "Nothing has been saved. Say the draft is ready for the user to review and tap Save transaction.",
+  ],
+  [
     ["regulated_recommendation"],
     "Give general education only, without personalized buy, sell, invest, or coverage recommendations.",
   ],
@@ -435,6 +471,37 @@ export function deterministicPeriodSummaryAnswer(
   const qualifier =
     typeof accountName === "string" && accountName.trim() ? ` for ${accountName.trim()}` : "";
   const content = `From ${policy.resolvedPeriod.from} to ${policy.resolvedPeriod.to}, your recorded expenses${qualifier} were ${expenses}.`;
+  return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
+    ? content
+    : null;
+}
+
+/** The draft the turn ends with: the latest draft call, if it produced one. */
+export function latestTransactionDraft(
+  executions: readonly AssistantToolExecution[],
+): AssistantToolExecution | undefined {
+  const latest = [...executions]
+    .reverse()
+    .find((execution) => execution.name === "draft_transaction");
+  return latest?.transactionDraft ? latest : undefined;
+}
+
+/**
+ * Last-resort reply for a turn that produced a draft but whose model drafts kept failing
+ * validation: it restates the draft from the tool result, so the user can still review and
+ * save it. Verified like any answer before it is returned.
+ */
+export function deterministicDraftAnswer(
+  policy: AssistantTurnPolicy,
+  executions: readonly AssistantToolExecution[],
+  satisfiedGroups: ReadonlySet<RequiredToolGroup>,
+): string | null {
+  const execution = latestTransactionDraft(executions);
+  if (!execution || !isEnvelope(execution.result)) return null;
+  const data = execution.result.data as { draft?: Record<string, unknown> } | null;
+  const draft = data?.draft;
+  if (!draft) return null;
+  const content = `I prepared this ${String(draft.kind)} for you to review: ${String(draft.amount)} for ${String(draft.description)} (${String(draft.categoryName)}, ${String(draft.accountName)}) on ${String(draft.date)}. It is not saved yet. Tap Save transaction to add it.`;
   return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
     ? content
     : null;

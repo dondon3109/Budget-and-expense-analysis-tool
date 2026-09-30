@@ -1,6 +1,10 @@
-import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
+import {
+  assistantTransactionDraftSchema,
+  CURRENT_ASSISTANT_CONSENT_VERSION,
+} from "@zoption/shared";
 import type {
   AssistantMemory,
+  AssistantMessage,
   AssistantMemoryPreferences,
   AssistantMemoryPreferencesUpdate,
   AssistantMessageInput,
@@ -15,6 +19,11 @@ import type {
 
 import type { AssistantRepository } from "../db/assistant";
 import type { AssistantModelMemoryUsageRepository } from "../db/assistant-model-memory-usage";
+import {
+  assistantTransactionDraftRepository,
+  type AssistantTransactionDraftRepository,
+} from "../db/assistant-transaction-drafts";
+import { transactionRepository, type TransactionRepository } from "../db/transactions";
 import { consumeAiUsage as defaultConsumeAiUsage } from "../db/billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -97,6 +106,16 @@ export interface AssistantService {
     value: string,
   ): Promise<AssistantMemory>;
   deleteMemoryFact(env: Bindings, tenantId: string, id: string): Promise<void>;
+  confirmTransactionDraft(
+    env: Bindings,
+    tenantId: string,
+    messageId: string,
+  ): Promise<AssistantMessage>;
+}
+
+export interface AssistantTransactionDraftDependencies {
+  drafts: AssistantTransactionDraftRepository;
+  transactions: Pick<TransactionRepository, "create">;
 }
 
 export interface AssistantProviderFailureEvent {
@@ -174,6 +193,10 @@ export function createAssistantService(
   provider?: AssistantProvider,
   modelMemoryUsage?: Pick<AssistantModelMemoryUsageRepository, "tryConsumePass">,
   telemetryFactory: AssistantAiTelemetryFactory = createPostHogAiTelemetry,
+  transactionDrafts: AssistantTransactionDraftDependencies = {
+    drafts: assistantTransactionDraftRepository,
+    transactions: transactionRepository,
+  },
 ): AssistantService {
   async function requireReadyPreferences(
     env: Bindings,
@@ -529,6 +552,49 @@ export function createAssistantService(
 
     async deleteMemoryFact(env, tenantId, id) {
       await repository.deleteMemoryById(env, tenantId, id);
+    },
+
+    async confirmTransactionDraft(env, tenantId, messageId) {
+      const { drafts, transactions } = transactionDrafts;
+      const message = await drafts.findMessage(env, tenantId, messageId);
+      const parsed = assistantTransactionDraftSchema.safeParse(message?.metadata?.transactionDraft);
+      if (!message || !parsed.success) {
+        throw new HttpError(
+          404,
+          "assistant_draft_not_found",
+          "That transaction draft was not found.",
+        );
+      }
+      // Saving again returns the saved reply, so a retried tap never creates a second row.
+      if (parsed.data.status === "saved") return message;
+      if (!(await drafts.claim(env, tenantId, messageId))) {
+        throw new HttpError(
+          409,
+          "assistant_draft_in_progress",
+          "This transaction is already being saved.",
+        );
+      }
+      const draft = parsed.data;
+      let transactionId: string;
+      try {
+        // The create path re-validates the category, account, and plan access as of now.
+        const created = await transactions.create(env, tenantId, {
+          kind: draft.kind,
+          date: draft.date,
+          description: draft.description,
+          amountMinor: draft.amountMinor,
+          currency: draft.currency,
+          categoryId: draft.categoryId,
+          accountId: draft.accountId,
+        });
+        transactionId = created.id;
+      } catch (error) {
+        await drafts.release(env, tenantId, messageId);
+        throw error;
+      }
+      const saved = await drafts.markSaved(env, tenantId, messageId, transactionId);
+      if (!saved) throw new Error("Saved assistant draft could not be read back.");
+      return saved;
     },
   };
 }

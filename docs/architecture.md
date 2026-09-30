@@ -66,7 +66,8 @@ Authenticated (`Authorization: Bearer <Supabase access token>`):
 - `GET/POST/PATCH/DELETE /api/app/transactions/*` — transaction search and CRUD.
 - `GET/POST/PATCH /api/app/accounts/*` — account metadata, creation, rename, and archive state; displayed balances are transaction-derived.
 - `GET/PATCH /api/app/assistant/preferences` — versioned provider consent, assistant identity, response detail, and coaching style.
-- `GET/POST/DELETE /api/app/assistant/threads/*` — tenant-owned chat history and read-only financial questions.
+- `GET/POST/DELETE /api/app/assistant/threads/*` — tenant-owned chat history and financial questions answered through read-only tools.
+- `POST /api/app/assistant/messages/:id/transaction` — saves the transaction an assistant reply drafted, at most once (`docs/assistant.md`).
 - `GET/POST/PATCH/DELETE /api/app/goals/*` — tenant-owned savings goals.
 - `GET/POST/PATCH/DELETE /api/app/debts/*` — tenant-owned debt-planning records.
 - `GET/POST/PATCH /api/app/categories/*` — category management.

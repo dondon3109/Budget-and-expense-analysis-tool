@@ -1,3 +1,5 @@
+import type { AssistantTransactionDraft } from "./schemas/assistant";
+
 export const transactionKinds = ["income", "expense", "transfer"] as const;
 export type TransactionKind = (typeof transactionKinds)[number];
 
@@ -582,6 +584,9 @@ export interface AssistantResponseMetadata {
     topics: AssistantComplianceTopic[];
   };
   sources: AssistantSourceMetadata[];
+  /** Set on turns that help the user log a transaction, so a short reply continues that flow. */
+  transactionEntry?: boolean;
+  transactionDraft?: AssistantTransactionDraft;
 }
 
 export const CURRENT_ASSISTANT_CONSENT_VERSION = 6;

@@ -38,6 +38,7 @@ const TOOL_FOR_GROUP: Record<string, string> = {
   anomaly: "detect_spending_anomalies",
   debt_projection: "calculate_debt_payoff",
   savings_projection: "calculate_savings_goal",
+  transaction_entry: "suggest_transaction_details",
 };
 
 const STUB_HEADER =
@@ -124,6 +125,7 @@ function toolArguments(name: string, policy: StubTurnPolicy): Record<string, unk
     case "list_transactions":
       return period ? { from: period.from, to: period.to } : {};
     case "detect_recurring_charges":
+    case "suggest_transaction_details":
       return policy.currentDate ? { through: policy.currentDate } : null;
     case "calculate_debt_payoff":
       return policy.currentDate ? { strategy: "avalanche", startDate: policy.currentDate } : null;

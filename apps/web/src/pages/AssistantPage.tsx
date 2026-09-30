@@ -26,6 +26,7 @@ import { InlineLoader } from "../components/layout/InlineLoader";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
+  confirmAssistantTransactionDraft,
   createAssistantThread,
   deleteAllAssistantThreads,
   deleteAssistantThread,
@@ -42,6 +43,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { assistantPreferencesQueryOptions } from "../queries/assistant";
 import { invalidateBillingSummary } from "../queries/billing";
+import { invalidateAfterTransactionWrite } from "../queries/transactions";
 import "./AssistantPage.css";
 
 function requestId(): string {
@@ -211,6 +213,21 @@ export function AssistantPage() {
       if (isUsageLimitReachedError(nextError)) setLimitDialogOpen(true);
     },
     onSettled: () => invalidateBillingSummary(queryClient, workspace),
+  });
+
+  const saveDraftMutation = useMutation({
+    mutationFn: (messageId: string) => confirmAssistantTransactionDraft(workspace, messageId),
+    onSuccess: (saved) => {
+      queryClient.setQueryData<AssistantMessagePage>(
+        queryKeys.assistantMessages(workspace, saved.threadId),
+        (current) =>
+          current && {
+            ...current,
+            items: current.items.map((message) => (message.id === saved.id ? saved : message)),
+          },
+      );
+      void invalidateAfterTransactionWrite(queryClient, workspace);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -438,7 +455,7 @@ export function AssistantPage() {
                   <h1 className="assistant-chat-title">AI Financial Assistant</h1>
                   <p className="assistant-chat-meta">
                     <strong>{assistantName}</strong>
-                    <span className="assistant-status-readonly">Read only</span>
+                    <span className="assistant-status-readonly">You approve saves</span>
                   </p>
                 </div>
               </div>
@@ -486,6 +503,16 @@ export function AssistantPage() {
                   setDraft(prompt);
                 }}
                 feeInsight={feeInsightQuery.data}
+                draftSave={{
+                  savingMessageId: saveDraftMutation.isPending
+                    ? saveDraftMutation.variables
+                    : undefined,
+                  failedMessageId: saveDraftMutation.isError
+                    ? saveDraftMutation.variables
+                    : undefined,
+                  error: saveDraftMutation.error?.message,
+                  onSave: (messageId) => saveDraftMutation.mutate(messageId),
+                }}
               />
             )}
             <UpgradePrompt error={sendError} />

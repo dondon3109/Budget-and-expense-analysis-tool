@@ -1,6 +1,6 @@
 # AI Financial Assistant
 
-Zoption's AI Financial Assistant is a read-only budgeting and financial-wellness interface over the authenticated user's financial workspace. The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
+Zoption's AI Financial Assistant is a budgeting and financial-wellness interface over the authenticated user's financial workspace. It reads records through fixed tools and never writes on its own: the one write it can lead to is a transaction it drafted, saved only when the user taps Save (see Logging transactions). The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
 
 ## Data flow
 
@@ -94,8 +94,22 @@ next to Cloudflare Workers AI.
 - `calculate_savings_goal` — deterministic target-date contributions from a saved goal or validated hypothetical inputs.
 - `list_transactions` — a bounded filtered page of transaction details without notes or internal IDs. It is detail-only and must not be totaled by the model.
 - `list_categories` — active category names and kinds.
+- `suggest_transaction_details` — for logging: the user's own entries from the trailing 12 months at a named place (grouped by description, with the usual category, account, typical and last amount), otherwise their most frequent entries; a category matched from the place name when history has none; active categories; and active accounts with their recorded balances.
+- `draft_transaction` — resolves an income or expense against active accounts and categories and returns a draft. It writes nothing.
 
 There is no SQL, D1, arbitrary HTTP, environment, credential, secret, import, create, update, or delete tool. Tenant identity is injected by the Worker and is never model-visible.
+
+`list_transactions` reads exactly the trusted period when one resolved. With no period it may read only the undated newest-first page, so "show my recent transactions" is answerable while the model still cannot pick its own date window.
+
+## Logging transactions
+
+A message that asks to log something ("log my lunch", "pa-record ng gastos ko") or states spending with a figure or a place ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") gets the `transaction_entry` tool group instead of the reporting groups, so it never triggers a "which month?" clarification. A stated day is passed along as context. Replies in that flow carry `transactionEntry: true` in their metadata, and the next short answer continues the flow unless it is a new question that needs other records.
+
+The model asks only for what is missing (amount, description, category, account, date) and offers answers from `suggest_transaction_details`. When the user does not know the amount, it asks what is left in the account and passes `balanceAfter`: the Worker computes the amount from `balanceBefore` when the user states it, otherwise from the recorded ledger balance, and says so in the result's data quality. A result that does not imply a positive amount returns a status instead of a draft. Drafts must be dated today or up to 366 days back.
+
+A successful draft travels in the reply's metadata as `transactionDraft` (with the tenant's category and account ids, which never reach the model or the audit trail). The web and mobile chats show it as a card with **Save transaction**. `POST /api/app/assistant/messages/:id/transaction` takes no fields: it re-reads the tenant's stored draft, claims it (`pending` → `saving`), creates the transaction through the normal create path (which re-validates the category, account, and plan access), and records `saved` with the new transaction id. A repeat call returns the saved reply without a second row, a call during a live claim gets `409 assistant_draft_in_progress`, and a failed create returns the draft to `pending`. A claim older than two minutes belongs to a request that died mid-save and may be taken over, so a draft can never stay stuck in `saving`. Mobile then runs a sync so the row reaches the local workspace.
+
+Answer validation rejects a reply in this flow that claims the draft was saved, added, or logged. If the model keeps failing validation after a draft exists, the Worker restates the draft from the tool result.
 
 ## Account balances
 

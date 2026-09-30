@@ -31,7 +31,7 @@ interface ThreadRow {
   created_at: string;
 }
 
-interface MessageRow {
+export interface MessageRow {
   id: string;
   thread_id: string;
   role: "user" | "assistant";
@@ -244,7 +244,7 @@ function parseResponseMetadata(value: string | null): AssistantResponseMetadata 
   }
 }
 
-function messageFromRow(row: MessageRow): AssistantMessage {
+export function messageFromRow(row: MessageRow): AssistantMessage {
   const metadata = parseResponseMetadata(row.response_metadata_json);
   return {
     id: row.id,

@@ -4,12 +4,17 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- The AI assistant can help you log a transaction. Tell it what you spent or where you went ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") and it suggests the category, account, and usual amount from your past entries. If you only know how much is left in an account, it works out the amount. It prepares a draft card, and nothing is saved until you tap Save transaction.
+
 ### Changed
 
 - Sign in and Start free links on zoption.site open app.zoption.site in a new tab, so the public page stays open behind the app.
 
 ### Fixed
 
+- The AI assistant can answer "show my recent transactions" without a date range, lists category spending largest first so "biggest expense" answers name the right category, and labels USD account balances and transactions in USD instead of PHP.
 - On zoption.site, the theme button and the "Ask Zoption" support button announce their visible text to screen readers and voice control, and the assistant preview on the home page keeps readable contrast on phones. Headline and label fonts load earlier, so the hero no longer shifts when they arrive.
 
 ## 3.0.0 — 2026-09-30

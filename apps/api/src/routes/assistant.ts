@@ -2,6 +2,7 @@ import {
   assistantMemoryIdSchema,
   assistantMemoryPreferencesUpdateSchema,
   assistantMemoryUpdateSchema,
+  assistantMessageIdSchema,
   assistantMessageInputSchema,
   assistantMessageListQuerySchema,
   assistantPreferenceUpdateSchema,
@@ -163,6 +164,18 @@ export function createAssistantRoutes(service: AssistantService) {
       ),
     );
   });
+
+  // Saves the transaction an assistant reply drafted. The body is empty on purpose: the
+  // server writes its own stored draft, never client-supplied transaction fields.
+  routes.post("/messages/:id/transaction", async (context) =>
+    context.json(
+      await service.confirmTransactionDraft(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id"), assistantMessageIdSchema),
+      ),
+    ),
+  );
 
   routes.delete("/threads/:id", async (context) => {
     await service.deleteThread(

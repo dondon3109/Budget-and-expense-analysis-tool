@@ -19,6 +19,7 @@ import {
   assistantModelMemoryUsageRepository,
   type AssistantModelMemoryUsageRepository,
 } from "./db/assistant-model-memory-usage";
+import { assistantTransactionDraftRepository } from "./db/assistant-transaction-drafts";
 import {
   billingRepository,
   consumeAiUsage as defaultConsumeAiUsage,
@@ -163,6 +164,7 @@ export function createDependencies(overrides: AppOptions = {}) {
       assistantProvider,
       assistantModelMemoryUsage,
       overrides.assistantTelemetryFactory,
+      { drafts: assistantTransactionDraftRepository, transactions: transactionStore },
     );
   const dynamicVoiceProviders: AssistantVoiceProviders =
     overrides.assistantVoiceProviders ??

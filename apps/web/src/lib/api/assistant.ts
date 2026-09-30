@@ -2,6 +2,7 @@ import type {
   AssistantMemory,
   AssistantMemoryPreferences,
   AssistantMemoryPreferencesUpdate,
+  AssistantMessage,
   AssistantMessageInput,
   AssistantMessagePage,
   AssistantPreferences,
@@ -274,6 +275,21 @@ export function sendAssistantMessage(
     `/api/app/assistant/threads/${encodeURIComponent(args.threadId)}/messages`,
     { method: "POST", body: JSON.stringify(args.input) },
     { timeoutMs: ASSISTANT_TURN_TIMEOUT_MS },
+  );
+}
+
+/**
+ * Saves the transaction an assistant reply drafted. The server writes its own stored draft
+ * at most once and answers with the reply, now marked saved.
+ */
+export function confirmAssistantTransactionDraft(
+  workspace: AuthenticatedWorkspace,
+  messageId: string,
+): Promise<AssistantMessage> {
+  return requestJson(
+    workspace,
+    `/api/app/assistant/messages/${encodeURIComponent(messageId)}/transaction`,
+    { method: "POST", body: "{}" },
   );
 }
 

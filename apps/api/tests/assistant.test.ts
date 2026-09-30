@@ -12,7 +12,12 @@ import type {
   ProviderCompletion,
   ProviderCompletionRequest,
 } from "../src/assistant/provider";
-import { assistantToolDefinitions, executeAssistantTool } from "../src/assistant/tools";
+import { validateToolArguments } from "../src/assistant/answer-validation";
+import {
+  assistantToolDefinitions,
+  executeAssistantTool,
+  executeAssistantToolDetailed,
+} from "../src/assistant/tools";
 import type { AssistantTurnPolicy } from "../src/assistant/turn-policy";
 import type { Bindings } from "../src/types";
 
@@ -77,6 +82,98 @@ function createReader(): FinancialReader {
     calculateSavingsGoal: vi.fn(async () => envelope({ items: [] }, "goals")),
     listTransactions: vi.fn(async () => envelope({ items: [] })),
     listCategories: vi.fn(async () => envelope({ items: [] })),
+    suggestTransactionDetails: vi.fn(async () =>
+      envelope({
+        place: "Jollibee",
+        placeMatched: true,
+        suggestions: [
+          {
+            description: "Jollibee",
+            categoryName: "Food",
+            accountName: "GCash",
+            typicalAmount: "PHP 180.00",
+          },
+        ],
+      }),
+    ),
+    draftTransaction: vi.fn(async () => ({
+      envelope: envelope({
+        status: "ready",
+        saved: false,
+        draft: {
+          kind: "expense",
+          date: "2026-08-02",
+          description: "Jollibee",
+          amount: "PHP 250.00",
+          categoryName: "Food",
+          accountName: "GCash",
+        },
+      }),
+      draft: {
+        status: "pending" as const,
+        kind: "expense" as const,
+        date: "2026-08-02",
+        description: "Jollibee",
+        amountMinor: 25_000,
+        currency: "PHP" as const,
+        categoryId: "category-food",
+        categoryName: "Food",
+        accountId: "account-gcash",
+        accountName: "GCash",
+      },
+    })),
+  };
+}
+
+const entryPolicy: AssistantTurnPolicy = {
+  currentDate: "2026-08-02",
+  timeZone: "Asia/Manila",
+  compliance: { posture: "budgeting_allowed", topics: [] },
+  requiredToolGroups: ["transaction_entry"],
+};
+
+function entryToolCompletion(): ProviderCompletion {
+  return {
+    model: "deepseek-flash",
+    finishReason: "tool_calls",
+    message: {
+      role: "assistant",
+      content: null,
+      tool_calls: [
+        {
+          id: "call-suggest",
+          type: "function",
+          function: {
+            name: "suggest_transaction_details",
+            arguments: JSON.stringify({ through: "2026-08-02", place: "Jollibee" }),
+          },
+        },
+        {
+          id: "call-draft",
+          type: "function",
+          function: {
+            name: "draft_transaction",
+            arguments: JSON.stringify({
+              kind: "expense",
+              description: "Jollibee",
+              categoryName: "Food",
+              accountName: "GCash",
+              date: "2026-08-02",
+              amount: "250",
+              currentDate: "2026-08-02",
+            }),
+          },
+        },
+      ],
+    },
+  };
+}
+
+function textCompletion(content: string): ProviderCompletion {
+  return {
+    model: "deepseek-flash",
+    finishReason: "stop",
+    message: { role: "assistant", content },
   };
 }
 
@@ -379,8 +476,10 @@ describe("assistant orchestration", () => {
       "calculate_savings_goal",
       "list_transactions",
       "list_categories",
+      "suggest_transaction_details",
+      "draft_transaction",
     ]);
-    expect(names.join(" ")).not.toMatch(/sql|secret|token|create|update|delete/i);
+    expect(names.join(" ")).not.toMatch(/sql|secret|token|create|update|delete|save/i);
     expect(JSON.stringify(assistantToolDefinitions)).not.toMatch(/accountId|tenantId/);
   });
 
@@ -404,6 +503,114 @@ describe("assistant orchestration", () => {
         JSON.stringify({ accountId: "account-1" }),
       ),
     ).rejects.toThrow("arguments were invalid");
+  });
+
+  it("returns a drafted transaction in metadata without showing its ids to the model", async () => {
+    const requests: ProviderCompletionRequest[] = [];
+    const provider: AssistantProvider = {
+      complete: vi.fn(
+        async (_env: Bindings, request: ProviderCompletionRequest): Promise<ProviderCompletion> => {
+          requests.push(structuredClone(request));
+          if (requests.length === 1) return entryToolCompletion();
+          return textCompletion(
+            "Your PHP 250.00 Jollibee expense from GCash is ready. Review it and tap Save transaction.",
+          );
+        },
+      ),
+    };
+    const orchestrator = createAssistantOrchestrator(provider, createReader());
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "I spent 250 at Jollibee",
+      identity,
+      entryPolicy,
+      "",
+    );
+
+    expect(answer.audit.validationStatus).toBe("passed");
+    expect(answer.responseMetadata).toMatchObject({
+      transactionEntry: true,
+      transactionDraft: { status: "pending", amountMinor: 25_000, accountId: "account-gcash" },
+    });
+    expect(requests[0]?.toolChoice).toBe("required");
+    expect(JSON.stringify(requests)).not.toMatch(/account-gcash|category-food/);
+    expect(JSON.stringify(answer.audit.toolCalls)).not.toMatch(/account-gcash|category-food/);
+  });
+
+  it("never lets a reply claim an unconfirmed draft was saved", async () => {
+    let calls = 0;
+    const provider: AssistantProvider = {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        calls += 1;
+        if (calls === 1) return entryToolCompletion();
+        return textCompletion("Done! I've saved your PHP 250.00 Jollibee expense.");
+      }),
+    };
+    const orchestrator = createAssistantOrchestrator(provider, createReader());
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "I spent 250 at Jollibee",
+      identity,
+      entryPolicy,
+      "",
+    );
+
+    expect(answer.finishReason).toBe("deterministic");
+    expect(answer.content).toBe(
+      "I prepared this expense for you to review: PHP 250.00 for Jollibee (Food, GCash) on 2026-08-02. It is not saved yet. Tap Save transaction to add it.",
+    );
+    expect(answer.responseMetadata.transactionDraft?.status).toBe("pending");
+  });
+
+  it("rejects a draft dated after today", async () => {
+    await expect(
+      executeAssistantToolDetailed(
+        createReader(),
+        { env, tenantId: "tenant-1" },
+        "draft_transaction",
+        JSON.stringify({
+          kind: "expense",
+          description: "Jollibee",
+          categoryName: "Food",
+          accountName: "GCash",
+          date: "2026-08-03",
+          amount: "250",
+          currentDate: "2026-08-02",
+        }),
+        (name, args) => validateToolArguments(name, args, entryPolicy),
+      ),
+    ).rejects.toThrow("future_transaction_date");
+  });
+
+  it("lists the newest transactions when no period was asked for", async () => {
+    const reader = createReader();
+    const detailPolicy: AssistantTurnPolicy = { ...entryPolicy, requiredToolGroups: [] };
+    const validate = (name: string, args: unknown) =>
+      validateToolArguments(name, args, detailPolicy);
+
+    await executeAssistantToolDetailed(
+      reader,
+      { env, tenantId: "tenant-1" },
+      "list_transactions",
+      "{}",
+      validate,
+    );
+    expect(reader.listTransactions).toHaveBeenCalledWith(expect.anything(), { page: 1 });
+    await expect(
+      executeAssistantToolDetailed(
+        reader,
+        { env, tenantId: "tenant-1" },
+        "list_transactions",
+        JSON.stringify({ from: "2020-01-01", to: "2026-08-02" }),
+        validate,
+      ),
+    ).rejects.toThrow("untrusted_period");
   });
 
   it("rejects unknown tools before reaching a financial reader", async () => {
