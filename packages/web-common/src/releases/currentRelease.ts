@@ -44,13 +44,9 @@ export const currentRelease: ProductRelease = {
         "Account rows on the web keep their icons lined up from row to row, and the settings dropdowns have a padded arrow.",
     },
     {
-      title: "Android Beta 0.2.41",
-      description:
-        "The official Android Beta carries the Currency setting under Preferences and the Dodo Payments checkout.",
-    },
-    {
       title: "Android Beta 0.2.42",
-      description: "Budget share links created in the Android app open on app.zoption.site.",
+      description:
+        "The official Android Beta carries the Currency setting under Preferences and the Dodo Payments checkout, and budget share links created in the app open on app.zoption.site.",
     },
   ],
 };
