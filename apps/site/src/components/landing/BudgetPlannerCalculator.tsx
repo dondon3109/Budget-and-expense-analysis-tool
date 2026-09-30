@@ -1,6 +1,6 @@
 import { ArrowRight, Calculator } from "lucide-react";
 import { useState } from "react";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /** Interactive Budget Planner & Safeguard Calculator. */
 export function BudgetPlannerCalculator() {
@@ -86,7 +86,7 @@ export function BudgetPlannerCalculator() {
               <b>₱{annualOverrunAvoidance.toLocaleString()}/yr</b>
             </div>
           </div>
-          <a className="button primary full-width" href={appUrl("/signup")}>
+          <a className="button primary full-width" href={appUrl("/signup")} {...NEW_TAB}>
             Build your first budget — Start free <ArrowRight size={16} aria-hidden="true" />
           </a>
           <small className="calculator-disclaimer">

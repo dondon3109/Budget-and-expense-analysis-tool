@@ -6,7 +6,7 @@ import { FEATURE_PAGES_LAST_UPDATED, findFeaturePage, type FeaturePagePath } fro
 import "../guides/GuideDetailPage.css";
 import "../guides/GuidesIndexPage.css";
 import "./FeaturePage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /**
  * Renders one feature explainer. The path is passed by its route file, and every visible
@@ -83,7 +83,7 @@ export function FeaturePage({ path }: { path: FeaturePagePath }) {
             bank login, no card details, and no records you did not add.
           </p>
           <div className="guides-cta-actions">
-            <a className="button primary" href={appUrl("/signup")}>
+            <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
               Create your free workspace <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a className="button secondary" href="/install">

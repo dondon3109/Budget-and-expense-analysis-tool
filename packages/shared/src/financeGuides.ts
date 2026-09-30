@@ -796,7 +796,7 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
     category: "budgeting",
     readTimeMinutes: 6,
     publishedDate: "2026-09-24",
-    updatedDate: "2026-09-24",
+    updatedDate: "2026-09-30",
     author: "Zoption Personal Finance Team",
     keywords: [
       "13th month pay budget",

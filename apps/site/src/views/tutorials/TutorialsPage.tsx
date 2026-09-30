@@ -13,7 +13,7 @@ import {
 import { LegalFooter } from "../../components/legal/LegalFooter";
 import { PublicHeader } from "../../components/navigation/PublicHeader";
 import "./TutorialsPage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 interface TutorialSection {
   id: string;
@@ -334,7 +334,7 @@ export function TutorialsPage() {
           <p>Our support team and AI Assistant are available 24/7 to answer your questions.</p>
         </div>
         <div className="tutorials-help-actions">
-          <a href={appUrl("/signup")} className="button primary">
+          <a href={appUrl("/signup")} {...NEW_TAB} className="button primary">
             Get Started Free
           </a>
           <a href="/faq" className="button secondary">

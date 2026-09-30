@@ -297,8 +297,8 @@ function installPageStructuredData(): StructuredDataGraph {
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-09-30";
-const PRICING_LAST_MODIFIED = "2026-09-26";
-const GUIDES_LAST_MODIFIED = "2026-09-24";
+const PRICING_LAST_MODIFIED = "2026-09-30";
+const GUIDES_LAST_MODIFIED = "2026-09-30";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -329,7 +329,7 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
     isPartOf: { "@id": WEBSITE_ID },
   });
 }
-const FAQ_LAST_MODIFIED = "2026-09-13";
+const FAQ_LAST_MODIFIED = "2026-09-30";
 const CHANGELOG_LAST_MODIFIED = "2026-09-30";
 const TERMS_LAST_MODIFIED = "2026-09-24";
 const PRIVACY_LAST_MODIFIED = "2026-09-25";

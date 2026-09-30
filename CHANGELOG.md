@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Sign in and Start free links on zoption.site open app.zoption.site in a new tab, so the public page stays open behind the app.
+
 ### Fixed
 
 - On zoption.site, the theme button and the "Ask Zoption" support button announce their visible text to screen readers and voice control, and the assistant preview on the home page keeps readable contrast on phones. Headline and label fonts load earlier, so the hero no longer shifts when they arrive.

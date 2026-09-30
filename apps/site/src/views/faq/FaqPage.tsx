@@ -3,7 +3,7 @@ import { ChevronDown, Link2 } from "lucide-react";
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { FAQ_ITEMS_PUBLIC } from "../../seo/siteMetadata";
 import "./FaqPage.css";
-import { appUrl } from "../../lib/appUrl";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /** Categories are declared here so the published FAQ list stays the single source of answers. */
 const FAQ_CATEGORY_BY_QUESTION: Record<string, string> = {
@@ -134,7 +134,7 @@ export function FaqPage() {
           Still unsure? Create your workspace and see how Zoption turns your own files and entries
           into a clear monthly picture — it starts empty and private, with no bank connection.
         </p>
-        <a className="button" href={appUrl("/signup")}>
+        <a className="button" href={appUrl("/signup")} {...NEW_TAB}>
           Create your workspace
         </a>
       </section>
