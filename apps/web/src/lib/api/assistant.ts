@@ -1,3 +1,4 @@
+import { assistantMessageSchema } from "@zoption/shared";
 import type {
   AssistantMemory,
   AssistantMemoryPreferences,
@@ -282,15 +283,17 @@ export function sendAssistantMessage(
  * Saves the transaction an assistant reply drafted. The server writes its own stored draft
  * at most once and answers with the reply, now marked saved.
  */
-export function confirmAssistantTransactionDraft(
+export async function confirmAssistantTransactionDraft(
   workspace: AuthenticatedWorkspace,
   messageId: string,
 ): Promise<AssistantMessage> {
-  return requestJson(
+  const value = await requestJson<unknown>(
     workspace,
     `/api/app/assistant/messages/${encodeURIComponent(messageId)}/transaction`,
     { method: "POST", body: "{}" },
   );
+  // Metadata stays a loose record in the shared schema; the draft card parses its draft.
+  return assistantMessageSchema.parse(value) as AssistantMessage;
 }
 
 export function deleteAssistantThread(

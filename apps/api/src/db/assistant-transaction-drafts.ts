@@ -5,8 +5,9 @@ import { messageFromRow, type MessageRow } from "./assistant";
 
 /**
  * The transaction draft an assistant reply carries in its response metadata. Saving moves
- * it pending → saving → saved with conditional updates, so two taps on Save (or two tabs)
- * create one transaction.
+ * it pending → saving → saved with conditional updates, and the created row is keyed on the
+ * reply's id, so two taps, two tabs, or a retry after a request died mid-save all create one
+ * transaction.
  */
 export interface AssistantTransactionDraftRepository {
   findMessage(env: Bindings, tenantId: string, messageId: string): Promise<AssistantMessage | null>;
@@ -18,6 +19,7 @@ export interface AssistantTransactionDraftRepository {
     transactionId: string,
   ): Promise<AssistantMessage | null>;
   release(env: Bindings, tenantId: string, messageId: string): Promise<void>;
+  transactionExists(env: Bindings, tenantId: string, transactionId: string): Promise<boolean>;
 }
 
 const DRAFT_STATUS = "json_extract(response_metadata_json, '$.transactionDraft.status')";
@@ -69,6 +71,15 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
       .bind(transactionId, tenantId, messageId)
       .run();
     return this.findMessage(env, tenantId, messageId);
+  },
+
+  async transactionExists(env, tenantId, transactionId) {
+    const row = await env.DB.prepare(
+      `SELECT 1 AS found FROM transactions WHERE tenant_id = ? AND id = ?`,
+    )
+      .bind(tenantId, transactionId)
+      .first<{ found: number }>();
+    return Boolean(row);
   },
 
   async release(env, tenantId, messageId) {

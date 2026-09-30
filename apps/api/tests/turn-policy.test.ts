@@ -379,11 +379,11 @@ describe("assistant transaction entry policy", () => {
     expect(policyFor(message).requiredToolGroups).not.toContain("transaction_entry");
   });
 
-  it("logs an insurance payment as bookkeeping without a regulated-topic disclaimer", () => {
+  it("logs an insurance payment while keeping its regulated-topic guard", () => {
     const policy = policyFor("I paid 2000 for my insurance premium");
     expect(policy.requiredToolGroups).toEqual(["transaction_entry"]);
-    expect(policy.compliance).toEqual({ posture: "budgeting_allowed", topics: [] });
-    expect(policy.disclaimer).toBeUndefined();
+    expect(policy.compliance.posture).toBe("restricted_topic_education");
+    expect(policy.disclaimer).toBeTruthy();
   });
 
   it("passes a stated day along without making it required", () => {
@@ -408,9 +408,46 @@ describe("assistant transaction entry policy", () => {
     expect(
       policyFor("GCash, and my remaining balance is 1,050", history).requiredToolGroups,
     ).toEqual(["transaction_entry"]);
-    for (const question of ["How much did I spend this month?", "Show my budget for this month"]) {
+    for (const question of [
+      "How much did I spend this month?",
+      "Show my budget for this month",
+      "What is a mutual fund",
+      "How does term life insurance work",
+    ]) {
       expect(policyFor(question, history).requiredToolGroups).not.toContain("transaction_entry");
     }
+    const education = policyFor("How does term life insurance work", history);
+    expect(education.compliance.posture).toBe("restricted_topic_education");
+    expect(education.disclaimer).toBeTruthy();
+  });
+
+  it("ends the flow once the draft is saved", () => {
+    const history = [
+      {
+        role: "assistant" as const,
+        content: "Your Jollibee expense is ready. Tap Save transaction.",
+        metadata: {
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed" as const, topics: [] },
+          sources: [],
+          transactionEntry: true,
+          transactionDraft: {
+            status: "saved" as const,
+            kind: "expense" as const,
+            date: "2026-08-02",
+            description: "Jollibee",
+            amountMinor: 25_000,
+            currency: "PHP" as const,
+            categoryId: "category-food",
+            categoryName: "Food",
+            accountId: "account-gcash",
+            accountName: "GCash",
+            transactionId: "t-1",
+          },
+        },
+      },
+    ];
+    expect(policyFor("Thanks", history).requiredToolGroups).toEqual([]);
   });
 
   it("marks entry replies so the next turn can continue them", () => {

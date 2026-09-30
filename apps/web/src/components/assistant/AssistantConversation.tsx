@@ -1,3 +1,4 @@
+import { assistantTransactionDraftSchema } from "@zoption/shared";
 import type {
   AssistantMessage,
   AssistantSourceMetadata,
@@ -199,8 +200,9 @@ function AssistantTransactionDraftCard({
   message: AssistantMessage;
   draftSave?: AssistantDraftSave;
 }) {
-  const draft = message.metadata?.transactionDraft;
-  if (!draft) return null;
+  const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+  if (!parsed.success) return null;
+  const draft = parsed.data;
   // A stored "saving" state is not trusted here: the server refuses a live claim and takes
   // over one a failed request left behind, so the button stays usable.
   const saving = draftSave?.savingMessageId === message.id;

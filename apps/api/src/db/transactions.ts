@@ -30,7 +30,16 @@ export interface TransactionRepository {
     tenantId: string,
     query: TransactionCalendarQuery,
   ): Promise<TransactionCalendarMonth>;
-  create(env: Bindings, tenantId: string, input: TransactionInput): Promise<TransactionListItem>;
+  /**
+   * `options.id` lets a caller key an income or expense row on something it already owns, so a
+   * retried create finds the row instead of adding a second one. Transfers always mint ids.
+   */
+  create(
+    env: Bindings,
+    tenantId: string,
+    input: TransactionInput,
+    options?: { id?: string },
+  ): Promise<TransactionListItem>;
   update(
     env: Bindings,
     tenantId: string,
@@ -434,7 +443,7 @@ export const transactionRepository: TransactionRepository = {
     };
   },
 
-  async create(env, tenantId, input) {
+  async create(env, tenantId, input, options = {}) {
     await validateTransactionReferences(env, tenantId, input);
     if (input.kind === "transfer") {
       const groupId = crypto.randomUUID();
@@ -480,7 +489,7 @@ export const transactionRepository: TransactionRepository = {
       return created;
     }
 
-    const id = crypto.randomUUID();
+    const id = options.id ?? crypto.randomUUID();
     const insert = insertStatement(env, {
       id,
       tenantId,

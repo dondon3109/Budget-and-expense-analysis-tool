@@ -193,8 +193,10 @@ interface HistoryGroup {
 function groupHistory(rows: readonly EntryHistoryRow[]): HistoryGroup[] {
   const groups = new Map<string, HistoryGroup>();
   for (const row of rows) {
-    const key = descriptionKey(row.description);
-    if (!key) continue;
+    const description = descriptionKey(row.description);
+    if (!description) continue;
+    // A typical amount only means something within one currency.
+    const key = `${row.currency}:${description}`;
     const group = groups.get(key) ?? { rows: [] };
     group.rows.push(row);
     groups.set(key, group);
@@ -295,17 +297,11 @@ function amountFromBalances(
   account: AccountRecord,
 ): { amountMinor: number; calculation: Record<string, string> } {
   const afterMinor = parseAmountToMinor(input.balanceAfter!);
-  const userStatedBefore = input.balanceBefore !== undefined;
-  const beforeMinor = userStatedBefore
-    ? parseAmountToMinor(input.balanceBefore!)
-    : (account.balanceMinor ?? 0);
-  const amountMinor =
-    input.kind === "expense" ? beforeMinor - afterMinor : afterMinor - beforeMinor;
+  const beforeMinor = parseAmountToMinor(input.balanceBefore!);
   return {
-    amountMinor,
+    amountMinor: input.kind === "expense" ? beforeMinor - afterMinor : afterMinor - beforeMinor,
     calculation: {
       balanceBefore: formatMoney(beforeMinor, account.currency),
-      balanceBeforeSource: userStatedBefore ? "user_stated" : "recorded_ledger_balance",
       balanceAfter: formatMoney(afterMinor, account.currency),
     },
   };
@@ -363,6 +359,24 @@ export function draftTransaction(
     };
   }
 
+  // The recorded balance has no opening snapshot and may miss unrecorded activity, so it is
+  // never used silently: the user confirms (or corrects) it as the balance before.
+  if (input.amount === undefined && input.balanceBefore === undefined) {
+    return {
+      envelope: envelope(
+        {
+          status: "confirm_balance_before",
+          accountName: account.name,
+          recordedBalance: formatMoney(account.balanceMinor ?? 0, account.currency),
+          balanceAfter: formatMoney(parseAmountToMinor(input.balanceAfter!), account.currency),
+          nextStep:
+            "Ask whether the recorded balance is what the account held before, then pass the confirmed figure as balanceBefore.",
+        },
+        "accounts",
+        { signals: [LEDGER_BALANCE_SIGNAL] },
+      ),
+    };
+  }
   const derived = input.amount === undefined ? amountFromBalances(input, account) : undefined;
   const amountMinor = derived ? derived.amountMinor : parseAmountToMinor(input.amount!);
   if (amountMinor <= 0) {
@@ -373,9 +387,6 @@ export function draftTransaction(
           ...(derived ? { calculation: derived.calculation } : {}),
         },
         "accounts",
-        derived?.calculation.balanceBeforeSource === "recorded_ledger_balance"
-          ? { signals: [LEDGER_BALANCE_SIGNAL] }
-          : {},
       ),
     };
   }
@@ -411,17 +422,6 @@ export function draftTransaction(
         nextStep: "Not saved yet. Ask the user to review the draft and tap Save transaction.",
       },
       "transactions",
-      derived?.calculation.balanceBeforeSource === "recorded_ledger_balance"
-        ? {
-            signals: [
-              {
-                code: "amount_from_ledger_balance",
-                message:
-                  "The amount comes from the recorded balance, so any unrecorded activity in this account is included in it.",
-              },
-            ],
-          }
-        : {},
     ),
   };
 }

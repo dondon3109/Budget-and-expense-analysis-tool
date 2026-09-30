@@ -575,25 +575,40 @@ export function createAssistantService(
         );
       }
       const draft = parsed.data;
-      let transactionId: string;
-      try {
-        // The create path re-validates the category, account, and plan access as of now.
-        const created = await transactions.create(env, tenantId, {
-          kind: draft.kind,
-          date: draft.date,
-          description: draft.description,
-          amountMinor: draft.amountMinor,
-          currency: draft.currency,
-          categoryId: draft.categoryId,
-          accountId: draft.accountId,
-        });
-        transactionId = created.id;
-      } catch (error) {
-        await drafts.release(env, tenantId, messageId);
-        throw error;
+      // The row is keyed on this reply's id. A claim taken over from a request that died after
+      // its create finds that row here instead of creating a second one.
+      const transactionId = messageId;
+      if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
+        try {
+          // The create path re-validates the category, account, and plan access as of now.
+          await transactions.create(
+            env,
+            tenantId,
+            {
+              kind: draft.kind,
+              date: draft.date,
+              description: draft.description,
+              amountMinor: draft.amountMinor,
+              currency: draft.currency,
+              categoryId: draft.categoryId,
+              accountId: draft.accountId,
+            },
+            { id: transactionId },
+          );
+        } catch (error) {
+          await drafts.release(env, tenantId, messageId);
+          throw error;
+        }
       }
       const saved = await drafts.markSaved(env, tenantId, messageId, transactionId);
-      if (!saved) throw new Error("Saved assistant draft could not be read back.");
+      if (saved?.metadata?.transactionDraft?.status !== "saved") {
+        // Another request took the claim over meanwhile. The row exists once either way.
+        throw new HttpError(
+          409,
+          "assistant_draft_in_progress",
+          "This transaction is already being saved.",
+        );
+      }
       return saved;
     },
   };

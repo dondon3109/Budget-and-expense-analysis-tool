@@ -80,15 +80,19 @@ function isTransactionEntryRequest(message: string): boolean {
 }
 
 /**
- * The reply before this message was part of logging a transaction, and this message is an
- * answer to it ("GCash, 300 left") rather than a new question that needs other records.
+ * The reply before this message was part of logging a transaction that is not saved yet, and
+ * this message is an answer to it ("GCash, 300 left") rather than a new question: one that
+ * needs other records, asks for an explanation, or touches a regulated topic.
  */
 function continuesTransactionEntry(
   history: readonly AssistantHistoryMessage[],
   message: string,
+  posture: AssistantCompliancePosture,
 ): boolean {
   const previous = history.at(-1);
   if (previous?.role !== "assistant" || !previous.metadata?.transactionEntry) return false;
+  if (previous.metadata.transactionDraft?.status === "saved") return false;
+  if (posture !== "budgeting_allowed" || EDUCATION_PATTERN.test(message)) return false;
   const asksForRecords =
     QUESTION_PATTERN.test(message) ||
     /\b(?:show|list|compare|tell me|ipakita|pakita|ilista)\b/i.test(message);
@@ -245,12 +249,12 @@ export function createAssistantTurnPolicy(input: {
 
   if (
     isTransactionEntryRequest(input.message) ||
-    continuesTransactionEntry(input.history, input.message)
+    continuesTransactionEntry(input.history, input.message, compliance.posture)
   ) {
     // A date the user states ("kahapon") is passed along as context; a missing or unclear
     // one never blocks the entry, because the draft falls back to today and is reviewed.
-    // Recording an insurance or tax payment is bookkeeping, not regulated advice, so the
-    // turn carries no topic disclaimer; a request for advice was redirected above.
+    // The classified posture is kept, so logging an insurance payment still carries its
+    // disclaimer and the regulated-recommendation check.
     const period = resolveAssistantPeriod(
       input.history,
       input.message,
@@ -260,9 +264,12 @@ export function createAssistantTurnPolicy(input: {
     return {
       currentDate: input.currentDate,
       timeZone: input.timeZone,
-      compliance: { posture: "budgeting_allowed", topics: [] },
+      compliance: { posture: compliance.posture, topics: compliance.topics },
       requiredToolGroups: ["transaction_entry"],
       ...(period.period ? { resolvedPeriod: period.period } : {}),
+      ...(compliance.disclaimer
+        ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
+        : {}),
     };
   }
 

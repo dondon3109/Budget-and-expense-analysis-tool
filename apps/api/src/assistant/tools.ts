@@ -229,7 +229,7 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
     function: {
       name: "draft_transaction",
       description:
-        "Prepare an income or expense for the user to review and save. It does not save anything. Give either amount, or balanceAfter (what the account holds after the transaction) so the amount is worked out from balanceBefore or the recorded balance.",
+        "Prepare an income or expense for the user to review and save. It does not save anything. Give either amount, or balanceAfter (what the account holds after the transaction) with balanceBefore. Without balanceBefore it returns the recorded balance for the user to confirm.",
       parameters: {
         type: "object",
         properties: {
@@ -245,7 +245,8 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
           },
           balanceBefore: {
             type: "string",
-            description: "Optional exact decimal amount the account held before, if the user said",
+            description:
+              "Exact decimal amount the account held before, as the user stated or confirmed",
           },
           currentDate: { type: "string", description: "Trusted current ISO date" },
         },

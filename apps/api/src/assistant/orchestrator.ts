@@ -198,12 +198,15 @@ function auditForPolicy(
 function responseMetadata(
   policy: AssistantTurnPolicy,
   executions: readonly AssistantToolExecution[],
+  includeDraft = true,
 ): AssistantResponseMetadata {
   const sources = executions
     .map(sourceFromExecution)
     .filter((source): source is NonNullable<typeof source> => source !== null);
   const metadata = responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
-  const transactionDraft = latestTransactionDraft(executions)?.transactionDraft;
+  const transactionDraft = includeDraft
+    ? latestTransactionDraft(executions)?.transactionDraft
+    : undefined;
   // A draft keeps the flow open, so a follow-up correction ("make it 300") drafts again.
   return transactionDraft ? { ...metadata, transactionEntry: true, transactionDraft } : metadata;
 }
@@ -278,7 +281,8 @@ export function createAssistantOrchestrator(
         }
         totals.content = safeFallback(policy);
         totals.finishReason = "validation_fallback";
-        totals.responseMetadata = responseMetadata(policy, executions);
+        // No Save card under a refusal: the reply could not describe what it would save.
+        totals.responseMetadata = responseMetadata(policy, executions, false);
         totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
         return totals;
       };

@@ -36,7 +36,10 @@ afterEach(() => {
   for (const database of databases.splice(0)) database.close();
 });
 
-function setup(metadata: Partial<AssistantResponseMetadata> = { transactionDraft: draft }) {
+function setup(
+  metadata: Partial<AssistantResponseMetadata> = { transactionDraft: draft },
+  rowAlreadyCreated = false,
+) {
   const { binding, database } = createD1TestDatabase();
   databases.push(database);
   for (const tenant of [TENANT, OTHER_TENANT]) {
@@ -68,9 +71,13 @@ function setup(metadata: Partial<AssistantResponseMetadata> = { transactionDraft
     );
   const env = { DB: binding } as unknown as Bindings;
   const create = vi.fn(
-    async (_env: Bindings, _tenantId: string, input: TransactionInput) =>
-      ({ id: "transaction-1", ...input }) as unknown as TransactionListItem,
+    async (_env: Bindings, _tenantId: string, input: TransactionInput, options?: { id?: string }) =>
+      ({ id: options?.id, ...input }) as unknown as TransactionListItem,
   );
+  const drafts = {
+    ...assistantTransactionDraftRepository,
+    transactionExists: vi.fn(async () => rowAlreadyCreated),
+  };
   const service = createAssistantService(
     assistantRepository,
     {} as AssistantOrchestrator,
@@ -79,7 +86,7 @@ function setup(metadata: Partial<AssistantResponseMetadata> = { transactionDraft
     undefined,
     undefined,
     undefined,
-    { drafts: assistantTransactionDraftRepository, transactions: { create } },
+    { drafts, transactions: { create } },
   );
   return { env, create, service };
 }
@@ -92,18 +99,23 @@ describe("assistant transaction draft confirmation", () => {
     const again = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
 
     expect(create).toHaveBeenCalledTimes(1);
-    expect(create).toHaveBeenCalledWith(env, TENANT, {
-      kind: "expense",
-      date: "2026-08-02",
-      description: "Jollibee",
-      amountMinor: 25_000,
-      currency: "PHP",
-      categoryId: "category-food",
-      accountId: "account-gcash",
-    });
+    expect(create).toHaveBeenCalledWith(
+      env,
+      TENANT,
+      {
+        kind: "expense",
+        date: "2026-08-02",
+        description: "Jollibee",
+        amountMinor: 25_000,
+        currency: "PHP",
+        categoryId: "category-food",
+        accountId: "account-gcash",
+      },
+      { id: MESSAGE },
+    );
     expect(saved.metadata?.transactionDraft).toMatchObject({
       status: "saved",
-      transactionId: "transaction-1",
+      transactionId: MESSAGE,
     });
     expect(again.metadata?.transactionDraft?.status).toBe("saved");
   });
@@ -125,6 +137,21 @@ describe("assistant transaction draft confirmation", () => {
     const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
     expect(create).toHaveBeenCalledTimes(1);
     expect(saved.metadata?.transactionDraft?.status).toBe("saved");
+  });
+
+  it("finds the row a request created before it died instead of creating a second", async () => {
+    const { env, create, service } = setup(
+      {
+        transactionDraft: { ...draft, status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" },
+      },
+      true,
+    );
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(create).not.toHaveBeenCalled();
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
   });
 
   it("returns the draft to pending when the save fails, so the user can retry", async () => {

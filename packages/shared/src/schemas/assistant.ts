@@ -265,7 +265,7 @@ export const assistantTransactionSuggestionToolSchema = z
 /**
  * The assistant prepares a draft, never a saved row. The amount is either stated outright or
  * derived from what the account holds after the transaction, measured against the balance
- * before it (the user's figure, else the recorded ledger balance).
+ * before it. Without a balance before, the draft asks the user to confirm the recorded one.
  */
 export const assistantTransactionDraftToolSchema = z
   .object({

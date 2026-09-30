@@ -120,6 +120,24 @@ describe("assistant transaction suggestions", () => {
     });
   });
 
+  it("keeps typical amounts within one currency", () => {
+    const result = suggestTransactionDetails(
+      { through: "2026-08-02", place: "Netflix", kind: "expense" },
+      [
+        row({ description: "Netflix", amountMinor: -54_900 }),
+        row({ description: "Netflix", amountMinor: -1_500, currency: "USD" }),
+      ],
+      accounts,
+      categories,
+    );
+    const suggestions = (result.data as { suggestions: Array<{ typicalAmount: string }> })
+      .suggestions;
+    expect(suggestions.map((item) => item.typicalAmount).sort()).toEqual([
+      "PHP 549.00",
+      "USD 15.00",
+    ]);
+  });
+
   it("does not match a short place token inside a longer word", () => {
     const result = suggestTransactionDetails(
       { through: "2026-08-02", place: "SM", kind: "expense" },
@@ -155,17 +173,15 @@ describe("assistant transaction drafts", () => {
     expect(JSON.stringify(result.envelope)).not.toMatch(/account-|category-/);
   });
 
-  it("works out the amount from what is left against the recorded balance", () => {
+  it("asks the user to confirm the recorded balance before deriving an amount", () => {
     const result = draftTransaction({ ...draftInput, balanceAfter: "1050" }, accounts, categories);
 
-    expect(result.draft?.amountMinor).toBe(45_000);
+    expect(result.draft).toBeUndefined();
     expect(result.envelope.data).toMatchObject({
-      calculation: {
-        balanceBefore: "PHP 1,500.00",
-        balanceBeforeSource: "recorded_ledger_balance",
-        balanceAfter: "PHP 1,050.00",
-        amount: "PHP 450.00",
-      },
+      status: "confirm_balance_before",
+      accountName: "GCash",
+      recordedBalance: "PHP 1,500.00",
+      balanceAfter: "PHP 1,050.00",
     });
     expect(result.envelope.dataQuality.status).toBe("limited");
   });
@@ -177,10 +193,21 @@ describe("assistant transaction drafts", () => {
       categories,
     );
     expect(result.draft?.amountMinor).toBe(29_950);
+    expect(result.envelope.data).toMatchObject({
+      calculation: {
+        balanceBefore: "PHP 2,000.00",
+        balanceAfter: "PHP 1,700.50",
+        amount: "PHP 299.50",
+      },
+    });
   });
 
   it("refuses a balance that does not imply spending instead of drafting a negative amount", () => {
-    const result = draftTransaction({ ...draftInput, balanceAfter: "2000" }, accounts, categories);
+    const result = draftTransaction(
+      { ...draftInput, balanceBefore: "1500", balanceAfter: "2000" },
+      accounts,
+      categories,
+    );
     expect(result.draft).toBeUndefined();
     expect(result.envelope.data).toMatchObject({ status: "balances_do_not_imply_amount" });
   });
