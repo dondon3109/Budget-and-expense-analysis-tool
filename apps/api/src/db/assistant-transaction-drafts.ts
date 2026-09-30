@@ -11,8 +11,8 @@ import { messageFromRow, type MessageRow } from "./assistant";
  */
 export interface AssistantTransactionDraftRepository {
   findMessage(env: Bindings, tenantId: string, messageId: string): Promise<AssistantMessage | null>;
-  /** A later reply in the same thread drafted again, so this draft was corrected away. */
-  hasNewerDraft(env: Bindings, tenantId: string, message: AssistantMessage): Promise<boolean>;
+  /** A later reply in the same thread corrected this draft, so it can no longer be saved. */
+  isReplaced(env: Bindings, tenantId: string, message: AssistantMessage): Promise<boolean>;
   /** Returns the claim's timestamp, which scopes markSaved and release to this claim. */
   claim(env: Bindings, tenantId: string, messageId: string): Promise<string | null>;
   markSaved(
@@ -43,15 +43,14 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
     return row ? messageFromRow(row) : null;
   },
 
-  async hasNewerDraft(env, tenantId, message) {
+  async isReplaced(env, tenantId, message) {
     const row = await env.DB.prepare(
       `SELECT 1 AS found FROM assistant_messages
-       WHERE tenant_id = ? AND thread_id = ? AND role = 'assistant' AND id != ?
-         AND created_at > ?
-         AND json_extract(response_metadata_json, '$.transactionDraft') IS NOT NULL
+       WHERE tenant_id = ? AND thread_id = ? AND role = 'assistant'
+         AND json_extract(response_metadata_json, '$.transactionDraft.replacesMessageId') = ?
        LIMIT 1`,
     )
-      .bind(tenantId, message.threadId, message.id, message.createdAt)
+      .bind(tenantId, message.threadId, message.id)
       .first<{ found: number }>();
     return Boolean(row);
   },

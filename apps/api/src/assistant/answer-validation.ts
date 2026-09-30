@@ -22,8 +22,9 @@ const REGULATED_RECOMMENDATION_PATTERN =
   /\b(?:you should|i recommend|best for you|right choice for you|dapat kang|inirerekomenda ko|pinakamainam para sa iyo)\b.{0,80}\b(?:buy|sell|invest|allocate|file|deduct|insurance|coverage|retirement|will|trust|legal structure|bumili|ibenta|mamuhunan|mag-invest|seguro|buwis|huling habilin|pensyon)\b/i;
 
 // The draft is not saved until the user taps Save, so the reply must never say it was.
+// It names the saved thing, so "I've created a draft for you" still passes.
 const WRITE_CLAIM_PATTERN =
-  /\b(?:i(?:'ve| have)?\s+(?:already\s+)?(?:saved|added|logged|recorded|created)|(?:has|have|was|were)\s+been\s+(?:saved|added|logged|recorded|created)|(?:is|are)\s+now\s+(?:saved|added|logged|recorded)|na-?save ko na|nai-?save ko na|naidagdag ko na|naitala ko na)\b/i;
+  /\b(?:i(?:'ve| have)?\s+(?:already\s+)?(?:saved|added|logged|recorded)\s+(?:it|this|that|your|the)|(?:it|this|that|the (?:transaction|expense|income|entry)|your (?:transaction|expense|income|entry))\s+(?:has|have|is|was|were)\s+(?:been\s+|now\s+)?(?:saved|added|logged|recorded)|na-?save ko na|nai-?save ko na|naidagdag ko na|naitala ko na)\b/i;
 
 const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   get_account_balances: "account_balance",

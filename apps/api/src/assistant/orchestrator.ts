@@ -195,20 +195,44 @@ function auditForPolicy(
   };
 }
 
+/**
+ * The unsaved draft a correction replaces: the newest earlier reply in this thread that still
+ * holds one. A draft for a different purchase names none, so both stay saveable.
+ */
+function replacedDraftMessageId(
+  execution: AssistantToolExecution,
+  history: readonly AssistantHistoryMessage[],
+): string | undefined {
+  const args = execution.arguments as { replacesPreviousDraft?: boolean } | null;
+  if (!args?.replacesPreviousDraft) return undefined;
+  const previous = [...history]
+    .reverse()
+    .find((item) => item.role === "assistant" && item.id && item.metadata?.transactionDraft);
+  return previous?.metadata?.transactionDraft?.status === "saved" ? undefined : previous?.id;
+}
+
 function responseMetadata(
   policy: AssistantTurnPolicy,
   executions: readonly AssistantToolExecution[],
+  history: readonly AssistantHistoryMessage[],
   includeDraft = true,
 ): AssistantResponseMetadata {
   const sources = executions
     .map(sourceFromExecution)
     .filter((source): source is NonNullable<typeof source> => source !== null);
   const metadata = responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
-  const transactionDraft = includeDraft
-    ? latestTransactionDraft(executions)?.transactionDraft
-    : undefined;
+  const execution = includeDraft ? latestTransactionDraft(executions) : undefined;
+  if (!execution?.transactionDraft) return metadata;
+  const replacesMessageId = replacedDraftMessageId(execution, history);
   // A draft keeps the flow open, so a follow-up correction ("make it 300") drafts again.
-  return transactionDraft ? { ...metadata, transactionEntry: true, transactionDraft } : metadata;
+  return {
+    ...metadata,
+    transactionEntry: true,
+    transactionDraft: {
+      ...execution.transactionDraft,
+      ...(replacesMessageId ? { replacesMessageId } : {}),
+    },
+  };
 }
 
 export function createAssistantOrchestrator(
@@ -275,14 +299,14 @@ export function createAssistantOrchestrator(
         if (deterministic) {
           totals.content = deterministic;
           totals.finishReason = "deterministic";
-          totals.responseMetadata = responseMetadata(policy, executions);
+          totals.responseMetadata = responseMetadata(policy, executions, history);
           totals.audit = auditForPolicy(policy, providerCallCount, "passed", auditToolCalls);
           return totals;
         }
         totals.content = safeFallback(policy);
         totals.finishReason = "validation_fallback";
         // No Save card under a refusal: the reply could not describe what it would save.
-        totals.responseMetadata = responseMetadata(policy, executions, false);
+        totals.responseMetadata = responseMetadata(policy, executions, history, false);
         totals.audit = auditForPolicy(policy, providerCallCount, "fallback", auditToolCalls);
         return totals;
       };
@@ -382,7 +406,7 @@ export function createAssistantOrchestrator(
             );
             if (validation.valid) {
               totals.content = content;
-              totals.responseMetadata = responseMetadata(policy, executions);
+              totals.responseMetadata = responseMetadata(policy, executions, history);
               totals.audit = auditForPolicy(policy, providerCallCount, "passed", auditToolCalls);
               return totals;
             }

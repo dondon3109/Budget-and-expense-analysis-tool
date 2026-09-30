@@ -609,6 +609,67 @@ describe("assistant orchestration", () => {
     expect(answer.responseMetadata.transactionDraft).toBeUndefined();
   });
 
+  it("accepts a reply that says it created a draft, and records the draft a correction replaces", async () => {
+    let calls = 0;
+    const provider: AssistantProvider = {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        calls += 1;
+        if (calls === 1) {
+          const completion = entryToolCompletion();
+          const draftCall = completion.message.tool_calls![1]!;
+          draftCall.function.arguments = JSON.stringify({
+            ...JSON.parse(draftCall.function.arguments),
+            replacesPreviousDraft: true,
+          });
+          return completion;
+        }
+        return textCompletion(
+          "I've created a new draft of PHP 250.00 for Jollibee. Review it and tap Save transaction.",
+        );
+      }),
+    };
+    const earlierDraftId = "55555555-5555-4555-8555-555555555555";
+    const orchestrator = createAssistantOrchestrator(provider, createReader());
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [
+        { role: "user", content: "I spent 200 at Jollibee" },
+        {
+          id: earlierDraftId,
+          role: "assistant",
+          content: "Your draft is ready.",
+          metadata: {
+            promptVersion: "expert-v3",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            sources: [],
+            transactionEntry: true,
+            transactionDraft: {
+              status: "pending",
+              kind: "expense",
+              date: "2026-08-02",
+              description: "Jollibee",
+              amountMinor: 20_000,
+              currency: "PHP",
+              categoryId: "category-food",
+              categoryName: "Food",
+              accountId: "account-gcash",
+              accountName: "GCash",
+            },
+          },
+        },
+      ],
+      "Make it 250",
+      identity,
+      entryPolicy,
+      "",
+    );
+
+    expect(answer.audit.validationStatus).toBe("passed");
+    expect(answer.responseMetadata.transactionDraft?.replacesMessageId).toBe(earlierDraftId);
+  });
+
   it("rejects a draft dated after today", async () => {
     await expect(
       executeAssistantToolDetailed(

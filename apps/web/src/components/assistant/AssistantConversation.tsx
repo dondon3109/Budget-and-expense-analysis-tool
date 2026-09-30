@@ -339,9 +339,10 @@ export function AssistantConversation({
   draftSave,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
-  const latestDraftId = [...messages]
-    .reverse()
-    .find((message) => message.metadata?.transactionDraft)?.id;
+  // Replies whose draft a later correction replaced; saving one would record a purchase twice.
+  const replacedDraftIds = new Set(
+    messages.map((message) => message.metadata?.transactionDraft?.replacesMessageId),
+  );
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === "function") {
@@ -430,7 +431,7 @@ export function AssistantConversation({
                 <AssistantTransactionDraftCard
                   message={message}
                   draftSave={draftSave}
-                  superseded={message.id !== latestDraftId}
+                  superseded={replacedDraftIds.has(message.id)}
                 />
               )}
               {message.role === "assistant" && <AssistantMessageEvidence message={message} />}

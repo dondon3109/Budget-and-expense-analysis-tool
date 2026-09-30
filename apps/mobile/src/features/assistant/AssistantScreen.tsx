@@ -7,7 +7,7 @@ import type {
   AssistantThreadKind,
   AssistantVoicePreferences,
 } from "@zoption/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -78,7 +78,7 @@ import {
   VoiceRecordButton,
 } from "./assistant-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
-import { AssistantMessageRow, latestDraftMessageId } from "./AssistantMessageRow";
+import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
@@ -759,12 +759,12 @@ export function AssistantScreen() {
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
-  const latestDraftId = latestDraftMessageId(messages);
+  const replacedDraftIds = useMemo(() => replacedDraftMessageIds(messages), [messages]);
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
       <AssistantMessageRow
         message={item}
-        superseded={item.id !== latestDraftId}
+        superseded={replacedDraftIds.has(item.id)}
         onDraftSaved={(saved) =>
           setMessages((previous) =>
             previous.map((message) => (message.id === saved.id ? saved : message)),
@@ -772,7 +772,7 @@ export function AssistantScreen() {
         }
       />
     ),
-    [latestDraftId],
+    [replacedDraftIds],
   );
 
   const settingsAction = (

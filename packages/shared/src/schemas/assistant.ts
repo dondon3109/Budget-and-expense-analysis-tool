@@ -277,6 +277,7 @@ export const assistantTransactionDraftToolSchema = z
     amount: decimalMoneyStringSchema.optional(),
     balanceAfter: decimalMoneyStringSchema.optional(),
     balanceBefore: decimalMoneyStringSchema.optional(),
+    replacesPreviousDraft: z.boolean().optional(),
     currentDate: isoDateSchema,
   })
   .strict()
@@ -307,6 +308,8 @@ export const assistantTransactionDraftSchema = z
     accountName: z.string().min(1).max(120),
     transactionId: resourceIdSchema.optional(),
     claimedAt: z.iso.datetime().optional(),
+    /** The earlier reply whose draft this one corrects; that draft can no longer be saved. */
+    replacesMessageId: z.string().uuid().optional(),
   })
   .strict();
 

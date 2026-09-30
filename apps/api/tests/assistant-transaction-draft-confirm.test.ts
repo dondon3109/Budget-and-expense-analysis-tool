@@ -1,3 +1,4 @@
+import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
 import type {
   AssistantResponseMetadata,
   AssistantTransactionDraft,
@@ -44,6 +45,15 @@ function setup(
   databases.push(database);
   for (const tenant of [TENANT, OTHER_TENANT]) {
     database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')").run(tenant);
+  }
+  for (const tenant of [TENANT, OTHER_TENANT]) {
+    database
+      .prepare(
+        `INSERT INTO assistant_preferences
+         (tenant_id, consented_at, consent_version, assistant_name, user_preferred_name)
+         VALUES (?, '2026-08-01T00:00:00.000Z', ?, 'Aster', 'Sam')`,
+      )
+      .run(tenant, CURRENT_ASSISTANT_CONSENT_VERSION);
   }
   database
     .prepare(
@@ -177,13 +187,44 @@ describe("assistant transaction draft confirmation", () => {
     });
   });
 
-  it("refuses to save a draft a later correction replaced", async () => {
+  it("refuses a draft a later correction replaced, but not one a different purchase followed", async () => {
     const { env, database, create, service } = setup();
-    database
+    const insertLaterDraft = (id: string, replacesMessageId?: string) =>
+      database
+        .prepare(
+          `INSERT INTO assistant_messages
+           (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+           VALUES (?, ?, ?, 'assistant', 'Another draft.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+        )
+        .run(
+          id,
+          TENANT,
+          THREAD,
+          JSON.stringify({
+            promptVersion: "expert-v3",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            sources: [],
+            transactionDraft: {
+              ...draft,
+              amountMinor: 30_000,
+              ...(replacesMessageId ? { replacesMessageId } : {}),
+            },
+          }),
+        );
+
+    // Dinner after lunch: the lunch draft stays saveable.
+    insertLaterDraft("33333333-3333-4333-8333-333333333333");
+    expect(
+      (await service.confirmTransactionDraft(env, TENANT, MESSAGE)).metadata?.transactionDraft
+        ?.status,
+    ).toBe("saved");
+
+    const corrected = setup();
+    corrected.database
       .prepare(
         `INSERT INTO assistant_messages
          (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
-         VALUES ('33333333-3333-4333-8333-333333333333', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+         VALUES ('44444444-4444-4444-8444-444444444444', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
       )
       .run(
         TENANT,
@@ -192,13 +233,24 @@ describe("assistant transaction draft confirmation", () => {
           promptVersion: "expert-v3",
           compliance: { posture: "budgeting_allowed", topics: [] },
           sources: [],
-          transactionDraft: { ...draft, amountMinor: 30_000 },
+          transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: MESSAGE },
         }),
       );
+    await expect(
+      corrected.service.confirmTransactionDraft(corrected.env, TENANT, MESSAGE),
+    ).rejects.toMatchObject({ status: 409, code: "assistant_draft_superseded" });
+    expect(corrected.create).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledTimes(1);
+  });
 
+  it("requires current assistant consent before saving", async () => {
+    const { env, database, create, service } = setup();
+    database
+      .prepare("UPDATE assistant_preferences SET consent_version = 5 WHERE tenant_id = ?")
+      .run(TENANT);
     await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toMatchObject({
       status: 409,
-      code: "assistant_draft_superseded",
+      code: "assistant_consent_required",
     });
     expect(create).not.toHaveBeenCalled();
   });

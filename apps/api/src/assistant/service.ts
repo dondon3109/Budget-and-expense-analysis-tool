@@ -555,6 +555,8 @@ export function createAssistantService(
     },
 
     async confirmTransactionDraft(env, tenantId, messageId) {
+      // Saving is part of the assistant surface, so it needs the same current consent as a turn.
+      await requireReadyPreferences(env, tenantId);
       const { drafts, transactions } = transactionDrafts;
       const message = await drafts.findMessage(env, tenantId, messageId);
       const parsed = assistantTransactionDraftSchema.safeParse(message?.metadata?.transactionDraft);
@@ -567,7 +569,7 @@ export function createAssistantService(
       }
       // Saving again returns the saved reply, so a retried tap never creates a second row.
       if (parsed.data.status === "saved") return message;
-      if (await drafts.hasNewerDraft(env, tenantId, message)) {
+      if (await drafts.isReplaced(env, tenantId, message)) {
         throw new HttpError(
           409,
           "assistant_draft_superseded",

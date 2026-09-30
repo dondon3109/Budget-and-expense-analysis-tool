@@ -23,11 +23,15 @@ function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
   return "Grounded in " + first.label + period;
 }
 
-/** The newest reply carrying a draft; earlier drafts were corrected away. */
-export function latestDraftMessageId(
-  messages: readonly AssistantWireMessage[],
-): string | undefined {
-  return messages.findLast((message) => message.metadata?.transactionDraft)?.id;
+/** Replies whose draft a later correction replaced; those can no longer be saved. */
+export function replacedDraftMessageIds(messages: readonly AssistantWireMessage[]): Set<string> {
+  const replaced = new Set<string>();
+  for (const message of messages) {
+    const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+    if (parsed.success && parsed.data.replacesMessageId)
+      replaced.add(parsed.data.replacesMessageId);
+  }
+  return replaced;
 }
 
 /** One chat message, plus the review card when an assistant reply drafted a transaction. */
@@ -37,7 +41,7 @@ export function AssistantMessageRow({
   onDraftSaved,
 }: {
   message: AssistantWireMessage;
-  /** A later reply drafted again, so saving this one would record the purchase twice. */
+  /** A later correction replaced this draft, so saving it would record the purchase twice. */
   superseded?: boolean;
   onDraftSaved: (saved: AssistantWireMessage) => void;
 }) {

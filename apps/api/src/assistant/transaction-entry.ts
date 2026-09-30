@@ -34,6 +34,8 @@ export interface TransactionDraftInput {
   amount?: string;
   balanceAfter?: string;
   balanceBefore?: string;
+  /** Read by the orchestrator, which knows which earlier reply the correction replaces. */
+  replacesPreviousDraft?: boolean;
   currentDate: string;
 }
 

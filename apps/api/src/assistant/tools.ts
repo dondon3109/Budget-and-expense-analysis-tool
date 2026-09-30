@@ -248,6 +248,11 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
             description:
               "Exact decimal amount the account held before, as the user stated or confirmed",
           },
+          replacesPreviousDraft: {
+            type: "boolean",
+            description:
+              "True only when this corrects the draft you prepared earlier in this chat; false for a different purchase",
+          },
           currentDate: { type: "string", description: "Trusted current ISO date" },
         },
         required: ["kind", "description", "categoryName", "accountName", "date", "currentDate"],
