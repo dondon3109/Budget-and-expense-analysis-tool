@@ -39,6 +39,10 @@ const HIGH_RISK = [
   /^apps\/web\/src\/lib\/api\/transport\.ts$/,
   /^apps\/mobile\/src\/features\/auth\//,
   /^apps\/web\/public\/_headers$/,
+  // The public site's CSP and headers, the auth callback redirects to the app, and the
+  // analytics proxy that must strip visitor addresses.
+  /^apps\/site\/(deployment-config\.ts|scripts\/finalize-build\.mjs|public\/_redirects)$/,
+  /^apps\/site\/functions\//,
 ];
 
 export function highRiskPaths(paths) {

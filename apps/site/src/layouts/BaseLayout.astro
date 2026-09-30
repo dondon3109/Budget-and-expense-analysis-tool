@@ -1,0 +1,81 @@
+---
+/**
+ * The document shell for every page: metadata from the route manifest, the
+ * pre-paint theme script, the consent UI, and the one shared client script.
+ * Pages pass a manifest path; the 404 page passes its own noindex metadata.
+ */
+import geistFont from "@zoption/web-common/fonts/geist-latin.woff2?url";
+
+import { CookieConsent } from "../components/consent/CookieConsent";
+import {
+  getPublicRouteMetadata,
+  serializeJsonLd,
+  SITE_NAME,
+  SOCIAL_IMAGE_URL,
+  STRUCTURED_DATA_SCRIPT_ID,
+  type SeoMetadata,
+} from "../seo/siteMetadata";
+import "../styles/foundation.css";
+
+interface Props {
+  path?: string;
+  metadata?: SeoMetadata;
+}
+
+const metadata = Astro.props.metadata ?? getPublicRouteMetadata(Astro.props.path ?? "");
+if (!metadata) throw new Error(`No route metadata for ${Astro.props.path}`);
+// Only manifest pages count as page views; the 404 page does not.
+const trackable = Astro.props.metadata === undefined;
+const socialImageAlt = "Zoption private budget and expense tracker";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>{metadata.title}</title>
+    <meta name="description" content={metadata.description} />
+    <meta name="robots" content={metadata.robots} />
+    <link rel="canonical" href={metadata.canonical} />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
+    <link rel="preload" href={geistFont} as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#f1f3f2" />
+    <script is:inline src="/theme-bootstrap.js"></script>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={metadata.title} />
+    <meta property="og:description" content={metadata.description} />
+    <meta property="og:url" content={metadata.canonical} />
+    <meta property="og:image" content={SOCIAL_IMAGE_URL} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={socialImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={metadata.title} />
+    <meta name="twitter:description" content={metadata.description} />
+    <meta name="twitter:image" content={SOCIAL_IMAGE_URL} />
+    <meta name="twitter:image:alt" content={socialImageAlt} />
+    {
+      metadata.structuredData && (
+        <script
+          is:inline
+          id={STRUCTURED_DATA_SCRIPT_ID}
+          type="application/ld+json"
+          set:html={serializeJsonLd(metadata.structuredData)}
+        />
+      )
+    }
+  </head>
+  <body data-trackable={String(trackable)}>
+    <slot />
+    <CookieConsent />
+    <script>
+      import { startSite } from "../client/site";
+
+      startSite();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,11 @@
+---
+import { DownloadPanel } from "../components/install/DownloadPanel";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { InstallPage } from "../views/InstallPage";
+---
+
+<BaseLayout path="/install">
+  <InstallPage>
+    <DownloadPanel slot="downloadPanel" client:load />
+  </InstallPage>
+</BaseLayout>

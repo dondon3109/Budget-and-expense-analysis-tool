@@ -1,0 +1,316 @@
+@import "tailwindcss";
+@import "@zoption/web-common/tokens.css";
+
+/* Shared public-site primitives. Page styles sit beside each view. */
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 620;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--solid-text);
+  background: var(--solid-bg);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.brand-logo-image {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+.brand.compact {
+  font-size: 20px;
+}
+.brand.compact .brand-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+}
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--brand);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.button {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: var(--control-height);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 18px;
+  color: var(--ink);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 150ms ease,
+    transform 120ms ease;
+}
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.button.primary {
+  color: var(--solid-text);
+  border-color: var(--solid-bg);
+  background: var(--solid-bg);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 1px 2px color-mix(in srgb, var(--solid-bg) 30%, transparent),
+    0 4px 12px color-mix(in srgb, var(--solid-bg) 14%, transparent);
+}
+.button.primary:hover {
+  border-color: var(--solid-hover);
+  background: var(--solid-hover);
+}
+.button.secondary {
+  border-color: var(--line-strong);
+  background: var(--surface);
+  box-shadow: 0 1px 2px var(--shadow);
+}
+.button.secondary:hover {
+  border-color: color-mix(in srgb, var(--ink) 22%, var(--line-strong));
+  background: var(--surface-hover);
+}
+.button.danger {
+  color: #fff;
+  border-color: var(--danger);
+  background: var(--danger);
+}
+.button.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--danger) 90%, black);
+  background: color-mix(in srgb, var(--danger) 90%, black);
+}
+.button.ghost {
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+}
+.button.ghost:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 24px;
+  color: var(--brand);
+  font-weight: 580;
+  text-underline-offset: 3px;
+}
+.text-link:hover {
+  text-decoration: underline;
+}
+.full-page-status {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+.icon-button {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  cursor: pointer;
+}
+.icon-button:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+}
+.theme-menu {
+  position: relative;
+  display: inline-flex;
+}
+.theme-menu-popover {
+  position: absolute;
+  z-index: 130;
+  top: calc(100% + 8px);
+  right: 0;
+  width: max-content;
+  min-width: 168px;
+  padding: 6px;
+  display: grid;
+  gap: 2px;
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 16px 40px var(--shadow);
+}
+.theme-menu-option {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 10px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 620;
+  text-align: left;
+}
+.theme-menu-option:hover,
+.theme-menu-option:focus-visible {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
+.theme-menu-option[aria-checked="true"] {
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+}
+.theme-menu-check {
+  opacity: 0;
+}
+.theme-menu-option[aria-checked="true"] .theme-menu-check {
+  opacity: 1;
+}
+.theme-toggle {
+  min-height: 42px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--muted);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease;
+}
+.theme-toggle:hover {
+  color: var(--ink);
+  border-color: var(--sage);
+  background: var(--surface-hover);
+}
+.mobile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* First focusable element on every shell: lets keyboard users jump past the
+   navigation straight to the page content. Fixed position keeps it out of flow
+   so it cannot disturb either shell's grid. */
+.skip-link {
+  position: fixed;
+  left: 8px;
+  top: -80px;
+  z-index: 200;
+  padding: 12px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 580;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 8px;
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+.button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+.spinning {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.button:disabled,
+button:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+@media (max-width: 760px) {
+  .theme-menu-popover {
+    position: fixed;
+    top: auto;
+    right: 12px;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    left: 12px;
+    width: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+  .button:hover {
+    transform: none !important;
+  }
+  .spinning {
+    animation: none !important;
+    transition: none !important;
+  }
+}

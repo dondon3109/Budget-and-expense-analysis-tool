@@ -7,13 +7,24 @@ All notable product changes are documented here.
 ### Added
 
 - New accounts on the web now complete a short first-run setup before the dashboard: choose the base currency, then enter the physical cash on hand, which becomes the opening balance of the Cash account. Existing accounts are not asked. The opening balance adds to the Cash account but is not counted as income on the web dashboard, cashflow trend, calendar, or transaction day totals. The Android and iOS app still count it as income until they are updated.
-- Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, new accounts, transactions, and subscriptions start in it, and the cashflow trend converts the other currency into it. Switching relabels those amounts; it does not convert them. The remittance calculator follows it too: a peso workspace compares sending pesos abroad, a dollar workspace compares sending money home to the Philippines.
-- Each subscription has its own currency (Philippine Peso or US Dollar), chosen in the subscription form and defaulting to the workspace currency. Its charges and renewals are recorded in that currency and checked against the account's balance in it. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and mention any plan billed in the other one. Existing subscriptions stay in pesos.
-- Android Beta 0.2.40 (versionCode 20340) carries the workspace currency setting, per-subscription currencies, and the currency fixes below, and the Android install page offers it.
+- Android Beta 0.2.41 (versionCode 20341) carries the Currency setting under Preferences and the Dodo Payments checkout.
 
 ### Changed
 
 - Pro checkout on the web and in the Android and iOS app leads with Dodo Payments (card, Apple Pay, or Google Pay) as the primary "Continue securely" action, with PayPal offered below it.
+
+### Fixed
+
+- The Android and iOS app shows the Currency setting under More → Preferences, beside Theme and Voice language, instead of inside the Account screen.
+- Account rows on the web keep their icons aligned from row to row, and the settings dropdowns have a padded arrow.
+
+## 2.49.0 — 2026-09-29
+
+### Added
+
+- Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, new accounts, transactions, and subscriptions start in it, and the cashflow trend converts the other currency into it. Switching relabels those amounts; it does not convert them. The remittance calculator follows it too: a peso workspace compares sending pesos abroad, a dollar workspace compares sending money home to the Philippines.
+- Each subscription has its own currency (Philippine Peso or US Dollar), chosen in the subscription form and defaulting to the workspace currency. Its charges and renewals are recorded in that currency and checked against the account's balance in it. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and mention any plan billed in the other one. Existing subscriptions stay in pesos.
+- Android Beta 0.2.40 (versionCode 20340) carries the workspace currency setting, per-subscription currencies, and the currency fixes below, and the Android install page offers it.
 
 ### Fixed
 
@@ -23,7 +34,6 @@ All notable product changes are documented here.
 - On a browser shared by several people, one person's workspace currency no longer carries over to the next person who signs in, and a started form is no longer cleared when the currency first loads.
 - A missed-renewal email keeps the currency the plan had when the renewal was missed, even if the plan's currency is changed before the email goes out.
 - The dashboard's subscription cost on the web and safe-to-spend in the Android and iOS app say when a plan billed in the other currency is left out, instead of dropping it silently.
-- The Android and iOS app shows the Currency setting under More → Preferences, beside Theme and Voice language, instead of inside the Account screen.
 
 ## 2.48.0 — 2026-09-29
 

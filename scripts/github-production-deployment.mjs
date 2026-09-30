@@ -5,6 +5,7 @@ const environment = "production";
 const deploymentTask = "deploy:cloudflare";
 const stageDescriptions = {
   pages: "pages-deployed",
+  site: "site-deployed",
   worker: "worker-deployed",
 };
 
@@ -43,20 +44,16 @@ async function deploymentsForCommit(repository, sha) {
 
 export function deploymentProgress(statuses) {
   const complete = statuses.some((status) => status.state === "success");
+  const reached = (name) =>
+    complete ||
+    statuses.some(
+      (status) => status.description === stageDescriptions[name] && status.state === "in_progress",
+    );
   return {
     complete,
-    pagesDeployed:
-      complete ||
-      statuses.some(
-        (status) =>
-          status.description === stageDescriptions.pages && status.state === "in_progress",
-      ),
-    workerDeployed:
-      complete ||
-      statuses.some(
-        (status) =>
-          status.description === stageDescriptions.worker && status.state === "in_progress",
-      ),
+    pagesDeployed: reached("pages"),
+    siteDeployed: reached("site"),
+    workerDeployed: reached("worker"),
   };
 }
 
@@ -66,7 +63,7 @@ async function createDeployment(repository, sha) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       auto_merge: false,
-      description: "Cloudflare Worker and Pages production release",
+      description: "Cloudflare Worker, app, and public site production release",
       environment,
       production_environment: true,
       ref: sha,
@@ -111,6 +108,7 @@ async function begin() {
   await writeOutputs({
     deployment_id: deployment.id,
     pages_deployed: progress.pagesDeployed,
+    site_deployed: progress.siteDeployed,
     skip_deploy: progress.complete,
     worker_deployed: progress.workerDeployed,
   });
@@ -133,7 +131,7 @@ async function finish(state) {
 
 async function stage(name) {
   const description = stageDescriptions[name];
-  if (!description) throw new Error("Deployment stage must be worker or pages.");
+  if (!description) throw new Error("Deployment stage must be worker, pages, or site.");
   const repository = requiredEnvironment("GITHUB_REPOSITORY");
   const deploymentId = requiredEnvironment("DEPLOYMENT_ID");
   await createDeploymentStatus(repository, deploymentId, "in_progress", description);
@@ -147,7 +145,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   else if (command === "stage") await stage(state);
   else {
     throw new Error(
-      "Usage: github-production-deployment.mjs begin|stage <worker|pages>|finish <success|failure>",
+      "Usage: github-production-deployment.mjs begin|stage <worker|pages|site>|finish <success|failure>",
     );
   }
 }

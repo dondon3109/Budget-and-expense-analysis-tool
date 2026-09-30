@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { BudgetCalculator } from "../../views/tools/BudgetCalculator";
+import { BudgetCalculatorPage } from "../../views/tools/BudgetCalculatorPage";
+---
+
+<BaseLayout path="/tools/50-30-20-calculator">
+  <BudgetCalculatorPage>
+    <BudgetCalculator slot="calculator" client:visible />
+  </BudgetCalculatorPage>
+</BaseLayout>

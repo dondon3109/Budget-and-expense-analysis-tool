@@ -1,0 +1,9 @@
+// Cloudflare Pages project for the public site (zoption.site). With this file present it
+// is the source of truth for the project's build output and runtime, so the dashboard
+// holds only the custom domains (docs/deployment.md). The /ingest Pages Function needs no
+// bindings or secrets.
+{
+  "name": "zoption-site",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-08-18",
+}

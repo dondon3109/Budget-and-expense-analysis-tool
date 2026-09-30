@@ -1,0 +1,25 @@
+---
+import { BudgetPlannerCalculator } from "../components/landing/BudgetPlannerCalculator";
+import { FastEntrySpotlight } from "../components/landing/FastEntrySpotlight";
+import { FeatureModules } from "../components/landing/FeatureModules";
+import { ReceiptPileScroll } from "../components/landing/ReceiptPileScroll";
+import { SupportChat } from "../components/support/SupportChat";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { fetchPublicReviews } from "../lib/reviews";
+import { LandingPage } from "../views/LandingPage";
+
+// Only the production Pages deploy must have the reviews; CI and local builds render without them.
+const reviews = await fetchPublicReviews(
+  __SEARCH_INDEXING_ENABLED__ && process.env.CF_PAGES === "1",
+);
+---
+
+<BaseLayout path="/">
+  <LandingPage reviews={reviews}>
+    <ReceiptPileScroll slot="receiptPile" client:visible />
+    <FastEntrySpotlight slot="fastEntry" client:visible />
+    <FeatureModules slot="featureModules" client:visible />
+    <BudgetPlannerCalculator slot="budgetPlanner" client:visible />
+  </LandingPage>
+  <SupportChat client:idle />
+</BaseLayout>

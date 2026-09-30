@@ -1,0 +1,16 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { SITE_ORIGIN } from "../seo/siteMetadata";
+import { NotFoundPage } from "../views/NotFoundPage";
+
+const metadata = {
+  title: "Page not found — Zoption",
+  description: "The requested Zoption page could not be found.",
+  canonical: `${SITE_ORIGIN}/404`,
+  robots: "noindex,nofollow",
+} as const;
+---
+
+<BaseLayout metadata={metadata}>
+  <NotFoundPage />
+</BaseLayout>

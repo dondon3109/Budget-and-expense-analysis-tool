@@ -108,7 +108,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
    It checks Preview and Production D1 bindings, RATE_LIMIT Durable Object, AVATARS R2, and JOBS queue bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins, keys, R2 buckets, and queues across environments, PayPal namespace and distinct monthly/annual plan variables, optional Dodo Payments mode and product variables, optional PostHog enable/environment values and the exact approved US Cloud origin, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
 
-7. Create separate preview and production Pages projects. Attach `zoption.site` and `www.zoption.site` to the production Pages project in the Cloudflare dashboard. Pages custom domains are dashboard-managed; this repository does not use an `apps/web/wrangler.jsonc` file.
+7. Create separate preview and production Pages projects for each surface: `clarity-budget` for the web app and `zoption-site` for the public site (`apps/site`). Custom domains are dashboard-managed; the section _Subdomain cutover_ below records which project carries which host. `apps/site/wrangler.jsonc` is the source of truth for the site project's build output and runtime (it has no bindings or secrets); the app project has no Wrangler file.
 8. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.
 9. Store the DeepSeek key as a Worker secret in each environment; never add it to Wrangler `vars`, D1, browser configuration, or the repository:
 
@@ -419,7 +419,7 @@ Before publishing the legal routes, business and legal reviewers must resolve ev
 
 ## Production release
 
-After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`: its ungated `preflight` job fails at `Verify release source` when `main` has moved on, and otherwise proceeds only when semantic-release finds a release owed, so a superseded or non-releasing commit never reaches `production` environment approval. Only when both hold does `deploy-and-release` run, and it waits for that approval before it migrates, deploys, or publishes. Operators approve and monitor the workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `zoption.site` and `www.zoption.site`.
+After Preview and authenticated checks pass, merge a release-producing Conventional Commit into protected `main`. The successful push `CI` run starts `Production Release`: its ungated `preflight` job fails at `Verify release source` when `main` has moved on, and otherwise proceeds only when semantic-release finds a release owed, so a superseded or non-releasing commit never reaches `production` environment approval. Only when both hold does `deploy-and-release` run, and it waits for that approval before it migrates, deploys, or publishes. Operators approve and monitor the workflow rather than run Wrangler locally. The production Wrangler environment declares `api.zoption.site` as its custom domain and allows `app.zoption.site`, `zoption.site`, and `www.zoption.site` (the public site calls the public reviews and support chat routes).
 
 The following commands are emergency recovery references only. Disable or wait for the Actions deployment before running them; never use them concurrently with `Production Release` or while Cloudflare's old Git deployment is enabled.
 
@@ -585,4 +585,25 @@ To re-verify, compare the dashboard's list of names against `apps/api/wrangler.d
 
 ## Legacy origin cleanup
 
-The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://zoption.site` and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun the documented Production smoke command with the expected Supabase origin after deployment or routing changes.
+The legacy production Pages origin is no longer accepted by the API. Production `ALLOWED_ORIGINS` contains only `https://app.zoption.site`, `https://zoption.site`, and `https://www.zoption.site`. Keep only the matching custom-domain callback URLs in Supabase, and rerun the documented Production smoke command with the expected Supabase origin after deployment or routing changes.
+
+## Subdomain cutover (one time)
+
+The public site moves to its own Pages project and the app to `app.zoption.site` in two releases, so neither host ever serves the wrong build. Tick each step here in the change that records it.
+
+**Release 1: the site ships beside the unchanged app.** It deploys `apps/site` to `zoption-site` (not yet on a custom domain) and adds `https://app.zoption.site` to the Worker's `ALLOWED_ORIGINS`. `zoption.site` still serves the full app build from `clarity-budget`.
+
+1. Before approving the release: create the Pages project `zoption-site` (Direct Upload; no Git connection).
+2. Approve the release, then open the `zoption-site` deployment on its `pages.dev` URL and check the landing page, a guide, the calculator, and `/install`.
+3. Add the custom domain `app.zoption.site` to `clarity-budget`, and add `https://app.zoption.site/auth/callback` to the Production Supabase redirect allow-list. Keep the `zoption.site` callbacks.
+4. Move `zoption.site` and `www.zoption.site` from `clarity-budget` to `zoption-site`. From here the site serves every public page and permanently redirects `/login`, `/signup`, `/auth/*`, `/app/*`, and the other app paths to `app.zoption.site` with the query string intact, where the unchanged app build still answers them.
+5. Resubmit `https://zoption.site/sitemap.xml` in Search Console and Bing Webmaster Tools.
+
+Merge release 2 next: until it ships, the production smoke gate still expects the old single-host layout on `zoption.site` and fails.
+
+**Release 2: the app becomes app-only.** It removes the public pages from `apps/web`, sets `WEB_APP_URL` to `https://app.zoption.site`, points the Android share link at the app, and switches the smoke gate to the two-host layout.
+
+6. Set the Production Supabase Site URL to `https://app.zoption.site`, then approve the release.
+7. After it is live, remove the `zoption.site` callbacks from Supabase. The site keeps redirecting any old `/auth/*` link to the app.
+
+PayPal and Dodo need no change: return URLs come from `WEB_APP_URL` at checkout time, and webhooks stay on `api.zoption.site`. Web users sign in once more after step 4, because a session is stored per origin.

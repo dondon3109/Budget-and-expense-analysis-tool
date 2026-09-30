@@ -1,0 +1,396 @@
+/* Non-modal consent bar. It must not cover the page or take it over: no backdrop,
+   no scroll lock, no aria-modal. Consent is still recorded exactly as before. */
+.cookie-consent-banner {
+  position: fixed;
+  z-index: 110;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 16px clamp(16px, 4vw, 32px) calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 28px;
+  color: var(--ink);
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 -14px 40px color-mix(in srgb, var(--shadow) 76%, transparent);
+}
+
+.cookie-consent-copy {
+  max-width: 68ch;
+}
+
+.cookie-consent-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cookie-consent-icon {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--brand-strong);
+  border-radius: 12px;
+  background: var(--brand-soft);
+}
+
+.cookie-consent-copy .eyebrow {
+  margin: 0;
+}
+
+.cookie-consent-copy h2 {
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(17px, 2.4vw, 20px);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+}
+
+.cookie-consent-copy p:last-child {
+  max-width: 78ch;
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.cookie-consent-copy a,
+.cookie-preferences-policy-note a {
+  color: var(--action);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.cookie-consent-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cookie-consent-actions .button {
+  min-width: 0;
+  min-height: 44px;
+}
+
+.cookie-consent-actions .button span,
+.cookie-preferences-actions .button span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* A native modal <dialog>: the browser supplies the backdrop layer, focus
+   containment, and Escape. */
+.cookie-preferences-dialog {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  max-width: none;
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  color: var(--ink);
+  border-radius: 16px;
+  background: var(--paper);
+  box-shadow: 0 30px 90px var(--shadow);
+}
+
+.cookie-preferences-header {
+  padding: 28px 28px 22px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.cookie-preferences-header h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(26px, 4vw, 34px);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.cookie-preferences-header p:last-child {
+  max-width: 58ch;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cookie-preferences-close {
+  flex: 0 0 auto;
+  cursor: pointer;
+}
+
+.cookie-preference-list {
+  padding: 6px 28px;
+}
+
+.cookie-preference-row {
+  padding: 20px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.cookie-preference-row + .cookie-preference-row {
+  border-top: 1px solid var(--line);
+}
+
+.cookie-preference-copy {
+  min-width: 0;
+}
+
+.cookie-preference-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cookie-preference-title strong {
+  font-size: 15px;
+}
+
+.cookie-preference-title small {
+  padding: 4px 8px;
+  color: var(--brand-strong);
+  border-radius: 999px;
+  background: var(--brand-soft);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.cookie-preference-copy p {
+  max-width: 56ch;
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* The track stays 48x28; the label grows to a 44px-tall touch target. */
+.cookie-switch {
+  position: relative;
+  width: 48px;
+  height: 44px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  cursor: pointer;
+}
+
+.cookie-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.cookie-switch > span:last-child {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.cookie-switch > span:last-child::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 3px 8px var(--shadow);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cookie-switch input:checked + span {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.cookie-switch input:checked + span::after {
+  transform: translateX(20px);
+}
+
+.cookie-switch input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.cookie-switch input:disabled + span {
+  opacity: 0.72;
+}
+
+.cookie-preferences-policy-note {
+  margin: 0;
+  padding: 4px 28px 20px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.cookie-preferences-actions {
+  position: sticky;
+  bottom: 0;
+  padding: 18px 28px calc(18px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+@media (max-width: 760px) {
+  .cookie-consent-banner {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
+    gap: 12px;
+  }
+
+  /* The authenticated mobile tab bar owns the bottom edge, so a first-visit choice
+     must sit above it instead of covering navigation. AppShell only shows that bar
+     inside this same breakpoint and uses the same 68px height. */
+  body:has(.mobile-tab-bar) .cookie-consent-banner {
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    padding-bottom: 14px;
+  }
+
+  .cookie-consent-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .cookie-consent-actions .button {
+    flex: 1 1 calc(50% - 5px);
+    min-width: 0;
+    height: 44px;
+    min-height: 44px;
+    max-height: 44px;
+    padding-inline: 12px;
+    font-size: 12.5px;
+    box-sizing: border-box;
+  }
+
+  .cookie-consent-actions .button.secondary {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .cookie-preferences-dialog {
+    margin-bottom: 0;
+    width: 100%;
+    max-height: 94vh;
+    max-height: 94dvh;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .cookie-preferences-header {
+    padding: 24px 18px 18px;
+    gap: 14px;
+  }
+
+  .cookie-preference-list {
+    padding-inline: 18px;
+  }
+
+  .cookie-preference-row {
+    gap: 18px;
+  }
+
+  .cookie-preferences-policy-note {
+    padding-inline: 18px;
+  }
+
+  .cookie-preferences-actions {
+    padding-inline: 18px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cookie-preferences-actions .button {
+    height: 44px;
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+
+  .cookie-preferences-actions .button.primary {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cookie-consent-banner {
+    animation: cookie-consent-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .cookie-preferences-dialog {
+    animation: cookie-preferences-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes cookie-consent-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes cookie-preferences-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.985);
+  }
+}
+
+/*
+ * The banner declares that it must not cover the page, but nothing reserved room for it, so it sat
+ * on top of the last stretch of every page until a choice was recorded. That is what made it cover
+ * the ledger's pagination and, during this audit, the sign-in button at mobile width.
+ *
+ * Reserve its height instead. The value tracks the banner's own layout — a single row on wide
+ * screens, more once it wraps — so it is calibrated rather than derived.
+ */
+body:has(.cookie-consent-banner) {
+  padding-bottom: var(--consent-bar-clearance);
+}
+
+:root {
+  --consent-bar-clearance: 150px;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --consent-bar-clearance: 300px;
+  }
+}
+
+.cookie-preferences-dialog::backdrop {
+  background: var(--overlay);
+}

@@ -50,7 +50,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # The content freshness guard dates each page from git history
-          # (apps/web/tests/content-freshness.test.ts), so it needs the full log
+          # (apps/web and apps/site content-freshness tests), so it needs the full log
           # rather than the default single commit.
           fetch-depth: 0
           persist-credentials: false
@@ -104,6 +104,17 @@ jobs:
           VITE_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_dummy
           VITE_POSTHOG_KEY: phc_ci_dummy
           VITE_POSTHOG_HOST: https://us.i.posthog.com
+      # Neither site build sets CF_PAGES, so neither needs the live API for reviews or a PostHog key.
+      - name: Build preview public site
+        run: pnpm --filter @zoption/site build
+        env:
+          ZOPTION_DEPLOY_ENV: preview
+          PUBLIC_API_URL: https://api-preview.example.invalid
+          PUBLIC_APP_URL: https://app-preview.example.invalid
+      - name: Build production public site
+        run: pnpm --filter @zoption/site build
+        env:
+          ZOPTION_DEPLOY_ENV: production
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - run: pnpm lighthouse

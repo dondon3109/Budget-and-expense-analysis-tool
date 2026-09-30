@@ -1,0 +1,8 @@
+{
+  "prefetch": [
+    {
+      "where": { "href_matches": "/*" },
+      "eagerness": "moderate"
+    }
+  ]
+}
