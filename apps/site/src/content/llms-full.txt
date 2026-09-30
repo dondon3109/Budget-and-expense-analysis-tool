@@ -35,7 +35,7 @@
 
 Zoption has no import preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya. Do not state or imply that it does — those exports still work, but only through the generic preset, without bank-specific column detection.
 
-Bank of America and JPMorgan Chase exports are commonly denominated in USD. Zoption stores Philippine pesos only and does not convert currencies.
+Bank of America and JPMorgan Chase exports are commonly denominated in USD. File imports accept Philippine pesos only, and Zoption does not convert currencies.
 
 ## Legal Boundaries
 - Zoption is not a bank, financial institution, or licensed financial advisor.

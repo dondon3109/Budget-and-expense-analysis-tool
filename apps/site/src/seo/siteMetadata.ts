@@ -296,7 +296,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-09-24";
+const LANDING_LAST_MODIFIED = "2026-09-30";
 const PRICING_LAST_MODIFIED = "2026-09-26";
 const GUIDES_LAST_MODIFIED = "2026-09-24";
 
@@ -334,7 +334,7 @@ const CHANGELOG_LAST_MODIFIED = "2026-09-29";
 const TERMS_LAST_MODIFIED = "2026-09-24";
 const PRIVACY_LAST_MODIFIED = "2026-09-25";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-09-24";
-const IMPORT_LAST_MODIFIED = "2026-09-18";
+const IMPORT_LAST_MODIFIED = "2026-09-30";
 const TOOLS_LAST_MODIFIED = "2026-09-29";
 // The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
 // SoftwareApplication nodes; this drives the page's <lastmod> and WebPage dateModified.

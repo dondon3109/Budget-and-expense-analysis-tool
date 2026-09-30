@@ -26,7 +26,11 @@ export function CustomerReviews({ reviews }: { reviews: readonly PublicCustomerR
               }
               key={customerReview.id}
             >
-              <div className="review-stars" aria-label={`${customerReview.rating} out of 5 stars`}>
+              <div
+                className="review-stars"
+                role="img"
+                aria-label={`${customerReview.rating} out of 5 stars`}
+              >
                 {[1, 2, 3, 4, 5].map((star) => (
                   <Star
                     key={star}

@@ -35,7 +35,7 @@ const SHARED_EXPORT_STEPS = [
 ];
 
 const PHP_CURRENCY_NOTE =
-  "This export is usually in a foreign currency. Zoption stores Philippine pesos only and does not convert currencies, so confirm the amounts are already in pesos before you save them.";
+  "This export is usually in US dollars. File imports accept Philippine pesos only and do not convert currencies, so confirm the amounts are already in pesos before you save them.";
 
 export const IMPORT_GUIDES: ImportGuide[] = [
   {
@@ -145,7 +145,7 @@ export const IMPORT_GUIDES: ImportGuide[] = [
       {
         question: "My statement is in US dollars. Can Zoption convert it?",
         answer:
-          "No. Zoption stores Philippine pesos only and does not convert currencies. Convert the amounts to pesos before importing, or use a peso-denominated account if you need the figures to match your other records.",
+          "No. File imports accept Philippine pesos only, and Zoption does not convert currencies. Convert the amounts to pesos before importing, or use a peso-denominated account if you need the figures to match your other records.",
       },
       {
         question: "Which date does Zoption use?",
@@ -174,7 +174,7 @@ export const IMPORT_GUIDES: ImportGuide[] = [
       {
         question: "My Chase statement is in US dollars. Can Zoption convert it?",
         answer:
-          "No. Zoption stores Philippine pesos only and does not convert currencies. Convert the amounts to pesos before importing, or keep foreign-currency accounts separate from your peso budgeting.",
+          "No. File imports accept Philippine pesos only, and Zoption does not convert currencies. Convert the amounts to pesos before importing, or keep foreign-currency accounts separate from your peso budgeting.",
       },
       {
         question: "Are card and checking exports handled the same way?",

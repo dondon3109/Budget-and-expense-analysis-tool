@@ -2488,9 +2488,10 @@
 .formats-band .eyebrow {
   border-color: color-mix(in srgb, var(--lp-surface) 18%, transparent);
   background: color-mix(in srgb, var(--lp-surface) 8%, transparent);
-  /* Measured against the pill's own 8% surface overlay, not the bare band: the
-     accent tint must clear AA there, which needs 40% or lighter (5.56:1). */
-  color: color-mix(in srgb, var(--lp-accent) 40%, white);
+  /* Mixed toward the band's own ink, not white: the dark theme inverts the band to a
+     light surface. Measured against the pill's 8% overlay, 40% accent clears AA in every
+     theme (dark 4.95:1, coffee 6.58:1, light 7.78:1). */
+  color: color-mix(in srgb, var(--lp-accent) 40%, var(--lp-dark-ink));
 }
 
 .formats-marquee {

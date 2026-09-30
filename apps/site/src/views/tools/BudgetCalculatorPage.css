@@ -201,7 +201,9 @@
   margin: 24px 0 0;
 }
 
-.calc-cta-link {
+/* Two classes so it outranks `.legal-article a`, whose link colour and underline
+   would otherwise land on the ink pill. */
+.calc-cta .calc-cta-link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
