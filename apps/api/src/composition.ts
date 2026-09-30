@@ -47,6 +47,7 @@ import {
   workspaceSettingsRepository,
   type WorkspaceSettingsRepository,
 } from "./db/workspace-settings";
+import { onboardingRepository, type OnboardingRepository } from "./db/onboarding";
 import { createAiEntryService, type AiEntryService } from "./entry/ai-entry-service";
 import { createPlatformAdminService, type PlatformAdminService } from "./platform-admin";
 import { providerRegistry } from "./provider-registry";
@@ -69,6 +70,7 @@ export interface AppOptions {
   accounts?: AccountRepository;
   budgets?: BudgetRepository;
   workspaceSettings?: WorkspaceSettingsRepository;
+  onboarding?: OnboardingRepository;
   billing?: BillingRepository;
   subscriptions?: SubscriptionRepository;
   events?: CalendarEventRepository;
@@ -114,6 +116,7 @@ export function createDependencies(overrides: AppOptions = {}) {
   const accountStore = overrides.accounts ?? accountRepository;
   const budgetStore = overrides.budgets ?? budgetRepository;
   const workspaceSettingsStore = overrides.workspaceSettings ?? workspaceSettingsRepository;
+  const onboardingStore = overrides.onboarding ?? onboardingRepository;
   const billingStore = overrides.billing ?? billingRepository;
   const subscriptionStore = overrides.subscriptions ?? subscriptionRepository;
   const eventStore = overrides.events ?? calendarEventRepository;
@@ -225,6 +228,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     accounts: accountStore,
     budgets: budgetStore,
     workspaceSettings: workspaceSettingsStore,
+    onboarding: onboardingStore,
     billing: billingStore,
     subscriptions: subscriptionStore,
     events: eventStore,

@@ -23,6 +23,19 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/analytics/funnel", () => funnel);
 
+const onboarding = vi.hoisted(() => ({
+  step: "complete" as "currency" | "cash" | "complete",
+  failed: false,
+  refetch: vi.fn(),
+}));
+
+vi.mock("../src/queries/onboarding", () => ({
+  useOnboarding: () =>
+    onboarding.failed
+      ? { isPending: false, isError: true, data: undefined, refetch: onboarding.refetch }
+      : { isPending: false, isError: false, data: { step: onboarding.step, currency: "PHP" } },
+}));
+
 vi.mock("../src/queries/settings", () => ({
   useWorkspaceSettings: () => ({ isPending: false, data: { currency: "PHP" } }),
 }));
@@ -92,6 +105,7 @@ function renderPrivateRoutes(settingsElement = <p>Settings content</p>, initialE
               <Route path="settings" element={settingsElement} />
             </Route>
             <Route path="/login" element={<p>Login page</p>} />
+            <Route path="/onboarding" element={<p>Onboarding page</p>} />
           </Routes>
         </MemoryRouter>
       </InitialDashboardExperienceProvider>
@@ -103,11 +117,33 @@ describe("PrivateAppStartupGate", () => {
   beforeEach(() => {
     authState.loading = false;
     authState.user = { id: "user-1" };
+    onboarding.step = "complete";
+    onboarding.failed = false;
+    onboarding.refetch.mockReset();
     funnel.captureFunnelEvent.mockReset();
     splash.readyCalls.length = 0;
   });
 
   afterEach(cleanup);
+
+  it.each(["currency", "cash"] as const)(
+    "sends a workspace still on the %s step to onboarding instead of the dashboard",
+    async (step) => {
+      onboarding.step = step;
+      renderPrivateRoutes();
+
+      expect(await screen.findByText("Onboarding page")).toBeInTheDocument();
+      expect(screen.queryByText("Dashboard content")).not.toBeInTheDocument();
+    },
+  );
+
+  it("sends the user to onboarding, which can retry, when the state fails to load", async () => {
+    onboarding.failed = true;
+    renderPrivateRoutes();
+
+    expect(await screen.findByText("Onboarding page")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard content")).not.toBeInTheDocument();
+  });
 
   it("keeps one loader mounted until the route commits and the dashboard data settles", async () => {
     renderPrivateRoutes();

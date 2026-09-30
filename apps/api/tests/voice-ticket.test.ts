@@ -56,7 +56,11 @@ function buildApi(options: { env: Bindings; consent?: () => Promise<void> }) {
   const voiceService = { requireConsent } as unknown as AssistantVoiceService;
   const verifier: AuthVerifier = { verify: vi.fn(async () => ({ id: USER_ID })) };
   const tenantResolver: TenantResolver = {
-    resolve: vi.fn(async () => ({ tenantId: TENANT_ID, defaultAccountId: "account-1" })),
+    resolve: vi.fn(async () => ({
+      tenantId: TENANT_ID,
+      defaultAccountId: "account-1",
+      onboardingComplete: true,
+    })),
   };
 
   const app = new Hono<AppEnvironment>();

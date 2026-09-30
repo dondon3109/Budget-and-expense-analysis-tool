@@ -1,4 +1,7 @@
-import { DEBT_PAYMENT_CATEGORY_SYSTEM_KEY } from "@zoption/shared";
+import {
+  DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+} from "@zoption/shared";
 
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
@@ -111,6 +114,15 @@ const DEFAULT_CATEGORIES = [
     origin: "system",
   },
   {
+    key: "opening-balance",
+    name: "Opening balance",
+    kind: "income",
+    color: "#6b7280",
+    iconEmoji: null,
+    systemKey: OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+    origin: "system",
+  },
+  {
     key: "interest",
     name: "Interest",
     kind: "income",
@@ -173,7 +185,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
       ),
       ...DEFAULT_CATEGORIES.map((category) =>
         env.DB.prepare(
-          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, icon_emoji, system_key, origin, required_plan) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'free')",
+          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, icon_emoji, system_key, origin, required_plan, archived) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'free', ?)",
         ).bind(
           defaultCategoryIdForTenant(tenantId, category.key),
           tenantId,
@@ -183,6 +195,8 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
           category.iconEmoji,
           category.systemKey,
           category.origin,
+          // The opening-balance category holds one system entry and is never offered in a picker.
+          category.systemKey === OPENING_BALANCE_CATEGORY_SYSTEM_KEY ? 1 : 0,
         ),
       ),
     ];
@@ -196,7 +210,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
     if (!mapping || mapping.tenantId !== tenantId) {
       throw new Error("The personal workspace could not be initialized.");
     }
-    return { tenantId: mapping.tenantId, defaultAccountId };
+    return { tenantId: mapping.tenantId, defaultAccountId, onboardingComplete: false };
   },
 };
 
@@ -209,14 +223,17 @@ export function createTenantResolver(
       // authenticated path passes through before resolution. Keeping a second check here
       // would duplicate one indexed D1 read on every request.
       const existing = await env.DB.prepare(
-        "SELECT tenant_id AS tenantId FROM user_tenants WHERE user_id = ?",
+        `SELECT ut.tenant_id AS tenantId, t.onboarding_step AS onboardingStep
+         FROM user_tenants ut JOIN tenants t ON t.id = ut.tenant_id
+         WHERE ut.user_id = ?`,
       )
         .bind(user.id)
-        .first<{ tenantId: string }>();
+        .first<{ tenantId: string; onboardingStep: string }>();
       if (existing) {
         return {
           tenantId: existing.tenantId,
           defaultAccountId: defaultAccountIdForTenant(existing.tenantId),
+          onboardingComplete: existing.onboardingStep === "complete",
         };
       }
       return bootstrapRepository.bootstrap(env, user);

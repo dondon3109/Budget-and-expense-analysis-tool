@@ -226,6 +226,11 @@ export function buildSql(userId, months) {
   statement(
     `INSERT OR IGNORE INTO tenants (id, kind, name) VALUES (${sqlString(tenantId)}, 'user', 'Personal budget')`,
   );
+  // A seeded workspace is a finished one: the private app must not redirect it to onboarding, even
+  // when the API bootstrapped the tenant first.
+  statement(
+    `UPDATE tenants SET onboarding_step = 'complete' WHERE id = ${sqlString(tenantId)} AND onboarding_step != 'complete'`,
+  );
   statement(
     `INSERT OR IGNORE INTO user_tenants (user_id, tenant_id) VALUES (${sqlString(userId)}, ${sqlString(tenantId)})`,
   );

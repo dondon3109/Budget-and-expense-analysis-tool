@@ -85,6 +85,8 @@ export interface AuthUser {
 export interface TenantContext {
   tenantId: string;
   defaultAccountId: string;
+  /** False until first-run onboarding finishes; the gate in `app.ts` keys off it. */
+  onboardingComplete: boolean;
 }
 
 export interface AppEnvironment {

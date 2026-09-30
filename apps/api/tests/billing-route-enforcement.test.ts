@@ -83,6 +83,7 @@ function tenantResolver(): TenantResolver {
     resolve: vi.fn(async () => ({
       tenantId: TENANT_ID,
       defaultAccountId: `${TENANT_ID}:account:default`,
+      onboardingComplete: true,
     })),
   };
 }

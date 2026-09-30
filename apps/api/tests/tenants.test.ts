@@ -74,10 +74,11 @@ describe("tenant bootstrap", () => {
     await expect(tenantBootstrapRepository.bootstrap(env, user)).resolves.toEqual({
       tenantId: "user:user-1",
       defaultAccountId: "user:user-1:account:default",
+      onboardingComplete: false,
     });
 
     expect(batches).toHaveLength(1);
-    expect(batches[0]).toHaveLength(18);
+    expect(batches[0]).toHaveLength(19);
 
     function findStatement(fragment: string): CapturedStatement {
       const match = captured.find((statement) => statement.sql.includes(fragment));
@@ -111,6 +112,7 @@ describe("tenant bootstrap", () => {
       "🍔",
       null,
       "starter",
+      0,
     ]);
     expect(
       captured.find((statement) => statement.values.includes("user:user-1:category:salary"))
@@ -124,6 +126,7 @@ describe("tenant bootstrap", () => {
       "💼",
       null,
       "starter",
+      0,
     ]);
     expect(
       captured.find((statement) => statement.values.includes("user:user-1:category:debt-payment"))
@@ -137,6 +140,7 @@ describe("tenant bootstrap", () => {
       "🏦",
       "debt:expense",
       "system",
+      0,
     ]);
     expect(
       captured.find((statement) =>
@@ -151,6 +155,7 @@ describe("tenant bootstrap", () => {
       null,
       "uncategorized:expense",
       "system",
+      0,
     ]);
     expect(
       captured

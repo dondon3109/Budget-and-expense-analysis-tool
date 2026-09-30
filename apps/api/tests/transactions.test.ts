@@ -37,6 +37,7 @@ function createSqliteEnvironment(): {
       kind text NOT NULL,
       color text NOT NULL,
       icon_emoji text,
+      system_key text,
       archived integer NOT NULL DEFAULT 0,
       required_plan text NOT NULL DEFAULT 'free'
     );

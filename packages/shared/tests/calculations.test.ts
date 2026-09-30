@@ -9,7 +9,12 @@ import {
   summarizeAccountBalances,
   type TransferFeeInsightInput,
 } from "../src/calculations";
-import type { AccountRecord, BudgetRecord, TransactionRecord } from "../src/types";
+import {
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  type AccountRecord,
+  type BudgetRecord,
+  type TransactionRecord,
+} from "../src/types";
 
 const baseTransaction: Omit<TransactionRecord, "id" | "kind" | "amountMinor"> = {
   date: "2026-07-10",
@@ -223,6 +228,31 @@ describe("dashboard calculations", () => {
     expect(result.insights.savingsRatePercent).toBe(30);
     expect(result.metrics.remainingBudgetMinor).toBe(-10_000);
     expect(result.budgetProgress[0]?.usedPercent).toBe(116.7);
+  });
+
+  it("keeps an opening balance out of every income figure", () => {
+    const opening = {
+      ...baseTransaction,
+      id: "opening",
+      kind: "income" as const,
+      amountMinor: 5_000_000,
+      categorySystemKey: OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+    };
+    const transactions: TransactionRecord[] = [
+      opening,
+      { ...baseTransaction, id: "salary", kind: "income", amountMinor: 100_000 },
+    ];
+    const period = { from: "2026-07-01", to: "2026-07-31" };
+
+    const summary = buildDashboardSummary(transactions, [], period);
+    expect(summary.metrics.moneyInMinor).toBe(100_000);
+    expect(summary.metrics.incomeByCurrency.PHP).toBe(100_000);
+    expect(summary.monthlyTrend.find((month) => month.month === "2026-07")?.incomeMinor).toBe(
+      100_000,
+    );
+
+    const trend = buildCashflowTrend(transactions, "monthly", "2026-07-15");
+    expect(trend.points.reduce((sum, point) => sum + point.incomeMinor, 0)).toBe(100_000);
   });
 
   it("reports income and expenses per currency alongside aggregate totals", () => {

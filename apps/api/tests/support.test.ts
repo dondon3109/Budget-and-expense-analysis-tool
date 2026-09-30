@@ -205,7 +205,11 @@ describe("product support chat", () => {
         verify: vi.fn().mockResolvedValue({ id: "user-1", email: "person@example.com" }),
       },
       tenantResolver: {
-        resolve: vi.fn().mockResolvedValue({ tenantId: "user:user-1", defaultAccountId: "cash" }),
+        resolve: vi.fn().mockResolvedValue({
+          tenantId: "user:user-1",
+          defaultAccountId: "cash",
+          onboardingComplete: true,
+        }),
       },
     });
     const body = {

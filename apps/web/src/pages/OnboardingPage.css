@@ -1,0 +1,116 @@
+.onboarding-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.onboarding-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.onboarding-step.current {
+  color: var(--brand-strong);
+  font-weight: 600;
+}
+
+.onboarding-step.completed {
+  color: var(--success);
+}
+
+.onboarding-step-circle {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font-size: 11px;
+}
+
+.onboarding-step.current .onboarding-step-circle {
+  color: var(--solid-text);
+  border-color: var(--brand-strong);
+  background: var(--brand-strong);
+}
+
+.onboarding-step.completed .onboarding-step-circle {
+  color: var(--solid-text);
+  border-color: var(--success);
+  background: var(--success);
+}
+
+/* The status words are for screen readers; the circle already shows it visually. */
+.onboarding-step-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.onboarding-field {
+  display: grid;
+  gap: 8px;
+}
+
+.onboarding-field > span:first-child {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 580;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.onboarding-field select,
+.onboarding-field input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 11px 14px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  font: inherit;
+}
+
+.onboarding-amount {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-symbol {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.onboarding-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.onboarding-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.onboarding-actions .button.primary {
+  flex: 1;
+}

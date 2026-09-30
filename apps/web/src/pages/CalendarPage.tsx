@@ -1,11 +1,12 @@
-import type {
-  CalendarEventInput,
-  CalendarEventMonth,
-  CalendarEventRecord,
-  SubscriptionMonthItem,
-  TransactionCalendarMonth,
-  TransactionInput,
-  TransactionListItem,
+import {
+  countsAsIncome,
+  type CalendarEventInput,
+  type CalendarEventMonth,
+  type CalendarEventRecord,
+  type SubscriptionMonthItem,
+  type TransactionCalendarMonth,
+  type TransactionInput,
+  type TransactionListItem,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, ChevronLeft, ChevronRight, FileUp, Plus } from "lucide-react";
@@ -64,7 +65,7 @@ function emptyCalendarDay(): CalendarDayData {
   };
 }
 
-function buildCalendarDays(
+export function buildCalendarDays(
   items: readonly TransactionListItem[],
   subscriptions: readonly SubscriptionMonthItem[],
   events: readonly CalendarEventRecord[],
@@ -74,8 +75,11 @@ function buildCalendarDays(
     const day = lookup.get(item.date) ?? emptyCalendarDay();
     day.items.push(item);
     if (item.kind === "income") {
-      day.incomeByCurrency[item.currency] += Math.abs(item.amountMinor);
-      day.incomeCount += 1;
+      // An opening balance is listed on its day but is not income earned.
+      if (countsAsIncome(item)) {
+        day.incomeByCurrency[item.currency] += Math.abs(item.amountMinor);
+        day.incomeCount += 1;
+      }
     } else if (item.kind === "expense") {
       day.expenseByCurrency[item.currency] += Math.abs(item.amountMinor);
       day.expenseCount += 1;

@@ -55,6 +55,7 @@ function createAppWithAuth() {
     resolve: vi.fn(async () => ({
       tenantId: "user:user-1",
       defaultAccountId: "user:user-1:account:default",
+      onboardingComplete: true,
     })),
   };
   const rateLimiter: RateLimiter = {

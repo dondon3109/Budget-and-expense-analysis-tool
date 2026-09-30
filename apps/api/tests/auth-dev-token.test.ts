@@ -36,6 +36,7 @@ function buildApp(options: { tickets?: Record<string, string> } = {}) {
   const resolve = vi.fn(async (_env: Bindings, user: { id: string }) => ({
     tenantId: `tenant:${user.id}`,
     defaultAccountId: `account:${user.id}`,
+    onboardingComplete: true,
   }));
   const consume = vi.fn(
     async (_env: Bindings, ticket: string) => options.tickets?.[ticket] ?? null,

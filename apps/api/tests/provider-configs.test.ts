@@ -19,7 +19,11 @@ function createAuthVerifier(userId = "admin-id") {
 
 function createTenantResolver() {
   return {
-    resolve: vi.fn(async () => ({ tenantId: "tenant-1", defaultAccountId: "acc-1" })),
+    resolve: vi.fn(async () => ({
+      tenantId: "tenant-1",
+      defaultAccountId: "acc-1",
+      onboardingComplete: true,
+    })),
   };
 }
 
