@@ -38,7 +38,7 @@ afterEach(() => {
 
 function setup(
   metadata: Partial<AssistantResponseMetadata> = { transactionDraft: draft },
-  rowAlreadyCreated = false,
+  rowAlreadyCreated?: boolean,
 ) {
   const { binding, database } = createD1TestDatabase();
   databases.push(database);
@@ -76,7 +76,11 @@ function setup(
   );
   const drafts = {
     ...assistantTransactionDraftRepository,
-    transactionExists: vi.fn(async () => rowAlreadyCreated),
+    transactionExists: vi.fn(
+      rowAlreadyCreated === undefined
+        ? assistantTransactionDraftRepository.transactionExists
+        : async () => rowAlreadyCreated,
+    ),
   };
   const service = createAssistantService(
     assistantRepository,
@@ -88,7 +92,7 @@ function setup(
     undefined,
     { drafts, transactions: { create } },
   );
-  return { env, create, drafts, service };
+  return { env, database, create, drafts, service };
 }
 
 describe("assistant transaction draft confirmation", () => {
@@ -152,6 +156,51 @@ describe("assistant transaction draft confirmation", () => {
       status: "saved",
       transactionId: MESSAGE,
     });
+  });
+
+  it("finds a seeded row by the reply's id through the real tenant-scoped lookup", async () => {
+    const { env, database, create, service } = setup({
+      transactionDraft: { ...draft, status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" },
+    });
+    database.exec(`
+      INSERT INTO categories (id, tenant_id, name, kind, color)
+        VALUES ('category-food', '${TENANT}', 'Food', 'expense', '#123456');
+      INSERT INTO transactions (id, tenant_id, category_id, date, description, amount_minor, kind)
+        VALUES ('${MESSAGE}', '${TENANT}', 'category-food', '2026-08-02', 'Jollibee', -25000, 'expense');
+    `);
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(create).not.toHaveBeenCalled();
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
+  });
+
+  it("refuses to save a draft a later correction replaced", async () => {
+    const { env, database, create, service } = setup();
+    database
+      .prepare(
+        `INSERT INTO assistant_messages
+         (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+         VALUES ('33333333-3333-4333-8333-333333333333', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+      )
+      .run(
+        TENANT,
+        THREAD,
+        JSON.stringify({
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed", topics: [] },
+          sources: [],
+          transactionDraft: { ...draft, amountMinor: 30_000 },
+        }),
+      );
+
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_draft_superseded",
+    });
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("treats a create that lost the race to the original request as saved", async () => {

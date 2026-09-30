@@ -11,14 +11,18 @@ import { messageFromRow, type MessageRow } from "./assistant";
  */
 export interface AssistantTransactionDraftRepository {
   findMessage(env: Bindings, tenantId: string, messageId: string): Promise<AssistantMessage | null>;
-  claim(env: Bindings, tenantId: string, messageId: string): Promise<boolean>;
+  /** A later reply in the same thread drafted again, so this draft was corrected away. */
+  hasNewerDraft(env: Bindings, tenantId: string, message: AssistantMessage): Promise<boolean>;
+  /** Returns the claim's timestamp, which scopes markSaved and release to this claim. */
+  claim(env: Bindings, tenantId: string, messageId: string): Promise<string | null>;
   markSaved(
     env: Bindings,
     tenantId: string,
     messageId: string,
     transactionId: string,
+    claimedAt: string,
   ): Promise<AssistantMessage | null>;
-  release(env: Bindings, tenantId: string, messageId: string): Promise<void>;
+  release(env: Bindings, tenantId: string, messageId: string, claimedAt: string): Promise<void>;
   transactionExists(env: Bindings, tenantId: string, transactionId: string): Promise<boolean>;
 }
 
@@ -39,6 +43,19 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
     return row ? messageFromRow(row) : null;
   },
 
+  async hasNewerDraft(env, tenantId, message) {
+    const row = await env.DB.prepare(
+      `SELECT 1 AS found FROM assistant_messages
+       WHERE tenant_id = ? AND thread_id = ? AND role = 'assistant' AND id != ?
+         AND created_at > ?
+         AND json_extract(response_metadata_json, '$.transactionDraft') IS NOT NULL
+       LIMIT 1`,
+    )
+      .bind(tenantId, message.threadId, message.id, message.createdAt)
+      .first<{ found: number }>();
+    return Boolean(row);
+  },
+
   async claim(env, tenantId, messageId) {
     const now = new Date();
     const staleBefore = new Date(now.getTime() - STALE_CLAIM_MS).toISOString();
@@ -55,10 +72,10 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
     )
       .bind(now.toISOString(), tenantId, messageId, staleBefore)
       .run();
-    return result.meta.changes === 1;
+    return result.meta.changes === 1 ? now.toISOString() : null;
   },
 
-  async markSaved(env, tenantId, messageId, transactionId) {
+  async markSaved(env, tenantId, messageId, transactionId, claimedAt) {
     await env.DB.prepare(
       `UPDATE assistant_messages
        SET response_metadata_json = json_set(
@@ -66,9 +83,9 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
          '$.transactionDraft.status', 'saved',
          '$.transactionDraft.transactionId', ?
        )
-       WHERE tenant_id = ? AND id = ? AND ${DRAFT_STATUS} = 'saving'`,
+       WHERE tenant_id = ? AND id = ? AND ${DRAFT_STATUS} = 'saving' AND ${DRAFT_CLAIMED_AT} = ?`,
     )
-      .bind(transactionId, tenantId, messageId)
+      .bind(transactionId, tenantId, messageId, claimedAt)
       .run();
     return this.findMessage(env, tenantId, messageId);
   },
@@ -82,13 +99,13 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
     return Boolean(row);
   },
 
-  async release(env, tenantId, messageId) {
+  async release(env, tenantId, messageId, claimedAt) {
     await env.DB.prepare(
       `UPDATE assistant_messages
        SET response_metadata_json = json_set(response_metadata_json, '$.transactionDraft.status', 'pending')
-       WHERE tenant_id = ? AND id = ? AND ${DRAFT_STATUS} = 'saving'`,
+       WHERE tenant_id = ? AND id = ? AND ${DRAFT_STATUS} = 'saving' AND ${DRAFT_CLAIMED_AT} = ?`,
     )
-      .bind(tenantId, messageId)
+      .bind(tenantId, messageId, claimedAt)
       .run();
   },
 };

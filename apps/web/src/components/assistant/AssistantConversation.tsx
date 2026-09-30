@@ -196,9 +196,12 @@ function AssistantMessageEvidence({ message }: { message: AssistantMessage }) {
 function AssistantTransactionDraftCard({
   message,
   draftSave,
+  superseded,
 }: {
   message: AssistantMessage;
   draftSave?: AssistantDraftSave;
+  /** A later reply drafted again, so saving this one would record the purchase twice. */
+  superseded: boolean;
 }) {
   const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
   if (!parsed.success) return null;
@@ -237,6 +240,8 @@ function AssistantTransactionDraftCard({
         <p className="assistant-draft-saved" role="status">
           <Check size={14} aria-hidden="true" /> Saved to your transactions
         </p>
+      ) : superseded ? (
+        <small>Replaced by a newer draft below.</small>
       ) : (
         <button
           type="button"
@@ -247,7 +252,9 @@ function AssistantTransactionDraftCard({
           {saving ? "Saving…" : "Save transaction"}
         </button>
       )}
-      {!saved && !error && <small>Not saved yet. Ask me to change anything before you save.</small>}
+      {!saved && !superseded && !error && (
+        <small>Not saved yet. Ask me to change anything before you save.</small>
+      )}
       {error && (
         <small className="assistant-draft-error" role="alert">
           {error}
@@ -332,6 +339,9 @@ export function AssistantConversation({
   draftSave,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  const latestDraftId = [...messages]
+    .reverse()
+    .find((message) => message.metadata?.transactionDraft)?.id;
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === "function") {
@@ -417,7 +427,11 @@ export function AssistantConversation({
                 </div>
               )}
               {message.role === "assistant" && (
-                <AssistantTransactionDraftCard message={message} draftSave={draftSave} />
+                <AssistantTransactionDraftCard
+                  message={message}
+                  draftSave={draftSave}
+                  superseded={message.id !== latestDraftId}
+                />
               )}
               {message.role === "assistant" && <AssistantMessageEvidence message={message} />}
               {message.status === "failed" && <small>Not sent. Try asking again.</small>}

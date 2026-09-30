@@ -78,7 +78,7 @@ import {
   VoiceRecordButton,
 } from "./assistant-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
-import { AssistantMessageRow } from "./AssistantMessageRow";
+import { AssistantMessageRow, latestDraftMessageId } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
@@ -759,10 +759,12 @@ export function AssistantScreen() {
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
+  const latestDraftId = latestDraftMessageId(messages);
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
       <AssistantMessageRow
         message={item}
+        superseded={item.id !== latestDraftId}
         onDraftSaved={(saved) =>
           setMessages((previous) =>
             previous.map((message) => (message.id === saved.id ? saved : message)),
@@ -770,7 +772,7 @@ export function AssistantScreen() {
         }
       />
     ),
-    [],
+    [latestDraftId],
   );
 
   const settingsAction = (

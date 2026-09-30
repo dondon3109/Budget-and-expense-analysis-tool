@@ -567,7 +567,15 @@ export function createAssistantService(
       }
       // Saving again returns the saved reply, so a retried tap never creates a second row.
       if (parsed.data.status === "saved") return message;
-      if (!(await drafts.claim(env, tenantId, messageId))) {
+      if (await drafts.hasNewerDraft(env, tenantId, message)) {
+        throw new HttpError(
+          409,
+          "assistant_draft_superseded",
+          "A newer draft replaced this one. Save the latest draft instead.",
+        );
+      }
+      const claimedAt = await drafts.claim(env, tenantId, messageId);
+      if (!claimedAt) {
         throw new HttpError(
           409,
           "assistant_draft_in_progress",
@@ -599,12 +607,12 @@ export function createAssistantService(
           // A request whose stale claim was taken over may have inserted the row meanwhile;
           // then this create hit its id, and the save has happened.
           if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
-            await drafts.release(env, tenantId, messageId);
+            await drafts.release(env, tenantId, messageId, claimedAt);
             throw error;
           }
         }
       }
-      const saved = await drafts.markSaved(env, tenantId, messageId, transactionId);
+      const saved = await drafts.markSaved(env, tenantId, messageId, transactionId, claimedAt);
       if (saved?.metadata?.transactionDraft?.status !== "saved") {
         // Another request took the claim over meanwhile. The row exists once either way.
         throw new HttpError(

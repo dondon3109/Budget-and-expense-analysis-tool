@@ -23,12 +23,22 @@ function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
   return "Grounded in " + first.label + period;
 }
 
+/** The newest reply carrying a draft; earlier drafts were corrected away. */
+export function latestDraftMessageId(
+  messages: readonly AssistantWireMessage[],
+): string | undefined {
+  return messages.findLast((message) => message.metadata?.transactionDraft)?.id;
+}
+
 /** One chat message, plus the review card when an assistant reply drafted a transaction. */
 export function AssistantMessageRow({
   message,
+  superseded = false,
   onDraftSaved,
 }: {
   message: AssistantWireMessage;
+  /** A later reply drafted again, so saving this one would record the purchase twice. */
+  superseded?: boolean;
   onDraftSaved: (saved: AssistantWireMessage) => void;
 }) {
   return (
@@ -41,7 +51,7 @@ export function AssistantMessageRow({
         evidenceLabel={evidenceLabelFor(message)}
       />
       {message.role === "assistant" ? (
-        <AssistantDraftCard message={message} onSaved={onDraftSaved} />
+        <AssistantDraftCard message={message} superseded={superseded} onSaved={onDraftSaved} />
       ) : null}
     </View>
   );
@@ -49,9 +59,11 @@ export function AssistantMessageRow({
 
 function AssistantDraftCard({
   message,
+  superseded,
   onSaved,
 }: {
   message: AssistantWireMessage;
+  superseded: boolean;
   onSaved: (saved: AssistantWireMessage) => void;
 }) {
   const theme = useZoptionTheme();
@@ -126,6 +138,10 @@ function AssistantDraftCard({
       {saved ? (
         <Text style={[typography.body, { color: theme.colors.income }]}>
           Saved to your transactions
+        </Text>
+      ) : superseded ? (
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+          Replaced by a newer draft below.
         </Text>
       ) : (
         <Button variant="primary" size="compact" loading={saving} onPress={() => void save()}>

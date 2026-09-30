@@ -568,6 +568,47 @@ describe("assistant orchestration", () => {
     expect(answer.responseMetadata.transactionDraft?.status).toBe("pending");
   });
 
+  it("attaches no draft to a reply that falls back to the generic refusal", async () => {
+    let calls = 0;
+    const provider: AssistantProvider = {
+      complete: vi.fn(async (): Promise<ProviderCompletion> => {
+        calls += 1;
+        if (calls === 1) return entryToolCompletion();
+        return textCompletion("Done! I've saved your PHP 250.00 Jollibee expense.");
+      }),
+    };
+    const reader = createReader();
+    const drafted = await reader.draftTransaction({ env, tenantId: "tenant-1" }, {} as never);
+    // Markup in the stored description makes the restated draft fail validation too.
+    vi.mocked(reader.draftTransaction).mockResolvedValue({
+      ...drafted,
+      envelope: {
+        ...drafted.envelope,
+        data: {
+          ...(drafted.envelope.data as object),
+          draft: {
+            ...(drafted.envelope.data as { draft: object }).draft,
+            description: "<b>Jollibee</b>",
+          },
+        },
+      },
+    });
+    const orchestrator = createAssistantOrchestrator(provider, reader);
+
+    const answer = await orchestrator.answer(
+      env,
+      "tenant-1",
+      [],
+      "I spent 250 at Jollibee",
+      identity,
+      entryPolicy,
+      "",
+    );
+
+    expect(answer.finishReason).toBe("validation_fallback");
+    expect(answer.responseMetadata.transactionDraft).toBeUndefined();
+  });
+
   it("rejects a draft dated after today", async () => {
     await expect(
       executeAssistantToolDetailed(
