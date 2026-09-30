@@ -88,7 +88,7 @@ function setup(
     undefined,
     { drafts, transactions: { create } },
   );
-  return { env, create, service };
+  return { env, create, drafts, service };
 }
 
 describe("assistant transaction draft confirmation", () => {
@@ -152,6 +152,15 @@ describe("assistant transaction draft confirmation", () => {
       status: "saved",
       transactionId: MESSAGE,
     });
+  });
+
+  it("treats a create that lost the race to the original request as saved", async () => {
+    const { env, create, drafts, service } = setup();
+    drafts.transactionExists.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    create.mockRejectedValueOnce(new Error("UNIQUE constraint failed: transactions.id"));
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(saved.metadata?.transactionDraft?.status).toBe("saved");
   });
 
   it("returns the draft to pending when the save fails, so the user can retry", async () => {

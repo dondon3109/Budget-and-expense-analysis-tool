@@ -413,6 +413,8 @@ describe("assistant transaction entry policy", () => {
       "Show my budget for this month",
       "What is a mutual fund",
       "How does term life insurance work",
+      "Thanks!",
+      "salamat po",
     ]) {
       expect(policyFor(question, history).requiredToolGroups).not.toContain("transaction_entry");
     }

@@ -501,7 +501,7 @@ export function deterministicDraftAnswer(
   const data = execution.result.data as { draft?: Record<string, unknown> } | null;
   const draft = data?.draft;
   if (!draft) return null;
-  const content = `I prepared this ${String(draft.kind)} for you to review: ${String(draft.amount)} for ${String(draft.description)} (${String(draft.categoryName)}, ${String(draft.accountName)}) on ${String(draft.date)}. It is not saved yet. Tap Save transaction to add it.`;
+  const content = `I prepared this ${String(draft.kind)} for you to review: ${String(draft.amount)} for ${String(draft.description)} (${String(draft.categoryName)}, ${String(draft.accountName)}) on ${String(draft.date)}. It is not saved yet. Tap Save transaction on the draft card below to add it; if you do not see the card, update the app.`;
   return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
     ? content
     : null;

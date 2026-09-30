@@ -563,7 +563,7 @@ describe("assistant orchestration", () => {
 
     expect(answer.finishReason).toBe("deterministic");
     expect(answer.content).toBe(
-      "I prepared this expense for you to review: PHP 250.00 for Jollibee (Food, GCash) on 2026-08-02. It is not saved yet. Tap Save transaction to add it.",
+      "I prepared this expense for you to review: PHP 250.00 for Jollibee (Food, GCash) on 2026-08-02. It is not saved yet. Tap Save transaction on the draft card below to add it; if you do not see the card, update the app.",
     );
     expect(answer.responseMetadata.transactionDraft?.status).toBe("pending");
   });

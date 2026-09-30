@@ -596,8 +596,12 @@ export function createAssistantService(
             { id: transactionId },
           );
         } catch (error) {
-          await drafts.release(env, tenantId, messageId);
-          throw error;
+          // A request whose stale claim was taken over may have inserted the row meanwhile;
+          // then this create hit its id, and the save has happened.
+          if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
+            await drafts.release(env, tenantId, messageId);
+            throw error;
+          }
         }
       }
       const saved = await drafts.markSaved(env, tenantId, messageId, transactionId);

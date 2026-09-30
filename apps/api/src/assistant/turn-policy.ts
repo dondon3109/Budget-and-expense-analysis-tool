@@ -60,6 +60,9 @@ const QUESTION_PATTERN =
   /\?|\b(?:how much|how many|what did|what was|what were|why|did i|magkano|ilan|ano ang|bakit)\b/i;
 const POLITE_REQUEST_PATTERN =
   /^\s*(?:(?:can|could|would|will)\s+you|please|pwede(?:\s+mo)?|paki)/i;
+// A bare acknowledgement after a draft carries nothing to log.
+const ACKNOWLEDGEMENT_PATTERN =
+  /^\s*(?:thanks?(?: you)?|thank u|ty|salamat(?: po)?|got it|nice|great|cool|awesome|done)[\s!.]*$/i;
 const VAGUE_SPEND_PATTERN = /\b(?:too much|so much|a lot|sobra|ang laki|ang dami)\b/i;
 
 /**
@@ -93,6 +96,7 @@ function continuesTransactionEntry(
   if (previous?.role !== "assistant" || !previous.metadata?.transactionEntry) return false;
   if (previous.metadata.transactionDraft?.status === "saved") return false;
   if (posture !== "budgeting_allowed" || EDUCATION_PATTERN.test(message)) return false;
+  if (ACKNOWLEDGEMENT_PATTERN.test(message)) return false;
   const asksForRecords =
     QUESTION_PATTERN.test(message) ||
     /\b(?:show|list|compare|tell me|ipakita|pakita|ilista)\b/i.test(message);

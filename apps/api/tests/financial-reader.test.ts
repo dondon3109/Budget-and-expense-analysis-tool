@@ -138,6 +138,8 @@ function createReader(
     accountItems?: AccountRecord[];
     summary?: DashboardSummary;
     plan?: BudgetMonthPlan;
+    transactionItems?: TransactionListItem[];
+    analysisRows?: Array<{ categoryId: string; categoryName: string; amountMinor: number }>;
   } = {},
 ) {
   const accounts: AccountRepository = {
@@ -154,7 +156,15 @@ function createReader(
     update: vi.fn(async () => category),
   };
   const transactions: TransactionRepository = {
-    list: vi.fn(async () => transactionPage),
+    list: vi.fn(async () =>
+      options.transactionItems
+        ? {
+            ...transactionPage,
+            items: options.transactionItems,
+            total: options.transactionItems.length,
+          }
+        : transactionPage,
+    ),
     calendar: vi.fn(async () => transactionCalendar),
     create: vi.fn(async () => transaction),
     update: vi.fn(async () => transaction),
@@ -162,21 +172,35 @@ function createReader(
     export: vi.fn(async () => [transaction]),
   };
   const dashboardLoader = vi.fn(async () => options.summary ?? dashboardSummary);
-  const analysisLoader = vi.fn(async () => [
-    {
-      id: transaction.id,
-      date: transaction.date,
-      description: transaction.description,
-      amountMinor: transaction.amountMinor,
-      kind: transaction.kind,
-      categoryId: transaction.categoryId,
-      categoryName: transaction.categoryName,
-      accountId: transaction.accountId,
-      accountName: transaction.accountName,
-      sourceKind: "manual" as const,
-      importId: null,
-    },
-  ]);
+  const analysisLoader = vi.fn(async () =>
+    options.analysisRows
+      ? options.analysisRows.map((row, index) => ({
+          id: `row-${index}`,
+          date: transaction.date,
+          description: `Row ${index}`,
+          kind: "expense" as const,
+          accountId: transaction.accountId,
+          accountName: transaction.accountName,
+          sourceKind: "manual" as const,
+          importId: null,
+          ...row,
+        }))
+      : [
+          {
+            id: transaction.id,
+            date: transaction.date,
+            description: transaction.description,
+            amountMinor: transaction.amountMinor,
+            kind: transaction.kind,
+            categoryId: transaction.categoryId,
+            categoryName: transaction.categoryName,
+            accountId: transaction.accountId,
+            accountName: transaction.accountName,
+            sourceKind: "manual" as const,
+            importId: null,
+          },
+        ],
+  );
   return {
     reader: createFinancialReader({
       accounts,
@@ -265,6 +289,58 @@ describe("assistant financial reader money formatting", () => {
         net: "PHP 166.67",
       },
     });
+  });
+});
+
+describe("assistant financial reader ordering and currencies", () => {
+  it("lists category spending largest first, not most frequent first", async () => {
+    const { reader } = createReader({
+      analysisRows: [
+        { categoryId: "coffee", categoryName: "Coffee", amountMinor: -15_000 },
+        { categoryId: "coffee", categoryName: "Coffee", amountMinor: -15_000 },
+        { categoryId: "coffee", categoryName: "Coffee", amountMinor: -15_000 },
+        { categoryId: "rent", categoryName: "Rent", amountMinor: -1_200_000 },
+      ],
+    });
+
+    const result = await reader.getSpendingByCategory(context, dashboardSummary.period);
+
+    expect(
+      (result.data as { items: Array<{ name: string }> }).items.map((item) => item.name),
+    ).toEqual(["Rent", "Coffee"]);
+  });
+
+  it("labels USD balances and transactions in USD and totals each currency separately", async () => {
+    const dollarAccount: AccountRecord = {
+      ...savingsAccount,
+      id: "account-usd",
+      name: "Dollar savings",
+      currency: "USD",
+      balanceMinor: 5_000,
+    };
+    const { reader } = createReader({
+      accountItems: [savingsAccount, dollarAccount],
+      transactionItems: [{ ...transaction, amountMinor: -1_250, currency: "USD" }],
+    });
+
+    const balances = await reader.getAccountBalances(context);
+    const transactions = await reader.listTransactions(context, { page: 1 });
+
+    expect(balances.data).toMatchObject({
+      overallBalance: "PHP 1,234.56",
+      overallUsdBalance: "USD 50.00",
+      items: [
+        { name: "Savings", balance: "PHP 1,234.56" },
+        { name: "Dollar savings", balance: "USD 50.00" },
+      ],
+    });
+    expect(transactions.data).toMatchObject({ items: [{ amount: "USD -12.50" }] });
+  });
+
+  it("omits the USD total when no account holds dollars", async () => {
+    const { reader } = createReader();
+    const balances = await reader.getAccountBalances(context);
+    expect(balances.data).not.toHaveProperty("overallUsdBalance");
   });
 });
 
