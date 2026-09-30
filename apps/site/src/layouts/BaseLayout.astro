@@ -4,7 +4,9 @@
  * pre-paint theme script, the consent UI, and the one shared client script.
  * Pages pass a manifest path; the 404 page passes its own noindex metadata.
  */
+import bricolageFont from "@zoption/web-common/fonts/bricolage-grotesque-latin.woff2?url";
 import geistFont from "@zoption/web-common/fonts/geist-latin.woff2?url";
+import geistMonoFont from "@zoption/web-common/fonts/geist-mono-latin.woff2?url";
 
 import { CookieConsent } from "../components/consent/CookieConsent";
 import {
@@ -41,7 +43,12 @@ const socialImageAlt = "Zoption private budget and expense tracker";
     <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/brand/apple-touch-icon.png" />
+    {/* Body text (Geist), the brand and headings (Bricolage), and eyebrows (Geist Mono) all
+        render above the fold. Preloading skips the wait for the stylesheet that declares
+        them and keeps a late font swap from shifting the hero. */}
     <link rel="preload" href={geistFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={bricolageFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={geistMonoFont} as="font" type="font/woff2" crossorigin />
     <meta name="theme-color" content="#f1f3f2" />
     <script is:inline src="/theme-bootstrap.js"></script>
     <meta property="og:type" content="website" />

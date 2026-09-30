@@ -61,12 +61,12 @@ describe("landing page", () => {
     ).toBeInTheDocument();
     expect(container.querySelector('a[href="https://app.zoption.site/login"]')).toBeInTheDocument();
     expect(container.querySelector('a[href="/demo"]')).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Choose theme" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Choose theme/ })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Zoption at a glance" })).toBeInTheDocument();
     expect(screen.getByText(/no payment required\. upgrade only/i)).toBeInTheDocument();
     expect(screen.getByText("Can I use Zoption for free?")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open Zoption Support" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask Zoption support" })).toBeInTheDocument();
   });
 
   it("highlights the six modules including subscriptions, savings, and the assistant", () => {
