@@ -13,6 +13,7 @@
 /signup https://app.zoption.site/signup 301
 /forgot-password https://app.zoption.site/forgot-password 301
 /update-password https://app.zoption.site/update-password 301
+/onboarding https://app.zoption.site/onboarding 301
 /app https://app.zoption.site/app 301
 /thank-you https://app.zoption.site/thank-you 301
 /dashboard https://app.zoption.site/app 301
