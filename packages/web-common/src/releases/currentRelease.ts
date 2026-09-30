@@ -11,32 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 29, 2026",
+  releasedOn: "September 30, 2026",
   changes: [
     {
-      title: "Choose your workspace currency",
+      title: "A short setup for new workspaces",
       description:
-        "Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, and new accounts, transactions, and subscriptions start in it. Switching relabels amounts; it does not convert them. The remittance calculator follows it too.",
+        "A new account on the web now chooses its currency and enters the cash on hand before the dashboard opens. That amount becomes the Cash account's opening balance and is not counted as income on the web dashboard, cashflow trend, or calendar. Existing accounts are not asked.",
     },
     {
-      title: "Subscriptions bill in their own currency",
+      title: "Checkout leads with Dodo Payments",
       description:
-        "Each subscription has its own currency, chosen in the subscription form. Its charges and renewals are recorded and checked against the account balance in that currency. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and say when a plan in the other currency is left out.",
+        "Pro checkout on the web and in the Android and iOS app offers Dodo Payments (card, Apple Pay, or Google Pay) first, with PayPal below it.",
     },
     {
-      title: "Dollar accounts and renewal emails use the right currency",
+      title: "Currency moved to Preferences on Android and iOS",
       description:
-        "Automatic interest on a US dollar savings account accrues and is credited in dollars, and subscription renewal emails show the subscription's own currency, kept as it was when the renewal was missed.",
+        "The Currency setting now sits under More → Preferences, beside Theme and Voice language, instead of inside the Account screen.",
     },
     {
-      title: "Currency stays separate per person and per chart",
+      title: "Tidier account rows and settings menus",
       description:
-        "The Android and iOS cashflow chart counts only entries in the workspace currency instead of adding pesos and dollars together, and the app picks up a currency changed on the web. On a shared browser, one person's currency no longer carries over to the next person.",
+        "Account rows on the web keep their icons lined up from row to row, and the settings dropdowns have a padded arrow.",
     },
     {
-      title: "Android Beta 0.2.40",
+      title: "Android Beta 0.2.41",
       description:
-        "The official Android Beta carries the workspace currency setting, per-subscription currencies, and the currency fixes above.",
+        "The official Android Beta carries the Currency setting under Preferences and the Dodo Payments checkout.",
     },
   ],
 };
@@ -51,6 +51,37 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "2.49.0",
+    releasedOn: "September 29, 2026",
+    changes: [
+      {
+        title: "Choose your workspace currency",
+        description:
+          "Account Settings has a Currency option (Philippine Peso or US Dollar) on the web, and the Android and iOS app follow it. Budgets, goals, debts, plans, and dashboard totals show in the chosen currency, and new accounts, transactions, and subscriptions start in it. Switching relabels amounts; it does not convert them. The remittance calculator follows it too.",
+      },
+      {
+        title: "Subscriptions bill in their own currency",
+        description:
+          "Each subscription has its own currency, chosen in the subscription form. Its charges and renewals are recorded and checked against the account balance in that currency. Subscription totals, the cashflow forecast, and safe-to-spend count only plans in the workspace currency and say when a plan in the other currency is left out.",
+      },
+      {
+        title: "Dollar accounts and renewal emails use the right currency",
+        description:
+          "Automatic interest on a US dollar savings account accrues and is credited in dollars, and subscription renewal emails show the subscription's own currency, kept as it was when the renewal was missed.",
+      },
+      {
+        title: "Currency stays separate per person and per chart",
+        description:
+          "The Android and iOS cashflow chart counts only entries in the workspace currency instead of adding pesos and dollars together, and the app picks up a currency changed on the web. On a shared browser, one person's currency no longer carries over to the next person.",
+      },
+      {
+        title: "Android Beta 0.2.40",
+        description:
+          "The official Android Beta carries the workspace currency setting, per-subscription currencies, and the currency fixes above.",
+      },
+    ],
+  },
   {
     version: "2.48.0",
     releasedOn: "September 29, 2026",
