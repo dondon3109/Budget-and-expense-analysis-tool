@@ -131,13 +131,13 @@ describe("PublicHeader", () => {
     document.documentElement.dataset.theme = "light";
     renderHeader();
 
-    await user.click(screen.getByRole("button", { name: "Choose theme" }));
+    await user.click(screen.getByRole("button", { name: /^Choose theme/ }));
     await user.click(screen.getByRole("menuitemradio", { name: "Dark" }));
 
     expect(document.documentElement.dataset.theme).toBe("dark");
     expect(localStorage.getItem("zoption-theme")).toBe("dark");
     expect(screen.queryByRole("menu", { name: "Choose theme" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Choose theme" })).toHaveFocus();
+    expect(screen.getByRole("button", { name: /^Choose theme/ })).toHaveFocus();
   });
 
   it("offers a skip link as the first focusable control, targeting the content landmark", () => {
