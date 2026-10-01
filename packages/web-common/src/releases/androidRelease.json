@@ -1,21 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.40-beta",
-  "versionCode": 20340,
-  "filename": "zoption-beta-0.2.40.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.40.apk",
-  "sha256": "6e364f894cf26f7a9d8ee97602124d1a9260009a1ae1866ee05d15198e25717f",
-  "sizeBytes": 139080168,
-  "sizeLabel": "139,080,168 bytes (132.64 MiB)",
-  "releaseDate": "2026-09-29",
-  "releaseDateLabel": "September 29, 2026",
+  "versionName": "0.2.43-beta",
+  "versionCode": 20343,
+  "filename": "zoption-beta-0.2.43.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.43.apk",
+  "sha256": "5e29a67d163648748bdd8e8a8bfa5b47242aee7bb695aec9c236e42af3eff0ea",
+  "sizeBytes": 139098552,
+  "sizeLabel": "139,098,552 bytes (132.65 MiB)",
+  "releaseDate": "2026-10-01",
+  "releaseDateLabel": "October 1, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Choose Philippine Peso or US Dollar as the workspace currency in Account Settings",
-    "Each subscription bills in its own currency",
-    "The cashflow chart counts only entries in the workspace currency"
+    "Log several voice entries from the redesigned mic widget without opening the app",
+    "A clearer Home screen with a safe-to-spend card and tinted category badges",
+    "The AI assistant opens in a new conversation and can draft transactions for you to save",
+    "Daily reminder on by default at 12:00 PM and 9:00 PM",
+    "PIN digits you type are no longer lost on a re-render"
   ]
 }
