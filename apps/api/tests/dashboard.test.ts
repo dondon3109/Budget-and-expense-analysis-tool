@@ -39,5 +39,17 @@ describe("loadDashboard account filtering", () => {
     expect(transactionStatement.query).not.toContain('"transactions"."account_id" = ?');
     expect(transactionStatement.bindings).toContain("tenant-1");
     expect(transactionStatement.bindings).not.toContain("account-1");
+    expect(transactionStatement.query).not.toContain('"transactions"."currency" = ?');
+  });
+
+  it("counts only the requested currency for the assistant", async () => {
+    const statements: CapturedStatement[] = [];
+    const env: Bindings = { DB: createCapturingDatabase(statements) };
+
+    await loadDashboard(env, "tenant-1", period, undefined, "USD");
+
+    const transactionStatement = findTransactionStatement(statements);
+    expect(transactionStatement.query).toContain('"transactions"."currency" = ?');
+    expect(transactionStatement.bindings).toContain("USD");
   });
 });

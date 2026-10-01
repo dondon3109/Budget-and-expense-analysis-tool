@@ -2,6 +2,7 @@ import type {
   AccountRecord,
   BudgetMonthPlan,
   CategoryRecord,
+  Currency,
   DashboardSummary,
   TransactionCalendarMonth,
   TransactionListItem,
@@ -133,11 +134,43 @@ const dashboardSummary: DashboardSummary = {
   },
 };
 
+interface AnalysisRow {
+  id: string;
+  date: string;
+  description: string;
+  amountMinor: number;
+  currency: Currency;
+  kind: "income" | "expense" | "transfer";
+  categoryId: string;
+  categoryName: string;
+  accountId: string | null;
+  accountName: string;
+  sourceKind: "manual" | "import";
+  importId: string | null;
+}
+
+const analysisRow: AnalysisRow = {
+  id: transaction.id,
+  date: transaction.date,
+  description: transaction.description,
+  amountMinor: transaction.amountMinor,
+  currency: "PHP",
+  kind: transaction.kind,
+  categoryId: transaction.categoryId,
+  categoryName: transaction.categoryName,
+  accountId: transaction.accountId,
+  accountName: transaction.accountName,
+  sourceKind: "manual",
+  importId: null,
+};
+
 function createReader(
   options: {
     accountItems?: AccountRecord[];
     summary?: DashboardSummary;
     plan?: BudgetMonthPlan;
+    analysisRows?: AnalysisRow[];
+    workspaceCurrency?: Currency;
   } = {},
 ) {
   const accounts: AccountRepository = {
@@ -162,21 +195,10 @@ function createReader(
     export: vi.fn(async () => [transaction]),
   };
   const dashboardLoader = vi.fn(async () => options.summary ?? dashboardSummary);
-  const analysisLoader = vi.fn(async () => [
-    {
-      id: transaction.id,
-      date: transaction.date,
-      description: transaction.description,
-      amountMinor: transaction.amountMinor,
-      kind: transaction.kind,
-      categoryId: transaction.categoryId,
-      categoryName: transaction.categoryName,
-      accountId: transaction.accountId,
-      accountName: transaction.accountName,
-      sourceKind: "manual" as const,
-      importId: null,
-    },
-  ]);
+  const analysisLoader = vi.fn(async (_context: unknown, from: string, to: string) =>
+    (options.analysisRows ?? [analysisRow]).filter((row) => row.date >= from && row.date <= to),
+  );
+  const workspaceCurrencyLoader = vi.fn(async () => options.workspaceCurrency ?? "PHP");
   return {
     reader: createFinancialReader({
       accounts,
@@ -185,6 +207,7 @@ function createReader(
       transactions,
       dashboardLoader,
       analysisLoader,
+      workspaceCurrencyLoader,
     }),
     accounts,
     dashboardLoader,
@@ -345,6 +368,7 @@ describe("assistant financial reader account filters", () => {
       "tenant-1",
       { from: "2026-07-01", to: "2026-07-31" },
       savingsAccount.id,
+      "PHP",
     );
     expect(JSON.stringify(result)).not.toContain(savingsAccount.id);
   });
@@ -369,6 +393,7 @@ describe("assistant financial reader account filters", () => {
       "tenant-1",
       { from: "2026-07-01", to: "2026-07-31" },
       bankAccount.id,
+      "PHP",
     );
   });
 
@@ -399,6 +424,7 @@ describe("assistant financial reader account filters", () => {
       "tenant-1",
       { from: "2026-07-01", to: "2026-07-31" },
       customBankAccount.id,
+      "PHP",
     );
   });
 
@@ -416,5 +442,143 @@ describe("assistant financial reader account filters", () => {
       }),
     ).resolves.toMatchObject({ data: { accountName: "Unknown", filterMatched: false } });
     expect(dashboardLoader).not.toHaveBeenCalled();
+  });
+});
+
+// Aggregates count only the workspace currency, never convert, and say what they left out.
+describe("assistant financial reader workspace currency", () => {
+  const usdRow: AnalysisRow = {
+    ...analysisRow,
+    id: "transaction-usd",
+    description: "Hosting",
+    amountMinor: -5_000,
+    currency: "USD",
+    accountId: "account-usd",
+    accountName: "Dollar card",
+  };
+  const excludedSignal = {
+    code: "other_currency_excluded",
+    message: expect.stringContaining("left out"),
+  };
+
+  it("summarizes a period in the workspace currency only", async () => {
+    const { reader, dashboardLoader } = createReader({
+      analysisRows: [analysisRow, usdRow],
+    });
+
+    const result = await reader.getPeriodSummary(context, dashboardSummary.period);
+
+    expect(dashboardLoader).toHaveBeenCalledWith(
+      env,
+      "tenant-1",
+      dashboardSummary.period,
+      undefined,
+      "PHP",
+    );
+    expect(result.data).toMatchObject({
+      currency: "PHP",
+      expenses: "PHP 696.00",
+      monthlyAverages: { expenses: "PHP 696.00" },
+    });
+    expect(result.source.recordCount).toBe(1);
+    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 1 });
+  });
+
+  it("totals spending by category without the other currency", async () => {
+    const { reader } = createReader({ analysisRows: [analysisRow, usdRow] });
+
+    const result = await reader.getSpendingByCategory(context, dashboardSummary.period);
+
+    expect(result.data).toMatchObject({
+      total: "PHP 696.00",
+      items: [{ name: category.name, amount: "PHP 696.00", transactionCount: 1 }],
+    });
+    expect(result.dataQuality.status).toBe("limited");
+    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 1 });
+  });
+
+  it("compares budgets with workspace-currency spending only", async () => {
+    const { reader } = createReader({ analysisRows: [analysisRow, usdRow] });
+
+    const result = await reader.getBudgetStatus(context, "2026-07-01");
+
+    expect(result.data).toMatchObject({
+      totalSpent: "PHP 696.00",
+      remaining: "PHP 304.00",
+      months: [{ spent: "PHP 696.00", items: [{ spent: "PHP 696.00" }] }],
+    });
+    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 1 });
+  });
+
+  it("formats aggregates with a USD workspace currency and leaves pesos out", async () => {
+    const { reader } = createReader({
+      analysisRows: [analysisRow, usdRow],
+      workspaceCurrency: "USD",
+    });
+
+    const result = await reader.getSpendingByCategory(context, dashboardSummary.period);
+
+    expect(result.data).toMatchObject({ total: "USD 50.00" });
+    expect(result.dataQuality.signals).toContainEqual({
+      code: "other_currency_excluded",
+      message: expect.stringContaining("transactions in PHP were left out"),
+      count: 1,
+    });
+  });
+
+  it("detects recurring charges only among workspace-currency rows", async () => {
+    const months = ["2026-04", "2026-05", "2026-06", "2026-07"];
+    const rows = months.flatMap((month, index) => [
+      { ...analysisRow, id: `php-${index}`, date: `${month}-05`, description: "Internet" },
+      { ...usdRow, id: `usd-${index}`, date: `${month}-10`, description: "Hosting" },
+    ]);
+    const { reader } = createReader({ analysisRows: rows });
+
+    const result = await reader.detectRecurringCharges(context, "2026-07-31");
+
+    expect(result.data).toMatchObject({
+      items: [{ description: "Internet", typicalAmount: "PHP 696.00" }],
+    });
+    expect(JSON.stringify(result.data)).not.toContain("Hosting");
+    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 4 });
+  });
+
+  it("flags anomalies against a workspace-currency baseline only", async () => {
+    const baseline = Array.from({ length: 6 }, (_, index) => ({
+      ...analysisRow,
+      id: `baseline-${index}`,
+      date: `2026-0${index + 1}-15`,
+      amountMinor: -10_000,
+    }));
+    const usdSpike = { ...usdRow, date: "2026-07-20", amountMinor: -9_000_000 };
+    const { reader } = createReader({ analysisRows: [...baseline, analysisRow, usdSpike] });
+
+    const result = await reader.detectSpendingAnomalies(context, dashboardSummary.period);
+
+    expect(JSON.stringify(result.data)).not.toContain("Hosting");
+    expect(JSON.stringify(result.data)).not.toContain("USD");
+    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 1 });
+  });
+
+  it("formats each account and listed transaction in its own currency", async () => {
+    const dollarAccount: AccountRecord = {
+      ...savingsAccount,
+      id: "account-usd",
+      name: "Dollar card",
+      currency: "USD",
+      balanceMinor: 5_000,
+    };
+    const { reader } = createReader({ accountItems: [savingsAccount, dollarAccount] });
+
+    const result = await reader.getAccountBalances(context);
+
+    expect(result.data).toMatchObject({
+      currency: "PHP",
+      overallBalance: "PHP 1,234.56",
+      items: [
+        { name: "Savings", balance: "PHP 1,234.56" },
+        { name: "Dollar card", balance: "USD 50.00" },
+      ],
+    });
   });
 });

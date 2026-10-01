@@ -424,7 +424,7 @@ export function deterministicPeriodSummaryAnswer(
       ? (summary.result.data as Record<string, unknown>)
       : null;
   const expenses = data?.["expenses"];
-  if (typeof expenses !== "string" || !/^PHP -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
+  if (typeof expenses !== "string" || !/^(?:PHP|USD) -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
     return null;
   }
   const args =

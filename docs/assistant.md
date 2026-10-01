@@ -124,6 +124,8 @@ The assistant surface always displays an educational-use notice. Topic-specific 
 
 Each financial tool returns structured source and data-quality metadata. Relevant signals include thin history, uncategorized or unassigned records, possible exact duplicates, legacy import provenance, possible merchant/category inconsistency, and possible coverage gaps. Heuristic findings are labeled as possible, not certain.
 
+Aggregates count only the workspace currency (`tenants.currency`, PHP when unset), the same rule the dashboard and plans follow. Period summaries, spending by category, budget versus actual, recurring charges, and spending anomalies drop rows in the other currency before summing and format every amount with the workspace currency code. Amounts are never converted. When rows were left out, the result carries an `other_currency_excluded` signal with their count and the status is at least `limited`, so the model says the other currency is not included. Account balances and listed transactions label each amount with its own currency; saved debts and goals have no currency of their own and use the workspace currency.
+
 Assistant responses can display:
 
 - the requested and comparison periods;
