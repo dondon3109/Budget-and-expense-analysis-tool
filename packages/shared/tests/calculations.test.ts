@@ -128,13 +128,20 @@ describe("cashflow trend calculations", () => {
     });
   });
 
-  it("returns every day in leap February and six full month buckets across a year boundary", () => {
+  it("returns the trailing 30 days for monthly, even on the first of the month", () => {
+    const firstDay = buildCashflowTrend([], "monthly", "2026-10-01");
+
+    expect(firstDay.range).toEqual({ from: "2026-09-02", to: "2026-10-01" });
+    expect(firstDay.points).toHaveLength(30);
+  });
+
+  it("returns 30 days across a leap February and six full month buckets across a year boundary", () => {
     const monthly = buildCashflowTrend([], "monthly", "2024-02-12");
     const sixMonth = buildCashflowTrend([], "sixMonth", "2026-02-12");
 
-    expect(monthly.range).toEqual({ from: "2024-02-01", to: "2024-02-29" });
-    expect(monthly.points).toHaveLength(29);
-    expect(monthly.points.at(-1)?.date).toBe("2024-02-29");
+    expect(monthly.range).toEqual({ from: "2024-01-14", to: "2024-02-12" });
+    expect(monthly.points).toHaveLength(30);
+    expect(monthly.points.at(-1)?.date).toBe("2024-02-12");
     expect(sixMonth.range).toEqual({ from: "2025-09-01", to: "2026-02-28" });
     expect(sixMonth.points.map((point) => point.date)).toEqual([
       "2025-09-01",

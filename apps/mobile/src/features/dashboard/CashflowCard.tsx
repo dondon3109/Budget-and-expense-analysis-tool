@@ -14,7 +14,7 @@ const CASHFLOW_VIEWS: {
   proOnly: boolean;
 }[] = [
   { value: "weekly", label: "7 days", title: "Cash flow · last 7 days", proOnly: false },
-  { value: "monthly", label: "Month", title: "Cash flow · this month", proOnly: true },
+  { value: "monthly", label: "Month", title: "Cash flow · last 30 days", proOnly: true },
   { value: "sixMonth", label: "6 months", title: "Cash flow · last 6 months", proOnly: true },
 ];
 

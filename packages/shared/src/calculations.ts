@@ -134,7 +134,8 @@ function cashflowPoints(view: CashflowTrend["view"], anchorDate: string): Cashfl
     view === "weekly"
       ? { from: shiftUtcDays(anchorDate, -6), to: anchorDate }
       : view === "monthly"
-        ? { from: monthStart(anchorDate), to: monthEnd(anchorDate) }
+        ? // Rolling past month, not the calendar month, so the chart is never empty on the 1st.
+          { from: shiftUtcDays(anchorDate, -29), to: anchorDate }
         : { from: shiftUtcMonths(anchorDate, -5), to: monthEnd(anchorDate) };
   const granularity = view === "sixMonth" ? "month" : "day";
   const pointDates: string[] = [];
