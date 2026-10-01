@@ -11,6 +11,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- The Android mic widget has a new look: a bordered surface card with a brand mic circle that follows your phone's light or dark theme. Stretch it wider to see the Zoption title and a "Tap and say what you spent" hint.
 - The Terms of Service and Privacy Policy (updated October 1, 2026), the zoption.site home, pricing, and FAQ pages, and the AI-readable site summaries describe the assistant's transaction drafts: it never writes on its own, only your Save tap adds a draft, and it never edits or deletes existing records.
 - Opening the AI assistant on mobile starts a new conversation; past conversations are one tap away with the back arrow.
 - The mobile daily reminder is now on by default and notifies you at 12:00 PM and 9:00 PM; a single switch under More → Preferences → Daily reminder turns it off. The app asks for notification permission the first time you sign in.
