@@ -145,7 +145,7 @@ describe("SubscriptionsScreen", () => {
     expect(screen.getByText("Total monthly cost")).toBeTruthy();
     expect(screen.getAllByText("Netflix")[0]).toBeTruthy();
     expect(screen.getByText("Gym Membership")).toBeTruthy();
-    expect(screen.getByText("🎬")).toBeTruthy();
+    expect(screen.getByText("🎬", { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByText("Entertainment")).toBeTruthy();
     expect(screen.getAllByText("BDO Checking").length).toBeGreaterThan(0);
 

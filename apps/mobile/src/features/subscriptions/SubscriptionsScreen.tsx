@@ -24,6 +24,7 @@ import {
   MoneyValue,
   moneyAccessibilityLabel,
   Skeleton,
+  CategoryBadge,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
@@ -406,16 +407,11 @@ function SubscriptionRow({
           {/* Header row with category & status */}
           <View style={styles.rowBetween}>
             <View style={styles.categoryBadge}>
-              {category?.emoji ? (
-                <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-              ) : (
-                <View
-                  style={[
-                    styles.categoryDot,
-                    { backgroundColor: category?.color ?? theme.colors.brand },
-                  ]}
-                />
-              )}
+              <CategoryBadge
+                emoji={category?.emoji ?? null}
+                color={category?.color ?? String(theme.colors.brand)}
+                size={24}
+              />
               <Text
                 numberOfLines={1}
                 style={[
@@ -637,15 +633,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xxs,
     flexShrink: 1,
-  },
-  categoryDot: {
-    width: 8,
-    height: 8,
-    borderRadius: radii.round,
-  },
-  categoryEmoji: {
-    fontSize: 13,
-    lineHeight: 16,
   },
   statusPill: {
     paddingHorizontal: spacing.xs,
