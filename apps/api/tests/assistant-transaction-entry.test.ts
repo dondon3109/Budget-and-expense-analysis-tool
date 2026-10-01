@@ -3,10 +3,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   draftTransaction,
+  loadEntryHistory,
   suggestTransactionDetails,
   type EntryHistoryRow,
   type TransactionDraftInput,
 } from "../src/assistant/transaction-entry";
+import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
 
 function account(id: string, name: string, balanceMinor: number, archived = false): AccountRecord {
   return { id, name, type: "other", currency: "PHP", balanceMinor, archived };
@@ -246,6 +249,64 @@ describe("assistant transaction drafts", () => {
         draftTransaction({ ...draftInput, date, amount: "250" }, accounts, categories).envelope
           .data,
       ).toMatchObject({ status: "date_out_of_range" });
+    }
+  });
+});
+
+describe("loadEntryHistory against D1", () => {
+  it("reads the tenant's own rows in active categories and blanks archived or missing accounts", async () => {
+    const { binding, database } = createD1TestDatabase();
+    try {
+      for (const tenant of ["tenant-a", "tenant-b"]) {
+        database
+          .prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')")
+          .run(tenant);
+        database
+          .prepare(
+            "INSERT INTO accounts (id, tenant_id, name, type) VALUES (?, ?, 'GCash', 'cash')",
+          )
+          .run(`${tenant}-gcash`, tenant);
+        database
+          .prepare(
+            "INSERT INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, 'Food', 'expense', '#000000')",
+          )
+          .run(`${tenant}-food`, tenant);
+      }
+      database
+        .prepare(
+          "INSERT INTO accounts (id, tenant_id, name, type, archived) VALUES ('old-wallet', 'tenant-a', 'Old wallet', 'cash', 1)",
+        )
+        .run();
+      database
+        .prepare(
+          "INSERT INTO categories (id, tenant_id, name, kind, color, archived) VALUES ('old-food', 'tenant-a', 'Old food', 'expense', '#000000', 1)",
+        )
+        .run();
+      const insert = database.prepare(
+        `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, kind)
+         VALUES (?, ?, ?, ?, ?, ?, -25000, 'expense')`,
+      );
+      insert.run("t1", "tenant-a", "tenant-a-gcash", "tenant-a-food", "2026-08-03", "Jollibee");
+      insert.run("t2", "tenant-a", "old-wallet", "tenant-a-food", "2026-08-02", "Mang Inasal");
+      insert.run("t3", "tenant-a", null, "tenant-a-food", "2026-08-01", "Cash lunch");
+      insert.run("t4", "tenant-a", "tenant-a-gcash", "old-food", "2026-08-01", "Archived category");
+      insert.run("t5", "tenant-b", "tenant-b-gcash", "tenant-b-food", "2026-08-01", "Other tenant");
+      insert.run("t6", "tenant-a", "tenant-a-gcash", "tenant-a-food", "2026-06-01", "Too old");
+
+      const rows = await loadEntryHistory(
+        { env: { DB: binding } as unknown as Bindings, tenantId: "tenant-a" },
+        "expense",
+        "2026-07-01",
+        "2026-08-31",
+      );
+
+      expect(rows.map((row) => [row.description, row.categoryName, row.accountName])).toEqual([
+        ["Jollibee", "Food", "GCash"],
+        ["Mang Inasal", "Food", null],
+        ["Cash lunch", "Food", null],
+      ]);
+    } finally {
+      database.close();
     }
   });
 });
