@@ -156,8 +156,8 @@ export function AssistantConsentCard({
 }) {
   const theme = useZoptionTheme();
   const points = [
-    "Nothing saves without you — the assistant can draft a transaction for review, but only your Save tap adds it, and it never edits existing records.",
-    "Your credentials and sessions stay private; only your question and the financial data needed to answer it are sent to the AI provider.",
+    "Nothing saves without you. The assistant can draft a transaction, but only your Save tap adds it, and it never edits existing records.",
+    "Your credentials stay private. Only your question and the data needed to answer it go to the AI provider.",
     "Audit snapshots of what the assistant read are sanitized and kept only for review.",
     "Operational monitoring is metadata-only — never your transaction descriptions.",
     "Assistant memory is kept until you delete it, and can be cleared anytime.",
@@ -172,15 +172,18 @@ export function AssistantConsentCard({
           The AI Financial Assistant answers questions using your own records. Before it can help,
           confirm how your data is handled.
         </Text>
-        <View className="gap-2">
+        <View className="gap-3">
           {points.map((point) => (
             <View key={point} className="flex-row gap-2">
               <MaterialCommunityIcons
                 name="shield-check-outline"
                 size={18}
                 color={theme.colors.brand}
+                style={{ marginTop: 1 }}
               />
-              <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>{point}</Text>
+              <Text style={[typography.callout, { color: theme.colors.text, flex: 1 }]}>
+                {point}
+              </Text>
             </View>
           ))}
         </View>
