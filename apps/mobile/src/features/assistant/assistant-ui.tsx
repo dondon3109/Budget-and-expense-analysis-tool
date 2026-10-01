@@ -154,7 +154,7 @@ export function AssistantConsentCard({
 }) {
   const theme = useZoptionTheme();
   const points = [
-    "Read-only by design — the assistant can analyze your records but never edits them.",
+    "Nothing saves without you — the assistant can draft a transaction for review, but only your Save tap adds it, and it never edits existing records.",
     "Your credentials and sessions stay private; only your question and the financial data needed to answer it are sent to the AI provider.",
     "Audit snapshots of what the assistant read are sanitized and kept only for review.",
     "Operational monitoring is metadata-only — never your transaction descriptions.",

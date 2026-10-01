@@ -31,7 +31,7 @@ The implementation includes:
 - Editable monthly budgets, category spending, six-month trends, savings rate, and recurring-expense insights.
 - Account balances calculated from recorded transaction ledgers, with explicit disclosure that they are not live bank balances and have no opening-balance snapshot.
 - A Goals & debt planning ledger with tenant-owned savings goals, debt inputs, deterministic target-date contributions, and avalanche/snowball projections.
-- A tenant-scoped, read-only AI Financial Assistant on the admin-selected provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, and Muse Spark are allowlisted), deterministic compliance/date policy, required backend tools, grounded-answer validation, versioned provider consent, response provenance, and 90-day chat plus sanitized-audit retention.
+- A tenant-scoped AI Financial Assistant that reads through fixed tools and saves a drafted transaction only on the user's tap, on the admin-selected provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, and Muse Spark are allowlisted), deterministic compliance/date policy, required backend tools, grounded-answer validation, versioned provider consent, response provenance, and 90-day chat plus sanitized-audit retention.
 - Tenant-scoped rate limiting for authenticated writes, imports, and assistant generation.
 - Accessible chart tables, keyboard-visible focus states, mobile layouts, and route-level code splitting.
 - Public Terms of Service, Privacy Policy, and Cookie Policy routes plus a shared legal footer.

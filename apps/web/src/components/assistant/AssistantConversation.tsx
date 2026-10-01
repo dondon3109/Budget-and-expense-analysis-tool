@@ -1,3 +1,4 @@
+import { assistantTransactionDraftSchema } from "@zoption/shared";
 import type {
   AssistantMessage,
   AssistantSourceMetadata,
@@ -6,8 +7,11 @@ import type {
 import {
   ArrowRight,
   Bot,
+  Check,
   Database,
+  NotebookPen,
   PiggyBank,
+  ReceiptText,
   Scale,
   Sparkles,
   TrendingUp,
@@ -18,6 +22,7 @@ import { Fragment, useEffect, useRef } from "react";
 
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
 import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
+import "./AssistantTransactionDraft.css";
 
 const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof Scale }[] = [
   {
@@ -44,6 +49,18 @@ const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof
     desc: "Pace toward your savings goal",
     icon: Sparkles,
   },
+  {
+    prompt: "Help me log an expense",
+    title: "Log what I just spent",
+    desc: "Suggestions from your past entries",
+    icon: NotebookPen,
+  },
+  {
+    prompt: "I only know how much is left in my wallet. Help me log my spending.",
+    title: "I only know what's left",
+    desc: "Work out the amount from your balance",
+    icon: ReceiptText,
+  },
 ];
 
 interface AssistantConversationProps {
@@ -54,6 +71,14 @@ interface AssistantConversationProps {
   voiceReplies?: Readonly<Record<string, AssistantMessageVoiceReply>>;
   onPrompt: (prompt: string) => void;
   feeInsight?: TransferFeeInsight;
+  draftSave?: AssistantDraftSave;
+}
+
+export interface AssistantDraftSave {
+  savingMessageId?: string;
+  failedMessageId?: string;
+  error?: string;
+  onSave: (messageId: string) => void;
 }
 
 export interface AssistantMessageVoiceReply {
@@ -168,6 +193,77 @@ function AssistantMessageEvidence({ message }: { message: AssistantMessage }) {
   );
 }
 
+function AssistantTransactionDraftCard({
+  message,
+  draftSave,
+  superseded,
+}: {
+  message: AssistantMessage;
+  draftSave?: AssistantDraftSave;
+  /** A later reply drafted again, so saving this one would record the purchase twice. */
+  superseded: boolean;
+}) {
+  const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+  if (!parsed.success) return null;
+  const draft = parsed.data;
+  // A stored "saving" state is not trusted here: the server refuses a live claim and takes
+  // over one a failed request left behind, so the button stays usable.
+  const saving = draftSave?.savingMessageId === message.id;
+  const saved = draft.status === "saved";
+  const error = draftSave?.failedMessageId === message.id ? draftSave.error : undefined;
+
+  return (
+    <section className={`assistant-draft ${draft.kind}`} aria-label="Transaction draft">
+      <div className="assistant-draft-head">
+        <span>{draft.kind === "income" ? "Income" : "Expense"} draft</span>
+        <strong>{formatMoney(draft.amountMinor, draft.currency)}</strong>
+      </div>
+      <dl>
+        <div>
+          <dt>Description</dt>
+          <dd>{draft.description}</dd>
+        </div>
+        <div>
+          <dt>Category</dt>
+          <dd>{draft.categoryName}</dd>
+        </div>
+        <div>
+          <dt>Account</dt>
+          <dd>{draft.accountName}</dd>
+        </div>
+        <div>
+          <dt>Date</dt>
+          <dd>{formatDate(draft.date)}</dd>
+        </div>
+      </dl>
+      {saved ? (
+        <p className="assistant-draft-saved" role="status">
+          <Check size={14} aria-hidden="true" /> Saved to your transactions
+        </p>
+      ) : superseded ? (
+        <small>Replaced by a newer draft below.</small>
+      ) : (
+        <button
+          type="button"
+          className="assistant-draft-save"
+          disabled={saving || !draftSave}
+          onClick={() => draftSave?.onSave(message.id)}
+        >
+          {saving ? "Saving…" : "Save transaction"}
+        </button>
+      )}
+      {!saved && !superseded && !error && (
+        <small>Not saved yet. Ask me to change anything before you save.</small>
+      )}
+      {error && (
+        <small className="assistant-draft-error" role="alert">
+          {error}
+        </small>
+      )}
+    </section>
+  );
+}
+
 function phpAmountParts(amountMinor: number) {
   return formatMoneyParts(amountMinor, "PHP").map((part, index) =>
     part.type === "currency" ? (
@@ -240,8 +336,17 @@ export function AssistantConversation({
   voiceReplies,
   onPrompt,
   feeInsight,
+  draftSave,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
+  // Replies whose draft a later correction replaced; saving one would record a purchase twice.
+  const replacedDraftIds = new Set<string>();
+  for (const message of messages) {
+    const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+    if (parsed.success && parsed.data.replacesMessageId) {
+      replacedDraftIds.add(parsed.data.replacesMessageId);
+    }
+  }
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === "function") {
@@ -258,7 +363,8 @@ export function AssistantConversation({
         <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
         <p>
-          Ask about balances, cash flow, budgets, recurring charges, goals, or debt payoff planning.
+          Ask about balances, cash flow, budgets, recurring charges, goals, or debt payoff planning,
+          or tell me what you spent and I&apos;ll help you log it.
         </p>
         <div className="assistant-quick-prompts">
           {QUICK_PROMPTS.map(({ prompt, title, desc, icon: Icon }) => (
@@ -324,6 +430,13 @@ export function AssistantConversation({
                     <small>{voiceReply.error}</small>
                   )}
                 </div>
+              )}
+              {message.role === "assistant" && (
+                <AssistantTransactionDraftCard
+                  message={message}
+                  draftSave={draftSave}
+                  superseded={replacedDraftIds.has(message.id)}
+                />
               )}
               {message.role === "assistant" && <AssistantMessageEvidence message={message} />}
               {message.status === "failed" && <small>Not sent. Try asking again.</small>}

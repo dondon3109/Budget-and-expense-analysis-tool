@@ -1,6 +1,10 @@
-import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
+import {
+  assistantTransactionDraftSchema,
+  CURRENT_ASSISTANT_CONSENT_VERSION,
+} from "@zoption/shared";
 import type {
   AssistantMemory,
+  AssistantMessage,
   AssistantMemoryPreferences,
   AssistantMemoryPreferencesUpdate,
   AssistantMessageInput,
@@ -15,6 +19,12 @@ import type {
 
 import type { AssistantRepository } from "../db/assistant";
 import type { AssistantModelMemoryUsageRepository } from "../db/assistant-model-memory-usage";
+import {
+  assistantTransactionDraftRepository,
+  STALE_CLAIM_MS,
+  type AssistantTransactionDraftRepository,
+} from "../db/assistant-transaction-drafts";
+import { transactionRepository, type TransactionRepository } from "../db/transactions";
 import { consumeAiUsage as defaultConsumeAiUsage } from "../db/billing";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -97,6 +107,16 @@ export interface AssistantService {
     value: string,
   ): Promise<AssistantMemory>;
   deleteMemoryFact(env: Bindings, tenantId: string, id: string): Promise<void>;
+  confirmTransactionDraft(
+    env: Bindings,
+    tenantId: string,
+    messageId: string,
+  ): Promise<AssistantMessage>;
+}
+
+export interface AssistantTransactionDraftDependencies {
+  drafts: AssistantTransactionDraftRepository;
+  transactions: Pick<TransactionRepository, "create">;
 }
 
 export interface AssistantProviderFailureEvent {
@@ -128,6 +148,41 @@ function reportProviderFailure(
     reporter(event);
   } catch {
     // Operational diagnostics must never alter the assistant response or turn cleanup.
+  }
+}
+
+/**
+ * A correction drafted after the user saved the original, or while it was saving, would
+ * record the purchase twice. The original's claim already refuses once this correction is
+ * stored, so a status read here cannot race a later claim. A claim gone stale belongs to a
+ * request that died, and the row check covers one that died after its create.
+ */
+async function refuseIfReplacedDraftSaved(
+  drafts: AssistantTransactionDraftRepository,
+  env: Bindings,
+  tenantId: string,
+  replacedMessageId: string | undefined,
+): Promise<void> {
+  if (!replacedMessageId) return;
+  const replaced = (await drafts.findMessage(env, tenantId, replacedMessageId))?.metadata
+    ?.transactionDraft;
+  if (
+    replaced?.status === "saved" ||
+    (await drafts.transactionExists(env, tenantId, replacedMessageId))
+  ) {
+    throw new HttpError(
+      409,
+      "assistant_draft_already_saved",
+      "The earlier draft was already saved. Edit that transaction instead, or if this is a different purchase, ask for a new draft of it.",
+    );
+  }
+  const claimAge = replaced?.claimedAt ? Date.now() - Date.parse(replaced.claimedAt) : Infinity;
+  if (replaced?.status === "saving" && claimAge < STALE_CLAIM_MS) {
+    throw new HttpError(
+      409,
+      "assistant_draft_in_progress",
+      "The earlier draft is still being saved. Try again in a moment.",
+    );
   }
 }
 
@@ -174,6 +229,10 @@ export function createAssistantService(
   provider?: AssistantProvider,
   modelMemoryUsage?: Pick<AssistantModelMemoryUsageRepository, "tryConsumePass">,
   telemetryFactory: AssistantAiTelemetryFactory = createPostHogAiTelemetry,
+  transactionDrafts: AssistantTransactionDraftDependencies = {
+    drafts: assistantTransactionDraftRepository,
+    transactions: transactionRepository,
+  },
 ): AssistantService {
   async function requireReadyPreferences(
     env: Bindings,
@@ -529,6 +588,99 @@ export function createAssistantService(
 
     async deleteMemoryFact(env, tenantId, id) {
       await repository.deleteMemoryById(env, tenantId, id);
+    },
+
+    async confirmTransactionDraft(env, tenantId, messageId) {
+      // Saving is part of the assistant surface, so it needs the same current consent as a turn.
+      await requireReadyPreferences(env, tenantId);
+      const { drafts, transactions } = transactionDrafts;
+      const message = await drafts.findMessage(env, tenantId, messageId);
+      const parsed = assistantTransactionDraftSchema.safeParse(message?.metadata?.transactionDraft);
+      if (!message || !parsed.success) {
+        throw new HttpError(
+          404,
+          "assistant_draft_not_found",
+          "That transaction draft was not found.",
+        );
+      }
+      // Saving again returns the saved reply, so a retried tap never creates a second row.
+      if (parsed.data.status === "saved") return message;
+      if (await drafts.isReplaced(env, tenantId, message)) {
+        throw new HttpError(
+          409,
+          "assistant_draft_superseded",
+          "A newer draft replaced this one. Save the latest draft instead.",
+        );
+      }
+      await refuseIfReplacedDraftSaved(drafts, env, tenantId, parsed.data.replacesMessageId);
+      const claimedAt = await drafts.claim(env, tenantId, messageId);
+      if (!claimedAt && (await drafts.isReplaced(env, tenantId, message))) {
+        throw new HttpError(
+          409,
+          "assistant_draft_superseded",
+          "A newer draft replaced this one. Save the latest draft instead.",
+        );
+      }
+      if (!claimedAt) {
+        // A second tab or a retried request may have finished the save since the read above.
+        const current = await drafts.findMessage(env, tenantId, messageId);
+        if (current?.metadata?.transactionDraft?.status === "saved") return current;
+        throw new HttpError(
+          409,
+          "assistant_draft_in_progress",
+          "This transaction is already being saved.",
+        );
+      }
+      const draft = parsed.data;
+      // The row is keyed on this reply's id. A claim taken over from a request that died after
+      // its create finds that row here instead of creating a second one.
+      const transactionId = messageId;
+      if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
+        try {
+          // The create path re-validates the category, account, and plan access as of now.
+          await transactions.create(
+            env,
+            tenantId,
+            {
+              kind: draft.kind,
+              date: draft.date,
+              description: draft.description,
+              amountMinor: draft.amountMinor,
+              currency: draft.currency,
+              categoryId: draft.categoryId,
+              accountId: draft.accountId,
+            },
+            { id: transactionId },
+          );
+        } catch (error) {
+          // A request whose stale claim was taken over may have inserted the row meanwhile;
+          // then this create hit its id, and the save has happened.
+          if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
+            await drafts.release(env, tenantId, messageId, claimedAt);
+            throw error;
+          }
+        }
+      }
+      const saved = await drafts.markSaved(env, tenantId, messageId, transactionId, claimedAt);
+      if (saved?.metadata?.transactionDraft?.status !== "saved") {
+        // Another request took the claim over meanwhile and will mark it saved. The row this
+        // request wrote exists either way, so report the save rather than an error.
+        if (saved && (await drafts.transactionExists(env, tenantId, transactionId))) {
+          return {
+            ...saved,
+            metadata: {
+              ...saved.metadata!,
+              transactionDraft: { ...draft, status: "saved", transactionId },
+            },
+          };
+        }
+        throw new HttpError(
+          409,
+          "assistant_draft_in_progress",
+          "This transaction is already being saved.",
+        );
+      }
+      return saved;
     },
   };
 }

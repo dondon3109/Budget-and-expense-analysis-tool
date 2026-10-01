@@ -37,8 +37,11 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
         <article>
           <ShieldCheck size={18} aria-hidden="true" />
           <div>
-            <strong>Read-only by design</strong>
-            <p>The assistant cannot create, edit, delete, import, or transfer your records.</p>
+            <strong>Nothing saves without you</strong>
+            <p>
+              The assistant can draft a transaction for you to review, but only your Save tap adds
+              it. It cannot edit, delete, import, or transfer your records.
+            </p>
           </div>
         </article>
         <article>

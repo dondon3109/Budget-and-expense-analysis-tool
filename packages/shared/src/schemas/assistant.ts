@@ -3,10 +3,11 @@
 import { z } from "zod";
 
 import { GOAL_AND_DEBT_MAX_MINOR } from "../limits";
-import { assistantSpeechVoices, transactionKinds } from "../types";
-import { isoDateSchema } from "./common";
+import { assistantSpeechVoices, currencies, transactionKinds } from "../types";
+import { isoDateSchema, resourceIdSchema } from "./common";
 
 export const assistantThreadIdSchema = z.string().uuid();
+export const assistantMessageIdSchema = z.string().uuid();
 
 export const assistantMessageInputSchema = z
   .object({
@@ -251,7 +252,70 @@ export const assistantSavingsGoalToolSchema = z
     },
   );
 
-// Assistant (online-only, read-only, server-grounded) response contracts shared
+const assistantEntryKindSchema = z.enum(["income", "expense"]);
+
+export const assistantTransactionSuggestionToolSchema = z
+  .object({
+    through: isoDateSchema,
+    place: z.string().trim().min(1).max(120).optional(),
+    kind: assistantEntryKindSchema.default("expense"),
+  })
+  .strict();
+
+/**
+ * The assistant prepares a draft, never a saved row. The amount is either stated outright or
+ * derived from what the account holds after the transaction, measured against the balance
+ * before it. Without a balance before, the draft asks the user to confirm the recorded one.
+ */
+export const assistantTransactionDraftToolSchema = z
+  .object({
+    kind: assistantEntryKindSchema,
+    description: z.string().trim().min(1).max(240),
+    categoryName: z.string().trim().min(1).max(80),
+    accountName: z.string().trim().min(1).max(120),
+    date: isoDateSchema,
+    amount: decimalMoneyStringSchema.optional(),
+    balanceAfter: decimalMoneyStringSchema.optional(),
+    balanceBefore: decimalMoneyStringSchema.optional(),
+    replacesPreviousDraft: z.boolean().optional(),
+    currentDate: isoDateSchema,
+  })
+  .strict()
+  .refine((value) => (value.amount === undefined) !== (value.balanceAfter === undefined), {
+    message: "Give either the amount or the balance left after the transaction.",
+    path: ["amount"],
+  })
+  .refine((value) => value.balanceBefore === undefined || value.balanceAfter !== undefined, {
+    message: "A starting balance needs the balance left after the transaction.",
+    path: ["balanceBefore"],
+  });
+
+/**
+ * A transaction the assistant prepared in chat. Nothing is written until the user confirms it,
+ * and the confirm route saves it at most once: `saving` claims it, `saved` records the result.
+ */
+export const assistantTransactionDraftSchema = z
+  .object({
+    status: z.enum(["pending", "saving", "saved"]),
+    kind: assistantEntryKindSchema,
+    date: isoDateSchema,
+    description: z.string().trim().min(1).max(240),
+    amountMinor: z.number().int().safe().positive(),
+    currency: z.enum(currencies),
+    categoryId: resourceIdSchema,
+    categoryName: z.string().min(1).max(120),
+    accountId: resourceIdSchema,
+    accountName: z.string().min(1).max(120),
+    transactionId: resourceIdSchema.optional(),
+    claimedAt: z.iso.datetime().optional(),
+    /** The earlier reply whose draft this one corrects; that draft can no longer be saved. */
+    replacesMessageId: z.string().uuid().optional(),
+  })
+  .strict();
+
+export type AssistantTransactionDraft = z.infer<typeof assistantTransactionDraftSchema>;
+
+// Assistant (online-only, server-grounded) response contracts shared
 // by the mobile client so network payloads are validated before display.
 
 export const assistantPreferencesResponseSchema = z

@@ -10,7 +10,7 @@
 1. **Zero Bank Credentials**: Zoption never integrates with credential-scraping aggregators (such as Plaid or Yodlee). Users import standard export files (CSV, Excel XLS/XLSX, PDF bank statements) or input entries via voice/camera.
 2. **Exact Centavo Arithmetic**: All currency calculations are stored as 64-bit integer centavos (1 PHP = 100 centavos) to mathematically eliminate floating-point rounding errors.
 3. **Offline-First PWA & Android**: Workspaces function offline via Service Workers and local SQLite storage on Android, syncing changes to tenant-isolated Cloudflare D1 storage when connected.
-4. **Consent-Gated AI Assistant**: The optional financial AI assistant is strictly read-only, operates on explicit versioned user consent, and never modifies or deletes ledger rows.
+4. **Consent-Gated AI Assistant**: The optional financial AI assistant never writes on its own, operates on explicit versioned user consent, can draft a transaction that is saved only when the user taps Save, and never edits or deletes existing ledger rows.
 
 ## Pricing Plans (Philippine Pesos - PHP)
 - **Free Plan (₱0 / forever)**:

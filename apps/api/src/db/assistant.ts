@@ -31,7 +31,7 @@ interface ThreadRow {
   created_at: string;
 }
 
-interface MessageRow {
+export interface MessageRow {
   id: string;
   thread_id: string;
   role: "user" | "assistant";
@@ -52,6 +52,7 @@ interface PreferenceRow {
 }
 
 interface HistoryRow {
+  id: string;
   role: "user" | "assistant";
   content: string;
   response_metadata_json: string | null;
@@ -70,6 +71,8 @@ interface MemoryRow {
 }
 
 export interface AssistantHistoryMessage {
+  /** Present on stored messages; a correction draft names the reply it replaces by it. */
+  id?: string;
   role: "user" | "assistant";
   content: string;
   metadata?: AssistantResponseMetadata;
@@ -244,7 +247,7 @@ function parseResponseMetadata(value: string | null): AssistantResponseMetadata 
   }
 }
 
-function messageFromRow(row: MessageRow): AssistantMessage {
+export function messageFromRow(row: MessageRow): AssistantMessage {
   const metadata = parseResponseMetadata(row.response_metadata_json);
   return {
     id: row.id,
@@ -567,7 +570,7 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
     }
 
     const historyRows = await env.DB.prepare(
-      `SELECT role, content, response_metadata_json
+      `SELECT id, role, content, response_metadata_json
        FROM assistant_messages
        WHERE tenant_id = ? AND thread_id = ? AND status = 'completed'
        ORDER BY created_at DESC, id DESC
@@ -607,7 +610,12 @@ export const assistantRepository: AssistantRepository & AssistantVoiceRepository
       },
       history: historyRows.results.reverse().map((row) => {
         const metadata = parseResponseMetadata(row.response_metadata_json);
-        return { role: row.role, content: row.content, ...(metadata ? { metadata } : {}) };
+        return {
+          id: row.id,
+          role: row.role,
+          content: row.content,
+          ...(metadata ? { metadata } : {}),
+        };
       }),
       runId,
     };

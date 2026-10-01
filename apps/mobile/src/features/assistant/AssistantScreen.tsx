@@ -7,7 +7,7 @@ import type {
   AssistantThreadKind,
   AssistantVoicePreferences,
 } from "@zoption/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -69,7 +69,6 @@ import {
 import {
   AssistantConsentCard,
   AssistantIdentityCard,
-  AssistantMessageBubble,
   AssistantStatusBadge,
   AssistantThreadRow,
   AssistantUnavailableView,
@@ -79,6 +78,7 @@ import {
   VoiceRecordButton,
 } from "./assistant-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
+import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
@@ -759,17 +759,20 @@ export function AssistantScreen() {
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
+  const replacedDraftIds = useMemo(() => replacedDraftMessageIds(messages), [messages]);
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
-      <AssistantMessageBubble
-        role={item.role}
-        content={item.content}
-        status={item.status}
-        createdAt={item.createdAt}
-        evidenceLabel={evidenceLabelFor(item)}
+      <AssistantMessageRow
+        message={item}
+        superseded={replacedDraftIds.has(item.id)}
+        onDraftSaved={(saved) =>
+          setMessages((previous) =>
+            previous.map((message) => (message.id === saved.id ? saved : message)),
+          )
+        }
       />
     ),
-    [],
+    [replacedDraftIds],
   );
 
   const settingsAction = (
@@ -908,7 +911,7 @@ export function AssistantScreen() {
                 <Text
                   style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}
                 >
-                  Online · Read-only
+                  Online · You approve saves
                 </Text>
               </View>
             ) : null}
@@ -1000,7 +1003,7 @@ export function AssistantScreen() {
             ListEmptyComponent={
               <EmptyState
                 title="No conversations yet"
-                description="Ask about your spending, budgets, subscriptions, goals or debts. The assistant reads your records and never changes them."
+                description="Ask about your spending, budgets, subscriptions, goals or debts. You can also tell it what you spent and it drafts the transaction for you to save."
               />
             }
           />
@@ -1364,16 +1367,6 @@ function VoiceConsentBlock({ busy, onEnable }: { busy: boolean; onEnable: () => 
       </Button>
     </View>
   );
-}
-
-function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
-  const metadata = message.metadata as
-    { sources?: Array<{ label?: unknown; period?: { label?: unknown } }> } | undefined;
-  const sources = Array.isArray(metadata?.sources) ? metadata.sources : [];
-  const first = sources[0];
-  if (!first || typeof first.label !== "string") return undefined;
-  const period = typeof first.period?.label === "string" ? " · " + first.period.label : "";
-  return "Grounded in " + first.label + period;
 }
 
 function ThreadListSeparator() {

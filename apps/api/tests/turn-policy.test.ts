@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { classifyCompliance } from "../src/assistant/compliance-policy";
 import { resolveAssistantPeriod } from "../src/assistant/date-range";
-import { createAssistantTurnPolicy } from "../src/assistant/turn-policy";
+import { createAssistantTurnPolicy, responseMetadataForPolicy } from "../src/assistant/turn-policy";
 
 describe("assistant compliance policy", () => {
   it.each([
@@ -336,5 +336,129 @@ describe("assistant turn policy", () => {
     expect(policy.requiredToolGroups).toContain("budget_comparison");
     expect(policy.requiredToolGroups).not.toContain("period_summary");
     expect(policy.resolvedPeriod).toMatchObject({ from: "2026-07-01", to: "2026-07-31" });
+  });
+});
+
+describe("assistant transaction entry policy", () => {
+  function policyFor(
+    message: string,
+    history: Parameters<typeof createAssistantTurnPolicy>[0]["history"] = [],
+  ) {
+    return createAssistantTurnPolicy({
+      history,
+      message,
+      currentDate: "2026-08-02",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+  }
+
+  it.each([
+    "I spent 250 at Jollibee",
+    "Log my lunch expense",
+    "Can you record my grocery expense? It was 1,200",
+    "I have 300 left in GCash",
+    "I went to 7-Eleven",
+    "Bumili ako sa Mercury Drug ng 450",
+    "300 na lang natira sa wallet ko",
+    "Pa-record ng gastos ko kanina",
+  ])("starts logging a transaction without asking for a period: %s", (message) => {
+    const policy = policyFor(message);
+    expect(policy.requiredToolGroups).toEqual(["transaction_entry"]);
+    expect(policy.deterministicResponse).toBeUndefined();
+  });
+
+  it.each([
+    "How much did I spend this month?",
+    "What did I spend at Jollibee last month?",
+    "I spent too much this month",
+    "How do I add an expense?",
+    "Help me track my spending better",
+    "I have 3 months left on my car loan, help me plan",
+    "2 years left to reach my goal",
+    "Magkano ang natitira sa budget ko ngayong buwan?",
+  ])("keeps questions and coaching out of the logging flow: %s", (message) => {
+    expect(policyFor(message).requiredToolGroups).not.toContain("transaction_entry");
+  });
+
+  it("logs an insurance payment while keeping its regulated-topic guard", () => {
+    const policy = policyFor("I paid 2000 for my insurance premium");
+    expect(policy.requiredToolGroups).toEqual(["transaction_entry"]);
+    expect(policy.compliance.posture).toBe("restricted_topic_education");
+    expect(policy.disclaimer).toBeTruthy();
+  });
+
+  it("passes a stated day along without making it required", () => {
+    const policy = policyFor("I spent 180 at Jollibee yesterday");
+    expect(policy.resolvedPeriod).toMatchObject({ from: "2026-08-01", to: "2026-08-01" });
+  });
+
+  it("continues the flow for a short answer to the assistant's question", () => {
+    const history = [
+      { role: "user" as const, content: "I went to Jollibee" },
+      {
+        role: "assistant" as const,
+        content: "How much did you spend, and from which account?",
+        metadata: {
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed" as const, topics: [] },
+          sources: [],
+          transactionEntry: true,
+        },
+      },
+    ];
+    expect(
+      policyFor("GCash, and my remaining balance is 1,050", history).requiredToolGroups,
+    ).toEqual(["transaction_entry"]);
+    for (const question of [
+      "How much did I spend this month?",
+      "Show my budget for this month",
+      "What is a mutual fund",
+      "How does term life insurance work",
+      "Thanks!",
+      "salamat po",
+    ]) {
+      expect(policyFor(question, history).requiredToolGroups).not.toContain("transaction_entry");
+    }
+    const education = policyFor("How does term life insurance work", history);
+    expect(education.compliance.posture).toBe("restricted_topic_education");
+    expect(education.disclaimer).toBeTruthy();
+  });
+
+  it("ends the flow once the draft is saved", () => {
+    const history = [
+      {
+        role: "assistant" as const,
+        content: "Your Jollibee expense is ready. Tap Save transaction.",
+        metadata: {
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed" as const, topics: [] },
+          sources: [],
+          transactionEntry: true,
+          transactionDraft: {
+            status: "saved" as const,
+            kind: "expense" as const,
+            date: "2026-08-02",
+            description: "Jollibee",
+            amountMinor: 25_000,
+            currency: "PHP" as const,
+            categoryId: "category-food",
+            categoryName: "Food",
+            accountId: "account-gcash",
+            accountName: "GCash",
+            transactionId: "t-1",
+          },
+        },
+      },
+    ];
+    expect(policyFor("Thanks", history).requiredToolGroups).toEqual([]);
+  });
+
+  it("marks entry replies so the next turn can continue them", () => {
+    const policy = policyFor("I spent 250 at Jollibee");
+    expect(responseMetadataForPolicy(policy)).toMatchObject({
+      transactionEntry: true,
+      promptVersion: "expert-v3",
+    });
   });
 });

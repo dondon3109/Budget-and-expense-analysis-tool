@@ -22,7 +22,7 @@
 - Users can track recurring charges using a Visual Renewal Calendar Interface displaying upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.
 - Zoption does not connect directly to banks and never asks for banking credentials.
 - Each workspace begins empty and contains only records the user chooses to add.
-- The optional AI assistant uses a separate consent flow and is strictly read-only.
+- The optional AI assistant uses a separate consent flow and never writes on its own: it can draft a transaction, which is saved only when the user taps Save, and it never edits or deletes existing records.
 
 ## Boundaries
 

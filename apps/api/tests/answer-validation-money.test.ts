@@ -176,8 +176,12 @@ describe("trusted period tool arguments", () => {
         noPeriod,
       ),
     ).toBe("untrusted_period");
-    // Omitting the bounds entirely is still the model choosing what to disclose.
-    expect(validateToolArguments("list_transactions", {}, noPeriod)).toBe("untrusted_period");
+    // With no period the only allowed read is the undated newest-first page, which the
+    // model cannot widen. Rejecting it left "show my recent transactions" unanswerable.
+    expect(validateToolArguments("list_transactions", {}, noPeriod)).toBeNull();
+    expect(validateToolArguments("list_transactions", { from: "2026-01-01" }, noPeriod)).toBe(
+      "untrusted_period",
+    );
     expect(validateToolArguments("get_account_balances", {}, noPeriod)).toBeNull();
   });
 
