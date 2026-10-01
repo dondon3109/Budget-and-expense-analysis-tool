@@ -24,7 +24,7 @@ export function EmptyState({
           accessibilityElementsHidden
           style={[
             styles.iconWrap,
-            { backgroundColor: theme.colors.surfaceRaised, boxShadow: theme.clay.raised },
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
           ]}
         >
           <MaterialCommunityIcons name={icon} size={26} color={theme.colors.brand} />
@@ -45,6 +45,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radii.md,
+    borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.xxs,

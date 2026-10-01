@@ -17,7 +17,7 @@ export function QuickActionBar() {
         onPress={() => router.push("/(app)/transaction")}
         style={[
           styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, boxShadow: theme.clay.raised },
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
         ]}
       >
         <View
@@ -39,7 +39,7 @@ export function QuickActionBar() {
         onPress={() => router.push("/(app)/receipt-scan")}
         style={[
           styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, boxShadow: theme.clay.raised },
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
         ]}
       >
         <View
@@ -61,7 +61,7 @@ export function QuickActionBar() {
         onPress={() => router.push("/(app)/(tabs)/budgets")}
         style={[
           styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, boxShadow: theme.clay.raised },
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
         ]}
       >
         <View
@@ -83,7 +83,7 @@ export function QuickActionBar() {
         onPress={() => router.push("/(app)/assistant")}
         style={[
           styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, boxShadow: theme.clay.raised },
+          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
         ]}
       >
         <View
@@ -114,6 +114,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: touchTarget + spacing.xs,
     borderRadius: radii.md,
+    borderWidth: 1,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xxs,
     alignItems: "center",

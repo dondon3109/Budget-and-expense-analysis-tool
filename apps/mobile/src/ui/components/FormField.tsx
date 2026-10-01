@@ -35,13 +35,7 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
   return (
     <View className="w-full gap-2">
       <Text style={[typography.label, { color: theme.colors.text }]}>{label}</Text>
-      <View
-        className="flex-row items-center"
-        style={[
-          styles.well,
-          { backgroundColor: theme.colors.canvasMuted, boxShadow: theme.clay.well },
-        ]}
-      >
+      <View className="flex-row items-center">
         <TextInput
           ref={ref}
           accessibilityLabel={label}
@@ -59,12 +53,13 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
           style={[
             styles.input,
             {
+              backgroundColor: theme.colors.surface,
               borderColor: error
                 ? theme.colors.danger
                 : isFocused
                   ? theme.colors.brand
                   : theme.colors.border,
-              borderWidth: error || isFocused ? 1.5 : 0,
+              borderWidth: error || isFocused ? 1.5 : 1,
               color: theme.colors.text,
               textAlignVertical: props.multiline ? "top" : "center",
             },
@@ -93,12 +88,10 @@ export const FormField = forwardRef<TextInput, FormFieldProps>(function FormFiel
 });
 
 const styles = StyleSheet.create({
-  // The inset clay well lives on the wrapper: TextInput styles cannot take a boxShadow array.
-  well: { borderRadius: radii.md },
   input: {
     flex: 1,
     minHeight: touchTarget,
-    borderWidth: 0,
+    borderWidth: 1,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
