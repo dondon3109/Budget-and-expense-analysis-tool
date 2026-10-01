@@ -19,6 +19,9 @@ import type { RecordingPhase } from "./assistant-voice-hooks";
 
 import { formatThreadTime, validateIdentityName } from "./assistant-forms";
 
+/** Width of the assistant avatar, shared so a draft card can indent to the bubble. */
+export const ASSISTANT_AVATAR_SIZE = 28;
+
 export function AssistantStatusBadge({
   status = "available",
   label,
@@ -277,58 +280,82 @@ export function AssistantMessageBubble({
 }) {
   const theme = useZoptionTheme();
   const isUser = role === "user";
-  return (
-    <View className={isUser ? "items-end" : "items-start"}>
-      <View
-        style={[
-          styles.bubble,
-          {
-            backgroundColor: isUser ? theme.colors.brand : theme.colors.surfaceRaised,
-            borderColor: isUser ? theme.colors.brand : theme.colors.border,
-          },
-        ]}
-      >
-        <Text
-          style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}
-        >
-          {content}
+  const bubble = (
+    <View
+      style={[
+        styles.bubble,
+        isUser ? styles.bubbleUser : styles.bubbleAssistant,
+        {
+          backgroundColor: isUser ? theme.colors.brand : theme.colors.surface,
+          borderColor: isUser ? theme.colors.brand : theme.colors.border,
+        },
+      ]}
+    >
+      <Text style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}>
+        {content}
+      </Text>
+    </View>
+  );
+  const meta = (
+    <View style={styles.bubbleMeta}>
+      {status === "failed" ? (
+        <Text style={[typography.caption, { color: theme.colors.danger }]}>
+          Not sent. Try asking again.
         </Text>
-      </View>
-      <View className="mt-1 flex-row items-center gap-2">
-        {status === "failed" ? (
-          <Text style={[typography.caption, { color: theme.colors.danger }]}>
-            Not sent. Try asking again.
+      ) : null}
+      {!isUser && status === "completed" && evidenceLabel ? (
+        <View className="flex-row items-center gap-1">
+          <MaterialCommunityIcons
+            name="file-document-check-outline"
+            size={12}
+            color={theme.colors.textMuted}
+          />
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {evidenceLabel}
           </Text>
-        ) : null}
-        {!isUser && status === "completed" && evidenceLabel ? (
-          <View className="flex-row items-center gap-1">
-            <MaterialCommunityIcons
-              name="file-document-check-outline"
-              size={12}
-              color={theme.colors.textMuted}
-            />
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              {evidenceLabel}
-            </Text>
-          </View>
-        ) : null}
-        {!isUser && status === "completed" && onListen ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={listening ? "Stop spoken reply" : "Play spoken reply"}
-            onPress={onListen}
-            style={styles.listen}
-          >
-            <MaterialCommunityIcons
-              name={listening ? "stop-circle-outline" : "volume-high"}
-              size={16}
-              color={theme.colors.brand}
-            />
-          </Pressable>
-        ) : null}
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {formatThreadTime(createdAt)}
-        </Text>
+        </View>
+      ) : null}
+      {!isUser && status === "completed" && onListen ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={listening ? "Stop spoken reply" : "Play spoken reply"}
+          onPress={onListen}
+          style={styles.listen}
+        >
+          <MaterialCommunityIcons
+            name={listening ? "stop-circle-outline" : "volume-high"}
+            size={16}
+            color={theme.colors.brand}
+          />
+        </Pressable>
+      ) : null}
+      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+        {formatThreadTime(createdAt)}
+      </Text>
+    </View>
+  );
+  if (isUser) {
+    return (
+      <View className="items-end">
+        {bubble}
+        {meta}
+      </View>
+    );
+  }
+  // The avatar sits beside the bubble; its width plus gap is the indent other
+  // assistant content (the draft card) lines up with.
+  return (
+    <View style={styles.assistantRow}>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}
+      >
+        <MaterialCommunityIcons name="creation" size={16} color={theme.colors.brand} />
+      </View>
+      <View style={styles.assistantColumn}>
+        {bubble}
+        {meta}
       </View>
     </View>
   );
@@ -672,11 +699,32 @@ export function MemoryPreferencesBlock({
 
 const styles = StyleSheet.create({
   bubble: {
-    maxWidth: "86%",
-    borderRadius: radii.md,
+    maxWidth: "88%",
+    borderRadius: radii.xl,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+  },
+  // The corner nearest the speaker is tight, so each bubble reads as a speech tail.
+  bubbleUser: { borderBottomRightRadius: radii.sm / 2 },
+  bubbleAssistant: { borderBottomLeftRadius: radii.sm / 2 },
+  bubbleMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.xxs,
+    marginHorizontal: spacing.xs,
+  },
+  assistantRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
+  assistantColumn: { flexShrink: 1, alignItems: "flex-start" },
+  avatar: {
+    width: ASSISTANT_AVATAR_SIZE,
+    height: ASSISTANT_AVATAR_SIZE,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    // Lines up with the bubble, not the timestamp row beneath it.
+    marginBottom: 22,
   },
   listen: { padding: 2 },
   threadRow: {

@@ -1132,41 +1132,63 @@ export function AssistantScreen() {
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           />
           {voiceError ? (
-            <View style={styles.voiceErrorWrap}>
-              <Text style={[typography.caption, { color: theme.colors.danger }]}>
+            <View
+              accessibilityRole="alert"
+              style={[
+                styles.voiceStatus,
+                { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
+              ]}
+            >
+              <MaterialCommunityIcons name="microphone-off" size={20} color={theme.colors.danger} />
+              <Text
+                style={[typography.label, styles.voiceStatusText, { color: theme.colors.text }]}
+              >
                 {voiceError.message}
               </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss"
                 onPress={() => setVoiceError(null)}
-                hitSlop={8}
+                hitSlop={12}
               >
-                <MaterialCommunityIcons name="close" size={16} color={theme.colors.textMuted} />
+                <MaterialCommunityIcons name="close" size={18} color={theme.colors.textMuted} />
               </Pressable>
             </View>
           ) : null}
           {recorder.phase !== "idle" ? (
-            <View style={styles.voiceStatusWrap}>
-              <Text
-                style={[
-                  typography.caption,
-                  {
-                    color:
-                      recorder.phase === "recording" ? theme.colors.danger : theme.colors.textMuted,
-                  },
-                ]}
-              >
-                {recorder.phase === "recording"
-                  ? "Recording… " +
-                    formatRecordingElapsed(recorder.elapsedSeconds) +
-                    (recorder.liveStatus === "unavailable"
-                      ? " — live preview is off, transcript appears when you stop."
-                      : " — tap the microphone to stop.")
-                  : recorder.phase === "transcribing"
-                    ? "Transcribing your question…"
-                    : "Allowing microphone access…"}
-              </Text>
+            <View
+              accessibilityLiveRegion="polite"
+              style={[
+                styles.voiceStatus,
+                {
+                  backgroundColor:
+                    recorder.phase === "recording" ? theme.colors.dangerSoft : theme.colors.surface,
+                  borderColor:
+                    recorder.phase === "recording" ? theme.colors.danger : theme.colors.border,
+                },
+              ]}
+            >
+              {recorder.phase === "recording" ? (
+                <View style={[styles.recordingDot, { backgroundColor: theme.colors.danger }]} />
+              ) : (
+                <ActivityIndicator color={theme.colors.brand} size="small" />
+              )}
+              <View style={styles.voiceStatusText}>
+                <Text style={[typography.label, { color: theme.colors.text }]}>
+                  {recorder.phase === "recording"
+                    ? "Recording " + formatRecordingElapsed(recorder.elapsedSeconds)
+                    : recorder.phase === "transcribing"
+                      ? "Transcribing your question…"
+                      : "Allowing microphone access…"}
+                </Text>
+                {recorder.phase === "recording" ? (
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                    {recorder.liveStatus === "unavailable"
+                      ? "No live preview. Your words appear when you stop."
+                      : "Tap the microphone to stop."}
+                  </Text>
+                ) : null}
+              </View>
             </View>
           ) : null}
           <View
@@ -1195,7 +1217,9 @@ export function AssistantScreen() {
                     else if (recorder.phase === "idle") void recorder.startRecording();
                   }}
                 />
-                <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
+                <View style={styles.languageSlot}>
+                  <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
+                </View>
               </>
             ) : null}
             <Pressable
@@ -1484,12 +1508,20 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 10 : 8,
     paddingHorizontal: 4,
   },
-  voiceStatusWrap: {
+  voiceStatus: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.lg,
     paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
+    paddingVertical: spacing.sm,
   },
+  voiceStatusText: { flex: 1, gap: 2 },
+  recordingDot: { width: 10, height: 10, borderRadius: radii.round },
+  // Centers the 32 point language pill against the 44 point mic and send buttons.
+  languageSlot: { height: touchTarget, justifyContent: "center" },
   sendButton: {
     width: touchTarget,
     height: touchTarget,
@@ -1526,13 +1558,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-  },
-  voiceErrorWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
   },
   chatStatusRow: {
     flexDirection: "row",

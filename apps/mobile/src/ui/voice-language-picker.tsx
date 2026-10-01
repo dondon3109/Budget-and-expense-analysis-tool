@@ -224,7 +224,6 @@ export function VoiceLanguageBadgeButton({
         backgroundColor: pressed ? theme.colors.canvasMuted : theme.colors.brandSoft,
         opacity: disabled ? 0.6 : 1,
         borderRadius: radii.sm,
-        alignSelf: "center",
       })}
     >
       <View style={[styles.badgeButton, { borderColor: theme.colors.brand }]}>
