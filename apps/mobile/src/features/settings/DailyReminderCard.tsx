@@ -1,35 +1,32 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Switch, Text, View } from "react-native";
 
-import { applyDailyReminder, dailyReminderLabel } from "@/features/reminders/daily-reminder";
+import { applyDailyReminder } from "@/features/reminders/daily-reminder";
 import {
-  DAILY_REMINDER_TIMES,
   useDailyReminderRestoredStore,
   useDailyReminderStore,
-  type DailyReminderTime,
 } from "@/stores/daily-reminder-store";
 import { Button, CollapsibleCard } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { spacing, touchTarget, typography } from "@/ui/tokens";
 
 type Notice = "blocked" | "failed";
 
-/** Picks the time of the once-a-day reminder to log expenses and income, or turns it off. */
+/** Turns the twice-daily (12:00 PM and 9:00 PM) reminder to log expenses and income on or off. */
 export function DailyReminderCard() {
   const theme = useZoptionTheme();
-  const time = useDailyReminderStore((state) => state.time);
-  // Until the saved time has loaded, "Off" could be wrong, so say nothing yet.
+  const enabled = useDailyReminderStore((state) => state.enabled);
+  // Until the saved choice has loaded, "Off" could be wrong, so say nothing yet.
   const restored = useDailyReminderRestoredStore((state) => state.restored);
-  const [pending, setPending] = useState<DailyReminderTime | null>(null);
-  const busy = pending !== null || !restored;
+  const [pending, setPending] = useState(false);
+  const busy = pending || !restored;
   const [notice, setNotice] = useState<Notice | null>(null);
 
-  // applyDailyReminder saves the time itself once the OS schedule matches it,
+  // applyDailyReminder saves the choice itself once the OS schedule matches it,
   // so the summary above always reflects what is actually scheduled.
-  const choose = async (next: DailyReminderTime) => {
+  const toggle = async (next: boolean) => {
     if (busy) return;
-    setPending(next);
+    setPending(true);
     setNotice(null);
     try {
       const result = await applyDailyReminder(next);
@@ -37,59 +34,28 @@ export function DailyReminderCard() {
     } catch {
       setNotice("failed");
     } finally {
-      setPending(null);
+      setPending(false);
     }
   };
 
   return (
     <CollapsibleCard
       title="Daily reminder"
-      summary={restored ? dailyReminderLabel(time) : "Loading…"}
+      summary={restored ? (enabled ? "On" : "Off") : "Loading…"}
       icon="bell-outline"
     >
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        Get one notification a day to record that day&apos;s expenses and income.
+        Get a notification at 12:00 PM and 9:00 PM to record the day&apos;s expenses and income.
       </Text>
-      <View
-        accessibilityRole="radiogroup"
-        accessibilityLabel="Daily reminder time"
-        className="gap-2"
-      >
-        {DAILY_REMINDER_TIMES.map((option) => {
-          const selected = time === option;
-          const label = dailyReminderLabel(option);
-          return (
-            <Pressable
-              key={option}
-              accessibilityRole="radio"
-              accessibilityLabel={label}
-              accessibilityState={{ selected, disabled: busy }}
-              disabled={busy}
-              onPress={() => void choose(option)}
-              style={[
-                styles.option,
-                {
-                  backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
-                  borderColor: selected ? theme.colors.brand : theme.colors.border,
-                },
-              ]}
-            >
-              <Text style={[typography.headline, { color: theme.colors.text }]}>{label}</Text>
-              <View
-                accessibilityElementsHidden
-                style={[
-                  styles.radio,
-                  { borderColor: selected ? theme.colors.brand : theme.colors.border },
-                  selected ? { backgroundColor: theme.colors.brand } : null,
-                ]}
-              >
-                {selected ? (
-                  <MaterialCommunityIcons name="check" size={12} color={theme.colors.onBrand} />
-                ) : null}
-              </View>
-            </Pressable>
-          );
-        })}
+      <View style={styles.option}>
+        <Text style={[typography.headline, { color: theme.colors.text }]}>Remind me daily</Text>
+        <Switch
+          accessibilityLabel="Remind me daily"
+          disabled={busy}
+          value={enabled}
+          onValueChange={(next) => void toggle(next)}
+          trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
+        />
       </View>
       {notice === "blocked" ? (
         <View className="gap-2">
@@ -97,8 +63,8 @@ export function DailyReminderCard() {
             accessibilityRole="alert"
             style={[typography.caption, { color: theme.colors.danger }]}
           >
-            Notifications are turned off for Zoption. Allow them in your device settings, then
-            choose a time again.
+            Notifications are turned off for Zoption. Allow them in your device settings, then turn
+            the reminder on again.
           </Text>
           <Button variant="secondary" size="compact" onPress={() => void Linking.openSettings()}>
             Open settings
@@ -123,18 +89,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderRadius: radii.md,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: radii.round,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginLeft: spacing.sm,
+    gap: spacing.sm,
   },
 });

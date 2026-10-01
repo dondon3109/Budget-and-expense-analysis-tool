@@ -134,6 +134,23 @@ function isMoneyToken(content: string, token: string, index: number): boolean {
   return CURRENCY_BEFORE.test(before) || CURRENCY_AFTER.test(after);
 }
 
+// Tool results label every amount with its currency code ("USD 50.00"). An amount the
+// answer names in one currency but the tools only gave in the other is a relabel, even
+// though its number is grounded. Centavo and cent counts are minor units, not labels.
+const FORMATTED_AMOUNT_PATTERN = /\b(PHP|USD) (-?\d[\d,]*(?:\.\d+)?)/g;
+const PHP_BEFORE = /(?:\bPHP|\bpesos?|₱)\s*-?\s*$/i;
+const PHP_AFTER = /^\s*-?\s*(?:PHP\b|pesos?\b)/i;
+const USD_BEFORE = /(?:\bUSD|\bdollars?)\s*-?\s*$/i;
+const USD_AFTER = /^\s*-?\s*(?:USD\b|dollars?\b)/i;
+
+function statedCurrency(content: string, token: string, index: number): "PHP" | "USD" | null {
+  const before = content.slice(Math.max(0, index - 16), index);
+  const after = content.slice(index + token.length, index + token.length + 16);
+  if (PHP_BEFORE.test(before) || PHP_AFTER.test(after)) return "PHP";
+  if (USD_BEFORE.test(before) || USD_AFTER.test(after)) return "USD";
+  return null;
+}
+
 export function toolGroupForName(name: string): RequiredToolGroup | undefined {
   return TOOL_GROUPS[name];
 }
@@ -299,6 +316,13 @@ export function validateAssistantAnswer(
     collectScalars(execution.result, allowedStrings, allowedNumbers);
   if (policy.resolvedPeriod) collectScalars(policy.resolvedPeriod, allowedStrings, allowedNumbers);
   collectScalars({ currentDate: policy.currentDate }, allowedStrings, allowedNumbers);
+  const amountCurrencies = new Map<string, Set<string>>();
+  for (const value of allowedStrings) {
+    for (const [, code, amount] of value.matchAll(FORMATTED_AMOUNT_PATTERN)) {
+      const key = normalizedNumber(amount!);
+      amountCurrencies.set(key, (amountCurrencies.get(key) ?? new Set()).add(code!));
+    }
+  }
 
   // Amount grounding is structural: a money-shaped numeral must trace to a tool
   // result, the trusted period, or the current date, whatever its currency
@@ -309,7 +333,16 @@ export function validateAssistantAnswer(
   for (const match of amountScan.matchAll(NUMERIC_TOKEN_PATTERN)) {
     const token = match[0];
     if (!isMoneyToken(amountScan, token, match.index ?? 0)) continue;
-    if (!allowedNumbers.has(normalizedNumber(token))) reasons.push("unsupported_money");
+    const value = normalizedNumber(token);
+    if (!allowedNumbers.has(value)) {
+      reasons.push("unsupported_money");
+      continue;
+    }
+    const stated = statedCurrency(amountScan, token, match.index ?? 0);
+    const toolCurrencies = amountCurrencies.get(value);
+    if (stated && toolCurrencies && !toolCurrencies.has(stated)) {
+      reasons.push("currency_mismatch");
+    }
   }
 
   for (const percent of content.match(PERCENT_PATTERN) ?? []) {
@@ -379,8 +412,8 @@ export function sanitizedAuditJson(value: unknown): string {
 
 const REPAIR_GUIDANCE: ReadonlyArray<readonly [string[], string]> = [
   [
-    ["unsupported_currency_format", "unsupported_money"],
-    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 or USD 12.00 — never ₱, $, or a number that is not in the tool results.",
+    ["unsupported_currency_format", "unsupported_money", "currency_mismatch"],
+    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 or USD 12.00 — never ₱, $, a number that is not in the tool results, or one currency's code on the other's amount.",
   ],
   [
     ["unsupported_percentage", "unsupported_numeric_claim", "unsupported_date"],

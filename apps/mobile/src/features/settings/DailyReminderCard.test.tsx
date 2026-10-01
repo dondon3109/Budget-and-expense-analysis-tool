@@ -27,60 +27,59 @@ jest.mock("expo-router", () => ({
 describe("DailyReminderCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderStore.setState({ enabled: true });
     useDailyReminderRestoredStore.setState({ restored: true });
   });
 
-  it("is off by default and schedules the chosen time", async () => {
-    // applyDailyReminder saves the time once scheduled; the card shows what it saved.
-    jest.mocked(applyDailyReminder).mockImplementation(async (time) => {
-      useDailyReminderStore.setState({ time });
-      return "scheduled";
+  it("is on by default and turns off from the switch", async () => {
+    // applyDailyReminder saves the choice once applied; the card shows what it saved.
+    jest.mocked(applyDailyReminder).mockImplementation(async (enabled) => {
+      useDailyReminderStore.setState({ enabled });
+      return enabled ? "scheduled" : "off";
     });
     await render(<DailyReminderCard />);
 
-    await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Off" }));
-    await fireEvent.press(screen.getByRole("radio", { name: "9:00 PM" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, On" }));
+    await fireEvent(screen.getByLabelText("Remind me daily"), "valueChange", false);
 
-    expect(applyDailyReminder).toHaveBeenCalledWith("21:00");
-    expect(useDailyReminderStore.getState().time).toBe("21:00");
-    expect(screen.getByRole("button", { name: "Daily reminder, 9:00 PM" })).toBeTruthy();
+    expect(applyDailyReminder).toHaveBeenCalledWith(false);
+    expect(screen.getByRole("button", { name: "Daily reminder, Off" })).toBeTruthy();
   });
 
   it("stays off and explains when notifications are blocked", async () => {
+    useDailyReminderStore.setState({ enabled: false });
     jest.mocked(applyDailyReminder).mockImplementation(async () => {
-      useDailyReminderStore.setState({ time: "off" });
+      useDailyReminderStore.setState({ enabled: false });
       return "denied";
     });
     await render(<DailyReminderCard />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Off" }));
-    await fireEvent.press(screen.getByRole("radio", { name: "8:00 AM" }));
+    await fireEvent(screen.getByLabelText("Remind me daily"), "valueChange", true);
 
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
     expect(screen.getByRole("alert").props.children).toMatch(/Notifications are turned off/);
     expect(screen.getByRole("button", { name: "Open settings" })).toBeTruthy();
   });
 
-  it("waits for the saved time before showing or changing it", async () => {
+  it("waits for the saved choice before showing or changing it", async () => {
     useDailyReminderRestoredStore.setState({ restored: false });
     await render(<DailyReminderCard />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, Loading…" }));
-    await fireEvent.press(screen.getByRole("radio", { name: "9:00 PM" }));
+    await fireEvent(screen.getByLabelText("Remind me daily"), "valueChange", false);
 
     expect(applyDailyReminder).not.toHaveBeenCalled();
   });
 
-  it("keeps the previous time when scheduling fails", async () => {
-    useDailyReminderStore.setState({ time: "12:00" });
+  it("keeps the previous choice when scheduling fails", async () => {
     jest.mocked(applyDailyReminder).mockRejectedValue(new Error("native failure"));
     await render(<DailyReminderCard />);
 
-    await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, 12:00 PM" }));
-    await fireEvent.press(screen.getByRole("radio", { name: "6:00 PM" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Daily reminder, On" }));
+    await fireEvent(screen.getByLabelText("Remind me daily"), "valueChange", false);
 
-    expect(useDailyReminderStore.getState().time).toBe("12:00");
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
     expect(screen.getByRole("alert")).toBeTruthy();
   });
 });

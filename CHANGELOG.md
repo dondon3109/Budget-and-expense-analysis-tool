@@ -11,13 +11,14 @@ All notable product changes are documented here.
 ### Changed
 
 - The Terms of Service and Privacy Policy (updated October 1, 2026), the zoption.site home, pricing, and FAQ pages, and the AI-readable site summaries describe the assistant's transaction drafts: it never writes on its own, only your Save tap adds a draft, and it never edits or deletes existing records.
+- The mobile daily reminder is now on by default and notifies you at 12:00 PM and 9:00 PM; a single switch under More → Preferences → Daily reminder turns it off. The app asks for notification permission the first time you sign in.
 - Sign in and Start free links on zoption.site open app.zoption.site in a new tab, so the public page stays open behind the app.
 
 ### Fixed
 
 - The AI assistant can answer "show my recent transactions" without a date range and lists category spending largest first so "biggest expense" answers name the right category.
 - On zoption.site, the theme button and the "Ask Zoption" support button announce their visible text to screen readers and voice control, and the assistant preview on the home page keeps readable contrast on phones. Headline and label fonts load earlier, so the hero no longer shifts when they arrive.
-- The AI assistant's totals, category spending, budget comparisons, recurring charges, and unusual-spending checks count only the workspace currency and say when transactions in the other currency were left out, instead of adding dollars into peso totals. Account balances and transaction lists show each amount in its own currency.
+- The AI assistant's totals, category spending, budget comparisons, recurring charges, and unusual-spending checks count only the workspace currency and say when transactions in the other currency were left out, instead of adding dollars into peso totals. Account balances and transaction lists show each amount in its own currency. An opening balance in the other currency is not reported as left out, and an answer that labels a dollar amount as pesos (or the reverse) is rejected.
 
 ## 3.0.0 — 2026-09-30
 

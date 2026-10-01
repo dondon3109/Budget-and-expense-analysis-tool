@@ -1,12 +1,13 @@
-import type {
-  AccountRecord,
-  BudgetMonthPlan,
-  CategoryRecord,
-  Currency,
-  DashboardSummary,
-  TransactionCalendarMonth,
-  TransactionListItem,
-  TransactionPage,
+import {
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  type AccountRecord,
+  type BudgetMonthPlan,
+  type CategoryRecord,
+  type Currency,
+  type DashboardSummary,
+  type TransactionCalendarMonth,
+  type TransactionListItem,
+  type TransactionPage,
 } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
@@ -147,6 +148,7 @@ interface AnalysisRow {
   accountName: string;
   sourceKind: "manual" | "import";
   importId: string | null;
+  categorySystemKey?: string | null;
 }
 
 const analysisRow: AnalysisRow = {
@@ -529,6 +531,22 @@ describe("assistant financial reader workspace currency", () => {
     code: "other_currency_excluded",
     message: expect.stringContaining("left out"),
   };
+
+  it("does not report an opening balance in the other currency as left out", async () => {
+    const usdOpening: AnalysisRow = {
+      ...usdIncome,
+      id: "transaction-usd-opening",
+      description: "Opening cash balance",
+      categorySystemKey: OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+    };
+    const { reader } = createReader({ analysisRows: [analysisRow, usdOpening] });
+
+    const result = await reader.getPeriodSummary(context, dashboardSummary.period);
+
+    expect(result.dataQuality.signals.map((signal) => signal.code)).not.toContain(
+      "other_currency_excluded",
+    );
+  });
 
   it("summarizes a period in the workspace currency only", async () => {
     const { reader, dashboardLoader } = createReader({

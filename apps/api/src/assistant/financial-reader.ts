@@ -1,6 +1,7 @@
 import {
   calculateDebtPayoff,
   calculateSavingsGoal,
+  countsAsIncome,
   decimalAmountToMinor,
   detectRecurringCharges,
   detectSpendingAnomalies,
@@ -174,6 +175,7 @@ interface AnalysisTransaction extends AssistantAnalysisTransaction {
   categoryId: string;
   accountId: string | null;
   currency: Currency;
+  categorySystemKey?: string | null;
 }
 
 type AnalysisLoader = (
@@ -297,6 +299,7 @@ async function loadAnalysisTransactions(
   const rows = await context.env.DB.prepare(
     `SELECT t.id, t.date, t.description, t.amount_minor AS amountMinor, t.kind,
             t.category_id AS categoryId, c.name AS categoryName,
+            c.system_key AS categorySystemKey,
             t.account_id AS accountId, COALESCE(a.name, 'Unassigned') AS accountName,
             t.currency, t.source_kind AS sourceKind, t.import_id AS importId
      FROM transactions t
@@ -459,11 +462,12 @@ export function createFinancialReader(
           ),
         ),
       ]);
-      // The summary totals income and expenses, so both count toward what was left out.
+      // The summary totals income and expenses, so both count toward what was left out. An
+      // opening balance is never counted as income, so leaving one out is not reported.
       const { rows: analysis, excludedCount } = splitByCurrency(
         allAnalysis,
         currency,
-        (item) => item.kind !== "transfer",
+        (item) => item.kind === "expense" || countsAsIncome(item),
       );
       const monthCount = coveredMonthCount(input.from, input.to);
       const quality = assessWorkspaceQuality(analysis, excludedCount, input, currency);
