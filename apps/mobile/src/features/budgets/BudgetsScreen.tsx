@@ -483,48 +483,56 @@ function ZeroBudgetsView({
                   android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
                   disabled={disabled}
                   onPress={() => onSelectCategory(category.id)}
-                  style={({ pressed }) => [
-                    styles.suggestedCard,
-                    elevation.card,
-                    {
-                      backgroundColor: theme.colors.surfaceRaised,
-                      borderColor: theme.colors.border,
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}
+                  // Android's NativeWind interop drops layout from a callback style, so the
+                  // card's look lives on the static inner View; the callback only dims it.
+                  className="w-full"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                 >
                   <View
                     style={[
-                      styles.suggestedAvatar,
+                      styles.suggestedCard,
+                      elevation.card,
                       {
-                        backgroundColor: category.color + "18",
-                        borderColor: category.color + "33",
+                        backgroundColor: theme.colors.surfaceRaised,
+                        borderColor: theme.colors.border,
                       },
                     ]}
                   >
-                    {emoji ? (
-                      <Text accessibilityElementsHidden style={styles.suggestedEmoji}>
-                        {emoji}
-                      </Text>
-                    ) : (
-                      <View style={[styles.avatarDot, { backgroundColor: category.color }]} />
-                    )}
-                  </View>
+                    <View
+                      style={[
+                        styles.suggestedAvatar,
+                        {
+                          backgroundColor: category.color + "18",
+                          borderColor: category.color + "33",
+                        },
+                      ]}
+                    >
+                      {emoji ? (
+                        <Text accessibilityElementsHidden style={styles.suggestedEmoji}>
+                          {emoji}
+                        </Text>
+                      ) : (
+                        <View style={[styles.avatarDot, { backgroundColor: category.color }]} />
+                      )}
+                    </View>
 
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      typography.headline,
-                      { color: theme.colors.text, fontSize: 15, flex: 1 },
-                    ]}
-                  >
-                    {category.name}
-                  </Text>
-
-                  <View style={[styles.quickAddPill, { backgroundColor: theme.colors.brandSoft }]}>
-                    <Text style={[styles.quickAddPillText, { color: theme.colors.brand }]}>
-                      + Set limit
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        typography.headline,
+                        { color: theme.colors.text, fontSize: 15, flex: 1 },
+                      ]}
+                    >
+                      {category.name}
                     </Text>
+
+                    <View
+                      style={[styles.quickAddPill, { backgroundColor: theme.colors.brandSoft }]}
+                    >
+                      <Text style={[styles.quickAddPillText, { color: theme.colors.brand }]}>
+                        + Set limit
+                      </Text>
+                    </View>
                   </View>
                 </Pressable>
               );
