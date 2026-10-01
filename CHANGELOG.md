@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 3.1.0 — 2026-10-01
+
 ### Added
 
 - The Android mic widget now logs what you say without opening Zoption. Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves both as separate expenses (income works too, up to 10 entries per note), then a notification tells you how many were logged. It uses the account you name out loud or your default spending account, and needs notification permission to report back. A balance update ("adjust BDO to 5,000") still opens a review when you tap its notification. Entries are saved on the phone right away and sync the next time Zoption opens.
@@ -11,6 +13,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Android Beta 0.2.43 (versionCode 20343) carries the mic widget redesign and multi-entry logging, the new Home screen, a fresh assistant conversation on open, the default daily reminder, and the PIN fix, and the Android install page offers it.
 - The Android mic widget has a new look: a bordered surface card with a brand mic circle that follows your phone's light or dark theme. Stretch it wider to see the Zoption title and a "Tap and say what you spent" hint.
 - The Terms of Service and Privacy Policy (updated October 1, 2026), the zoption.site home, pricing, and FAQ pages, and the AI-readable site summaries describe the assistant's transaction drafts: it never writes on its own, only your Save tap adds a draft, and it never edits or deletes existing records.
 - The Android and iOS Home screen leads with a large safe-to-spend card and makes Add the main shortcut. Empty budget, category, and cash-flow cards fold away, categories show their emoji on a tinted badge everywhere, and the welcome screen is a single-screen landing.
