@@ -373,7 +373,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
               <ShieldCheck size={18} aria-hidden="true" />
             </div>
             <div className="trust-text-wrap">
-              <strong>Private & Read-Only</strong>
+              <strong>Private to this workspace</strong>
               <p>
                 Your assistant remembers key facts across conversations so you don't have to repeat
                 yourself. Data is private to this workspace, kept until you delete it, and never

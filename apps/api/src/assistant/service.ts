@@ -173,7 +173,7 @@ async function refuseIfReplacedDraftSaved(
     throw new HttpError(
       409,
       "assistant_draft_already_saved",
-      "The earlier draft was already saved. Edit that transaction instead.",
+      "The earlier draft was already saved. Edit that transaction instead, or if this is a different purchase, ask for a new draft of it.",
     );
   }
   const claimAge = replaced?.claimedAt ? Date.now() - Date.parse(replaced.claimedAt) : Infinity;

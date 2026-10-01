@@ -318,7 +318,7 @@ export function LandingPage({
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Read-only, grounded with evidence &amp; consent</span>
+                      <span>Grounded with evidence; saves only on your tap</span>
                     </span>
                   </td>
                 </tr>
@@ -585,8 +585,9 @@ export function LandingPage({
               <summary>How does the AI Financial Assistant work?</summary>
               <p className="faq-answer">
                 The assistant answers questions about your real numbers with grounded evidence and
-                verified mathematical calculations. It is strictly read-only, operates only with
-                your explicit consent, and never modifies your balances or records.
+                verified mathematical calculations. It operates only with your explicit consent, can
+                draft a transaction that is saved only when you tap Save, and never edits or deletes
+                your existing records.
               </p>
             </details>
             <details className="faq-item">

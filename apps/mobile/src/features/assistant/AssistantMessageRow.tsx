@@ -78,6 +78,8 @@ function AssistantDraftCard({
   const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
   if (!parsed.success) return null;
   const draft = parsed.data;
+  // A stored "saving" state still offers Save: the server refuses a live claim and takes over
+  // one a failed request left behind, so a tap can never record the purchase twice.
   const saved = draft.status === "saved";
 
   async function save() {

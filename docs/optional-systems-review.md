@@ -10,7 +10,7 @@ Last reviewed: 2026-09-23.
 
 | System                                      | Flag | Reason and boundary                                                                                                            |
 | ------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Read-only AI assistant                      | Keep | Active product capability. Provider failure must never block financial reads/writes, readiness, deletion, or export.           |
+| AI assistant (saves only on the user's tap) | Keep | Active product capability. Provider failure must never block financial reads/writes, readiness, deletion, or export.           |
 | Spoken assistant replies through Fish Audio | Keep | Active voice feature. Spoken replies are part of the consented assistant voice path, not a trial add-on.                       |
 | Public AI support chat                      | Keep | Active product-help surface on public and in-app pages. Provider failure must not affect financial routes.                     |
 | PostHog AI observability                    | Keep | Active metadata-only AI operational stream after assistant consent. Do not attach prompts, answers, or financial records.      |

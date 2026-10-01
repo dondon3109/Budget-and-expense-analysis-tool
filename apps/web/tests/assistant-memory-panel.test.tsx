@@ -106,7 +106,7 @@ describe("AssistantMemoryPanel", () => {
     renderPanel();
 
     expect(await screen.findByText("Memory & Preferences")).toBeInTheDocument();
-    expect(screen.getByText("Private & Read-Only")).toBeInTheDocument();
+    expect(screen.getByText("Private to this workspace")).toBeInTheDocument();
     expect(screen.getByText("Debt payoff preference")).toBeInTheDocument();
     expect(await screen.findByRole("radio", { name: /Avalanche/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Snowball/ })).toBeInTheDocument();

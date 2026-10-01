@@ -84,8 +84,8 @@ const COMPARISON_ROWS = [
       },
       {
         name: "Assistant permissions model",
-        free: "Read-only & consented",
-        pro: "Read-only & consented",
+        free: "Consented; you approve every save",
+        pro: "Consented; you approve every save",
       },
       { name: "Transparent reasoning & grounded citations", free: "Included", pro: "Included" },
     ],

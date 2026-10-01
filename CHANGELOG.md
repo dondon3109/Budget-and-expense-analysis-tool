@@ -10,6 +10,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- The Terms of Service and Privacy Policy (updated October 1, 2026), the zoption.site home, pricing, and FAQ pages, and the AI-readable site summaries describe the assistant's transaction drafts: it never writes on its own, only your Save tap adds a draft, and it never edits or deletes existing records.
 - Sign in and Start free links on zoption.site open app.zoption.site in a new tab, so the public page stays open behind the app.
 
 ### Fixed
