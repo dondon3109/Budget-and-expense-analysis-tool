@@ -98,6 +98,11 @@ const threads = [
   },
 ];
 
+async function openHistory() {
+  await fireEvent.press(await screen.findByRole("button", { name: "Back to conversations" }));
+  await screen.findByText("Budget review");
+}
+
 describe("assistant screen multi-select", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -126,8 +131,7 @@ describe("assistant screen multi-select", () => {
 
   it("deletes every selected conversation in one pass", async () => {
     await render(<AssistantScreen />);
-
-    await screen.findByText("Budget review");
+    await openHistory();
     await fireEvent.press(screen.getByRole("button", { name: "Select conversations" }));
 
     const first = screen.getByRole("checkbox", { name: /Conversation Budget review/ });
@@ -174,7 +178,7 @@ describe("assistant screen multi-select", () => {
     api.clearAssistantMemory.mockResolvedValue(undefined);
 
     await render(<AssistantScreen />);
-    await screen.findByText("Budget review");
+    await openHistory();
     await fireEvent.press(screen.getByRole("button", { name: "Assistant settings" }));
 
     expect(await screen.findByText("Avalanche")).toBeTruthy();
@@ -212,7 +216,7 @@ describe("assistant screen multi-select", () => {
     api.deleteAssistantMemory.mockResolvedValue(undefined);
 
     await render(<AssistantScreen />);
-    await screen.findByText("Budget review");
+    await openHistory();
     await fireEvent.press(screen.getByRole("button", { name: "Assistant settings" }));
 
     await fireEvent.press(
@@ -237,11 +241,18 @@ describe("assistant screen multi-select", () => {
     api.listAssistantThreads.mockResolvedValue({ items: threads, nextCursor: null });
 
     await render(<AssistantScreen />);
-    await screen.findByText("Budget review");
+    await openHistory();
 
     const backButton = screen.getByRole("button", { name: "Back" });
     await fireEvent.press(backButton);
 
     expect(router.back).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens a new conversation instead of the history", async () => {
+    await render(<AssistantScreen />);
+
+    expect(await screen.findByText("Ask anything about your money")).toBeTruthy();
+    expect(screen.queryByText("Budget review")).toBeNull();
   });
 });
