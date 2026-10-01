@@ -456,6 +456,13 @@ describe("assistant financial reader workspace currency", () => {
     accountId: "account-usd",
     accountName: "Dollar card",
   };
+  const usdIncome: AnalysisRow = {
+    ...usdRow,
+    id: "transaction-usd-income",
+    description: "Freelance",
+    amountMinor: 20_000,
+    kind: "income",
+  };
   const excludedSignal = {
     code: "other_currency_excluded",
     message: expect.stringContaining("left out"),
@@ -463,7 +470,7 @@ describe("assistant financial reader workspace currency", () => {
 
   it("summarizes a period in the workspace currency only", async () => {
     const { reader, dashboardLoader } = createReader({
-      analysisRows: [analysisRow, usdRow],
+      analysisRows: [analysisRow, usdRow, usdIncome],
     });
 
     const result = await reader.getPeriodSummary(context, dashboardSummary.period);
@@ -481,11 +488,12 @@ describe("assistant financial reader workspace currency", () => {
       monthlyAverages: { expenses: "PHP 696.00" },
     });
     expect(result.source.recordCount).toBe(1);
-    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 1 });
+    // The summary totals income and expenses, so both USD rows were left out.
+    expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 2 });
   });
 
   it("totals spending by category without the other currency", async () => {
-    const { reader } = createReader({ analysisRows: [analysisRow, usdRow] });
+    const { reader } = createReader({ analysisRows: [analysisRow, usdRow, usdIncome] });
 
     const result = await reader.getSpendingByCategory(context, dashboardSummary.period);
 
@@ -494,6 +502,7 @@ describe("assistant financial reader workspace currency", () => {
       items: [{ name: category.name, amount: "PHP 696.00", transactionCount: 1 }],
     });
     expect(result.dataQuality.status).toBe("limited");
+    // Only the USD expense would have been summed; the USD income is not counted as left out.
     expect(result.dataQuality.signals).toContainEqual({ ...excludedSignal, count: 1 });
   });
 

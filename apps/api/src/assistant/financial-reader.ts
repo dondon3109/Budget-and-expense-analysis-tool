@@ -172,11 +172,17 @@ function formatMoney(amountMinor: number, currency: Currency): string {
 
 /**
  * Aggregates count only the workspace currency and never convert, matching the dashboard and
- * plans. Rows in the other currency are counted so the model can say they were left out.
+ * plans. `excludedCount` counts the other currency's rows a tool would have summed (expenses
+ * by default) so the model can say they were left out.
  */
-function splitByCurrency(rows: readonly AnalysisTransaction[], currency: Currency) {
+function splitByCurrency(
+  rows: readonly AnalysisTransaction[],
+  currency: Currency,
+  summed: (item: AnalysisTransaction) => boolean = (item) => item.kind === "expense",
+) {
   const included = rows.filter((item) => item.currency === currency);
-  return { rows: included, excludedCount: rows.length - included.length };
+  const excludedCount = rows.filter((item) => item.currency !== currency && summed(item)).length;
+  return { rows: included, excludedCount };
 }
 
 function assessWorkspaceQuality(
@@ -384,7 +390,10 @@ export function createFinancialReader(
     },
 
     async getAccountBalances(context, input = {}) {
-      const accountItems = await accounts.list(context.env, context.tenantId);
+      const [accountItems, currency] = await Promise.all([
+        accounts.list(context.env, context.tenantId),
+        workspaceCurrencyLoader(context.env, context.tenantId),
+      ]);
       const account = input.accountName
         ? findAccountByName(accountItems, input.accountName)
         : undefined;
@@ -394,7 +403,6 @@ export function createFinancialReader(
         });
       }
 
-      const currency = await workspaceCurrencyLoader(context.env, context.tenantId);
       const summary = summarizeAccountBalances(account ? [account] : accountItems, currency);
       return source(
         {
@@ -440,18 +448,26 @@ export function createFinancialReader(
         });
       }
 
-      const currency = await workspaceCurrencyLoader(context.env, context.tenantId);
-      const [summary, allAnalysis] = await Promise.all([
-        dashboardLoader(
-          context.env,
-          context.tenantId,
-          { from: input.from, to: input.to },
-          account?.id,
-          currency,
-        ),
+      const currencyLoad = workspaceCurrencyLoader(context.env, context.tenantId);
+      const [currency, allAnalysis, summary] = await Promise.all([
+        currencyLoad,
         analysisLoader(context, input.from, input.to, account?.id),
+        currencyLoad.then((currency) =>
+          dashboardLoader(
+            context.env,
+            context.tenantId,
+            { from: input.from, to: input.to },
+            account?.id,
+            currency,
+          ),
+        ),
       ]);
-      const { rows: analysis, excludedCount } = splitByCurrency(allAnalysis, currency);
+      // The summary totals income and expenses, so both count toward what was left out.
+      const { rows: analysis, excludedCount } = splitByCurrency(
+        allAnalysis,
+        currency,
+        (item) => item.kind !== "transfer",
+      );
       const monthCount = coveredMonthCount(input.from, input.to);
       const quality = assessWorkspaceQuality(analysis, excludedCount, input, currency);
       if (monthCount > 24) {
