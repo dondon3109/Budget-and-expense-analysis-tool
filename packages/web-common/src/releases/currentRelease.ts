@@ -11,42 +11,37 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "September 30, 2026",
+  releasedOn: "October 1, 2026",
   changes: [
     {
-      title: "Your workspace moved to app.zoption.site",
+      title: "Log a transaction by chatting with the assistant",
       description:
-        "The signed-in web app now lives at app.zoption.site, and zoption.site is the public site. Old links, bookmarks, and sign-in emails still work and forward to the app. Because the address changed, sign in once more on the web.",
+        'Tell the assistant what you spent or where you went ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") and it drafts the transaction with a suggested category, account, and usual amount. If you only know what is left in an account, it works out the amount. Nothing is saved until you tap Save transaction. Because the assistant can now prepare drafts, you are asked to accept the updated assistant consent once before your next chat.',
     },
     {
-      title: "Faster public pages",
+      title: "Log several entries from the Android mic widget",
       description:
-        "Guides, pricing, the FAQ, the calculator, and the legal pages on zoption.site now load as plain pages without the full app, so they open noticeably faster on mobile data.",
+        'Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves each as its own entry, up to 10 per note, without opening the app. A notification tells you how many were logged. Entries sync the next time Zoption opens.',
     },
     {
-      title: "A short setup for new workspaces",
+      title: "Daily reminder on by default on Android and iOS",
       description:
-        "A new account on the web now chooses its currency and enters the cash on hand before the dashboard opens. That amount becomes the Cash account's opening balance and is not counted as income on the web dashboard, cashflow trend, or calendar. Existing accounts are not asked.",
+        "Zoption now reminds you at 12:00 PM and 9:00 PM. One switch under More → Preferences → Daily reminder turns it off.",
     },
     {
-      title: "Checkout leads with Dodo Payments",
+      title: "Assistant answers keep to your workspace currency",
       description:
-        "Pro checkout on the web and in the Android and iOS app offers Dodo Payments (card, Apple Pay, or Google Pay) first, with PayPal below it.",
+        'Totals, category spending, budgets, and recurring charges count only your workspace currency and say when entries in the other currency were left out. "Show my recent transactions" works without a date range, and the biggest category is listed first.',
     },
     {
-      title: "Currency moved to Preferences on Android and iOS",
+      title: "Smoother sign-in links and a steadier PIN pad",
       description:
-        "The Currency setting now sits under More → Preferences, beside Theme and Voice language, instead of inside the Account screen.",
+        "Sign in and Start free on zoption.site open the app in a new tab. PIN digits you type are no longer lost when the screen refreshes.",
     },
     {
-      title: "Tidier account rows and settings menus",
+      title: "Android Beta 0.2.43",
       description:
-        "Account rows on the web keep their icons lined up from row to row, and the settings dropdowns have a padded arrow.",
-    },
-    {
-      title: "Android Beta 0.2.42",
-      description:
-        "The official Android Beta carries the Currency setting under Preferences and the Dodo Payments checkout, and budget share links created in the app open on app.zoption.site.",
+        "The official Android Beta carries the multi-entry mic widget, the default daily reminder, and the PIN fix.",
     },
   ],
 };
@@ -61,6 +56,47 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "3.0.0",
+    releasedOn: "September 30, 2026",
+    changes: [
+      {
+        title: "Your workspace moved to app.zoption.site",
+        description:
+          "The signed-in web app now lives at app.zoption.site, and zoption.site is the public site. Old links, bookmarks, and sign-in emails still work and forward to the app. Because the address changed, sign in once more on the web.",
+      },
+      {
+        title: "Faster public pages",
+        description:
+          "Guides, pricing, the FAQ, the calculator, and the legal pages on zoption.site now load as plain pages without the full app, so they open noticeably faster on mobile data.",
+      },
+      {
+        title: "A short setup for new workspaces",
+        description:
+          "A new account on the web now chooses its currency and enters the cash on hand before the dashboard opens. That amount becomes the Cash account's opening balance and is not counted as income on the web dashboard, cashflow trend, or calendar. Existing accounts are not asked.",
+      },
+      {
+        title: "Checkout leads with Dodo Payments",
+        description:
+          "Pro checkout on the web and in the Android and iOS app offers Dodo Payments (card, Apple Pay, or Google Pay) first, with PayPal below it.",
+      },
+      {
+        title: "Currency moved to Preferences on Android and iOS",
+        description:
+          "The Currency setting now sits under More → Preferences, beside Theme and Voice language, instead of inside the Account screen.",
+      },
+      {
+        title: "Tidier account rows and settings menus",
+        description:
+          "Account rows on the web keep their icons lined up from row to row, and the settings dropdowns have a padded arrow.",
+      },
+      {
+        title: "Android Beta 0.2.42",
+        description:
+          "The official Android Beta carries the Currency setting under Preferences and the Dodo Payments checkout, and budget share links created in the app open on app.zoption.site.",
+      },
+    ],
+  },
   {
     version: "2.49.0",
     releasedOn: "September 29, 2026",
