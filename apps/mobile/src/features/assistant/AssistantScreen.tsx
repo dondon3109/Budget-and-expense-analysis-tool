@@ -108,7 +108,7 @@ export function AssistantScreen() {
   const [preferences, setPreferences] = useState<AssistantPreferences | null>(null);
   const [voicePreferences, setVoicePreferences] = useState<AssistantVoicePreferences | null>(null);
 
-  const [view, setView] = useState<AssistantView>("threads");
+  const [view, setView] = useState<AssistantView>("chat");
   const [threads, setThreads] = useState<AssistantThreadSummary[]>([]);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null);
   const [voiceThreadId, setVoiceThreadId] = useState<string | null>(null);
