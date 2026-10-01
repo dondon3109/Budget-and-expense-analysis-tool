@@ -70,8 +70,15 @@ class SqliteD1PreparedStatement implements D1PreparedStatement {
   raw<T = unknown[]>(options: { columnNames: true }): Promise<[string[], ...T[]]>;
   raw<T = unknown[]>(options?: { columnNames?: false }): Promise<T[]>;
   raw<T = unknown[]>(options?: { columnNames?: boolean }): Promise<T[] | [string[], ...T[]]> {
-    const rows = this.statement.all(...this.bindings) as Record<string, unknown>[];
-    const values = rows.map((row) => Object.values(row) as T);
+    // Row arrays, like D1: an object row would collapse duplicate column names (a join that
+    // selects two `id` or `name` columns) and shift every later value into the wrong field.
+    this.statement.setReturnArrays(true);
+    let values: T[];
+    try {
+      values = this.statement.all(...this.bindings) as T[];
+    } finally {
+      this.statement.setReturnArrays(false);
+    }
     if (options?.columnNames) {
       const names = this.statement.columns().map((column) => column.name);
       return Promise.resolve([names, ...values]);
