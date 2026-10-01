@@ -12,7 +12,7 @@ import { Button } from "@/ui/components/Button";
 import { Card } from "@/ui/components/Card";
 import { FormField } from "@/ui/components/FormField";
 import { SelectionField, type SelectionOption } from "@/ui/components/SelectionField";
-import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 import type { RecordingPhase } from "./assistant-voice-hooks";
@@ -116,7 +116,7 @@ export function AssistantUnavailableView({
       <View
         style={[
           styles.offlineToolsCard,
-          elevation.card,
+          { boxShadow: theme.clay.raised },
           {
             backgroundColor: theme.colors.surfaceRaised,
             borderColor: theme.colors.border,

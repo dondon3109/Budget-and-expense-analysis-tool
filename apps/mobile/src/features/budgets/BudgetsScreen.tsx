@@ -22,7 +22,7 @@ import {
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import {
   currentMonthStart,
   formatMinorForInput,
@@ -485,7 +485,7 @@ function ZeroBudgetsView({
                   onPress={() => onSelectCategory(category.id)}
                   style={({ pressed }) => [
                     styles.suggestedCard,
-                    elevation.card,
+                    { boxShadow: theme.clay.raised },
                     {
                       backgroundColor: theme.colors.surfaceRaised,
                       borderColor: theme.colors.border,
@@ -545,7 +545,7 @@ function ZeroBudgetsView({
       <View
         style={[
           styles.benefitsCard,
-          elevation.card,
+          { boxShadow: theme.clay.raised },
           {
             backgroundColor: theme.colors.surfaceRaised,
             borderColor: theme.colors.border,
@@ -729,7 +729,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
       accessible
       style={[
         styles.budgetCard,
-        elevation.card,
+        { boxShadow: theme.clay.raised },
         {
           backgroundColor: theme.colors.surfaceRaised,
           borderColor: row.syncState === "conflicted" ? theme.colors.warning : theme.colors.border,

@@ -100,6 +100,12 @@ export function Button({
               ? palette.pressed
               : palette.background,
           borderColor: isDisabled ? disabledPalette.border : palette.border,
+          boxShadow:
+            variant === "quiet" || isDisabled
+              ? undefined
+              : pressed
+                ? theme.clay.well
+                : theme.clay.raised,
         },
       ]}
       {...props}
@@ -144,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minHeight: touchTarget,
     minWidth: touchTarget,
-    borderRadius: radii.md,
+    borderRadius: radii.round,
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,

@@ -26,7 +26,10 @@ function TabIcon({
   // glyph, so a larger pill would be clipped and pushed off-center.
   return (
     <View
-      style={[styles.iconPill, { backgroundColor: focused ? theme.colors.solid : "transparent" }]}
+      style={[
+        styles.iconPill,
+        focused ? { backgroundColor: theme.colors.solid, boxShadow: theme.clay.raised } : null,
+      ]}
     >
       <MaterialCommunityIcons
         name={focused ? activeName : name}
@@ -68,8 +71,10 @@ export default function TabLayout() {
         },
         tabBarStyle: {
           backgroundColor: theme.colors.surfaceRaised,
-          borderTopColor: theme.colors.border,
-          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopWidth: 0,
+          borderTopLeftRadius: radii.xl,
+          borderTopRightRadius: radii.xl,
+          boxShadow: theme.clay.raised,
           height: 60 + bottomInset,
           paddingTop: 8,
           paddingBottom: bottomInset,

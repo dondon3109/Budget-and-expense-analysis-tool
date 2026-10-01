@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { StyleSheet, View, type ViewProps } from "react-native";
 
-import { elevation, radii, spacing } from "@/ui/tokens";
+import { radii, spacing } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 export function Card({ children, style, ...props }: PropsWithChildren<ViewProps>) {
@@ -11,10 +11,9 @@ export function Card({ children, style, ...props }: PropsWithChildren<ViewProps>
       className="w-full"
       style={[
         styles.card,
-        elevation.card,
         {
           backgroundColor: theme.colors.surfaceRaised,
-          borderColor: theme.colors.border,
+          boxShadow: theme.clay.raised,
         },
         style,
       ]}
@@ -28,7 +27,6 @@ export function Card({ children, style, ...props }: PropsWithChildren<ViewProps>
 const styles = StyleSheet.create({
   card: {
     borderRadius: radii.lg,
-    borderWidth: 1,
     padding: spacing.md,
     gap: spacing.sm,
   },

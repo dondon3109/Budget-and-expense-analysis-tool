@@ -28,7 +28,7 @@ import {
 import { Screen } from "@/ui/screen";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { elevation, radii, spacing, typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 
 type SubscriptionFilter = "all" | "active" | "canceled";
 
@@ -675,7 +675,6 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    ...elevation.card,
   },
   fabButton: {
     width: 56,
