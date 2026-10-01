@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import type { LocalCategoryItem } from "@/db/view-models";
-import { Button, EmptyState, ErrorState, Skeleton } from "@/ui/components";
+import { Button, CategoryBadge, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
@@ -56,11 +56,7 @@ function CategoryRow({ category, onPress }: { category: LocalCategoryItem; onPre
       ]}
     >
       <View accessibilityElementsHidden style={styles.leading}>
-        {resolveCategoryEmoji(category) ? (
-          <Text style={styles.leadingEmoji}>{resolveCategoryEmoji(category)}</Text>
-        ) : (
-          <View style={[styles.colorDot, { backgroundColor: category.color }]} />
-        )}
+        <CategoryBadge emoji={resolveCategoryEmoji(category)} color={category.color} size={40} />
       </View>
       <View style={styles.rowText}>
         <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
@@ -259,8 +255,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  leadingEmoji: { fontSize: 24, lineHeight: 30 },
-  colorDot: { width: 14, height: 14, borderRadius: 7 },
   rowText: { minWidth: 0, flex: 1, gap: spacing.xxs },
   divider: {
     height: StyleSheet.hairlineWidth,

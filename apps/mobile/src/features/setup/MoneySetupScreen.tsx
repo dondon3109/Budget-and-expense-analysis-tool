@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import type { LocalAccountItem } from "@/db/view-models";
-import { Button, EmptyState, ErrorState, Skeleton } from "@/ui/components";
+import { Button, CategoryBadge, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
@@ -93,7 +93,7 @@ function SetupRow({
     >
       <View accessibilityElementsHidden style={styles.leading}>
         {emoji ? (
-          <Text style={styles.leadingEmoji}>{emoji}</Text>
+          <CategoryBadge emoji={emoji} color={String(iconColor ?? theme.colors.brand)} size={40} />
         ) : (
           <MaterialCommunityIcons color={iconColor ?? theme.colors.brand} name={icon} size={24} />
         )}
@@ -276,7 +276,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  leadingEmoji: { fontSize: 24, lineHeight: 30 },
   rowText: { minWidth: 0, flex: 1, gap: spacing.xxs },
   divider: {
     height: StyleSheet.hairlineWidth,

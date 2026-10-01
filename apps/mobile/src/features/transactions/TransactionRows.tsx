@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveCategoryEmoji, type Currency } from "@zoption/shared";
 import type { LocalTransactionItem } from "@/db/view-models";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
-import { MoneyValue } from "@/ui/components";
+import { CategoryBadge, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
@@ -86,21 +86,15 @@ export function TransactionItemRow({
     >
       <View style={styles.categoryColumn}>
         <View style={styles.categoryLine}>
-          {resolveCategoryEmoji({
-            name: transaction.categoryName,
-            iconEmoji: transaction.categoryIconEmoji,
-            kind: transaction.kind,
-          }) ? (
-            <Text accessibilityElementsHidden style={styles.categoryEmoji}>
-              {resolveCategoryEmoji({
-                name: transaction.categoryName,
-                iconEmoji: transaction.categoryIconEmoji,
-                kind: transaction.kind,
-              })}
-            </Text>
-          ) : (
-            <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
-          )}
+          <CategoryBadge
+            emoji={resolveCategoryEmoji({
+              name: transaction.categoryName,
+              iconEmoji: transaction.categoryIconEmoji,
+              kind: transaction.kind,
+            })}
+            color={transaction.categoryColor}
+            size={26}
+          />
           <Text
             numberOfLines={1}
             style={[typography.caption, styles.categoryText, { color: theme.colors.textMuted }]}
@@ -172,13 +166,7 @@ export function CategorySummaryRow({ item }: { item: CategorySummaryItem }) {
         { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
       ]}
     >
-      {resolveCategoryEmoji(item) ? (
-        <Text accessibilityElementsHidden style={styles.summaryEmoji}>
-          {resolveCategoryEmoji(item)}
-        </Text>
-      ) : (
-        <View style={[styles.summaryDot, { backgroundColor: item.color }]} />
-      )}
+      <CategoryBadge emoji={resolveCategoryEmoji(item)} color={item.color} size={32} />
       <Text
         numberOfLines={1}
         style={[typography.body, styles.summaryName, { color: theme.colors.text }]}
@@ -246,8 +234,6 @@ const styles = StyleSheet.create({
   categoryColumn: { width: 72, flexShrink: 0 },
   categoryLine: { minWidth: 0, flexDirection: "row", alignItems: "center", gap: spacing.xxs },
   categoryText: { flex: 1, minWidth: 0 },
-  categoryDot: { width: 9, height: 9, borderRadius: radii.round, flexShrink: 0 },
-  categoryEmoji: { width: 20, fontSize: 16, lineHeight: 20, flexShrink: 0 },
   descriptionColumn: { flex: 1, minWidth: 0, gap: 2 },
   descriptionText: { fontSize: 13, lineHeight: 18, fontWeight: "600" },
   rowMoney: {
@@ -266,7 +252,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  summaryDot: { width: 10, height: 10, borderRadius: radii.round },
-  summaryEmoji: { width: 24, fontSize: 19, lineHeight: 24 },
   summaryName: { flex: 1, minWidth: 0 },
 });

@@ -17,18 +17,12 @@ export function QuickActionBar() {
         onPress={() => router.push("/(app)/transaction")}
         style={[
           styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          styles.primaryTile,
+          { backgroundColor: theme.colors.solid, borderColor: theme.colors.solid },
         ]}
       >
-        <View
-          accessibilityElementsHidden
-          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
-        >
-          <MaterialCommunityIcons name="plus" size={20} color={theme.colors.brand} />
-        </View>
-        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
-          Add
-        </Text>
+        <MaterialCommunityIcons name="plus" size={20} color={theme.colors.onSolid} />
+        <Text style={[typography.label, { color: theme.colors.onSolid }]}>Add</Text>
       </Pressable>
 
       <Pressable
@@ -50,28 +44,6 @@ export function QuickActionBar() {
         </View>
         <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
           Scan
-        </Text>
-      </Pressable>
-
-      <Pressable
-        accessibilityLabel="View budgets"
-        accessibilityHint="Opens category budgets overview"
-        accessibilityRole="button"
-        android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={() => router.push("/(app)/(tabs)/budgets")}
-        style={[
-          styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
-        ]}
-      >
-        <View
-          accessibilityElementsHidden
-          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
-        >
-          <MaterialCommunityIcons name="chart-donut" size={20} color={theme.colors.brand} />
-        </View>
-        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
-          Budgets
         </Text>
       </Pressable>
 
@@ -110,6 +82,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     justifyContent: "space-between",
   },
+  primaryTile: { flex: 1.4, flexDirection: "row", gap: spacing.xs },
   quickActionTile: {
     flex: 1,
     minHeight: touchTarget + spacing.xs,

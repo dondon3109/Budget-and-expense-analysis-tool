@@ -1,7 +1,7 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { CashflowChart, ChartCard, EmptyState } from "@/ui/components";
+import { CashflowChart, ChartCard } from "@/ui/components";
 import { fullDateLabel } from "@/ui/components/cashflow-chart-geometry";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -32,10 +32,10 @@ export function CashflowCard({
   const theme = useZoptionTheme();
   const title =
     CASHFLOW_VIEWS.find((option) => option.value === selectedView)?.title ?? "Cash flow";
-  const summary = `Income and expenses · ${fullDateLabel(
+  const summary = `${fullDateLabel(
     cashflow.range.from,
     cashflow.granularity,
-  )} to ${fullDateLabel(cashflow.range.to, cashflow.granularity)}. Tap a point to see exact amounts, or drag across the chart to scrub.`;
+  )} to ${fullDateLabel(cashflow.range.to, cashflow.granularity)}`;
   return (
     <ChartCard title={title} accessibleSummary={summary}>
       <View accessibilityRole="tablist" style={styles.segmented}>
@@ -90,11 +90,10 @@ export function CashflowCard({
           Month and 6-month cash flow are Pro features.
         </Text>
       ) : null}
-      {cashflow.points.length === 0 ? (
-        <EmptyState
-          title="No cash flow yet"
-          description="Income and expense activity will chart here as you record transactions."
-        />
+      {!cashflow.points.some((point) => point.incomeMinor !== 0 || point.expenseMinor !== 0) ? (
+        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+          Nothing recorded in this period.
+        </Text>
       ) : (
         <CashflowChart cashflow={cashflow} />
       )}

@@ -1,6 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { Button, Card } from "@/ui/components";
+import { Button, Card, CollapsibleCard, MenuGroup, MenuIcon } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
@@ -49,10 +49,12 @@ export function UpdateSettingsCard() {
         onOpenUnknownSourcesSettings={() => void updates.openUnknownSourcesSettings()}
       />
       {__DEV__ ? (
-        <>
-          <UpdateDownloadBenchmarkCard />
-          <DevTelemetryCard />
-        </>
+        <MenuGroup>
+          <CollapsibleCard title="Developer tools" summary="Dev only" icon="wrench-outline">
+            <UpdateDownloadBenchmarkCard />
+            <DevTelemetryCard />
+          </CollapsibleCard>
+        </MenuGroup>
       ) : null}
     </View>
   );
@@ -69,10 +71,15 @@ export function UpdateSettingsCardView(props: UpdateSettingsCardViewProps) {
   return (
     <Card accessibilityLabel="Zoption updates">
       <View className="gap-3">
-        <Text style={[typography.headline, { color: theme.colors.text }]}>About Zoption</Text>
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Installed version {versionLabel}
-        </Text>
+        <View style={styles.header}>
+          <MenuIcon icon="information-outline" />
+          <View style={styles.headerText}>
+            <Text style={[typography.headline, { color: theme.colors.text }]}>About Zoption</Text>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              Version {versionLabel}
+            </Text>
+          </View>
+        </View>
         <StatusCopy {...props} />
         <Actions {...props} />
       </View>
@@ -219,6 +226,8 @@ function statusMessage(props: UpdateSettingsCardViewProps): string | null {
 }
 
 const styles = StyleSheet.create({
+  header: { flexDirection: "row", alignItems: "center", gap: 12 },
+  headerText: { flex: 1, gap: 2 },
   track: { height: 8, borderRadius: 4, overflow: "hidden" },
   fill: { height: "100%" },
 });

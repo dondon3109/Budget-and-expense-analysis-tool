@@ -12,6 +12,7 @@ import {
   BottomSheet,
   Button,
   Card,
+  CategoryBadge,
   CurrencyCode,
   ErrorState,
   FormField,
@@ -483,48 +484,40 @@ function ZeroBudgetsView({
                   android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
                   disabled={disabled}
                   onPress={() => onSelectCategory(category.id)}
-                  style={({ pressed }) => [
-                    styles.suggestedCard,
-                    elevation.card,
-                    {
-                      backgroundColor: theme.colors.surfaceRaised,
-                      borderColor: theme.colors.border,
-                      opacity: pressed ? 0.75 : 1,
-                    },
-                  ]}
+                  // Android's NativeWind interop drops layout from a callback style, so the
+                  // card's look lives on the static inner View; the callback only dims it.
+                  className="w-full"
+                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
                 >
                   <View
                     style={[
-                      styles.suggestedAvatar,
+                      styles.suggestedCard,
+                      elevation.card,
                       {
-                        backgroundColor: category.color + "18",
-                        borderColor: category.color + "33",
+                        backgroundColor: theme.colors.surfaceRaised,
+                        borderColor: theme.colors.border,
                       },
                     ]}
                   >
-                    {emoji ? (
-                      <Text accessibilityElementsHidden style={styles.suggestedEmoji}>
-                        {emoji}
-                      </Text>
-                    ) : (
-                      <View style={[styles.avatarDot, { backgroundColor: category.color }]} />
-                    )}
-                  </View>
+                    <CategoryBadge emoji={emoji ?? null} color={category.color} size={40} />
 
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      typography.headline,
-                      { color: theme.colors.text, fontSize: 15, flex: 1 },
-                    ]}
-                  >
-                    {category.name}
-                  </Text>
-
-                  <View style={[styles.quickAddPill, { backgroundColor: theme.colors.brandSoft }]}>
-                    <Text style={[styles.quickAddPillText, { color: theme.colors.brand }]}>
-                      + Set limit
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        typography.headline,
+                        { color: theme.colors.text, fontSize: 15, flex: 1 },
+                      ]}
+                    >
+                      {category.name}
                     </Text>
+
+                    <View
+                      style={[styles.quickAddPill, { backgroundColor: theme.colors.brandSoft }]}
+                    >
+                      <Text style={[styles.quickAddPillText, { color: theme.colors.brand }]}>
+                        + Set limit
+                      </Text>
+                    </View>
                   </View>
                 </Pressable>
               );
@@ -744,23 +737,7 @@ function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => v
         style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
       >
         <View style={styles.budgetCardTopRow}>
-          <View
-            style={[
-              styles.categoryAvatar,
-              {
-                backgroundColor: row.categoryColor + "18",
-                borderColor: row.categoryColor + "33",
-              },
-            ]}
-          >
-            {emoji ? (
-              <Text accessibilityElementsHidden style={styles.avatarEmoji}>
-                {emoji}
-              </Text>
-            ) : (
-              <View style={[styles.avatarDot, { backgroundColor: row.categoryColor }]} />
-            )}
-          </View>
+          <CategoryBadge emoji={emoji ?? null} color={row.categoryColor} size={42} />
 
           <View style={styles.categoryInfo}>
             <Text
@@ -936,23 +913,7 @@ function BudgetEditorSheet({
             },
           ]}
         >
-          <View
-            style={[
-              styles.categoryAvatar,
-              {
-                backgroundColor: editingBudget.categoryColor + "18",
-                borderColor: editingBudget.categoryColor + "33",
-              },
-            ]}
-          >
-            {emoji ? (
-              <Text accessibilityElementsHidden style={styles.avatarEmoji}>
-                {emoji}
-              </Text>
-            ) : (
-              <View style={[styles.avatarDot, { backgroundColor: editingBudget.categoryColor }]} />
-            )}
-          </View>
+          <CategoryBadge emoji={emoji ?? null} color={editingBudget.categoryColor} size={42} />
 
           <View style={{ flex: 1, gap: 2 }}>
             <Text style={[typography.headline, { color: theme.colors.text, fontSize: 16 }]}>
@@ -1189,23 +1150,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
   },
-  categoryAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarEmoji: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  avatarDot: {
-    width: 14,
-    height: 14,
-    borderRadius: radii.round,
-  },
   categoryInfo: {
     flex: 1,
     gap: 2,
@@ -1320,18 +1264,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.sm,
     gap: spacing.sm,
-  },
-  suggestedAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  suggestedEmoji: {
-    fontSize: 20,
-    lineHeight: 24,
   },
   quickAddPill: {
     paddingHorizontal: spacing.sm,

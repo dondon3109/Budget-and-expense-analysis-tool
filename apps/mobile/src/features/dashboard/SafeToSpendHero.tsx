@@ -84,27 +84,14 @@ export function SafeToSpendHero({
   }, [subscriptions]);
 
   return (
-    <Card accessibilityLabel="Safe to spend this week" style={styles.card}>
+    <Card
+      accessibilityLabel="Safe to spend this week"
+      style={[styles.card, { backgroundColor: theme.colors.brandSoft, borderColor: "transparent" }]}
+    >
       <View style={styles.headerRow}>
-        <View style={styles.titleGroup}>
-          <View style={[styles.iconWrap, { backgroundColor: theme.colors.brandSoft }]}>
-            <MaterialCommunityIcons
-              name="shield-check-outline"
-              size={18}
-              color={theme.colors.brand}
-            />
-          </View>
-          <Text
-            style={[
-              typography.label,
-              styles.titleText,
-              { color: theme.colors.brand, textTransform: "uppercase" },
-            ]}
-          >
-            Safe to spend this week
-          </Text>
-        </View>
-
+        <Text style={[typography.label, { color: theme.colors.brand }]}>
+          Safe to spend this week
+        </Text>
         {onViewRenewals ? (
           <Pressable
             accessibilityRole="button"
@@ -112,7 +99,7 @@ export function SafeToSpendHero({
             accessibilityHint="Opens upcoming renewals and subscriptions"
             onPress={onViewRenewals}
             hitSlop={8}
-            style={[styles.renewalsButton, { backgroundColor: theme.colors.canvasMuted }]}
+            style={[styles.renewalsButton, { backgroundColor: theme.colors.surfaceRaised }]}
           >
             <MaterialCommunityIcons name="calendar-clock" size={14} color={theme.colors.brand} />
             <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
@@ -122,18 +109,10 @@ export function SafeToSpendHero({
         ) : null}
       </View>
 
-      <View style={styles.amountRow}>
-        <MoneyValue amountMinor={safeAmountMinor} currency={currency} style={styles.heroAmount} />
-        <View style={[styles.pacePill, { backgroundColor: theme.colors.canvasMuted }]}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            {daysLeftInWeek} day{daysLeftInWeek === 1 ? "" : "s"} left
-          </Text>
-        </View>
-      </View>
-
-      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+      <MoneyValue amountMinor={safeAmountMinor} currency={currency} style={styles.heroAmount} />
+      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
         {safeAmountMinor > 0
-          ? `Forward guidance accounting for ${upcomingBilledCount} active recurring bill${upcomingBilledCount === 1 ? "" : "s"} and scheduled obligations.`
+          ? `${daysLeftInWeek} day${daysLeftInWeek === 1 ? "" : "s"} left · ${upcomingBilledCount} bill${upcomingBilledCount === 1 ? "" : "s"} counted`
           : "Keep spending minimal until your next planned deposit or balance adjustment."}
       </Text>
       {excludedCount > 0 ? (
@@ -157,24 +136,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.xs,
   },
-  titleGroup: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    minWidth: 0,
-  },
-  titleText: {
-    flexShrink: 1,
-  },
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 28,
-    height: 28,
-    borderRadius: radii.sm,
-    flexShrink: 0,
-  },
   renewalsButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -184,20 +145,10 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
     flexShrink: 0,
   },
-  amountRow: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    gap: spacing.sm,
-  },
   heroAmount: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 44,
+    lineHeight: 50,
     fontWeight: "700",
-  },
-  pacePill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: radii.round,
+    letterSpacing: -1,
   },
 });

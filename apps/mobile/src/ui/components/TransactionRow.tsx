@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveCategoryEmoji, type TransactionListItem } from "@zoption/shared";
+import { CategoryBadge } from "./CategoryBadge";
 import { MoneyValue, moneyAccessibilityLabel } from "./MoneyValue";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -59,21 +60,7 @@ export function TransactionRow({
         { backgroundColor: pressed ? theme.colors.canvasMuted : "transparent" },
       ]}
     >
-      <View
-        accessibilityElementsHidden
-        style={[
-          styles.categoryBadge,
-          {
-            backgroundColor: emoji ? "transparent" : transaction.categoryColor + "22",
-          },
-        ]}
-      >
-        {emoji ? (
-          <Text style={styles.categoryEmoji}>{emoji}</Text>
-        ) : (
-          <View style={[styles.categoryDot, { backgroundColor: transaction.categoryColor }]} />
-        )}
-      </View>
+      <CategoryBadge emoji={emoji} color={transaction.categoryColor} />
       <View className="min-w-0 flex-1">
         <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
           {transaction.description}
@@ -120,13 +107,4 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xxs,
   },
-  categoryBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryDot: { width: 10, height: 10, borderRadius: radii.round },
-  categoryEmoji: { fontSize: 16, textAlign: "center" },
 });

@@ -1,6 +1,7 @@
 export * from "./BottomSheet";
 export * from "./Button";
 export * from "./Card";
+export * from "./CategoryBadge";
 export * from "./CashflowChart";
 export * from "./ChartCard";
 export * from "./CollapsibleCard";
@@ -9,6 +10,7 @@ export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./FormField";
 export * from "./LedgerLoader";
+export * from "./MenuGroup";
 export * from "./MoneyValue";
 export * from "./OfflineBanner";
 export * from "./SelectionField";

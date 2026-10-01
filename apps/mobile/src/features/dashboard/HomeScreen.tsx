@@ -88,27 +88,29 @@ export function HomeScreen() {
         </View>
       ) : (
         <View style={{ gap: spacing.md }}>
-          {hasTransactions ? <BalanceCard summary={view.summary} /> : null}
+          {hasTransactions ? (
+            <SafeToSpendHero
+              startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+              subscriptions={subscriptions.subscriptions}
+              remainingBudgetMinor={
+                view.summary.budgetProgress.length > 0
+                  ? Math.max(
+                      0,
+                      view.summary.budgetProgress.reduce(
+                        (sum, item) => sum + item.remainingMinor,
+                        0,
+                      ),
+                    )
+                  : undefined
+              }
+              onViewRenewals={() => router.push("/(app)/subscriptions")}
+            />
+          ) : null}
           <QuickActionBar />
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
-              <SafeToSpendHero
-                startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-                subscriptions={subscriptions.subscriptions}
-                remainingBudgetMinor={
-                  view.summary.budgetProgress.length > 0
-                    ? Math.max(
-                        0,
-                        view.summary.budgetProgress.reduce(
-                          (sum, item) => sum + item.remainingMinor,
-                          0,
-                        ),
-                      )
-                    : undefined
-                }
-                onViewRenewals={() => router.push("/(app)/subscriptions")}
-              />
+              <BalanceCard summary={view.summary} />
               <MonthSummaryCard summary={view.summary} />
               <CashflowCard
                 cashflow={view.cashflow}
