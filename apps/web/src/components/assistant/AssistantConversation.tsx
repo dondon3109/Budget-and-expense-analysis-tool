@@ -340,9 +340,13 @@ export function AssistantConversation({
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
   // Replies whose draft a later correction replaced; saving one would record a purchase twice.
-  const replacedDraftIds = new Set(
-    messages.map((message) => message.metadata?.transactionDraft?.replacesMessageId),
-  );
+  const replacedDraftIds = new Set<string>();
+  for (const message of messages) {
+    const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+    if (parsed.success && parsed.data.replacesMessageId) {
+      replacedDraftIds.add(parsed.data.replacesMessageId);
+    }
+  }
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === "function") {

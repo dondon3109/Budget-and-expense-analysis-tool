@@ -208,6 +208,11 @@ function replacedDraftMessageId(
   const previous = [...history]
     .reverse()
     .find((item) => item.role === "assistant" && item.id && item.metadata?.transactionDraft);
+  // An expense never corrects an income or the reverse, so a wrongly set flag cannot retire
+  // an unrelated draft of the other kind.
+  if (previous?.metadata?.transactionDraft?.kind !== execution.transactionDraft?.kind) {
+    return undefined;
+  }
   // Named whatever its status: if it is saved or mid-save, confirming this correction is
   // refused, so the purchase is never recorded twice.
   return previous?.id;
