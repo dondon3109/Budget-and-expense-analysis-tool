@@ -11,8 +11,7 @@ import {
 import {
   applyDailyReminder,
   clearDailyReminder,
-  dailyReminderLabel,
-  DAILY_REMINDER_ID,
+  DAILY_REMINDERS,
   DailyReminderTapHandler,
   startDailyReminder,
   useDailyReminderSession,
@@ -43,6 +42,8 @@ jest.mock("expo-secure-store", () => ({
 }));
 
 const notifications = jest.mocked(Notifications);
+const NOON = DAILY_REMINDERS[0].id;
+const NIGHT = DAILY_REMINDERS[1].id;
 const REMINDER_STORAGE_KEY = "zoption-mobile-daily-reminder-v1";
 
 function permission(granted: boolean, canAskAgain = true) {
@@ -60,8 +61,8 @@ function responseFor(identifier: string) {
   } as unknown as Notifications.NotificationResponse;
 }
 
-function savedTime(time: string) {
-  return JSON.stringify({ state: { time }, version: 1 });
+function saved(enabled: boolean) {
+  return JSON.stringify({ state: { enabled }, version: 1 });
 }
 
 /** A promise the test settles by hand, to hold a native call in flight. */
@@ -75,84 +76,83 @@ function deferred<T>() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  useDailyReminderStore.setState({ time: "off" });
+  useDailyReminderStore.setState({ enabled: true });
   jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
   jest.mocked(SecureStore.setItemAsync).mockResolvedValue(undefined);
 });
 
 describe("daily reminder scheduling", () => {
-  it("labels reminder times in 12-hour form", () => {
-    expect(dailyReminderLabel("off")).toBe("Off");
-    expect(dailyReminderLabel("08:00")).toBe("8:00 AM");
-    expect(dailyReminderLabel("12:00")).toBe("12:00 PM");
-    expect(dailyReminderLabel("21:00")).toBe("9:00 PM");
-  });
+  it("turning the reminder off cancels both without asking for permission", async () => {
+    await expect(applyDailyReminder(false)).resolves.toBe("off");
 
-  it("turning the reminder off cancels it without asking for permission", async () => {
-    useDailyReminderStore.setState({ time: "21:00" });
-
-    await expect(applyDailyReminder("off")).resolves.toBe("off");
-
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NIGHT);
     expect(notifications.getPermissionsAsync).not.toHaveBeenCalled();
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
   });
 
-  it("replaces the reminder with one daily trigger at the chosen time and saves it", async () => {
+  it("schedules daily triggers at 12:00 PM and 9:00 PM and saves the choice", async () => {
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));
 
-    await expect(applyDailyReminder("21:00")).resolves.toBe("scheduled");
+    await expect(applyDailyReminder(true)).resolves.toBe("scheduled");
 
-    // Scheduling under the same identifier replaces the old reminder; cancelling
-    // first would leave nothing scheduled if the schedule call then failed.
+    // Scheduling under the same identifiers replaces the old reminders; cancelling
+    // first would leave nothing scheduled if a schedule call then failed.
     expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
     expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        identifier: DAILY_REMINDER_ID,
+        identifier: NOON,
+        trigger: expect.objectContaining({ type: "daily", hour: 12, minute: 0 }),
+      }),
+    );
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        identifier: NIGHT,
         trigger: expect.objectContaining({ type: "daily", hour: 21, minute: 0 }),
       }),
     );
-    expect(useDailyReminderStore.getState().time).toBe("21:00");
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
   });
 
   it("asks for permission once and schedules when it is granted", async () => {
     notifications.getPermissionsAsync.mockResolvedValue(permission(false));
     notifications.requestPermissionsAsync.mockResolvedValue(permission(true));
 
-    await expect(applyDailyReminder("08:00")).resolves.toBe("scheduled");
+    await expect(applyDailyReminder(true)).resolves.toBe("scheduled");
 
     expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
-    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
   });
 
   it("turns the reminder off when permission is refused", async () => {
-    useDailyReminderStore.setState({ time: "12:00" });
     notifications.getPermissionsAsync.mockResolvedValue(permission(false));
     notifications.requestPermissionsAsync.mockResolvedValue(permission(false));
 
-    await expect(applyDailyReminder("18:00")).resolves.toBe("denied");
+    await expect(applyDailyReminder(true)).resolves.toBe("denied");
 
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NIGHT);
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
   });
 
-  it("keeps the previous reminder and saved time when scheduling fails", async () => {
-    useDailyReminderStore.setState({ time: "12:00" });
+  it("keeps the saved choice when scheduling fails", async () => {
+    useDailyReminderStore.setState({ enabled: false });
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));
     notifications.scheduleNotificationAsync.mockRejectedValueOnce(new Error("native failure"));
 
-    await expect(applyDailyReminder("08:00")).rejects.toThrow("native failure");
+    await expect(applyDailyReminder(true)).rejects.toThrow("native failure");
 
     expect(notifications.cancelScheduledNotificationAsync).not.toHaveBeenCalled();
-    expect(useDailyReminderStore.getState().time).toBe("12:00");
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
   });
 
   it("does not prompt again once the user has blocked notifications", async () => {
     notifications.getPermissionsAsync.mockResolvedValue(permission(false, false));
 
-    await expect(applyDailyReminder("18:00")).resolves.toBe("denied");
+    await expect(applyDailyReminder(true)).resolves.toBe("denied");
 
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
@@ -163,15 +163,14 @@ describe("daily reminder scheduling", () => {
     const schedule = deferred<string>();
     notifications.scheduleNotificationAsync.mockReturnValueOnce(schedule.promise);
 
-    const applying = applyDailyReminder("21:00");
+    const applying = applyDailyReminder(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await clearDailyReminder();
-    schedule.resolve(DAILY_REMINDER_ID);
+    schedule.resolve(NOON);
 
     await expect(applying).resolves.toBe("off");
-    expect(useDailyReminderStore.getState().time).toBe("off");
-    // Once by the cleanup, once more after the late schedule call returned.
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledTimes(2);
+    // Two cancels by the cleanup, two more after the late schedule calls returned.
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledTimes(4);
   });
 
   it("does not schedule when sign-out lands while the permission prompt is open", async () => {
@@ -179,103 +178,109 @@ describe("daily reminder scheduling", () => {
     const prompt = deferred<Awaited<ReturnType<typeof Notifications.requestPermissionsAsync>>>();
     notifications.requestPermissionsAsync.mockReturnValueOnce(prompt.promise);
 
-    const applying = applyDailyReminder("08:00");
+    const applying = applyDailyReminder(true);
     await new Promise((resolve) => setTimeout(resolve, 0));
     await clearDailyReminder();
     prompt.resolve(permission(true));
 
     await expect(applying).resolves.toBe("off");
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
-    expect(useDailyReminderStore.getState().time).toBe("off");
   });
 });
 
 describe("daily reminder identity cleanup", () => {
-  it("turns the reminder off and forgets an unhandled tap", async () => {
-    useDailyReminderStore.setState({ time: "21:00" });
+  it("cancels both reminders, resets the choice to on, and forgets an unhandled tap", async () => {
+    useDailyReminderStore.setState({ enabled: false });
 
     await clearDailyReminder();
 
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
     expect(notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NIGHT);
   });
 
-  it("still cancels the reminder when forgetting the tap throws", async () => {
+  it("still cancels the reminders when forgetting the tap throws", async () => {
     notifications.clearLastNotificationResponse.mockImplementationOnce(() => {
       throw new Error("native failure");
     });
 
     await expect(clearDailyReminder()).rejects.toThrow("native failure");
 
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NIGHT);
   });
 });
 
 describe("daily reminder at launch", () => {
-  it("shows the reminder, and only the reminder, while the app is open", async () => {
+  it("shows the reminders, and only the reminders, while the app is open", async () => {
     await startDailyReminder();
 
     const handler = notifications.setNotificationHandler.mock.calls[0]?.[0];
     const notificationFor = (identifier: string) =>
       ({ request: { identifier } }) as Notifications.Notification;
-    await expect(handler?.handleNotification(notificationFor(DAILY_REMINDER_ID))).resolves.toEqual(
-      expect.objectContaining({ shouldShowBanner: true, shouldShowList: true }),
-    );
+    for (const identifier of [NOON, NIGHT]) {
+      await expect(handler?.handleNotification(notificationFor(identifier))).resolves.toEqual(
+        expect.objectContaining({ shouldShowBanner: true, shouldShowList: true }),
+      );
+    }
     await expect(handler?.handleNotification(notificationFor("something-else"))).resolves.toEqual(
       expect.objectContaining({ shouldShowBanner: false, shouldShowList: false }),
     );
   });
 
-  it("reschedules the saved time without prompting", async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("18:00"));
+  it("schedules both reminders on a first launch, with no saved choice", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(false));
+    notifications.requestPermissionsAsync.mockResolvedValue(permission(true));
+
+    await startDailyReminder();
+
+    expect(notifications.requestPermissionsAsync).toHaveBeenCalledTimes(1);
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
+  });
+
+  it("reschedules without prompting when permission is already granted", async () => {
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(saved(true));
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));
 
     await startDailyReminder();
 
     expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
-    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ trigger: expect.objectContaining({ hour: 18, minute: 0 }) }),
-    );
-    expect(useDailyReminderStore.getState().time).toBe("18:00");
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
   });
 
-  it("resets the saved time to off when permission was revoked", async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("18:00"));
+  it("turns the reminder off when the permission prompt is refused", async () => {
     notifications.getPermissionsAsync.mockResolvedValue(permission(false));
+    notifications.requestPermissionsAsync.mockResolvedValue(permission(false));
 
     await startDailyReminder();
 
-    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
   });
 
-  it("keeps the saved time across a relaunch", async () => {
+  it("keeps the choice across a relaunch", async () => {
     // A storage mock that keeps what is written: the restore must read the
-    // saved time before anything writes the in-memory default over it.
-    const storage = new Map([[REMINDER_STORAGE_KEY, savedTime("18:00")]]);
+    // saved choice before anything writes the in-memory default over it.
+    const storage = new Map([[REMINDER_STORAGE_KEY, saved(false)]]);
     jest
       .mocked(SecureStore.getItemAsync)
       .mockImplementation(async (key) => storage.get(key) ?? null);
     jest.mocked(SecureStore.setItemAsync).mockImplementation(async (key, value) => {
       storage.set(key, value);
     });
-    notifications.getPermissionsAsync.mockResolvedValue(permission(true));
 
     await startDailyReminder();
 
-    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ trigger: expect.objectContaining({ hour: 18, minute: 0 }) }),
-    );
-    expect(useDailyReminderStore.getState().time).toBe("18:00");
-    expect(storage.get(REMINDER_STORAGE_KEY)).toContain("18:00");
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
+    expect(storage.get(REMINDER_STORAGE_KEY)).toContain("false");
   });
 
   it("marks the restore finished even when it fails", async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("18:00"));
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(saved(true));
     notifications.getPermissionsAsync.mockRejectedValueOnce(new Error("native failure"));
 
     await expect(startDailyReminder()).rejects.toThrow("native failure");
@@ -283,14 +288,17 @@ describe("daily reminder at launch", () => {
     expect(useDailyReminderRestoredStore.getState().restored).toBe(true);
   });
 
-  it("cancels a stray reminder when the saved time is off", async () => {
+  it("cancels stray reminders when the saved choice is off", async () => {
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(saved(false));
+
     await startDailyReminder();
 
     expect(notifications.getPermissionsAsync).not.toHaveBeenCalled();
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NIGHT);
   });
 
-  it("keeps an identity change's off when it lands while the saved time loads", async () => {
+  it("keeps an identity change's reset when it lands while the saved choice loads", async () => {
     const stored = deferred<string | null>();
     jest
       .mocked(SecureStore.getItemAsync)
@@ -301,11 +309,10 @@ describe("daily reminder at launch", () => {
 
     const starting = startDailyReminder();
     await clearDailyReminder();
-    stored.resolve(savedTime("21:00"));
+    stored.resolve(saved(true));
     await starting;
 
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
-    expect(useDailyReminderStore.getState().time).toBe("off");
   });
 });
 
@@ -317,33 +324,28 @@ describe("daily reminder session binding", () => {
     expect(notifications.setNotificationHandler).not.toHaveBeenCalled();
   });
 
-  it("clears a saved reminder when the app launches signed out", async () => {
+  it("clears the reminders when the app launches signed out", async () => {
     // The session ended while the app was closed: no identity transition runs.
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("21:00"));
-    useDailyReminderStore.setState({ time: "21:00" });
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));
 
     await renderHook(() => useDailyReminderSession("signed-out"));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(DAILY_REMINDER_ID);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NOON);
+    expect(notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith(NIGHT);
     expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
-    expect(useDailyReminderStore.getState().time).toBe("off");
   });
 
-  it("restores the saved reminder once the session is signed in", async () => {
-    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(savedTime("08:00"));
+  it("schedules the reminders once the session is signed in", async () => {
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));
 
     await renderHook(() => useDailyReminderSession("signed-in"));
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ trigger: expect.objectContaining({ hour: 8, minute: 0 }) }),
-    );
+    expect(notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
   });
 
-  it("keeps a time chosen while the saved one is still loading", async () => {
+  it("keeps a choice made while the saved one is still loading", async () => {
     const stored = deferred<string | null>();
     jest
       .mocked(SecureStore.getItemAsync)
@@ -353,22 +355,20 @@ describe("daily reminder session binding", () => {
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));
 
     const starting = startDailyReminder();
-    const applying = applyDailyReminder("21:00");
-    // Let an unguarded apply finish before the saved time arrives.
+    const applying = applyDailyReminder(false);
+    // Let an unguarded apply finish before the saved choice arrives.
     await new Promise((resolve) => setTimeout(resolve, 0));
-    stored.resolve(savedTime("18:00"));
+    stored.resolve(saved(true));
     await starting;
 
-    await expect(applying).resolves.toBe("scheduled");
-    expect(useDailyReminderStore.getState().time).toBe("21:00");
-    const lastSchedule = notifications.scheduleNotificationAsync.mock.calls.at(-1)?.[0];
-    expect(lastSchedule?.trigger).toEqual(expect.objectContaining({ hour: 21, minute: 0 }));
+    await expect(applying).resolves.toBe("off");
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
   });
 });
 
 describe("daily reminder tap", () => {
   it("opens the transaction editor for the tap that launched the app, once", async () => {
-    notifications.getLastNotificationResponse.mockReturnValue(responseFor(DAILY_REMINDER_ID));
+    notifications.getLastNotificationResponse.mockReturnValue(responseFor(NOON));
 
     await render(createElement(DailyReminderTapHandler));
 
@@ -381,13 +381,13 @@ describe("daily reminder tap", () => {
     await render(createElement(DailyReminderTapHandler));
     const listener = notifications.addNotificationResponseReceivedListener.mock.calls[0]?.[0];
 
-    listener?.(responseFor(DAILY_REMINDER_ID));
+    listener?.(responseFor(NOON));
 
     expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
   });
 
   it("opens the editor once when the launching tap also reaches the listener", async () => {
-    const launchTap = responseFor(DAILY_REMINDER_ID);
+    const launchTap = responseFor(NOON);
     notifications.getLastNotificationResponse.mockReturnValue(launchTap);
 
     await render(createElement(DailyReminderTapHandler));
@@ -398,7 +398,7 @@ describe("daily reminder tap", () => {
   });
 
   it("waits for the navigator before opening the editor on a cold start", async () => {
-    notifications.getLastNotificationResponse.mockReturnValue(responseFor(DAILY_REMINDER_ID));
+    notifications.getLastNotificationResponse.mockReturnValue(responseFor(NOON));
     const navigationState = jest.mocked(useRootNavigationState);
     navigationState.mockReturnValue(
       undefined as unknown as ReturnType<typeof useRootNavigationState>,

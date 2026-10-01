@@ -3,16 +3,9 @@ import { create } from "zustand";
 import { createJSONStorage, persist, type StateStorage } from "zustand/middleware";
 import { z } from "zod";
 
-/** Local time of day for the daily reminder, or "off". Reminders are opt-in. */
-export const DAILY_REMINDER_TIMES = ["off", "08:00", "12:00", "18:00", "21:00"] as const;
-
-export type DailyReminderTime = (typeof DAILY_REMINDER_TIMES)[number];
-
-const dailyReminderTimeSchema = z.enum(DAILY_REMINDER_TIMES);
-
 const persistedDailyReminderSchema = z
   .object({
-    state: z.object({ time: dailyReminderTimeSchema }).strict(),
+    state: z.object({ enabled: z.boolean() }).strict(),
     version: z.literal(1),
   })
   .strict();
@@ -24,30 +17,30 @@ const secureDailyReminderStorage: StateStorage = {
 };
 
 interface DailyReminderState {
-  time: DailyReminderTime;
-  setTime: (time: DailyReminderTime) => void;
+  enabled: boolean;
+  setEnabled: (enabled: boolean) => void;
 }
 
 /**
- * The chosen reminder time, shown by the settings card. Written only by
- * features/reminders/daily-reminder.ts once the OS schedule matches it; the
- * schedule itself survives app restarts and reboots, and the launch restore
- * re-applies the saved time.
+ * Whether the daily reminders are on, shown by the settings card. On by
+ * default. Written only by features/reminders/daily-reminder.ts once the OS
+ * schedule matches it; the schedule itself survives app restarts and reboots,
+ * and the launch restore re-applies the saved choice.
  */
 export const useDailyReminderStore = create<DailyReminderState>()(
   persist(
     (set) => ({
-      time: "off",
-      setTime: (time) => set({ time }),
+      enabled: true,
+      setEnabled: (enabled) => set({ enabled }),
     }),
     {
       name: "zoption-mobile-daily-reminder-v1",
       version: 1,
       storage: createJSONStorage(() => secureDailyReminderStorage),
-      partialize: ({ time }) => ({ time }),
+      partialize: ({ enabled }) => ({ enabled }),
       merge: (persisted, current) => {
         const result = persistedDailyReminderSchema.safeParse({ state: persisted, version: 1 });
-        return result.success ? { ...current, time: result.data.state.time } : current;
+        return result.success ? { ...current, enabled: result.data.state.enabled } : current;
       },
       skipHydration: true,
     },
