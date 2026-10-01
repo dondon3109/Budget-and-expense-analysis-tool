@@ -24,6 +24,26 @@ export const currentRelease: ProductRelease = {
         'Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves each as its own entry, up to 10 per note, without opening the app. A notification tells you how many were logged. Entries sync the next time Zoption opens.',
     },
     {
+      title: "A new look for the Android mic widget",
+      description:
+        'The mic widget is now a bordered card with a brand mic circle that follows your phone\'s light or dark theme. Stretch it wider to see the Zoption title and a "Tap and say what you spent" hint.',
+    },
+    {
+      title: "A clearer Home screen on Android and iOS",
+      description:
+        "Home leads with a large safe-to-spend card and makes Add the main shortcut. Empty budget, category, and cash-flow cards fold away, categories show their emoji on a tinted badge everywhere, and the welcome screen is a single-screen landing.",
+    },
+    {
+      title: "Start a fresh assistant conversation",
+      description:
+        "Opening the AI assistant on mobile starts a new conversation. Past conversations are one tap away with the back arrow.",
+    },
+    {
+      title: "Money in and out opens monthly for Pro",
+      description:
+        "The web dashboard's money in and out chart now opens on the monthly view for Pro, and the monthly view shows the past 30 days ending today, so it is never empty on the 1st of the month.",
+    },
+    {
       title: "Daily reminder on by default on Android and iOS",
       description:
         "Zoption now reminds you at 12:00 PM and 9:00 PM. One switch under More → Preferences → Daily reminder turns it off.",
@@ -41,7 +61,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "Android Beta 0.2.43",
       description:
-        "The official Android Beta carries the multi-entry mic widget, the default daily reminder, and the PIN fix.",
+        "The official Android Beta carries the redesigned mic widget with multi-entry logging, the new Home screen, a fresh assistant conversation on open, the default daily reminder, and the PIN fix.",
     },
   ],
 };
