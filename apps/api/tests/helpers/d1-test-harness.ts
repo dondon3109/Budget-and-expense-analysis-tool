@@ -70,8 +70,8 @@ class SqliteD1PreparedStatement implements D1PreparedStatement {
   raw<T = unknown[]>(options: { columnNames: true }): Promise<[string[], ...T[]]>;
   raw<T = unknown[]>(options?: { columnNames?: false }): Promise<T[]>;
   raw<T = unknown[]>(options?: { columnNames?: boolean }): Promise<T[] | [string[], ...T[]]> {
-    // Row arrays, like D1: an object row would collapse duplicate column names (a join that
-    // selects two `id` or `name` columns) and shift every later value into the wrong field.
+    // D1 returns raw rows positionally. Reading object rows instead would collapse duplicate
+    // column names (Drizzle joins select `id` and `name` from several tables) and shift values.
     this.statement.setReturnArrays(true);
     let values: T[];
     try {

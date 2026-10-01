@@ -348,10 +348,9 @@ describe("opening balance in income figures", () => {
   it("adds to the balance but is not counted as income on the dashboard or trend", async () => {
     const { call, rows } = createHarness();
     await finishOnboarding(call, ALICE, "PHP", 5_000_000);
-    const month = TODAY.slice(0, 7);
-
+    // The range must contain the entry's date (TODAY) or the income check passes vacuously.
     const dashboard = await json(
-      await call(`/api/app/dashboard?from=${month}-01&to=${month}-28`, ALICE),
+      await call(`/api/app/dashboard?from=${TODAY.slice(0, 7)}-01&to=${TODAY}`, ALICE),
     );
     const metrics = dashboard.metrics as { moneyInMinor: number };
     expect(metrics.moneyInMinor).toBe(0);
