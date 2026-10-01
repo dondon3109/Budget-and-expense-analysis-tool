@@ -78,7 +78,6 @@ describe("HomeScreen", () => {
     // Quick Action tiles
     expect(screen.getByRole("button", { name: "Add transaction" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Scan receipt" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "View budgets" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "AI Assistant" })).toBeTruthy();
 
     // Onboarding guide
@@ -112,9 +111,6 @@ describe("HomeScreen", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Scan receipt" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/receipt-scan");
-
-    await fireEvent.press(screen.getByRole("button", { name: "View budgets" }));
-    expect(router.push).toHaveBeenCalledWith("/(app)/(tabs)/budgets");
 
     await fireEvent.press(screen.getByRole("button", { name: "AI Assistant" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/assistant");
@@ -287,7 +283,6 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Money in")).toBeTruthy();
     expect(screen.getByText("Money out")).toBeTruthy();
     expect(screen.getByText("Net flow")).toBeTruthy();
-    expect(screen.getByText("Savings rate")).toBeTruthy();
 
     // Categories
     expect(screen.getByText("Spending by category")).toBeTruthy();

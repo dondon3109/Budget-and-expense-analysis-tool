@@ -42,8 +42,6 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const balances = summary.accountBalances;
   const items = balances?.items ?? [];
-  const netMinor = summary.metrics.netMinor;
-  const isNetPositive = netMinor >= 0;
   const workspaceCurrency = useWorkspaceCurrency();
   const otherCurrency: Currency = workspaceCurrency === "PHP" ? "USD" : "PHP";
   const otherMinor = balances?.balancesByCurrency[otherCurrency] ?? 0;
@@ -88,31 +86,6 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
       <View style={{ gap: spacing.xs }}>
         <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
         <View style={styles.heroMetaRow}>
-          <View
-            style={[
-              styles.netChangePill,
-              { backgroundColor: isNetPositive ? theme.colors.brandSoft : theme.colors.dangerSoft },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={isNetPositive ? "trending-up" : "trending-down"}
-              size={14}
-              color={isNetPositive ? theme.colors.income : theme.colors.expense}
-            />
-            <MoneyValue
-              amountMinor={netMinor}
-              tone={isNetPositive ? "income" : "expense"}
-              style={styles.netPillMoney}
-            />
-            <Text
-              style={[
-                typography.caption,
-                { color: isNetPositive ? theme.colors.income : theme.colors.expense },
-              ]}
-            >
-              this month
-            </Text>
-          </View>
           {otherMinor !== 0 ? (
             <View style={styles.usdMeta}>
               {otherMinor > 0 ? (
@@ -129,7 +102,7 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
         </View>
       </View>
 
-      {slices.length > 0 ? (
+      {slices.length > 1 ? (
         <View
           accessible
           accessibilityRole="image"
@@ -228,10 +201,6 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
               </View>
             );
           })}
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Tap an account to adjust its balance. The starred account is where new transactions
-            start.
-          </Text>
         </View>
       ) : null}
     </Card>
@@ -275,19 +244,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 20,
     fontWeight: "600",
-  },
-  netChangePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs,
-    borderRadius: radii.round,
-  },
-  netPillMoney: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
   },
   accountRow: {
     flexDirection: "row",
