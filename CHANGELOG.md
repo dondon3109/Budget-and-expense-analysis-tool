@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
+
 ## 3.1.0 — 2026-10-01
 
 ### Added

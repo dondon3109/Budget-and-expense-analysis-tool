@@ -298,7 +298,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-10-01";
 const PRICING_LAST_MODIFIED = "2026-10-01";
-const GUIDES_LAST_MODIFIED = "2026-09-30";
+const GUIDES_LAST_MODIFIED = "2026-10-01";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -475,9 +475,9 @@ function budgetCalculatorMetadata(): PublicRouteMetadata {
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
-    title: "Zoption — Private Budget & Expense Tracker",
+    title: "Zoption — Budgeting App with Voice Input & Receipt Scanning",
     description:
-      "Start for free to track expenses, review CSV or Excel transaction imports, set practical budgets, and understand monthly cash flow without a direct bank connection.",
+      "Zoption (z-option) is a free budgeting app to track transactions, set a budget, save money, and log expenses by voice input or receipt scan. No bank connection needed.",
     canonical: SITE_ORIGIN,
     robots: "index,follow",
     structuredData: homepageStructuredData(),

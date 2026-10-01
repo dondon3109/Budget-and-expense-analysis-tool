@@ -37,15 +37,15 @@ export interface FeaturePage {
 export type FeaturePagePath = "/features/receipt-scanning" | "/features/voice-expense-entry";
 
 /** Feeds the WebPage dateModified and the sitemap lastmod; keep the two in step. */
-export const FEATURE_PAGES_LAST_MODIFIED = "2026-09-30";
-export const FEATURE_PAGES_LAST_UPDATED = "September 30, 2026";
+export const FEATURE_PAGES_LAST_MODIFIED = "2026-10-01";
+export const FEATURE_PAGES_LAST_UPDATED = "October 1, 2026";
 
 export const FEATURE_PAGES: FeaturePage[] = [
   {
     path: "/features/receipt-scanning",
     title: "Receipt Scanning for Expense Tracking — Zoption",
     description:
-      "Turn a receipt photo into a reviewed transaction draft with merchant, date, total, and category. The image is never stored, duplicates are blocked, and amounts stay exact to the centavo.",
+      "Scan a receipt into your budget: a photo becomes a reviewed transaction draft with merchant, date, total, and category. The image is never stored and duplicates are blocked.",
     heading: "Scan a receipt into your budget",
     summary:
       "Photograph a paper receipt or a checkout screen and Zoption drafts the transaction: merchant, date, total, and a likely category. You confirm the draft before it reaches your ledger.",
@@ -88,9 +88,9 @@ export const FEATURE_PAGES: FeaturePage[] = [
   },
   {
     path: "/features/voice-expense-entry",
-    title: "Voice Expense Entry for Fast Transaction Logging — Zoption",
+    title: "Voice Input for Expense Tracking and Transactions — Zoption",
     description:
-      "Speak a transaction and Zoption drafts the amount, merchant, date, and category for a one tap confirmation. English and Tagalog are supported, and you review every draft before it saves.",
+      "Use voice input to log a transaction: speak and Zoption drafts the amount, merchant, date, and category for your budget. English and Tagalog are supported, and you review every draft.",
     heading: "Log spending by voice",
     summary:
       "Say what you spent and Zoption drafts the transaction: amount, merchant, date, and category. You review the draft and confirm it, so a misheard word costs one correction rather than a wrong record.",

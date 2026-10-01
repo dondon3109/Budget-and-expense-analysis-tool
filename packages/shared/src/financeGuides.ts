@@ -890,6 +890,294 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
       },
     ],
   },
+  {
+    slug: "how-to-budget-for-beginners-philippines",
+    title: "How to Budget for Beginners: A Simple Peso Plan",
+    seoTitle: "How to Budget for Beginners in the Philippines (Simple Peso Plan)",
+    description:
+      "New to budgeting? Learn how to budget in five steps: know your income, list your bills, set category limits, record every transaction, and review the month. Peso examples included.",
+    category: "budgeting",
+    readTimeMinutes: 7,
+    publishedDate: "2026-10-01",
+    updatedDate: "2026-10-01",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "how to budget",
+      "budgeting for beginners",
+      "what is a budget",
+      "personal finance basics philippines",
+      "how to start budgeting",
+      "budget app philippines",
+      "monthly budget plan",
+    ],
+    sections: [
+      {
+        id: "what-a-budget-is",
+        title: "What a Budget Is, and What It Is Not",
+        content:
+          "A budget is a plan for your money made before you spend it: how much comes in, what is already committed, and what each category of spending is allowed. It is not a punishment or a list of things you cannot buy. Its job is to make sure your pesos go to what matters to you, so the end of the month is not a surprise. Personal finance starts with that one habit: knowing your numbers.",
+        keyTakeaways: [
+          "A budget is a plan made before spending, not a record made after.",
+          "The goal is to choose where money goes, not to stop spending.",
+        ],
+      },
+      {
+        id: "five-steps",
+        title: "How to Budget in Five Steps",
+        content:
+          "First, write down your monthly income: take home pay plus anything regular such as an allowance or side income. Second, list fixed bills such as rent, utilities, internet, loan payments, and subscriptions. Third, set a limit for flexible categories such as food, transport, and fun, using what you spent last month as a guide. Fourth, move a savings amount out on payday so it is not left to what remains. Fifth, record every transaction and compare it with the plan at the end of the month. If a category is always over, raise its limit and lower another, because a budget that never matches real life gets abandoned.",
+        keyTakeaways: [
+          "Income, fixed bills, flexible limits, savings, then review.",
+          "Use last month's actual spending to set realistic limits.",
+          "Adjust the plan when reality keeps disagreeing with it.",
+        ],
+      },
+      {
+        id: "worked-example-pesos",
+        title: "A Worked Example on ₱22,000",
+        content:
+          "Say take home pay is ₱22,000. Fixed bills are ₱9,500 for rent, electricity, water, internet, and a phone plan. Savings of ₱3,000 moves out on payday. That leaves ₱9,500 for the month, which you might split as ₱5,000 for food, ₱2,000 for transport, ₱1,500 for fun, and ₱1,000 for a buffer. Each peso has a place, and when food reaches ₱5,000 you know before the month ends, not after.",
+        keyTakeaways: [
+          "₱22,000 minus ₱9,500 fixed bills minus ₱3,000 savings leaves ₱9,500 to assign.",
+          "A small buffer category absorbs the costs you forgot.",
+        ],
+      },
+      {
+        id: "record-transactions-fast",
+        title: "Make Recording Transactions Effortless",
+        content:
+          "Budgets fail when logging is a chore. Zoption gives you three faster ways than typing every field: say a transaction by voice in English or Tagalog, scan a receipt photo into a draft, or import your bank or e-wallet export as a CSV or Excel file. Each one produces a draft you review before it is saved, and all of them land in the same categories and budgets. Zoption never asks for a bank login, so you stay in control of what is recorded.",
+        keyTakeaways: [
+          "Voice input, receipt scanning, and file import all create a draft you confirm.",
+          "Faster recording is what keeps a budget going past the first month.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/budget-monthly-salary-philippines",
+        label: "How to Budget a Monthly Salary in the Philippines",
+        description: "Go deeper on planning from take home pay and reviewing the month.",
+      },
+      {
+        to: "/tools/50-30-20-calculator",
+        label: "50/30/20 Calculator for Philippine Pesos",
+        description: "Split your pay into needs, wants, and savings in exact centavos.",
+      },
+      {
+        to: "/features/voice-expense-entry",
+        label: "Log spending by voice",
+        description: "Say a transaction and confirm the draft instead of typing it.",
+      },
+    ],
+    faqs: [
+      {
+        question: "What is the easiest way to start budgeting?",
+        answer:
+          "Start with three numbers: your monthly take home pay, your fixed bills, and an amount to save on payday. Whatever remains is yours to spend, and you can add category limits once you have a month of recorded transactions to learn from.",
+      },
+      {
+        question: "Do I need a budgeting app, or can I use a notebook?",
+        answer:
+          "A notebook works if you keep it up. An app helps with the part people drop: recording transactions, adding up categories, and showing progress against each limit. Zoption has a Free plan, so you can try it without paying.",
+      },
+      {
+        question: "How often should I review my budget?",
+        answer:
+          "Glance at it weekly and do a proper review once a month. A weekly look catches an overspent category while there is still time to adjust, and the monthly review is where you change the plan.",
+      },
+    ],
+  },
+  {
+    slug: "budget-allowance-philippines",
+    title: "How to Budget Your Allowance: A Guide for Students and First Jobbers",
+    seoTitle: "How to Budget Your Allowance in the Philippines (Weekly & Monthly)",
+    description:
+      "Make a weekly or monthly allowance last. Split it into fares, food, school costs, and savings, track small purchases, and see where the money goes with a peso example.",
+    category: "budgeting",
+    readTimeMinutes: 6,
+    publishedDate: "2026-10-01",
+    updatedDate: "2026-10-01",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "allowance budget",
+      "how to budget allowance",
+      "student budget philippines",
+      "weekly allowance budget",
+      "baon budget",
+      "first job budgeting",
+    ],
+    sections: [
+      {
+        id: "why-allowance-disappears",
+        title: "Why an Allowance Disappears Before the Week Ends",
+        content:
+          "An allowance rarely runs out because of one big purchase. It runs out through many small ones: a milk tea, extra load, a snack, a group order. Each is easy to justify and none feels like a decision. A budget for an allowance is mostly about making those small transactions visible, so you can see the total instead of guessing.",
+        keyTakeaways: [
+          "Small repeated purchases, not big ones, drain most allowances.",
+          "Seeing the weekly total changes what you choose to buy.",
+        ],
+      },
+      {
+        id: "split-it-by-purpose",
+        title: "Split the Allowance by Purpose",
+        content:
+          "Decide the split on the day the money arrives. Set aside fares and school costs first, because they are not optional. Then choose a food amount, a small amount for fun, and a savings amount, even a small one. With a ₱3,500 monthly allowance, you might set ₱1,200 for fares, ₱1,200 for food, ₱500 for school costs, ₱300 for fun, and ₱300 for savings. Weekly allowances work the same way: write the split down on the first day of the week.",
+        keyTakeaways: [
+          "Fares and school costs come first, then food, fun, and savings.",
+          "Decide the split when the money arrives, not after spending.",
+          "Even ₱300 saved a month builds the habit.",
+        ],
+      },
+      {
+        id: "track-small-purchases",
+        title: "Track the Small Purchases",
+        content:
+          "Record each purchase when it happens, even a ₱35 snack, because the small ones add up. In Zoption you can add a transaction by voice in English or Tagalog, so logging takes a few seconds, and you can scan a receipt when you have one. Give each category a budget, and the dashboard shows how much of it is left, so you know on a Wednesday whether fun money lasts until Friday.",
+        keyTakeaways: [
+          "Log purchases as they happen; small ones add up fastest.",
+          "Category budgets show what is left before it is gone.",
+        ],
+      },
+      {
+        id: "from-allowance-to-salary",
+        title: "From Allowance to First Salary",
+        content:
+          "The habits carry over to a first job. When pay replaces an allowance, the same steps apply: list fixed bills first, set category limits, and move savings out on payday. Starting with an allowance means those habits are already in place by the time the amounts get larger.",
+        keyTakeaways: ["The allowance habits transfer directly to a first salary."],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/how-to-budget-for-beginners-philippines",
+        label: "How to Budget for Beginners",
+        description: "The five-step method behind every budget, with a peso example.",
+      },
+      {
+        to: "/guides/how-to-save-money-philippines",
+        label: "How to Save Money in the Philippines",
+        description: "Practical ways to spend less and save more each month.",
+      },
+    ],
+    faqs: [
+      {
+        question: "How much of my allowance should I save?",
+        answer:
+          "Ten percent is a realistic starting point for a small allowance: ₱350 of ₱3,500. Pick an amount you can keep every month, and raise it when the habit is steady.",
+      },
+      {
+        question: "Should I budget weekly or monthly?",
+        answer:
+          "Match the budget to how you are paid. If the allowance arrives weekly, budget weekly. If it arrives monthly, split the month into weeks so the money does not run out in the first one.",
+      },
+      {
+        question: "Can I use Zoption for a small allowance?",
+        answer:
+          "Yes. Zoption has a Free plan that includes core tracking features, and amounts are tracked in pesos and centavos at any size.",
+      },
+    ],
+  },
+  {
+    slug: "how-to-save-money-philippines",
+    title: "How to Save Money on a Philippine Salary: 8 Practical Ways",
+    seoTitle: "How to Save Money in the Philippines: 8 Practical Ways That Work",
+    description:
+      "Eight practical ways to save money each month in pesos: pay yourself first, find leaks in your transactions, cancel unused subscriptions, set savings goals, and track progress.",
+    category: "budgeting",
+    readTimeMinutes: 7,
+    publishedDate: "2026-10-01",
+    updatedDate: "2026-10-01",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "how to save money",
+      "save money philippines",
+      "ways to save money",
+      "saving tips philippines",
+      "how to save money on salary",
+      "savings goal tracker",
+    ],
+    sections: [
+      {
+        id: "pay-yourself-first",
+        title: "Pay Yourself First",
+        content:
+          "Saving what is left over rarely works, because something always uses it. Move a fixed savings amount out on payday, before spending starts, so it never counts as available money. Even ₱1,000 each payday adds up to ₱24,000 in a year. In Zoption, moving money to a savings account is a transfer between your own accounts, so it does not count as spending, and the dashboard shows your savings rate for the month.",
+        keyTakeaways: [
+          "Move savings out on payday instead of saving what remains.",
+          "A transfer to your own savings account is not an expense.",
+        ],
+      },
+      {
+        id: "find-the-leaks",
+        title: "Find Where Money Leaks",
+        content:
+          "Review last month's transactions by category. Most people find two or three categories that grew without a decision, such as food delivery, online shopping, or load. You do not need to cut them to zero. Choose a limit you can live with and set it as a category budget, so you see the amount used while there is still time to slow down.",
+        keyTakeaways: [
+          "Group last month's transactions by category to see the leaks.",
+          "Set a limit instead of cutting a category entirely.",
+        ],
+      },
+      {
+        id: "cancel-unused-subscriptions",
+        title: "Cancel Subscriptions You Do Not Use",
+        content:
+          "Streaming, apps, cloud storage, and memberships renew quietly. Log each one as a subscription in Zoption and the renewal calendar shows what is charged and when. Cancel anything you have not opened in a month. A ₱149 subscription you forgot costs ₱1,788 a year.",
+        keyTakeaways: [
+          "List every recurring charge and cancel what you do not use.",
+          "Small monthly amounts become large yearly ones.",
+        ],
+      },
+      {
+        id: "set-a-goal",
+        title: "Give Your Savings a Goal and a Date",
+        content:
+          "Saving without a target is easy to abandon. Name what the money is for, set the amount and a date, and divide it into a monthly figure. Saving ₱30,000 for a laptop by next September is ₱2,500 a month. Create a goal in Zoption with the target amount and date to see your progress, and keep the emergency fund as its own goal so it is never spent on wants.",
+        keyTakeaways: [
+          "Name the goal, the amount, and the date, then divide by the months.",
+          "Keep the emergency fund separate from other goals.",
+        ],
+      },
+      {
+        id: "keep-recording",
+        title: "Keep Recording Without the Effort",
+        content:
+          "Savings only improve when you can see your spending, and that depends on recording transactions consistently. Use voice input to say an expense in seconds, scan receipts into drafts, or import a CSV export from your bank or e-wallet. Zoption never asks for a bank login, and you review each entry before it is saved.",
+        keyTakeaways: [
+          "Consistent recording is what makes saving measurable.",
+          "Voice input and receipt scanning keep logging to a few seconds.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/emergency-fund-philippines",
+        label: "How to Build an Emergency Fund in the Philippines",
+        description: "Set the target and the monthly amount for the first savings goal.",
+      },
+      {
+        to: "/guides/cancel-subscriptions-auto-debits-philippines",
+        label: "How to Cancel Subscriptions and Auto-Debits",
+        description: "Stop recurring charges you no longer use.",
+      },
+    ],
+    faqs: [
+      {
+        question: "How much money should I save each month?",
+        answer:
+          "Twenty percent of take home pay is a common target, and it is the savings share in the 50/30/20 rule. If that is too much right now, start with a smaller fixed amount you can keep for three months, then raise it.",
+      },
+      {
+        question: "What is the fastest way to start saving?",
+        answer:
+          "Set up a fixed transfer to a separate savings account on payday. Because the money is moved before you can spend it, it works without relying on willpower.",
+      },
+      {
+        question: "Is a savings goal tracker worth using?",
+        answer:
+          "It helps when the goal has an amount and a date, because you can see whether your monthly savings keep you on schedule. Zoption goals show progress toward the target you set.",
+      },
+    ],
+  },
 ];
 
 export function getAllFinanceGuides(): FinanceGuide[] {
