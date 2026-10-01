@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -41,14 +41,26 @@ export function PinPadScreen({
   const [pressedKey, setPressedKey] = useState<string | null>(null);
   const dotColor = error ? theme.colors.danger : theme.colors.text;
 
+  // Taps that land before React re-renders (a busy JS thread right after the app
+  // opens) would each read the same stale `value` and drop digits, so presses
+  // build on the latest value tracked here.
+  const latestValue = useRef(value);
+  latestValue.current = value;
+
+  const change = (next: string): void => {
+    latestValue.current = next;
+    onChange(next);
+  };
+
   const press = (key: string): void => {
     if (disabled) return;
+    const current = latestValue.current;
     if (key === "delete") {
-      onChange(value.slice(0, -1));
+      change(current.slice(0, -1));
       return;
     }
-    if (value.length >= PIN_LENGTH) return;
-    onChange(value + key);
+    if (current.length >= PIN_LENGTH) return;
+    change(current + key);
   };
 
   return (
@@ -108,7 +120,7 @@ export function PinPadScreen({
                   importantForAccessibility={hidden ? "no-hide-descendants" : "auto"}
                   disabled={disabled || hidden}
                   onPress={() => press(key)}
-                  onLongPress={key === "delete" ? () => onChange("") : undefined}
+                  onLongPress={key === "delete" ? () => change("") : undefined}
                   onPressIn={() => setPressedKey(key)}
                   onPressOut={() => setPressedKey(null)}
                   style={[
