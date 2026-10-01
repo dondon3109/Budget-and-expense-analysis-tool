@@ -210,6 +210,7 @@ describe("API assistant, voice, and entry routes", () => {
       previewPdf,
       extractVoice: vi.fn(),
       extractVoiceTranscript: vi.fn(),
+      extractVoiceTranscriptEntries: vi.fn(),
     };
     const app = createAppWithFakes({ aiEntryService });
     const form = new FormData();
@@ -250,6 +251,7 @@ describe("API assistant, voice, and entry routes", () => {
       previewPdf: vi.fn(),
       extractVoice,
       extractVoiceTranscript,
+      extractVoiceTranscriptEntries: vi.fn(),
     };
     const app = createAppWithFakes({ aiEntryService });
     const form = new FormData();
@@ -347,6 +349,60 @@ describe("API assistant, voice, and entry routes", () => {
       "Spent 250 pesos on lunch today",
       ["Food & dining", "Transport"],
     );
+  });
+
+  it("returns several review-ready drafts for one spoken note", async () => {
+    const drafts = [
+      {
+        transcript: "I spent 250 on Jollibee for lunch and 2,000 on groceries",
+        description: "Jollibee lunch",
+        date: "2026-08-20",
+        amountMinor: 25_000,
+        currency: "PHP" as const,
+        kind: "expense" as const,
+      },
+      {
+        transcript: "I spent 250 on Jollibee for lunch and 2,000 on groceries",
+        description: "Groceries",
+        date: "2026-08-20",
+        amountMinor: 200_000,
+        currency: "PHP" as const,
+        kind: "expense" as const,
+      },
+    ];
+    const extractVoiceTranscriptEntries = vi.fn(async () => drafts);
+    const aiEntryService = {
+      previewPdf: vi.fn(),
+      extractVoice: vi.fn(),
+      extractVoiceTranscript: vi.fn(),
+      extractVoiceTranscriptEntries,
+    } as unknown as AiEntryService;
+    const app = createAppWithFakes({ aiEntryService });
+
+    const response = await app.request("/api/app/entry/voice/entries", {
+      method: "POST",
+      headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        transcript: drafts[0]?.transcript,
+        categories: ["Food & dining", "Groceries"],
+      }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ drafts });
+    expect(extractVoiceTranscriptEntries).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      drafts[0]?.transcript,
+      ["Food & dining", "Groceries"],
+    );
+
+    const missing = await app.request("/api/app/entry/voice/entries", {
+      method: "POST",
+      headers: { ...AUTHORIZATION, "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(missing.status).toBe(400);
   });
 
   it("rejects an over-long voice transcript before the provider request", async () => {

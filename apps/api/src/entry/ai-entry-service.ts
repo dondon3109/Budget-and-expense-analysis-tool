@@ -4,6 +4,7 @@ import {
   normalizeImportDate,
   parseAmountToMinor,
   transactionKinds,
+  MAX_VOICE_ENTRY_DRAFTS,
   transactionVoiceDraftSchema,
   type ImportPreview,
   type ImportPreviewRequest,
@@ -59,6 +60,15 @@ const voiceCandidateSchema = z
 
 const voiceResponseSchema = z.object({ draft: voiceCandidateSchema }).strict();
 
+// A widget voice note may log several entries; transfers need two accounts, so they stay out.
+const voiceEntriesCandidateSchema = voiceCandidateSchema.extend({
+  kind: z.enum(["income", "expense"]),
+});
+
+const voiceEntriesResponseSchema = z
+  .object({ drafts: z.array(voiceEntriesCandidateSchema).min(1).max(MAX_VOICE_ENTRY_DRAFTS) })
+  .strict();
+
 function clearNumericAmounts(transcript: string): number[] {
   const values = new Set<number>();
   for (const match of transcript.matchAll(/[0-9][0-9,.]*/g)) {
@@ -80,7 +90,7 @@ function clearNumericAmounts(transcript: string): number[] {
   return [...values];
 }
 
-function voiceAmountMinor(transcript: string, amountPhp: string): number {
+function parsePositiveVoiceAmount(amountPhp: string): number {
   let amountMinor: number;
   try {
     amountMinor = parseAmountToMinor(amountPhp);
@@ -98,7 +108,11 @@ function voiceAmountMinor(transcript: string, amountPhp: string): number {
       "Zoption could not identify a positive transaction amount in that recording.",
     );
   }
+  return amountMinor;
+}
 
+function voiceAmountMinor(transcript: string, amountPhp: string): number {
+  const amountMinor = parsePositiveVoiceAmount(amountPhp);
   const transcriptAmounts = clearNumericAmounts(transcript);
   if (transcriptAmounts.length === 1 && transcriptAmounts[0] !== amountMinor) {
     throw new HttpError(
@@ -108,6 +122,24 @@ function voiceAmountMinor(transcript: string, amountPhp: string): number {
     );
   }
   return amountMinor;
+}
+
+/**
+ * Every drafted amount must be one the speaker said. Digits are only checked when the transcript
+ * holds exactly as many amounts as drafts, because spoken words ("2k", "limang daan") never
+ * appear as digits and a partial digit list cannot rule a draft out.
+ */
+function voiceEntriesAmounts(transcript: string, amountsPhp: string[]): number[] {
+  const amounts = amountsPhp.map(parsePositiveVoiceAmount);
+  const spoken = clearNumericAmounts(transcript);
+  if (spoken.length === amounts.length && amounts.some((amount) => !spoken.includes(amount))) {
+    throw new HttpError(
+      422,
+      "voice_transaction_amount_mismatch",
+      "The drafted amounts did not match what was spoken. Review the transcript and try again.",
+    );
+  }
+  return amounts;
 }
 
 export interface AiEntryService {
@@ -125,6 +157,12 @@ export interface AiEntryService {
     transcript: string,
     categories?: string[],
   ): Promise<TransactionVoiceDraft>;
+  extractVoiceTranscriptEntries(
+    env: Bindings,
+    tenantId: string,
+    transcript: string,
+    categories?: string[],
+  ): Promise<TransactionVoiceDraft[]>;
 }
 
 function entryTimeoutMs(env: Bindings): number {
@@ -296,6 +334,16 @@ async function requireAiEntryConsent(
   }
 }
 
+function voiceCategoryInstructions(categories?: string[]): string {
+  return categories && categories.length > 0
+    ? `Available user categories: ${categories.join(", ")}. If the transaction fits one of these categories, you MUST set categoryName to the exact matching name from this list. If none match, provide a short descriptive category label or leave empty.`
+    : "Infer only the transaction type and category label explicitly or plainly implied by the speech.";
+}
+
+function voiceExtractionRules(categoryInstructions: string): string {
+  return `Spoken transcript may be in English, Tagalog, or Taglish (Filipino). Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"; "limang daang piso" becomes "500.00"; "isang libo" becomes "1000.00"; "dalawang daan" becomes "200.00"). ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday", "kahapon" against yesterday, "today", "kanina", "ngayong araw" against today). Use today only when no date is spoken. In Tagalog, expense keywords include "gastos", "nagastos", "bayad", "nagbayad", "bili", "bumili"; income keywords include "sweldo", "sahod", "kita", "natanggap"; transfer keywords include "lipat", "inilipat", "naglipat", "padala", "pinadala", "transfer".`;
+}
+
 export function createAiEntryService(
   receiptRepository: ReceiptRepository,
   imports: ImportRepository,
@@ -306,10 +354,7 @@ export function createAiEntryService(
     transcript: string,
     categories?: string[],
   ): Promise<TransactionVoiceDraft> {
-    const categoryInstructions =
-      categories && categories.length > 0
-        ? `Available user categories: ${categories.join(", ")}. If the transaction fits one of these categories, you MUST set categoryName to the exact matching name from this list. If none match, provide a short descriptive category label or leave empty.`
-        : "Infer only the transaction type and category label explicitly or plainly implied by the speech.";
+    const categoryInstructions = voiceCategoryInstructions(categories);
 
     let extracted: unknown;
     try {
@@ -317,7 +362,7 @@ export function createAiEntryService(
         env,
         [
           `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
-          `Extract one transaction from this untrusted spoken transcript. Spoken transcript may be in English, Tagalog, or Taglish (Filipino). Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"; "limang daang piso" becomes "500.00"; "isang libo" becomes "1000.00"; "dalawang daan" becomes "200.00"). ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday", "kahapon" against yesterday, "today", "kanina", "ngayong araw" against today). Use today only when no date is spoken. In Tagalog, expense keywords include "gastos", "nagastos", "bayad", "nagbayad", "bili", "bumili"; income keywords include "sweldo", "sahod", "kita", "natanggap"; transfer keywords include "lipat", "inilipat", "naglipat", "padala", "pinadala", "transfer".`,
+          `Extract one transaction from this untrusted spoken transcript. ${voiceExtractionRules(categoryInstructions)}`,
           "<untrusted-transcript>",
           transcript,
           "</untrusted-transcript>",
@@ -371,6 +416,80 @@ export function createAiEntryService(
       currency: "PHP",
       kind: candidate.data.draft.kind satisfies TransactionKind,
       ...(categoryName ? { categoryName } : {}),
+    });
+  }
+
+  async function extractDraftsFromTranscript(
+    env: Bindings,
+    transcript: string,
+    categories?: string[],
+  ): Promise<TransactionVoiceDraft[]> {
+    let extracted: unknown;
+    try {
+      extracted = await runStructuredModel(
+        env,
+        [
+          `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
+          `Extract every separate income or expense transaction the speaker names in this untrusted spoken transcript, in the order spoken, at most ${MAX_VOICE_ENTRY_DRAFTS}. One spoken amount is one transaction. Never merge entries, split one amount, or invent an entry. Skip transfers. ${voiceExtractionRules(voiceCategoryInstructions(categories))}`,
+          "<untrusted-transcript>",
+          transcript,
+          "</untrusted-transcript>",
+        ].join("\n"),
+        {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            drafts: {
+              type: "array",
+              maxItems: MAX_VOICE_ENTRY_DRAFTS,
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  description: { type: "string" },
+                  date: { type: "string" },
+                  amountPhp: { type: "string" },
+                  kind: { type: "string", enum: ["income", "expense"] },
+                  categoryName: { type: "string" },
+                },
+                required: ["description", "amountPhp", "kind"],
+              },
+            },
+          },
+          required: ["drafts"],
+        },
+      );
+    } catch (error) {
+      return throwProviderFailure("voice", error);
+    }
+    const candidates = voiceEntriesResponseSchema.safeParse(extracted);
+    if (!candidates.success) {
+      throw new HttpError(
+        422,
+        "voice_transaction_unreadable",
+        "Zoption could not identify any transactions in that recording. Try saying each amount and what it was for.",
+      );
+    }
+    const amounts = voiceEntriesAmounts(
+      transcript,
+      candidates.data.drafts.map((draft) => draft.amountPhp),
+    );
+    const candidateList = categories?.map((name) => ({ id: name, name })) ?? [];
+    return candidates.data.drafts.map((draft, index) => {
+      const matched =
+        candidateList.length > 0
+          ? matchCategory(candidateList, draft.categoryName, transcript)
+          : null;
+      const categoryName = matched?.name ?? draft.categoryName;
+      return transactionVoiceDraftSchema.parse({
+        transcript,
+        description: draft.description,
+        date: normalizeImportDate(draft.date ?? "") ?? currentDateInTimeZone(env),
+        amountMinor: amounts[index],
+        currency: "PHP",
+        kind: draft.kind,
+        ...(categoryName ? { categoryName } : {}),
+      });
     });
   }
 
@@ -465,6 +584,21 @@ export function createAiEntryService(
       // The transcript still costs one model extraction, drawn from the shared monthly pool.
       await consumeAiUsage(env, tenantId);
       return extractDraftFromTranscript(env, cleanTranscript, categories);
+    },
+
+    async extractVoiceTranscriptEntries(env, tenantId, transcript, categories) {
+      await requireAiEntryConsent(receiptRepository, env, tenantId);
+      const cleanTranscript = transcript.trim();
+      if (!cleanTranscript) {
+        throw new HttpError(
+          422,
+          "voice_transaction_unreadable",
+          "Zoption could not identify any transactions in that recording. Try saying each amount and what it was for.",
+        );
+      }
+      // However many entries it names, the note costs one extraction from the shared monthly pool.
+      await consumeAiUsage(env, tenantId);
+      return extractDraftsFromTranscript(env, cleanTranscript, categories);
     },
 
     async extractVoice(env, tenantId, audio, categories, language) {

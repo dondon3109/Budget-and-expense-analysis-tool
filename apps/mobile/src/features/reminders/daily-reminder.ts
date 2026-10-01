@@ -5,6 +5,10 @@ import { Platform } from "react-native";
 
 import type { SessionStatus } from "@/auth/session-state";
 import {
+  isWidgetNotification,
+  widgetNotificationRoute,
+} from "@/features/widget/widget-notifications";
+import {
   useDailyReminderRestoredStore,
   useDailyReminderStore,
 } from "@/stores/daily-reminder-store";
@@ -102,7 +106,8 @@ export function startDailyReminder(): Promise<void> {
 async function restoreDailyReminder(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: (notification) => {
-      const show = isDailyReminder(notification.request.identifier);
+      const identifier = notification.request.identifier;
+      const show = isDailyReminder(identifier) || isWidgetNotification(identifier);
       return Promise.resolve({
         shouldShowBanner: show,
         shouldShowList: show,
@@ -159,12 +164,18 @@ export function DailyReminderTapHandler() {
   useEffect(() => {
     if (!navigationReady) return;
     const openEditor = (response: Notifications.NotificationResponse | null) => {
-      if (!response || !isDailyReminder(response.notification.request.identifier)) return;
+      if (!response) return;
+      const { identifier, content } = response.notification.request;
+      // A daily reminder opens the editor; a widget review note opens its confirm screen.
+      const route = isDailyReminder(identifier)
+        ? DAILY_REMINDER_ROUTE
+        : widgetNotificationRoute(identifier, content.data);
+      if (!route) return;
       const tap = `${response.notification.date}:${response.actionIdentifier}`;
       if (tap === handledTap) return;
       handledTap = tap;
       Notifications.clearLastNotificationResponse();
-      router.push(DAILY_REMINDER_ROUTE);
+      router.push(route);
     };
     openEditor(Notifications.getLastNotificationResponse());
     const subscription = Notifications.addNotificationResponseReceivedListener(openEditor);

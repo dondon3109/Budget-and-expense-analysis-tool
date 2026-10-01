@@ -2,7 +2,7 @@
   "name": "@zoption/mobile",
   "version": "0.2.42-beta",
   "private": true,
-  "main": "expo-router/entry",
+  "main": "index.ts",
   "scripts": {
     "start": "node ../../scripts/ensure-adb-reverse.mjs && expo start --dev-client",
     "dev": "node ../../scripts/ensure-adb-reverse.mjs && expo start --dev-client",
@@ -14,7 +14,7 @@
     "ios:rebuild": "expo run:ios --no-build-cache",
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
-    "lint": "eslint app src app.config.ts",
+    "lint": "eslint app src index.ts app.config.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "jest --runInBand",
     "test:watch": "jest --watch"

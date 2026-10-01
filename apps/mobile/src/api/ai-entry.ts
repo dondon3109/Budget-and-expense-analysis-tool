@@ -1,5 +1,6 @@
 import {
   transactionVoiceDraftSchema,
+  transactionVoiceDraftsSchema,
   type TransactionVoiceDraft,
   type VoiceLanguage,
 } from "@zoption/shared";
@@ -139,4 +140,52 @@ export async function extractVoiceTransactionFromTranscript(
     );
   }
   return transactionVoiceDraftSchema.parse(await response.json());
+}
+
+/**
+ * Sends one spoken note that may name several income or expense entries and returns a draft
+ * for each. The widget's background task saves them itself, so nothing here is review-only.
+ */
+export async function extractVoiceTransactionsFromTranscript(
+  accessToken: string,
+  transcript: string,
+  fetchImpl: typeof fetch = fetch,
+  categories?: string[],
+): Promise<TransactionVoiceDraft[]> {
+  if (isDummyAssistantToken(accessToken)) {
+    return [await extractDummyVoiceTransaction()];
+  }
+  let response: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 30_000);
+  try {
+    response = await fetchImpl(`${publicConfig.apiUrl}/api/app/entry/voice/entries`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        transcript,
+        ...(categories && categories.length > 0 ? { categories } : {}),
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ApiTransportError("AI entry is taking too long. Try again shortly.", "network", 0);
+    }
+    throw new ApiTransportError(entryFallback, "network", 0);
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!response.ok) {
+    throw mapApiError(
+      response.status,
+      (await response.json().catch(() => ({}))) as never,
+      entryFallback,
+    );
+  }
+  return transactionVoiceDraftsSchema.parse(await response.json()).drafts;
 }

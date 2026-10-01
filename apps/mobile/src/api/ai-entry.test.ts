@@ -1,4 +1,9 @@
-import { extractVoiceTransaction, extractVoiceTransactionFromTranscript } from "./ai-entry";
+import {
+  extractVoiceTransaction,
+  extractVoiceTransactionFromTranscript,
+  extractVoiceTransactionsFromTranscript,
+} from "./ai-entry";
+import { ApiTransportError } from "./authenticated";
 
 const mockDelete = jest.fn();
 
@@ -142,6 +147,68 @@ describe("mobile AI-entry voice transport", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       transcript: "Spent 250 pesos on lunch today",
       categories: ["Food & dining", "Transport"],
+    });
+  });
+});
+
+describe("mobile AI-entry multi-entry transport", () => {
+  const draft = (description: string, amountMinor: number) => ({
+    transcript: "Spent 250 on lunch and 2,000 on groceries",
+    description,
+    date: "2026-10-01",
+    amountMinor,
+    currency: "PHP",
+    kind: "expense",
+  });
+
+  it("posts the transcript with categories and validates every draft", async () => {
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({ drafts: [draft("Lunch", 25_000), draft("Groceries", 200_000)] }),
+    );
+    const drafts = await extractVoiceTransactionsFromTranscript(
+      "token",
+      "Spent 250 on lunch and 2,000 on groceries",
+      fetchMock,
+      ["Groceries"],
+    );
+    expect(drafts.map((item) => item.amountMinor)).toEqual([25_000, 200_000]);
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.example.test/api/app/entry/voice/entries");
+    expect(init.headers).toMatchObject({ Authorization: "Bearer token" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      transcript: "Spent 250 on lunch and 2,000 on groceries",
+      categories: ["Groceries"],
+    });
+  });
+
+  it("rejects a response that carries a transfer or no drafts", async () => {
+    await expect(
+      extractVoiceTransactionsFromTranscript(
+        "token",
+        "x",
+        jest.fn(async () => jsonResponse({ drafts: [] })),
+      ),
+    ).rejects.toThrow();
+    await expect(
+      extractVoiceTransactionsFromTranscript(
+        "token",
+        "x",
+        jest.fn(async () =>
+          jsonResponse({ drafts: [{ ...draft("Move", 5_000), kind: "transfer" }] }),
+        ),
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("keeps the server error code so the widget can explain consent", async () => {
+    const fetchMock = jest.fn(async () =>
+      jsonResponse({ error: "entry_consent_required", message: "Accept the notice." }, 409),
+    );
+    await expect(
+      extractVoiceTransactionsFromTranscript("token", "x", fetchMock),
+    ).rejects.toMatchObject({
+      name: ApiTransportError.name,
+      serverCode: "entry_consent_required",
     });
   });
 });

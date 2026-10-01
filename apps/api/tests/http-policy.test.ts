@@ -65,6 +65,12 @@ const APP_RATE_LIMITS: [string, string, RateLimitIdentity, RateLimitPolicy[]][] 
     "tenant",
     [{ scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: MINUTE }],
   ],
+  [
+    "POST",
+    "/api/app/entry/voice/entries",
+    "tenant",
+    [{ scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: MINUTE }],
+  ],
   ["GET", "/api/app/entry/voice", "tenant", tenantRead],
   [
     "POST",

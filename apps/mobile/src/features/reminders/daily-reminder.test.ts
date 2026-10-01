@@ -53,11 +53,11 @@ function permission(granted: boolean, canAskAgain = true) {
 let tapTime = 0;
 
 /** A distinct tap each call: the handler opens the editor once per tap. */
-function responseFor(identifier: string) {
+function responseFor(identifier: string, data?: Record<string, unknown>) {
   tapTime += 1;
   return {
     actionIdentifier: "expo.modules.notifications.actions.DEFAULT",
-    notification: { date: tapTime, request: { identifier } },
+    notification: { date: tapTime, request: { identifier, content: { data } } },
   } as unknown as Notifications.NotificationResponse;
 }
 
@@ -411,6 +411,19 @@ describe("daily reminder tap", () => {
     await view.rerender(createElement(DailyReminderTapHandler));
 
     expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+  });
+
+  it("opens the confirm screen when a widget review note is tapped", async () => {
+    notifications.getLastNotificationResponse.mockReturnValue(
+      responseFor("zoption-widget-review", { transcript: "adjust BDO to 5,000" }),
+    );
+
+    await render(createElement(DailyReminderTapHandler));
+
+    expect(router.push).toHaveBeenCalledWith(
+      "/(app)/widget-intent?transcript=adjust%20BDO%20to%205%2C000",
+    );
+    expect(notifications.clearLastNotificationResponse).toHaveBeenCalled();
   });
 
   it("ignores other notifications", async () => {

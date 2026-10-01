@@ -95,6 +95,7 @@ export function appRateLimitFor(method: string, path: string): AppRateLimit {
           windowSeconds: MINUTE,
         });
       case "/api/app/entry/voice":
+      case "/api/app/entry/voice/entries":
         return byTenant({ scope: "tenant-entry-voice-minute", limit: 6, windowSeconds: MINUTE });
       case "/api/app/entry/pdf-preview":
         return byTenant({ scope: "tenant-entry-pdf-minute", limit: 3, windowSeconds: MINUTE });

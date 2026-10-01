@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- The Android mic widget now logs what you say without opening Zoption. Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves both as separate expenses (income works too, up to 10 entries per note), then a notification tells you how many were logged. It uses the account you name out loud or your default spending account, and needs notification permission to report back. A balance update ("adjust BDO to 5,000") still opens a review when you tap its notification. Entries are saved on the phone right away and sync the next time Zoption opens.
 - The AI assistant can help you log a transaction. Tell it what you spent or where you went ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") and it suggests the category, account, and usual amount from your past entries. If you only know how much is left in an account, it works out the amount. It prepares a draft card, and nothing is saved until you tap Save transaction. Because the assistant is no longer read-only, everyone is asked to accept the updated assistant consent once before the next chat.
 
 ### Changed
