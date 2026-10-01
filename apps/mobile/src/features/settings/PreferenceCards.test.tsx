@@ -35,7 +35,7 @@ describe("PreferenceCards", () => {
     useThemeStore.setState({ preference: "coffee" });
     useWorkspaceCurrencyStore.setState({ currency: "PHP" });
     useVoiceLanguageStore.setState({ language: "fil" });
-    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderStore.setState({ enabled: true });
     useDailyReminderRestoredStore.setState({ restored: true });
   });
 

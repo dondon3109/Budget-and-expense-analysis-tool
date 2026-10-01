@@ -7,11 +7,13 @@ import type { SessionStatus } from "@/auth/session-state";
 import {
   useDailyReminderRestoredStore,
   useDailyReminderStore,
-  type DailyReminderTime,
 } from "@/stores/daily-reminder-store";
 
-/** Fixed identifier, so rescheduling replaces the one reminder instead of stacking copies. */
-export const DAILY_REMINDER_ID = "zoption-daily-reminder";
+/** Fixed identifiers, so rescheduling replaces each reminder instead of stacking copies. */
+export const DAILY_REMINDERS = [
+  { id: "zoption-daily-reminder-noon", hour: 12 },
+  { id: "zoption-daily-reminder-night", hour: 21 },
+] as const;
 const DAILY_REMINDER_CHANNEL_ID = "daily-reminder";
 
 /** Where a tap on the reminder lands: the new transaction editor. */
@@ -19,12 +21,16 @@ const DAILY_REMINDER_ROUTE = "/(app)/transaction";
 
 export type DailyReminderResult = "scheduled" | "off" | "denied";
 
+function isDailyReminder(identifier: string | undefined): boolean {
+  return DAILY_REMINDERS.some((reminder) => reminder.id === identifier);
+}
+
 // Bumped by every identity change. An apply or restore that started under an
-// earlier identity must not write its time back or leave a reminder scheduled.
+// earlier identity must not write its choice back or leave a reminder scheduled.
 let identityGeneration = 0;
 
 // The latest launch restore. An apply waits for it, so a restore that is still
-// loading the saved time cannot overwrite a time the user just chose.
+// loading the saved time cannot overwrite a choice the user just made.
 let restoring: Promise<void> = Promise.resolve();
 
 // The tap last acted on. A launching tap can reach both
@@ -32,29 +38,20 @@ let restoring: Promise<void> = Promise.resolve();
 // editor once.
 let handledTap: string | null = null;
 
-/** "18:00" → "6:00 PM"; "off" → "Off". */
-export function dailyReminderLabel(time: DailyReminderTime): string {
-  if (time === "off") return "Off";
-  const [hour, minute] = parseTime(time);
-  const suffix = hour < 12 ? "AM" : "PM";
-  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour}:${String(minute).padStart(2, "0")} ${suffix}`;
-}
-
 /**
- * Replaces the scheduled daily reminder with one at `time`, or removes it for
- * "off", and saves the time only once the OS schedule matches it. Asks for
- * notification permission only when turning the reminder on, and turns the
- * reminder off when it is refused.
+ * Schedules the daily reminders (12:00 PM and 9:00 PM) when `enabled`, or
+ * removes them, and saves the choice only once the OS schedule matches it. Asks
+ * for notification permission only when turning the reminders on, and turns
+ * them off when it is refused.
  *
- * A new time is scheduled under the same identifier, which replaces the old
- * reminder, instead of cancelling first: if a native call throws partway, the
- * previous reminder is still scheduled and still matches the saved time.
+ * Each reminder is scheduled under its own fixed identifier, which replaces the
+ * previous one, instead of cancelling first: if a native call throws partway,
+ * the previous reminders are still scheduled and still match the saved choice.
  */
-export async function applyDailyReminder(time: DailyReminderTime): Promise<DailyReminderResult> {
+export async function applyDailyReminder(enabled: boolean): Promise<DailyReminderResult> {
   await restoring.catch(() => undefined);
   const generation = identityGeneration;
-  if (time === "off") {
+  if (!enabled) {
     await turnOff();
     return "off";
   }
@@ -65,12 +62,12 @@ export async function applyDailyReminder(time: DailyReminderTime): Promise<Daily
     await turnOff();
     return "denied";
   }
-  return (await scheduleIfCurrent(time, generation)) ? "scheduled" : "off";
+  return (await scheduleIfCurrent(generation)) ? "scheduled" : "off";
 }
 
 /**
  * Ties the reminder to a signed-in session. Mount once under SessionProvider.
- * Signed in, it restores the reminder; signed out, it clears it. The clear
+ * Signed in, it restores the reminders; signed out, it clears it. The clear
  * matters at launch: a session that ended while the app was closed resolves
  * straight to signed-out without an identity transition, so
  * clearUserScopedRuntimeState never runs for it.
@@ -85,16 +82,17 @@ export function useDailyReminderSession(status: SessionStatus): void {
 }
 
 /**
- * Shows the reminder while the app is open, then loads the saved time and makes
- * the OS schedule match it. Runs when a session is signed in. It never prompts:
- * without permission the saved time is reset to Off. This also repairs drift,
- * such as an iOS reinstall that keeps the saved time in the Keychain but drops
- * the scheduled notification.
+ * Shows the reminders while the app is open, then loads the saved choice and
+ * makes the OS schedule match it. Runs when a session is signed in. Reminders
+ * are on by default, so this is where a new install asks for notification
+ * permission; a refusal turns them off, so the prompt is not repeated. This
+ * also repairs drift, such as an iOS reinstall that keeps the saved choice in
+ * the Keychain but drops the scheduled notifications.
  */
 export function startDailyReminder(): Promise<void> {
   useDailyReminderRestoredStore.setState({ restored: false });
   // `finally`, not a success path: a failed restore must not leave the card
-  // waiting forever. It then shows whatever time was loaded, if any.
+  // waiting forever. It then shows whatever choice was loaded, if any.
   restoring = restoreDailyReminder().finally(() => {
     useDailyReminderRestoredStore.setState({ restored: true });
   });
@@ -104,7 +102,7 @@ export function startDailyReminder(): Promise<void> {
 async function restoreDailyReminder(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: (notification) => {
-      const show = notification.request.identifier === DAILY_REMINDER_ID;
+      const show = isDailyReminder(notification.request.identifier);
       return Promise.resolve({
         shouldShowBanner: show,
         shouldShowList: show,
@@ -116,34 +114,33 @@ async function restoreDailyReminder(): Promise<void> {
 
   const generation = identityGeneration;
   await useDailyReminderStore.persist.rehydrate();
-  // An identity change that ran while the saved time loaded wins with its Off.
-  const time = generation === identityGeneration ? useDailyReminderStore.getState().time : "off";
-  if (time === "off") {
-    await turnOff();
-    return;
-  }
-  const permission = await Notifications.getPermissionsAsync();
-  if (!permission.granted) {
+  // An identity change that ran while the saved choice loaded wins with its reset.
+  if (generation !== identityGeneration || !useDailyReminderStore.getState().enabled) {
     await turnOff();
     return;
   }
   await ensureChannel();
-  await scheduleIfCurrent(time, generation);
+  if (!(await hasNotificationPermission())) {
+    await turnOff();
+    return;
+  }
+  await scheduleIfCurrent(generation);
 }
 
 /**
- * Turns the reminder off and forgets a tap that has not been handled yet. Runs
- * on every identity change (sign-out, forced sign-out, account switch) so the
- * reminder never outlives the account that set it, and a tap made while signed
- * out cannot open the editor after the next sign-in. The two native calls run
- * independently so a failure in one cannot skip the other; a cancel that still
- * fails is retried by the next restore, which sees Off.
+ * Cancels the reminders, resets the choice to its default (on) for the next
+ * session, and forgets a tap that has not been handled yet. Runs on every
+ * identity change (sign-out, forced sign-out, account switch) so the reminders
+ * never outlive the account that set them, and a tap made while signed out
+ * cannot open the editor after the next sign-in. The native calls run
+ * independently so a failure in one cannot skip the others; a cancel that still
+ * fails is repaired by the next restore.
  */
 export async function clearDailyReminder(): Promise<void> {
   identityGeneration += 1;
-  useDailyReminderStore.getState().setTime("off");
+  useDailyReminderStore.getState().setEnabled(true);
   const results = await Promise.allSettled([
-    Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID),
+    ...DAILY_REMINDERS.map(({ id }) => Notifications.cancelScheduledNotificationAsync(id)),
     Promise.resolve().then(() => Notifications.clearLastNotificationResponse()),
   ]);
   const failure = results.find((result) => result.status === "rejected");
@@ -162,7 +159,7 @@ export function DailyReminderTapHandler() {
   useEffect(() => {
     if (!navigationReady) return;
     const openEditor = (response: Notifications.NotificationResponse | null) => {
-      if (response?.notification.request.identifier !== DAILY_REMINDER_ID) return;
+      if (!response || !isDailyReminder(response.notification.request.identifier)) return;
       const tap = `${response.notification.date}:${response.actionIdentifier}`;
       if (tap === handledTap) return;
       handledTap = tap;
@@ -177,8 +174,10 @@ export function DailyReminderTapHandler() {
 }
 
 async function turnOff(): Promise<void> {
-  await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
-  useDailyReminderStore.getState().setTime("off");
+  await Promise.all(
+    DAILY_REMINDERS.map(({ id }) => Notifications.cancelScheduledNotificationAsync(id)),
+  );
+  useDailyReminderStore.getState().setEnabled(false);
 }
 
 async function ensureChannel(): Promise<void> {
@@ -189,33 +188,33 @@ async function ensureChannel(): Promise<void> {
   });
 }
 
-/** Schedules `time` and saves it, unless an identity change happened since `generation`. */
-async function scheduleIfCurrent(
-  time: Exclude<DailyReminderTime, "off">,
-  generation: number,
-): Promise<boolean> {
+/** Schedules both reminders and saves the choice, unless an identity change happened since `generation`. */
+async function scheduleIfCurrent(generation: number): Promise<boolean> {
   if (generation !== identityGeneration) return false;
-  const [hour, minute] = parseTime(time);
-  await Notifications.scheduleNotificationAsync({
-    identifier: DAILY_REMINDER_ID,
-    content: {
-      title: "Log today's money",
-      body: "Take a minute to record today's expenses and income.",
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour,
-      minute,
-      channelId: DAILY_REMINDER_CHANNEL_ID,
-    },
-  });
-  // Signed out while the schedule call ran: that cleanup's cancel may have
-  // landed first, so cancel again and leave the saved time at its Off.
+  for (const { id, hour } of DAILY_REMINDERS) {
+    await Notifications.scheduleNotificationAsync({
+      identifier: id,
+      content: {
+        title: "Log today's money",
+        body: "Take a minute to record today's expenses and income.",
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour,
+        minute: 0,
+        channelId: DAILY_REMINDER_CHANNEL_ID,
+      },
+    });
+  }
+  // Signed out while the schedule calls ran: that cleanup's cancel may have
+  // landed first, so cancel again and leave the choice at its reset.
   if (generation !== identityGeneration) {
-    await Notifications.cancelScheduledNotificationAsync(DAILY_REMINDER_ID);
+    await Promise.all(
+      DAILY_REMINDERS.map(({ id }) => Notifications.cancelScheduledNotificationAsync(id)),
+    );
     return false;
   }
-  useDailyReminderStore.getState().setTime(time);
+  useDailyReminderStore.getState().setEnabled(true);
   return true;
 }
 
@@ -225,9 +224,4 @@ async function hasNotificationPermission(): Promise<boolean> {
   if (!current.canAskAgain) return false;
   const requested = await Notifications.requestPermissionsAsync();
   return requested.granted;
-}
-
-function parseTime(time: Exclude<DailyReminderTime, "off">): [number, number] {
-  const [hour, minute] = time.split(":");
-  return [Number(hour), Number(minute)];
 }

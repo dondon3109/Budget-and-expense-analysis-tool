@@ -23,37 +23,37 @@ const secureStore = jest.requireMock("expo-secure-store") as { __store: Map<stri
 describe("daily reminder store", () => {
   beforeEach(() => {
     secureStore.__store.clear();
-    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderStore.setState({ enabled: true });
   });
 
-  it("is off by default", () => {
-    expect(useDailyReminderStore.getState().time).toBe("off");
+  it("is on by default", () => {
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
   });
 
-  it("writes the chosen time and reads it back after a relaunch", async () => {
-    useDailyReminderStore.getState().setTime("18:00");
+  it("writes the choice and reads it back after a relaunch", async () => {
+    useDailyReminderStore.getState().setEnabled(false);
     await new Promise((resolve) => setTimeout(resolve, 0));
     const saved = secureStore.__store.get(DAILY_REMINDER_STORAGE_KEY);
-    expect(saved).toContain("18:00");
+    expect(saved).toContain("false");
 
     // Every setState writes through, so put the saved value back before rehydrating.
-    useDailyReminderStore.setState({ time: "off" });
+    useDailyReminderStore.setState({ enabled: true });
     secureStore.__store.set(DAILY_REMINDER_STORAGE_KEY, saved ?? "");
 
     await useDailyReminderStore.persist.rehydrate();
 
-    expect(useDailyReminderStore.getState().time).toBe("18:00");
+    expect(useDailyReminderStore.getState().enabled).toBe(false);
   });
 
   it.each([
     ["not json", "not json"],
-    ["an unknown time", JSON.stringify({ state: { time: "07:30" }, version: 1 })],
-    ["an extra field", JSON.stringify({ state: { time: "08:00", extra: true }, version: 1 })],
-  ])("falls back to off when the saved state is %s", async (_label, raw) => {
+    ["a pre-0.2.39 saved time", JSON.stringify({ state: { time: "08:00" }, version: 1 })],
+    ["an extra field", JSON.stringify({ state: { enabled: false, extra: true }, version: 1 })],
+  ])("falls back to on when the saved state is %s", async (_label, raw) => {
     secureStore.__store.set(DAILY_REMINDER_STORAGE_KEY, raw);
 
     await useDailyReminderStore.persist.rehydrate();
 
-    expect(useDailyReminderStore.getState().time).toBe("off");
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
   });
 });
