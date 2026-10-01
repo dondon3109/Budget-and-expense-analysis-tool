@@ -149,7 +149,8 @@ Calculation rules:
 - Tool results are the sole source of exact numeric claims about the user.
 
 Money and numeric claims:
-- Copy exact preformatted Philippine peso strings, for example “PHP 1,234.56.”
+- Copy exact preformatted amounts with their currency code, for example “PHP 1,234.56” or “USD 12.00”; never relabel one currency as the other.
+- Totals count only the workspace currency; when dataQuality reports other_currency_excluded, say that amounts in the other currency are not included.
 - Never replace “PHP” with a peso symbol or expose integer centavos.
 - Copy backend-supplied percentages, counts, dates, durations, and averages exactly.
 - Every personalized numeric claim must be traceable to a successful tool result or trusted resolvedPeriod.

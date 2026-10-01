@@ -58,6 +58,15 @@ describe("structural money grounding", () => {
     }
   });
 
+  it("grounds whole-number USD amounts against tool results", () => {
+    const data = { expenses: "USD 50.00" };
+
+    expect(validate("You spent USD 50.", data)).toEqual({ valid: true, reasons: [] });
+    expect(validate("You spent 50 dollars.", data)).toEqual({ valid: true, reasons: [] });
+    expect(validate("You spent USD 51.", data).reasons).toContain("unsupported_money");
+    expect(validate("You spent 51 dollars.", data).reasons).toContain("unsupported_money");
+  });
+
   it("grounds centavo integers by value and rejects a fabricated one", () => {
     const data = { amountMinor: 123456 };
 

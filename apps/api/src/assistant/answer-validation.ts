@@ -124,8 +124,8 @@ function normalizedNumber(token: string): string {
 // centavo word. Plain integers in ordinary prose ("3 buckets", the 50/30/20 rule)
 // are counts or ratios, and treating them as amounts would refuse general
 // education prose the tools never produced a figure for.
-const CURRENCY_BEFORE = /(?:\bPHP|\bpesos?|\bcentavos?|₱)\s*-?\s*$/i;
-const CURRENCY_AFTER = /^\s*-?\s*(?:\bPHP|\bpesos?|\bcentavos?|₱)/i;
+const CURRENCY_BEFORE = /(?:\bPHP|\bUSD|\bpesos?|\bdollars?|\bcentavos?|\bcents?|₱)\s*-?\s*$/i;
+const CURRENCY_AFTER = /^\s*-?\s*(?:\bPHP|\bUSD|\bpesos?|\bdollars?|\bcentavos?|\bcents?|₱)/i;
 
 function isMoneyToken(content: string, token: string, index: number): boolean {
   if (token.includes(".")) return true;
@@ -380,7 +380,7 @@ export function sanitizedAuditJson(value: unknown): string {
 const REPAIR_GUIDANCE: ReadonlyArray<readonly [string[], string]> = [
   [
     ["unsupported_currency_format", "unsupported_money"],
-    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 — never ₱, $, or a number that is not in the tool results.",
+    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 or USD 12.00 — never ₱, $, or a number that is not in the tool results.",
   ],
   [
     ["unsupported_percentage", "unsupported_numeric_claim", "unsupported_date"],
@@ -461,7 +461,7 @@ export function deterministicPeriodSummaryAnswer(
       ? (summary.result.data as Record<string, unknown>)
       : null;
   const expenses = data?.["expenses"];
-  if (typeof expenses !== "string" || !/^PHP -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
+  if (typeof expenses !== "string" || !/^(?:PHP|USD) -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
     return null;
   }
   const args =
@@ -471,7 +471,15 @@ export function deterministicPeriodSummaryAnswer(
   const accountName = args?.["accountName"];
   const qualifier =
     typeof accountName === "string" && accountName.trim() ? ` for ${accountName.trim()}` : "";
-  const content = `From ${policy.resolvedPeriod.from} to ${policy.resolvedPeriod.to}, your recorded expenses${qualifier} were ${expenses}.`;
+  // A total that left out the other currency must say so, as the prompt requires of the model.
+  const excludedOtherCurrency = summary.result.dataQuality.signals.some(
+    (signal) => signal.code === "other_currency_excluded",
+  );
+  const otherCurrency = expenses.startsWith("USD") ? "PHP" : "USD";
+  const disclosure = excludedOtherCurrency
+    ? ` Transactions in ${otherCurrency} are not included.`
+    : "";
+  const content = `From ${policy.resolvedPeriod.from} to ${policy.resolvedPeriod.to}, your recorded expenses${qualifier} were ${expenses}.${disclosure}`;
   return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
     ? content
     : null;

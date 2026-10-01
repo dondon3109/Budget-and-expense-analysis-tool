@@ -169,6 +169,31 @@ describe("assistant answer validation", () => {
     expect(deterministicPeriodSummaryAnswer(policy, [insufficient], satisfied)).toBeNull();
   });
 
+  it("states a USD workspace total and says when the other currency was left out", () => {
+    const satisfied = new Set<RequiredToolGroup>(["period_summary"]);
+    const usdSummary: AssistantToolExecution = {
+      ...execution,
+      result: {
+        ...(execution.result as Record<string, unknown>),
+        data: { expenses: "USD 50.00" },
+        dataQuality: {
+          status: "limited",
+          signals: [
+            {
+              code: "other_currency_excluded",
+              message: "Totals count only USD, the workspace currency.",
+              count: 2,
+            },
+          ],
+        },
+      },
+    };
+
+    expect(deterministicPeriodSummaryAnswer(policy, [usdSummary], satisfied)).toBe(
+      "From 2026-07-01 to 2026-07-31, your recorded expenses were USD 50.00. Transactions in PHP are not included.",
+    );
+  });
+
   it("derives only trusted arguments the tool contract accepts for every required group", () => {
     const groups: RequiredToolGroup[] = [
       "account_balance",
