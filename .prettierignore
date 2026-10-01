@@ -7,6 +7,9 @@ dist/
 node_modules/
 coverage/
 
+# Standalone Remotion promo video: own npm lockfile, rendered media, generated audio.
+promo/
+
 # Vendored skill bundles keep their upstream formatting.
 .agents/
 .claude/

@@ -73,6 +73,7 @@ Start from the first file listed, then read the package guide for that area. Eve
 | Adding an entity end to end      | The checklists in `docs/maintainability.md`                                                                                                                                                  |
 | Release notes and versions       | `packages/web-common/src/releases/currentRelease.ts`, `CHANGELOG.md`, `apps/mobile/package.json`, `apps/mobile/app.config.ts`                                                                |
 | CI and what forces a human merge | `.github/workflows/`, `scripts/pr-risk.mjs`                                                                                                                                                  |
+| Promo video                      | `promo/README.md`; the cut and every timing live in `promo/src/timing.ts`                                                                                                                    |
 | Deployed dashboards and secrets  | `docs/deployment.md`                                                                                                                                                                         |
 
 Pick the narrowest verify while iterating: `pnpm verify:changed` works it out from the diff. Finish with `pnpm verify`.
