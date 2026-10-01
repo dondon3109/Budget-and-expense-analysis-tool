@@ -589,7 +589,7 @@ export interface AssistantResponseMetadata {
   transactionDraft?: AssistantTransactionDraft;
 }
 
-export const CURRENT_ASSISTANT_CONSENT_VERSION = 6;
+export const CURRENT_ASSISTANT_CONSENT_VERSION = 7;
 export const CURRENT_ASSISTANT_VOICE_CONSENT_VERSION = 4;
 
 export const assistantSpeechVoices = ["default", "bright", "energetic"] as const;
