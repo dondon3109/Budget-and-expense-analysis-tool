@@ -67,6 +67,33 @@ describe("structural money grounding", () => {
     expect(validate("You spent 51 dollars.", data).reasons).toContain("unsupported_money");
   });
 
+  it("rejects an amount relabeled with the other currency", () => {
+    const data = { items: [{ name: "Dollar card", balance: "USD 50.00" }] };
+
+    expect(validate("Your Dollar card holds USD 50.00.", data)).toEqual({
+      valid: true,
+      reasons: [],
+    });
+    for (const draft of [
+      "Your Dollar card holds PHP 50.00.",
+      "Your Dollar card holds 50 pesos.",
+      "Your Dollar card holds 50.00 PHP.",
+    ]) {
+      expect(validate(draft, data).reasons, draft).toContain("currency_mismatch");
+    }
+    // An unlabeled amount is grounded by value alone.
+    expect(validate("Your Dollar card holds 50.00.", data)).toEqual({ valid: true, reasons: [] });
+  });
+
+  it("accepts an amount the tools gave in both currencies under either code", () => {
+    const data = { balances: ["PHP 50.00", "USD 50.00"] };
+
+    expect(validate("You have PHP 50.00 and USD 50.00.", data)).toEqual({
+      valid: true,
+      reasons: [],
+    });
+  });
+
   it("grounds centavo integers by value and rejects a fabricated one", () => {
     const data = { amountMinor: 123456 };
 
