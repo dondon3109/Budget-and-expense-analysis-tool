@@ -68,7 +68,10 @@ export function DashboardPage() {
   const shouldRestoreDashboardFocusRef = useRef(!hasCompletedInitialDashboardExperience);
   const accountMutations = useAccountMutations(workspace);
   const [adjustingAccount, setAdjustingAccount] = useState<AccountBalanceSummaryItem>();
-  const [cashflowView, setCashflowView] = useState<CashflowTrendView>("weekly");
+  const [chosenCashflowView, setCashflowView] = useState<CashflowTrendView>();
+  const billingSummary = useBillingSummary(workspace);
+  const isPro = billingSummary.data?.plan === "zoption_pro";
+  const cashflowView = chosenCashflowView ?? (isPro ? "monthly" : "weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
@@ -137,8 +140,6 @@ export function DashboardPage() {
     ...transactionsQueryOptions(workspace, historyQuery),
     placeholderData: keepPreviousData,
   });
-  const billingSummary = useBillingSummary(workspace);
-  const isPro = billingSummary.data?.plan === "zoption_pro";
   const hasPostAuthCheckoutIntent = searchParams.get("proCheckout") === "open";
   const isAppReady = data !== undefined;
   const isAppSettled = isAppReady || isError;
