@@ -243,6 +243,54 @@ describe("assistant transaction draft confirmation", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  it("reports a save whose claim was taken over mid-request as saved", async () => {
+    const { env, database, drafts, service } = setup();
+    // Another request takes the claim over between this request's create and its markSaved.
+    drafts.transactionExists = vi.fn(async () => {
+      database
+        .prepare(
+          `UPDATE assistant_messages SET response_metadata_json = json_set(response_metadata_json, '$.transactionDraft.claimedAt', '2099-01-01T00:00:00.000Z') WHERE id = ?`,
+        )
+        .run(MESSAGE);
+      return drafts.transactionExists.mock.calls.length > 1;
+    });
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
+  });
+
+  it("blocks the claim when a correction lands after the replacement check", async () => {
+    const { env, database, create, drafts, service } = setup();
+    database
+      .prepare(
+        `INSERT INTO assistant_messages
+         (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+         VALUES ('44444444-4444-4444-8444-444444444444', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+      )
+      .run(
+        TENANT,
+        THREAD,
+        JSON.stringify({
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed", topics: [] },
+          sources: [],
+          transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: MESSAGE },
+        }),
+      );
+    // The first check ran before the correction was stored.
+    const realIsReplaced = drafts.isReplaced;
+    drafts.isReplaced = vi.fn().mockResolvedValueOnce(false).mockImplementation(realIsReplaced);
+
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_draft_superseded",
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("requires current assistant consent before saving", async () => {
     const { env, database, create, service } = setup();
     database

@@ -577,6 +577,13 @@ export function createAssistantService(
         );
       }
       const claimedAt = await drafts.claim(env, tenantId, messageId);
+      if (!claimedAt && (await drafts.isReplaced(env, tenantId, message))) {
+        throw new HttpError(
+          409,
+          "assistant_draft_superseded",
+          "A newer draft replaced this one. Save the latest draft instead.",
+        );
+      }
       if (!claimedAt) {
         throw new HttpError(
           409,
@@ -616,7 +623,17 @@ export function createAssistantService(
       }
       const saved = await drafts.markSaved(env, tenantId, messageId, transactionId, claimedAt);
       if (saved?.metadata?.transactionDraft?.status !== "saved") {
-        // Another request took the claim over meanwhile. The row exists once either way.
+        // Another request took the claim over meanwhile and will mark it saved. The row this
+        // request wrote exists either way, so report the save rather than an error.
+        if (saved && (await drafts.transactionExists(env, tenantId, transactionId))) {
+          return {
+            ...saved,
+            metadata: {
+              ...saved.metadata!,
+              transactionDraft: { ...draft, status: "saved", transactionId },
+            },
+          };
+        }
         throw new HttpError(
           409,
           "assistant_draft_in_progress",

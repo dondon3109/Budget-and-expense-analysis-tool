@@ -67,7 +67,15 @@ export const assistantTransactionDraftRepository: AssistantTransactionDraftRepos
        )
        WHERE tenant_id = ? AND id = ?
          AND (${DRAFT_STATUS} = 'pending'
-           OR (${DRAFT_STATUS} = 'saving' AND ${DRAFT_CLAIMED_AT} < ?))`,
+           OR (${DRAFT_STATUS} = 'saving' AND ${DRAFT_CLAIMED_AT} < ?))
+         -- A correction stored after the caller's isReplaced check still blocks the claim.
+         AND NOT EXISTS (
+           SELECT 1 FROM assistant_messages AS later
+           WHERE later.tenant_id = assistant_messages.tenant_id
+             AND later.thread_id = assistant_messages.thread_id
+             AND json_extract(later.response_metadata_json, '$.transactionDraft.replacesMessageId')
+               = assistant_messages.id
+         )`,
     )
       .bind(now.toISOString(), tenantId, messageId, staleBefore)
       .run();
