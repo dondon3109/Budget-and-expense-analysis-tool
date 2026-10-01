@@ -25,6 +25,23 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Log a transaction by chatting with the assistant",
+      "Log several entries from the Android mic widget",
+      "Daily reminder on by default on Android and iOS",
+      "Assistant answers keep to your workspace currency",
+      "Smoother sign-in links and a steadier PIN pad",
+      "Android Beta 0.2.43",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/Nothing is saved until you tap Save transaction/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.43/);
+  });
+
+  it("keeps the app.zoption.site move notes as 3.0.0", () => {
+    expect(titles("3.0.0")).toEqual([
       "Your workspace moved to app.zoption.site",
       "Faster public pages",
       "A short setup for new workspaces",
@@ -34,9 +51,7 @@ describe("current release notes", () => {
       "Android Beta 0.2.42",
     ]);
 
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
+    const copy = notes("3.0.0");
     expect(copy).toMatch(/opening balance/i);
     expect(copy).toMatch(/Android Beta 0\.2\.42/);
     expect(copy).toMatch(/sign in once more/i);
@@ -163,6 +178,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "3.0.0",
       "2.49.0",
       "2.48.0",
       "2.47.0",

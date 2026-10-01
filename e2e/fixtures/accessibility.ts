@@ -303,11 +303,11 @@ export async function captureRoute(page: Page, route: string, label: string): Pr
 
 /**
  * Runaway guard for the scroll-stepped scan, not a routine ceiling. The tallest routes measured
- * are /changelog at 18 viewports (393px) and the landing page at 16, so real pages are walked in
- * full; a page several times that tall (an infinite list, say) fails the scan instead of turning
+ * are /changelog at 41 viewports (393px; it grows with every release) and the landing page at 16,
+ * so real pages are walked in full; a page several times that tall (an infinite list, say) fails the scan instead of turning
  * one route into hundreds of axe runs.
  */
-const MAX_SCROLL_STEPS = 40;
+const MAX_SCROLL_STEPS = 80;
 
 /** Indexes of the [data-scroll-fade] elements that are on screen and fully shown right now. */
 function settledFadesOnScreen(page: Page): Promise<number[]> {
