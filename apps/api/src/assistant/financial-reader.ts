@@ -7,6 +7,7 @@ import {
   summarizeAccountBalances,
   type AccountRecord,
   type AssistantToolResultEnvelope,
+  type Currency,
   type DashboardSummary,
   type DebtProjectionInput,
   type TransactionKind,
@@ -19,8 +20,13 @@ import { debtRepository, type DebtRepository } from "../db/debts";
 import { loadDashboard } from "../db/dashboard";
 import { financialGoalRepository, type FinancialGoalRepository } from "../db/goals";
 import { transactionRepository, type TransactionRepository } from "../db/transactions";
+import { loadWorkspaceCurrency } from "../db/workspace-settings";
 import type { Bindings } from "../types";
-import { assessTransactionDataQuality, type AssistantAnalysisTransaction } from "./data-quality";
+import {
+  assessTransactionDataQuality,
+  type AssistantAnalysisTransaction,
+  type DataQualityAssessment,
+} from "./data-quality";
 
 export interface FinancialReadContext {
   env: Bindings;
@@ -137,11 +143,14 @@ type DashboardLoader = (
   tenantId: string,
   period: DashboardPeriod,
   accountId?: string,
+  currency?: Currency,
 ) => Promise<DashboardSummary>;
+type WorkspaceCurrencyLoader = (env: Bindings, tenantId: string) => Promise<Currency>;
 
 interface AnalysisTransaction extends AssistantAnalysisTransaction {
   categoryId: string;
   accountId: string | null;
+  currency: Currency;
 }
 
 type AnalysisLoader = (
@@ -157,8 +166,41 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-function formatMoney(amountMinor: number): string {
-  return `PHP ${moneyFormatter.format(amountMinor / 100)}`;
+function formatMoney(amountMinor: number, currency: Currency): string {
+  return `${currency} ${moneyFormatter.format(amountMinor / 100)}`;
+}
+
+/**
+ * Aggregates count only the workspace currency and never convert, matching the dashboard and
+ * plans. `excludedCount` counts the other currency's rows a tool would have summed (expenses
+ * by default) so the model can say they were left out.
+ */
+function splitByCurrency(
+  rows: readonly AnalysisTransaction[],
+  currency: Currency,
+  summed: (item: AnalysisTransaction) => boolean = (item) => item.kind === "expense",
+) {
+  const included = rows.filter((item) => item.currency === currency);
+  const excludedCount = rows.filter((item) => item.currency !== currency && summed(item)).length;
+  return { rows: included, excludedCount };
+}
+
+function assessWorkspaceQuality(
+  rows: readonly AnalysisTransaction[],
+  excludedCount: number,
+  period: { from: string; to: string },
+  currency: Currency,
+): DataQualityAssessment {
+  const quality = assessTransactionDataQuality(rows, period);
+  if (excludedCount === 0) return quality;
+  const otherCurrency: Currency = currency === "PHP" ? "USD" : "PHP";
+  quality.signals.push({
+    code: "other_currency_excluded",
+    message: `Totals count only ${currency}, the workspace currency; transactions in ${otherCurrency} were left out and not converted.`,
+    count: excludedCount,
+  });
+  if (quality.status === "reliable") quality.status = "limited";
+  return quality;
 }
 
 function compactDescription(value: string): string {
@@ -235,7 +277,7 @@ function source<T extends object>(
       debtNames?: string[];
     };
     recordCount?: number;
-    quality?: ReturnType<typeof assessTransactionDataQuality>;
+    quality?: DataQualityAssessment;
   } = {},
 ): AssistantToolResultEnvelope<T> {
   return {
@@ -261,7 +303,7 @@ async function loadAnalysisTransactions(
     `SELECT t.id, t.date, t.description, t.amount_minor AS amountMinor, t.kind,
             t.category_id AS categoryId, c.name AS categoryName,
             t.account_id AS accountId, COALESCE(a.name, 'Unassigned') AS accountName,
-            t.source_kind AS sourceKind, t.import_id AS importId
+            t.currency, t.source_kind AS sourceKind, t.import_id AS importId
      FROM transactions t
      INNER JOIN categories c ON c.id = t.category_id AND c.tenant_id = t.tenant_id
      LEFT JOIN accounts a ON a.id = t.account_id AND a.tenant_id = t.tenant_id
@@ -302,6 +344,7 @@ export function createFinancialReader(
     transactions?: TransactionRepository;
     dashboardLoader?: DashboardLoader;
     analysisLoader?: AnalysisLoader;
+    workspaceCurrencyLoader?: WorkspaceCurrencyLoader;
   } = {},
 ): FinancialReader {
   const accounts = options.accounts ?? accountRepository;
@@ -312,6 +355,20 @@ export function createFinancialReader(
   const transactions = options.transactions ?? transactionRepository;
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
   const analysisLoader = options.analysisLoader ?? loadAnalysisTransactions;
+  const workspaceCurrencyLoader = options.workspaceCurrencyLoader ?? loadWorkspaceCurrency;
+
+  async function loadWorkspaceAnalysis(
+    context: FinancialReadContext,
+    from: string,
+    to: string,
+    accountId?: string,
+  ) {
+    const [currency, analysis] = await Promise.all([
+      workspaceCurrencyLoader(context.env, context.tenantId),
+      analysisLoader(context, from, to, accountId),
+    ]);
+    return { currency, ...splitByCurrency(analysis, currency) };
+  }
 
   return {
     async getTransactionDateBounds(context) {
@@ -333,7 +390,10 @@ export function createFinancialReader(
     },
 
     async getAccountBalances(context, input = {}) {
-      const accountItems = await accounts.list(context.env, context.tenantId);
+      const [accountItems, currency] = await Promise.all([
+        accounts.list(context.env, context.tenantId),
+        workspaceCurrencyLoader(context.env, context.tenantId),
+      ]);
       const account = input.accountName
         ? findAccountByName(accountItems, input.accountName)
         : undefined;
@@ -343,16 +403,16 @@ export function createFinancialReader(
         });
       }
 
-      const summary = summarizeAccountBalances(account ? [account] : accountItems);
+      const summary = summarizeAccountBalances(account ? [account] : accountItems, currency);
       return source(
         {
           ...(account ? { accountName: account.name, filterMatched: true } : {}),
           currency: summary.currency,
-          overallBalance: formatMoney(summary.overallBalanceMinor),
+          overallBalance: formatMoney(summary.overallBalanceMinor, summary.currency),
           items: summary.items.map((item) => ({
             name: item.name,
             type: item.type,
-            balance: formatMoney(item.balanceMinor),
+            balance: formatMoney(item.balanceMinor, item.currency),
             removed: item.archived,
           })),
         },
@@ -388,17 +448,28 @@ export function createFinancialReader(
         });
       }
 
-      const [summary, analysis] = await Promise.all([
-        dashboardLoader(
-          context.env,
-          context.tenantId,
-          { from: input.from, to: input.to },
-          account?.id,
-        ),
+      const currencyLoad = workspaceCurrencyLoader(context.env, context.tenantId);
+      const [currency, allAnalysis, summary] = await Promise.all([
+        currencyLoad,
         analysisLoader(context, input.from, input.to, account?.id),
+        currencyLoad.then((currency) =>
+          dashboardLoader(
+            context.env,
+            context.tenantId,
+            { from: input.from, to: input.to },
+            account?.id,
+            currency,
+          ),
+        ),
       ]);
+      // The summary totals income and expenses, so both count toward what was left out.
+      const { rows: analysis, excludedCount } = splitByCurrency(
+        allAnalysis,
+        currency,
+        (item) => item.kind !== "transfer",
+      );
       const monthCount = coveredMonthCount(input.from, input.to);
-      const quality = assessTransactionDataQuality(analysis, input);
+      const quality = assessWorkspaceQuality(analysis, excludedCount, input, currency);
       if (monthCount > 24) {
         quality.status = "limited";
         quality.signals.push({
@@ -413,21 +484,21 @@ export function createFinancialReader(
         {
           ...(account ? { accountName: account.name, filterMatched: true } : {}),
           period: summary.period,
-          currency: summary.currency,
-          income: formatMoney(summary.metrics.moneyInMinor),
-          expenses: formatMoney(summary.metrics.moneyOutMinor),
-          net: formatMoney(summary.metrics.netMinor),
+          currency,
+          income: formatMoney(summary.metrics.moneyInMinor, currency),
+          expenses: formatMoney(summary.metrics.moneyOutMinor, currency),
+          net: formatMoney(summary.metrics.netMinor, currency),
           monthlyAverages: {
             coveredMonthCount: monthCount,
             includesZeroTransactionMonths: true,
-            income: formatMoney(Math.round(summary.metrics.moneyInMinor / monthCount)),
-            expenses: formatMoney(Math.round(summary.metrics.moneyOutMinor / monthCount)),
-            net: formatMoney(Math.round(summary.metrics.netMinor / monthCount)),
+            income: formatMoney(Math.round(summary.metrics.moneyInMinor / monthCount), currency),
+            expenses: formatMoney(Math.round(summary.metrics.moneyOutMinor / monthCount), currency),
+            net: formatMoney(Math.round(summary.metrics.netMinor / monthCount), currency),
           },
           savingsRatePercent: summary.insights.savingsRatePercent,
           spendingByCategory: summary.spendingByCategory.map((item) => ({
             name: item.name,
-            amount: formatMoney(item.amountMinor),
+            amount: formatMoney(item.amountMinor, currency),
             sharePercent: item.sharePercent,
           })),
           monthlyTrend:
@@ -437,8 +508,8 @@ export function createFinancialReader(
                   .filter((item) => item.month >= periodStartMonth && item.month <= periodEndMonth)
                   .map((item) => ({
                     month: item.month,
-                    income: formatMoney(item.incomeMinor),
-                    expenses: formatMoney(item.expenseMinor),
+                    income: formatMoney(item.incomeMinor, currency),
+                    expenses: formatMoney(item.expenseMinor, currency),
                   })),
         },
         "transactions",
@@ -452,8 +523,8 @@ export function createFinancialReader(
     },
 
     async getSpendingByCategory(context, input) {
-      const [analysis, categoryItems] = await Promise.all([
-        analysisLoader(context, input.from, input.to),
+      const [{ currency, rows: analysis, excludedCount }, categoryItems] = await Promise.all([
+        loadWorkspaceAnalysis(context, input.from, input.to),
         input.categoryName ? categories.list(context.env, context.tenantId) : Promise.resolve([]),
       ]);
       const category = input.categoryName
@@ -487,7 +558,7 @@ export function createFinancialReader(
       const items = [...grouped.values()]
         .map((item) => ({
           name: item.name,
-          amount: formatMoney(item.amountMinor),
+          amount: formatMoney(item.amountMinor, currency),
           transactionCount: item.count,
           sharePercent:
             totalMinor === 0 ? 0 : Math.round((item.amountMinor / totalMinor) * 1_000) / 10,
@@ -497,7 +568,7 @@ export function createFinancialReader(
         {
           ...(category ? { categoryName: category.name, filterMatched: true } : {}),
           period: input,
-          total: formatMoney(totalMinor),
+          total: formatMoney(totalMinor, currency),
           items,
         },
         "transactions",
@@ -505,15 +576,15 @@ export function createFinancialReader(
           period: input,
           ...(category ? { filters: { categoryName: category.name } } : {}),
           recordCount: expenses.length,
-          quality: assessTransactionDataQuality(analysis, input),
+          quality: assessWorkspaceQuality(analysis, excludedCount, input, currency),
         },
       );
     },
 
     async getBudgetVsActual(context, input) {
       const months = budgetMonths(input.from, input.to);
-      const [analysis, plans] = await Promise.all([
-        analysisLoader(context, input.from, input.to),
+      const [{ currency, rows: analysis, excludedCount }, plans] = await Promise.all([
+        loadWorkspaceAnalysis(context, input.from, input.to),
         Promise.all(months.map((month) => budgets.list(context.env, context.tenantId, month))),
       ]);
       let totalBudgetedSpentMinor = 0;
@@ -537,27 +608,27 @@ export function createFinancialReader(
           0,
         );
         const items = plan.items
+          .filter((item) => item.limitMinor !== 0 || (spending.get(item.categoryId) ?? 0) !== 0)
           .map((item) => {
             const spentMinor = spending.get(item.categoryId) ?? 0;
             const hasLimit = item.limitMinor > 0;
             return {
               name: item.categoryName,
-              limit: formatMoney(item.limitMinor),
-              spent: formatMoney(spentMinor),
-              remaining: formatMoney(hasLimit ? item.limitMinor - spentMinor : 0),
+              limit: formatMoney(item.limitMinor, currency),
+              spent: formatMoney(spentMinor, currency),
+              remaining: formatMoney(hasLimit ? item.limitMinor - spentMinor : 0, currency),
               usedPercent: hasLimit ? Math.round((spentMinor / item.limitMinor) * 1_000) / 10 : 0,
             };
-          })
-          .filter((item) => item.limit !== "PHP 0.00" || item.spent !== "PHP 0.00");
+          });
         const spentMinor = monthExpenses.reduce((sum, item) => sum + Math.abs(item.amountMinor), 0);
         const fullMonth = input.from <= plan.month && input.to >= monthEnd(plan.month);
         totalBudgetedSpentMinor += budgetedSpentMinor;
         return {
           month: plan.month,
           coverage: fullMonth ? "full_month" : "partial_month",
-          limit: formatMoney(limitMinor),
-          spent: formatMoney(spentMinor),
-          remaining: formatMoney(limitMinor - budgetedSpentMinor),
+          limit: formatMoney(limitMinor, currency),
+          spent: formatMoney(spentMinor, currency),
+          remaining: formatMoney(limitMinor - budgetedSpentMinor, currency),
           usedPercent:
             limitMinor === 0 ? 0 : Math.round((budgetedSpentMinor / limitMinor) * 1_000) / 10,
           hasBudget: limitMinor > 0,
@@ -574,9 +645,9 @@ export function createFinancialReader(
       return source(
         {
           period: input,
-          totalLimit: formatMoney(totalLimitMinor),
-          totalSpent: formatMoney(totalSpentMinor),
-          remaining: formatMoney(totalLimitMinor - totalBudgetedSpentMinor),
+          totalLimit: formatMoney(totalLimitMinor, currency),
+          totalSpent: formatMoney(totalSpentMinor, currency),
+          remaining: formatMoney(totalLimitMinor - totalBudgetedSpentMinor, currency),
           usedPercent:
             totalLimitMinor === 0
               ? 0
@@ -587,7 +658,7 @@ export function createFinancialReader(
         {
           period: input,
           recordCount: analysis.length,
-          quality: assessTransactionDataQuality(analysis, input),
+          quality: assessWorkspaceQuality(analysis, excludedCount, input, currency),
         },
       );
     },
@@ -598,7 +669,11 @@ export function createFinancialReader(
 
     async detectRecurringCharges(context, through) {
       const from = shiftMonths(through, -11);
-      const analysis = await analysisLoader(context, from, through);
+      const {
+        currency,
+        rows: analysis,
+        excludedCount,
+      } = await loadWorkspaceAnalysis(context, from, through);
       const expenses = analysis.filter((item) => item.kind === "expense");
       const items = detectRecurringCharges(expenses).map((item) => ({
         description: item.description,
@@ -606,18 +681,18 @@ export function createFinancialReader(
         occurrenceDates: item.occurrenceDates,
         occurrenceCount: item.occurrenceCount,
         cadence: item.cadence,
-        typicalAmount: formatMoney(item.typicalAmountMinor),
-        latestAmount: formatMoney(item.latestAmountMinor),
-        lowestAmount: formatMoney(item.lowestAmountMinor),
-        highestAmount: formatMoney(item.highestAmountMinor),
-        priceChange: formatMoney(item.priceChangeMinor),
+        typicalAmount: formatMoney(item.typicalAmountMinor, currency),
+        latestAmount: formatMoney(item.latestAmountMinor, currency),
+        lowestAmount: formatMoney(item.lowestAmountMinor, currency),
+        highestAmount: formatMoney(item.highestAmountMinor, currency),
+        priceChange: formatMoney(item.priceChangeMinor, currency),
         priceChangePercent: item.priceChangePercent,
         confidence: item.confidence,
       }));
       return source({ analyzedWindow: { from, to: through }, items }, "transactions", {
         period: { from, to: through },
         recordCount: expenses.length,
-        quality: assessTransactionDataQuality(analysis, { from, to: through }),
+        quality: assessWorkspaceQuality(analysis, excludedCount, { from, to: through }, currency),
       });
     },
 
@@ -626,10 +701,13 @@ export function createFinancialReader(
       if (duration > 366) throw new Error("Choose an anomaly period of 366 days or less.");
       const baselineTo = shiftDays(input.from, -1);
       const baselineFrom = shiftDays(baselineTo, -(duration * 6 - 1));
-      const [requested, baseline] = await Promise.all([
+      const [currency, allRequested, allBaseline] = await Promise.all([
+        workspaceCurrencyLoader(context.env, context.tenantId),
         analysisLoader(context, input.from, input.to),
         analysisLoader(context, baselineFrom, baselineTo),
       ]);
+      const { rows: requested, excludedCount } = splitByCurrency(allRequested, currency);
+      const { rows: baseline } = splitByCurrency(allBaseline, currency);
       const baselineWindows = Array.from({ length: 6 }, (_, index) => {
         const from = shiftDays(baselineFrom, index * duration);
         const to = shiftDays(from, duration - 1);
@@ -646,7 +724,7 @@ export function createFinancialReader(
           transactions: window.transactions.filter((item) => item.kind === "expense"),
         })),
       );
-      const quality = assessTransactionDataQuality(requested, input);
+      const quality = assessWorkspaceQuality(requested, excludedCount, input, currency);
       for (const limitation of result.limitations) {
         quality.status = result.status === "insufficient" ? "insufficient" : quality.status;
         quality.signals.push({ code: "anomaly_baseline_limit", message: limitation });
@@ -658,14 +736,14 @@ export function createFinancialReader(
             date: item.date,
             description: compactDescription(item.description),
             categoryName: item.categoryName,
-            amount: formatMoney(item.amountMinor),
-            baselineMedian: formatMoney(item.baselineMedianMinor),
+            amount: formatMoney(item.amountMinor, currency),
+            baselineMedian: formatMoney(item.baselineMedianMinor, currency),
             reason: item.reason,
           })),
           categorySpikes: result.categorySpikes.map((item) => ({
             categoryName: item.categoryName,
-            requestedTotal: formatMoney(item.requestedTotalMinor),
-            baselineMedian: formatMoney(item.baselineMedianMinor),
+            requestedTotal: formatMoney(item.requestedTotalMinor, currency),
+            baselineMedian: formatMoney(item.baselineMedianMinor, currency),
             reason: item.reason,
           })),
         },
@@ -711,6 +789,8 @@ export function createFinancialReader(
           minimumPaymentMinor: item.minimumPaymentMinor,
         }));
       }
+      // Saved debts and goals carry no currency of their own; they are in the workspace currency.
+      const currency = await workspaceCurrencyLoader(context.env, context.tenantId);
       const result = calculateDebtPayoff(
         selected,
         input.strategy,
@@ -727,16 +807,16 @@ export function createFinancialReader(
           strategy: result.strategy,
           payoffMonths: result.payoffMonths,
           payoffDate: result.payoffDate,
-          totalInterest: formatMoney(result.totalInterestMinor),
-          totalPaid: formatMoney(result.totalPaidMinor),
-          monthlyBudget: formatMoney(result.monthlyBudgetMinor),
+          totalInterest: formatMoney(result.totalInterestMinor, currency),
+          totalPaid: formatMoney(result.totalPaidMinor, currency),
+          monthlyBudget: formatMoney(result.monthlyBudgetMinor, currency),
           payoffOrder: result.payoffOrder,
           schedule: schedule.map((item) => ({
             month: item.month,
             date: item.date,
-            payment: formatMoney(item.paymentMinor),
-            interest: formatMoney(item.interestMinor),
-            remaining: formatMoney(item.remainingMinor),
+            payment: formatMoney(item.paymentMinor, currency),
+            interest: formatMoney(item.interestMinor, currency),
+            remaining: formatMoney(item.remainingMinor, currency),
           })),
           scheduleLimited: schedule.length < result.schedule.length,
           assumptions: result.assumptions,
@@ -772,6 +852,7 @@ export function createFinancialReader(
         currentAmountMinor = decimalAmountToMinor(input.currentSaved!);
         targetDate = input.targetDate!;
       }
+      const currency = await workspaceCurrencyLoader(context.env, context.tenantId);
       const result = calculateSavingsGoal(
         targetAmountMinor,
         currentAmountMinor,
@@ -782,14 +863,16 @@ export function createFinancialReader(
         {
           ...(goalName ? { goalName, filterMatched: true } : {}),
           status: result.status,
-          targetAmount: formatMoney(result.targetAmountMinor),
-          currentSaved: formatMoney(result.currentSavedMinor),
-          remaining: formatMoney(result.remainingMinor),
+          targetAmount: formatMoney(result.targetAmountMinor, currency),
+          currentSaved: formatMoney(result.currentSavedMinor, currency),
+          remaining: formatMoney(result.remainingMinor, currency),
           targetDate: result.targetDate,
           contributionMonths: result.contributionMonths,
           requiredMonthly:
-            result.requiredMonthlyMinor === null ? null : formatMoney(result.requiredMonthlyMinor),
-          amountDueNow: formatMoney(result.amountDueNowMinor),
+            result.requiredMonthlyMinor === null
+              ? null
+              : formatMoney(result.requiredMonthlyMinor, currency),
+          amountDueNow: formatMoney(result.amountDueNowMinor, currency),
           assumptions: result.assumptions,
         },
         "goals",
@@ -844,7 +927,7 @@ export function createFinancialReader(
           items: page.items.map((item) => ({
             date: item.date,
             description: compactDescription(item.description),
-            amount: formatMoney(item.amountMinor),
+            amount: formatMoney(item.amountMinor, item.currency),
             currency: item.currency,
             kind: item.kind,
             categoryName: item.categoryName,

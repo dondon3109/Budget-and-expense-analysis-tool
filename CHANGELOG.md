@@ -11,6 +11,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - On zoption.site, the theme button and the "Ask Zoption" support button announce their visible text to screen readers and voice control, and the assistant preview on the home page keeps readable contrast on phones. Headline and label fonts load earlier, so the hero no longer shifts when they arrive.
+- The AI assistant's totals, category spending, budget comparisons, recurring charges, and unusual-spending checks count only the workspace currency and say when transactions in the other currency were left out, instead of adding dollars into peso totals. Account balances and transaction lists show each amount in its own currency.
 
 ## 3.0.0 — 2026-09-30
 

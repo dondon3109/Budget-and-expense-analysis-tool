@@ -110,6 +110,8 @@ export async function loadDashboard(
   tenantId: string,
   period: { from: string; to: string },
   accountId?: string,
+  /** Counts only transactions in this currency; the assistant passes the workspace currency. */
+  currency?: Currency,
 ): Promise<DashboardSummary> {
   const db = drizzle(env.DB);
   const trendFrom = sixMonthWindowStart(period.to);
@@ -145,6 +147,7 @@ export async function loadDashboard(
           and(
             eq(transactions.tenantId, tenantId),
             ...(accountId ? [eq(transactions.accountId, accountId)] : []),
+            ...(currency ? [eq(transactions.currency, currency)] : []),
             gte(transactions.date, queryFrom),
             lte(transactions.date, period.to),
           ),
