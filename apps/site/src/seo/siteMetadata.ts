@@ -330,7 +330,7 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
   });
 }
 const FAQ_LAST_MODIFIED = "2026-10-01";
-const CHANGELOG_LAST_MODIFIED = "2026-09-30";
+const CHANGELOG_LAST_MODIFIED = "2026-10-01";
 const TERMS_LAST_MODIFIED = "2026-10-01";
 const PRIVACY_LAST_MODIFIED = "2026-10-01";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-09-30";
