@@ -108,37 +108,39 @@ export function AssistantUnavailableView({
 
         <View style={styles.unavailableActions}>
           <Button onPress={onRetry} variant="primary">
-            {isOffline ? "Check connection & retry" : "Try reconnecting"}
+            {isOffline ? "Check connection & retry" : "Try again"}
           </Button>
         </View>
       </Card>
 
-      <View
-        style={[
-          styles.offlineToolsCard,
-          elevation.card,
-          {
-            backgroundColor: theme.colors.surfaceRaised,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        <Text style={[typography.headline, { color: theme.colors.text }]}>
-          Available offline features
-        </Text>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          While disconnected, you can continue managing your finances locally:
-        </Text>
+      {isOffline ? (
+        <View
+          style={[
+            styles.offlineToolsCard,
+            elevation.card,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Text style={[typography.headline, { color: theme.colors.text }]}>
+            Available offline features
+          </Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Your records stay on this device. You can still:
+          </Text>
 
-        <View style={styles.offlineButtonsRow}>
-          <Button onPress={onOpenTransactions} variant="secondary">
-            View transactions
-          </Button>
-          <Button onPress={onOpenBudgets} variant="secondary">
-            Check budgets
-          </Button>
+          <View style={styles.offlineButtonsRow}>
+            <Button onPress={onOpenTransactions} variant="secondary">
+              View transactions
+            </Button>
+            <Button onPress={onOpenBudgets} variant="secondary">
+              Check budgets
+            </Button>
+          </View>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -747,7 +749,6 @@ const styles = StyleSheet.create({
   },
   unavailableActions: {
     width: "100%",
-    maxWidth: 280,
     marginTop: spacing.xxs,
   },
   offlineToolsCard: {

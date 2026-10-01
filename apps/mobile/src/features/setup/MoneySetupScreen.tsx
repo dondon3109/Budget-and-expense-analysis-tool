@@ -5,10 +5,10 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import type { LocalAccountItem } from "@/db/view-models";
-import { Button, CategoryBadge, EmptyState, ErrorState, Skeleton } from "@/ui/components";
+import { Button, CategoryBadge, Card, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
 const accountTypeLabel: Record<LocalAccountItem["type"], string> = {
   cash: "Cash",
@@ -63,8 +63,8 @@ function SetupRow({
 }) {
   const theme = useZoptionTheme();
   const status = statusText(state);
-  // Keep structural layout on the Pressable itself: Android's NativeWind
-  // interop can drop flex-direction from callback-composed style arrays.
+  // Layout lives in the inner View: Android's NativeWind interop drops it from a
+  // callback style, so the Pressable only tints.
   return (
     <Pressable
       accessibilityRole="button"
@@ -80,55 +80,60 @@ function SetupRow({
       android_ripple={
         disabled ? undefined : { color: "rgba(10, 117, 86, 0.12)", borderless: false }
       }
-      className="flex-row items-center"
+      className="w-full"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
-          opacity: disabled ? 0.62 : 1,
-        },
-      ]}
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
+        opacity: disabled ? 0.62 : 1,
+      })}
     >
-      <View accessibilityElementsHidden style={styles.leading}>
-        {emoji ? (
-          <CategoryBadge emoji={emoji} color={String(iconColor ?? theme.colors.brand)} size={40} />
-        ) : (
-          <MaterialCommunityIcons color={iconColor ?? theme.colors.brand} name={icon} size={24} />
-        )}
+      <View style={styles.row}>
+        <View accessibilityElementsHidden style={styles.leading}>
+          {emoji ? (
+            <CategoryBadge
+              emoji={emoji}
+              color={String(iconColor ?? theme.colors.brand)}
+              size={40}
+            />
+          ) : (
+            <View style={[styles.iconTile, { backgroundColor: theme.colors.brandSoft }]}>
+              <MaterialCommunityIcons color={theme.colors.brand} name={icon} size={22} />
+            </View>
+          )}
+        </View>
+        <View style={styles.rowText}>
+          <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
+            {title}
+          </Text>
+          <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {detail}
+          </Text>
+        </View>
+        {status ? (
+          <Text
+            style={[
+              typography.caption,
+              {
+                color:
+                  state === "failed" || state === "conflicted"
+                    ? theme.colors.danger
+                    : theme.colors.warning,
+              },
+            ]}
+          >
+            {status}
+          </Text>
+        ) : null}
+        {!disabled ? (
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.textMuted}
+            name="chevron-right"
+            size={22}
+          />
+        ) : null}
       </View>
-      <View style={styles.rowText}>
-        <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
-          {title}
-        </Text>
-        <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {detail}
-        </Text>
-      </View>
-      {status ? (
-        <Text
-          style={[
-            typography.caption,
-            {
-              color:
-                state === "failed" || state === "conflicted"
-                  ? theme.colors.danger
-                  : theme.colors.warning,
-            },
-          ]}
-        >
-          {status}
-        </Text>
-      ) : null}
-      {!disabled ? (
-        <MaterialCommunityIcons
-          accessibilityElementsHidden
-          color={theme.colors.textMuted}
-          name="chevron-right"
-          size={22}
-        />
-      ) : null}
     </Pressable>
   );
 }
@@ -145,10 +150,10 @@ function SectionHeader({
   const theme = useZoptionTheme();
   return (
     <View className="flex-row items-center justify-between gap-3">
-      <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
+      <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
         {title}
       </Text>
-      <Button accessibilityLabel={`Add ${singular}`} variant="quiet" onPress={onAdd}>
+      <Button accessibilityLabel={`Add ${singular}`} variant="quiet" icon="plus" onPress={onAdd}>
         Add
       </Button>
     </View>
@@ -172,9 +177,9 @@ export function MoneySetupScreen() {
     <Screen
       hasHeader
       title="Accounts & categories"
-      description="Changes save to encrypted storage first and synchronize when reachable. Tap any account to edit details or adjust its current balance."
+      description="Tap an account to edit it or adjust its balance. Changes save on this device first and sync when you're online."
     >
-      <Stack.Screen options={{ title: "Money setup" }} />
+      <Stack.Screen options={{ title: "Accounts & categories" }} />
       {references.error ? (
         <ErrorState
           title="Money setup unavailable"
@@ -196,7 +201,7 @@ export function MoneySetupScreen() {
                 description="Add an account before recording income or expenses."
               />
             ) : (
-              <View style={styles.listContainer}>
+              <Card style={styles.listCard}>
                 {references.data.accounts.map((account, index) => (
                   <View key={account.id}>
                     {index > 0 ? (
@@ -204,7 +209,7 @@ export function MoneySetupScreen() {
                     ) : null}
                     <SetupRow
                       title={account.name}
-                      detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""} · Edit or adjust balance`}
+                      detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
                       state={account.syncState}
                       icon={accountTypeIcon[account.type]}
                       onPress={() =>
@@ -215,7 +220,7 @@ export function MoneySetupScreen() {
                     />
                   </View>
                 ))}
-              </View>
+              </Card>
             )}
           </View>
 
@@ -227,7 +232,7 @@ export function MoneySetupScreen() {
                 description="Add a category to organize financial activity."
               />
             ) : (
-              <View style={styles.listContainer}>
+              <Card style={styles.listCard}>
                 {references.data.categories.map((category, index) => (
                   <View key={category.id}>
                     {index > 0 ? (
@@ -249,7 +254,7 @@ export function MoneySetupScreen() {
                     />
                   </View>
                 ))}
-              </View>
+              </Card>
             )}
           </View>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -263,22 +268,32 @@ export function MoneySetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  listContainer: { overflow: "hidden" },
+  listCard: { padding: 0, gap: 0, overflow: "hidden" },
   row: {
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: touchTarget + spacing.md,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
+  // Wide enough for the 40 point badge so it is never clipped against the text.
   leading: {
-    width: spacing.xl,
+    width: 40,
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
-  rowText: { minWidth: 0, flex: 1, gap: spacing.xxs },
+  iconTile: {
+    width: 40,
+    height: 40,
+    borderRadius: radii.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowText: { minWidth: 0, flex: 1, gap: 2 },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: spacing.xs + spacing.xl + spacing.md,
+    marginLeft: spacing.md + 40 + spacing.sm,
   },
 });

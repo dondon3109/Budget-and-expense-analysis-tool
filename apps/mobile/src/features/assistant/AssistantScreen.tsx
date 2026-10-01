@@ -987,15 +987,23 @@ export function AssistantScreen() {
             }
             ListHeaderComponent={
               <View style={styles.newChat}>
-                <Button onPress={startNewChat}>New conversation</Button>
-                <Button variant="secondary" onPress={startVoiceChat}>
-                  Voice chat
-                </Button>
+                <View style={styles.newChatButtons}>
+                  <View style={styles.newChatButton}>
+                    <Button icon="plus" onPress={startNewChat}>
+                      New chat
+                    </Button>
+                  </View>
+                  <View style={styles.newChatButton}>
+                    <Button icon="microphone-outline" variant="secondary" onPress={startVoiceChat}>
+                      Voice chat
+                    </Button>
+                  </View>
+                </View>
                 {threads.length > 0 ? (
                   <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                     {managingThreads
                       ? "Tap conversations to select them, then delete the selection."
-                      : "Open a conversation, or press Select / press and hold to delete one."}
+                      : "Press and hold a conversation to delete it."}
                   </Text>
                 ) : null}
               </View>
@@ -1054,10 +1062,38 @@ export function AssistantScreen() {
               loadingMessages ? (
                 <ActivityIndicator color={theme.colors.brand} />
               ) : (
-                <EmptyState
-                  title="Ask anything about your money"
-                  description="Where did my salary go? Am I on budget this month? Which debt should I pay first?"
-                />
+                <View style={styles.suggestions}>
+                  <Text
+                    accessibilityRole="header"
+                    style={[typography.title, { color: theme.colors.text }]}
+                  >
+                    Ask anything about your money
+                  </Text>
+                  <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+                    Tap a question to start, or type your own.
+                  </Text>
+                  {SUGGESTED_QUESTIONS.map((question) => (
+                    <Pressable
+                      key={question}
+                      accessibilityRole="button"
+                      accessibilityLabel={question}
+                      onPress={() => setDraft(question)}
+                      style={[
+                        styles.suggestion,
+                        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+                      ]}
+                    >
+                      <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
+                        {question}
+                      </Text>
+                      <MaterialCommunityIcons
+                        name="arrow-top-right"
+                        size={18}
+                        color={theme.colors.textMuted}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
               )
             }
             ListFooterComponent={
@@ -1369,6 +1405,12 @@ function VoiceConsentBlock({ busy, onEnable }: { busy: boolean; onEnable: () => 
   );
 }
 
+const SUGGESTED_QUESTIONS = [
+  "Where did my money go this month?",
+  "Am I on budget this month?",
+  "Which debt should I pay first?",
+];
+
 function ThreadListSeparator() {
   return <View style={{ height: spacing.sm }} />;
 }
@@ -1408,6 +1450,19 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   newChat: { marginBottom: spacing.md, alignSelf: "stretch", gap: spacing.sm },
+  newChatButtons: { flexDirection: "row", gap: spacing.sm },
+  newChatButton: { flex: 1 },
+  suggestions: { gap: spacing.sm, paddingTop: spacing.md },
+  suggestion: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    minHeight: touchTarget,
+  },
   chat: { flex: 1 },
   chatContent: { padding: spacing.md, paddingBottom: spacing.md },
   bannerWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
