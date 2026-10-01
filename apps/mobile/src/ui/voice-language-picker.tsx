@@ -220,18 +220,18 @@ export function VoiceLanguageBadgeButton({
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
       onPress={handlePress}
-      style={({ pressed }) => [
-        styles.badgeButton,
-        {
-          backgroundColor: pressed ? theme.colors.canvasMuted : theme.colors.brandSoft,
-          borderColor: theme.colors.brand,
-        },
-        disabled && { opacity: 0.6 },
-      ]}
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? theme.colors.canvasMuted : theme.colors.brandSoft,
+        opacity: disabled ? 0.6 : 1,
+        borderRadius: radii.sm,
+        alignSelf: "center",
+      })}
     >
-      <Text style={[typography.caption, styles.badgeButtonText, { color: theme.colors.brand }]}>
-        {opt.shortLabel}
-      </Text>
+      <View style={[styles.badgeButton, { borderColor: theme.colors.brand }]}>
+        <Text style={[typography.caption, styles.badgeButtonText, { color: theme.colors.brand }]}>
+          {opt.shortLabel}
+        </Text>
+      </View>
     </Pressable>
   );
 }
@@ -304,9 +304,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    minWidth: 44,
-    minHeight: 36,
-    height: 36,
+    minWidth: 40,
+    height: 32,
   },
   badgeButtonText: {
     fontWeight: "700",

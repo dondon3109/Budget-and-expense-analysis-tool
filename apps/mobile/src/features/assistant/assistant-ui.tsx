@@ -358,77 +358,90 @@ export function AssistantThreadRow({
   const theme = useZoptionTheme();
   const isVoice = kind === "voice";
   const managing = selection !== undefined;
+  // The border and radius sit on a static wrapper and the layout on an inner View, because
+  // Android's NativeWind interop drops them from a Pressable's callback style.
   return (
-    <Pressable
-      accessibilityRole={managing ? "checkbox" : "button"}
-      accessibilityLabel={
-        "Conversation " +
-        title +
-        ", " +
-        formatThreadTime(lastMessageAt) +
-        (isVoice ? ", voice conversation" : "")
-      }
-      accessibilityHint={
-        managing
-          ? "Selects this conversation for deleting."
-          : "Opens the conversation. Press and hold to delete."
-      }
-      accessibilityState={managing ? { checked: selection.selected } : undefined}
-      accessibilityActions={
-        managing ? undefined : [{ name: "delete", label: "Delete conversation" }]
-      }
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "delete") onDelete();
-      }}
-      onPress={managing ? selection.onToggle : onOpen}
-      onLongPress={managing ? undefined : onDelete}
-      delayLongPress={450}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.threadRow,
         {
-          backgroundColor: pressed
-            ? theme.colors.brandSoft
-            : managing && selection.selected
-              ? theme.colors.brandSoft
-              : theme.colors.surface,
           borderColor: managing && selection.selected ? theme.colors.brand : theme.colors.border,
         },
       ]}
     >
-      {managing ? (
-        <MaterialCommunityIcons
-          name={selection.selected ? "checkbox-marked" : "checkbox-blank-outline"}
-          size={22}
-          color={selection.selected ? theme.colors.brand : theme.colors.textMuted}
-        />
-      ) : null}
-      <View style={styles.threadContent}>
-        <View style={styles.threadTitleRow}>
-          <Text
-            numberOfLines={2}
-            style={[typography.body, { color: theme.colors.text, flexShrink: 1 }]}
-          >
-            {title}
-          </Text>
-          {isVoice ? (
-            <View
-              accessibilityRole="text"
-              accessibilityLabel="Voice conversation"
-              style={[
-                styles.threadKindBadge,
-                { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-              ]}
-            >
-              <MaterialCommunityIcons name="microphone" size={11} color={theme.colors.textMuted} />
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Voice</Text>
-            </View>
+      <Pressable
+        accessibilityRole={managing ? "checkbox" : "button"}
+        accessibilityLabel={
+          "Conversation " +
+          title +
+          ", " +
+          formatThreadTime(lastMessageAt) +
+          (isVoice ? ", voice conversation" : "")
+        }
+        accessibilityHint={
+          managing
+            ? "Selects this conversation for deleting."
+            : "Opens the conversation. Press and hold to delete."
+        }
+        accessibilityState={managing ? { checked: selection.selected } : undefined}
+        accessibilityActions={
+          managing ? undefined : [{ name: "delete", label: "Delete conversation" }]
+        }
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === "delete") onDelete();
+        }}
+        onPress={managing ? selection.onToggle : onOpen}
+        onLongPress={managing ? undefined : onDelete}
+        delayLongPress={450}
+        className="w-full"
+        style={({ pressed }) => ({
+          backgroundColor:
+            pressed || (managing && selection.selected)
+              ? theme.colors.brandSoft
+              : theme.colors.surface,
+        })}
+      >
+        <View style={styles.threadInner}>
+          {managing ? (
+            <MaterialCommunityIcons
+              name={selection.selected ? "checkbox-marked" : "checkbox-blank-outline"}
+              size={22}
+              color={selection.selected ? theme.colors.brand : theme.colors.textMuted}
+            />
           ) : null}
+          <View style={styles.threadContent}>
+            <View style={styles.threadTitleRow}>
+              <Text
+                numberOfLines={2}
+                style={[typography.body, { color: theme.colors.text, flexShrink: 1 }]}
+              >
+                {title}
+              </Text>
+              {isVoice ? (
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel="Voice conversation"
+                  style={[
+                    styles.threadKindBadge,
+                    { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="microphone"
+                    size={11}
+                    color={theme.colors.textMuted}
+                  />
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Voice</Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              {formatThreadTime(lastMessageAt)}
+            </Text>
+          </View>
         </View>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {formatThreadTime(lastMessageAt)}
-        </Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -667,11 +680,14 @@ const styles = StyleSheet.create({
   },
   listen: { padding: 2 },
   threadRow: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.md,
+    overflow: "hidden",
+  },
+  threadInner: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -805,13 +821,17 @@ export function VoiceRecordButton({ phase, onPress }: VoiceRecordButtonProps) {
       onPress={onPress}
       style={[
         styles.recordButton,
-        { backgroundColor: recording ? theme.colors.danger : theme.colors.brand },
+        { backgroundColor: recording ? theme.colors.danger : theme.colors.brandSoft },
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={theme.colors.onBrand} size="small" />
+        <ActivityIndicator color={theme.colors.brand} size="small" />
       ) : (
-        <MaterialCommunityIcons name="microphone-outline" size={22} color={theme.colors.onBrand} />
+        <MaterialCommunityIcons
+          name="microphone-outline"
+          size={22}
+          color={recording ? theme.colors.onBrand : theme.colors.brand}
+        />
       )}
     </Pressable>
   );

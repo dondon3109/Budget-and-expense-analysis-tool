@@ -1175,6 +1175,16 @@ export function AssistantScreen() {
               { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
             ]}
           >
+            <TextInput
+              accessibilityLabel="Message the assistant"
+              multiline
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Ask anything"
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
+              style={[styles.input, { color: theme.colors.text }]}
+            />
             {voicePreferences?.enabled === true ? (
               <>
                 <VoiceRecordButton
@@ -1188,16 +1198,6 @@ export function AssistantScreen() {
                 <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
               </>
             ) : null}
-            <TextInput
-              accessibilityLabel="Message the assistant"
-              multiline
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Ask about your finances"
-              placeholderTextColor={theme.colors.textMuted}
-              maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
-              style={[styles.input, { color: theme.colors.text }]}
-            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Send message"
@@ -1469,7 +1469,7 @@ const styles = StyleSheet.create({
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: spacing.sm,
+    gap: spacing.xs,
     margin: spacing.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radii.lg,
