@@ -208,7 +208,9 @@ function replacedDraftMessageId(
   const previous = [...history]
     .reverse()
     .find((item) => item.role === "assistant" && item.id && item.metadata?.transactionDraft);
-  return previous?.metadata?.transactionDraft?.status === "saved" ? undefined : previous?.id;
+  // A draft already saved, or mid-save, is not replaced: its save finishes, and marking it
+  // replaced would leave this correction saveable too, recording the purchase twice.
+  return previous?.metadata?.transactionDraft?.status === "pending" ? previous.id : undefined;
 }
 
 function responseMetadata(

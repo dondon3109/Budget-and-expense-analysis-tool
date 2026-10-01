@@ -291,6 +291,22 @@ describe("assistant transaction draft confirmation", () => {
     expect(create).not.toHaveBeenCalled();
   });
 
+  it("returns the saved reply when another tab finished the save before this claim", async () => {
+    const { env, database, create, drafts, service } = setup();
+    drafts.claim = vi.fn(async () => {
+      database
+        .prepare(
+          `UPDATE assistant_messages SET response_metadata_json = json_set(response_metadata_json, '$.transactionDraft.status', 'saved', '$.transactionDraft.transactionId', ?) WHERE id = ?`,
+        )
+        .run(MESSAGE, MESSAGE);
+      return null;
+    });
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(saved.metadata?.transactionDraft?.status).toBe("saved");
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it("requires current assistant consent before saving", async () => {
     const { env, database, create, service } = setup();
     database

@@ -585,6 +585,9 @@ export function createAssistantService(
         );
       }
       if (!claimedAt) {
+        // A second tab or a retried request may have finished the save since the read above.
+        const current = await drafts.findMessage(env, tenantId, messageId);
+        if (current?.metadata?.transactionDraft?.status === "saved") return current;
         throw new HttpError(
           409,
           "assistant_draft_in_progress",

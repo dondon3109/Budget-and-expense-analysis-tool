@@ -374,6 +374,8 @@ describe("assistant transaction entry policy", () => {
     "I spent too much this month",
     "How do I add an expense?",
     "Help me track my spending better",
+    "I have 3 months left on my car loan, help me plan",
+    "2 years left to reach my goal",
     "Magkano ang natitira sa budget ko ngayong buwan?",
   ])("keeps questions and coaching out of the logging flow: %s", (message) => {
     expect(policyFor(message).requiredToolGroups).not.toContain("transaction_entry");

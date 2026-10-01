@@ -53,7 +53,10 @@ const ENTRY_COMMAND_PATTERN =
 // "I spent 250 at Jollibee", "bumili ako sa 7-Eleven", "nagbayad ako ng kuryente".
 const ENTRY_STATEMENT_PATTERN =
   /\b(?:i\s+(?:just\s+|also\s+)?(?:spent|paid|bought|purchased|ate at|went to|withdrew|received|got paid|earned)|(?:gumastos|nagbayad|bumili|kumain|pumunta|nag-?grocery|namalengke|nag-?withdraw|sumahod|nakatanggap|nagastos)\s+ako)\b/i;
-// "I have 300 left in GCash", "500 na lang natira sa wallet ko".
+// "I have 300 left in GCash", "500 na lang natira sa wallet ko". Only with a money word, so
+// "3 months left on my loan" stays a planning question.
+const MONEY_CONTEXT_PATTERN =
+  /\b(?:php|pesos?|piso|gcash|maya|wallet|cash|bank|account|pitaka|pera|balance|balanse)\b|₱/i;
 const REMAINING_STATEMENT_PATTERN =
   /\d[^.?!]{0,40}\b(?:left|remaining|natira|natitira|na lang)\b|\b(?:left|remaining|natira|natitira)\b[^.?!]{0,40}\d/i;
 const QUESTION_PATTERN =
@@ -79,7 +82,7 @@ function isTransactionEntryRequest(message: string): boolean {
   if (ENTRY_STATEMENT_PATTERN.test(message)) {
     return /\d|\b(?:at|sa|from)\s+\S/i.test(message);
   }
-  return REMAINING_STATEMENT_PATTERN.test(message);
+  return REMAINING_STATEMENT_PATTERN.test(message) && MONEY_CONTEXT_PATTERN.test(message);
 }
 
 /**
