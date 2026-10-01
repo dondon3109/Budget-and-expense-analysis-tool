@@ -14,7 +14,7 @@
   "dependencies": {
     "@zoption/shared": "workspace:*",
     "drizzle-orm": "^0.45.2",
-    "hono": "^4.13.5",
+    "hono": "^4.13.7",
     "jose": "^6.2.3",
     "zod": "^4.3.6"
   },
