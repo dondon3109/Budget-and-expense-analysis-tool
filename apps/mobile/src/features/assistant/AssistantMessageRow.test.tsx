@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { confirmAssistantTransactionDraft, type AssistantWireMessage } from "@/api/assistant";
 
-import { AssistantMessageRow } from "./AssistantMessageRow";
+import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
 
 const mockRetry = jest.fn();
 
@@ -80,6 +80,28 @@ describe("AssistantMessageRow", () => {
       />,
     );
     expect(screen.getByText("Saved to your transactions")).toBeTruthy();
+    expect(screen.queryByText("Save transaction")).toBeNull();
+  });
+
+  it("retires a draft a later correction replaced", async () => {
+    const correction: AssistantWireMessage = {
+      ...message,
+      id: "33333333-3333-4333-8333-333333333333",
+      metadata: {
+        transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: message.id },
+      },
+    };
+    const replaced = replacedDraftMessageIds([message, correction]);
+    expect([...replaced]).toEqual([message.id]);
+
+    await render(
+      <AssistantMessageRow
+        message={message}
+        superseded={replaced.has(message.id)}
+        onDraftSaved={jest.fn()}
+      />,
+    );
+    expect(screen.getByText("Replaced by a newer draft below.")).toBeTruthy();
     expect(screen.queryByText("Save transaction")).toBeNull();
   });
 

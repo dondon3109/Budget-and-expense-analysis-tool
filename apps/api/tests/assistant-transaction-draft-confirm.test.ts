@@ -243,6 +243,53 @@ describe("assistant transaction draft confirmation", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
+  it("refuses a correction whose original was saved or is mid-save", async () => {
+    const CORRECTION = "44444444-4444-4444-8444-444444444444";
+    const withOriginal = (original: Partial<AssistantTransactionDraft>) => {
+      const context = setup({ transactionDraft: { ...draft, ...original } });
+      context.database
+        .prepare(
+          `INSERT INTO assistant_messages
+           (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+           VALUES (?, ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+        )
+        .run(
+          CORRECTION,
+          TENANT,
+          THREAD,
+          JSON.stringify({
+            promptVersion: "expert-v3",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            sources: [],
+            transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: MESSAGE },
+          }),
+        );
+      return context;
+    };
+
+    const saved = withOriginal({ status: "saved", transactionId: MESSAGE });
+    await expect(
+      saved.service.confirmTransactionDraft(saved.env, TENANT, CORRECTION),
+    ).rejects.toMatchObject({ status: 409, code: "assistant_draft_already_saved" });
+    expect(saved.create).not.toHaveBeenCalled();
+
+    const saving = withOriginal({ status: "saving", claimedAt: new Date().toISOString() });
+    await expect(
+      saving.service.confirmTransactionDraft(saving.env, TENANT, CORRECTION),
+    ).rejects.toMatchObject({ status: 409, code: "assistant_draft_in_progress" });
+    expect(saving.create).not.toHaveBeenCalled();
+
+    // A claim left by a request that died before creating anything does not block the fix.
+    const abandoned = withOriginal({ status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" });
+    const result = await abandoned.service.confirmTransactionDraft(
+      abandoned.env,
+      TENANT,
+      CORRECTION,
+    );
+    expect(result.metadata?.transactionDraft?.status).toBe("saved");
+    expect(abandoned.create).toHaveBeenCalledTimes(1);
+  });
+
   it("reports a save whose claim was taken over mid-request as saved", async () => {
     const { env, database, drafts, service } = setup();
     // Another request takes the claim over between this request's create and its markSaved.

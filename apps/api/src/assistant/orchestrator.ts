@@ -196,8 +196,8 @@ function auditForPolicy(
 }
 
 /**
- * The unsaved draft a correction replaces: the newest earlier reply in this thread that still
- * holds one. A draft for a different purchase names none, so both stay saveable.
+ * The draft a correction replaces: the newest earlier reply in this thread that holds one. A
+ * draft for a different purchase names none, so both stay saveable.
  */
 function replacedDraftMessageId(
   execution: AssistantToolExecution,
@@ -208,9 +208,9 @@ function replacedDraftMessageId(
   const previous = [...history]
     .reverse()
     .find((item) => item.role === "assistant" && item.id && item.metadata?.transactionDraft);
-  // A draft already saved, or mid-save, is not replaced: its save finishes, and marking it
-  // replaced would leave this correction saveable too, recording the purchase twice.
-  return previous?.metadata?.transactionDraft?.status === "pending" ? previous.id : undefined;
+  // Named whatever its status: if it is saved or mid-save, confirming this correction is
+  // refused, so the purchase is never recorded twice.
+  return previous?.id;
 }
 
 function responseMetadata(

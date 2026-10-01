@@ -21,6 +21,7 @@ import type { AssistantRepository } from "../db/assistant";
 import type { AssistantModelMemoryUsageRepository } from "../db/assistant-model-memory-usage";
 import {
   assistantTransactionDraftRepository,
+  STALE_CLAIM_MS,
   type AssistantTransactionDraftRepository,
 } from "../db/assistant-transaction-drafts";
 import { transactionRepository, type TransactionRepository } from "../db/transactions";
@@ -147,6 +148,41 @@ function reportProviderFailure(
     reporter(event);
   } catch {
     // Operational diagnostics must never alter the assistant response or turn cleanup.
+  }
+}
+
+/**
+ * A correction drafted after the user saved the original, or while it was saving, would
+ * record the purchase twice. The original's claim already refuses once this correction is
+ * stored, so a status read here cannot race a later claim. A claim gone stale belongs to a
+ * request that died, and the row check covers one that died after its create.
+ */
+async function refuseIfReplacedDraftSaved(
+  drafts: AssistantTransactionDraftRepository,
+  env: Bindings,
+  tenantId: string,
+  replacedMessageId: string | undefined,
+): Promise<void> {
+  if (!replacedMessageId) return;
+  const replaced = (await drafts.findMessage(env, tenantId, replacedMessageId))?.metadata
+    ?.transactionDraft;
+  if (
+    replaced?.status === "saved" ||
+    (await drafts.transactionExists(env, tenantId, replacedMessageId))
+  ) {
+    throw new HttpError(
+      409,
+      "assistant_draft_already_saved",
+      "The earlier draft was already saved. Edit that transaction instead.",
+    );
+  }
+  const claimAge = replaced?.claimedAt ? Date.now() - Date.parse(replaced.claimedAt) : Infinity;
+  if (replaced?.status === "saving" && claimAge < STALE_CLAIM_MS) {
+    throw new HttpError(
+      409,
+      "assistant_draft_in_progress",
+      "The earlier draft is still being saved. Try again in a moment.",
+    );
   }
 }
 
@@ -576,6 +612,7 @@ export function createAssistantService(
           "A newer draft replaced this one. Save the latest draft instead.",
         );
       }
+      await refuseIfReplacedDraftSaved(drafts, env, tenantId, parsed.data.replacesMessageId);
       const claimedAt = await drafts.claim(env, tenantId, messageId);
       if (!claimedAt && (await drafts.isReplaced(env, tenantId, message))) {
         throw new HttpError(

@@ -670,7 +670,7 @@ describe("assistant orchestration", () => {
     expect(answer.responseMetadata.transactionDraft?.replacesMessageId).toBe(earlierDraftId);
   });
 
-  it("does not mark a draft that is mid-save as replaced", async () => {
+  it("names a mid-save draft as replaced so confirming the correction can refuse", async () => {
     let calls = 0;
     const provider: AssistantProvider = {
       complete: vi.fn(async (): Promise<ProviderCompletion> => {
@@ -727,8 +727,7 @@ describe("assistant orchestration", () => {
       "",
     );
 
-    expect(answer.responseMetadata.transactionDraft).toBeDefined();
-    expect(answer.responseMetadata.transactionDraft?.replacesMessageId).toBeUndefined();
+    expect(answer.responseMetadata.transactionDraft?.replacesMessageId).toBe(earlierDraftId);
   });
 
   it("rejects a draft dated after today", async () => {

@@ -29,7 +29,7 @@ export interface AssistantTransactionDraftRepository {
 const DRAFT_STATUS = "json_extract(response_metadata_json, '$.transactionDraft.status')";
 const DRAFT_CLAIMED_AT = "json_extract(response_metadata_json, '$.transactionDraft.claimedAt')";
 /** A claim older than this belongs to a request that died mid-save, so it may be taken over. */
-const STALE_CLAIM_MS = 2 * 60_000;
+export const STALE_CLAIM_MS = 2 * 60_000;
 
 export const assistantTransactionDraftRepository: AssistantTransactionDraftRepository = {
   async findMessage(env, tenantId, messageId) {
