@@ -6,7 +6,6 @@ import {
   detectRecurringCharges,
   detectSpendingAnomalies,
   summarizeAccountBalances,
-  type AccountRecord,
   type AssistantToolResultEnvelope,
   type Currency,
   type DashboardSummary,
@@ -28,6 +27,22 @@ import {
   type AssistantAnalysisTransaction,
   type DataQualityAssessment,
 } from "./data-quality";
+import {
+  compactDescription,
+  findAccountByName,
+  formatMoney,
+  normalizedName,
+} from "./record-format";
+import {
+  draftTransaction,
+  entryHistoryFrom,
+  loadEntryHistory,
+  suggestTransactionDetails,
+  type EntryHistoryLoader,
+  type TransactionDraftInput,
+  type TransactionDraftResult,
+  type TransactionSuggestionInput,
+} from "./transaction-entry";
 
 export interface FinancialReadContext {
   env: Bindings;
@@ -136,6 +151,14 @@ export interface FinancialReader {
     context: FinancialReadContext,
     kind?: TransactionKind,
   ): Promise<AssistantToolResultEnvelope<unknown>>;
+  suggestTransactionDetails(
+    context: FinancialReadContext,
+    input: TransactionSuggestionInput,
+  ): Promise<AssistantToolResultEnvelope<unknown>>;
+  draftTransaction(
+    context: FinancialReadContext,
+    input: TransactionDraftInput,
+  ): Promise<TransactionDraftResult>;
 }
 
 type DashboardPeriod = Pick<PeriodSummaryInput, "from" | "to">;
@@ -163,15 +186,6 @@ type AnalysisLoader = (
 ) => Promise<AnalysisTransaction[]>;
 
 const MAX_ANALYSIS_TRANSACTIONS = 5_000;
-const moneyFormatter = new Intl.NumberFormat("en-US", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-
-function formatMoney(amountMinor: number, currency: Currency): string {
-  return `${currency} ${moneyFormatter.format(amountMinor / 100)}`;
-}
-
 /**
  * Aggregates count only the workspace currency and never convert, matching the dashboard and
  * plans. `excludedCount` counts the other currency's rows a tool would have summed (expenses
@@ -203,25 +217,6 @@ function assessWorkspaceQuality(
   });
   if (quality.status === "reliable") quality.status = "limited";
   return quality;
-}
-
-function compactDescription(value: string): string {
-  const normalized = value.replace(/\s+/g, " ").trim();
-  return normalized.length <= 120 ? normalized : `${normalized.slice(0, 117).trimEnd()}…`;
-}
-
-function normalizedName(value: string): string {
-  return value.trim().toLocaleLowerCase("en");
-}
-
-function findAccountByName(items: AccountRecord[], accountName: string): AccountRecord | undefined {
-  const requestedName = normalizedName(accountName);
-  const exact = items.find((account) => normalizedName(account.name) === requestedName);
-  if (exact) return exact;
-  const withoutGenericSuffix = requestedName.replace(/\s+account$/, "").trim();
-  if (!withoutGenericSuffix || withoutGenericSuffix === requestedName) return undefined;
-  const matches = items.filter((account) => normalizedName(account.name) === withoutGenericSuffix);
-  return matches.length === 1 ? matches[0] : undefined;
 }
 
 function monthDifference(from: string, to: string): number {
@@ -347,6 +342,7 @@ export function createFinancialReader(
     transactions?: TransactionRepository;
     dashboardLoader?: DashboardLoader;
     analysisLoader?: AnalysisLoader;
+    entryHistoryLoader?: EntryHistoryLoader;
     workspaceCurrencyLoader?: WorkspaceCurrencyLoader;
   } = {},
 ): FinancialReader {
@@ -358,6 +354,7 @@ export function createFinancialReader(
   const transactions = options.transactions ?? transactionRepository;
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
   const analysisLoader = options.analysisLoader ?? loadAnalysisTransactions;
+  const entryHistoryLoader = options.entryHistoryLoader ?? loadEntryHistory;
   const workspaceCurrencyLoader = options.workspaceCurrencyLoader ?? loadWorkspaceCurrency;
 
   async function loadWorkspaceAnalysis(
@@ -560,14 +557,15 @@ export function createFinancialReader(
       }
       const totalMinor = expenses.reduce((sum, item) => sum + Math.abs(item.amountMinor), 0);
       const items = [...grouped.values()]
+        // Largest spend first: "biggest expense" answers read the top item.
+        .sort((a, b) => b.amountMinor - a.amountMinor || a.name.localeCompare(b.name))
         .map((item) => ({
           name: item.name,
           amount: formatMoney(item.amountMinor, currency),
           transactionCount: item.count,
           sharePercent:
             totalMinor === 0 ? 0 : Math.round((item.amountMinor / totalMinor) * 1_000) / 10,
-        }))
-        .sort((a, b) => b.transactionCount - a.transactionCount || a.name.localeCompare(b.name));
+        }));
       return source(
         {
           ...(category ? { categoryName: category.name, filterMatched: true } : {}),
@@ -976,6 +974,23 @@ export function createFinancialReader(
         .filter((item) => !kind || item.kind === kind)
         .map((item) => ({ name: item.name, kind: item.kind }));
       return source({ items: filtered }, "transactions", { recordCount: filtered.length });
+    },
+
+    async suggestTransactionDetails(context, input) {
+      const [history, accountItems, categoryItems] = await Promise.all([
+        entryHistoryLoader(context, input.kind, entryHistoryFrom(input.through), input.through),
+        accounts.list(context.env, context.tenantId),
+        categories.list(context.env, context.tenantId),
+      ]);
+      return suggestTransactionDetails(input, history, accountItems, categoryItems);
+    },
+
+    async draftTransaction(context, input) {
+      const [accountItems, categoryItems] = await Promise.all([
+        accounts.list(context.env, context.tenantId),
+        categories.list(context.env, context.tenantId),
+      ]);
+      return draftTransaction(input, accountItems, categoryItems);
     },
   };
 }

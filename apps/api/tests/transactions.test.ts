@@ -332,6 +332,26 @@ describe("transactionRepository SQLite behavior", () => {
     expect(readback?.bindings).toEqual(["tenant-1", created.id]);
   });
 
+  it("keys a created row on a caller-supplied id so a retry cannot add a second", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    const input = {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Drafted lunch",
+      amountMinor: 250,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+    };
+    const id = "33333333-3333-4333-8333-333333333333";
+
+    await expect(
+      transactionRepository.create(env, "tenant-1", input, { id }),
+    ).resolves.toMatchObject({ id });
+    await expect(transactionRepository.create(env, "tenant-1", input, { id })).rejects.toThrow();
+  });
+
   it("records the debt a payment went to and reads its name back", async () => {
     const { env, database } = createSqliteEnvironment();
     seedTransactions(database);

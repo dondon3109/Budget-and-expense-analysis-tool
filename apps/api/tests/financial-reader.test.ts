@@ -171,6 +171,7 @@ function createReader(
     accountItems?: AccountRecord[];
     summary?: DashboardSummary;
     plan?: BudgetMonthPlan;
+    transactionItems?: TransactionListItem[];
     analysisRows?: AnalysisRow[];
     workspaceCurrency?: Currency;
   } = {},
@@ -189,7 +190,15 @@ function createReader(
     update: vi.fn(async () => category),
   };
   const transactions: TransactionRepository = {
-    list: vi.fn(async () => transactionPage),
+    list: vi.fn(async () =>
+      options.transactionItems
+        ? {
+            ...transactionPage,
+            items: options.transactionItems,
+            total: options.transactionItems.length,
+          }
+        : transactionPage,
+    ),
     calendar: vi.fn(async () => transactionCalendar),
     create: vi.fn(async () => transaction),
     update: vi.fn(async () => transaction),
@@ -290,6 +299,59 @@ describe("assistant financial reader money formatting", () => {
         net: "PHP 166.67",
       },
     });
+  });
+});
+
+describe("assistant financial reader ordering and currencies", () => {
+  it("lists category spending largest first, not most frequent first", async () => {
+    const { reader } = createReader({
+      analysisRows: [
+        {
+          ...analysisRow,
+          id: "c1",
+          categoryId: "coffee",
+          categoryName: "Coffee",
+          amountMinor: -15_000,
+        },
+        {
+          ...analysisRow,
+          id: "c2",
+          categoryId: "coffee",
+          categoryName: "Coffee",
+          amountMinor: -15_000,
+        },
+        {
+          ...analysisRow,
+          id: "c3",
+          categoryId: "coffee",
+          categoryName: "Coffee",
+          amountMinor: -15_000,
+        },
+        {
+          ...analysisRow,
+          id: "r1",
+          categoryId: "rent",
+          categoryName: "Rent",
+          amountMinor: -1_200_000,
+        },
+      ],
+    });
+
+    const result = await reader.getSpendingByCategory(context, dashboardSummary.period);
+
+    expect(
+      (result.data as { items: Array<{ name: string }> }).items.map((item) => item.name),
+    ).toEqual(["Rent", "Coffee"]);
+  });
+
+  it("labels a listed USD transaction in USD", async () => {
+    const { reader } = createReader({
+      transactionItems: [{ ...transaction, amountMinor: -1_250, currency: "USD" }],
+    });
+
+    const transactions = await reader.listTransactions(context, { page: 1 });
+
+    expect(transactions.data).toMatchObject({ items: [{ amount: "USD -12.50" }] });
   });
 });
 

@@ -550,7 +550,7 @@ describe("assistant UI", () => {
     expect(topline!.children[0]).toHaveClass("assistant-history-toggle");
     expect(topline!.children[0]).toHaveAttribute("aria-controls", "assistant-chat-history");
     expect(topline!.children[1]).toHaveClass("assistant-chat-status");
-    expect(topline!.children[1]).toHaveTextContent("Read only");
+    expect(topline!.children[1]).toHaveTextContent("You approve saves");
     expect(within(topline!.children[1] as HTMLElement).getByText("Aster")).toBeInTheDocument();
     expect(topline!.children[2]).toHaveClass("assistant-chat-usage");
     const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");

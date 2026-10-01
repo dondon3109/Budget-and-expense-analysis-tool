@@ -313,13 +313,13 @@ export function FeatureModules() {
             <h3>Ask your numbers, not a chatbot.</h3>
             <p>
               The AI Financial Assistant answers questions about <em>your</em> data with evidence
-              and clear limits. It reads only what you ask about, never edits a number, and explains
-              the reasoning behind each answer.
+              and clear limits. It reads only what you ask about, explains the reasoning behind each
+              answer, and drafts a transaction for you to save only when you tap Save.
             </p>
             <div className="facet-tags">
               <span>Your data only</span>
               <span>Grounded answers</span>
-              <span>Never edits</span>
+              <span>You approve saves</span>
               <span>You consent first</span>
             </div>
           </div>

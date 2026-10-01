@@ -1,0 +1,105 @@
+/* The review card for a transaction the assistant drafted. */
+.assistant-draft {
+  margin-top: 12px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--expense);
+  border-radius: 12px;
+  background: var(--surface-soft);
+}
+
+.assistant-draft.income {
+  border-left-color: var(--income);
+}
+
+.assistant-draft-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.assistant-draft-head span {
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.assistant-draft-head strong {
+  color: var(--expense-text);
+  font-size: 16px;
+}
+
+.assistant-draft.income .assistant-draft-head strong {
+  color: var(--income-text);
+}
+
+.assistant-draft dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+
+.assistant-draft dt {
+  color: var(--subtle);
+  font-size: 10px;
+}
+
+.assistant-draft dd {
+  margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 560;
+}
+
+.assistant-draft-save {
+  justify-self: start;
+  min-height: 36px;
+  padding: 0 16px;
+  color: var(--solid-text);
+  border: 0;
+  border-radius: 999px;
+  background: var(--action);
+  font-weight: 620;
+  cursor: pointer;
+}
+
+.assistant-draft-save:hover:not(:disabled) {
+  background: var(--action-strong);
+}
+
+.assistant-draft-save:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.assistant-draft-saved {
+  margin: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--income-text) !important;
+  font-weight: 620;
+}
+
+.assistant-draft small {
+  color: var(--muted);
+  font-size: 10.5px;
+}
+
+.assistant-draft small.assistant-draft-error {
+  color: var(--danger);
+}
+
+@media (max-width: 420px) {
+  .assistant-draft dl {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

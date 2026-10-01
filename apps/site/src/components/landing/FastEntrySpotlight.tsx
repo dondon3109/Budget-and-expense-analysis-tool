@@ -585,8 +585,8 @@ export function FastEntrySpotlight() {
                   Calculations are computed mathematically from your ledger facts.
                 </li>
                 <li>
-                  <Check size={16} aria-hidden="true" /> <strong>Strict read-only safety:</strong>{" "}
-                  Operates strictly with your consent; cannot edit records.
+                  <Check size={16} aria-hidden="true" /> <strong>You approve every save:</strong>{" "}
+                  Drafts transactions for your review; never edits existing records.
                 </li>
                 <li>
                   <Check size={16} aria-hidden="true" /> <strong>Spoken voice replies:</strong>{" "}
@@ -615,7 +615,7 @@ export function FastEntrySpotlight() {
               <div className="demo-header">
                 <span className="demo-badge">Grounded AI Assistant</span>
                 <span className="demo-status in-soft">
-                  <ShieldCheck size={13} /> Read-Only &amp; Private
+                  <ShieldCheck size={13} /> You Approve &amp; Private
                 </span>
               </div>
 

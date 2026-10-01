@@ -24,7 +24,7 @@ People use Zoption as an authenticated personal workspace. Supabase owns identit
 - Supabase user IDs establish application ownership; user-editable metadata is presentation-only and must never control authorization, tenant selection, or data access.
 - The browser uses only a Supabase publishable key. Privileged account administration credentials must never be exposed to it.
 - Account Settings offers coordinated permanent deletion of the authenticated D1 workspace, owned avatar, and Supabase Auth identity, with fail-closed retry handling when a provider step remains pending.
-- The AI Financial Assistant is read-only. Zoption calculates financial results from the authenticated tenant; DeepSeek only interprets questions and explains verified tool output.
+- The AI Financial Assistant never writes on its own. It can draft an income or expense for the user to review, and only the user's Save tap adds it. Zoption calculates financial results from the authenticated tenant; DeepSeek only interprets questions and explains verified tool output.
 - Assistant use requires current versioned provider data-sharing consent. Chat messages and sanitized audit snapshots share a 90-day thread-retention window unless deleted sooner. Remembered facts and the debt payoff preference are kept until the user deletes them or their account.
 - Account balances are calculated from recorded transaction ledger entries. They are not live bank balances and have no opening-balance snapshot.
 - Users explicitly manage savings goals, debt-planning records, and assistant coaching preferences; chat can read but never mutate them.

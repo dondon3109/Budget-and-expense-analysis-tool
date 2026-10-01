@@ -10,6 +10,9 @@ import type { AssistantHistoryMessage } from "../db/assistant";
 import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
 
+/** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
+export const ASSISTANT_PROMPT_VERSION = "expert-v3";
+
 export type RequiredToolGroup =
   | "account_balance"
   | "period_summary"
@@ -20,7 +23,8 @@ export type RequiredToolGroup =
   | "recurring"
   | "anomaly"
   | "debt_projection"
-  | "savings_projection";
+  | "savings_projection"
+  | "transaction_entry";
 
 export interface AssistantTurnPolicy {
   currentDate: string;
@@ -42,6 +46,65 @@ const PERSONAL_DATA_PATTERN =
   /\b(?:my|mine|i\s+(?:spent|earned|saved|paid|received|overspent)|show me|tell me my|how much did i|what did i|do i have|ko|kong|akin|aking|sa akin|nagastos(?: ko)?|nagasta(?: ko)?|gumastos(?: ako)?|nagbayad(?: ako)?|binayad(?: ko)?|kinita(?: ko)?|naipon(?: ko)?|ipon(?: ko)?|sinahod(?: ko)?|natanggap(?: ko)?|sumobra(?: ang)? gastos(?: ko)?|lagpas sa budget|ipakita(?: mo)?(?: sa akin)?|pakita(?: mo)?|sabihin mo sa akin|magkano(?: ang)?(?: nagastos| nagasta| kinita| naipon| natitira)|meron ba akong?|may(?:roon)? ba akong?|may pera ba ako)\b/i;
 const EDUCATION_PATTERN =
   /\b(?:what is|what are|explain|how does|how do|define|meaning of|ano ang ibig sabihin|ano ang|ano ba ang|ipaliwanag|kahulugan ng|paano gumagana)\b/i;
+
+// "Log my lunch", "add an expense", "pa-record ng gastos ko".
+const ENTRY_COMMAND_PATTERN =
+  /\b(?:log|record|add(?!\s+up)|enter|input|itala|idagdag|ilagay|isulat|i-?log|i-?record|i-?add|pa-?log|pa-?record)\b[^.?!]{0,40}?\b(?:transactions?|expenses?|spending|purchases?|income|payments?|salary|lunch|dinner|breakfast|meal|groceries|fare|gastos|gastusin|binili|bayad|kita|sahod|sweldo|transaksyon|pamasahe)\b/i;
+// "I spent 250 at Jollibee", "bumili ako sa 7-Eleven", "nagbayad ako ng kuryente".
+const ENTRY_STATEMENT_PATTERN =
+  /\b(?:i\s+(?:just\s+|also\s+)?(?:spent|paid|bought|purchased|ate at|went to|withdrew|received|got paid|earned)|(?:gumastos|nagbayad|bumili|kumain|pumunta|nag-?grocery|namalengke|nag-?withdraw|sumahod|nakatanggap|nagastos)\s+ako)\b/i;
+// "I have 300 left in GCash", "500 na lang natira sa wallet ko". Only with a money word, so
+// "3 months left on my loan" stays a planning question.
+const MONEY_CONTEXT_PATTERN =
+  /\b(?:php|pesos?|piso|gcash|maya|wallet|cash|bank|account|pitaka|pera|balance|balanse)\b|₱/i;
+const REMAINING_STATEMENT_PATTERN =
+  /\d[^.?!]{0,40}\b(?:left|remaining|natira|natitira|na lang)\b|\b(?:left|remaining|natira|natitira)\b[^.?!]{0,40}\d/i;
+const QUESTION_PATTERN =
+  /\?|\b(?:how much|how many|what did|what was|what were|why|did i|magkano|ilan|ano ang|bakit)\b/i;
+const POLITE_REQUEST_PATTERN =
+  /^\s*(?:(?:can|could|would|will)\s+you|please|pwede(?:\s+mo)?|paki)/i;
+// A bare acknowledgement after a draft carries nothing to log.
+const ACKNOWLEDGEMENT_PATTERN =
+  /^\s*(?:thanks?(?: you)?|thank u|ty|salamat(?: po)?|got it|nice|great|cool|awesome|done)[\s!.]*$/i;
+const VAGUE_SPEND_PATTERN = /\b(?:too much|so much|a lot|sobra|ang laki|ang dami)\b/i;
+
+/**
+ * A request to log a transaction, or a statement of spending with a figure or a place. Those
+ * statements ("I spent 250 at Jollibee") also read as spending questions, so they are decided
+ * here first and never demand a reporting period.
+ */
+function isTransactionEntryRequest(message: string): boolean {
+  if (QUESTION_PATTERN.test(message) && !POLITE_REQUEST_PATTERN.test(message)) return false;
+  if (ENTRY_COMMAND_PATTERN.test(message)) {
+    return !/\b(?:how (?:do|can|to)|paano)\b/i.test(message);
+  }
+  if (VAGUE_SPEND_PATTERN.test(message)) return false;
+  if (ENTRY_STATEMENT_PATTERN.test(message)) {
+    return /\d|\b(?:at|sa|from)\s+\S/i.test(message);
+  }
+  return REMAINING_STATEMENT_PATTERN.test(message) && MONEY_CONTEXT_PATTERN.test(message);
+}
+
+/**
+ * The reply before this message was part of logging a transaction that is not saved yet, and
+ * this message is an answer to it ("GCash, 300 left") rather than a new question: one that
+ * needs other records, asks for an explanation, or touches a regulated topic.
+ */
+function continuesTransactionEntry(
+  history: readonly AssistantHistoryMessage[],
+  message: string,
+  posture: AssistantCompliancePosture,
+): boolean {
+  const previous = history.at(-1);
+  if (previous?.role !== "assistant" || !previous.metadata?.transactionEntry) return false;
+  if (previous.metadata.transactionDraft?.status === "saved") return false;
+  if (posture !== "budgeting_allowed" || EDUCATION_PATTERN.test(message)) return false;
+  if (ACKNOWLEDGEMENT_PATTERN.test(message)) return false;
+  const asksForRecords =
+    QUESTION_PATTERN.test(message) ||
+    /\b(?:show|list|compare|tell me|ipakita|pakita|ilista)\b/i.test(message);
+  return !(asksForRecords && requiredGroups(message).length > 0);
+}
 
 function requiredGroups(message: string): RequiredToolGroup[] {
   const groups = new Set<RequiredToolGroup>();
@@ -191,6 +254,32 @@ export function createAssistantTurnPolicy(input: {
     };
   }
 
+  if (
+    isTransactionEntryRequest(input.message) ||
+    continuesTransactionEntry(input.history, input.message, compliance.posture)
+  ) {
+    // A date the user states ("kahapon") is passed along as context; a missing or unclear
+    // one never blocks the entry, because the draft falls back to today and is reviewed.
+    // The classified posture is kept, so logging an insurance payment still carries its
+    // disclaimer and the regulated-recommendation check.
+    const period = resolveAssistantPeriod(
+      input.history,
+      input.message,
+      input.currentDate,
+      input.transactionBounds,
+    );
+    return {
+      currentDate: input.currentDate,
+      timeZone: input.timeZone,
+      compliance: { posture: compliance.posture, topics: compliance.topics },
+      requiredToolGroups: ["transaction_entry"],
+      ...(period.period ? { resolvedPeriod: period.period } : {}),
+      ...(compliance.disclaimer
+        ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
+        : {}),
+    };
+  }
+
   const effectiveMessage = retryTargetMessage(input.history, input.message);
   const groups = requiredGroups(effectiveMessage);
   const period = resolveAssistantPeriod(
@@ -226,7 +315,7 @@ export function createAssistantTurnPolicy(input: {
 export function responseMetadataForPolicy(
   policy: AssistantTurnPolicy,
   sources: AssistantSourceMetadata[] = [],
-  promptVersion = "expert-v2",
+  promptVersion = ASSISTANT_PROMPT_VERSION,
 ): AssistantResponseMetadata {
   return {
     promptVersion,
@@ -234,6 +323,7 @@ export function responseMetadataForPolicy(
     ...(policy.resolvedPeriod ? { resolvedPeriod: policy.resolvedPeriod } : {}),
     ...(policy.disclaimer ? { disclaimer: policy.disclaimer } : {}),
     sources,
+    ...(policy.requiredToolGroups.includes("transaction_entry") ? { transactionEntry: true } : {}),
   };
 }
 

@@ -518,6 +518,59 @@ describe("API assistant, voice, and entry routes", () => {
     },
   );
 
+  describe("assistant transaction draft route", () => {
+    const assistantEnv = { DB: {} as D1Database, ASSISTANT_ENABLED: "true" };
+    const messageId = "22222222-2222-4222-8222-222222222222";
+
+    it("saves a draft for the authenticated tenant only, from the path id alone", async () => {
+      const saved = { id: messageId, role: "assistant" };
+      const confirmTransactionDraft = vi.fn(async () => saved);
+      const app = createAppWithFakes({
+        assistantService: { confirmTransactionDraft } as unknown as AssistantService,
+      });
+
+      const response = await app.request(
+        `/api/app/assistant/messages/${messageId}/transaction`,
+        {
+          method: "POST",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ tenantId: "someone-else", amountMinor: 1 }),
+        },
+        assistantEnv,
+      );
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual(saved);
+      expect(confirmTransactionDraft).toHaveBeenCalledWith(assistantEnv, TENANT_ID, messageId);
+    });
+
+    it("rejects a malformed id and an unauthenticated request before the service", async () => {
+      const confirmTransactionDraft = vi.fn();
+      const app = createAppWithFakes({
+        assistantService: { confirmTransactionDraft } as unknown as AssistantService,
+      });
+
+      const invalidId = await app.request(
+        "/api/app/assistant/messages/not-a-uuid/transaction",
+        {
+          method: "POST",
+          headers: privateHeaders({ "Content-Type": "application/json" }),
+          body: "{}",
+        },
+        assistantEnv,
+      );
+      const unauthenticated = await app.request(
+        `/api/app/assistant/messages/${messageId}/transaction`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" },
+        assistantEnv,
+      );
+
+      expect(invalidId.status).toBe(400);
+      expect(unauthenticated.status).toBe(401);
+      expect(confirmTransactionDraft).not.toHaveBeenCalled();
+    });
+  });
+
   describe("assistant memory routes", () => {
     const assistantEnv = { DB: {} as D1Database, ASSISTANT_ENABLED: "true" };
     const memoryId = "11111111-1111-4111-8111-111111111111";

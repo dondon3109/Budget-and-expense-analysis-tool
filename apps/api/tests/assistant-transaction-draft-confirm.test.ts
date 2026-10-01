@@ -1,0 +1,401 @@
+import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
+import type {
+  AssistantResponseMetadata,
+  AssistantTransactionDraft,
+  TransactionInput,
+  TransactionListItem,
+} from "@zoption/shared";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { AssistantOrchestrator } from "../src/assistant/orchestrator";
+import { createAssistantService } from "../src/assistant/service";
+import { assistantRepository } from "../src/db/assistant";
+import { assistantTransactionDraftRepository } from "../src/db/assistant-transaction-drafts";
+import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
+
+const TENANT = "user:tenant-a";
+const OTHER_TENANT = "user:tenant-b";
+const THREAD = "11111111-1111-4111-8111-111111111111";
+const MESSAGE = "22222222-2222-4222-8222-222222222222";
+
+const draft: AssistantTransactionDraft = {
+  status: "pending",
+  kind: "expense",
+  date: "2026-08-02",
+  description: "Jollibee",
+  amountMinor: 25_000,
+  currency: "PHP",
+  categoryId: "category-food",
+  categoryName: "Food",
+  accountId: "account-gcash",
+  accountName: "GCash",
+};
+
+const databases: Array<{ close(): void }> = [];
+afterEach(() => {
+  for (const database of databases.splice(0)) database.close();
+});
+
+function setup(
+  metadata: Partial<AssistantResponseMetadata> = { transactionDraft: draft },
+  rowAlreadyCreated?: boolean,
+) {
+  const { binding, database } = createD1TestDatabase();
+  databases.push(database);
+  for (const tenant of [TENANT, OTHER_TENANT]) {
+    database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')").run(tenant);
+  }
+  for (const tenant of [TENANT, OTHER_TENANT]) {
+    database
+      .prepare(
+        `INSERT INTO assistant_preferences
+         (tenant_id, consented_at, consent_version, assistant_name, user_preferred_name)
+         VALUES (?, '2026-08-01T00:00:00.000Z', ?, 'Aster', 'Sam')`,
+      )
+      .run(tenant, CURRENT_ASSISTANT_CONSENT_VERSION);
+  }
+  database
+    .prepare(
+      `INSERT INTO assistant_threads (id, tenant_id, title, last_message_at, retention_expires_at)
+       VALUES (?, ?, 'Lunch', '2026-08-02T00:00:00.000Z', '2999-01-01T00:00:00.000Z')`,
+    )
+    .run(THREAD, TENANT);
+  database
+    .prepare(
+      `INSERT INTO assistant_messages
+       (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+       VALUES (?, ?, ?, 'assistant', 'Review it and tap Save transaction.', 'completed', ?, '2026-08-02T00:00:00.000Z')`,
+    )
+    .run(
+      MESSAGE,
+      TENANT,
+      THREAD,
+      JSON.stringify({
+        promptVersion: "expert-v3",
+        compliance: { posture: "budgeting_allowed", topics: [] },
+        sources: [],
+        transactionEntry: true,
+        ...metadata,
+      }),
+    );
+  const env = { DB: binding } as unknown as Bindings;
+  const create = vi.fn(
+    async (_env: Bindings, _tenantId: string, input: TransactionInput, options?: { id?: string }) =>
+      ({ id: options?.id, ...input }) as unknown as TransactionListItem,
+  );
+  const drafts = {
+    ...assistantTransactionDraftRepository,
+    transactionExists: vi.fn(
+      rowAlreadyCreated === undefined
+        ? assistantTransactionDraftRepository.transactionExists
+        : async () => rowAlreadyCreated,
+    ),
+  };
+  const service = createAssistantService(
+    assistantRepository,
+    {} as AssistantOrchestrator,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { drafts, transactions: { create } },
+  );
+  return { env, database, create, drafts, service };
+}
+
+describe("assistant transaction draft confirmation", () => {
+  it("saves the stored draft once and records the saved transaction", async () => {
+    const { env, create, service } = setup();
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    const again = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith(
+      env,
+      TENANT,
+      {
+        kind: "expense",
+        date: "2026-08-02",
+        description: "Jollibee",
+        amountMinor: 25_000,
+        currency: "PHP",
+        categoryId: "category-food",
+        accountId: "account-gcash",
+      },
+      { id: MESSAGE },
+    );
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
+    expect(again.metadata?.transactionDraft?.status).toBe("saved");
+  });
+
+  it("refuses a second save while the first is still in flight", async () => {
+    const { env, service } = setup({
+      transactionDraft: { ...draft, status: "saving", claimedAt: new Date().toISOString() },
+    });
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_draft_in_progress",
+    });
+  });
+
+  it("takes over a claim that a failed request left behind", async () => {
+    const { env, create, service } = setup({
+      transactionDraft: { ...draft, status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" },
+    });
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(saved.metadata?.transactionDraft?.status).toBe("saved");
+  });
+
+  it("finds the row a request created before it died instead of creating a second", async () => {
+    const { env, create, service } = setup(
+      {
+        transactionDraft: { ...draft, status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" },
+      },
+      true,
+    );
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(create).not.toHaveBeenCalled();
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
+  });
+
+  it("finds a seeded row by the reply's id through the real tenant-scoped lookup", async () => {
+    const { env, database, create, service } = setup({
+      transactionDraft: { ...draft, status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" },
+    });
+    database.exec(`
+      INSERT INTO categories (id, tenant_id, name, kind, color)
+        VALUES ('category-food', '${TENANT}', 'Food', 'expense', '#123456');
+      INSERT INTO transactions (id, tenant_id, category_id, date, description, amount_minor, kind)
+        VALUES ('${MESSAGE}', '${TENANT}', 'category-food', '2026-08-02', 'Jollibee', -25000, 'expense');
+    `);
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(create).not.toHaveBeenCalled();
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
+  });
+
+  it("refuses a draft a later correction replaced, but not one a different purchase followed", async () => {
+    const { env, database, create, service } = setup();
+    const insertLaterDraft = (id: string, replacesMessageId?: string) =>
+      database
+        .prepare(
+          `INSERT INTO assistant_messages
+           (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+           VALUES (?, ?, ?, 'assistant', 'Another draft.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+        )
+        .run(
+          id,
+          TENANT,
+          THREAD,
+          JSON.stringify({
+            promptVersion: "expert-v3",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            sources: [],
+            transactionDraft: {
+              ...draft,
+              amountMinor: 30_000,
+              ...(replacesMessageId ? { replacesMessageId } : {}),
+            },
+          }),
+        );
+
+    // Dinner after lunch: the lunch draft stays saveable.
+    insertLaterDraft("33333333-3333-4333-8333-333333333333");
+    expect(
+      (await service.confirmTransactionDraft(env, TENANT, MESSAGE)).metadata?.transactionDraft
+        ?.status,
+    ).toBe("saved");
+
+    const corrected = setup();
+    corrected.database
+      .prepare(
+        `INSERT INTO assistant_messages
+         (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+         VALUES ('44444444-4444-4444-8444-444444444444', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+      )
+      .run(
+        TENANT,
+        THREAD,
+        JSON.stringify({
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed", topics: [] },
+          sources: [],
+          transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: MESSAGE },
+        }),
+      );
+    await expect(
+      corrected.service.confirmTransactionDraft(corrected.env, TENANT, MESSAGE),
+    ).rejects.toMatchObject({ status: 409, code: "assistant_draft_superseded" });
+    expect(corrected.create).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("refuses a correction whose original was saved or is mid-save", async () => {
+    const CORRECTION = "44444444-4444-4444-8444-444444444444";
+    const withOriginal = (original: Partial<AssistantTransactionDraft>) => {
+      const context = setup({ transactionDraft: { ...draft, ...original } });
+      context.database
+        .prepare(
+          `INSERT INTO assistant_messages
+           (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+           VALUES (?, ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+        )
+        .run(
+          CORRECTION,
+          TENANT,
+          THREAD,
+          JSON.stringify({
+            promptVersion: "expert-v3",
+            compliance: { posture: "budgeting_allowed", topics: [] },
+            sources: [],
+            transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: MESSAGE },
+          }),
+        );
+      return context;
+    };
+
+    const saved = withOriginal({ status: "saved", transactionId: MESSAGE });
+    await expect(
+      saved.service.confirmTransactionDraft(saved.env, TENANT, CORRECTION),
+    ).rejects.toMatchObject({ status: 409, code: "assistant_draft_already_saved" });
+    expect(saved.create).not.toHaveBeenCalled();
+
+    const saving = withOriginal({ status: "saving", claimedAt: new Date().toISOString() });
+    await expect(
+      saving.service.confirmTransactionDraft(saving.env, TENANT, CORRECTION),
+    ).rejects.toMatchObject({ status: 409, code: "assistant_draft_in_progress" });
+    expect(saving.create).not.toHaveBeenCalled();
+
+    // A claim left by a request that died before creating anything does not block the fix.
+    const abandoned = withOriginal({ status: "saving", claimedAt: "2026-08-02T00:00:00.000Z" });
+    const result = await abandoned.service.confirmTransactionDraft(
+      abandoned.env,
+      TENANT,
+      CORRECTION,
+    );
+    expect(result.metadata?.transactionDraft?.status).toBe("saved");
+    expect(abandoned.create).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a save whose claim was taken over mid-request as saved", async () => {
+    const { env, database, drafts, service } = setup();
+    // Another request takes the claim over between this request's create and its markSaved.
+    drafts.transactionExists = vi.fn(async () => {
+      database
+        .prepare(
+          `UPDATE assistant_messages SET response_metadata_json = json_set(response_metadata_json, '$.transactionDraft.claimedAt', '2099-01-01T00:00:00.000Z') WHERE id = ?`,
+        )
+        .run(MESSAGE);
+      return drafts.transactionExists.mock.calls.length > 1;
+    });
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(saved.metadata?.transactionDraft).toMatchObject({
+      status: "saved",
+      transactionId: MESSAGE,
+    });
+  });
+
+  it("blocks the claim when a correction lands after the replacement check", async () => {
+    const { env, database, create, drafts, service } = setup();
+    database
+      .prepare(
+        `INSERT INTO assistant_messages
+         (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+         VALUES ('44444444-4444-4444-8444-444444444444', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+      )
+      .run(
+        TENANT,
+        THREAD,
+        JSON.stringify({
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed", topics: [] },
+          sources: [],
+          transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: MESSAGE },
+        }),
+      );
+    // The first check ran before the correction was stored.
+    const realIsReplaced = drafts.isReplaced;
+    drafts.isReplaced = vi.fn().mockResolvedValueOnce(false).mockImplementation(realIsReplaced);
+
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_draft_superseded",
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("returns the saved reply when another tab finished the save before this claim", async () => {
+    const { env, database, create, drafts, service } = setup();
+    drafts.claim = vi.fn(async () => {
+      database
+        .prepare(
+          `UPDATE assistant_messages SET response_metadata_json = json_set(response_metadata_json, '$.transactionDraft.status', 'saved', '$.transactionDraft.transactionId', ?) WHERE id = ?`,
+        )
+        .run(MESSAGE, MESSAGE);
+      return null;
+    });
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(saved.metadata?.transactionDraft?.status).toBe("saved");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("requires current assistant consent before saving", async () => {
+    const { env, database, create, service } = setup();
+    database
+      .prepare("UPDATE assistant_preferences SET consent_version = 5 WHERE tenant_id = ?")
+      .run(TENANT);
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_consent_required",
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("treats a create that lost the race to the original request as saved", async () => {
+    const { env, create, drafts, service } = setup();
+    drafts.transactionExists.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    create.mockRejectedValueOnce(new Error("UNIQUE constraint failed: transactions.id"));
+
+    const saved = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(saved.metadata?.transactionDraft?.status).toBe("saved");
+  });
+
+  it("returns the draft to pending when the save fails, so the user can retry", async () => {
+    const { env, create, service } = setup();
+    create.mockRejectedValueOnce(new Error("invalid account"));
+
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE)).rejects.toThrow(
+      "invalid account",
+    );
+    const retried = await service.confirmTransactionDraft(env, TENANT, MESSAGE);
+    expect(retried.metadata?.transactionDraft?.status).toBe("saved");
+  });
+
+  it("never reaches another tenant's draft or a reply without one", async () => {
+    const { env, create, service } = setup();
+    await expect(service.confirmTransactionDraft(env, OTHER_TENANT, MESSAGE)).rejects.toMatchObject(
+      { status: 404, code: "assistant_draft_not_found" },
+    );
+
+    const withoutDraft = setup({});
+    await expect(
+      withoutDraft.service.confirmTransactionDraft(withoutDraft.env, TENANT, MESSAGE),
+    ).rejects.toMatchObject({ status: 404 });
+    expect(create).not.toHaveBeenCalled();
+  });
+});

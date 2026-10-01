@@ -40,7 +40,7 @@ tenant-scoped duplicate detection, category/type corrections, plan check, and ex
 The New transaction screen can record one short voice clip. Workers AI Whisper transcribes the
 temporary audio; a text model drafts its description, date, positive centavo amount, type, and an
 optional category label. The app fills the ordinary editable transaction form and does not create a
-local mutation until the user taps Save. Voice entry does not reuse the Assistant's read-only consent
+local mutation until the user taps Save. Voice entry does not reuse the Assistant's consent
 or conversation routes; it is covered by the dedicated AI-entry consent below.
 
 On mobile, every readable receipt item is independently editable (description, amount, and category).
