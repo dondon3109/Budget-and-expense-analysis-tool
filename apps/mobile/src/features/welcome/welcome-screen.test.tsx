@@ -39,26 +39,11 @@ describe("WelcomeScreen", () => {
     mockDevelopmentVariant = true;
   });
 
-  it("renders brand headline, capability badges, and value pillars", async () => {
+  it("renders the brand headline and tagline", async () => {
     await render(<WelcomeScreen />);
 
-    expect(screen.getByText("Your money, in your hands.")).toBeTruthy();
-    expect(screen.getByText("Offline First")).toBeTruthy();
-    expect(screen.getByText("Encrypted SQLite")).toBeTruthy();
-    expect(screen.getByText("🇵🇭 PHP Native")).toBeTruthy();
-
-    expect(screen.getByText("Offline-first speed")).toBeTruthy();
-    expect(screen.getByText("Smart receipt scanning")).toBeTruthy();
-    expect(screen.getByText("Category budgets & trends")).toBeTruthy();
-    expect(screen.getByText("Private by design")).toBeTruthy();
-  });
-
-  it("renders illustrative preview card with disclaimer", async () => {
-    await render(<WelcomeScreen />);
-
-    expect(screen.getByText("ILLUSTRATIVE WORKSPACE")).toBeTruthy();
-    expect(screen.getByText("Total Net Balance")).toBeTruthy();
-    expect(screen.getByText("Preview values are synthetic and illustrative.")).toBeTruthy();
+    expect(screen.getByRole("header")).toHaveTextContent("Your money, in your hands.");
+    expect(screen.getByText("Private, offline-first budgeting built for the peso.")).toBeTruthy();
   });
 
   it("navigates to sign-in on primary CTA press", async () => {
