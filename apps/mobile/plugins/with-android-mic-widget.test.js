@@ -86,9 +86,9 @@ test("voice activity is not noHistory so the transcript survives recognition", (
 
 test("generated widget logs in the background and never opens the app", () => {
   const files = widgetFileContents();
-  expect(Object.keys(files)).toHaveLength(8);
+  expect(Object.keys(files)).toHaveLength(11);
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
-    '<string name="zoption_mic_widget_action_label">Speak transaction</string>',
+    '<string name="zoption_mic_widget_hint">Tap and say what you spent</string>',
   );
   const infoXml = files["app/src/main/res/xml/zoption_mic_widget_info.xml"];
   expect(infoXml).toContain('android:resizeMode="horizontal|vertical"');
@@ -98,11 +98,11 @@ test("generated widget logs in the background and never opens the app", () => {
   const iconXml = files["app/src/main/res/drawable/zoption_mic_widget_icon.xml"];
   expect(iconXml).toContain("<vector");
   expect(iconXml).toContain('android:viewportWidth="24"');
-  expect(iconXml).toContain("#064E3B");
-  expect(iconXml).toContain("#FFFFFF");
+  expect(iconXml).toContain("@color/zoption_mic_widget_on_brand");
   const layoutXml = files["app/src/main/res/layout/zoption_mic_widget.xml"];
   expect(layoutXml).toContain("@drawable/zoption_mic_widget_icon");
   expect(layoutXml).not.toContain("@android:drawable/ic_btn_speak_now");
+  expect(layoutXml).toContain("zoption_mic_widget_text");
   const activity = files["app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt"];
   expect(activity).toContain("RecognizerIntent.ACTION_RECOGNIZE_SPEECH");
   expect(activity).toContain("isRecognitionAvailable");
@@ -119,6 +119,14 @@ test("generated widget logs in the background and never opens the app", () => {
   expect(provider).toContain("setOnClickPendingIntent");
   expect(provider).toContain("onAppWidgetOptionsChanged");
   expect(provider).toContain("OPTION_APPWIDGET_MIN_WIDTH");
+});
+
+test("widget colors follow the app theme in light and dark", () => {
+  const files = widgetFileContents();
+  const light = files["app/src/main/res/values/zoption_mic_widget_colors.xml"];
+  const dark = files["app/src/main/res/values-night/zoption_mic_widget_colors.xml"];
+  expect(light).toContain('<color name="zoption_mic_widget_brand">#0A7556</color>');
+  expect(dark).toContain('<color name="zoption_mic_widget_brand">#5FE3B8</color>');
 });
 
 test("widget UI uses a solid background, never a gradient", () => {
