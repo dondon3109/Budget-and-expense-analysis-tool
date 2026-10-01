@@ -90,11 +90,11 @@ describe("MoreScreen sign out", () => {
   it("shows the demo data generator only in development builds", async () => {
     withLocalChanges(0, 0);
     const { unmount } = await render(<MoreScreen />);
-    expect(screen.queryByText("DEMO DATA")).toBeNull();
+    expect(screen.queryByText("Demo data")).toBeNull();
     await unmount();
 
     jest.mocked(isDevelopmentAppVariant).mockReturnValue(true);
     await render(<MoreScreen />);
-    expect(screen.getByText("DEMO DATA")).toBeTruthy();
+    expect(screen.getByText("Demo data")).toBeTruthy();
   });
 });

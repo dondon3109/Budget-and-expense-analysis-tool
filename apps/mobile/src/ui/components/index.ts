@@ -10,6 +10,7 @@ export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./FormField";
 export * from "./LedgerLoader";
+export * from "./MenuGroup";
 export * from "./MoneyValue";
 export * from "./OfflineBanner";
 export * from "./SelectionField";
