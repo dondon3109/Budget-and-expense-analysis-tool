@@ -81,9 +81,9 @@ export function LandingPage({
               Zoption makes your money clear. Decide <em>what comes next.</em>
             </h1>
             <p className="hero-lead">
-              Start for free with a private budget and expense tracker for importing or recording
-              transactions, setting practical budgets, tracking recurring expenses, and
-              understanding monthly cash flow — without connecting to your bank.
+              Start for free with a private budgeting app and expense tracker. Record transactions
+              by voice input or receipt scan, import a bank file, set a budget, save money toward
+              your goals, and understand monthly cash flow — without connecting to your bank.
             </p>
             <div className="hero-actions">
               <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>

@@ -76,6 +76,9 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/guides/budget-semi-monthly-pay-kinsenas-katapusan": GUIDE_PAGE_SOURCES,
   "/guides/emergency-fund-philippines": GUIDE_PAGE_SOURCES,
   "/guides/budget-13th-month-pay-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/how-to-budget-for-beginners-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/budget-allowance-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/how-to-save-money-philippines": GUIDE_PAGE_SOURCES,
   "/tutorials": ["apps/site/src/views/tutorials/TutorialsPage.tsx"],
   "/import": [
     "apps/site/src/views/import/ImportHubPage.tsx",

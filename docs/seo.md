@@ -165,6 +165,12 @@ Android use, no bank connection, e-wallet tracking.
 - `/guides/budget-semi-monthly-pay-kinsenas-katapusan`
 - `/guides/emergency-fund-philippines`
 - `/guides/budget-13th-month-pay-philippines`
+- `/guides/how-to-budget-for-beginners-philippines`, `/guides/budget-allowance-philippines`,
+  `/guides/how-to-save-money-philippines`: head terms Search Console showed no impressions
+  for (budget, budgeting, how to budget, allowance, save money, finance). The home page and
+  the two feature pages carry voice input, receipt, and transaction wording for the rest.
+  Search Console (2026-10-01) listed only `zoption` (61 impressions), spaced and hyphenated
+  brand misspellings (`z option`, `z-option`), and Maya cancellation queries.
 
 Legal and tax facts (13th month pay, deposit insurance) are stated without figures that
 change by statute, such as the bonus tax ceiling or the PDIC maximum, and point to the
