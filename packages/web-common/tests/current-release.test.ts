@@ -27,6 +27,10 @@ describe("current release notes", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "Log a transaction by chatting with the assistant",
       "Log several entries from the Android mic widget",
+      "A new look for the Android mic widget",
+      "A clearer Home screen on Android and iOS",
+      "Start a fresh assistant conversation",
+      "Money in and out opens monthly for Pro",
       "Daily reminder on by default on Android and iOS",
       "Assistant answers keep to your workspace currency",
       "Smoother sign-in links and a steadier PIN pad",
