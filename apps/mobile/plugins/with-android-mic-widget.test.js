@@ -7,24 +7,19 @@ const withMicWidget = require("./with-android-mic-widget");
 const {
   addMicWidgetToManifest,
   addSpeechRecognitionQueries,
-  resolveWidgetScheme,
   widgetFileContents,
   writeWidgetFiles,
 } = require("./with-android-mic-widget");
 
 function fakeManifest() {
   return {
-    application: [{ $: { "android:name": ".MainApplication" }, activity: [], receiver: [] }],
+    application: [
+      { $: { "android:name": ".MainApplication" }, activity: [], receiver: [], service: [] },
+    ],
   };
 }
 
-test("resolves the deep-link scheme per variant", () => {
-  expect(resolveWidgetScheme({ scheme: "zoption-preview" })).toBe("zoption-preview");
-  expect(resolveWidgetScheme({ scheme: ["zoption-dev"] })).toBe("zoption-dev");
-  expect(resolveWidgetScheme({})).toBe("zoption-dev");
-});
-
-test("registers the widget receiver and voice activity exactly once", () => {
+test("registers the widget receiver, voice activity, and log service exactly once", () => {
   const manifest = fakeManifest();
   addMicWidgetToManifest(manifest);
   addMicWidgetToManifest(manifest);
@@ -35,8 +30,14 @@ test("registers the widget receiver and voice activity exactly once", () => {
   const activities = app.activity.filter(
     (entry) => entry.$["android:name"] === "site.zoption.micwidget.MicWidgetVoiceActivity",
   );
+  const services = app.service.filter(
+    (entry) => entry.$["android:name"] === "site.zoption.micwidget.MicWidgetLogService",
+  );
   expect(receivers).toHaveLength(1);
   expect(activities).toHaveLength(1);
+  expect(services).toHaveLength(1);
+  // Only this app's capture activity may start the logging task.
+  expect(services[0].$["android:exported"]).toBe("false");
   expect(receivers[0]["intent-filter"][0].action[0].$["android:name"]).toBe(
     "android.appwidget.action.APPWIDGET_UPDATE",
   );
@@ -83,12 +84,9 @@ test("voice activity is not noHistory so the transcript survives recognition", (
   expect(activity.$["android:theme"]).toBe("@android:style/Theme.Translucent.NoTitleBar");
 });
 
-test("generated widget carries the scheme and deep-links the intent route", () => {
-  const files = widgetFileContents("zoption-preview");
+test("generated widget logs in the background and never opens the app", () => {
+  const files = widgetFileContents();
   expect(Object.keys(files)).toHaveLength(8);
-  expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
-    '<string name="zoption_mic_widget_scheme">zoption-preview</string>',
-  );
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
     '<string name="zoption_mic_widget_action_label">Speak transaction</string>',
   );
@@ -105,16 +103,18 @@ test("generated widget carries the scheme and deep-links the intent route", () =
   const layoutXml = files["app/src/main/res/layout/zoption_mic_widget.xml"];
   expect(layoutXml).toContain("@drawable/zoption_mic_widget_icon");
   expect(layoutXml).not.toContain("@android:drawable/ic_btn_speak_now");
-  const intents = files["app/src/main/java/site/zoption/micwidget/MicWidgetIntents.kt"];
-  expect(intents).toContain('authority("widget-intent")');
-  // Parsing lives only in the app; the native side forwards the transcript.
-  expect(intents).toContain("PARAM_TRANSCRIPT");
-  expect(intents).not.toContain("PARAM_PAYLOAD");
-  expect(intents).not.toContain("buildIntentJson");
   const activity = files["app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt"];
   expect(activity).toContain("RecognizerIntent.ACTION_RECOGNIZE_SPEECH");
   expect(activity).toContain("isRecognitionAvailable");
-  expect(activity).toContain("ERROR_STT_UNAVAILABLE");
+  expect(activity).toContain("startService(");
+  expect(activity).toContain("MicWidgetLogService::class.java");
+  // The transcript goes to the headless task, not to a deep link into the app.
+  expect(activity).not.toContain("ACTION_VIEW");
+  expect(activity).not.toContain("FLAG_ACTIVITY_NEW_TASK");
+  const service = files["app/src/main/java/site/zoption/micwidget/MicWidgetLogService.kt"];
+  expect(service).toContain("HeadlessJsTaskService()");
+  expect(service).toContain('"ZoptionWidgetVoiceLog"');
+  expect(service).toContain("START_NOT_STICKY");
   const provider = files["app/src/main/java/site/zoption/micwidget/MicWidgetProvider.kt"];
   expect(provider).toContain("setOnClickPendingIntent");
   expect(provider).toContain("onAppWidgetOptionsChanged");
@@ -122,7 +122,7 @@ test("generated widget carries the scheme and deep-links the intent route", () =
 });
 
 test("widget UI uses a solid background, never a gradient", () => {
-  const files = widgetFileContents("zoption-dev");
+  const files = widgetFileContents();
   const background = files["app/src/main/res/drawable/zoption_mic_widget_background.xml"];
   expect(background).toContain("<solid");
   for (const contents of Object.values(files)) {
@@ -133,7 +133,7 @@ test("widget UI uses a solid background, never a gradient", () => {
 test("writeWidgetFiles creates directory tree and writes files to platform root", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mic-widget-test-"));
   try {
-    await writeWidgetFiles(tempDir, "zoption");
+    await writeWidgetFiles(tempDir);
     const manifestInfo = path.join(tempDir, "app/src/main/res/xml/zoption_mic_widget_info.xml");
     const stringsXml = path.join(tempDir, "app/src/main/res/values/zoption_mic_widget_strings.xml");
     const iconXml = path.join(tempDir, "app/src/main/res/drawable/zoption_mic_widget_icon.xml");
@@ -145,8 +145,11 @@ test("writeWidgetFiles creates directory tree and writes files to platform root"
     expect(fs.existsSync(stringsXml)).toBe(true);
     expect(fs.existsSync(iconXml)).toBe(true);
     expect(fs.existsSync(providerKt)).toBe(true);
-    const content = await fs.promises.readFile(stringsXml, "utf-8");
-    expect(content).toContain('<string name="zoption_mic_widget_scheme">zoption</string>');
+    expect(
+      fs.existsSync(
+        path.join(tempDir, "app/src/main/java/site/zoption/micwidget/MicWidgetLogService.kt"),
+      ),
+    ).toBe(true);
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }
@@ -155,7 +158,7 @@ test("writeWidgetFiles creates directory tree and writes files to platform root"
 test("withMicWidget dangerous mod correctly extracts platformProjectRoot from modRequest", async () => {
   const tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "mic-widget-mod-"));
   try {
-    const config = withMicWidget({ name: "Test", slug: "test", scheme: "zoption-test" });
+    const config = withMicWidget({ name: "Test", slug: "test" });
     expect(typeof config.mods.android.dangerous).toBe("function");
 
     const modConfig = {
@@ -172,8 +175,6 @@ test("withMicWidget dangerous mod correctly extracts platformProjectRoot from mo
 
     const stringsXml = path.join(tempDir, "app/src/main/res/values/zoption_mic_widget_strings.xml");
     expect(fs.existsSync(stringsXml)).toBe(true);
-    const content = await fs.promises.readFile(stringsXml, "utf-8");
-    expect(content).toContain('<string name="zoption_mic_widget_scheme">zoption-test</string>');
   } finally {
     await fs.promises.rm(tempDir, { recursive: true, force: true });
   }

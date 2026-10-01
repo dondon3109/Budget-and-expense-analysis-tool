@@ -139,6 +139,25 @@ export function createAiEntryRoutes(service: AiEntryService) {
     );
   });
 
+  // The widget's background task logs a whole spoken note, which can name several entries.
+  routes.post("/voice/entries", async (context) => {
+    const body = await readJson(context);
+    const record =
+      typeof body === "object" && body !== null ? (body as Record<string, unknown>) : {};
+    if (typeof record.transcript !== "string" || record.transcript.trim().length === 0) {
+      throw new HttpError(400, "invalid_entry_transcript", "Provide a transcript to extract.");
+    }
+    const transcript = parseTranscript(record.transcript);
+    const categories = parseCategoryList(record.categories);
+    const drafts = await service.extractVoiceTranscriptEntries(
+      context.env,
+      context.get("tenant").tenantId,
+      transcript,
+      categories,
+    );
+    return context.json({ drafts });
+  });
+
   routes.post("/pdf-preview", async (context) => {
     const form = await context.req.formData();
     const pdf = form.get("pdf");

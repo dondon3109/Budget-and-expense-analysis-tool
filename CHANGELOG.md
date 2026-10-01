@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- The Android mic widget now logs what you say without opening Zoption. Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves both as separate expenses (income works too, up to 10 entries per note), then a notification tells you how many were logged. It uses the account you name out loud or your default spending account, and needs notification permission to report back. A balance update ("adjust BDO to 5,000") still opens a review when you tap its notification. Entries are saved on the phone right away and sync the next time Zoption opens.
+
 ### Changed
 
 - The mobile daily reminder is now on by default and notifies you at 12:00 PM and 9:00 PM; a single switch under More → Preferences → Daily reminder turns it off. The app asks for notification permission the first time you sign in.

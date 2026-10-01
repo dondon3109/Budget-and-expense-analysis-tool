@@ -4,8 +4,10 @@
 //
 // Generates a minimal RemoteViews AppWidget via prebuild: tapping the widget
 // mic opens a translucent activity that captures speech with the platform
-// recognizer and deep-links the transcript into the expo-router
-// `widget-intent` route, where the app parses and reviews it.
+// recognizer and hands the transcript to a headless JS task
+// (MicWidgetLogService), which sends it to Zoption AI and logs every entry it
+// names without opening the app. The widget never opens the app itself; the
+// `widget-intent` route is only reached from a "review" notification tap.
 // Jetpack Glance is intentionally not used: it is not a dependency and the
 // widget is a single mic button, so RemoteViews keeps the footprint minimal.
 //
@@ -23,21 +25,7 @@ const RECOGNITION_SERVICE_ACTION = "android.speech.RecognitionService";
 const WIDGET_PACKAGE = "site.zoption.micwidget";
 const PROVIDER_NAME = `${WIDGET_PACKAGE}.MicWidgetProvider`;
 const ACTIVITY_NAME = `${WIDGET_PACKAGE}.MicWidgetVoiceActivity`;
-
-const SCHEME_BY_VARIANT = {
-  development: "zoption-dev",
-  preview: "zoption-preview",
-  production: "zoption",
-};
-
-/** Resolves the deep-link scheme for generated native sources. Pure (jest-tested). */
-function resolveWidgetScheme(config) {
-  const scheme = config && config.scheme;
-  if (typeof scheme === "string" && scheme.length > 0) return scheme;
-  if (Array.isArray(scheme) && typeof scheme[0] === "string") return scheme[0];
-  const variant = process.env.APP_VARIANT;
-  return SCHEME_BY_VARIANT[variant] || SCHEME_BY_VARIANT.development;
-}
+const SERVICE_NAME = `${WIDGET_PACKAGE}.MicWidgetLogService`;
 
 /** Idempotently registers the widget receiver + voice activity. Pure (jest-tested). */
 function addMicWidgetToManifest(manifest) {
@@ -47,6 +35,7 @@ function addMicWidgetToManifest(manifest) {
   }
   application.receiver = application.receiver || [];
   application.activity = application.activity || [];
+  application.service = application.service || [];
 
   const hasReceiver = application.receiver.some(
     (entry) => entry.$ && entry.$["android:name"] === PROVIDER_NAME,
@@ -93,6 +82,16 @@ function addMicWidgetToManifest(manifest) {
         // silently. MicWidgetVoiceActivity finishes itself on every path.
         "android:theme": "@android:style/Theme.Translucent.NoTitleBar",
       },
+    });
+  }
+
+  const hasService = application.service.some(
+    (entry) => entry.$ && entry.$["android:name"] === SERVICE_NAME,
+  );
+  if (!hasService) {
+    // Not exported: only this app's capture activity may start the logging task.
+    application.service.push({
+      $: { "android:name": SERVICE_NAME, "android:exported": "false" },
     });
   }
   return manifest;
@@ -254,15 +253,14 @@ function widgetBackgroundXml() {
   ].join("\n");
 }
 
-function widgetStringsXml(scheme) {
+function widgetStringsXml() {
   return [
     '<?xml version="1.0" encoding="utf-8"?>',
     "<resources>",
     '  <string name="zoption_mic_widget_label">Zoption mic</string>',
-    '  <string name="zoption_mic_widget_description">Tap to say an expense, income, or balance update.</string>',
+    '  <string name="zoption_mic_widget_description">Tap and say what you spent or earned. Zoption AI logs it without opening the app.</string>',
     '  <string name="zoption_mic_widget_tap_hint">Record a voice note for Zoption</string>',
     '  <string name="zoption_mic_widget_action_label">Speak transaction</string>',
-    `  <string name="zoption_mic_widget_scheme">${scheme}</string>`,
     "</resources>",
     "",
   ].join("\n");
@@ -333,36 +331,41 @@ function widgetProviderKt() {
   ].join("\n");
 }
 
-function widgetIntentsKt() {
+function widgetLogServiceKt() {
   return [
     `package ${WIDGET_PACKAGE}`,
     "",
-    "import android.content.Context",
-    "import android.net.Uri",
+    "import android.content.Intent",
+    "import com.facebook.react.HeadlessJsTaskService",
+    "import com.facebook.react.bridge.Arguments",
+    "import com.facebook.react.jstasks.HeadlessJsTaskConfig",
     "",
     "/**",
-    " * Builds the widget-intent deep link. Only the raw transcript crosses over:",
-    " * every parsing rule (expense, income, balance update, amounts) lives in",
-    " * `src/features/widget/widget-intent.ts`, so there is no native mirror to",
-    " * drift out of sync with the app.",
+    " * Runs the `ZoptionWidgetVoiceLog` JS task (src/features/widget/widget-voice-task.ts)",
+    " * with the transcript the voice activity captured. The task sends it to Zoption AI",
+    " * and saves every entry it names; no screen opens. Every parsing and logging rule",
+    " * lives in the app, so there is no native mirror to drift out of sync.",
     " */",
-    "object MicWidgetIntents {",
-    '  const val PARAM_TRANSCRIPT = "transcript"',
-    '  const val PARAM_ERROR = "error"',
-    '  const val ERROR_STT_UNAVAILABLE = "stt_unavailable"',
-    '  const val ERROR_NO_SPEECH = "no_speech"',
-    "",
-    "  fun scheme(context: Context): String {",
-    '    val id = context.resources.getIdentifier("zoption_mic_widget_scheme", "string", context.packageName)',
-    "    if (id != 0) return context.getString(id)",
-    '    return "zoption"',
+    "class MicWidgetLogService : HeadlessJsTaskService() {",
+    "  companion object {",
+    '    const val EXTRA_TRANSCRIPT = "transcript"',
+    '    private const val TASK_NAME = "ZoptionWidgetVoiceLog"',
+    "    private const val TASK_TIMEOUT_MS = 60_000L",
     "  }",
     "",
-    "  fun widgetDeepLink(context: Context, transcript: String?, error: String?): Uri {",
-    '    val builder = Uri.Builder().scheme(scheme(context)).authority("widget-intent")',
-    "    if (error != null) builder.appendQueryParameter(PARAM_ERROR, error)",
-    "    if (transcript != null) builder.appendQueryParameter(PARAM_TRANSCRIPT, transcript)",
-    "    return builder.build()",
+    "  override fun getTaskConfig(intent: Intent?): HeadlessJsTaskConfig? {",
+    "    val transcript = intent?.getStringExtra(EXTRA_TRANSCRIPT)?.takeIf { it.isNotBlank() }",
+    "      ?: return null",
+    '    val data = Arguments.createMap().apply { putString("transcript", transcript) }',
+    "    // Allowed in the foreground: the app may already be open when the widget is used.",
+    "    return HeadlessJsTaskConfig(TASK_NAME, data, TASK_TIMEOUT_MS, true)",
+    "  }",
+    "",
+    "  override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {",
+    "    super.onStartCommand(intent, flags, startId)",
+    "    // The default redelivers the intent if the process dies mid-task, which would",
+    "    // log the same spoken note twice.",
+    "    return START_NOT_STICKY",
     "  }",
     "}",
     "",
@@ -383,12 +386,9 @@ function widgetVoiceActivityKt() {
     "",
     "/**",
     " * Tap-to-talk without opening the app. Captures one utterance through the",
-    " * platform speech activity and deep-links the transcript to the",
-    " * widget-intent route for review. Nothing is saved here.",
-    " *",
-    " * Graceful failure: when STT is unavailable the app still opens on the",
-    " * widget-intent screen with an explanatory error; a user-cancelled",
-    " * prompt simply finishes with no deep link.",
+    " * platform speech activity and hands the transcript to MicWidgetLogService,",
+    " * which logs it in the background. Nothing is saved here, and no screen of",
+    " * the app opens: failures are a toast, and the result is a notification.",
     " */",
     "class MicWidgetVoiceActivity : Activity() {",
     "  companion object {",
@@ -398,18 +398,18 @@ function widgetVoiceActivityKt() {
     "  override fun onCreate(savedInstanceState: Bundle?) {",
     "    super.onCreate(savedInstanceState)",
     "    if (!SpeechRecognizer.isRecognitionAvailable(this)) {",
-    "      openResult(error = MicWidgetIntents.ERROR_STT_UNAVAILABLE, transcript = null)",
+    '      toast("Voice input is not available on this device.")',
     "      finish()",
     "      return",
     "    }",
     "    val prompt = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {",
     "      putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)",
-    '      putExtra(RecognizerIntent.EXTRA_PROMPT, "Say an expense, income, or balance update")',
+    '      putExtra(RecognizerIntent.EXTRA_PROMPT, "Say what you spent or earned")',
     "    }",
     "    try {",
     "      startActivityForResult(prompt, REQUEST_VOICE)",
     "    } catch (e: ActivityNotFoundException) {",
-    "      openResult(error = MicWidgetIntents.ERROR_STT_UNAVAILABLE, transcript = null)",
+    '      toast("Voice input is not available on this device.")',
     "      finish()",
     "    }",
     "  }",
@@ -417,37 +417,38 @@ function widgetVoiceActivityKt() {
     '  @Deprecated("Required for startActivityForResult on all supported API levels.")',
     "  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {",
     "    super.onActivityResult(requestCode, resultCode, data)",
-    "    if (requestCode != REQUEST_VOICE) {",
-    "      finish()",
-    "      return",
-    "    }",
-    "    if (resultCode == RESULT_CANCELED) {",
-    "      finish()",
-    "      return",
-    "    }",
-    "    if (resultCode == RESULT_OK && data != null) {",
-    "      val transcript = data",
-    "        .getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)",
-    "        ?.firstOrNull { it.isNotBlank() }",
-    "        ?.trim()",
-    "      if (transcript.isNullOrEmpty()) {",
-    "        openResult(error = MicWidgetIntents.ERROR_NO_SPEECH, transcript = null)",
+    "    if (requestCode == REQUEST_VOICE && resultCode != RESULT_CANCELED) {",
+    "      val transcript = if (resultCode == RESULT_OK) {",
+    "        data",
+    "          ?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)",
+    "          ?.firstOrNull { it.isNotBlank() }",
+    "          ?.trim()",
     "      } else {",
-    "        openResult(error = null, transcript = transcript)",
+    "        null",
     "      }",
-    "    } else {",
-    "      openResult(error = MicWidgetIntents.ERROR_NO_SPEECH, transcript = null)",
+    "      if (transcript.isNullOrEmpty()) {",
+    '        toast("No speech was recognized. Tap the mic and try again.")',
+    "      } else {",
+    "        logInBackground(transcript)",
+    "      }",
     "    }",
     "    finish()",
     "  }",
     "",
-    "  private fun openResult(error: String?, transcript: String?) {",
-    "    val uri = MicWidgetIntents.widgetDeepLink(this, transcript, error)",
+    "  private fun logInBackground(transcript: String) {",
     "    try {",
-    "      startActivity(Intent(Intent.ACTION_VIEW, uri).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))",
-    "    } catch (e: ActivityNotFoundException) {",
-    '      Toast.makeText(this, "Zoption could not open the voice result.", Toast.LENGTH_LONG).show()',
+    "      startService(",
+    "        Intent(this, MicWidgetLogService::class.java)",
+    "          .putExtra(MicWidgetLogService.EXTRA_TRANSCRIPT, transcript),",
+    "      )",
+    '      toast("Sending to Zoption AI...")',
+    "    } catch (e: RuntimeException) {",
+    '      toast("Zoption could not log the voice note.")',
     "    }",
+    "  }",
+    "",
+    "  private fun toast(message: String) {",
+    "    Toast.makeText(this, message, Toast.LENGTH_LONG).show()",
     "  }",
     "}",
     "",
@@ -455,21 +456,21 @@ function widgetVoiceActivityKt() {
 }
 
 /** All generated files, keyed by path relative to the android project root. Pure (jest-tested). */
-function widgetFileContents(scheme) {
+function widgetFileContents() {
   return {
     "app/src/main/res/xml/zoption_mic_widget_info.xml": widgetInfoXml(),
     "app/src/main/res/layout/zoption_mic_widget.xml": widgetLayoutXml(),
     "app/src/main/res/drawable/zoption_mic_widget_background.xml": widgetBackgroundXml(),
     "app/src/main/res/drawable/zoption_mic_widget_icon.xml": widgetIconXml(),
-    "app/src/main/res/values/zoption_mic_widget_strings.xml": widgetStringsXml(scheme),
+    "app/src/main/res/values/zoption_mic_widget_strings.xml": widgetStringsXml(),
     "app/src/main/java/site/zoption/micwidget/MicWidgetProvider.kt": widgetProviderKt(),
-    "app/src/main/java/site/zoption/micwidget/MicWidgetIntents.kt": widgetIntentsKt(),
+    "app/src/main/java/site/zoption/micwidget/MicWidgetLogService.kt": widgetLogServiceKt(),
     "app/src/main/java/site/zoption/micwidget/MicWidgetVoiceActivity.kt": widgetVoiceActivityKt(),
   };
 }
 
-async function writeWidgetFiles(projectRoot, scheme) {
-  const files = widgetFileContents(scheme);
+async function writeWidgetFiles(projectRoot) {
+  const files = widgetFileContents();
   for (const [relativePath, contents] of Object.entries(files)) {
     const absolutePath = path.join(projectRoot, relativePath);
     await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
@@ -478,7 +479,6 @@ async function writeWidgetFiles(projectRoot, scheme) {
 }
 
 const withMicWidget = (config) => {
-  const scheme = resolveWidgetScheme(config);
   const withManifest = withAndroidManifest(config, (mod) => {
     mod.modResults.manifest = addSpeechRecognitionQueries(mod.modResults.manifest);
     mod.modResults.manifest = addMicWidgetToManifest(mod.modResults.manifest);
@@ -492,14 +492,13 @@ const withMicWidget = (config) => {
       if (!projectRoot) {
         throw new Error("Unable to resolve Android platform project root from modRequest");
       }
-      await writeWidgetFiles(projectRoot, scheme);
+      await writeWidgetFiles(projectRoot);
       return mod;
     },
   ]);
 };
 
 module.exports = withMicWidget;
-module.exports.resolveWidgetScheme = resolveWidgetScheme;
 module.exports.addMicWidgetToManifest = addMicWidgetToManifest;
 module.exports.addSpeechRecognitionQueries = addSpeechRecognitionQueries;
 module.exports.widgetFileContents = widgetFileContents;

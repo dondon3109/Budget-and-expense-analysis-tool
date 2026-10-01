@@ -68,3 +68,18 @@ export const transactionVoiceDraftSchema = z
     categoryName: z.string().trim().min(1).max(80).optional(),
   })
   .strict();
+
+/** Most transactions one spoken note can log, so one pooled AI unit stays one bounded request. */
+export const MAX_VOICE_ENTRY_DRAFTS = 10;
+
+/** Widget voice notes can name several income or expense entries in one breath. */
+export const transactionVoiceDraftsSchema = z
+  .object({
+    drafts: z
+      .array(transactionVoiceDraftSchema.refine((draft) => draft.kind !== "transfer"))
+      .min(1)
+      .max(MAX_VOICE_ENTRY_DRAFTS),
+  })
+  .strict();
+
+export type TransactionVoiceDrafts = z.infer<typeof transactionVoiceDraftsSchema>;

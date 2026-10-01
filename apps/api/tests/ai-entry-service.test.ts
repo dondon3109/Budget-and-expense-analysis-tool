@@ -272,6 +272,69 @@ describe("AI entry service", () => {
     expect(run).toHaveBeenCalledOnce();
   });
 
+  it("extracts several entries from one note for a single pooled unit", async () => {
+    const run = vi.fn(async () => ({
+      response: {
+        drafts: [
+          { description: "Jollibee lunch", amountPhp: "250.00", kind: "expense" },
+          {
+            description: "Groceries",
+            amountPhp: "2000.00",
+            kind: "expense",
+            categoryName: "Groceries",
+          },
+        ],
+      },
+    }));
+    const service = createAiEntryService(repository(), imports());
+    const before = poolCount();
+
+    await expect(
+      service.extractVoiceTranscriptEntries(
+        env(run, vi.fn()),
+        TENANT_ID,
+        "I spend 250 on Jollibee for lunch and spend 2,000 on groceries",
+        ["Food & dining", "Groceries"],
+      ),
+    ).resolves.toMatchObject([
+      { description: "Jollibee lunch", amountMinor: 25_000, kind: "expense" },
+      { description: "Groceries", amountMinor: 200_000, categoryName: "Groceries" },
+    ]);
+
+    expect(run).toHaveBeenCalledOnce();
+    expect(poolCount()).toBe(before + 1);
+  });
+
+  it("rejects drafted amounts that were not spoken and transfer drafts", async () => {
+    const service = createAiEntryService(repository(), imports());
+    const wrongAmount = vi.fn(async () => ({
+      response: {
+        drafts: [
+          { description: "Lunch", amountPhp: "250.00", kind: "expense" },
+          { description: "Groceries", amountPhp: "9000.00", kind: "expense" },
+        ],
+      },
+    }));
+    await expect(
+      service.extractVoiceTranscriptEntries(
+        env(wrongAmount, vi.fn()),
+        TENANT_ID,
+        "Spent 250 on lunch and 2,000 on groceries",
+      ),
+    ).rejects.toMatchObject({ status: 422, code: "voice_transaction_amount_mismatch" });
+
+    const transfer = vi.fn(async () => ({
+      response: { drafts: [{ description: "Move", amountPhp: "500.00", kind: "transfer" }] },
+    }));
+    await expect(
+      service.extractVoiceTranscriptEntries(
+        env(transfer, vi.fn()),
+        TENANT_ID,
+        "Transfer 500 to savings",
+      ),
+    ).rejects.toMatchObject({ status: 422, code: "voice_transaction_unreadable" });
+  });
+
   it("includes user categories in prompt and matches category to active user categories", async () => {
     const run = vi.fn(async () => ({
       response: {
