@@ -23,6 +23,7 @@ jest.mock("@/db/local-workspace-state", () => ({
   useLocalWorkspace: jest.fn(),
 }));
 jest.mock("@/features/reminders/daily-reminder", () => ({ DailyReminderTapHandler: () => null }));
+jest.mock("@/features/billing/PlanLimitDialog", () => ({ PlanLimitHost: () => null }));
 jest.mock("@/sync/sync-state", () => ({
   SyncProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

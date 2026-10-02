@@ -22,6 +22,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
+import { reportPlanLimit } from "@/features/billing/PlanLimitDialog";
 import { recoverLocalWorkspace } from "@/db/workspace";
 
 export type ForegroundSyncStatus =
@@ -248,6 +249,10 @@ export function SyncProvider({
           }
           if (requestRef.current !== requestId || controller.signal.aborted) return;
           await workspace.transactionMutations.applyPushResponse(request, response);
+          const limit = response.results.find(
+            (result) => result.status === "rejected" && result.code === "plan_limit",
+          );
+          if (limit?.status === "rejected") reportPlanLimit(limit.message);
           if (batchNumber === 99) {
             throw new Error("Synchronization exceeded the safe foreground push limit.");
           }
