@@ -71,6 +71,13 @@ describe("legal pages", () => {
       screen.getByText(/six anonymous conversion steps that cover the signup and app surfaces/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/cookieless, carry no financial detail/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/optional text you type \(up to 140 characters\)/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/goal events carry no financial detail/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/deleted with your account, and your goal and optional/i),
+    ).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(5);
   });
 
@@ -85,6 +92,7 @@ describe("legal pages", () => {
       screen.getByText(/six anonymous conversion steps so the path from a first public page/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/write nothing to your device/i)).toBeInTheDocument();
+    expect(screen.getByText(/goal events stay in Zoption's own database/i)).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();
     expect(

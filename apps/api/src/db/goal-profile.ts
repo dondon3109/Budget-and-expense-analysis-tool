@@ -1,4 +1,10 @@
-import { type GoalProfile, type GoalSelection } from "@zoption/shared";
+import {
+  firstActionByGoal,
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  type GoalFirstAction,
+  type GoalProfile,
+  type GoalSelection,
+} from "@zoption/shared";
 
 import type { Bindings } from "../types";
 
@@ -32,12 +38,60 @@ async function loadProfile(env: Bindings, tenantId: string): Promise<GoalProfile
 }
 
 /**
+ * The earliest tenant data created since the goal was chosen that counts as each goal's first
+ * action, or NULL. Binds: ?1 tenant, ?2 goal_selected_at, ?3 opening balance category key (log_transaction only). Its
+ * timestamp becomes the event time, so reading the profile late never stretches the 24 hour
+ * activation window.
+ */
+const FIRST_ACTION_ACTIVITY: Record<GoalFirstAction, string> = {
+  log_transaction: `SELECT MIN(t.created_at) FROM transactions t
+    JOIN categories c ON c.id = t.category_id
+    WHERE t.tenant_id = ?1 AND t.deleted_at IS NULL AND t.created_at >= ?2
+      AND c.system_key IS NOT ?3`,
+  set_budget: `SELECT MIN(created_at) FROM budgets WHERE tenant_id = ?1 AND created_at >= ?2`,
+  create_savings_goal: `SELECT MIN(created_at) FROM financial_goals WHERE tenant_id = ?1 AND created_at >= ?2`,
+  add_debt: `SELECT MIN(created_at) FROM debts WHERE tenant_id = ?1 AND created_at >= ?2`,
+  ask_assistant: `SELECT MIN(created_at) FROM assistant_messages
+    WHERE tenant_id = ?1 AND role = 'user' AND created_at >= ?2`,
+  import_data: `SELECT MIN(created_at) FROM imports WHERE tenant_id = ?1 AND created_at >= ?2`,
+};
+
+/**
+ * Records first_action_completed once per workspace, derived from data that already exists so no
+ * feature route has to report it. Only a workspace with a chosen goal can complete one.
+ */
+async function recordFirstAction(env: Bindings, tenantId: string, profile: GoalProfile) {
+  if (profile.goal === null || profile.selectedAt === null) return;
+  const action = firstActionByGoal[profile.goal];
+  await env.DB.prepare(
+    `INSERT INTO goal_events (id, tenant_id, name, goal, action, created_at)
+       SELECT ?4, ?1, 'first_action_completed', ?5, ?6, activity.at
+       FROM (SELECT (${FIRST_ACTION_ACTIVITY[action]}) AS at) AS activity
+       WHERE activity.at IS NOT NULL AND NOT EXISTS (
+         SELECT 1 FROM goal_events WHERE tenant_id = ?1 AND name = 'first_action_completed')`,
+  )
+    .bind(
+      tenantId,
+      profile.selectedAt,
+      OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+      crypto.randomUUID(),
+      profile.goal,
+      action,
+    )
+    .run();
+}
+
+/**
  * Every statement is scoped by the tenant from the auth context. Each event row is inserted before
  * the update and guarded by the goal it was decided against, so a concurrent change cannot record
  * an event for a transition that did not happen.
  */
 export const goalProfileRepository: GoalProfileRepository = {
-  get: loadProfile,
+  async get(env, tenantId) {
+    const profile = await loadProfile(env, tenantId);
+    await recordFirstAction(env, tenantId, profile);
+    return profile;
+  },
 
   async markShown(env, tenantId) {
     await env.DB.prepare(

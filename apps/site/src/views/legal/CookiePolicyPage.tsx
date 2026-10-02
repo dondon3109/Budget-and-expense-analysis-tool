@@ -49,6 +49,12 @@ export function CookiePolicyPage() {
           nothing to your device: they never include an email, name, amount, category, account, or
           tenant identifier, free text, page address with parameters, or a persistent identifier.
         </p>
+        <p>
+          The goal you choose during setup is not one of those steps. It is stored with your
+          workspace, not on your device, and its goal events stay in Zoption&apos;s own database,
+          carry no financial detail, and are not sent to the analytics platform. See the Privacy
+          Policy for how they are deleted and exported.
+        </p>
         <h3>Marketing — off by default</h3>
         <p>
           Marketing technology could support advertising or campaign measurement. No marketing

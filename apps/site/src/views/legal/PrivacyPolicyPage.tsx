@@ -90,6 +90,19 @@ export function PrivacyPolicyPage() {
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
           <li>
+            <strong>Your setup goal:</strong> when you set up Zoption you can say what you want to
+            use it for, or skip the question. Zoption stores your chosen goal, when you chose it,
+            and, if you pick Other, the optional text you type (up to 140 characters) with your
+            workspace. Please do not type account numbers or other sensitive details into that
+            field. Zoption also keeps a small first-party log of goal steps: the goal screen was
+            shown, a goal was chosen or skipped or changed, and the first matching action was done.
+            Each log entry holds only the step name and goal and action names, so goal events carry
+            no financial detail, and they are not sent to PostHog or any other provider. We use them
+            to see whether setup helps people get started. Your goal, its optional text, and the log
+            are deleted with your account, and your goal and optional text are included in your
+            account data export.
+          </li>
+          <li>
             <strong>Measurement and optional analytics:</strong> limited aggregate page-use and Core
             Web Vitals performance information sent to PostHog on public web pages in cookieless,
             memory-only mode, plus six anonymous conversion steps that cover the signup and app
