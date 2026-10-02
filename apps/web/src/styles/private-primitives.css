@@ -135,11 +135,17 @@
   box-shadow: 0 0 0 2px var(--paper);
 }
 
+/* The emoji sits on a soft sticker tinted with the category color, like the
+   mobile CategoryBadge. 15% keeps the tint light enough for text on every theme. */
 .category-chip-emoji {
-  width: 16px;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
   display: inline-grid;
   place-items: center;
-  font-size: 15px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--category-color, var(--subtle)) 15%, transparent);
+  font-size: 13px;
   line-height: 1;
 }
 

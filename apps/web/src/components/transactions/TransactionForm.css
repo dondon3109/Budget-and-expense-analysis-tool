@@ -467,7 +467,11 @@
 }
 
 .category-icon-preview.has-emoji {
-  font-size: 22px;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--category-color) 15%, transparent);
+  font-size: 18px;
 }
 
 .manager-category-editor {
