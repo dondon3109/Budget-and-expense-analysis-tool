@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
 - Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
 
 ## 3.1.0 — 2026-10-01

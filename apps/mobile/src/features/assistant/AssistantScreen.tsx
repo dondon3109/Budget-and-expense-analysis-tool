@@ -132,7 +132,6 @@ export function AssistantScreen() {
     coachingStyle: "gentle" | "direct";
   } | null>(null);
   const [confirmClearChats, setConfirmClearChats] = useState(false);
-  const [pendingDeleteThread, setPendingDeleteThread] = useState<string | null>(null);
   const [pendingDeleteMemory, setPendingDeleteMemory] = useState<AssistantMemory | null>(null);
   const [confirmClearMemoryOpen, setConfirmClearMemoryOpen] = useState(false);
   const [managingThreads, setManagingThreads] = useState(false);
@@ -579,6 +578,11 @@ export function AssistantScreen() {
     }
   }, [pendingDeleteMemory, withToken]);
 
+  const startSelectingThreads = useCallback((threadId: string) => {
+    setManagingThreads(true);
+    setSelectedThreadIds([threadId]);
+  }, []);
+
   const toggleThreadSelection = useCallback((threadId: string) => {
     setSelectedThreadIds((current) =>
       current.includes(threadId) ? current.filter((id) => id !== threadId) : [...current, threadId],
@@ -644,43 +648,6 @@ export function AssistantScreen() {
       setView("threads");
     }
   }, [activeThreadId, selectedThreadIds, threads, withToken]);
-
-  const confirmDeleteThread = useCallback(async () => {
-    if (!pendingDeleteThread) return;
-    const threadId = pendingDeleteThread;
-    setPendingDeleteThread(null);
-    setBusyAction("threads");
-    let succeeded = true;
-    try {
-      await withToken((token) => deleteAssistantThread({ accessToken: token }, threadId));
-    } catch (error) {
-      // A 404 for an already-absent conversation means the desired end state is
-      // already reached, so we treat it as a successful delete instead of a
-      // misleading "not found" error. Genuine network / server failures still
-      // surface as errors below.
-      const alreadyAbsent =
-        error instanceof ApiTransportError && error.code === "not_found" && error.status === 404;
-      if (!alreadyAbsent) {
-        succeeded = false;
-        setInlineError(
-          error instanceof ApiTransportError
-            ? error.message
-            : "The conversation could not be deleted.",
-        );
-      }
-    } finally {
-      if (mounted.current) setBusyAction(null);
-    }
-    if (!succeeded) return;
-    if (!mounted.current) return;
-    setThreads((previous) => previous.filter((item) => item.id !== threadId));
-    if (activeThreadId === threadId) {
-      setActiveThreadId(null);
-      setVoiceThreadId((current) => (current === threadId ? null : current));
-      setMessages([]);
-      setView("threads");
-    }
-  }, [activeThreadId, pendingDeleteThread, withToken]);
 
   const confirmClearAllChats = useCallback(async () => {
     setConfirmClearChats(false);
@@ -752,10 +719,16 @@ export function AssistantScreen() {
             : undefined
         }
         onOpen={() => void openHistoryThread(item)}
-        onDelete={() => setPendingDeleteThread(item.id)}
+        onSelect={() => startSelectingThreads(item.id)}
       />
     ),
-    [managingThreads, openHistoryThread, selectedThreadIds, toggleThreadSelection],
+    [
+      managingThreads,
+      openHistoryThread,
+      selectedThreadIds,
+      startSelectingThreads,
+      toggleThreadSelection,
+    ],
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
@@ -1003,7 +976,7 @@ export function AssistantScreen() {
                   <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                     {managingThreads
                       ? "Tap conversations to select them, then delete the selection."
-                      : "Press and hold a conversation to delete it."}
+                      : "Open a conversation, or press and hold one to select conversations to delete."}
                   </Text>
                 ) : null}
               </View>
@@ -1300,15 +1273,6 @@ export function AssistantScreen() {
         destructive
         onCancel={() => setPendingDeleteMemory(null)}
         onConfirm={() => void confirmDeleteMemory()}
-      />
-      <ConfirmationDialog
-        visible={pendingDeleteThread !== null}
-        title="Delete conversation?"
-        message="This conversation is removed for good. Your financial records are never touched."
-        confirmLabel="Delete"
-        destructive
-        onCancel={() => setPendingDeleteThread(null)}
-        onConfirm={() => void confirmDeleteThread()}
       />
       <ConfirmationDialog
         visible={confirmDeleteSelected}

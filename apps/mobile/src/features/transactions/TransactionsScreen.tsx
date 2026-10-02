@@ -13,13 +13,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useLocalTransactions } from "@/db/local-workspace-state";
+import { useLocalTransactions, useLocalWorkspace } from "@/db/local-workspace-state";
 import { transactionKindFilters, type TransactionKindFilter } from "@/db/view-models";
 import { monthLabel } from "@/features/calendar/event-form";
 import { useSyncState } from "@/sync/sync-state";
+import { telemetry } from "@/telemetry/telemetry";
 import {
   BottomSheet,
   Button,
+  ConfirmationDialog,
   ErrorState,
   OfflineBanner,
   Skeleton,
@@ -88,8 +90,13 @@ export function TransactionsScreen() {
   const [view, setView] = useState<ViewMode>("daily");
   const [smsQuickPasteVisible, setSmsQuickPasteVisible] = useState(false);
   const [netInfoVisible, setNetInfoVisible] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const deferredSearch = useDeferredValue(search);
   const local = useLocalTransactions(deferredSearch, kind, month);
+  const workspace = useLocalWorkspace().workspace;
   const sync = useSyncState();
   const theme = useZoptionTheme();
   const filtering = search.trim().length > 0 || kind !== "all";
@@ -132,6 +139,48 @@ export function TransactionsScreen() {
       })),
     [items],
   );
+
+  // Derived from the live list, so a row that left the month or filter never
+  // inflates the count, and select mode ends when nothing selected is visible.
+  const selectedItems = useMemo(
+    () => items.filter((i) => selectedIds.includes(i.transaction.id)),
+    [items, selectedIds],
+  );
+  const selecting = selectedItems.length > 0;
+  const toggleSelected = useCallback((id: string) => {
+    setDeleteError(null);
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
+    );
+  }, []);
+
+  const deleteSelected = async () => {
+    setConfirmDelete(false);
+    if (!workspace || deleting) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const deleted = new Set<string>();
+    try {
+      for (const { transaction } of selectedItems) {
+        await workspace.transactionMutations.deleteTransaction(transaction.id);
+        deleted.add(transaction.id);
+        void telemetry.capture("transaction_deleted", {
+          transaction_kind: transaction.kind === "transfer" ? "transfer" : "transaction",
+        });
+      }
+    } catch (error) {
+      // Rows after the failure stay selected so the user can retry.
+      setDeleteError(
+        error instanceof Error
+          ? error.message
+          : "The selected transactions could not be deleted from encrypted local storage.",
+      );
+    } finally {
+      setSelectedIds((current) => current.filter((id) => !deleted.has(id)));
+      setDeleting(false);
+      if (deleted.size > 0) sync.retry();
+    }
+  };
 
   const emptyState = (
     <TransactionsEmptyView
@@ -194,31 +243,69 @@ export function TransactionsScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      <View style={styles.toolbar}>
-        <View style={styles.toolbarSide}>
-          <HeaderIcon
-            icon="magnify"
-            label={searchVisible ? "Hide transaction search" : "Search transactions"}
-            selected={searchVisible}
-            onPress={() => setSearchVisible((visible) => !visible)}
-          />
+      {selecting ? (
+        <View style={styles.toolbar}>
+          <View style={styles.toolbarSide}>
+            <HeaderIcon
+              icon="close"
+              label="Cancel selection"
+              onPress={() => {
+                setSelectedIds([]);
+                setDeleteError(null);
+              }}
+            />
+          </View>
+          <Text
+            accessibilityLiveRegion="polite"
+            numberOfLines={1}
+            style={[styles.toolbarTitle, { color: theme.colors.text }]}
+          >
+            {selectedItems.length} selected
+          </Text>
+          <View style={[styles.toolbarSide, styles.toolbarRight]}>
+            <HeaderIcon
+              icon="trash-can-outline"
+              label={`Delete ${selectedItems.length} selected`}
+              onPress={() => setConfirmDelete(true)}
+            />
+          </View>
         </View>
-        <Text numberOfLines={1} style={[styles.toolbarTitle, { color: theme.colors.text }]}>
-          Transactions
+      ) : (
+        <View style={styles.toolbar}>
+          <View style={styles.toolbarSide}>
+            <HeaderIcon
+              icon="magnify"
+              label={searchVisible ? "Hide transaction search" : "Search transactions"}
+              selected={searchVisible}
+              onPress={() => setSearchVisible((visible) => !visible)}
+            />
+          </View>
+          <Text numberOfLines={1} style={[styles.toolbarTitle, { color: theme.colors.text }]}>
+            Transactions
+          </Text>
+          <View style={[styles.toolbarSide, styles.toolbarRight]}>
+            <HeaderIcon
+              icon="line-scan"
+              label="Scan receipt"
+              onPress={() => router.push("/(app)/receipt-scan")}
+            />
+            <HeaderIcon
+              icon="tag-outline"
+              label="Manage categories"
+              onPress={() => router.push("/(app)/categories")}
+            />
+          </View>
+        </View>
+      )}
+
+      {deleteError ? (
+        <Text
+          accessibilityRole="alert"
+          style={[styles.deleteError, { color: theme.colors.danger }]}
+        >
+          {deleteError}
         </Text>
-        <View style={[styles.toolbarSide, styles.toolbarRight]}>
-          <HeaderIcon
-            icon="line-scan"
-            label="Scan receipt"
-            onPress={() => router.push("/(app)/receipt-scan")}
-          />
-          <HeaderIcon
-            icon="tag-outline"
-            label="Manage categories"
-            onPress={() => router.push("/(app)/categories")}
-          />
-        </View>
-      </View>
+      ) : null}
 
       {searchVisible ? (
         <View style={styles.controlInset}>
@@ -375,7 +462,15 @@ export function TransactionsScreen() {
           ListEmptyComponent={emptyState}
           ListHeaderComponent={filterPanel}
           refreshControl={refreshControl}
-          renderItem={({ item }) => <TransactionItemRow item={item} />}
+          renderItem={({ item }) => (
+            <TransactionItemRow
+              item={item}
+              onToggleSelect={toggleSelected}
+              selected={selectedIds.includes(item.transaction.id)}
+              selecting={selecting}
+            />
+          )}
+          extraData={selectedIds}
           renderSectionHeader={({ section }) => <DateHeader section={section} />}
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled
@@ -404,28 +499,53 @@ export function TransactionsScreen() {
           ListEmptyComponent={emptyState}
           ListHeaderComponent={filterPanel}
           refreshControl={refreshControl}
-          renderItem={({ item }) => <TransactionItemRow item={item} showDate />}
+          extraData={selectedIds}
+          renderItem={({ item }) => (
+            <TransactionItemRow
+              item={item}
+              onToggleSelect={toggleSelected}
+              selected={selectedIds.includes(item.transaction.id)}
+              selecting={selecting}
+              showDate
+            />
+          )}
           showsVerticalScrollIndicator={false}
         />
       )}
 
-      <View pointerEvents="box-none" style={styles.fabPosition}>
-        <Pressable
-          accessibilityLabel="Add transaction"
-          accessibilityHint="Opens the new transaction form"
-          accessibilityRole="button"
-          android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
-          onPress={() => router.push("/(app)/transaction")}
-          style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
-        >
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={theme.colors.onBrand}
-            name="plus"
-            size={32}
-          />
-        </Pressable>
-      </View>
+      {selecting ? null : (
+        <View pointerEvents="box-none" style={styles.fabPosition}>
+          <Pressable
+            accessibilityLabel="Add transaction"
+            accessibilityHint="Opens the new transaction form"
+            accessibilityRole="button"
+            android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
+            onPress={() => router.push("/(app)/transaction")}
+            style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
+          >
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={theme.colors.onBrand}
+              name="plus"
+              size={32}
+            />
+          </Pressable>
+        </View>
+      )}
+
+      <ConfirmationDialog
+        confirmLabel="Delete"
+        destructive
+        message="These are removed from this device. Anything already synchronized is queued for deletion on the server. A transfer is deleted with both of its ledger entries."
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => void deleteSelected()}
+        title={
+          selectedItems.length === 1
+            ? "Delete transaction?"
+            : `Delete ${selectedItems.length} transactions?`
+        }
+        visible={confirmDelete}
+      />
 
       <BottomSheet
         visible={netInfoVisible}
@@ -548,6 +668,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.round,
   },
   netInfoBody: { gap: spacing.sm },
+  deleteError: { ...typography.caption, paddingHorizontal: spacing.md, paddingBottom: spacing.xs },
   filterPanel: {
     gap: spacing.xs,
     paddingHorizontal: spacing.md,
