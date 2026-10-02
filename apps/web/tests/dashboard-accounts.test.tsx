@@ -20,6 +20,8 @@ const apiMocks = vi.hoisted(() => ({
   updateAccountInterest: vi.fn(),
   deleteAccount: vi.fn(),
   getCategories: vi.fn(),
+  getAccounts: vi.fn(),
+  getDebts: vi.fn(),
   getSubscriptions: vi.fn(),
 }));
 const dashboardExperienceState = vi.hoisted(() => ({
@@ -320,6 +322,8 @@ describe("Profile dashboard account management", () => {
     apiMocks.updateAccountInterest.mockReset().mockResolvedValue({});
     apiMocks.deleteAccount.mockReset().mockResolvedValue(undefined);
     apiMocks.getCategories.mockReset().mockResolvedValue([]);
+    apiMocks.getAccounts.mockReset().mockResolvedValue([]);
+    apiMocks.getDebts.mockReset().mockResolvedValue({ items: [] });
   });
 
   afterEach(() => {
@@ -359,13 +363,13 @@ describe("Profile dashboard account management", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("offers a header action that opens the transaction form", async () => {
+  it("opens the transaction form over the dashboard without leaving the page", async () => {
     renderPage();
 
-    expect(await screen.findByRole("link", { name: "Add transaction" })).toHaveAttribute(
-      "href",
-      "/app/transactions?add=1",
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Add transaction" }));
+
+    expect(await screen.findByRole("dialog", { name: "Add transaction" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Account management" })).toBeInTheDocument();
   });
 
   it("shows overall transfer fees on the Profile dashboard", async () => {
