@@ -42,7 +42,7 @@ export const Demo3 = ({ rel }: { rel: number }) => {
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
-      <Kicker style={{ position: "absolute", top: 140, left: 0, right: 0, opacity: prog(rel, 4, 10) }}>This month</Kicker>
+      <Kicker style={{ position: "absolute", top: 140, left: 0, right: 0, opacity: prog(rel, 4, 10) }}>This week</Kicker>
 
       {/* legend under the big donut, gone once the number arrives */}
       <div
@@ -103,7 +103,7 @@ export const Demo3 = ({ rel }: { rel: number }) => {
           }}
         >
           <div style={{ display: "inline-flex", alignItems: "center", gap: 14, fontSize: 40, fontWeight: 600, color: C.inkSoft }}>
-            <SparkleIcon size={34} color={C.brand} /> Safe to spend today
+            <SparkleIcon size={34} color={C.brand} /> Safe to spend this week
           </div>
           <div style={{ fontFamily: FONT.display, fontWeight: 800, letterSpacing: -6, lineHeight: 1.02, marginTop: 10, color: C.brand }}>
             <span style={{ fontSize: 110, verticalAlign: "top", position: "relative", top: 20, marginRight: 6 }}>₱</span>
@@ -111,15 +111,15 @@ export const Demo3 = ({ rel }: { rel: number }) => {
             <span style={{ fontSize: 100, letterSpacing: -2, color: C.brandStrong }}>.{cents}</span>
           </div>
           <div style={{ display: "inline-block", marginTop: 18, padding: "12px 28px", borderRadius: 999, background: C.brandSoft, color: C.brandStrong, fontSize: 32, fontWeight: 600 }}>
-            On track this week
+            4 days left
           </div>
         </div>
       )}
 
       {/* where it comes from */}
       <div style={{ position: "absolute", top: 1180, left: 40, right: 40, display: "flex", gap: 18, justifyContent: "center", alignItems: "center", fontFamily: FONT.display }}>
-        <Pill rel={rel} at={vf(2.75)}>₱5,768 left</Pill>
-        <Pill rel={rel} at={vf(3.25)}>÷ 14 days</Pill>
+        <Pill rel={rel} at={vf(2.75)}>₱1,648 left</Pill>
+        <Pill rel={rel} at={vf(3.25)}>÷ 4 days</Pill>
         <Pill rel={rel} at={vf(3.85)} strong>= ₱412</Pill>
       </div>
 

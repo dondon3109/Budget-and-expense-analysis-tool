@@ -61,7 +61,7 @@ export const Demo2 = ({ rel }: { rel: number }) => {
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
-      <div style={{ position: "absolute", left: (1080 - PHONE_W) / 2, top: 96, perspective: 2400, transform: "scale(1.1)", transformOrigin: "top center" }}>
+      <div style={{ position: "absolute", left: (1080 - PHONE_W) / 2, top: 90, perspective: 2400, transform: "scale(1.04)", transformOrigin: "top center" }}>
         <div
           style={{
             width: PHONE_W,
@@ -109,7 +109,7 @@ export const Demo2 = ({ rel }: { rel: number }) => {
                   <div style={{ display: "inline-block", padding: "8px 18px", borderRadius: 999, background: C.brandSoft, color: C.brandStrong, fontSize: 23, fontWeight: 600, marginBottom: 14 }}>
                     Worked out: GCash ₱1,000 → ₱300
                   </div>
-                  <Row label="Category">Food &amp; Drinks</Row>
+                  <Row label="Category">Food &amp; dining</Row>
                   <Row label="Account">
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
                       <WalletIcon size={26} /> GCash

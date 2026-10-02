@@ -59,7 +59,7 @@ export const World = () => {
   const donutOn = abs >= demo3.from - 2 && abs < offer.from;
   const moveUp = prog(d, VOICE_OFFSET + f(1.5), 20, easeInOut);
   const donutScale = (1 - moveUp * 0.4) * Math.min(1, prog(d, 0, 6));
-  const donutY = 0.5 + moveUp * 1.08;
+  const donutY = 0.5 + moveUp * 0.98;
   const donutSpin = d * 0.035 - 0.4;
 
   return (
@@ -84,7 +84,7 @@ export const World = () => {
           />
           <Shockwave abs={abs} start={reveal.from} position={[0, 0.78, -0.2]} size={6} dur={28} />
           <Shockwave abs={abs} start={reveal.from + 6} position={[0, 0.78, -0.3]} size={9} dur={34} />
-          <Particles abs={abs} start={reveal.from} origin={[0, 0.78, 0.2]} kind="sparks" count={120} seed={2} />
+          <Particles abs={abs} start={reveal.from} origin={[0, 0.78, -0.25]} kind="sparks" count={70} seed={2} />
           <Particles abs={abs} start={reveal.from + 3} origin={[0, 0.78, 0.3]} kind="confetti" count={40} seed={5} />
         </>
       )}

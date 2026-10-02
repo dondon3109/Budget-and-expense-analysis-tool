@@ -105,8 +105,8 @@ export type Sfx = { at: number; file: string; volume?: number };
 /** Sound effects on the timeline, in absolute seconds. Files come from scripts/make-audio.mjs. */
 export const SFX: Sfx[] = [
   // reveal
-  { at: 17.5, file: "impact", volume: 1 },
-  { at: 17.28, file: "whoosh", volume: 0.8 },
+  { at: 17.5, file: "impact", volume: 0.8 },
+  { at: 17.28, file: "whoosh", volume: 0.6 },
   { at: 18.05, file: "sparkle", volume: 0.6 },
   { at: 19.3, file: "pop", volume: 0.5 },
   { at: 20.05, file: "pop", volume: 0.5 },
@@ -114,8 +114,8 @@ export const SFX: Sfx[] = [
   { at: 22.25, file: "whoosh", volume: 0.7 },
   { at: 31.25, file: "whoosh", volume: 0.7 },
   { at: 39.75, file: "whoosh", volume: 0.7 },
-  { at: 46.75, file: "whoosh", volume: 0.8 },
-  { at: 57.75, file: "whoosh", volume: 0.8 },
+  { at: 46.75, file: "whoosh", volume: 0.6 },
+  { at: 57.75, file: "whoosh", volume: 0.6 },
   // demo 1: tap the widget, dictation, entries logged
   { at: voiceAt("demo1", 0.55), file: "tap", volume: 0.9 },
   { at: voiceAt("demo1", 0.62), file: "mic-on", volume: 0.7 },
@@ -139,13 +139,13 @@ export const SFX: Sfx[] = [
   // offer
   { at: voiceAt("offer", 0.17), file: "pop", volume: 0.7 },
   { at: voiceAt("offer", 1.31), file: "swipe", volume: 0.6 },
-  { at: voiceAt("offer", 3.4), file: "stamp", volume: 1 },
-  { at: voiceAt("offer", 3.42), file: "confetti", volume: 0.9 },
+  { at: voiceAt("offer", 3.4), file: "stamp", volume: 0.55 },
+  { at: voiceAt("offer", 3.42), file: "confetti", volume: 0.5 },
   { at: voiceAt("offer", 5.04), file: "pop", volume: 0.7 },
   { at: voiceAt("offer", 5.55), file: "stamp", volume: 0.6 },
   { at: voiceAt("offer", 7.56), file: "swipe", volume: 0.6 },
-  { at: voiceAt("offer", 9.31), file: "stamp", volume: 1 },
-  { at: voiceAt("offer", 9.33), file: "confetti", volume: 0.9 },
+  { at: voiceAt("offer", 9.31), file: "stamp", volume: 0.55 },
+  { at: voiceAt("offer", 9.33), file: "confetti", volume: 0.5 },
   // cta
   { at: voiceAt("cta", 0.3), file: "pop", volume: 0.7 },
   { at: voiceAt("cta", 1.57), file: "sparkle", volume: 0.8 },

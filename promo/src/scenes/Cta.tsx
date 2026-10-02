@@ -26,9 +26,9 @@ export const Cta = ({ rel }: { rel: number }) => {
         </div>
       </div>
       <div style={{ position: "absolute", top: 1360, left: 0, right: 0, textAlign: "center", fontFamily: FONT.mono, fontSize: 32, letterSpacing: 6, color: C.inkSoft, opacity: prog(rel, vf(2.4), 12, ease) }}>
-        ANDROID · IOS · WEB
+        ANDROID · WEB
       </div>
-      <Caption scene="cta" rel={rel} y={1560} />
+      <Caption scene="cta" rel={rel} y={1470} />
     </div>
   );
 };

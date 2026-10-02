@@ -63,7 +63,7 @@ export const Demo1 = ({ rel }: { rel: number }) => {
   const logged = pop(rel, loggedOn, 15, 140);
   const micPulse = rel >= tap ? 1 + 0.08 * Math.sin((rel - tap) * 0.6) * Math.exp(-(rel - tap) / 40) : 1;
 
-  const wordsShown = Math.floor(prog(rel, vf(2.0), vf(4.1) - vf(2.0), (x) => x) * (TRANSCRIPT.length + 0.99));
+  const wordsShown = Math.floor(prog(rel, vf(1.7), vf(4.1) - vf(1.7), (x) => x) * (TRANSCRIPT.length + 0.99));
   const listenP = settle(rel, listenOn);
 
   const toast = settle(rel, toastOn) * (1 - prog(rel, toastOff, 10, easeInOut));
@@ -73,7 +73,7 @@ export const Demo1 = ({ rel }: { rel: number }) => {
 
   return (
     <div style={{ position: "absolute", inset: 0 }}>
-      <div style={{ position: "absolute", left: (1080 - PHONE_W) / 2, top: 96, perspective: 2400, transform: "scale(1.1)", transformOrigin: "top center" }}>
+      <div style={{ position: "absolute", left: (1080 - PHONE_W) / 2, top: 90, perspective: 2400, transform: "scale(1.04)", transformOrigin: "top center" }}>
         <div
           style={{
             width: PHONE_W,
@@ -183,9 +183,9 @@ export const Demo1 = ({ rel }: { rel: number }) => {
                   </div>
                   2 entries logged
                 </div>
-                <Entry rel={rel} at={loggedOn + 3} icon="food" title="Jollibee" sub="Lunch · Food" amount="−₱250.00" />
+                <Entry rel={rel} at={loggedOn + 3} icon="food" title="Jollibee" sub="Food & dining" amount="−₱250.00" />
                 <div style={{ height: 2, background: C.line }} />
-                <Entry rel={rel} at={loggedOn + 10} icon="cart" title="Groceries" sub="Groceries" amount="−₱2,000.00" />
+                <Entry rel={rel} at={loggedOn + 10} icon="cart" title="Groceries" sub="Food & dining" amount="−₱2,000.00" />
               </div>
             )}
 
@@ -215,8 +215,8 @@ export const Demo1 = ({ rel }: { rel: number }) => {
               >
                 <Img src={staticFile("zoption-mark-512.png")} style={{ width: 68, height: 68, borderRadius: 20 }} />
                 <div>
-                  <div style={{ fontSize: 22, color: C.inkSoft }}>Zoption AI · now</div>
-                  <div style={{ fontSize: 31, fontWeight: 700 }}>2 entries logged</div>
+                  <div style={{ fontSize: 22, color: C.inkSoft }}>Zoption · now</div>
+                  <div style={{ fontSize: 31, fontWeight: 700 }}>Logged 2 transactions</div>
                 </div>
               </div>
             )}
@@ -227,11 +227,11 @@ export const Demo1 = ({ rel }: { rel: number }) => {
       <Chip rel={rel} at={vf(6.28)} tilt={-5} style={{ left: 40, top: 1120 }}>
         <KeyboardIcon size={54} stroke={2.4} />
         <span style={{ position: "relative" }}>
-          No typing
+          Typing
           <span style={{ position: "absolute", left: -6, right: -6, top: "54%", height: 7, borderRadius: 4, background: C.danger, transform: `scaleX(${prog(rel, vf(6.45), 8)})`, transformOrigin: "left" }} />
         </span>
       </Chip>
-      <Chip rel={rel} at={vf(7.23)} tilt={4} style={{ right: 36, top: 1010, fontSize: 42 }}>
+      <Chip rel={rel} at={vf(7.23)} tilt={4} style={{ right: 150, top: 1000, fontSize: 42 }}>
         <AppIcon size={50} stroke={2.4} />
         <span style={{ position: "relative" }}>
           Opening the app

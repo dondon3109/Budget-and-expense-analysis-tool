@@ -26,14 +26,14 @@ export const ProBadge = ({
     ctx.stroke();
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(78, 80, 120, 120, 28);
+    ctx.roundRect(78, 70, 150, 150, 34);
     ctx.clip();
-    drawLogoMark(ctx, 78, 80, 120);
+    drawLogoMark(ctx, 78, 70, 150);
     ctx.restore();
     ctx.fillStyle = C.cream;
     ctx.font = `700 64px ${FONT.display}`;
     ctx.textBaseline = "middle";
-    ctx.fillText("zoption", 228, 142);
+    ctx.fillText("zoption", 252, 145);
     ctx.fillStyle = C.brand;
     ctx.font = `800 330px ${FONT.display}`;
     ctx.textBaseline = "alphabetic";

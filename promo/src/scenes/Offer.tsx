@@ -101,7 +101,7 @@ export const Offer = ({ rel }: { rel: number }) => {
           <br />
           of Pro is <span style={{ color: C.brand }}>on us</span>
         </div>
-        <Stamp rel={rel} at={vf(3.4)} style={{ left: 330, top: 800, fontSize: 210 }}>
+        <Stamp rel={rel} at={vf(3.4)} rotate={8} style={{ left: 640, top: 520, fontSize: 150 }}>
           FREE
         </Stamp>
         <div style={{ position: "absolute", top: 1085, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 12 }}>
@@ -148,8 +148,8 @@ export const Offer = ({ rel }: { rel: number }) => {
             Sign up free
           </div>
         </div>
-        <Cursor x={640} y={1312} rel={rel} at={signAt} />
-        <Ripple rel={rel} at={signAt} x={656} y={1321} size={140} />
+        <Cursor x={700} y={1330} rel={rel} at={signAt} />
+        <Ripple rel={rel} at={signAt} x={716} y={1339} size={140} />
       </Panel>
 
       {/* B: no card */}

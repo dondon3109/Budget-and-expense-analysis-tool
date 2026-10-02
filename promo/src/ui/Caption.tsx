@@ -5,7 +5,7 @@ import { FPS, VOICE, VOICE_OFFSET, type SceneKey } from "../timing";
 type Word = { text: string; start: number };
 type Group = { words: Word[]; start: number; end: number };
 
-const MAX_WORDS = 4;
+const MAX_WORDS = 3;
 
 /** Splits each spoken phrase into short on-screen groups and times every word across the phrase. */
 const buildGroups = (scene: SceneKey): Group[] => {
@@ -34,7 +34,7 @@ const buildGroups = (scene: SceneKey): Group[] => {
 const isHot = (w: string) => /[₱\d]|zoption|free|pro|ai|gcash|safe|no$|card|charge/i.test(w.replace(/[^\w₱]/g, ""));
 
 /** Word-by-word captions locked to the voiceover; the newest word is highlighted. */
-export const Caption = ({ scene, rel, y = 1490 }: { scene: SceneKey; rel: number; y?: number }) => {
+export const Caption = ({ scene, rel, y = 1400 }: { scene: SceneKey; rel: number; y?: number }) => {
   const groups = useMemo(() => buildGroups(scene), [scene]);
   const t = (rel - VOICE_OFFSET) / FPS;
   const group = [...groups].reverse().find((g) => t >= g.start - 0.08);

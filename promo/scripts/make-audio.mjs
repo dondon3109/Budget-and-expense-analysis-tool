@@ -263,7 +263,7 @@ function writeMp3(name, bus, kbps = 192) {
   if (bad > 0) throw new Error(`${name}: ${bad} non-finite samples, a filter is unstable`);
   let peak = 0;
   for (let i = 0; i < bus.l.length; i++) peak = Math.max(peak, Math.abs(bus.l[i]), Math.abs(bus.r[i]));
-  const norm = peak > 0.001 ? 0.72 / peak : 1;
+  const norm = peak > 0.001 ? 0.6 / peak : 1;
   const pcm = Buffer.alloc(bus.l.length * 4);
   for (let i = 0; i < bus.l.length; i++) {
     pcm.writeInt16LE(Math.max(-32767, Math.min(32767, Math.round(bus.l[i] * norm * 32767))), i * 4);
