@@ -11,7 +11,7 @@ import { MoneyValue } from "@/ui/components/MoneyValue";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-import { AssistantMessageBubble } from "./assistant-ui";
+import { ASSISTANT_AVATAR_SIZE, AssistantMessageBubble } from "./assistant-ui";
 
 function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
   const metadata = message.metadata as
@@ -169,6 +169,7 @@ function AssistantDraftCard({
 const styles = StyleSheet.create({
   card: {
     marginTop: spacing.sm,
+    marginLeft: ASSISTANT_AVATAR_SIZE + spacing.xs,
     maxWidth: "86%",
     padding: spacing.md,
     gap: spacing.sm,
