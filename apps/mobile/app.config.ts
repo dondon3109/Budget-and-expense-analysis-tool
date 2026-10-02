@@ -156,7 +156,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-image-picker",
         {
-          cameraPermission: "Zoption uses the camera to scan receipts into expense transactions.",
+          cameraPermission:
+            "Zoption uses the camera to scan receipts and to attach pictures to transactions.",
         },
       ],
       ["expo-secure-store", { configureAndroidBackup: true }],

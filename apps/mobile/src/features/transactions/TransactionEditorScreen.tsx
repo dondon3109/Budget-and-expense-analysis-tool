@@ -1,6 +1,15 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import {
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   defaultTransactionCategory,
@@ -11,7 +20,11 @@ import {
   sortCategoriesForPicker,
 } from "@zoption/shared";
 
-import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
+import {
+  useLocalWorkspace,
+  useTransactionFormData,
+  useTransactionPhoto,
+} from "@/db/local-workspace-state";
 import { playSound } from "@/features/sounds/sound-effects";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
@@ -31,6 +44,7 @@ import { spacing, typography } from "@/ui/tokens";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import {
+  fallbackDescription,
   formatMinorForInput,
   localCalendarDate,
   parseTransactionForm,
@@ -66,6 +80,9 @@ function singleParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
 
+/** A picture chosen on this screen; null removes the stored one, undefined leaves it alone. */
+type PhotoDraft = { mimeType: string; base64: string } | null | undefined;
+
 /** Selection id for the "New category" row; never a real category id. */
 const NEW_CATEGORY_OPTION = "__new_category__";
 
@@ -100,6 +117,8 @@ export function TransactionEditorScreen() {
   const valuesRef = useRef(values);
   valuesRef.current = values;
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const storedPhoto = useTransactionPhoto(id);
+  const [photoDraft, setPhotoDraft] = useState<PhotoDraft>(undefined);
   const saveRef = useRef<
     ((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined
   >(undefined);
@@ -249,7 +268,18 @@ export function TransactionEditorScreen() {
 
   const save = async (formValuesToSave?: TransactionFormValues): Promise<boolean> => {
     if (!local.workspace || saving || mutationBlocked) return false;
-    const targetValues = formValuesToSave ?? valuesRef.current;
+    const baseValues = formValuesToSave ?? valuesRef.current;
+    // The form has no description field; lists still need one, so an entry without one
+    // (new, or a voice/receipt draft that left it empty) falls back to its notes or category.
+    const targetValues: TransactionFormValues = {
+      ...baseValues,
+      description:
+        baseValues.description.trim() ||
+        fallbackDescription(
+          baseValues,
+          formData.data?.categories.find((item) => item.id === baseValues.categoryId)?.name,
+        ),
+    };
     const parsed = parseTransactionForm(targetValues);
     if (!parsed.success) {
       setErrors(parsed.errors);
@@ -260,6 +290,7 @@ export function TransactionEditorScreen() {
     setSaving(true);
     setMessage(null);
     try {
+      let savedId = id;
       if (id && parsed.input.kind === "transfer") {
         await local.workspace.transactionMutations.updateTransfer(id, parsed.input);
       } else if (id) {
@@ -268,7 +299,10 @@ export function TransactionEditorScreen() {
           notes: parsed.input.notes ?? "",
         });
       } else {
-        await local.workspace.transactionMutations.createTransaction(parsed.input);
+        savedId = await local.workspace.transactionMutations.createTransaction(parsed.input);
+      }
+      if (savedId && photoDraft !== undefined && parsed.input.kind !== "transfer") {
+        await local.workspace.transactionMutations.setTransactionPhoto(savedId, photoDraft);
       }
       void telemetry.capture(id ? "transaction_updated" : "transaction_created", {
         transaction_kind: parsed.input.kind,
@@ -380,6 +414,33 @@ export function TransactionEditorScreen() {
       setSaving(false);
     }
   };
+
+  const addPhoto = async (source: "camera" | "library"): Promise<void> => {
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ["images"],
+      quality: 0.4,
+      base64: true,
+    };
+    if (source === "camera") {
+      const permission = await ImagePicker.requestCameraPermissionsAsync();
+      if (!permission.granted) {
+        setMessage("Allow camera access in Settings to take a picture.");
+        return;
+      }
+    }
+    const result =
+      source === "camera"
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+    const asset = result.canceled ? undefined : result.assets[0];
+    if (!asset?.base64) return;
+    setPhotoDraft({ mimeType: asset.mimeType ?? "image/jpeg", base64: asset.base64 });
+    setMessage(null);
+  };
+  const photoUri =
+    photoDraft === undefined
+      ? storedPhoto.photo
+      : photoDraft && `data:${photoDraft.mimeType};base64,${photoDraft.base64}`;
 
   const transfer = values.kind === "transfer";
   const netReceived = useMemo(() => {
@@ -619,19 +680,8 @@ export function TransactionEditorScreen() {
             }}
           />
           <FormField
-            autoCapitalize="sentences"
-            autoCorrect
             editable={!saving && !mutationBlocked}
-            error={errors.description}
-            label={transfer ? "Description (optional)" : "Description"}
-            maxLength={240}
-            onChangeText={(value) => updateValue("description", value)}
-            placeholder="What was this for?"
-            returnKeyType="next"
-            value={values.description}
-          />
-          <FormField
-            editable={!saving && !mutationBlocked}
+            autoFocus={!editing}
             error={errors.amount}
             keyboardType="decimal-pad"
             label="Amount"
@@ -770,7 +820,7 @@ export function TransactionEditorScreen() {
             autoCapitalize="sentences"
             editable={!saving && !mutationBlocked}
             error={errors.notes}
-            label="Notes (optional)"
+            label="Notes"
             maxLength={500}
             multiline
             onChangeText={(value) => updateValue("notes", value)}
@@ -779,6 +829,46 @@ export function TransactionEditorScreen() {
             textAlignVertical="top"
             value={values.notes}
           />
+          {!transfer ? (
+            <View className="w-full gap-2">
+              <Text style={[typography.label, { color: theme.colors.text }]}>
+                Photo (stays on this device)
+              </Text>
+              {photoUri ? (
+                <Image
+                  accessibilityLabel="Transaction photo"
+                  resizeMode="contain"
+                  source={{ uri: photoUri }}
+                  style={styles.photo}
+                />
+              ) : null}
+              <View className="flex-row gap-3">
+                <Button
+                  disabled={saving || mutationBlocked}
+                  onPress={() => void addPhoto("camera")}
+                  variant="secondary"
+                >
+                  Take photo
+                </Button>
+                <Button
+                  disabled={saving || mutationBlocked}
+                  onPress={() => void addPhoto("library")}
+                  variant="secondary"
+                >
+                  Choose photo
+                </Button>
+                {photoUri ? (
+                  <Button
+                    disabled={saving || mutationBlocked}
+                    onPress={() => setPhotoDraft(null)}
+                    variant="quiet"
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
 
           {message ? (
             <Text
@@ -846,4 +936,5 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   notes: { minHeight: 104 },
+  photo: { width: "100%", height: 220, borderRadius: 12 },
 });
