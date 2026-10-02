@@ -81,15 +81,15 @@ describe("assistant accessibility-critical interactions", () => {
     expect(save).toBeDisabled();
   });
 
-  it("opens a conversation on tap and keeps delete off the default row", async () => {
+  it("opens a conversation on tap and keeps selection off the default row", async () => {
     const onOpen = jest.fn();
-    const onDelete = jest.fn();
+    const onSelect = jest.fn();
     await render(
       <AssistantThreadRow
         title="Where does my money go?"
         lastMessageAt="2026-05-01T08:00:00.000Z"
         onOpen={onOpen}
-        onDelete={onDelete}
+        onSelect={onSelect}
       />,
     );
     const row = screen.getByRole("button", { name: /Conversation Where does my money go/ });
@@ -100,21 +100,21 @@ describe("assistant accessibility-critical interactions", () => {
     ).toBeNull();
   });
 
-  it("deletes on long press, and toggles selection instead in select mode", async () => {
+  it("starts selecting on long press, and toggles selection instead in select mode", async () => {
     const onOpen = jest.fn();
-    const onDelete = jest.fn();
+    const onSelect = jest.fn();
     const onToggle = jest.fn();
     const { rerender } = await render(
       <AssistantThreadRow
         title="Where does my money go?"
         lastMessageAt="2026-05-01T08:00:00.000Z"
         onOpen={onOpen}
-        onDelete={onDelete}
+        onSelect={onSelect}
       />,
     );
     const row = screen.getByRole("button", { name: /Conversation Where does my money go/ });
     await fireEvent(row, "longPress");
-    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledTimes(1);
     expect(onOpen).not.toHaveBeenCalled();
 
     await rerender(
@@ -123,7 +123,7 @@ describe("assistant accessibility-critical interactions", () => {
         lastMessageAt="2026-05-01T08:00:00.000Z"
         selection={{ selected: false, onToggle }}
         onOpen={onOpen}
-        onDelete={onDelete}
+        onSelect={onSelect}
       />,
     );
     const selectable = screen.getByRole("checkbox", {
@@ -134,7 +134,7 @@ describe("assistant accessibility-critical interactions", () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
     // Selecting must never open or delete the conversation.
     expect(onOpen).not.toHaveBeenCalled();
-    expect(onDelete).toHaveBeenCalledTimes(1);
+    expect(onSelect).toHaveBeenCalledTimes(1);
     expect(
       screen.queryByRole("button", { name: "Delete conversation Where does my money go?" }),
     ).toBeNull();
@@ -145,7 +145,7 @@ describe("assistant accessibility-critical interactions", () => {
         lastMessageAt="2026-05-01T08:00:00.000Z"
         selection={{ selected: true, onToggle }}
         onOpen={onOpen}
-        onDelete={onDelete}
+        onSelect={onSelect}
       />,
     );
     expect(
@@ -341,14 +341,14 @@ describe("assistant status and unavailable UI", () => {
 
   it("marks voice threads with a Voice badge and leaves text threads unmarked", async () => {
     const onOpen = jest.fn();
-    const onDelete = jest.fn();
+    const onSelect = jest.fn();
     const { rerender } = await render(
       <AssistantThreadRow
         title="Evening check-in"
         lastMessageAt="2026-05-01T08:00:00.000Z"
         kind="voice"
         onOpen={onOpen}
-        onDelete={onDelete}
+        onSelect={onSelect}
       />,
     );
     expect(screen.getByLabelText("Voice conversation")).toBeTruthy();
@@ -363,7 +363,7 @@ describe("assistant status and unavailable UI", () => {
         lastMessageAt="2026-05-01T08:00:00.000Z"
         kind="text"
         onOpen={onOpen}
-        onDelete={onDelete}
+        onSelect={onSelect}
       />,
     );
     expect(screen.queryByLabelText("Voice conversation")).toBeNull();

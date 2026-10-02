@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -53,9 +54,17 @@ export function TotalsValue({
 export function TransactionItemRow({
   item,
   showDate = false,
+  selecting = false,
+  selected = false,
+  onToggleSelect,
 }: {
   item: LocalTransactionItem;
   showDate?: boolean;
+  /** Select mode is on: a tap toggles the row instead of opening it. */
+  selecting?: boolean;
+  selected?: boolean;
+  /** Long press starts select mode; while selecting, a tap toggles. */
+  onToggleSelect?: (id: string) => void;
 }) {
   const theme = useZoptionTheme();
   const { transaction } = item;
@@ -76,14 +85,42 @@ export function TransactionItemRow({
   return (
     <Pressable
       accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}`}
-      accessibilityHint="Opens transaction details"
-      accessibilityRole="button"
-      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-      onPress={() =>
-        router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } })
+      accessibilityHint={
+        selecting
+          ? "Selects this transaction for deleting."
+          : "Opens transaction details. Press and hold to select transactions to delete."
       }
-      style={[styles.transactionRow, { backgroundColor: theme.colors.surface }]}
+      accessibilityRole={selecting ? "checkbox" : "button"}
+      accessibilityState={selecting ? { checked: selected } : undefined}
+      accessibilityActions={
+        selecting || !onToggleSelect
+          ? undefined
+          : [{ name: "select", label: "Select transactions" }]
+      }
+      onAccessibilityAction={(event) => {
+        if (event.nativeEvent.actionName === "select") onToggleSelect?.(transaction.id);
+      }}
+      android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
+      delayLongPress={450}
+      onLongPress={selecting ? undefined : () => onToggleSelect?.(transaction.id)}
+      onPress={() =>
+        selecting
+          ? onToggleSelect?.(transaction.id)
+          : router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } })
+      }
+      style={[
+        styles.transactionRow,
+        { backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface },
+      ]}
     >
+      {selecting ? (
+        <MaterialCommunityIcons
+          accessibilityElementsHidden
+          color={selected ? theme.colors.brand : theme.colors.textMuted}
+          name={selected ? "checkbox-marked" : "checkbox-blank-outline"}
+          size={22}
+        />
+      ) : null}
       <View style={styles.categoryColumn}>
         <View style={styles.categoryLine}>
           <CategoryBadge

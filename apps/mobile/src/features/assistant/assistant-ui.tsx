@@ -341,14 +341,15 @@ export function AssistantThreadRow({
   kind = "text",
   selection,
   onOpen,
-  onDelete,
+  onSelect,
 }: {
   title: string;
   lastMessageAt: string;
   kind?: AssistantThreadKind;
   selection?: AssistantThreadSelection;
   onOpen: () => void;
-  onDelete: () => void;
+  /** Long press outside select mode: the screen enters select mode with this row picked. */
+  onSelect: () => void;
 }) {
   const theme = useZoptionTheme();
   const isVoice = kind === "voice";
@@ -366,17 +367,17 @@ export function AssistantThreadRow({
       accessibilityHint={
         managing
           ? "Selects this conversation for deleting."
-          : "Opens the conversation. Press and hold to delete."
+          : "Opens the conversation. Press and hold to select conversations to delete."
       }
       accessibilityState={managing ? { checked: selection.selected } : undefined}
       accessibilityActions={
-        managing ? undefined : [{ name: "delete", label: "Delete conversation" }]
+        managing ? undefined : [{ name: "select", label: "Select conversations" }]
       }
       onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "delete") onDelete();
+        if (event.nativeEvent.actionName === "select") onSelect();
       }}
       onPress={managing ? selection.onToggle : onOpen}
-      onLongPress={managing ? undefined : onDelete}
+      onLongPress={managing ? undefined : onSelect}
       delayLongPress={450}
       style={({ pressed }) => [
         styles.threadRow,
