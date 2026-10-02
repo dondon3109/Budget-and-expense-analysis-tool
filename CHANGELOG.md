@@ -16,6 +16,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Web: hitting a free plan limit on custom categories, or trying a Pro-only action such as exporting transactions or managing accounts, now opens a "Plan limit reached" pop-up with a link to Plan and billing, the same as the AI and import limits.
+- Mobile: hitting a free plan limit in the assistant or an import, or when a saved custom category or account change is refused during sync, now opens a "Plan limit reached" pop-up with a link to Plan and billing.
 - On the web dashboard, "Add transaction" now opens the transaction form over the page instead of switching to Transactions, so you can add one and keep watching your balances.
 - Web: category emojis now sit on a soft tile tinted with the category colour, the same look as on mobile, in transactions, recent activity, spending by category, and the category manager.
 - The web app is easier to read and calmer to look at. No text is smaller than 11px. Cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Status colours follow the light, dark, and warm themes in the subscription calendar and import suggestions.

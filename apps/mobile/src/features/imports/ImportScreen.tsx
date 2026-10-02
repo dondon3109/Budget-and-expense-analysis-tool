@@ -27,6 +27,7 @@ import {
 import { ImportTransportError, commitImport, previewImport, previewPdfImport } from "@/api/imports";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
+import { reportPlanLimit } from "@/features/billing/PlanLimitDialog";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import { BottomSheet, Button, Card, FormField, MoneyValue, SelectionField } from "@/ui/components";
@@ -69,6 +70,12 @@ const pickerTypes = [
   "application/pdf",
   "application/octet-stream",
 ];
+
+function reportIfPlanLimit(error: unknown): void {
+  if (error instanceof ImportTransportError && error.code === "plan_limit") {
+    reportPlanLimit(error.message);
+  }
+}
 
 export function ImportScreen() {
   const theme = useZoptionTheme();
@@ -214,6 +221,7 @@ export function ImportScreen() {
       setOverrides(new Map());
       setStep("preview");
     } catch (previewError) {
+      reportIfPlanLimit(previewError);
       setNeedsAiEntryConsent(
         previewError instanceof ImportTransportError &&
           previewError.code === "entry_consent_required",
@@ -331,6 +339,7 @@ export function ImportScreen() {
       setOverrides(new Map());
       setStep("preview");
     } catch (previewError) {
+      reportIfPlanLimit(previewError);
       setError(previewError instanceof Error ? previewError.message : "The import preview failed.");
     } finally {
       setBusy(false);
@@ -364,6 +373,7 @@ export function ImportScreen() {
       setStep("done");
       sync.retry();
     } catch (commitError) {
+      reportIfPlanLimit(commitError);
       if (
         commitError instanceof ImportTransportError &&
         (commitError.code === "preview_expired" || commitError.code === "duplicate_conflict")
