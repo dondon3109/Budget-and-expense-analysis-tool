@@ -290,26 +290,30 @@ export function TransactionForm({
     setClientError(undefined);
   }
 
-  const selector = (
-    label: string,
-    value: string,
-    onChange: (value: string) => void,
-    excludeId?: string,
-  ) => (
+  const selector = (label: string, value: string, onChange: (value: string) => void) => (
     <label>
       <span>{label}</span>
       <select value={value} onChange={(event) => onChange(event.target.value)} required>
         <option value="">Choose an account</option>
-        {activeAccounts
-          .filter((account) => account.id !== excludeId)
-          .map((account) => (
-            <option key={account.id} value={account.id}>
-              {account.name}
-            </option>
-          ))}
+        {activeAccounts.map((account) => (
+          <option key={account.id} value={account.id}>
+            {account.name}
+          </option>
+        ))}
       </select>
     </label>
   );
+
+  // Picking the account already on the other side swaps the two sides.
+  function selectFromAccount(next: string) {
+    if (next === toAccountId) setToAccountId(fromAccountId);
+    setFromAccountId(next);
+  }
+
+  function selectToAccount(next: string) {
+    if (next === fromAccountId) setFromAccountId(toAccountId);
+    setToAccountId(next);
+  }
 
   // Portalled so the inert application root from useRootLock does not disable the dialog.
   return createPortal(
@@ -399,8 +403,8 @@ export function TransactionForm({
           </label>
           {kind === "transfer" ? (
             <div className="form-row split">
-              {selector("From account", fromAccountId, setFromAccountId, toAccountId)}
-              {selector("To account", toAccountId, setToAccountId, fromAccountId)}
+              {selector("From account", fromAccountId, selectFromAccount)}
+              {selector("To account", toAccountId, selectToAccount)}
             </div>
           ) : (
             selector("Account", accountId, setAccountId)
