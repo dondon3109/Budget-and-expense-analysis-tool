@@ -28,14 +28,22 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
     "getOnboardingState",
     "saveOnboardingCurrency",
     "saveOnboardingCashBalance",
+    "getGoalProfile",
+    "saveGoal",
+    "skipGoal",
+    "markGoalShown",
   ]),
 }));
 
 import {
   ApiRequestError,
+  getGoalProfile,
   getOnboardingState,
+  markGoalShown,
+  saveGoal,
   saveOnboardingCashBalance,
   saveOnboardingCurrency,
+  skipGoal,
 } from "../src/lib/api";
 import { OnboardingPage } from "../src/pages/OnboardingPage";
 import { renderWithProviders } from "./helpers/render";
@@ -51,7 +59,19 @@ function renderPage() {
 }
 
 describe("OnboardingPage", () => {
+  const unset = { goal: null, otherText: null, selectedAt: null, skipped: false };
+
   beforeEach(() => {
+    // Most cases are about the later steps, so the goal is already answered unless a case resets it.
+    vi.mocked(getGoalProfile).mockResolvedValue({ ...unset, skipped: true });
+    vi.mocked(markGoalShown).mockResolvedValue();
+    vi.mocked(saveGoal).mockImplementation(async (_workspace, input) => ({
+      goal: input.goal,
+      otherText: input.otherText ?? null,
+      selectedAt: "2026-01-01T00:00:00.000Z",
+      skipped: false,
+    }));
+    vi.mocked(skipGoal).mockResolvedValue({ ...unset, skipped: true });
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "currency", currency: "PHP" });
     vi.mocked(saveOnboardingCurrency).mockImplementation(async (_workspace, input) => ({
       step: "cash",
@@ -217,5 +237,87 @@ describe("OnboardingPage", () => {
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "complete", currency: "PHP" });
     renderPage();
     expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
+  });
+
+  describe("goal step", () => {
+    beforeEach(() => {
+      vi.mocked(getGoalProfile).mockResolvedValue(unset);
+    });
+
+    it("shows the goal first, records it once, and persists the pick before currency", async () => {
+      renderPage();
+
+      expect(await screen.findByRole("group", { name: "Your main goal" })).toBeInTheDocument();
+      expect(screen.getByText("So we can set up the right starting point for you.")).toBeVisible();
+      expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Your goal");
+      expect(markGoalShown).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole("radio", { name: "Save for something specific" }));
+      await waitFor(() =>
+        expect(saveGoal).toHaveBeenCalledWith(expect.anything(), { goal: "save_for_goal" }),
+      );
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("skips without blocking and remembers the skip", async () => {
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+      await waitFor(() => expect(skipGoal).toHaveBeenCalledTimes(1));
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("continues even when the skip request fails", async () => {
+      vi.mocked(skipGoal).mockRejectedValue(new Error("offline"));
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("continues even when saving the goal fails", async () => {
+      vi.mocked(saveGoal).mockRejectedValue(new Error("offline"));
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("radio", { name: "Just looking around" }));
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("saves the optional note with Other", async () => {
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("radio", { name: "Other" }));
+      expect(saveGoal).not.toHaveBeenCalled();
+      const note = screen.getByRole("textbox", { name: /Tell us more/ });
+      expect(note).toHaveAttribute("maxlength", "140");
+      fireEvent.change(note, { target: { value: "Plan a wedding" } });
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+      await waitFor(() =>
+        expect(saveGoal).toHaveBeenCalledWith(expect.anything(), {
+          goal: "other",
+          otherText: "Plan a wedding",
+        }),
+      );
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("never shows a finished workspace the goal", async () => {
+      vi.mocked(getOnboardingState).mockResolvedValue({ step: "complete", currency: "PHP" });
+      renderPage();
+
+      expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
+      expect(markGoalShown).not.toHaveBeenCalled();
+    });
+
+    it("does not ask again once the goal is chosen or when the profile will not load", async () => {
+      vi.mocked(getGoalProfile).mockRejectedValue(new Error("offline"));
+      renderPage();
+
+      expect(
+        await screen.findByRole("combobox", { name: "Base currency" }, { timeout: 4000 }),
+      ).toBeInTheDocument();
+      expect(markGoalShown).not.toHaveBeenCalled();
+    });
   });
 });

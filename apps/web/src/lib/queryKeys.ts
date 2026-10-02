@@ -69,6 +69,8 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "settings"] as const,
   onboarding: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "onboarding"] as const,
+  goalProfile: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "goal-profile"] as const,
   budgets: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.workspace(workspace), "budgets", month] as const,
   financialGoals: (workspace: AuthenticatedWorkspace) =>

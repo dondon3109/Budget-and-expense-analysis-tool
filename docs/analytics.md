@@ -24,6 +24,7 @@ All telemetry is strictly bounded to protect financial privacy, avoid collecting
 - **Pageviews on the public site only**: `zoption.site` (`apps/site/src/client/analytics.ts`) sends one `$pageview` per page load, only on a built manifest page (not the 404), and never when the query carries anything but campaign parameters or the fragment carries auth state (`isTrackableUrl` in `apps/site/src/lib/trackableUrl.ts`). The module itself downloads only after consent. When an AI answer engine sent the visit (ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Meta AI, You.com), the pageview carries `ai_referrer` with the engine's name and nothing else from the referrer.
 - **Same-origin ingestion on the site**: the site posts to its own `/ingest` Pages Function (`apps/site/functions/ingest/[[path]].ts`), which forwards only PostHog capture endpoints to `us.i.posthog.com` and strips cookies and client address headers, so the site CSP keeps `connect-src 'self'` for analytics and blocklists aimed at the PostHog host do not drop consented events.
 - **Six funnel events in the app**: the app at `app.zoption.site` sends no pageviews. Its signup page and signed-in app send only the closed set in `apps/web/src/analytics/funnel.ts` (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`). Their only properties are fixed enums, and the page-load events fire at most once per page load.
+- **Goal events stay first-party**: the goal chosen at setup and its events live in D1 (section 2.5), never in PostHog.
 - **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, account IDs, tenant IDs, or user IDs are ever captured or transmitted.
 
 ### 2.2 Client-Side Cookieless Web SDK Configuration
@@ -70,6 +71,32 @@ Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` transmits sanitize
 - **Allowed Fields**: Exception class (e.g., `IllegalArgumentException`), sanitized component name (e.g., `AppNavigation`), hashed stack frame fingerprint, app version, build code, OS platform.
 - **Prohibited Fields**: No raw stack traces with user values, no raw error messages, no transaction details, no user identifiers.
 - **SDK Safeguards**: `personProfiles: "never"`, `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`, and remote kill-switch support (`crash-telemetry-enabled`).
+
+### 2.5 Goal-Based Onboarding Events (D1, first-party)
+
+The goal chosen during setup is measured from the Worker's own D1 database, not PostHog. The `goal_events` table (migration `0070_primary_goal.sql`) holds one row per step: `onboarding_goal_shown`, `onboarding_goal_selected`, `onboarding_goal_skipped`, `goal_changed` (with `from_goal`), and `first_action_completed`. A row carries the tenant id, the fixed event name, and goal and action keys from the shared enums, so it holds no amount, category, account, or free text. The optional 140 character "other" text lives only on `tenants.goal_other_text`, never in an event. `goal_events` rows are deleted with the tenant, and the goal profile is part of `account-archive.json`.
+
+- **`first_action_completed {goal, action}`** is recorded at most once per workspace and only when it has a goal. `goalProfileRepository.get` (`apps/api/src/db/goal-profile.ts`) looks for tenant data created at or after `goal_selected_at` that matches `firstActionByGoal[goal]` (`packages/shared/src/goals.ts`): a transaction outside the opening balance category, a budget, a savings goal, a debt, a message from the user to the assistant, or an import. The event is stamped with the time of that first record, not the time of the read, so the 24 hour activation window stays honest. No feature route, middleware, or auth code reports it, and nothing is logged per request.
+- The first action is noticed the next time the goal profile is read (`GET /api/app/profile/goal`, which the web app calls, and an account export also reads it), so a workspace that never opens the app again is not counted until it does.
+- These events are not sent to PostHog. The anonymous PostHog funnel in section 2.1 stays at six events; adding goal events there would need a new event in `apps/web/src/analytics/funnel.ts`, a wired surface, and a policy update.
+
+### 2.6 Goal Retention Report
+
+`docs/queries/goal-retention.sql` is a read-only D1 query. Per cohort (each goal, `skipped`, and `shown_no_answer`) it returns signups, the 24 hour activation rate, and D1, D7, and D30 return rates. Its header defines the cohort anchor, what counts as activity, and eligibility. In short:
+
+- **Anchor**: `goal_selected_at` for goals (the first choice, kept if the goal later changes), the skip event time for skippers, and the shown event time for people who did not answer. Existing workspaces that never saw the goal screen are not in the report.
+- **Returned on day N**: the workspace created a transaction, user assistant message, budget, savings goal, debt, or import on the calendar day (UTC) N days after the anchor day. It measures people who add something, not people who only open the app, and uses existing `created_at` columns, so no request logging was added.
+- **Only finished windows count**: a workspace enters a rate's denominator only once the window is over, so young cohorts show `NULL` instead of a falsely low rate.
+
+Run it against production (read-only), from the repository root:
+
+```bash
+pnpm --filter @zoption/api exec wrangler d1 execute budget-expense-production \
+  --remote --config wrangler.deploy.jsonc --env production \
+  --file ../../docs/queries/goal-retention.sql
+```
+
+Use `budget-expense-preview` with `--env preview` for preview. `apps/api/tests/goal-profile.test.ts` runs the same file against seeded workspaces to pin the numbers.
 
 ---
 

@@ -1,5 +1,6 @@
-import { assistantTransactionDraftSchema } from "@zoption/shared";
+import { assistantTransactionDraftSchema, goalConfigFor } from "@zoption/shared";
 import type {
+  PrimaryGoal,
   AssistantMessage,
   AssistantSourceMetadata,
   TransferFeeInsight,
@@ -63,7 +64,24 @@ const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof
   },
 ];
 
+/** The goal's starter prompt leads; the list keeps its length. No goal returns today's list. */
+export function quickPromptsForGoal(goal: PrimaryGoal | null | undefined) {
+  const starter = goalConfigFor(goal).starterPrompt;
+  if (!starter) return QUICK_PROMPTS;
+  const lead = {
+    prompt: starter,
+    title: starter,
+    desc: "Suggested for your goal",
+    icon: Sparkles,
+  };
+  return [lead, ...QUICK_PROMPTS.filter(({ prompt }) => prompt !== starter)].slice(
+    0,
+    QUICK_PROMPTS.length,
+  );
+}
+
 interface AssistantConversationProps {
+  goal?: PrimaryGoal | null;
   assistantName: string;
   messages: AssistantMessage[];
   pendingMessage?: string;
@@ -337,6 +355,7 @@ export function AssistantConversation({
   onPrompt,
   feeInsight,
   draftSave,
+  goal,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
   // Replies whose draft a later correction replaced; saving one would record a purchase twice.
@@ -367,7 +386,7 @@ export function AssistantConversation({
           or tell me what you spent and I&apos;ll help you log it.
         </p>
         <div className="assistant-quick-prompts">
-          {QUICK_PROMPTS.map(({ prompt, title, desc, icon: Icon }) => (
+          {quickPromptsForGoal(goal).map(({ prompt, title, desc, icon: Icon }) => (
             <button type="button" key={prompt} onClick={() => onPrompt(prompt)}>
               <span className="assistant-quick-prompt-icon" aria-hidden="true">
                 <Icon size={17} />

@@ -1,4 +1,5 @@
-import { DEFAULT_ASSISTANT_MODEL } from "@zoption/shared";
+import { DEFAULT_ASSISTANT_MODEL, type PrimaryGoal } from "@zoption/shared";
+import { goalProfileRepository } from "../db/goal-profile";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import type {
@@ -147,6 +148,7 @@ function providerMessages(
   identity: AssistantIdentity,
   policy: AssistantTurnPolicy,
   memory: string,
+  goal: PrimaryGoal | null,
 ): AssistantProviderMessage[] {
   return [
     {
@@ -157,6 +159,7 @@ function providerMessages(
         identity,
         policy,
         memory,
+        goal,
       ),
     },
     ...boundedHistory(history).map((item) => ({ role: item.role, content: item.content }) as const),
@@ -274,7 +277,12 @@ export function createAssistantOrchestrator(
       // Correlates this turn's metadata-only diagnostics. The draft, the question,
       // and any transcript text stay out of the Worker logs.
       const correlationId = crypto.randomUUID();
-      const messages = providerMessages(history, message, identity, policy, memory);
+      // The goal only personalizes tone; a failed read must never block the turn.
+      const goal = await goalProfileRepository
+        .get(env, tenantId)
+        .then((profile) => profile.goal)
+        .catch(() => null);
+      const messages = providerMessages(history, message, identity, policy, memory, goal);
       // A turn can need all four provider calls (tool round, draft, corrective
       // retry) at up to the per-call provider ceiling each, plus tool time, so
       // the overall budget must comfortably exceed 4 x provider timeout.

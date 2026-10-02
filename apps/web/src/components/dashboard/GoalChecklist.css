@@ -1,0 +1,73 @@
+.goal-checklist {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.goal-checklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.goal-checklist-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 620;
+  color: var(--ink);
+}
+
+.goal-checklist ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.goal-checklist li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  color: var(--ink);
+}
+
+.goal-checklist li[data-done="true"] {
+  color: var(--muted);
+}
+
+.goal-checklist li[data-done="true"] .goal-checklist-label {
+  text-decoration: line-through;
+}
+
+.goal-checklist-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--action-strong);
+}
+
+.goal-checklist li[data-done="true"] .goal-checklist-mark {
+  background-color: var(--action-soft);
+  border-color: var(--action);
+}
+
+.goal-checklist-item-action {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: var(--action-strong);
+  text-decoration: underline;
+  cursor: pointer;
+}

@@ -1,0 +1,81 @@
+.goal-picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.goal-picker legend {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.goal-picker-options {
+  display: grid;
+  gap: 8px;
+}
+
+.goal-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 12px 14px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.goal-picker-option:has(input:checked) {
+  border-color: var(--brand-strong);
+  background: var(--surface-muted);
+}
+
+.goal-picker-option:has(input:focus-visible) {
+  outline: 2px solid var(--brand-strong);
+  outline-offset: 2px;
+}
+
+.goal-picker-option input {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--brand-strong);
+}
+
+.goal-picker-other {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.goal-picker-other label {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.goal-picker-other input {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: 11px 14px;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--paper);
+  font: inherit;
+  /* 16px keeps iOS Safari from zooming on focus. */
+  font-size: 16px;
+}
+
+.goal-picker-other .button {
+  width: 100%;
+  margin-top: 0;
+}

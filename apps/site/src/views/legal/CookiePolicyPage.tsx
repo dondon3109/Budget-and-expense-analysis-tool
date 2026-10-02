@@ -5,7 +5,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="September 24, 2026"
+      lastUpdated="October 2, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>
@@ -48,6 +48,12 @@ export function CookiePolicyPage() {
           assistant question. These steps are cookieless, carry no financial detail, and write
           nothing to your device: they never include an email, name, amount, category, account, or
           tenant identifier, free text, page address with parameters, or a persistent identifier.
+        </p>
+        <p>
+          The goal you choose during setup is not one of those steps. It is stored with your
+          workspace, not on your device, and its goal events stay in Zoption&apos;s own database,
+          carry no financial detail, and are not sent to the analytics platform. See the Privacy
+          Policy for how they are deleted and exported.
         </p>
         <h3>Marketing — off by default</h3>
         <p>

@@ -5,14 +5,16 @@ import {
   parseAmountToMinor,
   type Currency,
 } from "@zoption/shared";
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatus";
+import { GoalPicker } from "../components/onboarding/GoalPicker";
 import { isApiRequestError } from "../lib/api";
-import { userWorkspace } from "../lib/workspace";
+import { userWorkspace, type AuthenticatedWorkspace } from "../lib/workspace";
+import { useGoalProfile, useMarkGoalShown, useSaveGoal, useSkipGoal } from "../queries/goalProfile";
 import {
   useOnboarding,
   useSaveOnboardingCashBalance,
@@ -20,7 +22,7 @@ import {
 } from "../queries/onboarding";
 import "./OnboardingPage.css";
 
-const STEPS = ["Base currency", "Starting cash", "All set"] as const;
+const STEPS = ["Your goal", "Base currency", "Starting cash", "All set"] as const;
 
 /** The user's calendar day, which the server cannot know. */
 function localDate(): string {
@@ -44,6 +46,43 @@ function checkAmount(value: string): { error: string } | { amountMinor: number }
     return { error: parsed.error.issues[0]?.message ?? "Check the amount." };
   }
   return { amountMinor };
+}
+
+/** Never blocks: a failed save or skip still lets the user continue to the next step. */
+function GoalStep({
+  workspace,
+  onDone,
+}: {
+  workspace: AuthenticatedWorkspace;
+  onDone: () => void;
+}) {
+  const saveGoal = useSaveGoal(workspace);
+  const skipGoal = useSkipGoal(workspace);
+  const { mutate: markShown } = useMarkGoalShown(workspace);
+  // The server keeps one "shown" row per workspace, so a repeat call is harmless.
+  useEffect(() => markShown(), [markShown]);
+
+  return (
+    <div className="auth-form">
+      <p className="onboarding-help">So we can set up the right starting point for you.</p>
+      <GoalPicker
+        legend="Your main goal"
+        goal={null}
+        otherText={null}
+        disabled={saveGoal.isPending || skipGoal.isPending}
+        confirmLabel="Continue"
+        onChoose={(choice) => saveGoal.mutate(choice, { onSettled: onDone })}
+      />
+      <button
+        className="button secondary"
+        type="button"
+        disabled={saveGoal.isPending || skipGoal.isPending}
+        onClick={() => skipGoal.mutate(undefined, { onSettled: onDone })}
+      >
+        Skip
+      </button>
+    </div>
+  );
 }
 
 function Stepper({ current }: { current: number }) {
@@ -88,6 +127,7 @@ export function OnboardingPage() {
 function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace> }) {
   const navigate = useNavigate();
   const stateQuery = useOnboarding(workspace);
+  const goalQuery = useGoalProfile(workspace);
   const saveCurrency = useSaveOnboardingCurrency(workspace);
   const saveCash = useSaveOnboardingCashBalance(workspace);
   const currencyId = useId();
@@ -98,9 +138,10 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const [submitted, setSubmitted] = useState(false);
   const [steppedBack, setSteppedBack] = useState(false);
   const [finished, setFinished] = useState(false);
+  const [goalDismissed, setGoalDismissed] = useState(false);
   const [openingBalanceSkipped, setOpeningBalanceSkipped] = useState(false);
 
-  if (stateQuery.isPending)
+  if (stateQuery.isPending || (stateQuery.data?.step === "currency" && goalQuery.isPending))
     return (
       <FullPageLoadingStatus
         title="Getting your setup ready"
@@ -134,7 +175,16 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const finishing = saveCash.isPending || saveCash.isSuccess;
   if (state.step === "complete" && !finished && !finishing) return <Navigate to="/app" replace />;
 
-  const view = finished ? "complete" : steppedBack ? "currency" : state.step;
+  // Only a new workspace that has neither chosen nor skipped sees the goal, and only until it
+  // answers once here. If the goal profile fails to load, setup carries on without it.
+  const goalProfile = goalQuery.data;
+  const askGoal =
+    state.step === "currency" &&
+    !finished &&
+    !goalDismissed &&
+    goalProfile?.goal === null &&
+    !goalProfile.skipped;
+  const view = finished ? "complete" : askGoal ? "goal" : steppedBack ? "currency" : state.step;
   const selected = pickedCurrency ?? state.currency;
   const { symbol } = currencyMetadata[state.currency];
   const amountCheck = checkAmount(amount);
@@ -171,19 +221,23 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
     <AuthLayout
       eyebrow="Welcome to Zoption"
       title={
-        view === "currency"
-          ? "Choose your base currency"
-          : view === "cash"
-            ? "How much cash do you have?"
-            : "Your first account is ready"
+        view === "goal"
+          ? "What brings you to Zoption?"
+          : view === "currency"
+            ? "Choose your base currency"
+            : view === "cash"
+              ? "How much cash do you have?"
+              : "Your first account is ready"
       }
       description={
         view === "complete"
           ? "Your workspace is set up."
-          : "Two quick questions, then you can start tracking."
+          : "A few quick questions, then you can start tracking."
       }
     >
-      <Stepper current={view === "currency" ? 0 : view === "cash" ? 1 : 3} />
+      <Stepper current={view === "goal" ? 0 : view === "currency" ? 1 : view === "cash" ? 2 : 4} />
+
+      {view === "goal" && <GoalStep workspace={workspace} onDone={() => setGoalDismissed(true)} />}
 
       {view === "currency" && (
         <form className="auth-form" onSubmit={(event) => void confirmCurrency(event)}>

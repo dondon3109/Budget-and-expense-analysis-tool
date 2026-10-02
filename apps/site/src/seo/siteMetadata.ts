@@ -332,8 +332,8 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
 const FAQ_LAST_MODIFIED = "2026-10-01";
 const CHANGELOG_LAST_MODIFIED = "2026-10-01";
 const TERMS_LAST_MODIFIED = "2026-10-01";
-const PRIVACY_LAST_MODIFIED = "2026-10-01";
-const COOKIE_POLICY_LAST_MODIFIED = "2026-09-30";
+const PRIVACY_LAST_MODIFIED = "2026-10-02";
+const COOKIE_POLICY_LAST_MODIFIED = "2026-10-02";
 const IMPORT_LAST_MODIFIED = "2026-09-30";
 const TOOLS_LAST_MODIFIED = "2026-09-29";
 // The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the

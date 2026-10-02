@@ -1,3 +1,4 @@
+import { goalConfigFor, type GoalCtaAction } from "@zoption/shared";
 import type {
   AccountBalanceSummaryItem,
   Currency,
@@ -14,7 +15,7 @@ import {
   Receipt,
   SlidersHorizontal,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -28,6 +29,7 @@ import { AccountsPanel } from "../components/dashboard/AccountsPanel";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { DashboardToolCards } from "../components/dashboard/DashboardToolCards";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
+import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalChecklist";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
 import { QuickStartTutorial } from "../components/dashboard/QuickStartTutorial";
@@ -52,6 +54,7 @@ import { calculatePercentageChange, isDashboardEmpty, trendState } from "../lib/
 import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
+import { useGoalProfile } from "../queries/goalProfile";
 import { transactionsQueryOptions } from "../queries/transactions";
 import "./DashboardPage.css";
 // AccountsPanel.css holds the account rules that used to close DashboardPage.css, so it loads
@@ -78,6 +81,8 @@ export function DashboardPage() {
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [addTransactionOpen, setAddTransactionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const goal = useGoalProfile(workspace).data?.goal ?? null;
+  const goalConfig = goalConfigFor(goal);
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const handledPostAuthCheckoutIntentRef = useRef(false);
 
@@ -199,6 +204,11 @@ export function DashboardPage() {
     isProCheckoutOpen,
     setSearchParams,
   ]);
+
+  function runGoalAction(action: GoalCtaAction) {
+    if (action === "add_transaction") setAddTransactionOpen(true);
+    else setMigrationWizardOpen(true);
+  }
 
   function closeProCheckout() {
     setIsProCheckoutOpen(false);
@@ -351,6 +361,63 @@ export function DashboardPage() {
     },
   ];
 
+  // The goal's emphasis only moves one section to the front of the grid.
+  const sections = {
+    category: (
+      <SpendingByCategory
+        data={
+          categoryMonth === summaryMonth
+            ? data.spendingByCategory
+            : (categorySummaryQuery.data?.spendingByCategory ?? [])
+        }
+        month={categoryMonth}
+        maxMonth={currentDashboardMonth}
+        isLoading={categoryMonth !== summaryMonth && categorySummaryQuery.isPending}
+        error={categoryMonth !== summaryMonth ? categorySummaryQuery.error : null}
+        onMonthChange={setCategoryMonth}
+        onRetry={() => void categorySummaryQuery.refetch()}
+      />
+    ),
+    trend: (
+      <MonthlyTrend
+        data={cashflowTrendQuery.data}
+        selectedView={cashflowView}
+        onViewChange={setCashflowView}
+        isLoading={cashflowTrendQuery.isPending}
+        error={cashflowTrendQuery.error}
+        onRetry={() => void cashflowTrendQuery.refetch()}
+        showSubscribeToPro={billingSummary.data?.plan === "free"}
+        onSubscribeToPro={(trigger) => {
+          subscribeTriggerRef.current = trigger;
+          setIsProCheckoutOpen(true);
+        }}
+      />
+    ),
+    plan: <GoalsSubscriptionPanel workspace={workspace} />,
+    budget: (
+      <BudgetProgress
+        data={data.budgetProgress}
+        month={summaryMonth}
+        monthLabel={selectedMonthLabel}
+      />
+    ),
+  };
+  const lead =
+    goalConfig.emphasis === "budget" || goalConfig.emphasis === "plan" ? goalConfig.emphasis : null;
+  const sectionOrder = [lead, "category", "trend", "plan", "budget"].filter(
+    (name, index, all) => name !== null && all.indexOf(name) === index,
+  ) as (keyof typeof sections)[];
+  const transactionHistory = (
+    <DashboardTransactionHistory
+      page={transactionHistoryQuery.data}
+      isPending={transactionHistoryQuery.isPending}
+      isFetching={transactionHistoryQuery.isFetching}
+      error={transactionHistoryQuery.error}
+      onRetry={() => void transactionHistoryQuery.refetch()}
+      onPageChange={setHistoryPage}
+    />
+  );
+
   return (
     <AppShell>
       <div className="dashboard-page">
@@ -395,6 +462,16 @@ export function DashboardPage() {
           onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
         />
 
+        <GoalChecklist
+          workspace={workspace}
+          goal={goal}
+          signals={{
+            has_transaction: (transactionHistoryQuery.data?.total ?? 0) > 0,
+            has_budget: data.budgetProgress.some((row) => row.limitMinor > 0),
+          }}
+          onAction={runGoalAction}
+        />
+
         <AccountsPanel
           accounts={accountMutations}
           accountBalances={accountBalances}
@@ -426,9 +503,10 @@ export function DashboardPage() {
                 statements in under a minute, or build clean as you go.
               </p>
               <div className="onboarding-actions">
+                <GoalCtaButton goal={goal} onAction={runGoalAction} />
                 <button
                   type="button"
-                  className="button primary"
+                  className={goalConfig.cta ? "button secondary" : "button primary"}
                   onClick={() => setMigrationWizardOpen(true)}
                 >
                   <FileSpreadsheet size={17} aria-hidden="true" /> Bring your data (Spreadsheet
@@ -490,39 +568,11 @@ export function DashboardPage() {
               />
             )}
             <DashboardToolCards workspace={workspace} startingBalanceMinor={overallBalanceMinor} />
+            {goalConfig.emphasis === "recent_transactions" && transactionHistory}
             <div className="dashboard-grid">
-              <SpendingByCategory
-                data={
-                  categoryMonth === summaryMonth
-                    ? data.spendingByCategory
-                    : (categorySummaryQuery.data?.spendingByCategory ?? [])
-                }
-                month={categoryMonth}
-                maxMonth={currentDashboardMonth}
-                isLoading={categoryMonth !== summaryMonth && categorySummaryQuery.isPending}
-                error={categoryMonth !== summaryMonth ? categorySummaryQuery.error : null}
-                onMonthChange={setCategoryMonth}
-                onRetry={() => void categorySummaryQuery.refetch()}
-              />
-              <MonthlyTrend
-                data={cashflowTrendQuery.data}
-                selectedView={cashflowView}
-                onViewChange={setCashflowView}
-                isLoading={cashflowTrendQuery.isPending}
-                error={cashflowTrendQuery.error}
-                onRetry={() => void cashflowTrendQuery.refetch()}
-                showSubscribeToPro={billingSummary.data?.plan === "free"}
-                onSubscribeToPro={(trigger) => {
-                  subscribeTriggerRef.current = trigger;
-                  setIsProCheckoutOpen(true);
-                }}
-              />
-              <GoalsSubscriptionPanel workspace={workspace} />
-              <BudgetProgress
-                data={data.budgetProgress}
-                month={summaryMonth}
-                monthLabel={selectedMonthLabel}
-              />
+              {sectionOrder.map((name) => (
+                <Fragment key={name}>{sections[name]}</Fragment>
+              ))}
             </div>
             <details className="calculation-note">
               <summary>How these numbers are calculated</summary>
@@ -533,14 +583,7 @@ export function DashboardPage() {
                 categories that have a limit, and it does not carry over.
               </p>
             </details>
-            <DashboardTransactionHistory
-              page={transactionHistoryQuery.data}
-              isPending={transactionHistoryQuery.isPending}
-              isFetching={transactionHistoryQuery.isFetching}
-              error={transactionHistoryQuery.error}
-              onRetry={() => void transactionHistoryQuery.refetch()}
-              onPageChange={setHistoryPage}
-            />
+            {goalConfig.emphasis !== "recent_transactions" && transactionHistory}
           </>
         )}
       </div>
