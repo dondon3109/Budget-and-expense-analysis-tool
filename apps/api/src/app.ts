@@ -39,6 +39,7 @@ import { createExportRoutes } from "./routes/exports";
 import { createFinancialGoalRoutes } from "./routes/goals";
 import { createImportRoutes } from "./routes/imports";
 import { createMobileSyncRoutes } from "./routes/mobile-sync";
+import { createGoalProfileRoutes } from "./routes/goal-profile";
 import { createOnboardingRoutes } from "./routes/onboarding";
 import { createBugReportEgressRoutes } from "./routes/ops-bug-report-egress";
 import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
@@ -198,6 +199,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/budgets", createBudgetRoutes(dependencies.budgets));
   app.route("/api/app/settings", createWorkspaceSettingsRoutes(dependencies.workspaceSettings));
   app.route("/api/app/onboarding", createOnboardingRoutes(dependencies.onboarding));
+  app.route("/api/app/profile/goal", createGoalProfileRoutes(dependencies.goalProfile));
   app.route("/api/app/billing", createBillingRoutes(dependencies.billing));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(dependencies.subscriptions));
   app.route("/api/app/events", createCalendarEventRoutes(dependencies.events));

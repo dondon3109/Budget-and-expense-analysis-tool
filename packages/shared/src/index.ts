@@ -1,4 +1,5 @@
 export * from "./calculations";
+export * from "./goals";
 export * from "./cashflowForecast";
 export * from "./csv";
 export * from "./fingerprint";
