@@ -194,7 +194,11 @@ export function MoneySetupScreen() {
       ) : (
         <>
           <View className="gap-3">
-            <SectionHeader title="Accounts" singular="account" onAdd={() => open("account")} />
+            <SectionHeader
+              title="Account Management"
+              singular="account"
+              onAdd={() => open("account")}
+            />
             {references.data.accounts.length === 0 ? (
               <EmptyState
                 title="No active accounts"
