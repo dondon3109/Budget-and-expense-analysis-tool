@@ -14,6 +14,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Web: the dashboard's "Cash flow forecast" card is now "Safe to spend", showing what is safe to spend this week as on mobile, and still opens the forecast. On mobile, the "days left · bills counted" line under the Safe to spend amount is gone.
 - Web: hitting a free plan limit on custom categories, or trying a Pro-only action such as exporting transactions or managing accounts, now opens a "Plan limit reached" pop-up with a link to Plan and billing, the same as the AI and import limits.
 - On the web dashboard, "Add transaction" now opens the transaction form over the page instead of switching to Transactions, so you can add one and keep watching your balances.
 - Web: category emojis now sit on a soft tile tinted with the category colour, the same look as on mobile, in transactions, recent activity, spending by category, and the category manager.

@@ -1,7 +1,9 @@
 import {
   DEFAULT_OFW_EXCHANGE_RATES,
+  getDaysLeftInWeek,
   projectCashflow,
   forecastSubscriptions,
+  safeToSpend,
   type CashflowForecastResult,
 } from "@zoption/shared";
 import { CalendarClock, ChevronRight, Coins } from "lucide-react";
@@ -17,6 +19,7 @@ import "./DashboardToolCards.css";
 export interface DashboardToolCardsProps {
   workspace: AuthenticatedWorkspace;
   startingBalanceMinor: number;
+  remainingBudgetMinor?: number;
 }
 
 type ToolCardTone = "neutral" | "danger";
@@ -47,10 +50,14 @@ function projectionTone(forecast: CashflowForecastResult, renewalsLoaded: boolea
 
 /**
  * The dashboard doorways into the two tools the mobile home screen already surfaces: the
- * 30-day cash flow forecast and the remittance calculator. Both cards are single links, so
+ * safe to spend figure and the remittance calculator. Both cards are single links, so
  * each one reads as a destination rather than as a widget with its own controls.
  */
-export function DashboardToolCards({ workspace, startingBalanceMinor }: DashboardToolCardsProps) {
+export function DashboardToolCards({
+  workspace,
+  startingBalanceMinor,
+  remainingBudgetMinor,
+}: DashboardToolCardsProps) {
   const subscriptionMonth = currentMonth();
   const subscriptionsQuery = useSubscriptions(workspace, monthStart(subscriptionMonth));
 
@@ -60,6 +67,11 @@ export function DashboardToolCards({ workspace, startingBalanceMinor }: Dashboar
   );
 
   const forecast = projectCashflow({ startingBalanceMinor, subscriptions, horizonDays: 30 });
+  const safeAmountMinor = safeToSpend({
+    remainingWeeklyEnvelopeMinor: Math.max(0, remainingBudgetMinor ?? startingBalanceMinor),
+    daysLeftInWeek: getDaysLeftInWeek(new Date(), "monday"),
+    forecast: { minProjectedBalanceMinor: forecast.minProjectedBalanceMinor },
+  });
   const renewalsLoaded = subscriptionsQuery.data !== undefined;
   const renewalsUnavailable = subscriptionsQuery.isError;
   const tone = projectionTone(forecast, renewalsLoaded);
@@ -75,13 +87,11 @@ export function DashboardToolCards({ workspace, startingBalanceMinor }: Dashboar
         <span className="dashboard-tool-card-icon">
           <CalendarClock size={14} aria-hidden="true" />
         </span>
-        <h3 className="dashboard-tool-card-title">Cash flow forecast</h3>
+        <h3 className="dashboard-tool-card-title">Safe to spend</h3>
         {tone === "danger" && <span className="dashboard-tool-card-status">Deficit risk</span>}
         <ChevronRight className="dashboard-tool-card-chevron" size={16} aria-hidden="true" />
         <strong className="dashboard-tool-card-value">
-          {renewalsUnavailable
-            ? "Renewals unavailable"
-            : formatMoney(forecast.minProjectedBalanceMinor)}
+          {renewalsUnavailable ? "Renewals unavailable" : formatMoney(safeAmountMinor)}
         </strong>
         <p className="dashboard-tool-card-meta">
           {renewalsUnavailable
