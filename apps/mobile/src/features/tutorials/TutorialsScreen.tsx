@@ -39,7 +39,7 @@ export function TutorialsScreen() {
         {
           title: "1. Locate your Account",
           description:
-            "From the Home tab, look at 'Total Balance' and tap on any account (Cash, Bank, GCash, etc.), or tap 'Accounts' in the top right.",
+            "From the Home tab, tap 'Total Balance' to open Account Management, or go to More > Accounts & categories. Then tap an account (Cash, Bank, GCash, etc.).",
         },
         {
           title: "2. View 'Adjust current balance'",

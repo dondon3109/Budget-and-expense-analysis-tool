@@ -61,9 +61,12 @@ jest.mock("@/db/workspace", () => ({
 
 import { discardLocalWorkspace } from "@/db/workspace";
 
+import { GUEST_SUBJECT } from "@/db/guest-workspace";
+
 import {
   DUMMY_DEV_STORAGE_KEY,
   DUMMY_DEV_SUBJECT,
+  GUEST_STORAGE_KEY,
   SessionProvider,
   useSessionSnapshot,
 } from "./session-state";
@@ -356,6 +359,68 @@ describe("SessionProvider and dummy session handling", () => {
 
       expect(latest.current?.status).toBe("signed-out");
       expect(latest.current?.subject).toBeNull();
+    });
+  });
+
+  describe("guest use without an account", () => {
+    async function renderSession() {
+      const latest = { current: null as ReturnType<typeof useSessionSnapshot> | null };
+      await act(async () => {
+        render(
+          <SessionProvider>
+            <TestConsumer onSnapshot={(snap) => (latest.current = snap)} />
+          </SessionProvider>,
+        );
+      });
+      return latest;
+    }
+
+    it("starts signed out and enters guest use only when the user chooses it", async () => {
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("signed-out"));
+
+      await act(async () => {
+        await latest.current!.continueAsGuest();
+      });
+
+      expect(latest.current?.status).toBe("guest");
+      expect(latest.current?.subject).toBe(GUEST_SUBJECT);
+      expect(mockSecureValues.has(GUEST_STORAGE_KEY)).toBe(true);
+    });
+
+    it("resumes guest use on the next launch while no account session exists", async () => {
+      mockSecureValues.set(GUEST_STORAGE_KEY, "1");
+
+      const latest = await renderSession();
+
+      await waitFor(() => expect(latest.current?.status).toBe("guest"));
+      expect(latest.current?.subject).toBe(GUEST_SUBJECT);
+    });
+
+    it("never hands a guest an access token", async () => {
+      mockSecureValues.set(GUEST_STORAGE_KEY, "1");
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("guest"));
+
+      await expect(latest.current!.getAccessToken(false)).rejects.toThrow(
+        "Sign in to use this feature.",
+      );
+      expect(mockAuth.refreshSession).not.toHaveBeenCalled();
+    });
+
+    it("prefers a stored account session over the guest choice and ends guest use", async () => {
+      mockSecureValues.set(GUEST_STORAGE_KEY, "1");
+      mockCurrentSession = {
+        access_token: "real-token",
+        refresh_token: "refresh-token",
+        user: { id: "real-user-id", email: "user@example.com" } as any,
+      } as Session;
+
+      const latest = await renderSession();
+
+      await waitFor(() => expect(latest.current?.status).toBe("signed-in"));
+      expect(latest.current?.subject).toBe("real-user-id");
+      expect(mockSecureValues.has(GUEST_STORAGE_KEY)).toBe(false);
     });
   });
 });

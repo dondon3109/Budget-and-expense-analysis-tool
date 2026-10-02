@@ -3,6 +3,7 @@ import { deleteDatabaseAsync, openDatabaseAsync, type SQLiteDatabase } from "exp
 import { snapshotMobileSync } from "@/api/mobile-sync";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { isDummyDevelopmentSubject, seedDummyWorkspaceData } from "./demo-seed";
+import { isGuestSubject, seedGuestWorkspace } from "./guest-workspace";
 import {
   getOrCreateWorkspaceKey,
   getWorkspaceGeneration,
@@ -149,6 +150,12 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
         if ((existing?.count ?? 0) === 0) {
           await seedDummyWorkspaceData(database);
         }
+      }
+      if (isGuestSubject(subject)) {
+        const existing = await database.getFirstAsync<{ count: number }>(
+          "SELECT count(*) AS count FROM accounts",
+        );
+        if ((existing?.count ?? 0) === 0) await seedGuestWorkspace(database);
       }
     } catch (error) {
       throw new LocalWorkspaceError(
