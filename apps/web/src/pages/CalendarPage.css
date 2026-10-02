@@ -229,9 +229,6 @@
   /* One column of week rows. The 7-column track moved to .calendar-row so the grid has the
      role="row" children ARIA requires without changing how the calendar looks. */
   grid-template-columns: minmax(0, 1fr);
-  border: 1px solid var(--line-strong);
-  border-radius: 14px;
-  overflow: hidden;
   background: var(--paper);
 }
 
@@ -267,8 +264,8 @@
   border-left: 1px solid var(--line);
 }
 
-/* The grid draws the outer frame, so each week row drops its first left edge and the last
-   row its bottom edge. */
+/* The .calendar-surface card draws the outer frame, so each week row drops its first left edge
+   and the last row its bottom edge. */
 .calendar-row > :first-child {
   border-left: 0;
 }
