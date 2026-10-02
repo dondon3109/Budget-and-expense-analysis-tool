@@ -498,7 +498,7 @@ Before treating the domain migration as complete:
 
 After the apex redirect, public metadata, and production smoke checks pass:
 
-1. Verify `https://zoption.site` as the canonical Google Search Console property and verify the same canonical host in Bing Webmaster Tools.
+1. Verify `https://zoption.site` as the canonical Google Search Console property and verify the same canonical host in Bing Webmaster Tools. Bing uses the XML file method: `apps/site/public/BingSiteAuth.xml` is served at `https://zoption.site/BingSiteAuth.xml`; keep it deployed or Bing drops the verification.
 2. Submit `https://zoption.site/sitemap.xml` to both services.
 3. Run the [Schema.org Markup Validator](https://validator.schema.org/) for `/` and each legal page. Confirm every public response has one linked graph using `https://zoption.site` canonical IDs: `WebApplication` on the homepage and `WebPage` on legal pages.
 4. Run Google's [Rich Results Test](https://search.google.com/test/rich-results) as a diagnostic, but do not fabricate offers, pricing, reviews, or ratings to seek eligibility. Zoption intentionally publishes no organization/person, breadcrumb, FAQ, local-business, search-action, or bank-affiliation markup until corresponding visible, verified content exists.
