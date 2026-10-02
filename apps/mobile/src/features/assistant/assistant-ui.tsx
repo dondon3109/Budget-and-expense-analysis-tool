@@ -19,6 +19,9 @@ import type { RecordingPhase } from "./assistant-voice-hooks";
 
 import { formatThreadTime, validateIdentityName } from "./assistant-forms";
 
+/** Width of the assistant avatar, shared so a draft card can indent to the bubble. */
+export const ASSISTANT_AVATAR_SIZE = 28;
+
 export function AssistantStatusBadge({
   status = "available",
   label,
@@ -108,37 +111,39 @@ export function AssistantUnavailableView({
 
         <View style={styles.unavailableActions}>
           <Button onPress={onRetry} variant="primary">
-            {isOffline ? "Check connection & retry" : "Try reconnecting"}
+            {isOffline ? "Check connection & retry" : "Try again"}
           </Button>
         </View>
       </Card>
 
-      <View
-        style={[
-          styles.offlineToolsCard,
-          elevation.card,
-          {
-            backgroundColor: theme.colors.surfaceRaised,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        <Text style={[typography.headline, { color: theme.colors.text }]}>
-          Available offline features
-        </Text>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          While disconnected, you can continue managing your finances locally:
-        </Text>
+      {isOffline ? (
+        <View
+          style={[
+            styles.offlineToolsCard,
+            elevation.card,
+            {
+              backgroundColor: theme.colors.surfaceRaised,
+              borderColor: theme.colors.border,
+            },
+          ]}
+        >
+          <Text style={[typography.headline, { color: theme.colors.text }]}>
+            Available offline features
+          </Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Your records stay on this device. You can still:
+          </Text>
 
-        <View style={styles.offlineButtonsRow}>
-          <Button onPress={onOpenTransactions} variant="secondary">
-            View transactions
-          </Button>
-          <Button onPress={onOpenBudgets} variant="secondary">
-            Check budgets
-          </Button>
+          <View style={styles.offlineButtonsRow}>
+            <Button onPress={onOpenTransactions} variant="secondary">
+              View transactions
+            </Button>
+            <Button onPress={onOpenBudgets} variant="secondary">
+              Check budgets
+            </Button>
+          </View>
         </View>
-      </View>
+      ) : null}
     </View>
   );
 }
@@ -154,8 +159,8 @@ export function AssistantConsentCard({
 }) {
   const theme = useZoptionTheme();
   const points = [
-    "Nothing saves without you — the assistant can draft a transaction for review, but only your Save tap adds it, and it never edits existing records.",
-    "Your credentials and sessions stay private; only your question and the financial data needed to answer it are sent to the AI provider.",
+    "Nothing saves without you. The assistant can draft a transaction, but only your Save tap adds it, and it never edits existing records.",
+    "Your credentials stay private. Only your question and the data needed to answer it go to the AI provider.",
     "Audit snapshots of what the assistant read are sanitized and kept only for review.",
     "Operational monitoring is metadata-only — never your transaction descriptions.",
     "Assistant memory is kept until you delete it, and can be cleared anytime.",
@@ -170,15 +175,18 @@ export function AssistantConsentCard({
           The AI Financial Assistant answers questions using your own records. Before it can help,
           confirm how your data is handled.
         </Text>
-        <View className="gap-2">
+        <View className="gap-3">
           {points.map((point) => (
             <View key={point} className="flex-row gap-2">
               <MaterialCommunityIcons
                 name="shield-check-outline"
                 size={18}
                 color={theme.colors.brand}
+                style={{ marginTop: 1 }}
               />
-              <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>{point}</Text>
+              <Text style={[typography.callout, { color: theme.colors.text, flex: 1 }]}>
+                {point}
+              </Text>
             </View>
           ))}
         </View>
@@ -272,58 +280,82 @@ export function AssistantMessageBubble({
 }) {
   const theme = useZoptionTheme();
   const isUser = role === "user";
-  return (
-    <View className={isUser ? "items-end" : "items-start"}>
-      <View
-        style={[
-          styles.bubble,
-          {
-            backgroundColor: isUser ? theme.colors.brand : theme.colors.surfaceRaised,
-            borderColor: isUser ? theme.colors.brand : theme.colors.border,
-          },
-        ]}
-      >
-        <Text
-          style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}
-        >
-          {content}
+  const bubble = (
+    <View
+      style={[
+        styles.bubble,
+        isUser ? styles.bubbleUser : styles.bubbleAssistant,
+        {
+          backgroundColor: isUser ? theme.colors.brand : theme.colors.surface,
+          borderColor: isUser ? theme.colors.brand : theme.colors.border,
+        },
+      ]}
+    >
+      <Text style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}>
+        {content}
+      </Text>
+    </View>
+  );
+  const meta = (
+    <View style={styles.bubbleMeta}>
+      {status === "failed" ? (
+        <Text style={[typography.caption, { color: theme.colors.danger }]}>
+          Not sent. Try asking again.
         </Text>
-      </View>
-      <View className="mt-1 flex-row items-center gap-2">
-        {status === "failed" ? (
-          <Text style={[typography.caption, { color: theme.colors.danger }]}>
-            Not sent. Try asking again.
+      ) : null}
+      {!isUser && status === "completed" && evidenceLabel ? (
+        <View className="flex-row items-center gap-1">
+          <MaterialCommunityIcons
+            name="file-document-check-outline"
+            size={12}
+            color={theme.colors.textMuted}
+          />
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {evidenceLabel}
           </Text>
-        ) : null}
-        {!isUser && status === "completed" && evidenceLabel ? (
-          <View className="flex-row items-center gap-1">
-            <MaterialCommunityIcons
-              name="file-document-check-outline"
-              size={12}
-              color={theme.colors.textMuted}
-            />
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              {evidenceLabel}
-            </Text>
-          </View>
-        ) : null}
-        {!isUser && status === "completed" && onListen ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={listening ? "Stop spoken reply" : "Play spoken reply"}
-            onPress={onListen}
-            style={styles.listen}
-          >
-            <MaterialCommunityIcons
-              name={listening ? "stop-circle-outline" : "volume-high"}
-              size={16}
-              color={theme.colors.brand}
-            />
-          </Pressable>
-        ) : null}
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {formatThreadTime(createdAt)}
-        </Text>
+        </View>
+      ) : null}
+      {!isUser && status === "completed" && onListen ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={listening ? "Stop spoken reply" : "Play spoken reply"}
+          onPress={onListen}
+          style={styles.listen}
+        >
+          <MaterialCommunityIcons
+            name={listening ? "stop-circle-outline" : "volume-high"}
+            size={16}
+            color={theme.colors.brand}
+          />
+        </Pressable>
+      ) : null}
+      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+        {formatThreadTime(createdAt)}
+      </Text>
+    </View>
+  );
+  if (isUser) {
+    return (
+      <View className="items-end">
+        {bubble}
+        {meta}
+      </View>
+    );
+  }
+  // The avatar sits beside the bubble; its width plus gap is the indent other
+  // assistant content (the draft card) lines up with.
+  return (
+    <View style={styles.assistantRow}>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}
+      >
+        <MaterialCommunityIcons name="creation" size={16} color={theme.colors.brand} />
+      </View>
+      <View style={styles.assistantColumn}>
+        {bubble}
+        {meta}
       </View>
     </View>
   );
@@ -354,77 +386,90 @@ export function AssistantThreadRow({
   const theme = useZoptionTheme();
   const isVoice = kind === "voice";
   const managing = selection !== undefined;
+  // The border and radius sit on a static wrapper and the layout on an inner View, because
+  // Android's NativeWind interop drops them from a Pressable's callback style.
   return (
-    <Pressable
-      accessibilityRole={managing ? "checkbox" : "button"}
-      accessibilityLabel={
-        "Conversation " +
-        title +
-        ", " +
-        formatThreadTime(lastMessageAt) +
-        (isVoice ? ", voice conversation" : "")
-      }
-      accessibilityHint={
-        managing
-          ? "Selects this conversation for deleting."
-          : "Opens the conversation. Press and hold to select conversations to delete."
-      }
-      accessibilityState={managing ? { checked: selection.selected } : undefined}
-      accessibilityActions={
-        managing ? undefined : [{ name: "select", label: "Select conversations" }]
-      }
-      onAccessibilityAction={(event) => {
-        if (event.nativeEvent.actionName === "select") onSelect();
-      }}
-      onPress={managing ? selection.onToggle : onOpen}
-      onLongPress={managing ? undefined : onSelect}
-      delayLongPress={450}
-      style={({ pressed }) => [
+    <View
+      style={[
         styles.threadRow,
         {
-          backgroundColor: pressed
-            ? theme.colors.brandSoft
-            : managing && selection.selected
-              ? theme.colors.brandSoft
-              : theme.colors.surface,
           borderColor: managing && selection.selected ? theme.colors.brand : theme.colors.border,
         },
       ]}
     >
-      {managing ? (
-        <MaterialCommunityIcons
-          name={selection.selected ? "checkbox-marked" : "checkbox-blank-outline"}
-          size={22}
-          color={selection.selected ? theme.colors.brand : theme.colors.textMuted}
-        />
-      ) : null}
-      <View style={styles.threadContent}>
-        <View style={styles.threadTitleRow}>
-          <Text
-            numberOfLines={2}
-            style={[typography.body, { color: theme.colors.text, flexShrink: 1 }]}
-          >
-            {title}
-          </Text>
-          {isVoice ? (
-            <View
-              accessibilityRole="text"
-              accessibilityLabel="Voice conversation"
-              style={[
-                styles.threadKindBadge,
-                { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
-              ]}
-            >
-              <MaterialCommunityIcons name="microphone" size={11} color={theme.colors.textMuted} />
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Voice</Text>
-            </View>
+      <Pressable
+        accessibilityRole={managing ? "checkbox" : "button"}
+        accessibilityLabel={
+          "Conversation " +
+          title +
+          ", " +
+          formatThreadTime(lastMessageAt) +
+          (isVoice ? ", voice conversation" : "")
+        }
+        accessibilityHint={
+          managing
+            ? "Selects this conversation for deleting."
+            : "Opens the conversation. Press and hold to select conversations to delete."
+        }
+        accessibilityState={managing ? { checked: selection.selected } : undefined}
+        accessibilityActions={
+          managing ? undefined : [{ name: "select", label: "Select conversations" }]
+        }
+        onAccessibilityAction={(event) => {
+          if (event.nativeEvent.actionName === "select") onSelect();
+        }}
+        onPress={managing ? selection.onToggle : onOpen}
+        onLongPress={managing ? undefined : onSelect}
+        delayLongPress={450}
+        className="w-full"
+        style={({ pressed }) => ({
+          backgroundColor:
+            pressed || (managing && selection.selected)
+              ? theme.colors.brandSoft
+              : theme.colors.surface,
+        })}
+      >
+        <View style={styles.threadInner}>
+          {managing ? (
+            <MaterialCommunityIcons
+              name={selection.selected ? "checkbox-marked" : "checkbox-blank-outline"}
+              size={22}
+              color={selection.selected ? theme.colors.brand : theme.colors.textMuted}
+            />
           ) : null}
+          <View style={styles.threadContent}>
+            <View style={styles.threadTitleRow}>
+              <Text
+                numberOfLines={2}
+                style={[typography.body, { color: theme.colors.text, flexShrink: 1 }]}
+              >
+                {title}
+              </Text>
+              {isVoice ? (
+                <View
+                  accessibilityRole="text"
+                  accessibilityLabel="Voice conversation"
+                  style={[
+                    styles.threadKindBadge,
+                    { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name="microphone"
+                    size={11}
+                    color={theme.colors.textMuted}
+                  />
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Voice</Text>
+                </View>
+              ) : null}
+            </View>
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              {formatThreadTime(lastMessageAt)}
+            </Text>
+          </View>
         </View>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {formatThreadTime(lastMessageAt)}
-        </Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -655,19 +700,43 @@ export function MemoryPreferencesBlock({
 
 const styles = StyleSheet.create({
   bubble: {
-    maxWidth: "86%",
-    borderRadius: radii.md,
+    maxWidth: "88%",
+    borderRadius: radii.xl,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.sm + 2,
+  },
+  // The corner nearest the speaker is tight, so each bubble reads as a speech tail.
+  bubbleUser: { borderBottomRightRadius: radii.sm / 2 },
+  bubbleAssistant: { borderBottomLeftRadius: radii.sm / 2 },
+  bubbleMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    marginTop: spacing.xxs,
+    marginHorizontal: spacing.xs,
+  },
+  assistantRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
+  assistantColumn: { flexShrink: 1, alignItems: "flex-start" },
+  avatar: {
+    width: ASSISTANT_AVATAR_SIZE,
+    height: ASSISTANT_AVATAR_SIZE,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+    // Lines up with the bubble, not the timestamp row beneath it.
+    marginBottom: 22,
   },
   listen: { padding: 2 },
   threadRow: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.md,
+    overflow: "hidden",
+  },
+  threadInner: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -748,7 +817,6 @@ const styles = StyleSheet.create({
   },
   unavailableActions: {
     width: "100%",
-    maxWidth: 280,
     marginTop: spacing.xxs,
   },
   offlineToolsCard: {
@@ -802,13 +870,17 @@ export function VoiceRecordButton({ phase, onPress }: VoiceRecordButtonProps) {
       onPress={onPress}
       style={[
         styles.recordButton,
-        { backgroundColor: recording ? theme.colors.danger : theme.colors.brand },
+        { backgroundColor: recording ? theme.colors.danger : theme.colors.brandSoft },
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={theme.colors.onBrand} size="small" />
+        <ActivityIndicator color={theme.colors.brand} size="small" />
       ) : (
-        <MaterialCommunityIcons name="microphone-outline" size={22} color={theme.colors.onBrand} />
+        <MaterialCommunityIcons
+          name="microphone-outline"
+          size={22}
+          color={recording ? theme.colors.onBrand : theme.colors.brand}
+        />
       )}
     </Pressable>
   );

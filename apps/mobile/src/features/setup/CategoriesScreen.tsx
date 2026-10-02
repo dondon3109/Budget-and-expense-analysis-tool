@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveCategoryEmoji } from "@zoption/shared";
 import { useLocalReferenceData } from "@/db/local-workspace-state";
 import type { LocalCategoryItem } from "@/db/view-models";
-import { Button, CategoryBadge, EmptyState, ErrorState, Skeleton } from "@/ui/components";
+import { Button, CategoryBadge, Card, EmptyState, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
@@ -44,51 +44,50 @@ function CategoryRow({ category, onPress }: { category: LocalCategoryItem; onPre
       android_ripple={
         disabled ? undefined : { color: "rgba(10, 117, 86, 0.12)", borderless: false }
       }
-      className="flex-row items-center"
+      className="w-full"
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.row,
-        {
-          backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
-          opacity: disabled ? 0.62 : 1,
-        },
-      ]}
+      style={({ pressed }) => ({
+        backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
+        opacity: disabled ? 0.62 : 1,
+      })}
     >
-      <View accessibilityElementsHidden style={styles.leading}>
-        <CategoryBadge emoji={resolveCategoryEmoji(category)} color={category.color} size={40} />
+      <View style={styles.row}>
+        <View accessibilityElementsHidden style={styles.leading}>
+          <CategoryBadge emoji={resolveCategoryEmoji(category)} color={category.color} size={40} />
+        </View>
+        <View style={styles.rowText}>
+          <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
+            {category.name}
+          </Text>
+          <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {detail}
+          </Text>
+        </View>
+        {status ? (
+          <Text
+            style={[
+              typography.caption,
+              {
+                color:
+                  category.syncState === "failed" || category.syncState === "conflicted"
+                    ? theme.colors.danger
+                    : theme.colors.warning,
+              },
+            ]}
+          >
+            {status}
+          </Text>
+        ) : null}
+        {!disabled ? (
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.textMuted}
+            name="chevron-right"
+            size={22}
+          />
+        ) : null}
       </View>
-      <View style={styles.rowText}>
-        <Text numberOfLines={1} style={[typography.body, { color: theme.colors.text }]}>
-          {category.name}
-        </Text>
-        <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {detail}
-        </Text>
-      </View>
-      {status ? (
-        <Text
-          style={[
-            typography.caption,
-            {
-              color:
-                category.syncState === "failed" || category.syncState === "conflicted"
-                  ? theme.colors.danger
-                  : theme.colors.warning,
-            },
-          ]}
-        >
-          {status}
-        </Text>
-      ) : null}
-      {!disabled ? (
-        <MaterialCommunityIcons
-          accessibilityElementsHidden
-          color={theme.colors.textMuted}
-          name="chevron-right"
-          size={22}
-        />
-      ) : null}
     </Pressable>
   );
 }
@@ -97,7 +96,7 @@ function SectionHeader({ title, onAdd }: { title: string; onAdd?: () => void }) 
   const theme = useZoptionTheme();
   return (
     <View className="flex-row items-center justify-between gap-3">
-      <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
+      <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
         {title}
       </Text>
       {onAdd ? (
@@ -161,7 +160,7 @@ export function CategoriesScreen() {
           <View className="gap-3">
             <SectionHeader title="Expense Categories" onAdd={() => open()} />
             {expenseCategories.length > 0 ? (
-              <View style={styles.listContainer}>
+              <Card style={styles.listCard}>
                 {expenseCategories.map((category, index) => (
                   <View key={category.id}>
                     {index > 0 ? (
@@ -177,7 +176,7 @@ export function CategoriesScreen() {
                     />
                   </View>
                 ))}
-              </View>
+              </Card>
             ) : (
               <EmptyState
                 title="No expense categories"
@@ -189,7 +188,7 @@ export function CategoriesScreen() {
           {incomeCategories.length > 0 ? (
             <View className="gap-3">
               <SectionHeader title="Income Categories" />
-              <View style={styles.listContainer}>
+              <Card style={styles.listCard}>
                 {incomeCategories.map((category, index) => (
                   <View key={category.id}>
                     {index > 0 ? (
@@ -205,14 +204,14 @@ export function CategoriesScreen() {
                     />
                   </View>
                 ))}
-              </View>
+              </Card>
             </View>
           ) : null}
 
           {transferCategories.length > 0 ? (
             <View className="gap-3">
               <SectionHeader title="Transfer Categories" />
-              <View style={styles.listContainer}>
+              <Card style={styles.listCard}>
                 {transferCategories.map((category, index) => (
                   <View key={category.id}>
                     {index > 0 ? (
@@ -228,7 +227,7 @@ export function CategoriesScreen() {
                     />
                   </View>
                 ))}
-              </View>
+              </Card>
             </View>
           ) : null}
 
@@ -242,22 +241,24 @@ export function CategoriesScreen() {
 }
 
 const styles = StyleSheet.create({
-  listContainer: { overflow: "hidden" },
+  listCard: { padding: 0, gap: 0, overflow: "hidden" },
   row: {
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: touchTarget + spacing.md,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
   leading: {
-    width: spacing.xl,
+    width: 40,
     flexShrink: 0,
     alignItems: "center",
     justifyContent: "center",
   },
-  rowText: { minWidth: 0, flex: 1, gap: spacing.xxs },
+  rowText: { minWidth: 0, flex: 1, gap: 2 },
   divider: {
     height: StyleSheet.hairlineWidth,
-    marginLeft: spacing.xs + spacing.xl + spacing.md,
+    marginLeft: spacing.md + 40 + spacing.sm,
   },
 });

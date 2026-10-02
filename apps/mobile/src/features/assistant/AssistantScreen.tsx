@@ -73,10 +73,10 @@ import {
   AssistantThreadRow,
   AssistantUnavailableView,
   AssistantUpgradeBanner,
-  formatRecordingElapsed,
   MemoryPreferencesBlock,
   VoiceRecordButton,
 } from "./assistant-ui";
+import { AssistantEmptyChat, VoiceStatusBanner } from "./assistant-chat-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
 import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
@@ -960,10 +960,18 @@ export function AssistantScreen() {
             }
             ListHeaderComponent={
               <View style={styles.newChat}>
-                <Button onPress={startNewChat}>New conversation</Button>
-                <Button variant="secondary" onPress={startVoiceChat}>
-                  Voice chat
-                </Button>
+                <View style={styles.newChatButtons}>
+                  <View style={styles.newChatButton}>
+                    <Button icon="plus" onPress={startNewChat}>
+                      New chat
+                    </Button>
+                  </View>
+                  <View style={styles.newChatButton}>
+                    <Button icon="microphone-outline" variant="secondary" onPress={startVoiceChat}>
+                      Voice chat
+                    </Button>
+                  </View>
+                </View>
                 {threads.length > 0 ? (
                   <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                     {managingThreads
@@ -1027,10 +1035,7 @@ export function AssistantScreen() {
               loadingMessages ? (
                 <ActivityIndicator color={theme.colors.brand} />
               ) : (
-                <EmptyState
-                  title="Ask anything about your money"
-                  description="Where did my salary go? Am I on budget this month? Which debt should I pay first?"
-                />
+                <AssistantEmptyChat onPick={setDraft} />
               )
             }
             ListFooterComponent={
@@ -1069,42 +1074,18 @@ export function AssistantScreen() {
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           />
           {voiceError ? (
-            <View style={styles.voiceErrorWrap}>
-              <Text style={[typography.caption, { color: theme.colors.danger }]}>
-                {voiceError.message}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Dismiss"
-                onPress={() => setVoiceError(null)}
-                hitSlop={8}
-              >
-                <MaterialCommunityIcons name="close" size={16} color={theme.colors.textMuted} />
-              </Pressable>
-            </View>
+            <VoiceStatusBanner
+              kind="error"
+              message={voiceError.message}
+              onDismiss={() => setVoiceError(null)}
+            />
           ) : null}
           {recorder.phase !== "idle" ? (
-            <View style={styles.voiceStatusWrap}>
-              <Text
-                style={[
-                  typography.caption,
-                  {
-                    color:
-                      recorder.phase === "recording" ? theme.colors.danger : theme.colors.textMuted,
-                  },
-                ]}
-              >
-                {recorder.phase === "recording"
-                  ? "Recording… " +
-                    formatRecordingElapsed(recorder.elapsedSeconds) +
-                    (recorder.liveStatus === "unavailable"
-                      ? " — live preview is off, transcript appears when you stop."
-                      : " — tap the microphone to stop.")
-                  : recorder.phase === "transcribing"
-                    ? "Transcribing your question…"
-                    : "Allowing microphone access…"}
-              </Text>
-            </View>
+            <VoiceStatusBanner
+              kind={recorder.phase}
+              elapsedSeconds={recorder.elapsedSeconds}
+              liveUnavailable={recorder.liveStatus === "unavailable"}
+            />
           ) : null}
           <View
             style={[
@@ -1112,6 +1093,16 @@ export function AssistantScreen() {
               { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
             ]}
           >
+            <TextInput
+              accessibilityLabel="Message the assistant"
+              multiline
+              value={draft}
+              onChangeText={setDraft}
+              placeholder="Ask anything"
+              placeholderTextColor={theme.colors.textMuted}
+              maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
+              style={[styles.input, { color: theme.colors.text }]}
+            />
             {voicePreferences?.enabled === true ? (
               <>
                 <VoiceRecordButton
@@ -1122,19 +1113,11 @@ export function AssistantScreen() {
                     else if (recorder.phase === "idle") void recorder.startRecording();
                   }}
                 />
-                <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
+                <View style={styles.languageSlot}>
+                  <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
+                </View>
               </>
             ) : null}
-            <TextInput
-              accessibilityLabel="Message the assistant"
-              multiline
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Ask about your finances"
-              placeholderTextColor={theme.colors.textMuted}
-              maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
-              style={[styles.input, { color: theme.colors.text }]}
-            />
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Send message"
@@ -1372,13 +1355,15 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   newChat: { marginBottom: spacing.md, alignSelf: "stretch", gap: spacing.sm },
+  newChatButtons: { flexDirection: "row", gap: spacing.sm },
+  newChatButton: { flex: 1 },
   chat: { flex: 1 },
   chatContent: { padding: spacing.md, paddingBottom: spacing.md },
   bannerWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: spacing.sm,
+    gap: spacing.xs,
     margin: spacing.md,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radii.lg,
@@ -1393,12 +1378,8 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 10 : 8,
     paddingHorizontal: 4,
   },
-  voiceStatusWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
-  },
+  // Centers the 32 point language pill against the 44 point mic and send buttons.
+  languageSlot: { height: touchTarget, justifyContent: "center" },
   sendButton: {
     width: touchTarget,
     height: touchTarget,
@@ -1435,13 +1416,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.sm,
     paddingVertical: spacing.sm,
-  },
-  voiceErrorWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.xs,
   },
   chatStatusRow: {
     flexDirection: "row",
