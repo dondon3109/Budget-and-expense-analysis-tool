@@ -104,6 +104,46 @@ describe("BillingLimitDialog", () => {
     expect(review).toHaveFocus();
   });
 
+  it("explains a custom category limit", () => {
+    render(
+      <MemoryRouter>
+        <BillingLimitDialog
+          error={
+            new ApiRequestError("Limit", 409, "resource_limit_reached", {
+              resource: "custom_category",
+              used: 5,
+              limit: 5,
+            })
+          }
+          onClose={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "No custom categories remaining" }),
+    ).toHaveTextContent("5 of 5 active custom categories");
+  });
+
+  it("explains a Pro-only action", () => {
+    render(
+      <MemoryRouter>
+        <BillingLimitDialog
+          error={
+            new ApiRequestError("Pro", 403, "upgrade_required", {
+              capability: "transaction_export",
+            })
+          }
+          onClose={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("dialog", { name: "Zoption Pro is required" })).toHaveTextContent(
+      "transaction exports",
+    );
+  });
+
   it("does not lock the document for an unrelated error", () => {
     const root = document.getElementById("root");
     if (!root) throw new Error("Test root is missing.");

@@ -2,6 +2,7 @@ import type { TransactionExportQuery, TransactionListQuery } from "@zoption/shar
 import { useState } from "react";
 
 import { downloadTransactions } from "../lib/api";
+import { reportBillingLimit } from "../lib/billingLimitNotice";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
 /** Downloads the ledger as CSV with the filters and sort currently applied. */
@@ -28,6 +29,7 @@ export function useTransactionExport(
       };
       await downloadTransactions(workspace, filters);
     } catch (error) {
+      reportBillingLimit(error);
       setExportError(
         error instanceof Error ? error : new Error("The export could not be prepared."),
       );

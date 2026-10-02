@@ -5,8 +5,17 @@ import { Link } from "react-router-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
-import { isUsageLimitReachedError, type UsageLimitReachedDetails } from "../../lib/api";
-import { featureLabels, formatManilaDate } from "./billingPresentation";
+import {
+  isResourceLimitReachedError,
+  isUpgradeRequiredError,
+  isUsageLimitReachedError,
+} from "../../lib/api";
+import {
+  capabilityLabels,
+  featureLabels,
+  formatManilaDate,
+  resourceLabels,
+} from "./billingPresentation";
 import "./BillingLimitDialog.css";
 
 interface BillingLimitDialogProps {
@@ -15,23 +24,59 @@ interface BillingLimitDialogProps {
   onClose: () => void;
 }
 
+interface LimitCopy {
+  key: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  reset?: string;
+}
+
 interface BillingLimitDialogContentProps {
-  details: UsageLimitReachedDetails;
+  copy: LimitCopy;
   returnFocus?: HTMLElement | null;
   onClose: () => void;
 }
 
-function BillingLimitDialogContent({
-  details,
-  returnFocus,
-  onClose,
-}: BillingLimitDialogContentProps) {
+function limitCopy(error: unknown): LimitCopy | undefined {
+  if (isUsageLimitReachedError(error)) {
+    const { details } = error;
+    const label = featureLabels[details.feature];
+    return {
+      key: details.feature,
+      eyebrow: "Plan limit reached",
+      title: `No ${label} remaining this month`,
+      description: `You’ve used ${details.used} of ${details.limit} ${label}. This request was not completed.`,
+      reset: details.resetsAt ? formatManilaDate(details.resetsAt, true) : undefined,
+    };
+  }
+  if (isResourceLimitReachedError(error)) {
+    const { details } = error;
+    const label = resourceLabels[details.resource];
+    return {
+      key: details.resource,
+      eyebrow: "Plan limit reached",
+      title: `No ${label} remaining`,
+      description: `You’re using ${details.used} of ${details.limit} active ${label}. Archive one to free the slot, or upgrade for unlimited ${label}.`,
+    };
+  }
+  if (isUpgradeRequiredError(error)) {
+    const label = capabilityLabels[error.details.capability];
+    return {
+      key: error.details.capability,
+      eyebrow: "Zoption Pro",
+      title: "Zoption Pro is required",
+      description: `Upgrade to use ${label}. This request was not completed.`,
+    };
+  }
+  return undefined;
+}
+
+function BillingLimitDialogContent({ copy, returnFocus, onClose }: BillingLimitDialogContentProps) {
   const dialogRef = useRef<HTMLElement>(null);
   const primaryActionRef = useRef<HTMLAnchorElement>(null);
-  const titleId = `billing-limit-${details.feature}-title`;
-  const descriptionId = `billing-limit-${details.feature}-description`;
-  const reset = details.resetsAt ? formatManilaDate(details.resetsAt, true) : undefined;
-  const periodLabel = "this month";
+  const titleId = `billing-limit-${copy.key}-title`;
+  const descriptionId = `billing-limit-${copy.key}-description`;
 
   useRootLock(true);
 
@@ -63,15 +108,10 @@ function BillingLimitDialogContent({
           <AlertTriangle size={22} />
         </div>
         <div className="billing-limit-copy">
-          <p className="eyebrow">Plan limit reached</p>
-          <h2 id={titleId}>
-            No {featureLabels[details.feature]} remaining {periodLabel}
-          </h2>
-          <p id={descriptionId}>
-            You’ve used {details.used} of {details.limit} {featureLabels[details.feature]}. This
-            request was not completed.
-          </p>
-          {reset && <strong>Your limit resets {reset} (Asia/Manila).</strong>}
+          <p className="eyebrow">{copy.eyebrow}</p>
+          <h2 id={titleId}>{copy.title}</h2>
+          <p id={descriptionId}>{copy.description}</p>
+          {copy.reset && <strong>Your limit resets {copy.reset} (Asia/Manila).</strong>}
         </div>
         <div className="modal-actions billing-limit-actions">
           <button className="button secondary" type="button" onClick={onClose}>
@@ -91,12 +131,10 @@ function BillingLimitDialogContent({
   );
 }
 
-/** Mounts the dialog only for a usage-limit error so the mount-only focus trap activates. */
+/** Mounts the dialog only for a billing limit error so the mount-only focus trap activates. */
 export function BillingLimitDialog({ error, returnFocus, onClose }: BillingLimitDialogProps) {
-  const details = isUsageLimitReachedError(error) ? error.details : undefined;
-  if (!details) return null;
+  const copy = limitCopy(error);
+  if (!copy) return null;
 
-  return (
-    <BillingLimitDialogContent details={details} returnFocus={returnFocus} onClose={onClose} />
-  );
+  return <BillingLimitDialogContent copy={copy} returnFocus={returnFocus} onClose={onClose} />;
 }
