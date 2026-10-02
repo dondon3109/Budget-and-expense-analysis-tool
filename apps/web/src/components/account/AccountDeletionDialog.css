@@ -30,7 +30,7 @@
 .account-deletion-form label > span,
 .account-deletion-form .password-field label > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -86,7 +86,7 @@
 }
 
 .account-deletion-dialog .button.danger {
-  color: #fff;
+  color: var(--contrast-text);
   border-color: var(--danger);
   background: var(--danger);
 }

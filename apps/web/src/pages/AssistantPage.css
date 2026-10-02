@@ -120,7 +120,7 @@ main:has(.assistant-page) > .legal-footer,
   border: 0;
   border-radius: 8px;
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -149,7 +149,6 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--action);
   font-size: 12px;
   font-weight: 620;
-  box-shadow: 0 4px 14px -4px var(--brand-glow);
   cursor: pointer;
   transition:
     background 180ms ease,
@@ -160,7 +159,6 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-new-chat:hover {
   background: var(--action-strong);
   transform: translateY(-1px);
-  box-shadow: 0 8px 20px -6px var(--brand-glow);
 }
 
 .assistant-new-chat:active {
@@ -193,7 +191,6 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--action-strong);
   border-color: var(--action);
   background: color-mix(in srgb, var(--action) 6%, var(--surface));
-  box-shadow: 0 4px 14px -4px var(--brand-glow);
   transform: translateY(-1px);
 }
 
@@ -207,7 +204,7 @@ main:has(.assistant-page) > .legal-footer,
   border: 1px solid color-mix(in srgb, var(--action) 25%, transparent);
   color: var(--action-strong);
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -264,7 +261,7 @@ main:has(.assistant-page) > .legal-footer,
   padding: 8px 10px 6px;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.09em;
   text-transform: uppercase;
@@ -398,7 +395,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-thread-row small {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.01em;
 }
 
@@ -465,7 +462,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-delete-confirm span {
   margin-right: auto;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .assistant-delete-confirm button,
@@ -473,7 +470,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--muted);
   border: 0;
   background: transparent;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -503,7 +500,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-history-footer > small {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .assistant-delete-all-confirm strong {
@@ -514,7 +511,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-delete-all-confirm p {
   margin: 4px 0 8px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -545,8 +542,7 @@ main:has(.assistant-page) > .legal-footer,
   gap: 16px;
   color: var(--muted);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--paper) 78%, transparent);
-  backdrop-filter: blur(8px);
+  background: var(--paper);
   font-size: 12px;
   font-weight: 650;
 }
@@ -558,10 +554,6 @@ main:has(.assistant-page) > .legal-footer,
   align-items: center;
   gap: 7px;
   line-height: 1.35;
-}
-
-.assistant-chat-status svg {
-  color: var(--action);
 }
 
 /* Route heading: compact enough for the topbar, but a real visible <h1> so the
@@ -643,7 +635,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 999px;
   background: var(--surface);
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -679,7 +671,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-chat-usage .plan-usage-label {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -718,7 +710,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-chat-usage .plan-usage-meta small {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 580;
   line-height: 1.45;
 }
@@ -726,7 +718,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-chat-usage .plan-usage-meta a {
   flex: 0 0 auto;
   color: var(--action);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -777,7 +769,7 @@ main:has(.assistant-page) > .legal-footer,
   min-width: 0;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1.35;
   text-align: right;
   letter-spacing: 0.02em;
@@ -793,7 +785,7 @@ main:has(.assistant-page) > .legal-footer,
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--surface);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -804,10 +796,6 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-memory-trigger:hover {
   border-color: var(--action);
-  box-shadow:
-    0 0 0 1px var(--action),
-    0 2px 8px -2px var(--brand-glow);
-  transform: translateY(-1px);
 }
 
 /* --- Education disclaimer strip --- */
@@ -817,7 +805,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--muted);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
   text-align: center;
 }
@@ -879,9 +867,6 @@ main:has(.assistant-page) > .legal-footer,
   border: 0;
   border-radius: 20px;
   background: var(--action);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--action) 35%, transparent),
-    0 12px 32px -10px var(--brand-glow);
   animation: assistant-beacon-float 4.5s ease-in-out infinite;
 }
 
@@ -935,7 +920,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-fee-welcome .assistant-fee-disclaimer {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   font-style: italic;
 }
 
@@ -975,14 +960,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-quick-prompts button:hover {
   border-color: var(--action);
   background: color-mix(in srgb, var(--action) 4%, var(--surface));
-  box-shadow:
-    0 0 0 1px var(--action),
-    0 12px 28px -12px var(--brand-glow);
-  transform: translateY(-2px);
-}
-
-.assistant-quick-prompts button:active {
-  transform: translateY(0) scale(0.985);
+  box-shadow: 0 0 0 1px var(--action);
 }
 
 .assistant-quick-prompts .assistant-quick-prompt-icon {
@@ -1098,7 +1076,6 @@ main:has(.assistant-page) > .legal-footer,
   border: 0;
   border-radius: 10px;
   background: var(--action);
-  box-shadow: 0 2px 8px -2px var(--brand-glow);
 }
 
 .assistant-message.user .assistant-message-avatar {
@@ -1158,7 +1135,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-message-meta span {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .assistant-message p {
@@ -1202,7 +1179,7 @@ main:has(.assistant-page) > .legal-footer,
   gap: 5px;
   color: var(--action);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1232,7 +1209,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-message-voice small {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -1240,7 +1217,7 @@ main:has(.assistant-page) > .legal-footer,
   display: block;
   margin-top: 7px;
   color: var(--danger);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 /* --- Evidence / sources --- */
@@ -1264,7 +1241,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 999px;
   background: var(--surface-soft);
   font-family: var(--font-mono);
-  font-size: 9.5px !important;
+  font-size: 11px !important;
   line-height: 1.35 !important;
   letter-spacing: 0.02em;
 }
@@ -1277,7 +1254,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-data-used {
   margin-top: 2px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .assistant-data-used summary {
@@ -1285,7 +1262,7 @@ main:has(.assistant-page) > .legal-footer,
   cursor: pointer;
   color: var(--action);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1313,7 +1290,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-data-used strong {
   color: var(--ink);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 620;
 }
 
@@ -1324,7 +1301,7 @@ main:has(.assistant-page) > .legal-footer,
   gap: 3px;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -1335,7 +1312,7 @@ main:has(.assistant-page) > .legal-footer,
   border-radius: 9px;
   background: var(--surface-soft);
   border: 1px solid var(--line);
-  font-size: 9px !important;
+  font-size: 11px !important;
   line-height: 1.5 !important;
 }
 
@@ -1499,9 +1476,8 @@ main:has(.assistant-page) > .legal-footer,
   gap: 12px;
   border: 1px solid var(--line-strong);
   border-radius: 20px;
-  background: var(--surface-glass, var(--surface));
-  backdrop-filter: blur(12px);
-  box-shadow: 0 8px 30px -18px var(--shadow);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
   transition:
     border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
     box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -1509,9 +1485,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-composer:focus-within {
   border-color: var(--action);
-  box-shadow:
-    0 0 0 1px var(--action),
-    0 12px 34px -16px var(--brand-glow);
+  box-shadow: 0 0 0 1px var(--action);
 }
 
 .assistant-composer-ai {
@@ -1523,7 +1497,6 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--contrast-text);
   border-radius: 11px;
   background: var(--action);
-  box-shadow: 0 2px 8px -2px var(--brand-glow);
 }
 
 .assistant-composer textarea {
@@ -1556,7 +1529,6 @@ main:has(.assistant-page) > .legal-footer,
   border: 0;
   border-radius: 999px;
   background: var(--action);
-  box-shadow: 0 4px 14px -4px var(--brand-glow);
   cursor: pointer;
   transition:
     background 160ms ease,
@@ -1567,7 +1539,6 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-send:hover:not(:disabled) {
   background: var(--action-strong);
   transform: translateY(-1px) scale(1.04);
-  box-shadow: 0 6px 20px -6px var(--brand-glow);
 }
 
 .assistant-send:active:not(:disabled) {
@@ -1750,7 +1721,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface);
   box-shadow: 0 8px 20px -16px var(--shadow);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
 }
 
 .assistant-composer-note {
@@ -1763,7 +1734,7 @@ main:has(.assistant-page) > .legal-footer,
   justify-content: space-between;
   gap: 12px;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .assistant-composer-privacy {
@@ -1784,7 +1755,7 @@ main:has(.assistant-page) > .legal-footer,
   align-items: center;
   gap: 4px;
   color: var(--subtle);
-  font-size: 9.5px;
+  font-size: 11px;
   letter-spacing: 0.02em;
 }
 
@@ -1800,7 +1771,7 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface-soft);
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 8.5px;
+  font-size: 11px;
   line-height: 1;
 }
 
@@ -1808,7 +1779,7 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--subtle);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .assistant-composer-error {
@@ -2192,7 +2163,7 @@ main:has(.assistant-page) > .legal-footer,
 .strategy-pill {
   align-self: flex-start;
   margin-bottom: 7px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 620;
   padding: 2px 7px;
   border-radius: 999px;
@@ -2282,7 +2253,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .style-choice small {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--subtle);
 }
@@ -2342,7 +2313,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .empty-examples .examples-header {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 620;
   color: var(--ink);
   display: block;
@@ -2390,7 +2361,7 @@ main:has(.assistant-page) > .legal-footer,
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   padding: 3px 7px;
   border-radius: 6px;
@@ -2407,7 +2378,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .fact-date {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--subtle);
 }
 
@@ -2439,7 +2410,7 @@ main:has(.assistant-page) > .legal-footer,
 
 .fact-meta {
   margin: 0;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--subtle);
 }
 
@@ -2735,14 +2706,34 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-chat-topline {
     min-height: 0;
     padding: 8px 10px;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: "history status retention";
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "history status retention corner";
     align-items: center;
     column-gap: 10px;
   }
 
+  /* Memory stays reachable on phones as an icon button; the retention note and theme
+     switch give up their room (the shell already offers the theme switch). */
   .assistant-chat-corner {
+    grid-area: corner;
+  }
+
+  .assistant-chat-retention,
+  .assistant-chat-corner .theme-sw,
+  .assistant-memory-label {
     display: none;
+  }
+
+  .assistant-memory-trigger {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .assistant-memory-trigger svg {
+    width: 18px;
+    height: 18px;
   }
 
   /* On mobile, replace the Memory button with a compact plan-limit usage
@@ -2773,7 +2764,7 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-chat-usage .plan-usage-label {
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .assistant-chat-usage .plan-usage-track {
@@ -2782,7 +2773,7 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-chat-usage .plan-usage-value {
-    font-size: 10px;
+    font-size: 11px;
   }
 
   .assistant-chat-usage .plan-usage-meta {
@@ -2791,7 +2782,7 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-education-notice {
     padding: 5px 12px;
-    font-size: 9px;
+    font-size: 11px;
     line-height: 1.35;
   }
 
@@ -2801,7 +2792,7 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-empty > .eyebrow {
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .assistant-empty h2 {
@@ -2908,7 +2899,7 @@ main:has(.assistant-page) > .legal-footer,
     bottom: 7px;
     left: 12px;
     gap: 8px;
-    font-size: 9px;
+    font-size: 11px;
   }
 
   .assistant-composer-shortcut {

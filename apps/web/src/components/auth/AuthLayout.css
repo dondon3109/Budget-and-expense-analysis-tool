@@ -1,9 +1,11 @@
 .auth-page-frame {
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--page);
 }
 .auth-page {
   min-height: calc(100vh - 70px);
+  min-height: calc(100dvh - 70px);
   padding: 48px;
   display: grid;
   grid-template-columns: minmax(340px, 480px) minmax(380px, 620px);
@@ -13,10 +15,10 @@
 }
 .auth-card,
 .auth-aside {
-  border: 1px solid var(--glass-border);
-  border-radius: 28px;
-  background: var(--surface-translucent);
-  box-shadow: 0 28px 80px rgba(44, 69, 60, 0.12);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
 }
 .auth-card {
   padding: 38px;
@@ -30,7 +32,7 @@
   gap: 18px;
 }
 .auth-heading {
-  margin: 58px 0 28px;
+  margin: 36px 0 24px;
 }
 .auth-heading h1,
 .auth-aside h2 {
@@ -74,22 +76,16 @@
   color: var(--ink);
   border: 1px solid var(--line-strong);
   background: var(--surface);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.3;
   text-align: center;
 }
 .auth-provider-button.button:only-child {
   grid-column: 1 / -1;
-  width: calc((100% - 10px) / 2);
-  justify-self: center;
 }
 .auth-provider-button.button:hover:not(:disabled) {
   border-color: var(--sage);
   background: var(--surface-hover);
-}
-.auth-provider-button.button:disabled {
-  cursor: not-allowed;
-  opacity: 0.68;
 }
 .auth-provider-mark {
   width: 20px;
@@ -103,8 +99,8 @@
 }
 .auth-provider-note {
   margin: 0;
-  color: var(--subtle);
-  font-size: 10px;
+  color: var(--muted);
+  font-size: 12px;
   line-height: 1.5;
   text-align: center;
 }
@@ -114,7 +110,7 @@
   align-items: center;
   gap: 11px;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 620;
 }
 .auth-divider::before,
@@ -127,13 +123,13 @@
 .auth-form .password-field {
   display: grid;
   gap: 7px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
 }
 .auth-form label > small {
-  color: var(--subtle);
-  font-size: 10px;
+  color: var(--muted);
+  font-size: 12px;
   font-weight: 500;
 }
 .auth-form input:disabled {
@@ -153,27 +149,31 @@
   padding: 0 13px;
   color: var(--ink);
   border: 1px solid var(--line-strong);
-  border-radius: 11px;
+  border-radius: var(--radius-md);
   background: var(--surface);
-  font-size: 14px;
+  /* 16px keeps iOS Safari from zooming the page when a field takes focus. */
+  font-size: 16px;
 }
 .auth-form .button {
   width: 100%;
-  margin-top: 3px;
+  margin-top: 6px;
 }
 .auth-form-meta {
-  margin-top: -7px;
+  margin-top: -12px;
   display: flex;
   justify-content: flex-end;
   color: var(--sage);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 650;
+}
+.auth-form-meta a {
+  padding: 8px 0;
 }
 .auth-footer {
   margin-top: auto;
   padding-top: 28px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   text-align: center;
 }
 .auth-footer p {
@@ -185,20 +185,20 @@
 }
 .auth-success {
   padding: 18px;
-  color: var(--success);
-  border: 1px solid var(--line);
-  border-radius: 13px;
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, var(--line));
+  border-radius: var(--radius-md);
   background: var(--success-soft);
 }
 .auth-success strong {
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 18px;
 }
 .auth-success p {
   margin: 7px 0 0;
   overflow-wrap: anywhere;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .auth-success-actions {
@@ -221,7 +221,7 @@
 }
 .auth-aside {
   position: relative;
-  padding: 64px;
+  padding: clamp(36px, 5vw, 64px);
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -248,7 +248,7 @@
 .auth-aside h2 {
   max-width: 500px;
   color: var(--vault-text);
-  font-size: clamp(38px, 5vw, 58px);
+  font-size: clamp(34px, 4vw, 46px);
   font-weight: 600;
   letter-spacing: -0.04em;
   line-height: 1.04;
@@ -276,18 +276,21 @@
   }
 }
 @media (max-width: 760px) {
+  /* On a phone the form is the page: no inset card, no forced full-height column. */
   .auth-page {
-    min-height: 100vh;
-    padding: 18px;
+    min-height: 0;
+    padding: 0;
     display: block;
   }
   .auth-card {
-    min-height: calc(100vh - 36px);
-    padding: 26px 22px;
-    border-radius: 22px;
+    padding: 20px 16px 28px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
   .auth-heading {
-    margin: 44px 0 24px;
+    margin: 28px 0 20px;
   }
   .auth-heading h1 {
     font-size: 31px;
@@ -297,8 +300,5 @@
   }
   .auth-provider-buttons {
     grid-template-columns: 1fr;
-  }
-  .auth-provider-button.button:only-child {
-    width: 100%;
   }
 }

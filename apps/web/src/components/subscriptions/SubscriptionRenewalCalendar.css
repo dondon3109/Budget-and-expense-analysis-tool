@@ -42,27 +42,15 @@
 }
 
 .renewal-stat-card .stat-card-icon.paid {
-  color: #15803d;
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-
-:root[data-theme="dark"] .renewal-stat-card .stat-card-icon.paid {
-  color: #4ade80;
-  background: #14532d33;
-  border-color: #15803d;
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 30%, var(--line));
 }
 
 .renewal-stat-card .stat-card-icon.upcoming {
-  color: #b45309;
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-
-:root[data-theme="dark"] .renewal-stat-card .stat-card-icon.upcoming {
-  color: #fbbf24;
-  background: #78350f33;
-  border-color: #b45309;
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
 }
 
 .renewal-stat-card .stat-card-title {
@@ -207,7 +195,7 @@
 }
 
 .renewal-today-badge {
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 620;
   padding: 1px 4px;
   border-radius: 3px;
@@ -232,18 +220,12 @@
   font-weight: 620;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  color: #b91c1c;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--line));
   padding: 2px 5px;
   border-radius: 4px;
   align-self: flex-start;
-}
-
-:root[data-theme="dark"] .renewal-outflow-pill {
-  color: #f87171;
-  background: #450a0a33;
-  border-color: #991b1b;
 }
 
 .renewal-day-badges {
@@ -256,7 +238,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 1px 4px;
   border-radius: 3px;
   background: var(--surface-soft);
@@ -268,19 +250,11 @@
 }
 
 .renewal-badge.paid {
-  border-color: #bbf7d0;
-}
-
-:root[data-theme="dark"] .renewal-badge.paid {
-  border-color: #15803d;
+  border-color: color-mix(in srgb, var(--success) 40%, var(--line));
 }
 
 .renewal-badge.due {
-  border-color: #fde68a;
-}
-
-:root[data-theme="dark"] .renewal-badge.due {
-  border-color: #b45309;
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--line));
 }
 
 .renewal-cat-dot {
@@ -368,30 +342,20 @@
 }
 
 .timeline-relative-badge {
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   padding: 1px 5px;
   border-radius: 3px;
 }
 
 .timeline-relative-badge.paid {
-  color: #15803d;
-  background: #dcfce7;
-}
-
-:root[data-theme="dark"] .timeline-relative-badge.paid {
-  color: #4ade80;
-  background: #14532d44;
+  color: var(--success);
+  background: var(--success-soft);
 }
 
 .timeline-relative-badge.upcoming {
-  color: #b45309;
-  background: #fef3c7;
-}
-
-:root[data-theme="dark"] .timeline-relative-badge.upcoming {
-  color: #fbbf24;
-  background: #78350f44;
+  color: var(--warning);
+  background: var(--warning-soft);
 }
 
 .timeline-info-block {
@@ -435,7 +399,7 @@
 }
 
 .timeline-amount-label {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--subtle);
   text-transform: uppercase;
   letter-spacing: 0.04em;

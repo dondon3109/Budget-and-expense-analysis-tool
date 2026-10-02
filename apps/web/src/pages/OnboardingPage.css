@@ -66,15 +66,6 @@
   gap: 8px;
 }
 
-.onboarding-field > span:first-child {
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  font-weight: 580;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
 .onboarding-field select,
 .onboarding-field input {
   width: 100%;
@@ -85,6 +76,9 @@
   border-radius: var(--radius-md);
   background: var(--paper);
   font: inherit;
+  /* The label sets a smaller size; 16px keeps iOS Safari from zooming on focus. */
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
 }
 
 .onboarding-amount {
@@ -111,6 +105,24 @@
   gap: 12px;
 }
 
+/* .auth-form .button is full width; inside this row Back sizes to its label and the
+   primary action takes the rest. */
+.onboarding-actions .button {
+  width: auto;
+  margin-top: 0;
+}
+
 .onboarding-actions .button.primary {
   flex: 1;
+}
+
+@media (max-width: 520px) {
+  /* Three labels crowd a phone row; the others stay readable to screen readers. */
+  .onboarding-step:not(.current) .onboarding-step-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }

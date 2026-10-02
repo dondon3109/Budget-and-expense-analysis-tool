@@ -109,7 +109,7 @@
   margin: 0;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   line-height: 1.55;
 }

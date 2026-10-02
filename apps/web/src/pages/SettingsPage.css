@@ -37,7 +37,7 @@
 }
 
 .settings-section {
-  padding: clamp(28px, 4vw, 42px);
+  padding: clamp(20px, 3vw, 32px);
   scroll-margin-top: 84px;
 }
 
@@ -56,10 +56,10 @@
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.05;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .settings-section-heading p {
@@ -73,9 +73,9 @@
 .settings-section-heading > span {
   flex: 0 0 auto;
   padding-top: 5px;
-  color: var(--subtle);
+  color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.06em;
   line-height: 1.5;
@@ -84,7 +84,7 @@
 }
 
 .settings-form {
-  margin-top: 28px;
+  margin-top: 24px;
   display: grid;
   gap: 18px;
 }
@@ -99,7 +99,7 @@
 .current-account-value > span {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.06em;
   text-transform: uppercase;

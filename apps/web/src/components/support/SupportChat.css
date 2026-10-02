@@ -120,7 +120,7 @@
 .support-chat-header p {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.4;
 }
 
@@ -175,7 +175,7 @@
 
 .support-chat-message > span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -311,7 +311,7 @@
   background: var(--surface);
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -355,7 +355,7 @@
 .support-report-review-heading p {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.05em;
   line-height: 1.3;
@@ -408,7 +408,7 @@
 
 .support-report-fields label > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -458,7 +458,7 @@
 
 .support-report-diagnostics {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -483,7 +483,7 @@
   color: var(--danger);
   border-radius: 10px;
   background: var(--danger-soft);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -506,7 +506,7 @@
   background: var(--solid-bg);
   cursor: pointer;
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -548,7 +548,7 @@
 .support-report-success p {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.45;
 }
 

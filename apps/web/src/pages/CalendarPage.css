@@ -109,9 +109,8 @@
 .calendar-add-event {
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: var(--paper);
-  box-shadow: 0 9px 26px rgba(35, 51, 44, 0.035);
 }
 
 .calendar-surface {
@@ -141,7 +140,7 @@
 .calendar-surface-heading > span,
 .calendar-day-heading span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .calendar-next-month-separator {
@@ -222,7 +221,7 @@
 
 .calendar-next-month-heading > span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .calendar-grid {
@@ -246,7 +245,7 @@
   padding: 12px 10px 10px;
   color: var(--muted);
   background: var(--paper);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.1em;
   text-align: left;
@@ -268,9 +267,14 @@
   border-left: 1px solid var(--line);
 }
 
-.calendar-day-cell:nth-child(7n + 8),
-.calendar-day-placeholder:nth-child(7n + 8) {
+/* The grid draws the outer frame, so each week row drops its first left edge and the last
+   row its bottom edge. */
+.calendar-row > :first-child {
   border-left: 0;
+}
+
+.calendar-row:last-child > * {
+  border-bottom: 0;
 }
 
 .calendar-day-placeholder {
@@ -348,7 +352,7 @@
   color: var(--solid-text);
   background: var(--action);
   border-radius: 999px;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -511,7 +515,7 @@
 .calendar-upcoming-heading span {
   overflow: hidden;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -727,7 +731,7 @@
   justify-content: flex-end;
   gap: 7px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -828,7 +832,7 @@
 .calendar-month-empty span,
 .calendar-status > span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .calendar-status .onboarding-actions {
@@ -840,7 +844,7 @@
   padding: 15px;
   color: var(--muted);
   border-top: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 11px;
   text-align: center;
 }
 
@@ -913,7 +917,7 @@
 
 .calendar-event-all-day small {
   color: var(--muted);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -969,7 +973,7 @@
 
   .calendar-weekday {
     padding: 8px 2px;
-    font-size: 8px;
+    font-size: 11px;
   }
 
   .calendar-day-cell,
@@ -1018,7 +1022,7 @@
     gap: 1px;
     border-radius: 5px;
     background: var(--surface-soft);
-    font-size: 8px;
+    font-size: 11px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
@@ -1028,13 +1032,14 @@
     flex: 0 0 auto;
   }
 
+  /* The chart hues are too light for small text; the text tokens carry the same meaning. */
   .calendar-mobile-signal.income {
-    color: var(--chart-income);
+    color: var(--income);
     background: color-mix(in srgb, var(--chart-income) 10%, var(--paper));
   }
 
   .calendar-mobile-signal.expense {
-    color: var(--chart-expense);
+    color: var(--expense-text);
     background: color-mix(in srgb, var(--chart-expense) 10%, var(--paper));
   }
 
@@ -1103,22 +1108,5 @@
 
   .calendar-day-empty-actions .button {
     width: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .calendar-month-nav:hover {
-    transform: none !important;
-  }
-}
-:root[data-theme="dark"] .calendar-surface,
-:root[data-theme="dark"] .calendar-day-panel,
-:root[data-theme="dark"] .calendar-add-event {
-  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.18);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .calendar-month-nav:hover {
-    transform: none !important;
   }
 }

@@ -273,6 +273,7 @@ export function TutorialsPage() {
               key={cat}
               type="button"
               className={`tutorials-category-pill ${activeCategory === cat ? "active" : ""}`}
+              aria-pressed={activeCategory === cat}
               onClick={() => setActiveCategory(cat)}
             >
               {cat}
