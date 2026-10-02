@@ -15,7 +15,7 @@
 .admin-reviews-header > div > p {
   margin: 0 0 7px;
   color: var(--action);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -142,7 +142,7 @@
 
 .admin-reviews-summary span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -185,7 +185,7 @@
   flex: 0 0 auto;
   padding-top: 5px;
   color: var(--action-strong);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -245,7 +245,7 @@
   border-radius: 7px;
   background: var(--solid-bg);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
 }
 
@@ -262,7 +262,7 @@
 
 .admin-review-lineup-card strong {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -316,12 +316,12 @@
   border: 1px dashed var(--line-strong);
   border-radius: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-review-lineup-empty p {
   margin: 0;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-review-stars {
@@ -371,7 +371,7 @@
 
 .admin-review-filters label > span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -407,7 +407,7 @@
   border-radius: 10px;
   background: var(--surface);
   font: inherit;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-review-list {
@@ -464,7 +464,7 @@
   flex: 0 0 auto;
   padding: 4px 7px;
   border-radius: 7px;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
 }
 
@@ -494,7 +494,7 @@
 
 .admin-review-list small {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .admin-review-pagination {
@@ -515,7 +515,7 @@
   background: transparent;
   cursor: pointer;
   font: inherit;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -527,7 +527,7 @@
 
 .admin-review-pagination span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .admin-review-detail {
@@ -545,7 +545,7 @@
 
 .admin-review-detail header > div > span {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -578,7 +578,7 @@
   color: var(--muted);
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -597,7 +597,7 @@
 
 .admin-review-next-step > span {
   color: var(--subtle);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -613,7 +613,7 @@
 .admin-review-next-step p {
   margin: 5px 0 0;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 
@@ -626,14 +626,14 @@
 
 .admin-review-detail dt {
   color: var(--subtle);
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 650;
 }
 
 .admin-review-detail dd {
   margin: 5px 0 0;
   color: var(--ink);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -647,7 +647,7 @@
 .admin-review-detail-actions .button {
   min-height: 40px;
   padding: 0 13px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .admin-review-detail-actions .button.danger {
@@ -665,7 +665,7 @@
 .admin-review-action-help {
   margin: 10px 0 0;
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -693,7 +693,7 @@
 .admin-review-empty p {
   max-width: 42ch;
   margin: 6px 0 0;
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.5;
 }
 

@@ -476,9 +476,11 @@ export function AssistantPage() {
                 <button
                   type="button"
                   className="assistant-memory-trigger"
+                  aria-label="Memory"
                   onClick={() => setMemoryOpen(true)}
                 >
-                  <Brain size={12} aria-hidden="true" /> Memory
+                  <Brain size={12} aria-hidden="true" />{" "}
+                  <span className="assistant-memory-label">Memory</span>
                 </button>
               </div>
             </div>

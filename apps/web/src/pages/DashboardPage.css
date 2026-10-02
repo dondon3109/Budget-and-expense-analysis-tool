@@ -90,11 +90,6 @@
   position: relative;
   min-width: 0;
   padding: 22px 24px;
-  transition: background-color 0.18s ease;
-}
-
-.overview-stat:hover {
-  background: var(--surface-soft);
 }
 
 .overview-stat + .overview-stat::before {
@@ -113,7 +108,7 @@
   justify-content: space-between;
   gap: 10px;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -126,7 +121,6 @@
   display: grid;
   place-items: center;
   border-radius: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
 }
 
 .tone-income .overview-stat-icon {
@@ -214,7 +208,7 @@
   border-radius: 6px;
   color: var(--ink);
   background: var(--surface-hover);
-  font-size: 9.5px;
+  font-size: 11px;
   font-style: normal;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -232,7 +226,7 @@
   padding: 3px 7px;
   border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 620;
   font-variant-numeric: tabular-nums;
 }
@@ -240,7 +234,7 @@
 .overview-stat-trend > small {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
 }
 
 .overview-stat-trend[data-state="positive"] > span {
@@ -376,7 +370,7 @@
 
 .donut-center span {
   color: var(--subtle);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -454,7 +448,7 @@
 
 .category-row span:not(.color-dot) {
   color: var(--subtle);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.35;
 }
 
@@ -472,7 +466,7 @@
 .trend-period {
   margin: 6px 0 0;
   color: var(--subtle);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.45;
 }
 
@@ -503,7 +497,7 @@
   border-radius: var(--radius-sm);
   background: transparent;
   font: inherit;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
   cursor: pointer;
   transition:
@@ -622,7 +616,7 @@
   align-items: center;
   gap: 7px;
   color: var(--muted);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   white-space: nowrap;
 }
@@ -647,13 +641,11 @@
 .budget-panel {
   grid-column: 1 / -1;
   background: var(--paper);
-  box-shadow: 0 12px 30px var(--shadow);
 }
 
 .goals-panel {
   grid-column: 1 / -1;
   background: var(--paper);
-  box-shadow: 0 12px 30px var(--shadow);
 }
 
 .goals-panel .panel-heading p {
@@ -721,7 +713,7 @@
 
 .goals-list-topline span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
   white-space: nowrap;
 }
 
@@ -736,7 +728,7 @@
   justify-content: space-between;
   gap: 16px;
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .goals-empty {
@@ -779,7 +771,7 @@
 
 .subscription-total span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .subscriptions-block .text-link {
@@ -816,7 +808,7 @@
 
 .budget-label span {
   color: var(--subtle);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .progress-track {
@@ -1022,11 +1014,6 @@
   .budget-label {
     grid-column: 1 / -1;
   }
-}
-
-:root[data-theme="dark"] .overview-stat-bar,
-:root[data-theme="dark"] .panel {
-  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.22);
 }
 
 /* Refetch state after the first dashboard experience: the same page container

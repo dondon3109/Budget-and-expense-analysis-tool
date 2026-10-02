@@ -134,12 +134,17 @@ export function SharedBudgetPage({ token: tokenProp }: SharedBudgetPageProps) {
         <div className="shared-budget-envelope-list">
           {payload.envelopes.map((envelope) => {
             const progress = Math.min(Math.max(envelope.percentUsed, 0), 100);
+            const over = envelope.remainingMinor < 0;
             return (
-              <article className="shared-budget-envelope-card" key={envelope.categoryId}>
+              <article
+                className={`shared-budget-envelope-card${over ? " over" : ""}`}
+                key={envelope.categoryId}
+              >
                 <div className="shared-budget-envelope-heading">
                   <span
                     className="shared-budget-category-dot"
                     style={{ background: envelope.categoryColor }}
+                    aria-hidden="true"
                   />
                   <div>
                     <h3>{envelope.categoryName}</h3>
@@ -154,7 +159,13 @@ export function SharedBudgetPage({ token: tokenProp }: SharedBudgetPageProps) {
                   aria-valuemax={100}
                   aria-valuenow={progress}
                 >
-                  <span style={{ width: `${progress}%`, background: envelope.categoryColor }} />
+                  {/* Over-limit envelopes take the danger fill from the stylesheet. */}
+                  <span
+                    style={{
+                      width: `${progress}%`,
+                      background: over ? undefined : envelope.categoryColor,
+                    }}
+                  />
                 </div>
                 <dl className="shared-budget-envelope-values">
                   <div>
@@ -166,8 +177,10 @@ export function SharedBudgetPage({ token: tokenProp }: SharedBudgetPageProps) {
                     <dd>{formatMoney(envelope.spentMinor, payload.currency)}</dd>
                   </div>
                   <div>
-                    <dt>Remaining</dt>
-                    <dd>{formatMoney(envelope.remainingMinor, payload.currency)}</dd>
+                    <dt>{over ? "Over by" : "Remaining"}</dt>
+                    <dd className="shared-budget-remaining">
+                      {formatMoney(Math.abs(envelope.remainingMinor), payload.currency)}
+                    </dd>
                   </div>
                 </dl>
               </article>

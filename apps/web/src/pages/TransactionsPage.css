@@ -78,8 +78,10 @@
   transition: border-color 150ms ease;
 }
 
-.filter-select-wrap:focus-within {
-  border-color: var(--action);
+.filter-select-wrap:focus-within,
+.filter-date-wrap:focus-within {
+  border-color: color-mix(in srgb, var(--action) 58%, var(--line-strong));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 13%, transparent);
 }
 
 .filter-select-wrap select {
@@ -108,14 +110,10 @@
   transition: border-color 150ms ease;
 }
 
-.filter-date-wrap:focus-within {
-  border-color: var(--action);
-}
-
 .filter-date-wrap span {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -215,7 +213,7 @@
   gap: 8px;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -268,7 +266,7 @@
   color: var(--subtle);
   background: var(--surface-soft);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -353,7 +351,7 @@
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
   cursor: pointer;
   transition:
@@ -406,7 +404,7 @@
 .transaction-bulk-field > span {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -543,7 +541,7 @@
 
 .transaction-day-total small {
   color: var(--subtle);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -600,7 +598,8 @@
   .filter-select-wrap select,
   .filter-date-wrap input {
     min-height: 44px;
-    font-size: 14px;
+    /* 16px keeps iOS Safari from zooming the page when a filter takes focus. */
+    font-size: 16px;
   }
 
   .filter-presets {
@@ -757,7 +756,7 @@
     display: block;
     color: var(--subtle);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;

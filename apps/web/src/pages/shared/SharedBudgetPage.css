@@ -60,10 +60,12 @@
   max-width: 780px;
   color: var(--shared-text);
   font-family: var(--font-display);
-  font-size: clamp(34px, 6vw, 62px);
+  font-size: clamp(30px, 4.5vw, 44px);
   font-weight: 600;
-  letter-spacing: -0.045em;
-  line-height: 0.98;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  /* The title is user text and can be one long word. */
+  overflow-wrap: anywhere;
 }
 
 .shared-budget-meta {
@@ -90,7 +92,7 @@
 .shared-budget-envelope-values dt,
 .shared-budget-stats span {
   color: var(--shared-muted);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -233,6 +235,15 @@
   height: 100%;
   display: block;
   border-radius: inherit;
+}
+
+.shared-budget-envelope-card.over .shared-budget-progress span {
+  background: var(--danger);
+}
+
+.shared-budget-envelope-card.over .shared-budget-envelope-heading p,
+.shared-budget-envelope-card.over .shared-budget-remaining {
+  color: var(--danger);
 }
 
 .shared-budget-envelope-values {

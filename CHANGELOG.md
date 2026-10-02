@@ -10,6 +10,18 @@ All notable product changes are documented here.
 - Overspending alerts: the "Safe to spend this week" card on the web dashboard and the Android and iOS Home screen warns you when nothing is left that's safe to spend this week, or when the 30-day cash flow forecast shows your balance going below zero (it names the date). On Android and iOS the alert also arrives as a notification, once per week for a spent-out week and once per deficit date, if you have allowed Zoption's notifications.
 - Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
 
+### Changed
+
+- The web app is easier to read and calmer to look at. No text is smaller than 11px. Cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Status colours follow the light, dark, and warm themes in the subscription calendar and import suggestions.
+- The sign-in, sign-up, password, and setup screens use a flat panel with larger labels. On phones the form fills the screen, and fields no longer make iOS zoom in when you tap them. The Google button spans the full width.
+- Overspending is easy to spot. An over-limit category on Budgets and on a shared budget link turns red and says "Over by". On a tablet, Budgets keeps each category's remaining amount visible.
+- The assistant's Memory button stays on screen on phones. Settings section titles are smaller, the Tutorials page lines up with the rest of the app, and paused or paid goals and debts keep their buttons at full contrast.
+
+### Fixed
+
+- The Back and Confirm buttons on the setup screen share the row instead of Back taking almost all of it.
+- The calendar's left edge no longer draws a double line on every week, and its phone day markers use readable income and expense colours.
+
 ## 3.1.0 — 2026-10-01
 
 ### Added

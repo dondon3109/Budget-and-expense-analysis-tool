@@ -9,18 +9,10 @@
 }
 
 .subscription-summary .metric-card {
-  min-height: 144px;
   display: grid;
   align-content: center;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.subscription-summary .metric-card:hover {
-  box-shadow: var(--shadow-raised);
 }
 
 .subscription-table-wrap {
@@ -44,7 +36,7 @@
   color: var(--subtle);
   background: var(--surface-soft);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -86,7 +78,7 @@
 .subscription-billing-empty {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   line-height: 1.4;
 }
@@ -104,7 +96,7 @@
 .subscription-renewal-blocked {
   flex-basis: 100%;
   color: var(--warning);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   line-height: 1.3;
 }
@@ -116,7 +108,7 @@
   align-items: center;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
 }
 
@@ -139,7 +131,7 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 650;
   cursor: pointer;
   transition:
@@ -169,7 +161,7 @@
   margin: 0 0 4px;
   color: var(--action);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
 }
 
@@ -222,7 +214,7 @@
     display: inline-block;
     color: var(--subtle);
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -282,12 +274,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  min-height: 34px;
+  padding: 6px 12px;
   border-radius: calc(var(--radius-sm) - 2px);
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
-  color: var(--subtle);
-  font-size: 12px;
+  color: var(--muted);
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition:
@@ -320,5 +313,17 @@
   .subscription-status-action {
     min-height: 44px;
     padding-inline: 12px;
+  }
+
+  .subscriptions-view-toggle {
+    width: 100%;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  .view-toggle-button {
+    min-height: 44px;
+    justify-content: center;
   }
 }

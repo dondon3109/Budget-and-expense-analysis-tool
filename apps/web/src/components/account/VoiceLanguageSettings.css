@@ -68,7 +68,7 @@
   border-radius: 9999px;
   background: color-mix(in srgb, var(--action) 12%, transparent);
   color: var(--action);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 620;
   letter-spacing: 0.03em;
   text-transform: uppercase;

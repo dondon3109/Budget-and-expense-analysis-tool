@@ -89,7 +89,7 @@
 
 .planning-overview span {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.055em;
   text-transform: uppercase;
@@ -214,10 +214,12 @@
   background: var(--surface-soft);
 }
 
-.planning-record.paused,
-.planning-record.completed,
-.planning-record.paid {
-  opacity: 0.78;
+/* Settled records step back through muted figures; the status pill names the state, and
+   the actions stay at full contrast. */
+.planning-record.paused .planning-record-topline strong,
+.planning-record.completed .planning-record-topline strong,
+.planning-record.paid .planning-record-topline strong {
+  color: var(--muted);
 }
 
 .planning-record-topline,
@@ -259,7 +261,7 @@
   border: 1px solid transparent;
   border-radius: 999px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.025em;
   text-transform: capitalize;
@@ -301,7 +303,7 @@
 .planning-record > small {
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-variant-numeric: tabular-nums;
   line-height: 1.45;
 }
@@ -403,7 +405,7 @@
   margin-bottom: 8px;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.045em;
   text-transform: uppercase;
@@ -454,7 +456,7 @@
 .planning-preference-controls small,
 .planning-preferences-status {
   color: var(--subtle);
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1.45;
 }
 

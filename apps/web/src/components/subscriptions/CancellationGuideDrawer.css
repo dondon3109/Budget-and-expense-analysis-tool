@@ -15,7 +15,7 @@
   width: 100%;
   max-width: 520px;
   height: 100%;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-dialog);
   display: flex;
   flex-direction: column;
   overflow-y: auto;

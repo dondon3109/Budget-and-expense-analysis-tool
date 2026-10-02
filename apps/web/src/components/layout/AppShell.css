@@ -111,7 +111,6 @@
   gap: 10px;
   color: inherit;
   border-radius: 10px;
-  outline: 0;
   text-decoration: none;
   transition:
     color 150ms ease,
@@ -126,10 +125,6 @@
 .sidebar-account-identity:active {
   color: var(--action-strong);
   background: var(--action-soft);
-}
-
-.sidebar-account-identity:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 .sidebar-account-identity > div {
@@ -170,7 +165,7 @@
 .sidebar-profile-theme > span {
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.05em;
   text-transform: uppercase;
@@ -221,14 +216,13 @@
   background: var(--surface-hover);
 }
 
-/* The current page reads as the sheet pulled to the front: a raised surface with a mint
-   spine, so it stays obvious without flooding the rail with brand colour. */
+/* The current page is a flat brand tint with a brand spine. A raised white surface on the
+   pale rail measured about 1.2:1 and read as a floating card. */
 .nav-item.current {
-  color: var(--ink);
-  border-color: var(--line);
-  background: var(--surface);
-  box-shadow: var(--shadow-card);
-  font-weight: 580;
+  color: var(--brand-strong);
+  border-color: transparent;
+  background: var(--brand-soft);
+  font-weight: 600;
 }
 
 .nav-item.current::before {
@@ -239,7 +233,7 @@
   left: -1px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--mint);
+  background: var(--brand);
 }
 
 .nav-item.current svg {
@@ -250,7 +244,7 @@
   margin-left: auto;
   color: var(--subtle);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -435,7 +429,7 @@
 .app-shell.nav-collapsed .sidebar .user-avatar.small {
   width: 32px;
   height: 32px;
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .app-shell.nav-collapsed .sidebar .nav-item,
@@ -475,8 +469,7 @@
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid var(--line);
-    background: color-mix(in srgb, var(--page-accent) 92%, transparent);
-    backdrop-filter: blur(16px);
+    background: var(--page-accent);
   }
 
   .mobile-header .brand {
@@ -547,7 +540,7 @@
   .mobile-menu-header span {
     color: var(--action);
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -581,8 +574,8 @@
   }
 
   .nav-item.current {
-    border-color: var(--ink);
-    box-shadow: none;
+    border-color: color-mix(in srgb, var(--brand) 40%, var(--line));
+    background: var(--brand-soft);
   }
 
   .nav-item.current::before {
@@ -679,8 +672,7 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: stretch;
     border-top: 1px solid var(--line);
-    background: color-mix(in srgb, var(--page-accent) 92%, transparent);
-    backdrop-filter: blur(18px);
+    background: var(--page-accent);
   }
 
   .mobile-tab-item {
@@ -696,7 +688,7 @@
     border: 0;
     border-radius: 12px;
     background: transparent;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     line-height: 1;
   }
@@ -713,8 +705,8 @@
   }
 
   .mobile-tab-item.current svg {
-    color: var(--solid-text);
-    background: var(--solid-bg);
+    color: var(--brand-strong);
+    background: var(--brand-soft);
   }
 }
 

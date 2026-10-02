@@ -323,7 +323,7 @@ export function BudgetsPage() {
                           key={item.categoryId}
                         >
                           <div className="budget-category-title">
-                            <i style={{ background: item.categoryColor }} />
+                            <i style={{ background: item.categoryColor }} aria-hidden="true" />
                             <div>
                               <strong>{item.categoryName}</strong>
                               <span>{formatMoney(item.spentMinor)} spent</span>
@@ -332,7 +332,14 @@ export function BudgetsPage() {
                           <div className="budget-editor-progress">
                             <div>
                               <span
-                                style={{ width: `${width}%`, background: item.categoryColor }}
+                                style={{
+                                  width: `${width}%`,
+                                  // Over-limit rows take the danger fill from the stylesheet.
+                                  background:
+                                    hasLimit && item.remainingMinor < 0
+                                      ? undefined
+                                      : item.categoryColor,
+                                }}
                               />
                             </div>
                             <small>

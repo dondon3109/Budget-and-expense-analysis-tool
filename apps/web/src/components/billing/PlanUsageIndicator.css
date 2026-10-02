@@ -20,7 +20,7 @@
 
 .plan-usage-heading span {
   color: var(--muted);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -50,7 +50,7 @@
 .plan-usage-meta small,
 .plan-usage-indicator > p {
   color: var(--subtle);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 580;
   line-height: 1.45;
 }
@@ -63,7 +63,7 @@
 .plan-usage-meta a {
   flex: 0 0 auto;
   color: var(--action);
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 700;
   text-decoration: none;
 }
@@ -118,7 +118,7 @@
 .plan-usage-indicator.compact .plan-usage-heading strong,
 .plan-usage-indicator.compact .plan-usage-meta small,
 .plan-usage-indicator.compact .plan-usage-meta a {
-  font-size: 8px;
+  font-size: 11px;
 }
 
 .plan-usage-indicator.compact .plan-usage-heading span {

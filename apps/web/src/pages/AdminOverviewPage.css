@@ -18,7 +18,7 @@
 .admin-hub-header > div > p {
   margin: 0 0 7px;
   color: var(--action);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -168,7 +168,7 @@
   border-radius: 999px;
   background: var(--surface-soft);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.05em;
   line-height: 1.6;
@@ -275,7 +275,7 @@
   border-bottom: 1px solid var(--line);
   background: var(--surface-soft);
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   font-weight: 580;
   letter-spacing: 0.06em;
   line-height: 1.6;

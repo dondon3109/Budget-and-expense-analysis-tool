@@ -60,7 +60,7 @@ function Stepper({ current }: { current: number }) {
             <span className="onboarding-step-circle" aria-hidden="true">
               {status === "completed" ? "✓" : index + 1}
             </span>
-            <span>
+            <span className="onboarding-step-label">
               {label}
               <span className="onboarding-step-status">
                 {status === "completed" ? " (done)" : status === "upcoming" ? " (next)" : ""}

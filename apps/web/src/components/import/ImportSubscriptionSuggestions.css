@@ -2,13 +2,10 @@
   margin: 18px 0;
   padding: 18px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: var(--radius-lg);
   background: var(--surface);
   display: grid;
   gap: 16px;
-  box-shadow:
-    0 1px 0 rgba(38, 55, 49, 0.03),
-    0 14px 34px -20px rgba(38, 55, 49, 0.12);
 }
 
 .suggestion-header {
@@ -133,19 +130,19 @@
 }
 
 .suggestion-cadence.monthly {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #15803d;
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 30%, var(--line));
+  color: var(--success);
 }
 .suggestion-cadence.yearly {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1d4ed8;
+  background: var(--info-soft);
+  border-color: color-mix(in srgb, var(--info) 30%, var(--line));
+  color: var(--info);
 }
 .suggestion-cadence.irregular {
-  background: #fffbeb;
-  border-color: #fde68a;
-  color: #92400e;
+  background: var(--warning-soft);
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
+  color: var(--warning);
 }
 .suggestion-confidence.high {
   background: var(--ink);
