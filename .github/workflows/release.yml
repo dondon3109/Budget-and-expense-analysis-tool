@@ -307,6 +307,11 @@ jobs:
           APP_URL: https://app.zoption.site
           API_URL: https://api.zoption.site
           EXPECTED_POSTHOG_HOST: https://us.i.posthog.com
+      # Best effort: a search-engine ping must never block or fail a release.
+      - name: Submit URLs to IndexNow
+        if: steps.deployment.outputs.skip_deploy != 'true'
+        continue-on-error: true
+        run: node scripts/submit-indexnow.mjs
       - name: Record successful production deployment
         if: steps.deployment.outputs.skip_deploy != 'true'
         run: node scripts/github-production-deployment.mjs finish success
