@@ -85,4 +85,14 @@ describe("authenticated layout session gate", () => {
     expect(screen.queryByText("Restoring your session…")).toBeNull();
     expect(await screen.findByText("Workspace routes")).toBeTruthy();
   });
+
+  it("opens the local workspace for a guest without an account", async () => {
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "guest", subject: "zoption-guest" }));
+
+    await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
+
+    expect(await screen.findByText("Workspace routes")).toBeTruthy();
+  });
 });

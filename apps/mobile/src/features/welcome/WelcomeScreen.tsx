@@ -14,8 +14,20 @@ import { spacing, typography } from "@/ui/tokens";
 export function WelcomeScreen() {
   const theme = useZoptionTheme();
   const demoEnabled = isDevelopmentAppVariant();
-  const { signInWithDummyAccount, signInWithPassword } = useSessionSnapshot();
+  const { continueAsGuest, signInWithDummyAccount, signInWithPassword } = useSessionSnapshot();
   const [dummyBusy, setDummyBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState(false);
+
+  async function handleGuest(): Promise<void> {
+    if (guestBusy) return;
+    setGuestBusy(true);
+    try {
+      await continueAsGuest();
+      router.replace("/(app)/(tabs)");
+    } catch {
+      setGuestBusy(false);
+    }
+  }
 
   async function handleDummySignIn(): Promise<void> {
     if (dummyBusy) return;
@@ -70,8 +82,18 @@ export function WelcomeScreen() {
             Sign in with dummy account
           </Button>
         ) : null}
+        <Button
+          accessibilityHint="Uses Zoption on this device without an account"
+          disabled={guestBusy}
+          loading={guestBusy}
+          onPress={() => void handleGuest()}
+          variant="secondary"
+        >
+          Continue without an account
+        </Button>
         <Text style={[typography.caption, styles.footnote, { color: theme.colors.textMuted }]}>
-          Encrypted on your device · Same account on web and mobile
+          Without an account your data stays on this device. An account adds backup and sync across
+          your phone and the web, the AI Assistant, receipt scanning and voice entry.
         </Text>
       </View>
     </Screen>

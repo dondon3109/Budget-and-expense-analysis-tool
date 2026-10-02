@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from "react";
 import { View } from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
+import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
@@ -41,6 +42,8 @@ export function HomeScreen() {
   const subscriptions = useSubscriptions();
   useGoalPrompt();
   const sync = useSyncState();
+  // A guest never syncs, so the pill says where the data lives instead of "Waiting to sync".
+  const guest = useSessionSnapshot().status === "guest";
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
@@ -67,7 +70,7 @@ export function HomeScreen() {
 
   return (
     <Screen
-      action={<SyncStatus state={visibleSyncState(sync.status)} />}
+      action={<SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />}
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
       title="Home"

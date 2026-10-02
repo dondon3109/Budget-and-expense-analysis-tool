@@ -71,8 +71,8 @@ export async function applyDailyReminder(enabled: boolean): Promise<DailyReminde
 }
 
 /**
- * Ties the reminder to a signed-in session. Mount once under SessionProvider.
- * Signed in, it restores the reminders; signed out, it clears it. The clear
+ * Ties the reminder to a signed-in or guest session. Mount once under SessionProvider.
+ * In either, it restores the reminders; signed out, it clears it. The clear
  * matters at launch: a session that ended while the app was closed resolves
  * straight to signed-out without an identity transition, so
  * clearUserScopedRuntimeState never runs for it.
@@ -81,7 +81,8 @@ export function useDailyReminderSession(status: SessionStatus): void {
   useEffect(() => {
     // Best-effort like background sync: a notification failure must never
     // affect startup or sign-in.
-    if (status === "signed-in") void startDailyReminder().catch(() => undefined);
+    if (status === "signed-in" || status === "guest")
+      void startDailyReminder().catch(() => undefined);
     if (status === "signed-out") void clearDailyReminder().catch(() => undefined);
   }, [status]);
 }

@@ -2,6 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useGoalCta } from "@/features/primary-goal/goal-personalization";
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -10,6 +11,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 export function HomeEmptyView({ syncing }: { syncing: boolean }) {
   const theme = useZoptionTheme();
   const goalCta = useGoalCta();
+  const { openFeature } = useAccountGate();
 
   if (syncing) {
     return (
@@ -86,7 +88,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
               <Button
                 accessibilityHint="Opens the guided 3-step bank file import"
                 onPress={() =>
-                  router.push({ pathname: "/(app)/import", params: { firstRun: "1" } })
+                  openFeature("import", { pathname: "/(app)/import", params: { firstRun: "1" } })
                 }
               >
                 Bring your data (File import)

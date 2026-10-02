@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useSessionSnapshot } from "@/auth/session-state";
 import { useCalendarMonth, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import type { LocalCalendarDay } from "@/db/view-models";
@@ -110,6 +111,7 @@ export function CalendarScreen() {
   const state = useCalendarMonth(month);
   const local = useLocalWorkspace();
   const sync = useSyncState();
+  const guest = useSessionSnapshot().status === "guest";
   const theme = useZoptionTheme();
 
   const days = useMemo(
@@ -172,7 +174,7 @@ export function CalendarScreen() {
         </Pressable>
       </View>
       <View style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.xxs }}>
-        <SyncStatus state={visibleSyncState(sync.status)} />
+        <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
       </View>
       {state.error ? (
         <ErrorState title="Calendar unavailable" message={state.error} onRetry={state.retry} />

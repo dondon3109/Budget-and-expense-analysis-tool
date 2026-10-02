@@ -6,6 +6,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { useGoalProfileSync } from "@/auth/goal-profile-sync";
 import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
+import { AccountPromptHost } from "@/features/account-prompt/AccountPromptHost";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
 import { PlanLimitHost } from "@/features/billing/PlanLimitDialog";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
@@ -17,7 +18,8 @@ import { typography } from "@/ui/tokens";
 
 /**
  * Everything the authenticated route group waits on before it renders `children`: the restored
- * session, the app lock, the encrypted local workspace, and the sync loop.
+ * session, the app lock, the encrypted local workspace, and the sync loop. A guest session gets
+ * the local workspace only: no app lock, and sync stays off because it needs an account.
  */
 export function AuthenticatedGate({ children }: PropsWithChildren) {
   const session = useSessionSnapshot();
@@ -38,15 +40,18 @@ export function AuthenticatedGate({ children }: PropsWithChildren) {
       </View>
     );
   }
-  if (session.status !== "signed-in") return <Redirect href="/(public)/sign-in" />;
+  if (session.status !== "signed-in" && session.status !== "guest") {
+    return <Redirect href="/(public)/sign-in" />;
+  }
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
-  return (
-    <AppLockGate subject={session.subject}>
-      <LocalWorkspaceProvider subject={session.subject}>
-        <LocalWorkspaceGate identity={identity}>{children}</LocalWorkspaceGate>
-      </LocalWorkspaceProvider>
-    </AppLockGate>
+  const workspace = (
+    <LocalWorkspaceProvider subject={session.subject}>
+      <LocalWorkspaceGate identity={identity}>{children}</LocalWorkspaceGate>
+    </LocalWorkspaceProvider>
   );
+  // The app lock protects an account's data; a guest has no account to lock.
+  if (session.status === "guest") return workspace;
+  return <AppLockGate subject={session.subject}>{workspace}</AppLockGate>;
 }
 
 function LocalWorkspaceGate({
@@ -91,6 +96,7 @@ function LocalWorkspaceGate({
       {children}
       <DailyReminderTapHandler />
       <PlanLimitHost />
+      <AccountPromptHost />
     </SyncProvider>
   );
 }
