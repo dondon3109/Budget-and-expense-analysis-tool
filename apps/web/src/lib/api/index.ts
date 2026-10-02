@@ -28,6 +28,7 @@ export * from "./dashboard";
 export * from "./debts";
 export * from "./events";
 export * from "./exports";
+export * from "./goalProfile";
 export * from "./goals";
 export * from "./imports";
 export * from "./onboarding";
