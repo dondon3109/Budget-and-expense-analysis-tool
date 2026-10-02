@@ -50,9 +50,20 @@ describe("GoalSettings", () => {
       screen.getByRole("radio", { name: "Create and stick to a monthly budget" }),
     ).toBeChecked();
 
-    fireEvent.click(screen.getByRole("radio", { name: "Pay off debt / utang" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Pay off debt / utang" }), { detail: 1 });
     await waitFor(() => expect(saveGoal).toHaveBeenCalledWith(workspace, { goal: "reduce_debt" }));
     expect(await screen.findByText(/Current goal: Pay off debt/)).toBeInTheDocument();
+  });
+
+  it("saves a keyboard pick only after Save goal", async () => {
+    getGoalProfile.mockResolvedValue(profile("build_budget"));
+    saveGoal.mockResolvedValue(profile("reduce_debt"));
+    renderSettings();
+
+    fireEvent.click(await screen.findByRole("radio", { name: "Pay off debt / utang" }));
+    expect(saveGoal).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Save goal" }));
+    await waitFor(() => expect(saveGoal).toHaveBeenCalledWith(workspace, { goal: "reduce_debt" }));
   });
 
   it("prompts softly when no goal is set", async () => {
