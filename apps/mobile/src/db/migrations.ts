@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 12;
+export const LOCAL_SCHEMA_VERSION = 13;
 
 export const migrations: readonly Migration[] = [
   {
@@ -687,6 +687,20 @@ export const migrations: readonly Migration[] = [
         ELSE icon_emoji
       END
       WHERE icon_emoji IS NULL OR icon_emoji = '';
+    `,
+  },
+  {
+    version: 13,
+    name: "transaction_photos",
+    // Device-only: never synchronized, so no outbox row. Kept in the encrypted database so
+    // a workspace wipe removes the picture with everything else.
+    sql: `
+      CREATE TABLE transaction_photos (
+        transaction_id TEXT PRIMARY KEY NOT NULL,
+        mime_type TEXT NOT NULL,
+        data_base64 TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
     `,
   },
 ] as const;

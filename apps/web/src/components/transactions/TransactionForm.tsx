@@ -117,7 +117,7 @@ export function TransactionForm({
     [categoriesProp, createdCategories],
   );
   const dialogRef = useRef<HTMLElement>(null);
-  const descriptionRef = useRef<HTMLInputElement>(null);
+  const amountRef = useRef<HTMLInputElement>(null);
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
   const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const defaultAccount = useMemo(
@@ -202,7 +202,7 @@ export function TransactionForm({
   useRootLock(true);
 
   const handleDialogKeyDown = useFocusTrap(dialogRef, {
-    initialFocusRef: descriptionRef,
+    initialFocusRef: amountRef,
     onEscape: () => {
       if (!busy) onClose();
     },
@@ -226,9 +226,18 @@ export function TransactionForm({
         return;
       }
     }
+    // The form has no description field; lists still need one, so an entry without one
+    // falls back to its first note line, else its category name.
+    const resolvedDescription =
+      description.trim() ||
+      (kind === "transfer"
+        ? ""
+        : notes.trim().split("\n")[0]?.trim().slice(0, 240) ||
+          categories.find((category) => category.id === categoryId)?.name ||
+          "");
     const base = {
       date,
-      description,
+      description: resolvedDescription,
       amountMinor,
       currency,
       kind,
@@ -366,41 +375,48 @@ export function TransactionForm({
               categories={activeCategoryNames}
             />
           )}
+          <label>
+            <span>Transaction type</span>
+            <select
+              value={kind}
+              onChange={(event) => setKind(event.target.value as TransactionKind)}
+            >
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+              <option value="transfer">Transfer</option>
+            </select>
+          </label>
           <div className="form-row split">
             <label>
-              <span>Transaction type</span>
-              <select
-                value={kind}
-                onChange={(event) => setKind(event.target.value as TransactionKind)}
-              >
-                <option value="expense">Expense</option>
-                <option value="income">Income</option>
-                <option value="transfer">Transfer</option>
-              </select>
+              <span>Amount ({currency})</span>
+              <div className="money-input">
+                <b>{currencyMetadata[currency].symbol}</b>
+                <input
+                  ref={amountRef}
+                  aria-label={`Amount (${currency})`}
+                  inputMode="decimal"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="0.00"
+                  required
+                />
+              </div>
             </label>
             <label>
-              <span>Date</span>
-              <input
-                type="date"
-                value={date}
-                onChange={(event) => setDate(event.target.value)}
+              <span>Currency</span>
+              <select
+                value={currency}
+                onChange={(event) => setCurrency(event.target.value as Currency)}
                 required
-              />
+              >
+                {currencies.map((option) => (
+                  <option key={option} value={option}>
+                    {currencyMetadata[option].label}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
-          <label>
-            <span>Description {kind === "transfer" && <small>Optional</small>}</span>
-            <input
-              ref={descriptionRef}
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder={
-                kind === "transfer" ? "e.g. Transfer to savings" : "e.g. Weekly groceries"
-              }
-              maxLength={240}
-              required={kind !== "transfer"}
-            />
-          </label>
           {kind === "transfer" ? (
             <div className="form-row split">
               {selector("From account", fromAccountId, selectFromAccount)}
@@ -442,36 +458,6 @@ export function TransactionForm({
               </div>
             </label>
           )}
-          <div className="form-row split">
-            <label>
-              <span>Amount ({currency})</span>
-              <div className="money-input">
-                <b>{currencyMetadata[currency].symbol}</b>
-                <input
-                  aria-label={`Amount (${currency})`}
-                  inputMode="decimal"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-            </label>
-            <label>
-              <span>Currency</span>
-              <select
-                value={currency}
-                onChange={(event) => setCurrency(event.target.value as Currency)}
-                required
-              >
-                {currencies.map((option) => (
-                  <option key={option} value={option}>
-                    {currencyMetadata[option].label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
           <label>
             <span>Category</span>
             <select
@@ -532,9 +518,16 @@ export function TransactionForm({
               </label>
             ))}
           <label>
-            <span>
-              Notes <small>Optional</small>
-            </span>
+            <span>Date</span>
+            <input
+              type="date"
+              value={date}
+              onChange={(event) => setDate(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            <span>Notes</span>
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
