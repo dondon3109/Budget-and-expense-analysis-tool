@@ -1,6 +1,8 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { promptsForGoal } from "@/features/primary-goal/goal-personalization";
+import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -16,6 +18,7 @@ const SUGGESTED_QUESTIONS = [
 /** Empty-chat prompt with starter questions; tapping one fills the message box. */
 export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => void }) {
   const theme = useZoptionTheme();
+  const goal = useGoalProfileStore((state) => state.profile?.goal ?? null);
   return (
     <View style={styles.suggestions}>
       <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
@@ -24,7 +27,7 @@ export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => v
       <Text style={[typography.body, { color: theme.colors.textMuted }]}>
         Tap a question to start, or type your own.
       </Text>
-      {SUGGESTED_QUESTIONS.map((question) => (
+      {promptsForGoal(SUGGESTED_QUESTIONS, goal).map((question) => (
         <Pressable
           key={question}
           accessibilityRole="button"

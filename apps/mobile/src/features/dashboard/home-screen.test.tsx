@@ -187,6 +187,7 @@ describe("HomeScreen", () => {
     });
 
     await render(<HomeScreen />);
+    await fireEvent.press(screen.getByRole("tab", { name: "Analytics" }));
 
     expect(screen.getByText("Cash flow forecast")).toBeTruthy();
     expect(screen.getByText("Upcoming bills and renewals")).toBeTruthy();
@@ -277,7 +278,13 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Total Balance")).toBeTruthy();
     expect(screen.queryByText("Main Bank")).toBeNull();
 
-    // Month summary
+    // Recent activity stays on the overview
+    expect(screen.getByText("Recent activity")).toBeTruthy();
+    expect(screen.getByText("Salary deposit")).toBeTruthy();
+    expect(screen.queryByText("This month")).toBeNull();
+
+    // Month summary lives under Analytics
+    await fireEvent.press(screen.getByRole("tab", { name: "Analytics" }));
     expect(screen.getByText("This month")).toBeTruthy();
     expect(screen.getByText("Money in")).toBeTruthy();
     expect(screen.getByText("Money out")).toBeTruthy();
@@ -286,11 +293,6 @@ describe("HomeScreen", () => {
     // Categories
     expect(screen.getByText("Spending by category")).toBeTruthy();
     expect(screen.getByText("Groceries")).toBeTruthy();
-
-    // Recent activity
-    expect(screen.getByText("Recent activity")).toBeTruthy();
-    expect(screen.getByText("Salary deposit")).toBeTruthy();
-    expect(screen.getByText("Supermarket groceries")).toBeTruthy();
   });
 
   it("shows only the total balance and opens account management when tapped", async () => {

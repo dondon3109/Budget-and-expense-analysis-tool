@@ -8,6 +8,7 @@ import type {
   AssistantVoicePreferences,
 } from "@zoption/shared";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { reportPlanLimit } from "@/features/billing/PlanLimitDialog";
 import {
   ActivityIndicator,
   FlatList,
@@ -379,6 +380,7 @@ export function AssistantScreen() {
         );
         if (error instanceof ApiTransportError && error.code === "plan_limit") {
           setLimitBanner(error.message);
+          reportPlanLimit(error.message);
         } else {
           setInlineError(
             error instanceof ApiTransportError ? error.message : "The question could not be sent.",
