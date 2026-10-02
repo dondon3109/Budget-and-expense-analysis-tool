@@ -101,9 +101,9 @@ export const LogoCoin = ({
   }, [face]);
   useMemo(() => {
     face.center.set(0.5, 0.5);
-    face.rotation = -Math.PI / 2;
+    face.rotation = Math.PI / 2;
     bottom.center.set(0.5, 0.5);
-    bottom.rotation = Math.PI / 2;
+    bottom.rotation = -Math.PI / 2;
   }, [face, bottom]);
   const side = useMemo(
     () => new THREE.MeshStandardMaterial({ color: C.brand, metalness: 0.45, roughness: 0.28 }),

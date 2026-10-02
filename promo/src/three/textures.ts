@@ -43,7 +43,15 @@ export const useCanvasTexture = (
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 8;
-    draw(ctx, w, h);
+    // The texture is drawn twice (before and after the fonts load). Isolate each pass so
+    // canvas state such as textAlign cannot leak from the first into the second.
+    const drawClean = () => {
+      ctx.save();
+      ctx.clearRect(0, 0, w, h);
+      draw(ctx, w, h);
+      ctx.restore();
+    };
+    drawClean();
     const handle = delayRender("Drawing canvas texture");
     void Promise.all([
       document.fonts.load(`800 100px ${FONT.display}`),
@@ -51,8 +59,7 @@ export const useCanvasTexture = (
     ])
       .catch(() => undefined)
       .then(() => {
-        ctx.clearRect(0, 0, w, h);
-        draw(ctx, w, h);
+        drawClean();
         texture.needsUpdate = true;
         continueRender(handle);
       });
