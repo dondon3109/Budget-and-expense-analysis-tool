@@ -4,7 +4,7 @@ import {
   primaryGoals,
   type PrimaryGoal,
 } from "@zoption/shared";
-import { useId, useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent, type MouseEvent } from "react";
 
 import "./GoalPicker.css";
 
@@ -16,14 +16,15 @@ type GoalPickerProps = {
   goal: PrimaryGoal | null;
   otherText: string | null;
   disabled: boolean;
-  /** Label of the button that confirms an "Other" answer. */
+  /** Label of the button that confirms a keyboard pick or an "Other" answer. */
   confirmLabel: string;
   onChoose: (choice: GoalChoice) => void;
 };
 
 /**
- * Single-select goal cards. A preset goal is chosen the moment it is picked; "Other" first reveals
- * an optional note and is chosen with the confirm button.
+ * Single-select goal cards. Clicking a preset goal chooses it at once. Arrow keys move the
+ * selection without choosing, so a keyboard user can pass over cards without leaving the step;
+ * they confirm with the button. "Other" also reveals an optional note and is confirmed the same way.
  */
 export function GoalPicker({
   legend,
@@ -40,15 +41,18 @@ export function GoalPicker({
   const selected = picked ?? goal;
   const noteValue = note ?? otherText ?? "";
 
-  function choose(next: PrimaryGoal) {
-    setPicked(next);
-    if (next !== "other") onChoose({ goal: next });
+  // A pointer click has detail >= 1; the click a browser fires for an arrow key or Space has 0.
+  function chooseOnClick(event: MouseEvent<HTMLInputElement>, next: PrimaryGoal) {
+    if (event.detail > 0 && next !== "other") onChoose({ goal: next });
   }
 
-  function confirmOther(event: FormEvent) {
+  function confirm(event: FormEvent) {
     event.preventDefault();
-    onChoose({ goal: "other", otherText: noteValue });
+    if (!selected) return;
+    onChoose(selected === "other" ? { goal: "other", otherText: noteValue } : { goal: selected });
   }
+
+  const unconfirmed = selected !== null && selected !== goal;
 
   return (
     <fieldset className="goal-picker" disabled={disabled}>
@@ -61,7 +65,8 @@ export function GoalPicker({
               name="primary-goal"
               value={option}
               checked={selected === option}
-              onChange={() => choose(option)}
+              onChange={() => setPicked(option)}
+              onClick={(event) => chooseOnClick(event, option)}
             />
             <span>{primaryGoalLabels[option]}</span>
           </label>
@@ -80,10 +85,12 @@ export function GoalPicker({
             value={noteValue}
             onChange={(event) => setNote(event.target.value)}
           />
-          <button className="button primary" type="button" onClick={confirmOther}>
-            {confirmLabel}
-          </button>
         </div>
+      )}
+      {(unconfirmed || selected === "other") && (
+        <button className="button primary" type="button" onClick={confirm}>
+          {confirmLabel}
+        </button>
       )}
     </fieldset>
   );

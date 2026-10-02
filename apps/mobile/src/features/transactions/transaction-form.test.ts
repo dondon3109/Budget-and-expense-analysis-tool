@@ -1,4 +1,9 @@
-import { formatMinorForInput, localCalendarDate, parseTransactionForm } from "./transaction-form";
+import {
+  fallbackDescription,
+  formatMinorForInput,
+  localCalendarDate,
+  parseTransactionForm,
+} from "./transaction-form";
 
 describe("native transaction form", () => {
   const valid = {
@@ -77,5 +82,13 @@ describe("native transaction form", () => {
 
   it("uses the device calendar date without converting through UTC", () => {
     expect(localCalendarDate(new Date(2026, 7, 13, 23, 59))).toBe("2026-08-13");
+  });
+
+  it("labels an entry without a description from its notes, else its category", () => {
+    expect(fallbackDescription({ ...valid, notes: "Lunch with Ana\nsplit" }, "Food")).toBe(
+      "Lunch with Ana",
+    );
+    expect(fallbackDescription(valid, "Food")).toBe("Food");
+    expect(fallbackDescription({ ...valid, kind: "transfer" }, "Food")).toBe("");
   });
 });

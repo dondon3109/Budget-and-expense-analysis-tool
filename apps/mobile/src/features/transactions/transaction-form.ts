@@ -34,6 +34,13 @@ export type TransactionFormErrors = Partial<
   >
 >;
 
+/** The list label for an entry that has no description: its first note line, else its category. */
+export function fallbackDescription(values: TransactionFormValues, categoryName?: string): string {
+  if (values.kind === "transfer") return "";
+  const firstLine = values.notes.trim().split("\n")[0]?.trim().slice(0, 240);
+  return firstLine || categoryName || "";
+}
+
 export function formatMinorForInput(amountMinor: number): string {
   const magnitude = Math.abs(amountMinor);
   const whole = Math.floor(magnitude / 100);

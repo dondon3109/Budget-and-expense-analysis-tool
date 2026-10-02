@@ -4,8 +4,10 @@ import { Text, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
+import { useGoalProfileSync } from "@/auth/goal-profile-sync";
 import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
+import { PlanLimitHost } from "@/features/billing/PlanLimitDialog";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
@@ -53,6 +55,7 @@ function LocalWorkspaceGate({
 }: PropsWithChildren<{ identity: ReturnType<typeof useWorkerIdentity> }>) {
   const local = useLocalWorkspace();
   useWorkspaceCurrencySync();
+  useGoalProfileSync();
   const theme = useZoptionTheme();
   if (local.status === "opening") {
     return (
@@ -87,6 +90,7 @@ function LocalWorkspaceGate({
     >
       {children}
       <DailyReminderTapHandler />
+      <PlanLimitHost />
     </SyncProvider>
   );
 }

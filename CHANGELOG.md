@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - Web: setup now asks what brings you to Zoption (track spending, budget, save, pay off debt, understand habits with AI, or just looking). You can skip it, and you can change your answer in Account Settings. Your choice sets the first action on an empty dashboard, a short getting-started checklist, and the assistant's first suggested question. Existing accounts are not asked during setup. The goal is stored with your workspace, included in your data export, and deleted with your account.
+- Mobile: the app now asks once what brings you to Zoption, with a Skip that never blocks you, and you can change your answer under More → Preferences → Your goal. Your choice sets the first action on an empty Home screen and the assistant's first suggested question. Without a goal, or offline, nothing changes.
 - Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
 - Overspending alerts: the "Safe to spend this week" card on the web dashboard and the Android and iOS Home screen warns you when nothing is left that's safe to spend this week, or when the 30-day cash flow forecast shows your balance going below zero (it names the date). On Android and iOS the alert also arrives as a notification, once per week for a spent-out week and once per deficit date, if you have allowed Zoption's notifications.
 - Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
@@ -15,7 +16,9 @@ All notable product changes are documented here.
 ### Changed
 
 - Web: the dashboard's "Cash flow forecast" card is now "Safe to spend", showing what is safe to spend this week as on mobile, and still opens the forecast. On mobile, the "days left · bills counted" line under the Safe to spend amount is gone.
+- Mobile: Home is cleaner. A switch at the top splits it into Overview (balances, recent activity) and Analytics (this month, the cash flow chart, spending by category, budget, and the cash flow forecast).
 - Web: hitting a free plan limit on custom categories, or trying a Pro-only action such as exporting transactions or managing accounts, now opens a "Plan limit reached" pop-up with a link to Plan and billing, the same as the AI and import limits.
+- Mobile: hitting a free plan limit in the assistant or an import, or when a saved custom category or account change is refused during sync, now opens a "Plan limit reached" pop-up with a link to Plan and billing.
 - On the web dashboard, "Add transaction" now opens the transaction form over the page instead of switching to Transactions, so you can add one and keep watching your balances.
 - Web: category emojis now sit on a soft tile tinted with the category colour, the same look as on mobile, in transactions, recent activity, spending by category, and the category manager.
 - The web app is easier to read and calmer to look at. No text is smaller than 11px. Cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Status colours follow the light, dark, and warm themes in the subscription calendar and import suggestions.
@@ -25,6 +28,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- The setup goal step no longer saves and moves on when you arrow past a choice with the keyboard. Arrow keys only move the selection, and you confirm with the button. Clicking a choice still saves it straight away.
 - The Back and Confirm buttons on the setup screen share the row instead of Back taking almost all of it.
 - The calendar's left edge no longer draws a double line on every week, and its phone day markers use readable income and expense colours.
 
