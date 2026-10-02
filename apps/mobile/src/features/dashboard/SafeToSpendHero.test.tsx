@@ -1,5 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { useOverspendingNotification } from "@/features/reminders/overspending-notification";
 import { SafeToSpendHero } from "./SafeToSpendHero";
+
+jest.mock("@/features/reminders/overspending-notification", () => ({
+  useOverspendingNotification: jest.fn(),
+}));
 
 const monthlyBill = {
   id: "sub-netflix",
@@ -10,6 +15,13 @@ const monthlyBill = {
   nextBillingDate: "2026-09-10",
   status: "active",
 };
+
+/** A date a few days out, far enough that UTC and local "today" agree on it. */
+function localDateInDays(days: number): string {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 describe("SafeToSpendHero (mobile)", () => {
   it("renders safe to spend hero with forward guidance", async () => {
@@ -69,5 +81,29 @@ describe("SafeToSpendHero (mobile)", () => {
     );
 
     expect(screen.getByText("1 plan billed in USD isn't counted here.")).toBeTruthy();
+  });
+
+  it("raises no overspending alert while there is still something safe to spend", async () => {
+    await render(<SafeToSpendHero startingBalanceMinor={500_000} subscriptions={[]} />);
+
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(useOverspendingNotification).toHaveBeenLastCalledWith(null);
+  });
+
+  it("alerts and notifies when the forecast shows a deficit", async () => {
+    // A ₱549 renewal against a ₱100 balance takes it below zero on the renewal date.
+    await render(
+      <SafeToSpendHero
+        startingBalanceMinor={10_000}
+        subscriptions={[{ ...monthlyBill, nextBillingDate: localDateInDays(3) }]}
+      />,
+    );
+
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText("Deficit risk ahead")).toBeTruthy();
+    expect(useOverspendingNotification).toHaveBeenLastCalledWith({
+      kind: "deficit_risk",
+      deficitDate: localDateInDays(3),
+    });
   });
 });

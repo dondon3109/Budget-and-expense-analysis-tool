@@ -19,6 +19,7 @@ import { isSupabaseConfigured } from "@/config/public-config";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
+import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
@@ -102,6 +103,7 @@ export function clearUserScopedRuntimeState(): void {
   // Best-effort like the rest of this boundary: a native notification failure
   // must never block an identity transition.
   void clearDailyReminder().catch(() => undefined);
+  void clearOverspendingNotification().catch(() => undefined);
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {

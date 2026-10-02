@@ -6,6 +6,7 @@ module.exports = {
   AndroidImportance: { DEFAULT: 5 },
   SchedulableTriggerInputTypes: { DAILY: "daily" },
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  dismissNotificationAsync: jest.fn(async () => undefined),
   setNotificationChannelAsync: jest.fn(async () => null),
   getPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ granted: false, canAskAgain: true })),
