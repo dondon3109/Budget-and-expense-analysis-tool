@@ -2,12 +2,14 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useGoalCta } from "@/features/primary-goal/goal-personalization";
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
 export function HomeEmptyView({ syncing }: { syncing: boolean }) {
   const theme = useZoptionTheme();
+  const goalCta = useGoalCta();
 
   if (syncing) {
     return (
@@ -60,6 +62,11 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
       </Text>
 
       <View style={{ width: "100%", gap: spacing.sm, marginTop: spacing.xs }}>
+        {goalCta ? (
+          <Button accessibilityHint="Suggested for your goal" onPress={goalCta.open}>
+            {goalCta.label}
+          </Button>
+        ) : null}
         <Card accessibilityLabel="Option A: Bring your data">
           <View style={{ gap: spacing.xs }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>

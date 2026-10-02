@@ -7,6 +7,7 @@ import { ThemePicker, themePreferenceLabel } from "@/ui/theme-picker";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
+import { GoalSettingsCard } from "@/features/primary-goal/GoalSettingsCard";
 import { DailyReminderCard } from "./DailyReminderCard";
 import { WorkspaceCurrencyCard } from "./WorkspaceCurrencyCard";
 
@@ -20,6 +21,7 @@ export function PreferenceCards() {
   return (
     <MenuGroup title="Preferences">
       <WorkspaceCurrencyCard />
+      <GoalSettingsCard />
       <CollapsibleCard
         title="Theme"
         summary={themePreferenceLabel(themePreference)}
