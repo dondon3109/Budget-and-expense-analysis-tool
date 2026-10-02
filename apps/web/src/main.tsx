@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -7,6 +7,7 @@ import { PostHogAnalytics } from "./analytics/PostHogAnalytics";
 import { App } from "./App";
 import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
 import { AuthProvider } from "./auth/AuthProvider";
+import { BillingLimitHost } from "./components/billing/BillingLimitHost";
 import { CookieConsentExperience } from "./components/consent/CookieConsentExperience";
 import { InitialDashboardExperienceProvider } from "./components/dashboard/InitialDashboardExperienceProvider";
 import { AppErrorBoundary } from "./components/layout/AppErrorBoundary";
@@ -15,12 +16,16 @@ import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
 import { CookieConsentProvider } from "./consent/CookieConsentProvider";
 import { ImportDraftProvider } from "./import/ImportDraftProvider";
 import { isApiRequestError } from "./lib/api";
+import { reportBillingLimit } from "./lib/billingLimitNotice";
 import { InstallationProvider } from "./pwa/installation";
 import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
 import "./styles/foundation.css";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 const queryClient = new QueryClient({
+  // Only user-initiated writes pop the dialog; a read that is Pro-only keeps its inline prompt
+  // so a free user is not interrupted by a card loading.
+  mutationCache: new MutationCache({ onError: reportBillingLimit }),
   defaultOptions: {
     queries: {
       staleTime: 60_000,
@@ -47,6 +52,7 @@ function ClientExperiences() {
       <ThemeChoiceDialog />
       <CookieConsentExperience />
       <ReleaseNotesExperience />
+      <BillingLimitHost />
       <PostHogAnalytics />
     </>
   );
