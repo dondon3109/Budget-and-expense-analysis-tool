@@ -239,8 +239,38 @@ export class LocalTransactionMutationRepository {
     return updateTransaction(this.commands, id, value);
   }
 
-  deleteTransaction(id: string): Promise<void> {
-    return deleteTransaction(this.commands, id);
+  async deleteTransaction(id: string): Promise<void> {
+    await deleteTransaction(this.commands, id);
+    await this.setTransactionPhoto(id, null);
+  }
+
+  async getTransactionPhoto(id: string): Promise<string | null> {
+    const row = await this.database.getFirstAsync<{ mime_type: string; data_base64: string }>(
+      "SELECT mime_type, data_base64 FROM transaction_photos WHERE transaction_id = ?",
+      id,
+    );
+    return row ? `data:${row.mime_type};base64,${row.data_base64}` : null;
+  }
+
+  /** Stores or clears the device-only picture for a transaction; it never syncs. */
+  async setTransactionPhoto(
+    id: string,
+    photo: { mimeType: string; base64: string } | null,
+  ): Promise<void> {
+    await this.commands.writer.run(async () => {
+      if (!photo) {
+        await this.database.runAsync("DELETE FROM transaction_photos WHERE transaction_id = ?", id);
+        return;
+      }
+      await this.database.runAsync(
+        `INSERT OR REPLACE INTO transaction_photos (transaction_id, mime_type, data_base64, updated_at)
+         VALUES (?, ?, ?, ?)`,
+        id,
+        photo.mimeType,
+        photo.base64,
+        this.now().toISOString(),
+      );
+    });
   }
 
   getPushBatch(limit = 50): Promise<MobileSyncPushRequest | null> {

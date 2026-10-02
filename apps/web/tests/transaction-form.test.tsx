@@ -142,7 +142,6 @@ describe("TransactionForm", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: "Simulate voice draft" }));
 
     expect(screen.getByLabelText("Date")).toHaveValue("2026-08-21");
-    expect(screen.getByLabelText(/Description/)).toHaveValue("Lunch");
     expect(screen.getByLabelText("Amount (PHP)")).toHaveValue("250.00");
     expect(screen.getByLabelText("Category")).toHaveValue("food");
     expect(onSubmit).not.toHaveBeenCalled();
@@ -291,7 +290,7 @@ describe("TransactionForm", () => {
     expect(screen.getByText("Philippine Peso (PHP)")).toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("Currency"), "USD");
     expect(screen.getByLabelText("Amount (USD)")).toBeInTheDocument();
-    await user.type(screen.getByPlaceholderText("e.g. Weekly groceries"), "US store purchase");
+    await user.type(screen.getByLabelText(/Notes/), "US store purchase");
     await user.type(screen.getByLabelText("Amount (USD)"), "100");
     await user.click(screen.getByRole("button", { name: "Add transaction" }));
 
@@ -384,7 +383,7 @@ describe("TransactionForm", () => {
 
     const user = userEvent.setup();
     await user.selectOptions(screen.getByLabelText("Transaction type"), "income");
-    await user.type(screen.getByLabelText(/Description/), "September salary");
+    await user.type(screen.getByLabelText(/Notes/), "September salary");
     await user.type(screen.getByLabelText("Amount (PHP)"), "25000");
     await user.click(screen.getByRole("button", { name: "Add transaction" }));
 
@@ -434,7 +433,7 @@ describe("TransactionForm", () => {
       ),
     );
   });
-  it("makes description optional and submits a transfer fee for transfers", async () => {
+  it("sends no description and submits a transfer fee for transfers", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
     const transferCategory: CategoryRecord = {
@@ -456,8 +455,7 @@ describe("TransactionForm", () => {
     );
 
     await user.selectOptions(screen.getByLabelText("Transaction type"), "transfer");
-    const descriptionInput = screen.getByLabelText(/Description/);
-    expect(descriptionInput).not.toBeRequired();
+    expect(screen.queryByLabelText(/Description/)).not.toBeInTheDocument();
     await user.selectOptions(screen.getByLabelText("To account"), "account-savings");
     await user.selectOptions(screen.getByLabelText("From account"), "account-everyday");
     await user.type(screen.getByLabelText("Amount (PHP)"), "100");
@@ -500,7 +498,7 @@ describe("TransactionForm", () => {
     );
 
     expect(screen.queryByLabelText("Debt paid")).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText(/Description/), "Card payment");
+    await user.type(screen.getByLabelText(/Notes/), "Card payment");
     await user.type(screen.getByLabelText("Amount (PHP)"), "500");
     await user.selectOptions(screen.getByLabelText("Category"), "debt-payment");
 
@@ -530,7 +528,7 @@ describe("TransactionForm", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText(/Description/), "Lunch");
+    await user.type(screen.getByLabelText(/Notes/), "Lunch");
     await user.type(screen.getByLabelText("Amount (PHP)"), "120");
     await user.click(screen.getByRole("button", { name: "Add transaction" }));
 
@@ -554,7 +552,7 @@ describe("TransactionForm", () => {
       />,
     );
 
-    await user.type(screen.getByLabelText(/Description/), "Card payment");
+    await user.type(screen.getByLabelText(/Notes/), "Card payment");
     await user.type(screen.getByLabelText("Amount (PHP)"), "500");
 
     expect(screen.queryByLabelText("Debt paid")).not.toBeInTheDocument();
@@ -612,7 +610,7 @@ describe("TransactionForm keyboard and focus behaviour", () => {
   it("focuses the first field and returns focus on close", () => {
     renderForm();
 
-    expect(document.activeElement).toBe(screen.getByLabelText(/Description/));
+    expect(document.activeElement).toBe(screen.getByLabelText("Amount (PHP)"));
   });
 
   it("closes on Escape and ignores Escape while busy", () => {
@@ -635,9 +633,9 @@ describe("TransactionForm keyboard and focus behaviour", () => {
     const user = userEvent.setup();
     const { onSubmit } = renderForm();
 
-    await user.type(screen.getByLabelText(/Description/), "Coffee");
+    await user.type(screen.getByLabelText(/Notes/), "Coffee");
     await user.type(screen.getByLabelText("Amount (PHP)"), "120");
-    fireEvent.keyDown(screen.getByLabelText(/Description/), { key: "Enter", ctrlKey: true });
+    fireEvent.keyDown(screen.getByLabelText(/Notes/), { key: "Enter", ctrlKey: true });
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
@@ -667,7 +665,7 @@ describe("TransactionForm inline category creation", () => {
       </QueryClientProvider>,
     );
 
-    await user.type(screen.getByLabelText(/Description/), "Vet visit");
+    await user.type(screen.getByLabelText(/Notes/), "Vet visit");
     await user.type(screen.getByLabelText("Amount (PHP)"), "450");
     await user.selectOptions(screen.getByLabelText("Category"), "+ New category…");
     await user.type(screen.getByLabelText("New category name"), "Pet care{Enter}");
@@ -681,7 +679,7 @@ describe("TransactionForm inline category creation", () => {
     });
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.queryByLabelText("New category name")).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/Description/)).toHaveValue("Vet visit");
+    expect(screen.getByLabelText(/Notes/)).toHaveValue("Vet visit");
     expect(screen.getByLabelText("Amount (PHP)")).toHaveValue("450");
 
     await user.click(screen.getByRole("button", { name: "Add transaction" }));

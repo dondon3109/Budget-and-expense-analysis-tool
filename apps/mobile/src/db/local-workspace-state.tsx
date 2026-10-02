@@ -563,6 +563,23 @@ export function useTransactionFormData(id?: string): {
   return { data, error, retry };
 }
 
+/** The device-only picture attached to a transaction, as a data URI, or null. */
+export function useTransactionPhoto(id?: string): { photo: string | null } {
+  const { workspace } = useLocalWorkspace();
+  const read = useCallback(
+    (current: LocalWorkspace) =>
+      id ? current.transactionMutations.getTransactionPhoto(id) : Promise.resolve(null),
+    [id],
+  );
+  const { data } = useLocalQuery(workspace, {
+    read,
+    tables: ["transaction_photos"],
+    empty: undefined,
+    errorMessage: "The transaction photo could not be read from encrypted local storage.",
+  });
+  return { photo: data ?? null };
+}
+
 export function useTransactionConflict(id?: string): {
   conflict: LocalTransactionConflict | null;
   loading: boolean;
