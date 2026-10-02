@@ -252,7 +252,25 @@ describe("OnboardingPage", () => {
       expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Your goal");
       expect(markGoalShown).toHaveBeenCalledTimes(1);
 
-      fireEvent.click(screen.getByRole("radio", { name: "Save for something specific" }));
+      fireEvent.click(screen.getByRole("radio", { name: "Save for something specific" }), {
+        detail: 1,
+      });
+      await waitFor(() =>
+        expect(saveGoal).toHaveBeenCalledWith(expect.anything(), { goal: "save_for_goal" }),
+      );
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("does not save or advance when arrow keys only move the selection", async () => {
+      renderPage();
+
+      // A browser fires a click with no pointer (detail 0) when an arrow key selects a radio.
+      fireEvent.click(await screen.findByRole("radio", { name: "Save for something specific" }));
+      expect(screen.getByRole("radio", { name: "Save for something specific" })).toBeChecked();
+      expect(saveGoal).not.toHaveBeenCalled();
+      expect(screen.queryByRole("combobox", { name: "Base currency" })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
       await waitFor(() =>
         expect(saveGoal).toHaveBeenCalledWith(expect.anything(), { goal: "save_for_goal" }),
       );
@@ -279,14 +297,16 @@ describe("OnboardingPage", () => {
       vi.mocked(saveGoal).mockRejectedValue(new Error("offline"));
       renderPage();
 
-      fireEvent.click(await screen.findByRole("radio", { name: "Just looking around" }));
+      fireEvent.click(await screen.findByRole("radio", { name: "Just looking around" }), {
+        detail: 1,
+      });
       expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
     });
 
     it("saves the optional note with Other", async () => {
       renderPage();
 
-      fireEvent.click(await screen.findByRole("radio", { name: "Other" }));
+      fireEvent.click(await screen.findByRole("radio", { name: "Other" }), { detail: 1 });
       expect(saveGoal).not.toHaveBeenCalled();
       const note = screen.getByRole("textbox", { name: /Tell us more/ });
       expect(note).toHaveAttribute("maxlength", "140");

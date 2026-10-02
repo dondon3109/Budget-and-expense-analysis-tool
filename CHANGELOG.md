@@ -24,6 +24,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- The setup goal step no longer saves and moves on when you arrow past a choice with the keyboard. Arrow keys only move the selection, and you confirm with the button. Clicking a choice still saves it straight away.
 - The Back and Confirm buttons on the setup screen share the row instead of Back taking almost all of it.
 - The calendar's left edge no longer draws a double line on every week, and its phone day markers use readable income and expense colours.
 
