@@ -10,6 +10,7 @@ import { DefaultSpendingAccountSettings } from "../components/account/DefaultSpe
 import { EmailSettings } from "../components/account/EmailSettings";
 import { HelpAndContactSettings } from "../components/account/HelpAndContactSettings";
 import { PasswordSettings } from "../components/account/PasswordSettings";
+import { GoalSettings } from "../components/account/GoalSettings";
 import { ProfileSettings } from "../components/account/ProfileSettings";
 import { VoiceLanguageSettings } from "../components/account/VoiceLanguageSettings";
 import { AppShell } from "../components/layout/AppShell";
@@ -35,6 +36,7 @@ const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#data-portability": "data-portability",
   "#default-spending-account": "default-spending-account",
   "#workspace-currency": "workspace-currency",
+  "#primary-goal": "primary-goal",
   "#voice-language": "voice-language",
   "#voice-settings": "voice-language",
 };
@@ -93,6 +95,8 @@ export function SettingsPage() {
           <VoiceLanguageSettings />
 
           {user && <CurrencySettings workspace={userWorkspace(user)} />}
+
+          {user && <GoalSettings workspace={userWorkspace(user)} />}
 
           {user && <DefaultSpendingAccountSettings workspace={userWorkspace(user)} />}
 

@@ -44,6 +44,10 @@ vi.mock("../src/components/account/CurrencySettings", () => ({
   CurrencySettings: () => null,
 }));
 
+vi.mock("../src/components/account/GoalSettings", () => ({
+  GoalSettings: () => null,
+}));
+
 vi.mock("../src/components/account/DefaultSpendingAccountSettings", () => ({
   DefaultSpendingAccountSettings: () => null,
 }));
