@@ -24,6 +24,7 @@ high risk in `pr-risk.mjs`, so a change here always needs a human merge.
 | `github-production-deployment`     | Production Release           | Records the GitHub deployment and its stage statuses                                   |
 | `wait-for-production-release`      | Production Release           | Waits until the deployed site reports the expected app version                         |
 | `smoke-production`                 | `pnpm smoke:production`      | Read-only production smoke checks; uses `deployment-smoke-helpers`                     |
+| `submit-indexnow`                  | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release |
 | `android-release-metadata`         | Android Beta Build           | Resolves the signed Android release identity from the two version sources              |
 | `validate-mobile-telemetry-env`    | Android Beta Build           | Rejects a release build with an unapproved PostHog host or flag                        |
 | `refresh-android-release-snapshot` | By hand after an APK release | Refreshes `packages/web-common/src/releases/androidRelease.json` from the live release |
