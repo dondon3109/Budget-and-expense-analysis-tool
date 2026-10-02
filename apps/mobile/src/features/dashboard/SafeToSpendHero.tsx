@@ -89,10 +89,6 @@ export function SafeToSpendHero({
   const alertMessage = alert ? overspendingAlertMessage(alert) : null;
   useOverspendingNotification(alert);
 
-  const upcomingBilledCount = useMemo(() => {
-    return subscriptions.filter((sub) => sub.status === "active").length;
-  }, [subscriptions]);
-
   return (
     <Card
       accessibilityLabel="Safe to spend this week"
@@ -120,11 +116,11 @@ export function SafeToSpendHero({
       </View>
 
       <MoneyValue amountMinor={safeAmountMinor} currency={currency} style={styles.heroAmount} />
-      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-        {safeAmountMinor > 0
-          ? `${daysLeftInWeek} day${daysLeftInWeek === 1 ? "" : "s"} left · ${upcomingBilledCount} bill${upcomingBilledCount === 1 ? "" : "s"} counted`
-          : "Keep spending minimal until your next planned deposit or balance adjustment."}
-      </Text>
+      {safeAmountMinor > 0 ? null : (
+        <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+          Keep spending minimal until your next planned deposit or balance adjustment.
+        </Text>
+      )}
       {alertMessage ? (
         <View
           accessible

@@ -16,6 +16,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Web: the dashboard's "Cash flow forecast" card is now "Safe to spend", showing what is safe to spend this week as on mobile, and still opens the forecast. On mobile, the "days left · bills counted" line under the Safe to spend amount is gone.
 - Mobile: Home now shows only your Total Balance. Tap it to open Account Management (also under More > Accounts & categories), where your accounts, balances, and default spending account are managed.
 - Mobile: Home is cleaner. A switch at the top splits it into Overview (balances, recent activity) and Analytics (this month, the cash flow chart, spending by category, budget, and the cash flow forecast).
 - Web: hitting a free plan limit on custom categories, or trying a Pro-only action such as exporting transactions or managing accounts, now opens a "Plan limit reached" pop-up with a link to Plan and billing, the same as the AI and import limits.

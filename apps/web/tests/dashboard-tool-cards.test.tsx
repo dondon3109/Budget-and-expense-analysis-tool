@@ -82,7 +82,7 @@ describe("DashboardToolCards", () => {
 
     renderCards(100_000);
 
-    expect(screen.getByRole("link", { name: /cash flow forecast/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /safe to spend/i })).toHaveAttribute(
       "href",
       "/app/subscriptions?view=forecast",
     );
@@ -90,15 +90,13 @@ describe("DashboardToolCards", () => {
       "href",
       "/app/plan#remittance-calculator",
     );
-    expect(
-      screen.getByRole("heading", { level: 3, name: "Cash flow forecast" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 3, name: "Safe to spend" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 3, name: "Remittance calculator" }),
     ).toBeInTheDocument();
   });
 
-  it("reports the lowest projected balance and the renewals inside the window", async () => {
+  it("reports the safe amount for the week and the renewals inside the window", async () => {
     mockSubscriptions([
       subscription(),
       subscription({
@@ -113,9 +111,9 @@ describe("DashboardToolCards", () => {
 
     renderCards(100_000);
 
-    const forecastLink = await screen.findByRole("link", { name: /cash flow forecast/i });
-    // The projected figure only settles once the month's renewals have loaded.
-    expect(await within(forecastLink).findByText("₱500")).toBeInTheDocument();
+    const forecastLink = await screen.findByRole("link", { name: /safe to spend/i });
+    // The safe figure only settles once the month's renewals have loaded.
+    expect(await within(forecastLink).findByText("₱200")).toBeInTheDocument();
     expect(
       within(forecastLink).getByText("Lowest on Sep 2 · 2 renewals in the next 30 days"),
     ).toBeInTheDocument();
@@ -140,8 +138,8 @@ describe("DashboardToolCards", () => {
 
     renderCards(100_000);
 
-    const forecastLink = await screen.findByRole("link", { name: /cash flow forecast/i });
-    expect(await within(forecastLink).findByText("₱500")).toBeInTheDocument();
+    const forecastLink = await screen.findByRole("link", { name: /safe to spend/i });
+    expect(await within(forecastLink).findByText("₱200")).toBeInTheDocument();
     expect(forecastLink).not.toHaveAccessibleName(/deficit risk/i);
   });
 
@@ -164,7 +162,7 @@ describe("DashboardToolCards", () => {
 
     renderCards(100_000);
 
-    const forecastLink = await screen.findByRole("link", { name: /cash flow forecast/i });
+    const forecastLink = await screen.findByRole("link", { name: /safe to spend/i });
     expect(await within(forecastLink).findByText("Renewals unavailable")).toBeInTheDocument();
     expect(within(forecastLink).queryByText(/no renewals scheduled/i)).not.toBeInTheDocument();
     expect(forecastLink).not.toHaveAccessibleName(/deficit risk/i);
@@ -176,7 +174,7 @@ describe("DashboardToolCards", () => {
     // A negative balance with no renewal data is not a deficit the card can claim yet.
     renderCards(-5_000);
 
-    const forecastLink = screen.getByRole("link", { name: /cash flow forecast/i });
+    const forecastLink = screen.getByRole("link", { name: /safe to spend/i });
     expect(forecastLink).not.toHaveAccessibleName(/deficit risk/i);
     expect(within(forecastLink).getByText(/no renewals scheduled/i)).toBeInTheDocument();
   });
