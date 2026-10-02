@@ -9,9 +9,10 @@ import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 import { GoalSettingsCard } from "@/features/primary-goal/GoalSettingsCard";
 import { DailyReminderCard } from "./DailyReminderCard";
+import { SoundEffectsCard } from "./SoundEffectsCard";
 import { WorkspaceCurrencyCard } from "./WorkspaceCurrencyCard";
 
-/** Currency, theme, voice language, and daily reminder pickers as one group, each folded to its current choice until opened. */
+/** Currency, theme, voice language, daily reminder, and sound pickers as one group, each folded to its current choice until opened. */
 export function PreferenceCards() {
   const theme = useZoptionTheme();
   const themePreference = useThemeStore((state) => state.preference);
@@ -41,6 +42,7 @@ export function PreferenceCards() {
         <VoiceLanguagePicker />
       </CollapsibleCard>
       <DailyReminderCard />
+      <SoundEffectsCard />
     </MenuGroup>
   );
 }

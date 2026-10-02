@@ -2,6 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useState, type ComponentProps, type PropsWithChildren } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } from "react-native";
 
+import { playSound } from "@/features/sounds/sound-effects";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
@@ -22,6 +23,7 @@ export function Button({
   disabled,
   children,
   accessibilityLabel,
+  onPress,
   onPressIn,
   onPressOut,
   ...props
@@ -81,6 +83,10 @@ export function Button({
             }
       }
       disabled={isDisabled}
+      onPress={(event) => {
+        playSound("tap");
+        onPress?.(event);
+      }}
       onPressIn={(event) => {
         setPressed(true);
         onPressIn?.(event);

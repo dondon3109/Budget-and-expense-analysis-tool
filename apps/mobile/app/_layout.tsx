@@ -17,6 +17,7 @@ import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
+import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
@@ -109,6 +110,7 @@ export default function RootLayout() {
   // DailyReminderSession, once the session is known to be signed in.
   useEffect(() => {
     void useVoiceLanguageStore.persist.rehydrate();
+    void useSoundEffectsStore.persist.rehydrate();
     void useAssistantVoiceOptionsStore.persist.rehydrate();
     void useMicCaptureConsentStore.persist.rehydrate();
     void useDefaultSpendingAccountStore.persist.rehydrate();
