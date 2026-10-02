@@ -32,6 +32,7 @@ overrides:
   "qs": 6.16.0
   "ip-address": 10.7.1
   "dompurify": 3.4.16
+  "basic-ftp": 6.2.1
 
 auditConfig:
   ignoreGhsas:
@@ -39,6 +40,10 @@ auditConfig:
     # for this DoS. Keep the patch and this ignore together; the ignore without the patch
     # would hide a real advisory.
     - GHSA-vcc3-ghjq-m6fr
+    # node-forge <=1.4.0 RSA PKCS#1 v1.5 signature forgery; no patched release exists yet.
+    # Only reachable through @expo/cli (dev-server and code-signing certificates), never in
+    # a shipped bundle. Replace with a "node-forge" override once 1.4.1 is published.
+    - GHSA-86w9-cpqp-85rv
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
