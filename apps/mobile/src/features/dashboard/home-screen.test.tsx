@@ -4,7 +4,6 @@ import { router } from "expo-router";
 import { HomeScreen } from "./HomeScreen";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { usePlan } from "@/auth/plan-state";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { localIsoDate } from "./dashboard-view";
 
@@ -276,7 +275,7 @@ describe("HomeScreen", () => {
 
     // Total Balance card
     expect(screen.getByText("Total Balance")).toBeTruthy();
-    expect(screen.getByText("Main Bank")).toBeTruthy();
+    expect(screen.queryByText("Main Bank")).toBeNull();
 
     // Month summary
     expect(screen.getByText("This month")).toBeTruthy();
@@ -294,63 +293,7 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Supermarket groceries")).toBeTruthy();
   });
 
-  it("stars the default spending account and moves it on press", async () => {
-    useDefaultSpendingAccountStore.setState({ accountId: null });
-    const expense = {
-      id: "tx-1",
-      date: localIsoDate(new Date()),
-      description: "Lunch",
-      amountMinor: -250_00,
-      currency: "PHP" as const,
-      kind: "expense" as const,
-      categoryId: "cat-food",
-      categoryName: "Food",
-      categoryColor: "#2f65c8",
-      categoryIconEmoji: null,
-      accountName: "Cash",
-    };
-    const account = {
-      currency: "PHP" as const,
-      balanceMinor: 1_000_00,
-      balancesByCurrency: { PHP: 1_000_00, USD: 0 },
-      archived: false,
-      system: false,
-    };
-    jest.mocked(useDashboardData).mockReturnValue({
-      data: {
-        transactions: [expense],
-        recentTransactions: [expense],
-        accounts: [
-          { ...account, id: "acc-bank", name: "Bank", type: "checking" },
-          { ...account, id: "acc-cash", name: "Cash", type: "cash" },
-        ],
-        budgets: [],
-      },
-      error: null,
-      retry: jest.fn(),
-    });
-
-    await render(<HomeScreen />);
-
-    const cashStar = screen.getByRole("button", {
-      name: "Use Cash as the default spending account",
-    });
-    const bankStar = screen.getByRole("button", {
-      name: "Use Bank as the default spending account",
-    });
-    expect(cashStar.props.accessibilityState).toMatchObject({ selected: true });
-    expect(bankStar.props.accessibilityState).toMatchObject({ selected: false });
-
-    await fireEvent.press(bankStar);
-
-    expect(useDefaultSpendingAccountStore.getState().accountId).toBe("acc-bank");
-    expect(
-      screen.getByRole("button", { name: "Use Bank as the default spending account" }).props
-        .accessibilityState,
-    ).toMatchObject({ selected: true });
-  });
-
-  it("charts each account's share of the total balance and flags money owed", async () => {
+  it("shows only the total balance and opens account management when tapped", async () => {
     const expense = {
       id: "tx-1",
       date: localIsoDate(new Date()),
@@ -372,7 +315,6 @@ describe("HomeScreen", () => {
         accounts: [
           { ...account, id: "acc-cash", name: "Cash", type: "cash", balanceMinor: 250_00 },
           { ...account, id: "acc-bank", name: "Bank", type: "checking", balanceMinor: 750_00 },
-          { ...account, id: "acc-card", name: "Card", type: "credit", balanceMinor: -100_00 },
         ],
         budgets: [],
       },
@@ -382,11 +324,13 @@ describe("HomeScreen", () => {
 
     await render(<HomeScreen />);
 
-    expect(screen.getByLabelText("Balance split: Bank 75 percent, Cash 25 percent")).toBeTruthy();
-    expect(screen.getByText("75% of assets")).toBeTruthy();
-    expect(screen.getByText("25% of assets")).toBeTruthy();
-    expect(screen.getByText("Owed")).toBeTruthy();
-    expect(screen.getByText("Total owed")).toBeTruthy();
+    expect(screen.queryByText("Bank")).toBeNull();
+    expect(screen.queryByLabelText(/Balance split/)).toBeNull();
+
+    await fireEvent.press(
+      screen.getByRole("button", { name: "Total balance. Opens account management." }),
+    );
+    expect(router.push).toHaveBeenCalledWith("/(app)/money-setup");
   });
 
   it("triggers sync and dashboard retry on pull to refresh", async () => {
