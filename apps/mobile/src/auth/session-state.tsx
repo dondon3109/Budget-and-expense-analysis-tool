@@ -33,10 +33,13 @@ import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, readStoredSessionSubject, supabase } from "./supabase-client";
 
 import { DUMMY_DEV_SUBJECT } from "@/db/demo-seed";
+import { GUEST_SUBJECT } from "@/db/guest-workspace";
 export { DUMMY_DEV_SUBJECT };
 export const DUMMY_DEV_STORAGE_KEY = "zoption.dev.dummy_session";
+/** Present while the user has chosen to use Zoption on this device without an account. */
+export const GUEST_STORAGE_KEY = "zoption.guest.session";
 
-export type SessionStatus = "loading" | "signed-out" | "signed-in";
+export type SessionStatus = "loading" | "signed-out" | "signed-in" | "guest";
 
 export interface SessionSnapshot {
   status: SessionStatus;
@@ -53,6 +56,7 @@ export interface SessionContextValue extends SessionSnapshot {
   updatePassword: (password: string) => Promise<void>;
   signOut: (options?: SignOutOptions) => Promise<void>;
   signInWithDummyAccount: () => Promise<void>;
+  continueAsGuest: () => Promise<void>;
 }
 
 export interface SignOutOptions {
@@ -88,6 +92,7 @@ const SessionContext = createContext<SessionContextValue>({
   updatePassword: unavailable,
   signOut: unavailable,
   signInWithDummyAccount: unavailable,
+  continueAsGuest: unavailable,
 });
 
 function recoveryCallbackUrl(): string {
@@ -119,6 +124,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     isDummySessionRef.current = false;
     if (nextSubject) {
       void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+      // Signing in ends guest use; signing out later returns to the welcome screen.
+      void SecureStore.deleteItemAsync(GUEST_STORAGE_KEY).catch(() => undefined);
     }
     const previousSubject = subjectRef.current;
     if (initializedRef.current && previousSubject !== nextSubject) {
@@ -139,16 +146,44 @@ export function SessionProvider({ children }: PropsWithChildren) {
     });
   }, []);
 
+  const enterGuest = useCallback(() => {
+    if (initializedRef.current && subjectRef.current !== GUEST_SUBJECT) {
+      clearUserScopedRuntimeState();
+    }
+    subjectRef.current = GUEST_SUBJECT;
+    isDummySessionRef.current = false;
+    initializedRef.current = true;
+    setSnapshot({ status: "guest", subject: GUEST_SUBJECT });
+  }, []);
+
+  // Startup found no account session: resume guest use if the user chose it, else signed out.
+  const resolveSignedOut = useCallback(
+    async (isActive: () => boolean) => {
+      const guest = await SecureStore.getItemAsync(GUEST_STORAGE_KEY).catch(() => null);
+      if (!isActive()) return;
+      if (guest) enterGuest();
+      else applySubject(null);
+    },
+    [applySubject, enterGuest],
+  );
+
+  const continueAsGuest = useCallback(async () => {
+    await SecureStore.setItemAsync(GUEST_STORAGE_KEY, "1");
+    enterGuest();
+  }, [enterGuest]);
+
   useEffect(() => {
     if (!demoEnabled) {
       void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
     }
     if (!supabase) {
-      if (!demoEnabled) {
-        setSnapshot(signedOutSession);
-        return;
-      }
       let active = true;
+      if (!demoEnabled) {
+        void resolveSignedOut(() => active);
+        return () => {
+          active = false;
+        };
+      }
       void SecureStore.getItemAsync(DUMMY_DEV_STORAGE_KEY)
         .then(async (storedSubject) => {
           if (!active) return;
@@ -223,7 +258,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
           return;
         }
       }
-      applySubject(null);
+      await resolveSignedOut(() => active);
     });
 
     const appStateListener =
@@ -244,7 +279,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       appStateListener?.remove();
       if (Platform.OS !== "web") void client.auth.stopAutoRefresh();
     };
-  }, [applySubject, demoEnabled]);
+  }, [applySubject, demoEnabled, resolveSignedOut]);
 
   const signInWithDummyAccount = useCallback(async () => {
     if (!demoEnabled) {
@@ -284,6 +319,9 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
   const getAccessToken = useCallback(
     async (refresh: boolean) => {
+      if (subjectRef.current === GUEST_SUBJECT) {
+        throw new Error("Sign in to use this feature.");
+      }
       if (isDummySessionRef.current) {
         if (!demoEnabled) {
           throw new Error("Dummy sessions are not available in this Zoption build.");
@@ -431,8 +469,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
       updatePassword,
       signOut,
       signInWithDummyAccount,
+      continueAsGuest,
     }),
     [
+      continueAsGuest,
       exchangeCodeForSession,
       getAccessToken,
       signInWithDummyAccount,

@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Mobile: you can now use Zoption without an account. Choose "Continue without an account" on the welcome screen to track transactions, budgets, goals, debts, subscriptions and your calendar on this device. The AI Assistant, receipt scanning, voice entry, bank-file import, and Plan and billing need an account: tapping one opens a pop-up that lists what an account adds (backup and sync between your phone and the web, those features, and a 7-day Pro trial) with a Sign in button, and More has a card with the same list. Data you enter without an account stays on this device and does not move into an account when you sign in.
 - Web: setup now asks what brings you to Zoption (track spending, budget, save, pay off debt, understand habits with AI, or just looking). You can skip it, and you can change your answer in Account Settings. Your choice sets the first action on an empty dashboard, a short getting-started checklist, and the assistant's first suggested question. Existing accounts are not asked during setup. The goal is stored with your workspace, included in your data export, and deleted with your account.
 - Mobile: the app now asks once what brings you to Zoption, with a Skip that never blocks you, and you can change your answer under More → Preferences → Your goal. Your choice sets the first action on an empty Home screen and the assistant's first suggested question. Without a goal, or offline, nothing changes.
 - Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
@@ -16,6 +17,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Web: the dashboard's "Cash flow forecast" card is now "Safe to spend", showing what is safe to spend this week as on mobile, and still opens the forecast. On mobile, the "days left · bills counted" line under the Safe to spend amount is gone.
+- Mobile: Home now shows only your Total Balance. Tap it to open Account Management (also under More > Accounts & categories), where your accounts, balances, and default spending account are managed.
 - Mobile: Home is cleaner. A switch at the top splits it into Overview (balances, recent activity) and Analytics (this month, the cash flow chart, spending by category, budget, and the cash flow forecast).
 - Web: hitting a free plan limit on custom categories, or trying a Pro-only action such as exporting transactions or managing accounts, now opens a "Plan limit reached" pop-up with a link to Plan and billing, the same as the AI and import limits.
 - Mobile: hitting a free plan limit in the assistant or an import, or when a saved custom category or account change is refused during sync, now opens a "Plan limit reached" pop-up with a link to Plan and billing.

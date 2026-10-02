@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { TransactionKindFilter } from "@/db/view-models";
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { monthLabel } from "@/features/calendar/event-form";
 import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -26,6 +27,7 @@ export function TransactionsEmptyView({
   onGoToCurrentMonth: () => void;
 }) {
   const theme = useZoptionTheme();
+  const { openFeature } = useAccountGate();
   const isCurrentMonth = month === monthStartForDate(new Date());
 
   if (filtering) {
@@ -94,7 +96,7 @@ export function TransactionsEmptyView({
         </Button>
         <Button
           accessibilityHint="Opens camera to scan a receipt"
-          onPress={() => router.push("/(app)/receipt-scan")}
+          onPress={() => openFeature("receipt-scan", "/(app)/receipt-scan")}
           variant="secondary"
         >
           Scan receipt

@@ -61,6 +61,7 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
 - Authenticated tabs prioritize Home, Transactions, Budgets, and Plan; less-frequent surfaces live under a native More/settings stack.
 - iOS and Android may use platform-specific toolbar, sheet, back, and tab behavior while sharing feature components.
 - Route guards redirect for interface coherence only. Every Worker request still authenticates and authorizes independently.
+- A guest can use the app with no account: the session status is `guest`, the workspace is a separate subject-scoped encrypted database seeded locally, and sync, worker identity, plan, goal and currency reads never start because each requires `signed-in`. Screens that need the Worker (assistant, receipt scan, voice entry, import, billing, account, support) open a sign-in prompt for a guest instead. Guest data stays on the device and is not merged into an account on sign-in.
 
 ## Data access rules
 

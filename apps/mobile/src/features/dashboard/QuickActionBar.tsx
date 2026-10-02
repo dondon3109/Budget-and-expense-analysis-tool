@@ -2,11 +2,13 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
 export function QuickActionBar() {
   const theme = useZoptionTheme();
+  const { openFeature } = useAccountGate();
   return (
     <View accessibilityLabel="Quick actions" style={styles.quickActionsGrid}>
       <Pressable
@@ -30,7 +32,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens camera to scan a receipt"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={() => router.push("/(app)/receipt-scan")}
+        onPress={() => openFeature("receipt-scan", "/(app)/receipt-scan")}
         style={[
           styles.quickActionTile,
           { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
@@ -52,7 +54,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens financial AI assistant"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={() => router.push("/(app)/assistant")}
+        onPress={() => openFeature("assistant", "/(app)/assistant")}
         style={[
           styles.quickActionTile,
           { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
