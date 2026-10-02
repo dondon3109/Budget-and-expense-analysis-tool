@@ -7,6 +7,7 @@ import { extractVoiceTransaction, extractVoiceTransactionFromTranscript } from "
 import { ApiTransportError } from "@/api/authenticated";
 import { getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
@@ -26,6 +27,7 @@ export function TransactionVoiceEntry({
   categories?: string[];
 }) {
   const session = useSessionSnapshot();
+  const { requireAccount } = useAccountGate();
   const theme = useZoptionTheme();
   const mounted = useRef(true);
   const [readiness, setReadiness] = useState<EntryReadiness>("checking");
@@ -49,7 +51,13 @@ export function TransactionVoiceEntry({
     [session],
   );
 
+  const guest = session.status === "guest";
   const loadReadiness = useCallback(async () => {
+    // A guest has no Worker to ask. The button reads as ready and opens the sign-in prompt.
+    if (guest) {
+      setReadiness("ready");
+      return;
+    }
     setReadiness("checking");
     try {
       const preferences = await withToken((accessToken) => getReceiptPreferences({ accessToken }));
@@ -70,7 +78,7 @@ export function TransactionVoiceEntry({
           : "AI voice entry could not be checked. Try again shortly.",
       );
     }
-  }, [withToken]);
+  }, [guest, withToken]);
 
   useEffect(() => {
     mounted.current = true;
@@ -122,6 +130,7 @@ export function TransactionVoiceEntry({
 
   const action = (): void => {
     if (disabled || recorder.phase === "transcribing") return;
+    if (!requireAccount("voice")) return;
     setMessage(null);
     if (readiness === "needs-consent") {
       setShowConsent(true);

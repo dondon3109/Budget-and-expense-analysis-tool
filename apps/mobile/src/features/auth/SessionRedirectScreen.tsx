@@ -13,5 +13,6 @@ export function SessionRedirectScreen() {
       </View>
     );
   }
-  return <Redirect href={session.status === "signed-in" ? "/(app)/(tabs)" : "/(public)"} />;
+  const inApp = session.status === "signed-in" || session.status === "guest";
+  return <Redirect href={inApp ? "/(app)/(tabs)" : "/(public)"} />;
 }

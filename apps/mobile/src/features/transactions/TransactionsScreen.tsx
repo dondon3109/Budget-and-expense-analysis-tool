@@ -1,3 +1,4 @@
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
@@ -98,6 +99,7 @@ export function TransactionsScreen() {
   const local = useLocalTransactions(deferredSearch, kind, month);
   const workspace = useLocalWorkspace().workspace;
   const sync = useSyncState();
+  const { openFeature } = useAccountGate();
   const theme = useZoptionTheme();
   const filtering = search.trim().length > 0 || kind !== "all";
 
@@ -287,7 +289,7 @@ export function TransactionsScreen() {
             <HeaderIcon
               icon="line-scan"
               label="Scan receipt"
-              onPress={() => router.push("/(app)/receipt-scan")}
+              onPress={() => openFeature("receipt-scan", "/(app)/receipt-scan")}
             />
             <HeaderIcon
               icon="tag-outline"

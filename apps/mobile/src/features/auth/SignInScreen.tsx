@@ -170,6 +170,11 @@ export function SignInScreen() {
         >
           Forgot password?
         </Button>
+        {status === "guest" ? (
+          <Button variant="quiet" onPress={() => router.back()}>
+            Not now
+          </Button>
+        ) : null}
         <View accessibilityLabel="Social sign-in options" style={styles.dividerRow}>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>or</Text>

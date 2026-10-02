@@ -9,6 +9,8 @@ import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
+import { GuestAccountCard } from "@/features/account-prompt/GuestAccountCard";
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { PreferenceCards } from "@/features/settings/PreferenceCards";
 import { UpdateSettingsCard } from "@/features/updates";
 import { ConfirmationDialog, MenuGroup, MenuRow } from "@/ui/components";
@@ -23,6 +25,8 @@ export function MoreScreen() {
   const local = useLocalWorkspace();
   const localStats = useLocalWorkspaceStats();
   const theme = useZoptionTheme();
+  const { openFeature } = useAccountGate();
+  const guest = session.status === "guest";
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -69,12 +73,13 @@ export function MoreScreen() {
 
   return (
     <Screen onRefresh={handleRefresh} refreshing={sync.status === "syncing"} title="More">
+      <GuestAccountCard />
       <MenuGroup title="Tools">
         <MenuRow
           icon={isOffline ? "robot-off-outline" : "robot-happy-outline"}
           title="AI Assistant"
           value={isOffline ? "Offline" : undefined}
-          onPress={() => router.push("/(app)/assistant")}
+          onPress={() => openFeature("assistant", "/(app)/assistant")}
         />
         <MenuRow
           icon="wallet-outline"
@@ -84,7 +89,7 @@ export function MoreScreen() {
         <MenuRow
           icon="file-document-outline"
           title="Import transactions"
-          onPress={() => router.push("/(app)/import")}
+          onPress={() => openFeature("import", "/(app)/import")}
         />
         <MenuRow icon="target" title="Savings goals" onPress={() => router.push("/(app)/goals")} />
         <MenuRow
@@ -110,13 +115,13 @@ export function MoreScreen() {
         <MenuRow
           icon="star-outline"
           title="Plan & billing"
-          badge={isPro ? "PRO" : "FREE"}
-          onPress={() => router.push("/(app)/plan-billing")}
+          badge={guest ? undefined : isPro ? "PRO" : "FREE"}
+          onPress={() => openFeature("billing", "/(app)/plan-billing")}
         />
         <MenuRow
           icon="help-circle-outline"
           title="Help & support"
-          onPress={() => router.push("/(app)/support")}
+          onPress={() => openFeature("support", "/(app)/support")}
         />
         <MenuRow
           icon="book-open-page-variant-outline"
@@ -126,7 +131,7 @@ export function MoreScreen() {
         <MenuRow
           icon="account-cog-outline"
           title="Account"
-          onPress={() => router.push("/(app)/account")}
+          onPress={() => openFeature("account", "/(app)/account")}
         />
       </MenuGroup>
 
@@ -149,13 +154,21 @@ export function MoreScreen() {
       <UpdateSettingsCard />
 
       <MenuGroup>
-        <MenuRow
-          icon="logout"
-          title="Sign out"
-          tone="danger"
-          disabled={!localStats.stats || signingOut}
-          onPress={() => setConfirmingSignOut(true)}
-        />
+        {guest ? (
+          <MenuRow
+            icon="login"
+            title="Sign in or create an account"
+            onPress={() => router.push("/(public)/sign-in")}
+          />
+        ) : (
+          <MenuRow
+            icon="logout"
+            title="Sign out"
+            tone="danger"
+            disabled={!localStats.stats || signingOut}
+            onPress={() => setConfirmingSignOut(true)}
+          />
+        )}
       </MenuGroup>
       {signOutError ? (
         <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
