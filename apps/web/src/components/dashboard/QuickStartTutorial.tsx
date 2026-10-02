@@ -17,11 +17,13 @@ import "./QuickStartTutorial.css";
 const STORAGE_KEY = "zoption:quick-start-tutorial-state";
 
 export interface QuickStartTutorialProps {
+  onAddTransaction?: () => void;
   onAdjustBalance?: () => void;
   onMigrateSpreadsheet?: () => void;
 }
 
 export function QuickStartTutorial({
+  onAddTransaction,
   onAdjustBalance,
   onMigrateSpreadsheet,
 }: QuickStartTutorialProps) {
@@ -172,9 +174,13 @@ export function QuickStartTutorial({
                   Record expenses by typing, scanning receipts with camera, or using voice
                   dictation.
                 </p>
-                <Link to="/app/transactions?add=1" className="button secondary compact-action">
+                <button
+                  type="button"
+                  className="button secondary compact-action"
+                  onClick={onAddTransaction}
+                >
                   Log transaction
-                </Link>
+                </button>
               </div>
             </article>
 

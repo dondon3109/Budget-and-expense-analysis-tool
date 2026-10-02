@@ -23,6 +23,7 @@ import { useBillingSummary } from "../hooks/useBillingSummary";
 import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
 import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
+import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { DashboardToolCards } from "../components/dashboard/DashboardToolCards";
@@ -75,6 +76,7 @@ export function DashboardPage() {
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
+  const [addTransactionOpen, setAddTransactionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const handledPostAuthCheckoutIntentRef = useRef(false);
@@ -377,13 +379,18 @@ export function DashboardPage() {
             <Link className="button secondary" to="/app/import?mode=receipt">
               <Receipt size={17} aria-hidden="true" /> Scan receipt
             </Link>
-            <Link className="button primary" to="/app/transactions?add=1">
+            <button
+              className="button primary"
+              type="button"
+              onClick={() => setAddTransactionOpen(true)}
+            >
               <Plus size={17} aria-hidden="true" /> Add transaction
-            </Link>
+            </button>
           </div>
         </header>
 
         <QuickStartTutorial
+          onAddTransaction={() => setAddTransactionOpen(true)}
           onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
           onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
         />
@@ -427,9 +434,13 @@ export function DashboardPage() {
                   <FileSpreadsheet size={17} aria-hidden="true" /> Bring your data (Spreadsheet
                   wizard)
                 </button>
-                <Link className="button secondary" to="/app/transactions?add=1">
+                <button
+                  type="button"
+                  className="button secondary"
+                  onClick={() => setAddTransactionOpen(true)}
+                >
                   <Plus size={17} aria-hidden="true" /> Add transactions manually
-                </Link>
+                </button>
                 <button
                   type="button"
                   className="button secondary"
@@ -541,6 +552,9 @@ export function DashboardPage() {
           returnFocus={subscribeTriggerRef.current}
           onClose={closeProCheckout}
         />
+      )}
+      {addTransactionOpen && (
+        <AddTransactionDialog workspace={workspace} onClose={() => setAddTransactionOpen(false)} />
       )}
       <SpreadsheetMigrationWizard
         open={migrationWizardOpen}

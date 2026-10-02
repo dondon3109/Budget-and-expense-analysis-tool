@@ -12,6 +12,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- On the web dashboard, "Add transaction" now opens the transaction form over the page instead of switching to Transactions, so you can add one and keep watching your balances.
 - Web: category emojis now sit on a soft tile tinted with the category colour, the same look as on mobile, in transactions, recent activity, spending by category, and the category manager.
 - The web app is easier to read and calmer to look at. No text is smaller than 11px. Cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Status colours follow the light, dark, and warm themes in the subscription calendar and import suggestions.
 - The sign-in, sign-up, password, and setup screens use a flat panel with larger labels. On phones the form fills the screen, and fields no longer make iOS zoom in when you tap them. The Google button spans the full width.
