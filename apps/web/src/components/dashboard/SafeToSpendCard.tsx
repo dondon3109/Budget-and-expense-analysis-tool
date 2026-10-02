@@ -1,10 +1,12 @@
 import {
   getDaysLeftInWeek,
+  overspendingAlert,
+  overspendingAlertMessage,
   projectCashflow,
   safeToSpend,
   forecastSubscriptions,
 } from "@zoption/shared";
-import { CalendarClock } from "lucide-react";
+import { AlertTriangle, CalendarClock } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { currentMonth, monthStart } from "../../lib/calendar";
@@ -74,6 +76,8 @@ export function SafeToSpendCard({
     daysLeftInWeek,
     forecast: { minProjectedBalanceMinor: forecast.minProjectedBalanceMinor },
   });
+  const alert = overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast });
+  const alertMessage = alert ? overspendingAlertMessage(alert) : null;
 
   return (
     <section className="panel safe-to-spend-panel" aria-labelledby="safe-to-spend-title">
@@ -95,6 +99,15 @@ export function SafeToSpendCard({
           </Link>
         </div>
       </div>
+      {alertMessage ? (
+        <div className="safe-to-spend-alert" role="alert">
+          <AlertTriangle size={15} aria-hidden="true" />
+          <div>
+            <strong>{alertMessage.title}</strong>
+            <p>{alertMessage.body}</p>
+          </div>
+        </div>
+      ) : null}
       <p className="safe-to-spend-guidance">
         {guidanceText(renewalLookup, safeAmountMinor, subscriptions.length)}
       </p>

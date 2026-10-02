@@ -164,6 +164,27 @@ describe("SafeToSpendCard", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("5 days left")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("You've used up what's safe to spend");
+  });
+
+  it("warns of a deficit when a renewal would take the balance below zero", async () => {
+    mockSubscriptions([subscription()]);
+
+    // The ₱800 renewal in two days takes a ₱500 balance below zero.
+    renderCard({ startingBalanceMinor: 50_000, remainingBudgetMinor: 500_000 });
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Deficit risk ahead");
+    expect(alert).toHaveTextContent(daysAfterWednesday(2));
+  });
+
+  it("raises no alert while there is still something safe to spend", async () => {
+    mockSubscriptions([]);
+
+    renderCard({ startingBalanceMinor: 1_000_000, remainingBudgetMinor: 500_000 });
+
+    expect(await screen.findByText("₱1,000")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("lowers the amount for an active renewal and ignores a canceled one", async () => {

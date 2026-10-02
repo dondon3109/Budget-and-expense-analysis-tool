@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
+- Overspending alerts: the "Safe to spend this week" card on the web dashboard and the Android and iOS Home screen warns you when nothing is left that's safe to spend this week, or when the 30-day cash flow forecast shows your balance going below zero (it names the date). On Android and iOS the alert also arrives as a notification, once per week for a spent-out week and once per deficit date, if you have allowed Zoption's notifications.
 - Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
 
 ## 3.1.0 — 2026-10-01

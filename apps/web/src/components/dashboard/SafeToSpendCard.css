@@ -79,6 +79,37 @@
   line-height: 1.6;
 }
 
+/* The overspending alert: safe to spend has run out or the forecast shows a deficit. */
+.safe-to-spend-alert {
+  margin-top: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.safe-to-spend-alert svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.safe-to-spend-alert strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.safe-to-spend-alert p {
+  margin: 3px 0 0;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
 /* Stack the hero number above the days-left pill and the Renewals link on narrow
    screens so the amount never collides with them. */
 @media (max-width: 620px) {

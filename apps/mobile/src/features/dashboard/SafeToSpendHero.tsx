@@ -5,12 +5,15 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   forecastSubscriptions,
   getDaysLeftInWeek,
+  overspendingAlert,
+  overspendingAlertMessage,
   projectCashflow,
   safeToSpend,
   type Currency,
   type ForecastSubscriptionSource,
   type ForecastRecurringIncome,
 } from "@zoption/shared";
+import { useOverspendingNotification } from "@/features/reminders/overspending-notification";
 import { Card, MoneyValue } from "@/ui/components";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -79,6 +82,13 @@ export function SafeToSpendHero({
     });
   }, [remainingWeeklyEnvelopeMinor, daysLeftInWeek, forecast, safetyBufferMinor]);
 
+  const alert = useMemo(
+    () => overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast }),
+    [safeAmountMinor, forecast],
+  );
+  const alertMessage = alert ? overspendingAlertMessage(alert) : null;
+  useOverspendingNotification(alert);
+
   const upcomingBilledCount = useMemo(() => {
     return subscriptions.filter((sub) => sub.status === "active").length;
   }, [subscriptions]);
@@ -115,6 +125,23 @@ export function SafeToSpendHero({
           ? `${daysLeftInWeek} day${daysLeftInWeek === 1 ? "" : "s"} left · ${upcomingBilledCount} bill${upcomingBilledCount === 1 ? "" : "s"} counted`
           : "Keep spending minimal until your next planned deposit or balance adjustment."}
       </Text>
+      {alertMessage ? (
+        <View
+          accessible
+          accessibilityRole="alert"
+          style={[styles.alert, { backgroundColor: theme.colors.dangerSoft }]}
+        >
+          <MaterialCommunityIcons name="alert-outline" size={18} color={theme.colors.danger} />
+          <View style={styles.alertText}>
+            <Text style={[typography.headline, { color: theme.colors.danger }]}>
+              {alertMessage.title}
+            </Text>
+            <Text style={[typography.caption, { color: theme.colors.text }]}>
+              {alertMessage.body}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       {excludedCount > 0 ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           {excludedCount} {excludedCount === 1 ? "plan" : "plans"} billed in{" "}
@@ -144,6 +171,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxs,
     borderRadius: radii.round,
     flexShrink: 0,
+  },
+  alert: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.xs,
+    padding: spacing.sm,
+    borderRadius: radii.md,
+  },
+  alertText: {
+    flex: 1,
+    gap: spacing.xxs,
   },
   heroAmount: {
     fontSize: 44,

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 
 import type { SessionStatus } from "@/auth/session-state";
+import { isOverspendingNotification } from "@/features/reminders/overspending-notification";
 import {
   isWidgetNotification,
   widgetNotificationRoute,
@@ -107,7 +108,10 @@ async function restoreDailyReminder(): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: (notification) => {
       const identifier = notification.request.identifier;
-      const show = isDailyReminder(identifier) || isWidgetNotification(identifier);
+      const show =
+        isDailyReminder(identifier) ||
+        isWidgetNotification(identifier) ||
+        isOverspendingNotification(identifier);
       return Promise.resolve({
         shouldShowBanner: show,
         shouldShowList: show,
