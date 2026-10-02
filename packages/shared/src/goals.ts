@@ -79,3 +79,28 @@ export const goalProfileSchema = z
   .strict();
 
 export type GoalProfile = z.infer<typeof goalProfileSchema>;
+
+/**
+ * The one action that counts as "activated" for each goal (`first_action_completed {goal, action}`).
+ * 'other' follows the default experience; a skipper has no goal and so no tracked action.
+ */
+export const goalFirstActions = [
+  "log_transaction",
+  "set_budget",
+  "create_savings_goal",
+  "add_debt",
+  "ask_assistant",
+  "import_data",
+] as const;
+
+export type GoalFirstAction = (typeof goalFirstActions)[number];
+
+export const firstActionByGoal: Record<PrimaryGoal, GoalFirstAction> = {
+  track_spending: "log_transaction",
+  build_budget: "set_budget",
+  save_for_goal: "create_savings_goal",
+  reduce_debt: "add_debt",
+  understand_habits: "ask_assistant",
+  just_exploring: "import_data",
+  other: "log_transaction",
+};
