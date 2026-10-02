@@ -12,6 +12,7 @@ import {
 } from "@zoption/shared";
 
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
+import { playSound } from "@/features/sounds/sound-effects";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
@@ -252,6 +253,7 @@ export function TransactionEditorScreen() {
     const parsed = parseTransactionForm(targetValues);
     if (!parsed.success) {
       setErrors(parsed.errors);
+      playSound("error");
       setMessage("Check the highlighted details.");
       return false;
     }
@@ -271,10 +273,12 @@ export function TransactionEditorScreen() {
       void telemetry.capture(id ? "transaction_updated" : "transaction_created", {
         transaction_kind: parsed.input.kind,
       });
+      playSound("success");
       router.back();
       sync.retry();
       return true;
     } catch (error) {
+      playSound("error");
       setMessage(
         error instanceof Error
           ? error.message
