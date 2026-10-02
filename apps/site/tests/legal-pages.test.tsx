@@ -44,7 +44,7 @@ describe("legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: October 1, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: October 2, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);

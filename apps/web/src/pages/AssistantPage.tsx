@@ -43,6 +43,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { assistantPreferencesQueryOptions } from "../queries/assistant";
 import { invalidateBillingSummary } from "../queries/billing";
+import { useGoalProfile } from "../queries/goalProfile";
 import { invalidateAfterTransactionWrite } from "../queries/transactions";
 import "./AssistantPage.css";
 
@@ -55,6 +56,7 @@ export function AssistantPage() {
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
   const billingQuery = useBillingSummary(workspace);
+  const goal = useGoalProfile(workspace).data?.goal ?? null;
   const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
     useAssistantSession();
   const limitTriggerRef = useRef<HTMLElement | null>(null);
@@ -380,6 +382,7 @@ export function AssistantPage() {
         <AssistantVoiceConversation
           workspace={workspace}
           assistantName={assistantName}
+          goal={goal}
           onClose={() => setVoiceOpen(false)}
           onTurnComplete={(result) => {
             cacheTurn(result);
@@ -498,6 +501,7 @@ export function AssistantPage() {
             ) : (
               <AssistantConversation
                 assistantName={assistantName}
+                goal={goal}
                 messages={messages.data?.items ?? []}
                 pendingMessage={pendingMessage}
                 loading={sendMutation.isPending || (Boolean(activeThreadId) && messages.isLoading)}

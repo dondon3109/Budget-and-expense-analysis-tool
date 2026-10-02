@@ -5,7 +5,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="September 24, 2026"
+      lastUpdated="October 2, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>

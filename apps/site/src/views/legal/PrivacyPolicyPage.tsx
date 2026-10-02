@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="October 1, 2026"
+      lastUpdated="October 2, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>

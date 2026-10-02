@@ -1,5 +1,6 @@
 import {
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+  type PrimaryGoal,
   type AssistantTurnResult,
   type AssistantVoicePreferences,
 } from "@zoption/shared";
@@ -36,6 +37,7 @@ import {
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { prepareAssistantTurn } from "./prepareAssistantTurn";
 import { renderVoiceCaptionContent } from "./renderVoiceCaption";
+import { voiceSuggestedPrompts } from "./voiceSuggestedPrompts";
 import {
   type VoiceLanguage,
   getStoredVoiceLanguage,
@@ -68,6 +70,7 @@ interface Caption {
 }
 
 interface AssistantVoiceConversationProps {
+  goal?: PrimaryGoal | null;
   workspace: AuthenticatedWorkspace;
   assistantName: string;
   onClose: () => void;
@@ -83,20 +86,6 @@ function errorMessage(error: unknown): string {
   return "The voice conversation could not continue.";
 }
 
-export const VOICE_SUGGESTED_PROMPTS = [
-  "How much did I spend this month?",
-  "What is my biggest expense category?",
-  "How are my budgets looking?",
-  "Which debt should I pay first?",
-] as const;
-
-export const VOICE_SUGGESTED_PROMPTS_TAGALOG = [
-  "Magkano ang nagastos ko ngayong buwan?",
-  "Ano ang pinakamalaking kategorya ng gastos ko?",
-  "Kumusta ang mga budget ko?",
-  "Aling utang ang dapat kong unahing bayaran?",
-] as const;
-
 const STATUS_LABEL: Record<VoiceStatus, string> = {
   idle: "Tap to speak",
   listening: "Listening…",
@@ -107,6 +96,7 @@ const STATUS_LABEL: Record<VoiceStatus, string> = {
 export function AssistantVoiceConversation({
   workspace,
   assistantName,
+  goal,
   onClose,
   onTurnComplete,
 }: AssistantVoiceConversationProps) {
@@ -915,10 +905,7 @@ export function AssistantVoiceConversation({
                   role="group"
                   aria-label="Suggested questions"
                 >
-                  {(voiceLanguage === "en"
-                    ? VOICE_SUGGESTED_PROMPTS
-                    : [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS]
-                  ).map((prompt) => (
+                  {voiceSuggestedPrompts(voiceLanguage, goal).map((prompt) => (
                     <button
                       key={prompt}
                       type="button"

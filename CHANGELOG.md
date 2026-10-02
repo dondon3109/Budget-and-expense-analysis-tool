@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Web: setup now asks what brings you to Zoption (track spending, budget, save, pay off debt, understand habits with AI, or just looking). You can skip it, and you can change your answer in Account Settings. Your choice sets the first action on an empty dashboard, a short getting-started checklist, and the assistant's first suggested question. Existing accounts are not asked during setup. The goal is stored with your workspace, included in your data export, and deleted with your account.
 - Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
 - Overspending alerts: the "Safe to spend this week" card on the web dashboard and the Android and iOS Home screen warns you when nothing is left that's safe to spend this week, or when the 30-day cash flow forecast shows your balance going below zero (it names the date). On Android and iOS the alert also arrives as a notification, once per week for a spent-out week and once per deficit date, if you have allowed Zoption's notifications.
 - Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.

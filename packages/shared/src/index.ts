@@ -1,4 +1,5 @@
 export * from "./calculations";
+export * from "./goalConfig";
 export * from "./goals";
 export * from "./cashflowForecast";
 export * from "./csv";
