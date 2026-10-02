@@ -7,7 +7,7 @@ import {
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Archive, Check, Pencil, Plus, RotateCcw, X } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 
 import { useBillingSummary } from "../../hooks/useBillingSummary";
@@ -363,7 +363,11 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
             >
               <span
                 className={`category-icon-preview${category.iconEmoji ? " has-emoji" : ""}`}
-                style={{ backgroundColor: category.iconEmoji ? undefined : category.color }}
+                style={
+                  category.iconEmoji
+                    ? ({ "--category-color": category.color } as CSSProperties)
+                    : { backgroundColor: category.color }
+                }
                 aria-hidden="true"
               >
                 {category.iconEmoji}

@@ -12,6 +12,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Web: category emojis now sit on a soft tile tinted with the category colour, the same look as on mobile, in transactions, recent activity, spending by category, and the category manager.
 - The web app is easier to read and calmer to look at. No text is smaller than 11px. Cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Status colours follow the light, dark, and warm themes in the subscription calendar and import suggestions.
 - The sign-in, sign-up, password, and setup screens use a flat panel with larger labels. On phones the form fills the screen, and fields no longer make iOS zoom in when you tap them. The Google button spans the full width.
 - Overspending is easy to spot. An over-limit category on Budgets and on a shared budget link turns red and says "Over by". On a tablet, Budgets keeps each category's remaining amount visible.
