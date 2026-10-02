@@ -101,10 +101,10 @@ export const Offer = ({ rel }: { rel: number }) => {
           <br />
           of Pro is <span style={{ color: C.brand }}>on us</span>
         </div>
-        <Stamp rel={rel} at={vf(3.4)} rotate={8} style={{ left: 640, top: 520, fontSize: 150 }}>
+        <Stamp rel={rel} at={vf(3.4)} rotate={8} style={{ left: 575, top: 470, fontSize: 140 }}>
           FREE
         </Stamp>
-        <div style={{ position: "absolute", top: 1085, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 12 }}>
+        <div style={{ position: "absolute", top: 1030, left: 0, right: 0, display: "flex", justifyContent: "center", gap: 12 }}>
           {Array.from({ length: 7 }, (_, i) => {
             const on = rel >= dayFill(i);
             const p = pop(rel, dayFill(i), 10, 220);
@@ -135,7 +135,7 @@ export const Offer = ({ rel }: { rel: number }) => {
         <div
           style={{
             position: "absolute",
-            top: 1262,
+            top: 1190,
             left: 0,
             right: 0,
             display: "flex",
@@ -148,8 +148,8 @@ export const Offer = ({ rel }: { rel: number }) => {
             Sign up free
           </div>
         </div>
-        <Cursor x={700} y={1330} rel={rel} at={signAt} />
-        <Ripple rel={rel} at={signAt} x={716} y={1339} size={140} />
+        <Cursor x={700} y={1262} rel={rel} at={signAt} />
+        <Ripple rel={rel} at={signAt} x={716} y={1271} size={140} />
       </Panel>
 
       {/* B: no card */}

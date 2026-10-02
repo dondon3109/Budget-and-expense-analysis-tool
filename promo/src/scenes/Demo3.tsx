@@ -89,7 +89,7 @@ export const Demo3 = ({ rel }: { rel: number }) => {
         <div
           style={{
             position: "absolute",
-            top: 610,
+            top: 560,
             left: 70,
             right: 70,
             padding: "46px 40px 44px",
@@ -117,7 +117,7 @@ export const Demo3 = ({ rel }: { rel: number }) => {
       )}
 
       {/* where it comes from */}
-      <div style={{ position: "absolute", top: 1180, left: 40, right: 40, display: "flex", gap: 18, justifyContent: "center", alignItems: "center", fontFamily: FONT.display }}>
+      <div style={{ position: "absolute", top: 1080, left: 40, right: 40, display: "flex", gap: 18, justifyContent: "center", alignItems: "center", fontFamily: FONT.display }}>
         <Pill rel={rel} at={vf(2.75)}>₱1,648 left</Pill>
         <Pill rel={rel} at={vf(3.25)}>÷ 4 days</Pill>
         <Pill rel={rel} at={vf(3.85)} strong>= ₱412</Pill>
@@ -127,7 +127,7 @@ export const Demo3 = ({ rel }: { rel: number }) => {
         <div
           style={{
             position: "absolute",
-            top: 1310,
+            top: 1200,
             left: 0,
             right: 0,
             display: "flex",
