@@ -17,6 +17,7 @@ import { CashflowCard } from "./CashflowCard";
 import { CashflowForecastCard } from "./CashflowForecastCard";
 import { buildDashboardView, localIsoDate } from "./dashboard-view";
 import { HomeEmptyView } from "./HomeEmptyView";
+import { HomeViewSwitch, type HomeViewName } from "./HomeViewSwitch";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
 import { QuickStartGuideCard } from "./QuickStartGuideCard";
@@ -41,6 +42,7 @@ export function HomeScreen() {
   const sync = useSyncState();
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
+  const [homeView, setHomeView] = useState<HomeViewName>("overview");
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
     () =>
@@ -110,22 +112,30 @@ export function HomeScreen() {
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
-              <BalanceCard summary={view.summary} />
-              <MonthSummaryCard summary={view.summary} />
-              <CashflowCard
-                cashflow={view.cashflow}
-                isPro={isPro}
-                onSelectView={setCashflowView}
-                selectedView={cashflowView}
-              />
-              <SpendingByCategory summary={view.summary} />
-              <BudgetCard summary={view.summary} />
-              <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
-              <CashflowForecastCard
-                startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-                subscriptions={subscriptions.subscriptions}
-              />
-              <RemittanceCalculatorCard />
+              <HomeViewSwitch selected={homeView} onSelect={setHomeView} />
+              {homeView === "overview" ? (
+                <>
+                  <BalanceCard summary={view.summary} />
+                  <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
+                  <RemittanceCalculatorCard />
+                </>
+              ) : (
+                <>
+                  <MonthSummaryCard summary={view.summary} />
+                  <CashflowCard
+                    cashflow={view.cashflow}
+                    isPro={isPro}
+                    onSelectView={setCashflowView}
+                    selectedView={cashflowView}
+                  />
+                  <SpendingByCategory summary={view.summary} />
+                  <BudgetCard summary={view.summary} />
+                  <CashflowForecastCard
+                    startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                    subscriptions={subscriptions.subscriptions}
+                  />
+                </>
+              )}
             </>
           ) : (
             <HomeEmptyView syncing={sync.status === "syncing"} />
