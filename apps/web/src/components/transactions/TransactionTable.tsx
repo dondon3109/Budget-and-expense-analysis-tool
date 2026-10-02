@@ -1,6 +1,6 @@
 import type { Currency, TransactionListItem, TransactionListQuery } from "@zoption/shared";
 import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 
 import { formatMoney } from "../../lib/formatters";
 import {
@@ -182,7 +182,11 @@ export function TransactionTable({
         <td data-label="Category">
           <span className="category-chip">
             {item.categoryIconEmoji ? (
-              <span className="category-chip-emoji" aria-hidden="true">
+              <span
+                className="category-chip-emoji"
+                aria-hidden="true"
+                style={{ "--category-color": item.categoryColor } as CSSProperties}
+              >
                 {item.categoryIconEmoji}
               </span>
             ) : (

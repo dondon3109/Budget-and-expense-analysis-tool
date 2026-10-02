@@ -668,12 +668,21 @@ export function TransactionEditorScreen() {
               setValues((current) => ({
                 ...current,
                 accountId,
+                // Picking the account already on the other side swaps the two sides.
+                toAccountId:
+                  transfer && accountId === current.toAccountId
+                    ? current.accountId
+                    : current.toAccountId,
                 currency: account?.currency ?? current.currency,
               }));
-              setErrors((current) => ({ ...current, accountId: undefined }));
+              setErrors((current) => ({
+                ...current,
+                accountId: undefined,
+                toAccountId: undefined,
+              }));
               setMessage(null);
             }}
-            options={accountOptions.filter((option) => option.id !== values.toAccountId)}
+            options={accountOptions}
             placeholder={transfer ? "Choose source account" : "Choose an account"}
             sheetTitle={transfer ? "Choose source account" : "Choose account"}
             value={values.accountId}
@@ -683,8 +692,25 @@ export function TransactionEditorScreen() {
               disabled={saving || mutationBlocked}
               error={errors.toAccountId}
               label="To account"
-              onSelect={(toAccountId) => updateValue("toAccountId", toAccountId)}
-              options={accountOptions.filter((option) => option.id !== values.accountId)}
+              onSelect={(toAccountId) => {
+                const swapped = toAccountId === values.accountId;
+                const source = swapped
+                  ? formData.data?.accounts.find((item) => item.id === values.toAccountId)
+                  : undefined;
+                setValues((current) => ({
+                  ...current,
+                  toAccountId,
+                  accountId: swapped ? current.toAccountId : current.accountId,
+                  currency: source?.currency ?? current.currency,
+                }));
+                setErrors((current) => ({
+                  ...current,
+                  accountId: undefined,
+                  toAccountId: undefined,
+                }));
+                setMessage(null);
+              }}
+              options={accountOptions}
               placeholder="Choose destination account"
               sheetTitle="Choose destination account"
               value={values.toAccountId}

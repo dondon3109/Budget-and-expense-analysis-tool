@@ -1,5 +1,6 @@
 import type { TransactionPage } from "@zoption/shared";
 import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import type { CSSProperties } from "react";
 import { Link } from "react-router-dom";
 
 import { formatMoney } from "../../lib/formatters";
@@ -113,7 +114,11 @@ export function DashboardTransactionHistory({
                     <td data-label="Category">
                       <span className="dashboard-history-category">
                         {item.categoryIconEmoji ? (
-                          <span className="category-chip-emoji" aria-hidden="true">
+                          <span
+                            className="category-chip-emoji"
+                            aria-hidden="true"
+                            style={{ "--category-color": item.categoryColor } as CSSProperties}
+                          >
                             {item.categoryIconEmoji}
                           </span>
                         ) : (

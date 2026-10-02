@@ -1,4 +1,5 @@
 import type { DashboardSummary } from "@zoption/shared";
+import type { CSSProperties } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Link } from "react-router-dom";
 
@@ -135,7 +136,11 @@ export function SpendingByCategory({
               {data.map((item) => (
                 <div className="category-row" key={item.categoryId}>
                   {item.iconEmoji ? (
-                    <span className="category-chip-emoji" aria-hidden="true">
+                    <span
+                      className="category-chip-emoji"
+                      aria-hidden="true"
+                      style={{ "--category-color": item.color } as CSSProperties}
+                    >
                       {item.iconEmoji}
                     </span>
                   ) : (
