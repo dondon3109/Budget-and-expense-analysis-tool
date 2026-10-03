@@ -29,7 +29,7 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
     "saveOnboardingCurrency",
     "saveOnboardingCashBalance",
     "getGoalProfile",
-    "saveGoal",
+    "saveGoals",
     "skipGoal",
     "markGoalShown",
   ]),
@@ -40,7 +40,7 @@ import {
   getGoalProfile,
   getOnboardingState,
   markGoalShown,
-  saveGoal,
+  saveGoals,
   saveOnboardingCashBalance,
   saveOnboardingCurrency,
   skipGoal,
@@ -59,14 +59,15 @@ function renderPage() {
 }
 
 describe("OnboardingPage", () => {
-  const unset = { goal: null, otherText: null, selectedAt: null, skipped: false };
+  const unset = { goals: [], goal: null, otherText: null, selectedAt: null, skipped: false };
 
   beforeEach(() => {
     // Most cases are about the later steps, so the goal is already answered unless a case resets it.
     vi.mocked(getGoalProfile).mockResolvedValue({ ...unset, skipped: true });
     vi.mocked(markGoalShown).mockResolvedValue();
-    vi.mocked(saveGoal).mockImplementation(async (_workspace, input) => ({
-      goal: input.goal,
+    vi.mocked(saveGoals).mockImplementation(async (_workspace, input) => ({
+      goals: input.goals,
+      goal: input.goals[0] ?? null,
       otherText: input.otherText ?? null,
       selectedAt: "2026-01-01T00:00:00.000Z",
       skipped: false,
@@ -244,37 +245,45 @@ describe("OnboardingPage", () => {
       vi.mocked(getGoalProfile).mockResolvedValue(unset);
     });
 
-    it("shows the goal first, records it once, and persists the pick before currency", async () => {
+    it("shows the goal first, records it once, and saves the picks before thanking the user", async () => {
       renderPage();
 
-      expect(await screen.findByRole("group", { name: "Your main goal" })).toBeInTheDocument();
+      expect(await screen.findByRole("group", { name: "Your goals" })).toBeInTheDocument();
       expect(screen.getByText("So we can set up the right starting point for you.")).toBeVisible();
       expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Your goal");
       expect(markGoalShown).toHaveBeenCalledTimes(1);
 
-      fireEvent.click(screen.getByRole("radio", { name: "Save for something specific" }), {
-        detail: 1,
-      });
-      await waitFor(() =>
-        expect(saveGoal).toHaveBeenCalledWith(expect.anything(), { goal: "save_for_goal" }),
-      );
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
-    });
-
-    it("does not save or advance when arrow keys only move the selection", async () => {
-      renderPage();
-
-      // A browser fires a click with no pointer (detail 0) when an arrow key selects a radio.
-      fireEvent.click(await screen.findByRole("radio", { name: "Save for something specific" }));
-      expect(screen.getByRole("radio", { name: "Save for something specific" })).toBeChecked();
-      expect(saveGoal).not.toHaveBeenCalled();
-      expect(screen.queryByRole("combobox", { name: "Base currency" })).not.toBeInTheDocument();
+      // Several can be picked, and nothing is saved until Continue, so keyboard users can roam.
+      fireEvent.click(screen.getByRole("checkbox", { name: "Save for something specific" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Pay off debt / utang" }));
+      expect(saveGoals).not.toHaveBeenCalled();
+      expect(screen.getByText("Main focus")).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
       await waitFor(() =>
-        expect(saveGoal).toHaveBeenCalledWith(expect.anything(), { goal: "save_for_goal" }),
+        expect(saveGoals).toHaveBeenCalledWith(expect.anything(), {
+          goals: ["save_for_goal", "reduce_debt"],
+          otherText: "",
+        }),
       );
+      expect(await screen.findByRole("heading", { name: "Thank you!" })).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Thanks for taking a moment to tell us.",
+      );
+      expect(screen.queryByRole("combobox", { name: "Base currency" })).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
       expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    });
+
+    it("needs at least one goal before Continue", async () => {
+      renderPage();
+
+      expect(await screen.findByRole("button", { name: "Continue" })).toBeDisabled();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Just looking around" }));
+      expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Just looking around" }));
+      expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     });
 
     it("skips without blocking and remembers the skip", async () => {
@@ -293,33 +302,40 @@ describe("OnboardingPage", () => {
       expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
     });
 
-    it("continues even when saving the goal fails", async () => {
-      vi.mocked(saveGoal).mockRejectedValue(new Error("offline"));
+    it("skips without thanking, since nothing was answered", async () => {
       renderPage();
 
-      fireEvent.click(await screen.findByRole("radio", { name: "Just looking around" }), {
-        detail: 1,
-      });
+      fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
+      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+      expect(screen.queryByText("Thank you!")).not.toBeInTheDocument();
+    });
+
+    it("continues without thanking when saving the goals fails", async () => {
+      vi.mocked(saveGoals).mockRejectedValue(new Error("offline"));
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("checkbox", { name: "Just looking around" }));
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
       expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
     });
 
     it("saves the optional note with Other", async () => {
       renderPage();
 
-      fireEvent.click(await screen.findByRole("radio", { name: "Other" }), { detail: 1 });
-      expect(saveGoal).not.toHaveBeenCalled();
+      fireEvent.click(await screen.findByRole("checkbox", { name: "Other" }));
+      expect(saveGoals).not.toHaveBeenCalled();
       const note = screen.getByRole("textbox", { name: /Tell us more/ });
       expect(note).toHaveAttribute("maxlength", "140");
       fireEvent.change(note, { target: { value: "Plan a wedding" } });
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
       await waitFor(() =>
-        expect(saveGoal).toHaveBeenCalledWith(expect.anything(), {
-          goal: "other",
+        expect(saveGoals).toHaveBeenCalledWith(expect.anything(), {
+          goals: ["other"],
           otherText: "Plan a wedding",
         }),
       );
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Thank you!" })).toBeInTheDocument();
     });
 
     it("never shows a finished workspace the goal", async () => {

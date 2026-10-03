@@ -13,6 +13,22 @@
   font-weight: 600;
 }
 
+.goal-picker-hint {
+  margin: 0 0 10px;
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+
+.goal-picker-badge {
+  margin-left: auto;
+  padding: 2px 8px;
+  color: var(--brand-strong);
+  border: 1px solid var(--brand-strong);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .goal-picker-options {
   display: grid;
   gap: 8px;

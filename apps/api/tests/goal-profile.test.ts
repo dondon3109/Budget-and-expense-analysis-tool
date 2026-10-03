@@ -164,9 +164,84 @@ describe("migration 0070", () => {
   it("keeps the SQL enums in step with the shared lists", () => {
     for (const value of [...primaryGoals, ...goalEventNames])
       expect(migration).toContain(`'${value}'`);
-    const schema = readFileSync(new URL("../../../db/schema.ts", import.meta.url), "utf8");
+    const schema = ["schema.ts", "schema-goals.ts"]
+      .map((file) => readFileSync(new URL(`../../../db/${file}`, import.meta.url), "utf8"))
+      .join("\n");
     for (const value of [...primaryGoals, ...goalEventNames])
       expect(schema).toContain(`"${value}"`);
+  });
+});
+
+const GOALS = "/api/app/profile/goals";
+
+describe("several goals", () => {
+  it("starts empty and keeps pick order, with the first pick as the lead goal", async () => {
+    const { call, rows } = createHarness();
+    expect(await (await call(GOALS, ALICE)).json()).toEqual({
+      goals: [],
+      otherText: null,
+      selectedAt: null,
+      skipped: false,
+    });
+
+    const saved = await call(GOALS, ALICE, "PUT", {
+      goals: ["reduce_debt", "build_budget", "other"],
+      otherText: " a wedding ",
+    });
+    expect(await saved.json()).toMatchObject({
+      goals: ["reduce_debt", "build_budget", "other"],
+      otherText: "a wedding",
+      skipped: false,
+    });
+    expect(rows("SELECT primary_goal, secondary_goals FROM tenants")).toEqual([
+      { primary_goal: "reduce_debt", secondary_goals: '["build_budget","other"]' },
+    ]);
+    expect(rows("SELECT name, goal, from_goal FROM goal_events")).toEqual([
+      { name: "onboarding_goal_selected", goal: "reduce_debt", from_goal: null },
+    ]);
+  });
+
+  it("records goal_changed only when the lead goal changes", async () => {
+    const { call, rows } = createHarness();
+    await call(GOALS, ALICE, "PUT", { goals: ["build_budget", "track_spending"] });
+    await call(GOALS, ALICE, "PUT", { goals: ["build_budget", "save_for_goal"] });
+    await call(GOALS, ALICE, "PUT", { goals: ["track_spending", "build_budget"] });
+    expect(rows("SELECT name, goal, from_goal FROM goal_events ORDER BY rowid")).toEqual([
+      { name: "onboarding_goal_selected", goal: "build_budget", from_goal: null },
+      { name: "goal_changed", goal: "track_spending", from_goal: "build_budget" },
+    ]);
+  });
+
+  it("serves the lead goal to the single-goal route and replaces the list when it saves one", async () => {
+    const { call } = createHarness();
+    await call(GOALS, ALICE, "PUT", { goals: ["save_for_goal", "reduce_debt"] });
+    expect(await (await call(GOAL, ALICE)).json()).toMatchObject({ goal: "save_for_goal" });
+
+    await call(GOAL, ALICE, "PUT", { goal: "track_spending" });
+    expect(await (await call(GOALS, ALICE)).json()).toMatchObject({ goals: ["track_spending"] });
+  });
+
+  it("drops the text unless 'other' is chosen, and rejects bad lists", async () => {
+    const { call } = createHarness();
+    const saved = await call(GOALS, ALICE, "PUT", { goals: ["build_budget"], otherText: "x" });
+    expect(await saved.json()).toMatchObject({ otherText: null });
+    for (const goals of [[], ["build_budget", "build_budget"], ["get_rich"], "build_budget"]) {
+      expect((await call(GOALS, ALICE, "PUT", { goals })).status).toBe(400);
+    }
+    expect((await call(GOALS, ALICE, "PUT", { goals: ["other"], tenantId: "bob" })).status).toBe(
+      400,
+    );
+  });
+
+  it("skips without clearing chosen goals and is scoped to the tenant", async () => {
+    const { call } = createHarness();
+    await call(GOALS, ALICE, "PUT", { goals: ["build_budget", "track_spending"] });
+    await call(`${GOAL}/skip`, ALICE, "POST");
+    expect(await (await call(GOALS, ALICE)).json()).toMatchObject({
+      goals: ["build_budget", "track_spending"],
+      skipped: false,
+    });
+    expect(await (await call(GOALS, BOB)).json()).toMatchObject({ goals: [] });
   });
 });
 

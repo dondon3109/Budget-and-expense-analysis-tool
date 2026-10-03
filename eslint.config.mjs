@@ -75,7 +75,7 @@ export default tseslint.config(
   {
     // drizzle-kit loads this file from the repo root (drizzle.config.ts), where the root
     // package.json resolves no workspace packages. Keep it self-contained: drizzle-orm only.
-    files: ["db/schema.ts", "db/schema-providers.ts"],
+    files: ["db/schema.ts", "db/schema-providers.ts", "db/schema-goals.ts"],
     rules: {
       "no-restricted-imports": [
         "error",

@@ -44,7 +44,7 @@ describe("legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: October 2, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: October 3, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
@@ -76,7 +76,7 @@ describe("legal pages", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/goal events carry no financial detail/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/deleted with your account, and your goal and optional/i),
+      screen.getByText(/deleted with your account, and your goals and optional/i),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(5);
   });
