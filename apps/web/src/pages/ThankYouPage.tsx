@@ -1,17 +1,11 @@
-import {
-  ArrowRight,
-  CheckCircle2,
-  Heart,
-  MessageSquareCheck,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, MessageSquareCheck, ShieldCheck } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { LegalFooter } from "../components/legal/LegalFooter";
 import { Breadcrumbs } from "../components/navigation/Breadcrumbs";
 import { PublicHeader } from "../components/navigation/PublicHeader";
 import { siteUrl } from "../lib/siteUrl";
+import { thankYouCopy } from "../lib/thankYou";
 import "./ThankYouPage.css";
 
 interface FlowContent {
@@ -32,11 +26,7 @@ export function ThankYouPage() {
     switch (flow) {
       case "pro":
         return {
-          icon: Sparkles,
-          eyebrow: "Pro Membership",
-          title: "Thank you for upgrading to Zoption Pro!",
-          description:
-            "Your workspace now includes 10 statement imports per month, automatic interest compounding, the interactive renewal calendar, and direct priority support.",
+          ...thankYouCopy.pro,
           primaryAction: { label: "Go to your workspace", to: "/app" },
           secondaryAction: { label: "Manage Plan & Billing", to: "/app/settings#plan-and-billing" },
           note: "Priority support response turnaround is typically within 24 hours.",
@@ -54,21 +44,13 @@ export function ThankYouPage() {
         };
       case "review":
         return {
-          icon: Heart,
-          eyebrow: "Customer Review",
-          title: "Thank you for sharing your review!",
-          description:
-            "Your feedback helps others discover a private, integer-accurate way to track expenses and manage budgets without sharing online banking passwords.",
+          ...thankYouCopy.review,
           primaryAction: { label: "Return to workspace", to: "/app" },
           secondaryAction: { label: "View customer reviews", to: "/#reviews" },
         };
       case "signup":
         return {
-          icon: CheckCircle2,
-          eyebrow: "Welcome to Zoption",
-          title: "Thank you for creating your account",
-          description:
-            "Your private financial workspace is ready. Start by logging an expense with voice, snapping a receipt, or mapping your first bank statement.",
+          ...thankYouCopy.signup,
           primaryAction: { label: "Open your workspace", to: "/app" },
           secondaryAction: { label: "Read the FAQ", to: siteUrl("/faq") },
           note: "No bank passwords required. Your data starts empty and stays private.",

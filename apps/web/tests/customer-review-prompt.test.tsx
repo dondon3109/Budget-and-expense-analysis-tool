@@ -83,7 +83,7 @@ describe("customer review prompt", () => {
         }),
       ),
     );
-    expect(await screen.findByText("Thank you for sharing.")).toBeInTheDocument();
+    expect(await screen.findByText("Thank you for sharing your review!")).toBeInTheDocument();
     expect(screen.getByText(/appear only if the zoption team selects it/i)).toBeInTheDocument();
   });
 

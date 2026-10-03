@@ -20,6 +20,7 @@ import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
+import { isNewAccount, showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
@@ -396,9 +397,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
       throw new Error("Google callback URL could not be parsed: " + result.url.slice(0, 200));
     }
     if ("error" in callback) throw new Error(callback.error);
-    const { error: exchangeError } = await getSupabaseClient().auth.exchangeCodeForSession(
-      callback.code,
-    );
+    const { data: exchanged, error: exchangeError } =
+      await getSupabaseClient().auth.exchangeCodeForSession(callback.code);
     if (exchangeError) {
       const { data: currentSession } = await getSupabaseClient().auth.getSession();
       if (!currentSession.session) {
@@ -412,6 +412,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         );
       }
     }
+    if (exchanged?.user && isNewAccount(exchanged.user)) showThankYou("signup");
   }, []);
 
   const signOut = useCallback(async (options: SignOutOptions = {}) => {

@@ -222,6 +222,7 @@ describe("BillingSettings", () => {
       await screen.findByText("Your permanent complimentary Pro access is active"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/Renews|Period ends/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("restores payment confirmation from a durable pending checkout", async () => {
@@ -305,6 +306,9 @@ describe("BillingSettings", () => {
       "/app/settings#plan-and-billing",
     );
     expect(screen.queryByText("Confirming your payment")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("dialog", { name: "Thank you for upgrading to Zoption Pro!" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps checking after the fast window and preserves unrelated URL state", async () => {

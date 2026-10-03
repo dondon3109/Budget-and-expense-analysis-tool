@@ -10,6 +10,7 @@ import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { AccountPromptHost } from "@/features/account-prompt/AccountPromptHost";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
 import { PlanLimitHost } from "@/features/billing/PlanLimitDialog";
+import { ThankYouHost } from "@/features/thank-you/ThankYouHost";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
@@ -98,6 +99,7 @@ function LocalWorkspaceGate({
       {children}
       <DailyReminderTapHandler />
       <PlanLimitHost />
+      <ThankYouHost />
       <AccountPromptHost />
     </SyncProvider>
   );
