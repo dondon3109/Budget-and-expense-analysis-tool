@@ -1,14 +1,19 @@
 import { petSpecies } from "@zoption/shared";
 
+import { adultArt } from "./adults";
 import { babyArt } from "./babies";
 import { eggArt, eggCracks } from "./eggs";
+import { juvenileArt } from "./juveniles";
+import { monsterArt } from "./monsters";
 
 describe("pet art", () => {
-  it("draws an egg and a baby with blinking eyes for every species", () => {
-    for (const species of petSpecies) {
-      expect(eggArt(species).length).toBeGreaterThan(0);
-      expect(babyArt[species].some((layer) => layer.part === "eyes")).toBe(true);
+  it("draws every hatched stage of every species with eyes that can blink", () => {
+    for (const stage of [babyArt, juvenileArt, adultArt, monsterArt]) {
+      for (const species of petSpecies) {
+        expect(stage[species].some((layer) => layer.part === "eyes")).toBe(true);
+      }
     }
+    for (const species of petSpecies) expect(eggArt(species).length).toBeGreaterThan(0);
   });
 
   it("grows the egg crack each streak day and adds a side crack near hatching", () => {

@@ -128,3 +128,46 @@ export function spikes(
   }
   return `${d} Z`;
 }
+
+/** Glaring eyes under slanted brows, for the Monster stage. */
+export function angryEyes(left: number, right: number, cy: number, glow = "#FF3B30"): PetLayer {
+  const shapes: PetShape[] = [];
+  for (const [cx, side] of [
+    [left, 1],
+    [right, -1],
+  ] as const) {
+    shapes.push(oval(cx, cy, 11, 9, "#FFF4D6", { strokeWidth: 3 }));
+    shapes.push(oval(cx, cy + 1, 5, 6, glow, { strokeWidth: 0 }));
+    shapes.push(oval(cx, cy + 1, 1.8, 4, OUTLINE, { strokeWidth: 0 }));
+    shapes.push(
+      blob(
+        `M${cx - 15 * side} ${cy - 18} L${cx + 13 * side} ${cy - 8} L${cx + 12 * side} ${cy - 3} L${cx - 14 * side} ${cy - 12} Z`,
+        OUTLINE,
+      ),
+    );
+  }
+  return { part: "eyes", origin: [(left + right) / 2, cy], shapes };
+}
+
+/** An open snarl with two fangs. */
+export function snarl(cx: number, cy: number, width = 18): PetShape[] {
+  return [
+    blob(
+      `M${cx - width} ${cy} Q${cx} ${cy - 6} ${cx + width} ${cy} Q${cx} ${cy + 16} ${cx - width} ${cy} Z`,
+      "#5A1620",
+    ),
+    blob(`M${cx - width + 5} ${cy - 1} l4 9 l4 -10 Z`, "#FFFFFF"),
+    blob(`M${cx + width - 13} ${cy - 1} l4 9 l4 -10 Z`, "#FFFFFF"),
+  ];
+}
+
+/** A soft colored glow behind a Monster. */
+export const aura = (fill: string): PetLayer => ({
+  part: "shadow",
+  origin: [100, 120],
+  shapes: [
+    oval(100, 118, 88, 82, fill, { strokeWidth: 0, opacity: 0.18 }),
+    oval(100, 122, 74, 68, fill, { strokeWidth: 0, opacity: 0.22 }),
+    oval(100, 190, 62, 8, "#000000", { strokeWidth: 0, opacity: 0.18 }),
+  ],
+});
