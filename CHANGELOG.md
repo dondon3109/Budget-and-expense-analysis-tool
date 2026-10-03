@@ -10,9 +10,6 @@ All notable product changes are documented here.
 - Mobile: you can now use Zoption without an account. Choose "Continue without an account" on the welcome screen to track transactions, budgets, goals, debts, subscriptions and your calendar on this device. The AI Assistant, receipt scanning, voice entry, bank-file import, and Plan and billing need an account: tapping one opens a pop-up that lists what an account adds (backup and sync between your phone and the web, those features, and a 7-day Pro trial) with a Sign in button, and More has a card with the same list. Data you enter without an account stays on this device and does not move into an account when you sign in.
 - Web: setup now asks what brings you to Zoption (track spending, budget, save, pay off debt, understand habits with AI, or just looking). You can skip it, and you can change your answer in Account Settings. Your choice sets the first action on an empty dashboard, a short getting-started checklist, and the assistant's first suggested question. Existing accounts are not asked during setup. The goal is stored with your workspace, included in your data export, and deleted with your account.
 - Mobile: the app now asks once what brings you to Zoption, with a Skip that never blocks you, and you can change your answer under More → Preferences → Your goal. Your choice sets the first action on an empty Home screen and the assistant's first suggested question. Without a goal, or offline, nothing changes.
-- Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
-- Overspending alerts: the "Safe to spend this week" card on the web dashboard and the Android and iOS Home screen warns you when nothing is left that's safe to spend this week, or when the 30-day cash flow forecast shows your balance going below zero (it names the date). On Android and iOS the alert also arrives as a notification, once per week for a spent-out week and once per deficit date, if you have allowed Zoption's notifications.
-- Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
 - zoption.site now pings Bing and other IndexNow search engines after each release so new and updated pages are crawled sooner.
 - Web and mobile: when you create an account you can now choose its currency (Philippine Peso or US Dollar). The picker starts on your default currency, and an account's currency cannot be changed after it is created. You can also enter an optional starting balance, which is saved as a balance adjustment on the new account. Existing accounts keep their current currency.
 
@@ -25,6 +22,21 @@ All notable product changes are documented here.
 - Mobile: hitting a free plan limit in the assistant or an import, or when a saved custom category or account change is refused during sync, now opens a "Plan limit reached" pop-up with a link to Plan and billing.
 - On the web dashboard, "Add transaction" now opens the transaction form over the page instead of switching to Transactions, so you can add one and keep watching your balances.
 - Web: category emojis now sit on a soft tile tinted with the category colour, the same look as on mobile, in transactions, recent activity, spending by category, and the category manager.
+
+### Fixed
+
+- The setup goal step no longer saves and moves on when you arrow past a choice with the keyboard. Arrow keys only move the selection, and you confirm with the button. Clicking a choice still saves it straight away.
+
+## 3.2.0 — 2026-10-02
+
+### Added
+
+- Mobile: press and hold a transaction or an assistant conversation to start select mode, then pick several and delete them in one step. Holding a conversation no longer opens a single-delete prompt.
+- Overspending alerts: the "Safe to spend this week" card on the web dashboard and the Android and iOS Home screen warns you when nothing is left that's safe to spend this week, or when the 30-day cash flow forecast shows your balance going below zero (it names the date). On Android and iOS the alert also arrives as a notification, once per week for a spent-out week and once per deficit date, if you have allowed Zoption's notifications.
+- Three new guides on zoption.site: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines. The home, voice input, and receipt scanning pages now describe budgeting, transactions, and saving money in their titles and descriptions.
+
+### Changed
+
 - The web app is easier to read and calmer to look at. No text is smaller than 11px. Cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Status colours follow the light, dark, and warm themes in the subscription calendar and import suggestions.
 - The sign-in, sign-up, password, and setup screens use a flat panel with larger labels. On phones the form fills the screen, and fields no longer make iOS zoom in when you tap them. The Google button spans the full width.
 - Overspending is easy to spot. An over-limit category on Budgets and on a shared budget link turns red and says "Over by". On a tablet, Budgets keeps each category's remaining amount visible.
@@ -32,7 +44,6 @@ All notable product changes are documented here.
 
 ### Fixed
 
-- The setup goal step no longer saves and moves on when you arrow past a choice with the keyboard. Arrow keys only move the selection, and you confirm with the button. Clicking a choice still saves it straight away.
 - The Back and Confirm buttons on the setup screen share the row instead of Back taking almost all of it.
 - The calendar's left edge no longer draws a double line on every week, and its phone day markers use readable income and expense colours.
 
