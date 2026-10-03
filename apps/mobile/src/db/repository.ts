@@ -187,7 +187,7 @@ const eventItemSchema = z.object({
 const localAccountItemSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(["cash", "checking", "savings", "credit", "other"]),
+  type: z.enum(accountTypes),
   currency: z.enum(["PHP", "USD"]),
   system: z.number().int().min(0).max(1),
   server_revision: z.number().int().nonnegative(),
@@ -232,7 +232,7 @@ const dashboardTransactionRowSchema = z.object({
 const dashboardAccountRowSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(["cash", "checking", "savings", "credit", "other"]),
+  type: z.enum(accountTypes),
   currency: z.enum(["PHP", "USD"]),
   archived: z.number().int().min(0).max(1),
   system: z.number().int().min(0).max(1),

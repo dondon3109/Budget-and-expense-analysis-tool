@@ -1,4 +1,7 @@
+import type { AccountType } from "./accountTypes";
 import type { AssistantTransactionDraft } from "./schemas/assistant";
+
+export * from "./accountTypes";
 
 export const transactionKinds = ["income", "expense", "transfer"] as const;
 export type TransactionKind = (typeof transactionKinds)[number];
@@ -85,9 +88,6 @@ export interface CalendarEventMonth {
   month: string;
   items: CalendarEventRecord[];
 }
-
-export const accountTypes = ["cash", "checking", "savings", "credit", "other"] as const;
-export type AccountType = (typeof accountTypes)[number];
 
 export const interestFrequencies = ["daily", "monthly", "yearly"] as const;
 export type InterestFrequency = (typeof interestFrequencies)[number];

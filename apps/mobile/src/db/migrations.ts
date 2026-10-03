@@ -6,6 +6,7 @@ export interface MigrationTransaction {
 
 export interface MigrationDatabase {
   getFirstAsync(source: string): Promise<{ user_version: number } | null>;
+  execAsync(source: string): Promise<void>;
   withTransactionAsync(task: (transaction: MigrationTransaction) => Promise<void>): Promise<void>;
 }
 
@@ -13,9 +14,15 @@ interface Migration {
   version: number;
   name: string;
   sql: string;
+  /**
+   * Set when the migration drops and recreates a table other tables reference. SQLite
+   * only honors `PRAGMA foreign_keys` outside a transaction, so the runner turns
+   * enforcement off around it; the rows are copied 1:1, so references stay valid.
+   */
+  rebuildsReferencedTable?: true;
 }
 
-export const LOCAL_SCHEMA_VERSION = 13;
+export const LOCAL_SCHEMA_VERSION = 14;
 
 export const migrations: readonly Migration[] = [
   {
@@ -703,6 +710,40 @@ export const migrations: readonly Migration[] = [
       );
     `,
   },
+  {
+    version: 14,
+    name: "more_account_types",
+    rebuildsReferencedTable: true,
+    sql: `
+      CREATE TABLE accounts_v14 (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('cash', 'checking', 'savings', 'credit', 'other', 'virtual', 'investment', 'receivable', 'payable')),
+        currency TEXT NOT NULL CHECK (currency IN ('PHP', 'USD')),
+        balance_minor INTEGER,
+        balance_as_of TEXT,
+        archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
+        system INTEGER NOT NULL DEFAULT 0 CHECK (system IN (0, 1)),
+        interest_json TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
+
+      INSERT INTO accounts_v14 (
+        id, name, type, currency, balance_minor, balance_as_of, archived, system,
+        interest_json, server_revision, server_updated_at, deleted_at, sync_state
+      )
+      SELECT
+        id, name, type, currency, balance_minor, balance_as_of, archived, system,
+        interest_json, server_revision, server_updated_at, deleted_at, sync_state
+      FROM accounts;
+
+      DROP TABLE accounts;
+      ALTER TABLE accounts_v14 RENAME TO accounts;
+    `,
+  },
 ] as const;
 
 export async function applyLocalMigrations(database: MigrationDatabase): Promise<number> {
@@ -714,13 +755,19 @@ export async function applyLocalMigrations(database: MigrationDatabase): Promise
 
   for (const migration of migrations) {
     if (migration.version <= currentVersion) continue;
-    await database.withTransactionAsync(async (transaction) => {
-      await transaction.execAsync(migration.sql);
-      await transaction.execAsync(`PRAGMA user_version = ${migration.version}`);
-      await transaction.execAsync(
-        `INSERT INTO workspace_metadata (key, value) VALUES ('migration:${migration.version}', '${migration.name}')`,
-      );
-    });
+    const disableForeignKeys = migration.rebuildsReferencedTable === true;
+    if (disableForeignKeys) await database.execAsync("PRAGMA foreign_keys = OFF");
+    try {
+      await database.withTransactionAsync(async (transaction) => {
+        await transaction.execAsync(migration.sql);
+        await transaction.execAsync(`PRAGMA user_version = ${migration.version}`);
+        await transaction.execAsync(
+          `INSERT INTO workspace_metadata (key, value) VALUES ('migration:${migration.version}', '${migration.name}')`,
+        );
+      });
+    } finally {
+      if (disableForeignKeys) await database.execAsync("PRAGMA foreign_keys = ON");
+    }
   }
   return LOCAL_SCHEMA_VERSION;
 }
@@ -728,6 +775,7 @@ export async function applyLocalMigrations(database: MigrationDatabase): Promise
 export function asMigrationDatabase(database: SQLiteDatabase): MigrationDatabase {
   return {
     getFirstAsync: (source) => database.getFirstAsync<{ user_version: number }>(source),
+    execAsync: (source) => database.execAsync(source),
     // Expo's exclusive helper uses a separate native connection. A regular
     // transaction stays on this already-keyed SQLCipher connection; startup is
     // serialized and the database is not exposed until migrations finish.

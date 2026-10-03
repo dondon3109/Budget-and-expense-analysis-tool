@@ -53,15 +53,8 @@ import {
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { accountTypeOptions } from "./account-types";
 import { categoryColorOptions, isPresetCategoryColor } from "./category-colors";
-
-const accountOptions: Array<{ id: AccountType; label: string }> = [
-  { id: "cash", label: "Cash" },
-  { id: "checking", label: "Checking" },
-  { id: "savings", label: "Savings" },
-  { id: "credit", label: "Credit" },
-  { id: "other", label: "Other" },
-];
 
 const currencyOptions: Array<{ id: Currency; label: string }> = currencies.map((code) => ({
   id: code,
@@ -170,7 +163,7 @@ export function ReferenceEditorScreen() {
   const theme = useZoptionTheme();
   const initialized = useRef(false);
   const [name, setName] = useState("");
-  const [accountType, setAccountType] = useState<AccountType>("cash");
+  const [accountType, setAccountType] = useState<AccountType>("other");
   const [startingBalance, setStartingBalance] = useState("");
   const [accountCurrency, setAccountCurrency] = useState<Currency>(
     useWorkspaceCurrencyStore.getState().currency,
@@ -202,7 +195,7 @@ export function ReferenceEditorScreen() {
     if (initialized.current || !references.data) return;
     if (id && !account && !category) return;
     setName(account?.name ?? category?.name ?? "");
-    setAccountType(account?.type ?? "cash");
+    setAccountType(account?.type ?? "other");
     if (account) setAccountCurrency(account.currency);
     setCategoryKind(category?.kind ?? "expense");
     const savedColor = category?.color ?? "#0F766E";
@@ -507,7 +500,7 @@ export function ReferenceEditorScreen() {
                 <SelectionField
                   label="Account type"
                   value={accountType}
-                  options={accountOptions}
+                  options={accountTypeOptions}
                   placeholder="Choose a type"
                   sheetTitle="Account type"
                   disabled={saving || blocked}

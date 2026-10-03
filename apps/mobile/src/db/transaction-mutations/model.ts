@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
 
 import {
+  accountTypes,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
   transferInputSchema,
@@ -73,7 +74,7 @@ export interface LocalTransferPair {
 export const accountRowSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(["cash", "checking", "savings", "credit", "other"]),
+  type: z.enum(accountTypes),
   currency: z.enum(["PHP", "USD"]),
   archived: z.number().int().min(0).max(1),
   system: z.number().int().min(0).max(1),

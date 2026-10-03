@@ -21,7 +21,7 @@ import { formatMoney } from "../../lib/formatters";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { AccountFormModal } from "./AccountFormModal";
-import { accountTypeLabel, accountTypes } from "./accountTypes";
+import { accountTypeLabel, accountTypeOptionLabel, accountTypes } from "./accountTypes";
 
 interface AccountsPanelProps {
   accounts: AccountMutations;
@@ -191,7 +191,7 @@ export function AccountsPanel({
                   >
                     {accountTypes.map((option) => (
                       <option key={option.value} value={option.value}>
-                        {option.label}
+                        {accountTypeOptionLabel(option.value)}
                       </option>
                     ))}
                   </select>

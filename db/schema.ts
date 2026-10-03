@@ -119,7 +119,7 @@ export const accounts = sqliteTable(
       .notNull()
       .references(() => tenants.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    type: text("type", { enum: ["cash", "checking", "savings", "credit", "other"] }).notNull(),
+    type: text("type").notNull(), // One of accountTypes in @zoption/shared; zod checks it on write.
     currency: text("currency").notNull().default("PHP"),
     systemKey: text("system_key"),
     archived: integer("archived", { mode: "boolean" }).notNull().default(false),

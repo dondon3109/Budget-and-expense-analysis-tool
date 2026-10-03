@@ -93,7 +93,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
   const queryClient = useQueryClient();
   const [isAddingAccount, setIsAddingAccount] = useState(false);
   const [accountName, setAccountName] = useState("");
-  const [accountType, setAccountType] = useState<AccountInput["type"]>("checking");
+  const [accountType, setAccountType] = useState<AccountInput["type"]>("other");
   const [accountCurrency, setAccountCurrency] = useState<Currency>(workspaceCurrency());
   const [accountStartingBalance, setAccountStartingBalance] = useState("");
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
@@ -186,7 +186,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
         variables.startingBalanceMinor ? formatMinorAmount(variables.startingBalanceMinor) : "",
       );
       setAccountName(context?.input.name ?? "");
-      setAccountType(context?.input.type ?? "checking");
+      setAccountType(context?.input.type ?? "other");
       setAccountCurrency(context?.input.currency ?? workspaceCurrency());
       setIsAddingAccount(true);
     },
