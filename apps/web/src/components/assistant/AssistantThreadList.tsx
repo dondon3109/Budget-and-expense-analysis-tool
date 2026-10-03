@@ -98,10 +98,7 @@ export function AssistantThreadList({
     >
       <div className="assistant-history-heading">
         <div className="assistant-history-title-row">
-          <div>
-            <p className="eyebrow">History</p>
-            <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
-          </div>
+          <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
           <div className="assistant-history-actions">
             {threads.length > 0 ? (
               <button
