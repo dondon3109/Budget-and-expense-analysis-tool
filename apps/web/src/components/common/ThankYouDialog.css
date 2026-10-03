@@ -1,0 +1,32 @@
+.thank-you-dialog {
+  width: min(440px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.thank-you-dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--brand-soft);
+  color: var(--brand-strong);
+}
+
+.thank-you-dialog h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  text-wrap: balance;
+}
+
+.thank-you-dialog-description {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}

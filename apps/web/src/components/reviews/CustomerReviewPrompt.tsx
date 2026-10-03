@@ -7,6 +7,7 @@ import type { User } from "@supabase/supabase-js";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { getCustomerReviewState, saveCustomerReview } from "../../lib/api";
+import { thankYouCopy } from "../../lib/thankYou";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./CustomerReviewPrompt.css";
 
@@ -146,7 +147,7 @@ export function CustomerReviewPrompt({
             <Check size={20} aria-hidden="true" />
           </span>
           <div>
-            <h2 id="review-prompt-title">Thank you for sharing.</h2>
+            <h2 id="review-prompt-title">{thankYouCopy.review.title}</h2>
             <p>Your review was submitted and will appear only if the Zoption team selects it.</p>
           </div>
           <button className="button primary" type="button" onClick={() => setDismissed(true)}>

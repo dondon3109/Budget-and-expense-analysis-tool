@@ -20,6 +20,7 @@ import {
   SelectionField,
   SkeletonLines,
 } from "@/ui/components";
+import { showThankYou } from "@/features/thank-you/ThankYouHost";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, typography } from "@/ui/tokens";
@@ -91,6 +92,7 @@ export function BillingScreen() {
         setSummary(result.summary);
         if (result.outcome === "confirmed") {
           setMessage("Your subscription is active. Welcome to Zoption Pro.");
+          showThankYou("pro");
           return;
         }
         if (result.outcome === "closed" || result.outcome === "none") {
