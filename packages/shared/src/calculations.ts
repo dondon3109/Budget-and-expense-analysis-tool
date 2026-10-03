@@ -250,7 +250,11 @@ export function buildDashboardSummary(
     if (countsAsIncome(transaction)) {
       addToCurrencyTotal(incomeByCurrency, transaction.currency, Math.abs(transaction.amountMinor));
     } else if (transaction.kind === "expense") {
-      addToCurrencyTotal(expenseByCurrency, transaction.currency, Math.abs(transaction.amountMinor));
+      addToCurrencyTotal(
+        expenseByCurrency,
+        transaction.currency,
+        Math.abs(transaction.amountMinor),
+      );
     }
   }
 

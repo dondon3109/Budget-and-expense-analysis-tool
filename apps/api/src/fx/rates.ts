@@ -131,7 +131,9 @@ function utcDate(now: Date): string {
  * keeps the already-stored rows (INSERT OR IGNORE) and reports that nothing new was stored.
  */
 export async function storeFxRates(env: Bindings, now = new Date()): Promise<FxQuotes | null> {
-  const existing = await env.DB.prepare("SELECT 1 AS found FROM fx_usd_rates WHERE date = ? LIMIT 1")
+  const existing = await env.DB.prepare(
+    "SELECT 1 AS found FROM fx_usd_rates WHERE date = ? LIMIT 1",
+  )
     .bind(utcDate(now))
     .first<{ found: number }>();
   if (existing) return null;

@@ -195,34 +195,37 @@ export function ImportMappingStep({
         )}
       </div>
 
-      {resolvedPreset.exportCurrency !== null && resolvedPreset.exportCurrency !== importCurrency && (
-        <div className="php-import-warning" role="alert">
-          <AlertTriangle size={20} />
-          <div>
-            <strong>{importCurrency}-only import</strong>
-            <span>
-              {resolvedPreset.label} exports commonly contain {resolvedPreset.exportCurrency}.
-              Imports are saved in {importCurrency}, your workspace currency, without conversion,
-              and any mapped currency other than {importCurrency} will be rejected.
-            </span>
-            {requiresCurrencyConfirmation ? (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={currencyConfirmed}
-                  onChange={(event) => {
-                    setCurrencyConfirmed(event.target.checked);
-                    invalidatePreview();
-                  }}
-                />
-                Store these numeric values as {importCurrency} without currency conversion
-              </label>
-            ) : (
-              <small>The mapped Currency column confirms that every row is {importCurrency}.</small>
-            )}
+      {resolvedPreset.exportCurrency !== null &&
+        resolvedPreset.exportCurrency !== importCurrency && (
+          <div className="php-import-warning" role="alert">
+            <AlertTriangle size={20} />
+            <div>
+              <strong>{importCurrency}-only import</strong>
+              <span>
+                {resolvedPreset.label} exports commonly contain {resolvedPreset.exportCurrency}.
+                Imports are saved in {importCurrency}, your workspace currency, without conversion,
+                and any mapped currency other than {importCurrency} will be rejected.
+              </span>
+              {requiresCurrencyConfirmation ? (
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={currencyConfirmed}
+                    onChange={(event) => {
+                      setCurrencyConfirmed(event.target.checked);
+                      invalidatePreview();
+                    }}
+                  />
+                  Store these numeric values as {importCurrency} without currency conversion
+                </label>
+              ) : (
+                <small>
+                  The mapped Currency column confirms that every row is {importCurrency}.
+                </small>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       <button
         className="button primary preview-import-button"

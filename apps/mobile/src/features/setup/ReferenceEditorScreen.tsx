@@ -30,7 +30,6 @@ import {
   type Currency,
   type InterestFrequency,
   type TransactionKind,
-  type Currency,
 } from "@zoption/shared";
 
 import {

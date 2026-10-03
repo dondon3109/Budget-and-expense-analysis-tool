@@ -1,7 +1,6 @@
 import { goalConfigFor, type GoalCtaAction } from "@zoption/shared";
 import type {
   AccountBalanceSummaryItem,
-  Currency,
   CashflowTrendView,
   TransactionListQuery,
 } from "@zoption/shared";

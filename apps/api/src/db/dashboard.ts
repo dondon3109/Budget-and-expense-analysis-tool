@@ -64,7 +64,12 @@ export async function loadCashflowTrend(
   for (const row of totalsResult.results) {
     if (!isCurrency(row.currency)) continue;
     const day = byDate.get(row.date) ?? { date: row.date, incomeMinor: 0, expenseMinor: 0 };
-    day.incomeMinor += convertMinor(Number(row.incomeMinor), row.currency, workspaceCurrency, rates);
+    day.incomeMinor += convertMinor(
+      Number(row.incomeMinor),
+      row.currency,
+      workspaceCurrency,
+      rates,
+    );
     day.expenseMinor += convertMinor(
       Number(row.expenseMinor),
       row.currency,
@@ -77,10 +82,7 @@ export async function loadCashflowTrend(
   return buildCashflowTrendFromDayTotals([...byDate.values()], query.view, query.anchorDate);
 }
 
-async function loadBalancesByCurrency(
-  env: Bindings,
-  tenantId: string,
-): Promise<CurrencyTotals> {
+async function loadBalancesByCurrency(env: Bindings, tenantId: string): Promise<CurrencyTotals> {
   const result = await env.DB.prepare(
     `SELECT currency AS currency,
             COALESCE(SUM(CASE

@@ -34,8 +34,8 @@ const SHARED_EXPORT_STEPS = [
   "In Zoption, open Import, choose the file, and check the preview before you save anything.",
 ];
 
-const PHP_CURRENCY_NOTE =
-  "This export is usually in US dollars. File imports accept Philippine pesos only and do not convert currencies, so confirm the amounts are already in pesos before you save them.";
+const USD_EXPORT_NOTE =
+  "This export is usually in US dollars. File imports are saved in your workspace currency without conversion, so use a USD workspace or confirm the amounts are already in your workspace currency before you save them.";
 
 export const IMPORT_GUIDES: ImportGuide[] = [
   {
@@ -139,13 +139,13 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "Bank of America exports use a Posted Date and a Payee or Description column. Zoption matches both and reads a single Amount column with signed values.",
-      PHP_CURRENCY_NOTE,
+      USD_EXPORT_NOTE,
     ],
     questions: [
       {
         question: "My statement is in US dollars. Can Zoption convert it?",
         answer:
-          "No. File imports accept Philippine pesos only, and Zoption does not convert currencies. Convert the amounts to pesos before importing, or use a peso-denominated account if you need the figures to match your other records.",
+          "No. Imports are saved in your workspace currency without conversion. Set your workspace currency to USD before importing, or convert the amounts first if you budget in another currency.",
       },
       {
         question: "Which date does Zoption use?",
@@ -168,13 +168,13 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "Chase and JPMorgan exports use a Posting Date and a Details or Description column. Zoption matches both and reads a single signed Amount column.",
-      PHP_CURRENCY_NOTE,
+      USD_EXPORT_NOTE,
     ],
     questions: [
       {
         question: "My Chase statement is in US dollars. Can Zoption convert it?",
         answer:
-          "No. File imports accept Philippine pesos only, and Zoption does not convert currencies. Convert the amounts to pesos before importing, or keep foreign-currency accounts separate from your peso budgeting.",
+          "No. Imports are saved in your workspace currency without conversion. Set your workspace currency to USD before importing, or convert the amounts first if you budget in another currency.",
       },
       {
         question: "Are card and checking exports handled the same way?",

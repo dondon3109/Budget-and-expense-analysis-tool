@@ -5,7 +5,6 @@ import {
   index,
   integer,
   primaryKey,
-  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -963,31 +962,6 @@ export const rateLimits = sqliteTable(
   (table) => [index("rate_limits_expiry_idx").on(table.expiresAt)],
 );
 
-/** Superseded by `fxUsdRates`; kept only for a Worker that predates it and no longer written. */
-export const fxRates = sqliteTable(
-  "fx_rates",
-  {
-    date: text("date").primaryKey(),
-    usdToPhp: real("usd_to_php").notNull(),
-    source: text("source").notNull(),
-    fetchedAt: text("fetched_at").notNull(),
-  },
-  (table) => [index("fx_rates_fetched_at_idx").on(table.fetchedAt)],
-);
-
-/** Units of `currency` one US dollar buys on `date`; any pair converts through USD. */
-export const fxUsdRates = sqliteTable(
-  "fx_usd_rates",
-  {
-    date: text("date").notNull(),
-    currency: text("currency").notNull(),
-    unitsPerUsd: real("units_per_usd").notNull(),
-    source: text("source").notNull(),
-    fetchedAt: text("fetched_at").notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.date, table.currency] })],
-);
-
 export const bugReports = sqliteTable(
   "bug_reports",
   {
@@ -1093,3 +1067,4 @@ export const customerReviews = sqliteTable(
 );
 
 export * from "./schema-providers";
+export * from "./schema-fx";

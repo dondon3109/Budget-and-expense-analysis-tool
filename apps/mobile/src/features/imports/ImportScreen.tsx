@@ -546,8 +546,8 @@ export function ImportScreen() {
                 duplicates, and shows every transaction before saving anything.
               </Text>
               <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Template: Date, Description, Amount, Type, Category — one row per transaction.
-                Philippine pesos only; other currencies are flagged during preview.
+                Template: Date, Description, Amount, Type, Category — one row per transaction. Rows
+                are saved in your workspace currency; other currencies are flagged during preview.
               </Text>
               <Button
                 accessibilityHint="Opens the system file picker"

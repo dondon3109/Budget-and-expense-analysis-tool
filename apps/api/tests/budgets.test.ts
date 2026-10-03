@@ -66,6 +66,10 @@ describe("budgetRepository", () => {
 
     const plan = await budgetRepository.list(env, "tenant-1", "2026-08-01");
 
-    expect(plan).toMatchObject({ currency: "EUR", totalLimitMinor: 40_000, totalSpentMinor: 1_500 });
+    expect(plan).toMatchObject({
+      currency: "EUR",
+      totalLimitMinor: 40_000,
+      totalSpentMinor: 1_500,
+    });
   });
 });

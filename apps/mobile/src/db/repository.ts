@@ -5,6 +5,7 @@ import {
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
+  type Currency,
   type CurrencyTotals,
   type InterestSettings,
   type TransactionListItem,
@@ -240,7 +241,7 @@ const dashboardAccountRowSchema = z.object({
   interest_json: z.string().nullable(),
 });
 
-const accountCurrencyBalanceRowSchema = z.object({
+const accountBalanceRowSchema = z.object({
   account_id: z.string(),
   currency: z.enum(currencies),
   balance_minor: z.number().int().safe(),
@@ -696,18 +697,15 @@ LIMIT ?`;
     `);
     // Each account's balance in every currency it holds entries in; transfers count once.
     const balanceRows = await this.database.getAllAsync(`
-      SELECT account_id, currency, SUM(amount_minor) AS balance_minor
-      FROM transactions
+      SELECT account_id, currency, SUM(amount_minor) AS balance_minor FROM transactions
       WHERE deleted_at IS NULL AND account_id IS NOT NULL
         AND (kind != 'transfer' OR transfer_group_id IS NOT NULL)
       GROUP BY account_id, currency
     `);
     const balancesByAccount = new Map<string, CurrencyTotals>();
     for (const row of balanceRows) {
-      const decoded = accountCurrencyBalanceRowSchema.parse(row);
-      const balances = balancesByAccount.get(decoded.account_id) ?? {};
-      balances[decoded.currency] = decoded.balance_minor;
-      balancesByAccount.set(decoded.account_id, balances);
+      const { account_id: id, currency, balance_minor } = accountBalanceRowSchema.parse(row);
+      balancesByAccount.set(id, { ...balancesByAccount.get(id), [currency]: balance_minor });
     }
 
     const budgetRows = await this.database.getAllAsync(`
@@ -754,7 +752,8 @@ LIMIT ?`;
     };
   }
 
-  async getBudgetMonth(month: string): Promise<LocalBudgetMonthData> {
+  /** Limits are in the workspace `currency`, so only spending in it counts against them. */
+  async getBudgetMonth(month: string, currency: Currency = "PHP"): Promise<LocalBudgetMonthData> {
     const monthStart = monthStartSchema.parse(month);
     const [budgetRows, categoryRows] = await Promise.all([
       this.database.getAllAsync(
@@ -770,11 +769,12 @@ LIMIT ?`;
          FROM budgets b
          INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
          LEFT JOIN transactions t ON t.category_id = b.category_id AND t.deleted_at IS NULL
-           AND substr(t.date, 1, 7) = substr(?, 1, 7)
+           AND substr(t.date, 1, 7) = substr(?, 1, 7) AND t.currency = ?
          WHERE b.month = ? AND b.deleted_at IS NULL
          GROUP BY b.category_id
          ORDER BY c.name COLLATE NOCASE`,
         monthStart,
+        currency,
         monthStart,
       ),
       this.database.getAllAsync(

@@ -399,7 +399,9 @@ export function AccountsPanel({
 function AccountBalances({ account }: { account: AccountBalanceSummaryItem }) {
   return (
     <span className="dashboard-account-balances">
-      <strong>{formatMoney(account.balancesByCurrency[account.currency] ?? 0, account.currency)}</strong>
+      <strong>
+        {formatMoney(account.balancesByCurrency[account.currency] ?? 0, account.currency)}
+      </strong>
       {otherCurrenciesWithAmounts(account.balancesByCurrency, account.currency).map((currency) => (
         <em key={currency}>
           {formatMoney(account.balancesByCurrency[currency] ?? 0, currency)} {currency}

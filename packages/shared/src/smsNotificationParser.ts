@@ -278,17 +278,11 @@ export function extractAccountSuffix(text: string): string | undefined {
   return undefined;
 }
 
-const ISO_CURRENCY_CODE = new RegExp(`\\b(${currencies.join("|")})\\b`);
-
-/**
- * The currency a notification names: the first supported ISO code written in capitals, else a
- * bare dollar sign for USD. Philippine bank messages are the default, so anything else is PHP.
- */
 export function inferCurrency(text: string): Currency {
-  const code = ISO_CURRENCY_CODE.exec(text)?.[1];
-  if (code && isCurrency(code)) return code;
+  const code = new RegExp(`\\b(${currencies.join("|")})\\b`).exec(text)?.[1]; // capitals only
+  if (isCurrency(code)) return code;
   if (/\$/.test(text) && !/\u20B1/.test(text)) return "USD";
-  return "PHP";
+  return "PHP"; // Philippine bank messages name no currency, so that is the default.
 }
 
 function extractReferenceNumber(text: string): string | undefined {

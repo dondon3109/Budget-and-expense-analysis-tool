@@ -430,9 +430,11 @@ describe("encrypted local workspace repository", () => {
               frequency: "monthly",
               payDay: 15,
             }),
-            balance_php_minor: 12_000,
-            balance_usd_minor: 0,
           },
+        ])
+        .mockResolvedValueOnce([
+          { account_id: "account-1", currency: "PHP", balance_minor: 12_000 },
+          { account_id: "account-1", currency: "JPY", balance_minor: 150_000 },
         ])
         .mockResolvedValueOnce([
           {
@@ -471,7 +473,7 @@ describe("encrypted local workspace repository", () => {
         type: "cash",
         currency: "PHP",
         balanceMinor: 12_000,
-        balancesByCurrency: { PHP: 12_000, USD: 0 },
+        balancesByCurrency: { PHP: 12_000, JPY: 150_000 },
         archived: false,
         system: false,
         interest: {

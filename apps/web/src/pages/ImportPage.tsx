@@ -569,8 +569,7 @@ export function ImportPage() {
   const resolvedPreset = getImportPreset(resolvedPresetId);
   const exportCurrencyDiffers =
     resolvedPreset.exportCurrency !== null && resolvedPreset.exportCurrency !== importCurrency;
-  const requiresCurrencyConfirmation =
-    exportCurrencyDiffers && !currencyColumnProvesImportCurrency;
+  const requiresCurrencyConfirmation = exportCurrencyDiffers && !currencyColumnProvesImportCurrency;
   const canAttemptPreview = Boolean(
     csvText &&
     !workbookBusy &&

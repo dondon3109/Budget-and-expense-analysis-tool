@@ -153,7 +153,10 @@ function isMoneyToken(content: string, token: string, index: number): boolean {
 // answer names in one currency but the tools only gave in another is a relabel, even
 // though its number is grounded. Centavo and cent counts are minor units, not labels.
 // "Pesos" and "dollars" read as PHP and USD, the currencies those words meant here first.
-const FORMATTED_AMOUNT_PATTERN = new RegExp(`\\b(${CURRENCY_CODES}) (-?\\d[\\d,]*(?:\\.\\d+)?)`, "g");
+const FORMATTED_AMOUNT_PATTERN = new RegExp(
+  `\\b(${CURRENCY_CODES}) (-?\\d[\\d,]*(?:\\.\\d+)?)`,
+  "g",
+);
 
 function currencyForWord(word: string): Currency | null {
   const lower = word.toLowerCase();

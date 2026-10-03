@@ -64,14 +64,18 @@ function dayLabel(
   if (selected) parts.push("selected");
   if (data?.incomeCount) {
     parts.push(
-      `${data.incomeCount} money in transaction${data.incomeCount === 1 ? "" : "s"} totaling ${positiveCurrencies(data.incomeByCurrency)
+      `${data.incomeCount} money in transaction${data.incomeCount === 1 ? "" : "s"} totaling ${positiveCurrencies(
+        data.incomeByCurrency,
+      )
         .map((currency) => compactMoney(data.incomeByCurrency[currency] ?? 0, currency))
         .join(" and ")}`,
     );
   }
   if (data?.expenseCount) {
     parts.push(
-      `${data.expenseCount} money out transaction${data.expenseCount === 1 ? "" : "s"} totaling ${positiveCurrencies(data.expenseByCurrency)
+      `${data.expenseCount} money out transaction${data.expenseCount === 1 ? "" : "s"} totaling ${positiveCurrencies(
+        data.expenseByCurrency,
+      )
         .map((currency) => compactMoney(data.expenseByCurrency[currency] ?? 0, currency))
         .join(" and ")}`,
     );
@@ -155,19 +159,19 @@ export function CalendarMonthGrid({
           <span className="calendar-day-indicators">
             {data?.incomeCount
               ? positiveCurrencies(data.incomeByCurrency).map((currency) => (
-                    <span className="calendar-indicator income" key={`income-${currency}`}>
-                      <ArrowDownRight size={12} aria-hidden="true" />+
-                      {compactMoney(data.incomeByCurrency[currency] ?? 0, currency)}
-                    </span>
-                  ))
+                  <span className="calendar-indicator income" key={`income-${currency}`}>
+                    <ArrowDownRight size={12} aria-hidden="true" />+
+                    {compactMoney(data.incomeByCurrency[currency] ?? 0, currency)}
+                  </span>
+                ))
               : null}
             {data?.expenseCount
               ? positiveCurrencies(data.expenseByCurrency).map((currency) => (
-                    <span className="calendar-indicator expense" key={`expense-${currency}`}>
-                      <ArrowUpRight size={12} aria-hidden="true" />−
-                      {compactMoney(data.expenseByCurrency[currency] ?? 0, currency)}
-                    </span>
-                  ))
+                  <span className="calendar-indicator expense" key={`expense-${currency}`}>
+                    <ArrowUpRight size={12} aria-hidden="true" />−
+                    {compactMoney(data.expenseByCurrency[currency] ?? 0, currency)}
+                  </span>
+                ))
               : null}
             {data?.transferCount ? (
               <span className="calendar-indicator transfer">

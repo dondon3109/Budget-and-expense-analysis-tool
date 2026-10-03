@@ -46,7 +46,7 @@ describe("import guides", () => {
       const copy = `${guide.summary} ${guide.notes.join(" ")} ${guide.questions
         .map((item) => `${item.question} ${item.answer}`)
         .join(" ")}`;
-      expect(copy.toLowerCase()).toContain("does not convert currencies");
+      expect(copy.toLowerCase()).toContain("without conversion");
       expect(copy).not.toMatch(/\bwe convert\b|\bauto-convert/i);
     }
   });
