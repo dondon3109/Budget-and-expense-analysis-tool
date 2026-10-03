@@ -4,9 +4,18 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Web and mobile: track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Yen, won, dong, and Chilean pesos show without decimals on mobile.
+- Imports, voice entries, and receipt scans now use your workspace currency instead of always pesos.
+
 ### Changed
 
 - Web: the setup goal question now lets you pick all the goals that apply, with the first one you pick as your main focus, and thanks you once you have answered. You can change them in Account Settings. The privacy policy now says goals, not a single goal.
+
+### Fixed
+
+- Budgets now count only spending in your workspace currency, so a purchase in another currency no longer adds its raw amount to a budget.
 
 ## 3.3.0 — 2026-10-03
 
