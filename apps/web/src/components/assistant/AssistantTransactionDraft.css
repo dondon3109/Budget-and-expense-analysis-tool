@@ -103,3 +103,29 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Subscription, goal, and debt proposals share the card; the accent says what Confirm does. */
+.assistant-draft.action {
+  border-left-color: var(--action);
+}
+
+.assistant-draft.action.destructive {
+  border-left-color: var(--danger);
+}
+
+.assistant-draft-summary {
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.assistant-draft-save.destructive {
+  background: var(--danger);
+}
+
+.assistant-draft-save.destructive:hover:not(:disabled) {
+  background: var(--danger);
+  filter: brightness(0.92);
+}

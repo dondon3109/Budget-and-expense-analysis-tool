@@ -26,6 +26,7 @@ import { InlineLoader } from "../components/layout/InlineLoader";
 import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
+  confirmAssistantAction,
   confirmAssistantTransactionDraft,
   createAssistantThread,
   deleteAllAssistantThreads,
@@ -229,6 +230,25 @@ export function AssistantPage() {
           },
       );
       void invalidateAfterTransactionWrite(queryClient, workspace);
+    },
+  });
+
+  const confirmActionMutation = useMutation({
+    mutationFn: (messageId: string) => confirmAssistantAction(workspace, messageId),
+    onSuccess: (done) => {
+      queryClient.setQueryData<AssistantMessagePage>(
+        queryKeys.assistantMessages(workspace, done.threadId),
+        (current) =>
+          current && {
+            ...current,
+            items: current.items.map((message) => (message.id === done.id ? done : message)),
+          },
+      );
+      // The change may touch subscriptions, goals, or debts, and what the dashboard derives from them.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.financialGoals(workspace) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
     },
   });
 
@@ -513,6 +533,16 @@ export function AssistantPage() {
                     : undefined,
                   error: saveDraftMutation.error?.message,
                   onSave: (messageId) => saveDraftMutation.mutate(messageId),
+                }}
+                actionSave={{
+                  savingMessageId: confirmActionMutation.isPending
+                    ? confirmActionMutation.variables
+                    : undefined,
+                  failedMessageId: confirmActionMutation.isError
+                    ? confirmActionMutation.variables
+                    : undefined,
+                  error: confirmActionMutation.error?.message,
+                  onSave: (messageId) => confirmActionMutation.mutate(messageId),
                 }}
               />
             )}

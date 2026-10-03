@@ -1,6 +1,6 @@
 # AI Financial Assistant
 
-Zoption's AI Financial Assistant is a budgeting and financial-wellness interface over the authenticated user's financial workspace. It reads records through fixed tools and never writes on its own: the one write it can lead to is a transaction it drafted, saved only when the user taps Save (see Logging transactions). The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
+Zoption's AI Financial Assistant is a budgeting and financial-wellness interface over the authenticated user's financial workspace. It reads records through fixed tools and never writes on its own: the writes it can lead to are a transaction it drafted, saved only when the user taps Save (see Logging transactions), and a subscription, goal, or debt change it proposed, applied only when the user taps Confirm (see Changing subscriptions, goals, and debts). The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
 
 ## Data flow
 
@@ -96,8 +96,9 @@ next to Cloudflare Workers AI.
 - `list_categories` — active category names and kinds.
 - `suggest_transaction_details` — for logging: the user's own entries from the trailing 12 months at a named place (grouped by description, with the usual category, account, typical and last amount), otherwise their most frequent entries; a category matched from the place name when history has none; active categories; and active accounts with their recorded balances.
 - `draft_transaction` — resolves an income or expense against active accounts and categories and returns a draft. It writes nothing.
+- `propose_action` — resolves a subscription, goal, or debt create, edit, delete, or status change against the tenant's own records and returns a proposal (or the missing details). It writes nothing.
 
-There is no SQL, D1, arbitrary HTTP, environment, credential, secret, import, create, update, or delete tool. Tenant identity is injected by the Worker and is never model-visible.
+There is no SQL, D1, arbitrary HTTP, environment, credential, secret, or import tool, and no tool that writes directly. Tenant identity is injected by the Worker and is never model-visible.
 
 `list_transactions` reads exactly the trusted period when one resolved. With no period it may read only the undated newest-first page, so "show my recent transactions" is answerable while the model still cannot pick its own date window.
 
@@ -111,6 +112,23 @@ Only a turn's last ready draft becomes a card, so the prompt has the model draft
 
 Answer validation rejects a reply in this flow that claims the draft was saved, added, or logged. If the model keeps failing validation after a draft exists, the Worker restates the draft from the tool result; a reply that falls back to the generic refusal carries no draft.
 
+## Changing subscriptions, goals, and debts
+
+A message that asks to add, change, cancel, or delete a subscription, savings goal, or debt ("add a Netflix subscription for 549 monthly", "delete my Visa debt", "idagdag ang goal na Trip") gets no reporting tool group, so it never triggers a "which month?" clarification. Replies in that flow carry `assistantActionFlow: true`, and the next short answer continues it until the change is applied.
+
+The model asks only for what is missing and never invents an amount, date, rate, or account. It calls `propose_action` with names and exact decimals (a debt's APR is a percentage). The Worker resolves a target by name against the tenant's own records (an exact name wins, otherwise a single partial match), resolves a subscription's category and account against active ones, converts amounts with `parseAmountToMinor`, and validates the result with the same shared zod input schemas the app's forms use. It returns `missing_details`, `target_not_found`, `target_ambiguous`, `category_not_found`, `account_not_found`, or `invalid` for the model to explain, or `ready`. Ids stay out of the result the model and the audit trail see.
+
+A ready proposal travels in the reply's metadata as `assistantAction` (status `pending`, a server-written summary, and the record id and validated input). The web and mobile chats show it as a card: **Confirm**, or **Delete** for a deletion. `POST /api/app/assistant/messages/:id/action` takes no fields and needs the same current consent as a turn. It re-reads the tenant's stored proposal, claims it (`pending` → `saving`), runs the normal repository create, update, status, or remove, and records `done`:
+
+- A repeat call returns the finished reply without applying it again, and a call during a live claim gets `409 assistant_action_in_progress`.
+- Only the newest proposal in a thread can be confirmed. An earlier one gets `409 assistant_action_superseded` and its card hides the button, so a correction ("make it 600") never applies both.
+- A failed apply releases the claim so the user can retry. A claim is never taken over, because a create has no id to key on; a request that died mid-apply leaves `saving`, and the error tells the user to check their list.
+- Cancelling or reactivating a subscription is the `canceled` / `active` status; deleting keeps past transactions.
+
+Answer validation rejects a reply in this flow that claims the change was added, updated, or deleted. If the model keeps failing validation after a proposal exists, the Worker restates the proposal from the tool result. Mobile runs a sync after Confirm so the change reaches the local workspace.
+
+Not yet available through chat: accounts and balance adjustments, transaction edits and deletes, categories, budgets, and workspace settings.
+
 ## Account balances
 
 Account balances are sums of the user's recorded transaction ledger entries. They are not live bank balances and Zoption does not currently store an opening-balance snapshot.
@@ -122,7 +140,7 @@ Account balances are sums of the user's recorded transaction ledger entries. The
 
 ## Goals and debts
 
-Users explicitly manage savings goals and debt records on the **Goals & debt** page. Chat never extracts, creates, edits, or deletes these records.
+Users manage savings goals and debt records on the **Goals & debt** page. Chat can propose creating, editing, or deleting them, but only the user's Confirm tap applies the change (next section); it never extracts them from conversation on its own.
 
 - Savings goals contain a target, current saved amount, target date, and status. Required monthly contributions use integer-centavo ceiling division and assume no investment return.
 - Debt records contain a balance, fixed APR, minimum payment, balance-as-of date, and status. Avalanche and snowball projections apply monthly interest, pay minimums first, roll released payments forward, use stable tie-breakers, detect non-amortizing inputs, and stop at a 600-month safety cap.

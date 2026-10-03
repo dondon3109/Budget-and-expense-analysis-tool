@@ -32,6 +32,10 @@ const REGULATED_RECOMMENDATION_PATTERN =
 const WRITE_CLAIM_PATTERN =
   /\b(?:i(?:'ve| have)?\s+(?:already\s+)?(?:saved|added|logged|recorded)\s+(?:it|this|that|your|the)|(?:it|this|that|the (?:transaction|expense|income|entry)|your (?:transaction|expense|income|entry))\s+(?:has|have|is|was|were)\s+(?:been\s+|now\s+)?(?:saved|added|logged|recorded)|na-?save ko na|nai-?save ko na|naidagdag ko na|naitala ko na)\b/i;
 
+// Same rule for subscription, goal, and debt proposals: nothing changes until the user taps Confirm.
+const ACTION_CLAIM_PATTERN =
+  /\b(?:i(?:'ve| have)?\s+(?:already\s+)?(?:added|created|updated|changed|deleted|removed|cancell?ed|reactivated|saved)\s+(?:it|this|that|your|the|a|an)\b|(?:it|this|that|the (?:subscription|goal|debt)|your (?:subscription|goal|debt))\s+(?:has|have|is|was|were)\s+(?:been\s+|now\s+)?(?:added|created|updated|changed|deleted|removed|cancell?ed|reactivated|saved)\b)/i;
+
 const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   get_account_balances: "account_balance",
   get_period_summary: "period_summary",
@@ -88,6 +92,7 @@ const SOURCE_LABELS: Record<string, string> = {
   calculate_savings_goal: "Savings goal projection",
   suggest_transaction_details: "Your past entries",
   draft_transaction: "Transaction draft",
+  propose_action: "Proposed change",
 };
 
 const SENSITIVE_KEY_PATTERN =
@@ -325,6 +330,12 @@ export function validateAssistantAnswer(
     policy.requiredToolGroups.includes("transaction_entry") ||
     executions.some((execution) => TOOL_GROUPS[execution.name] === "transaction_entry");
   if (entryTurn && WRITE_CLAIM_PATTERN.test(content)) reasons.push("unconfirmed_write_claim");
+  if (
+    executions.some((execution) => execution.name === "propose_action") &&
+    ACTION_CLAIM_PATTERN.test(content)
+  ) {
+    reasons.push("unconfirmed_write_claim");
+  }
   if (/[₱$€£¥]/.test(content)) reasons.push("unsupported_currency_format");
   if (
     policy.compliance.posture === "restricted_topic_education" &&
@@ -550,6 +561,14 @@ export function latestTransactionDraft(
   return latest?.transactionDraft ? latest : undefined;
 }
 
+/** The proposal the turn ends with: the latest propose_action call, if it produced one. */
+export function latestAssistantAction(
+  executions: readonly AssistantToolExecution[],
+): AssistantToolExecution | undefined {
+  const latest = [...executions].reverse().find((execution) => execution.name === "propose_action");
+  return latest?.assistantAction ? latest : undefined;
+}
+
 /**
  * Last-resort reply for a turn that produced a draft but whose model drafts kept failing
  * validation: it restates the draft from the tool result, so the user can still review and
@@ -560,6 +579,13 @@ export function deterministicDraftAnswer(
   executions: readonly AssistantToolExecution[],
   satisfiedGroups: ReadonlySet<RequiredToolGroup>,
 ): string | null {
+  const proposal = latestAssistantAction(executions);
+  if (proposal?.assistantAction) {
+    const content = `I prepared this change for you to review: ${proposal.assistantAction.summary}. Nothing has changed yet. Use the card below to confirm it; if you do not see the card, update the app.`;
+    return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
+      ? content
+      : null;
+  }
   const execution = latestTransactionDraft(executions);
   if (!execution || !isEnvelope(execution.result)) return null;
   const data = execution.result.data as { draft?: Record<string, unknown> } | null;

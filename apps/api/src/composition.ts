@@ -19,6 +19,7 @@ import {
   assistantModelMemoryUsageRepository,
   type AssistantModelMemoryUsageRepository,
 } from "./db/assistant-model-memory-usage";
+import { assistantActionRepository } from "./db/assistant-actions";
 import { assistantTransactionDraftRepository } from "./db/assistant-transaction-drafts";
 import {
   billingRepository,
@@ -159,6 +160,7 @@ export function createDependencies(overrides: AppOptions = {}) {
           transactions: transactionStore,
           goals: goalStore,
           debts: debtStore,
+          subscriptions: subscriptionStore,
           dashboardLoader,
         }),
       ),
@@ -168,6 +170,12 @@ export function createDependencies(overrides: AppOptions = {}) {
       assistantModelMemoryUsage,
       overrides.assistantTelemetryFactory,
       { drafts: assistantTransactionDraftRepository, transactions: transactionStore },
+      {
+        actions: assistantActionRepository,
+        subscriptions: subscriptionStore,
+        goals: goalStore,
+        debts: debtStore,
+      },
     );
   const dynamicVoiceProviders: AssistantVoiceProviders =
     overrides.assistantVoiceProviders ??

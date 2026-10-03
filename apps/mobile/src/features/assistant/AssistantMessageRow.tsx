@@ -11,6 +11,7 @@ import { MoneyValue } from "@/ui/components/MoneyValue";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
+import { AssistantActionCard } from "./AssistantActionCard";
 import { ASSISTANT_AVATAR_SIZE, AssistantMessageBubble } from "./assistant-ui";
 
 function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
@@ -34,15 +35,18 @@ export function replacedDraftMessageIds(messages: readonly AssistantWireMessage[
   return replaced;
 }
 
-/** One chat message, plus the review card when an assistant reply drafted a transaction. */
+/** One chat message, plus the review card when an assistant reply drafted a transaction or change. */
 export function AssistantMessageRow({
   message,
   superseded = false,
+  latestActionId,
   onDraftSaved,
 }: {
   message: AssistantWireMessage;
   /** A later correction replaced this draft, so saving it would record the purchase twice. */
   superseded?: boolean;
+  /** The newest proposed subscription, goal, or debt change in the chat; only it can be confirmed. */
+  latestActionId?: string;
   onDraftSaved: (saved: AssistantWireMessage) => void;
 }) {
   return (
@@ -55,7 +59,14 @@ export function AssistantMessageRow({
         evidenceLabel={evidenceLabelFor(message)}
       />
       {message.role === "assistant" ? (
-        <AssistantDraftCard message={message} superseded={superseded} onSaved={onDraftSaved} />
+        <>
+          <AssistantDraftCard message={message} superseded={superseded} onSaved={onDraftSaved} />
+          <AssistantActionCard
+            message={message}
+            superseded={latestActionId !== message.id}
+            onDone={onDraftSaved}
+          />
+        </>
       ) : null}
     </View>
   );
