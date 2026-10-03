@@ -5,6 +5,7 @@ import { View } from "react-native";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
+import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { useSyncState } from "@/sync/sync-state";
@@ -41,6 +42,7 @@ export function HomeScreen() {
   const today = localIsoDate(new Date());
   const dashboard = useDashboardData(today);
   const subscriptions = useSubscriptions();
+  useOnboardingPrompt();
   useGoalPrompt();
   const sync = useSyncState();
   // A guest never syncs, so the pill says where the data lives instead of "Waiting to sync".
