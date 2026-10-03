@@ -116,6 +116,7 @@ export const accountDeletionRepository: AccountDeletionRepository = {
       env.DB.prepare("DELETE FROM transfer_groups WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM calendar_events WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM goal_events WHERE tenant_id = ?").bind(tenantId),
+      env.DB.prepare("DELETE FROM pets WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM accounts WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM categories WHERE tenant_id = ?").bind(tenantId),
       // The sync rows come last: deleting the tables above fires the mobile sync
