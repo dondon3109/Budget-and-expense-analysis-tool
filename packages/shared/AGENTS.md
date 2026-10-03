@@ -26,6 +26,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 | `src/cashflowForecast.ts`      | Forward cashflow projection                                                                      |
 | `src/safeToSpend.ts`           | Weekly safe-to-spend amount                                                                      |
 | `src/overspendingAlert.ts`     | The overspending alert (spent-out week or forecast deficit) and its wording for web and mobile   |
+| `src/pet.ts`                   | Pet companion points, daily caps, stages, egg streak, health and heal cost                       |
 | `src/subscriptions.ts`         | Subscription billing dates and monthly cost                                                      |
 | `src/interest.ts`              | Automatic interest credit dates and amounts in Asia/Manila time                                  |
 | `src/transactions.ts`          | Default account choice, balance adjustment, and `formatMinorAmount` for input fields             |
