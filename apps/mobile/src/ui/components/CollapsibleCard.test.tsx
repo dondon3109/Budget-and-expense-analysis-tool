@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 
 import { CollapsibleCard } from "./CollapsibleCard";
 
@@ -23,5 +23,19 @@ describe("CollapsibleCard", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Theme, Dark" }));
     expect(screen.queryByText("Theme options")).toBeNull();
+  });
+
+  it("truncates a long summary instead of squeezing the title", async () => {
+    await render(
+      <CollapsibleCard title="Your goal" summary="Track where my money goes" icon="flag-outline">
+        <Text>Goal options</Text>
+      </CollapsibleCard>,
+    );
+
+    const title = StyleSheet.flatten(screen.getByText("Your goal").props.style);
+    const summary = screen.getByText("Track where my money goes");
+    expect(title.flexShrink).toBe(0);
+    expect(StyleSheet.flatten(summary.props.style).flexShrink).toBe(1);
+    expect(summary.props.numberOfLines).toBe(1);
   });
 });
