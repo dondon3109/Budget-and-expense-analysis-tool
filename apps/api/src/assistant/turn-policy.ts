@@ -11,7 +11,7 @@ import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
 
 /** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
-export const ASSISTANT_PROMPT_VERSION = "expert-v4";
+export const ASSISTANT_PROMPT_VERSION = "expert-v5";
 
 export type RequiredToolGroup =
   | "account_balance"
@@ -89,9 +89,9 @@ function isTransactionEntryRequest(message: string): boolean {
 
 // "Add a Netflix subscription", "delete my car loan", "idagdag ang goal na iPhone".
 const ACTION_VERB_PATTERN =
-  /\b(?:add|create|make|set\s*up|new|change|update|edit|rename|delete|remove|cancel|pause|resume|reactivate|mark|adjust|increase|decrease|idagdag|gumawa|gawa|burahin|tanggalin|palitan|baguhin|i-?cancel|i-?delete|i-?update)\b/i;
+  /\b(?:add|create|make|set\s*up|new|change|update|edit|rename|delete|remove|archive|set|cancel|pause|resume|reactivate|mark|adjust|increase|decrease|idagdag|gumawa|gawa|burahin|tanggalin|palitan|baguhin|i-?cancel|i-?delete|i-?update)\b/i;
 const ACTION_NOUN_PATTERN =
-  /\b(?:subscriptions?|subskripsyon|savings? goals?|goals?|layunin|debts?|loans?|credit cards?|utang)\b/i;
+  /\b(?:subscriptions?|subskripsyon|savings? goals?|goals?|layunin|debts?|loans?|credit cards?|utang|accounts?|wallets?|balances?)\b/i;
 
 /**
  * A request to create, change, or delete a subscription, goal, or debt. It reads like a

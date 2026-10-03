@@ -27,7 +27,14 @@ const SECOND = "33333333-3333-4333-8333-333333333333";
 
 const records: ActionRecords = {
   accounts: [
-    { id: "account-gcash", name: "GCash", currency: "PHP", archived: false },
+    {
+      id: "account-gcash",
+      name: "GCash",
+      type: "other",
+      currency: "PHP",
+      balanceMinor: 120_000,
+      archived: false,
+    },
   ] as AccountRecord[],
   categories: [
     {
@@ -165,6 +172,37 @@ describe("proposeAction", () => {
   });
 });
 
+describe("proposeAction for accounts", () => {
+  it("proposes a new account and refuses a duplicate name", () => {
+    const created = propose({ action: "create_account", name: "Maya", accountType: "virtual" });
+    expect(created.action).toMatchObject({
+      kind: "create_account",
+      input: { name: "Maya", type: "virtual" },
+    });
+    expect(
+      propose({ action: "create_account", name: "gcash", accountType: "cash" }).envelope.data,
+    ).toMatchObject({ status: "invalid" });
+    expect(propose({ action: "create_account", name: "Maya" }).envelope.data).toMatchObject({
+      status: "missing_details",
+      missing: ["accountType"],
+    });
+  });
+
+  it("describes a balance adjustment from the current balance", () => {
+    const result = propose({ action: "adjust_balance", target: "GCash", amount: "1000" });
+    expect(result.action).toMatchObject({
+      kind: "adjust_balance",
+      targetId: "account-gcash",
+      input: { newBalanceMinor: 100_000 },
+    });
+    expect(result.action?.summary).toContain("PHP 1,200.00 to PHP 1,000.00");
+    expect(result.action?.summary).toContain("PHP 200.00 expense");
+    expect(
+      propose({ action: "adjust_balance", target: "GCash", amount: "1200" }).envelope.data,
+    ).toMatchObject({ status: "already_matches" });
+  });
+});
+
 describe("assistant turn policy for actions", () => {
   const base = {
     history: [],
@@ -179,6 +217,15 @@ describe("assistant turn policy for actions", () => {
     });
     expect(policy).toMatchObject({ actionFlow: true, requiredToolGroups: [] });
     expect(policy.deterministicResponse).toBeUndefined();
+  });
+
+  it("treats an account or balance change as an action, not a balance question", () => {
+    for (const message of ["Create a new account called Maya", "Adjust my GCash balance to 1000"]) {
+      expect(createAssistantTurnPolicy({ ...base, message }).actionFlow).toBe(true);
+    }
+    expect(
+      createAssistantTurnPolicy({ ...base, message: "What is my account balance?" }).actionFlow,
+    ).toBeUndefined();
   });
 
   it("still reads a plain subscription question as a records question", () => {
@@ -224,7 +271,7 @@ function setupConfirm() {
         TENANT,
         THREAD,
         JSON.stringify({
-          promptVersion: "expert-v4",
+          promptVersion: "expert-v5",
           compliance: { posture: "budgeting_allowed", topics: [] },
           sources: [],
           assistantActionFlow: true,
@@ -246,6 +293,7 @@ function setupConfirm() {
   };
   insert(FIRST, "2026-08-02T00:00:00.000Z", goal);
   const goals = { create: vi.fn(async () => ({}) as never), update: vi.fn(), remove: vi.fn() };
+  const transactions = { create: vi.fn(async () => ({}) as never) };
   const env = { DB: binding } as unknown as Bindings;
   const service = createAssistantService(
     assistantRepository,
@@ -261,9 +309,22 @@ function setupConfirm() {
       subscriptions: { create: vi.fn(), update: vi.fn(), setStatus: vi.fn(), remove: vi.fn() },
       goals,
       debts: { create: vi.fn(), update: vi.fn(), remove: vi.fn() },
+      accounts: {
+        list: vi.fn(async () => [...records.accounts]),
+        create: vi.fn(),
+        update: vi.fn(),
+        remove: vi.fn(),
+      },
+      categories: {
+        list: vi.fn(
+          async () =>
+            [{ id: "category-adjust", name: "Uncategorized", kind: "expense" }] as CategoryRecord[],
+        ),
+      },
+      transactions,
     },
   );
-  return { env, service, goals, insert, goal };
+  return { env, service, goals, transactions, insert, goal };
 }
 
 describe("assistant action confirmation", () => {
@@ -296,6 +357,31 @@ describe("assistant action confirmation", () => {
     await expect(service.confirmAction(env, TENANT, FIRST)).rejects.toThrow("boom");
     const retried = await service.confirmAction(env, TENANT, FIRST);
     expect(retried.metadata?.assistantAction?.status).toBe("done");
+  });
+
+  it("books a balance adjustment against the current balance, keyed on the reply", async () => {
+    const { env, service, transactions, insert } = setupConfirm();
+    const adjust: AssistantAction = {
+      kind: "adjust_balance",
+      status: "pending",
+      summary: "Set GCash balance",
+      targetId: "account-gcash",
+      targetName: "GCash",
+      input: { newBalanceMinor: 100_000 },
+    };
+    insert(SECOND, "2026-08-02T00:05:00.000Z", adjust);
+    await service.confirmAction(env, TENANT, SECOND);
+    expect(transactions.create).toHaveBeenCalledWith(
+      env,
+      TENANT,
+      expect.objectContaining({
+        kind: "expense",
+        amountMinor: 20_000,
+        accountId: "account-gcash",
+        categoryId: "category-adjust",
+      }),
+      { id: SECOND },
+    );
   });
 
   it("returns 404 for a reply with no proposal", async () => {

@@ -1,14 +1,21 @@
 import {
   assistantActionSchema,
+  buildBalanceAdjustmentInput,
+  computeBalanceAdjustment,
+  resolveAdjustmentCategoryId,
   type AssistantAction,
   type AssistantMessage,
 } from "@zoption/shared";
 
+import type { AccountRepository } from "../db/accounts";
 import type { AssistantActionRepository } from "../db/assistant-actions";
+import type { CategoryRepository } from "../db/categories";
 import type { DebtRepository } from "../db/debts";
 import type { FinancialGoalRepository } from "../db/goals";
 import type { SubscriptionRepository } from "../db/subscriptions";
+import type { TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
+import { accountBalanceMinor } from "./actions";
 import type { Bindings } from "../types";
 
 export interface AssistantActionDependencies {
@@ -16,6 +23,56 @@ export interface AssistantActionDependencies {
   subscriptions: Pick<SubscriptionRepository, "create" | "update" | "setStatus" | "remove">;
   goals: Pick<FinancialGoalRepository, "create" | "update" | "remove">;
   debts: Pick<DebtRepository, "create" | "update" | "remove">;
+  accounts: Required<Pick<AccountRepository, "list" | "create" | "update" | "remove">>;
+  categories: Pick<CategoryRepository, "list">;
+  transactions: Pick<TransactionRepository, "create">;
+}
+
+/** The user's calendar day, so an early-morning adjustment is not booked on yesterday. */
+function todayInTimeZone(env: Bindings): string {
+  const timeZone = env.ASSISTANT_TIME_ZONE?.trim() || "Asia/Manila";
+  return new Intl.DateTimeFormat("en-CA", { timeZone }).format(new Date());
+}
+
+/**
+ * Books the adjustment Adjust balance would, against the balance the account holds now. The
+ * row is keyed on the reply's id, and an account that already holds the balance needs none.
+ */
+async function adjustBalance(
+  deps: AssistantActionDependencies,
+  env: Bindings,
+  tenantId: string,
+  messageId: string,
+  accountId: string,
+  newBalanceMinor: number,
+): Promise<void> {
+  const [accounts, categories] = await Promise.all([
+    deps.accounts.list(env, tenantId),
+    deps.categories.list(env, tenantId),
+  ]);
+  const account = accounts.find((item) => item.id === accountId && !item.archived);
+  if (!account) throw new HttpError(404, "account_not_found", "The account was not found.");
+  const currentBalanceMinor = accountBalanceMinor(account);
+  const { kind } = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor);
+  if (kind === null) return;
+  const categoryId = resolveAdjustmentCategoryId(categories, kind);
+  if (!categoryId) {
+    throw new HttpError(
+      409,
+      "adjustment_category_missing",
+      "No category is available to book this adjustment.",
+    );
+  }
+  const input = buildBalanceAdjustmentInput({
+    accountId,
+    accountName: account.name,
+    categoryId,
+    currency: account.currency,
+    currentBalanceMinor,
+    newBalanceMinor,
+    date: todayInTimeZone(env),
+  });
+  if (input) await deps.transactions.create(env, tenantId, input, { id: messageId });
 }
 
 /** Runs the stored proposal through the repository the app's own forms use. */
@@ -23,6 +80,7 @@ async function apply(
   deps: AssistantActionDependencies,
   env: Bindings,
   tenantId: string,
+  messageId: string,
   action: AssistantAction,
 ): Promise<void> {
   switch (action.kind) {
@@ -55,6 +113,25 @@ async function apply(
       return;
     case "delete_debt":
       await deps.debts.remove(env, tenantId, action.targetId);
+      return;
+    case "create_account":
+      await deps.accounts.create(env, tenantId, action.input);
+      return;
+    case "update_account":
+      await deps.accounts.update(env, tenantId, action.targetId, action.input);
+      return;
+    case "archive_account":
+      await deps.accounts.remove(env, tenantId, action.targetId);
+      return;
+    case "adjust_balance":
+      await adjustBalance(
+        deps,
+        env,
+        tenantId,
+        messageId,
+        action.targetId,
+        action.input.newBalanceMinor,
+      );
       return;
   }
 }
@@ -95,7 +172,7 @@ export async function confirmAssistantAction(
     );
   }
   try {
-    await apply(deps, env, tenantId, parsed.data);
+    await apply(deps, env, tenantId, messageId, parsed.data);
   } catch (error) {
     await actions.release(env, tenantId, messageId, claimedAt);
     throw error;

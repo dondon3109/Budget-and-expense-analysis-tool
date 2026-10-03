@@ -5,6 +5,7 @@ import { createFinancialReader } from "./assistant/financial-reader";
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
 import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
+import type { AssistantActionDependencies } from "./assistant/action-confirm";
 import { createAssistantService, type AssistantService } from "./assistant/service";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
@@ -175,6 +176,9 @@ export function createDependencies(overrides: AppOptions = {}) {
         subscriptions: subscriptionStore,
         goals: goalStore,
         debts: debtStore,
+        accounts: accountStore as AssistantActionDependencies["accounts"],
+        categories: categoryStore,
+        transactions: transactionStore,
       },
     );
   const dynamicVoiceProviders: AssistantVoiceProviders =
