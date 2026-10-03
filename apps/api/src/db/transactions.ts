@@ -374,43 +374,70 @@ function applyDebtPayment(
   tenantId: string,
   debtId: string,
   deltaMinor: number,
+  guard?: DebtPaymentGuard,
 ): D1PreparedStatement {
   return env.DB.prepare(
     `UPDATE debts
        SET balance_minor = MAX(0, balance_minor - ?),
            status = CASE WHEN balance_minor - ? <= 0 THEN 'paid' ELSE 'active' END,
            updated_at = datetime('now')
-     WHERE id = ? AND tenant_id = ?`,
-  ).bind(deltaMinor, deltaMinor, debtId, tenantId);
+     WHERE id = ? AND tenant_id = ?${guard ? ` AND ${guard.condition}` : ""}`,
+  ).bind(deltaMinor, deltaMinor, debtId, tenantId, ...(guard?.bindings ?? []));
 }
 
-type DebtPayment = { debtId: string; amountMinor: number } | null;
+export type DebtPayment = { debtId: string; amountMinor: number } | null;
+
+/**
+ * An extra SQL condition every balance write must meet. Mobile sync batches do not roll back
+ * when a revision-guarded write misses, so their debt writes require the operation's
+ * idempotency row, which the batch inserts only after the guarded write lands.
+ */
+export interface DebtPaymentGuard {
+  condition: string;
+  bindings: unknown[];
+}
 
 /**
  * The balance writes for an edit that moves a debt payment: a dropped, re-linked, or
  * re-priced payment gives back what it took before applying the new one. An unchanged
  * payment yields no writes.
  */
-function debtPaymentChanges(
+export function debtPaymentChanges(
   env: Bindings,
   tenantId: string,
   previous: DebtPayment,
   next: DebtPayment,
+  guard?: DebtPaymentGuard,
 ): D1PreparedStatement[] {
   if (previous?.debtId === next?.debtId && previous?.amountMinor === next?.amountMinor) return [];
   const statements: D1PreparedStatement[] = [];
   if (previous) {
-    statements.push(applyDebtPayment(env, tenantId, previous.debtId, -previous.amountMinor));
+    statements.push(applyDebtPayment(env, tenantId, previous.debtId, -previous.amountMinor, guard));
   }
-  if (next) statements.push(applyDebtPayment(env, tenantId, next.debtId, next.amountMinor));
+  if (next) statements.push(applyDebtPayment(env, tenantId, next.debtId, next.amountMinor, guard));
   return statements;
+}
+
+/** The payment an income or expense row makes today: its debt link and absolute amount. */
+export async function readTransactionDebtPayment(
+  env: Bindings,
+  tenantId: string,
+  id: string,
+): Promise<DebtPayment> {
+  const row = await env.DB.prepare(
+    `SELECT debt_id AS debtId, amount_minor AS amountMinor
+     FROM transactions WHERE id = ? AND tenant_id = ? AND kind = 'expense'`,
+  )
+    .bind(id, tenantId)
+    .first<{ debtId: string | null; amountMinor: number }>();
+  return row?.debtId ? { debtId: row.debtId, amountMinor: Math.abs(row.amountMinor) } : null;
 }
 
 /**
  * A transfer's debt link lives on its sender leg, the row list reads return, and pays
  * off what reached the liability account: the receiver leg's amount, after any fee.
  */
-async function readTransferDebtPayment(
+export async function readTransferDebtPayment(
   env: Bindings,
   tenantId: string,
   transferGroupId: string,
@@ -615,7 +642,9 @@ export const transactionRepository: TransactionRepository = {
       const transfer = { ...parsed.data, debtId: nextDebtId };
       await validateTransactionReferences(env, tenantId, transfer, existing.categoryId);
       const [fromLeg, toLeg] = buildTransferLegs(transfer);
-      const nextPayment = nextDebtId ? { debtId: nextDebtId, amountMinor: toLeg.amountMinor } : null;
+      const nextPayment = nextDebtId
+        ? { debtId: nextDebtId, amountMinor: toLeg.amountMinor }
+        : null;
       await env.DB.batch([
         env.DB.prepare(
           `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, transfer_fee_minor = ?, debt_id = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,

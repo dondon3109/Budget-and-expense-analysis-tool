@@ -1,8 +1,10 @@
 import {
+  MOBILE_SYNC_FEATURES_HEADER,
   mobileSyncAcknowledgeRequestSchema,
   mobileSyncPullRequestSchema,
   mobileSyncPushRequestSchema,
   mobileSyncSnapshotRequestSchema,
+  parseMobileSyncFeatures,
 } from "@zoption/shared";
 import { Hono } from "hono";
 
@@ -12,6 +14,8 @@ import type { AppEnvironment } from "../types";
 
 export function createMobileSyncRoutes(repository: MobileSyncRepository) {
   const routes = new Hono<AppEnvironment>();
+  const features = (context: { req: { header(name: string): string | undefined } }) =>
+    parseMobileSyncFeatures(context.req.header(MOBILE_SYNC_FEATURES_HEADER));
 
   routes.post("/acknowledge", async (context) => {
     const input = parseInput(
@@ -30,7 +34,9 @@ export function createMobileSyncRoutes(repository: MobileSyncRepository) {
       await readJson(context),
       "Check the synchronization request.",
     );
-    return context.json(await repository.pull(context.env, context.get("tenant").tenantId, input));
+    return context.json(
+      await repository.pull(context.env, context.get("tenant").tenantId, input, features(context)),
+    );
   });
 
   routes.post("/snapshot", async (context) => {
@@ -40,7 +46,12 @@ export function createMobileSyncRoutes(repository: MobileSyncRepository) {
       "Check the full-snapshot request.",
     );
     return context.json(
-      await repository.snapshot(context.env, context.get("tenant").tenantId, input),
+      await repository.snapshot(
+        context.env,
+        context.get("tenant").tenantId,
+        input,
+        features(context),
+      ),
     );
   });
 
@@ -50,7 +61,9 @@ export function createMobileSyncRoutes(repository: MobileSyncRepository) {
       await readJson(context),
       "Check the synchronization operations.",
     );
-    return context.json(await repository.push(context.env, context.get("tenant").tenantId, input));
+    return context.json(
+      await repository.push(context.env, context.get("tenant").tenantId, input, features(context)),
+    );
   });
 
   return routes;

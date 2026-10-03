@@ -18,6 +18,7 @@ import {
 import { HttpError } from "../../../errors";
 import type { Bindings } from "../../../types";
 import { EFFECTIVE_PRO_ENTITLEMENT_CONDITION, FREE_CUSTOM_CATEGORY_LIMIT } from "../../billing";
+import { debtPaymentChanges } from "../../transactions";
 import { mobileSyncServerTimestamp as serverTimestamp } from "../protocol";
 import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import {
@@ -241,6 +242,15 @@ async function validateGraphTransactionReferences(
       );
     }
   }
+  // A graph only plans accounts and categories, so a linked debt must already exist.
+  if (transaction.kind === "expense" && transaction.debtId) {
+    const debt = await env.DB.prepare("SELECT 1 AS found FROM debts WHERE id = ? AND tenant_id = ?")
+      .bind(transaction.debtId, tenantId)
+      .first<{ found: number }>();
+    if (!debt) {
+      return rejectedResult(operation, "invalid_operation", "Choose a debt from this workspace.");
+    }
+  }
   return null;
 }
 
@@ -336,8 +346,8 @@ function createGraphMutation(
   return env.DB.prepare(
     `INSERT INTO transactions (
       id, tenant_id, account_id, category_id, date, description, amount_minor,
-      currency, kind, notes, source_kind, revision, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 1, ?)`,
+      currency, kind, notes, debt_id, source_kind, revision, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 1, ?)`,
   ).bind(
     operation.entityId,
     tenantId,
@@ -349,6 +359,7 @@ function createGraphMutation(
     transaction.currency,
     transaction.kind,
     transaction.notes || null,
+    transaction.kind === "expense" ? (transaction.debtId ?? null) : null,
     timestamp,
   );
 }
@@ -514,6 +525,19 @@ export async function pushCreateDependencyGraph(
       results[index]!,
     ),
   ]);
+  // After every guarded pair, so the pair indexes below hold. A missed guard throws and rolls
+  // the whole batch back, these balance writes included.
+  for (const operation of createOperations) {
+    if (!isTransactionCreate(operation)) continue;
+    const transaction = operation.payload;
+    if (transaction.kind !== "expense" || !transaction.debtId) continue;
+    statements.push(
+      ...debtPaymentChanges(env, tenantId, null, {
+        debtId: transaction.debtId,
+        amountMinor: transaction.amountMinor,
+      }),
+    );
+  }
   try {
     const batch = await env.DB.batch(statements);
     if (

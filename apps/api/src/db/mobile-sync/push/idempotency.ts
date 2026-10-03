@@ -57,6 +57,25 @@ export function idempotencyInsert(
   ).bind(tenantId, clientId, operation.idempotencyKey, hash, JSON.stringify(result));
 }
 
+/**
+ * Holds a follow-up write in the same batch to the operation actually applying: true only
+ * once this operation's idempotency row exists, which the batch inserts after the guarded
+ * mutation lands. A replay never reaches the batch, so a stored row cannot satisfy it twice.
+ */
+export function appliedOperationGuard(
+  tenantId: string,
+  clientId: string,
+  operation: MobileSyncPushOperation,
+): { condition: string; bindings: unknown[] } {
+  return {
+    condition: `EXISTS (
+      SELECT 1 FROM mobile_sync_idempotency
+      WHERE tenant_id = ? AND client_id = ? AND idempotency_key = ?
+    )`,
+    bindings: [tenantId, clientId, operation.idempotencyKey],
+  };
+}
+
 export function requiredIdempotencyInsert(
   env: Bindings,
   tenantId: string,

@@ -19,7 +19,16 @@ import {
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { hasProEntitlement } from "./billing";
-import { validateTransactionReferences } from "./transactions";
+import {
+  readTransactionDebtPayment,
+  validateTransactionReferences,
+  type DebtPayment,
+} from "./transactions";
+import {
+  shapeChangesForClient,
+  shapePushResultsForClient,
+  type MobileSyncFeatures,
+} from "./mobile-sync/features";
 import { mobileSyncServerTimestamp as serverTimestamp } from "./mobile-sync/protocol";
 import {
   acknowledgeMobileSyncClient,
@@ -86,20 +95,24 @@ export interface MobileSyncRepository {
     tenantId: string,
     input: MobileSyncAcknowledgeRequest,
   ): Promise<MobileSyncAcknowledgeResponse>;
+  /** `features` are the payload additions the client declared; omitted means none. */
   snapshot(
     env: Bindings,
     tenantId: string,
     input: MobileSyncSnapshotRequest,
+    features?: MobileSyncFeatures,
   ): Promise<MobileSyncSnapshotResponse>;
   pull(
     env: Bindings,
     tenantId: string,
     input: MobileSyncPullRequest,
+    features?: MobileSyncFeatures,
   ): Promise<MobileSyncPullResponse>;
   push(
     env: Bindings,
     tenantId: string,
     input: MobileSyncPushRequest,
+    features?: MobileSyncFeatures,
   ): Promise<MobileSyncPushResponse>;
 }
 
@@ -111,9 +124,11 @@ type SingleEntityOperation = Exclude<MobileSyncPushOperation, { entityType: "tra
 function entityMutation(
   env: Bindings,
   tenantId: string,
+  clientId: string,
   operation: SingleEntityOperation,
   current: EntitySnapshot | null,
   transaction: NonTransferTransactionInput | null,
+  previousPayment: DebtPayment,
   revision: number,
   timestamp: string,
 ): EntityMutation {
@@ -133,7 +148,16 @@ function entityMutation(
     case "event":
       return eventMutation(env, tenantId, operation, current, timestamp);
     case "transaction":
-      return transactionMutation(env, tenantId, operation, transaction, revision, timestamp);
+      return transactionMutation(
+        env,
+        tenantId,
+        clientId,
+        operation,
+        transaction,
+        previousPayment,
+        revision,
+        timestamp,
+      );
   }
 }
 
@@ -141,51 +165,225 @@ export function createMobileSyncRepository(
   readEntitlement: EntitlementReader = hasProEntitlement,
 ): MobileSyncRepository {
   return {
-    snapshot(env, tenantId, input) {
-      return snapshotMobileSync(env, tenantId, input, readEntitlement);
+    async snapshot(env, tenantId, input, features = new Set()) {
+      const response = await snapshotMobileSync(env, tenantId, input, readEntitlement);
+      return {
+        ...response,
+        changes: await shapeChangesForClient(env, tenantId, response.changes, features),
+      };
     },
 
     acknowledge(env, tenantId, input) {
       return acknowledgeMobileSyncClient(env, tenantId, input);
     },
 
-    pull(env, tenantId, input) {
-      return pullMobileSyncChanges(env, tenantId, input, readEntitlement);
+    async pull(env, tenantId, input, features = new Set()) {
+      const response = await pullMobileSyncChanges(env, tenantId, input, readEntitlement);
+      return {
+        ...response,
+        changes: await shapeChangesForClient(env, tenantId, response.changes, features),
+      };
     },
 
-    async push(env, tenantId, input) {
-      if (input.operations.some((operation) => operation.dependencyIds.length > 0)) {
-        return pushCreateDependencyGraph(env, tenantId, input, readEntitlement);
-      }
-      const results: MobileSyncPushResult[] = [];
-      for (const operation of input.operations) {
-        const hash = await requestHash(operation);
-        const stored = await readIdempotency(
-          env,
-          tenantId,
-          input.clientId,
-          operation.idempotencyKey,
-        );
-        if (stored) {
-          results.push(replayedResult(stored, hash));
-          continue;
-        }
+    async push(env, tenantId, input, features = new Set()) {
+      const response = await pushOperations(env, tenantId, input);
+      return {
+        ...response,
+        results: await shapePushResultsForClient(env, tenantId, response.results, features),
+      };
+    },
+  };
 
-        if (operation.entityType === "transfer") {
+  async function pushOperations(
+    env: Bindings,
+    tenantId: string,
+    input: MobileSyncPushRequest,
+  ): Promise<MobileSyncPushResponse> {
+    if (input.operations.some((operation) => operation.dependencyIds.length > 0)) {
+      return pushCreateDependencyGraph(env, tenantId, input, readEntitlement);
+    }
+    const results: MobileSyncPushResult[] = [];
+    for (const operation of input.operations) {
+      const hash = await requestHash(operation);
+      const stored = await readIdempotency(env, tenantId, input.clientId, operation.idempotencyKey);
+      if (stored) {
+        results.push(replayedResult(stored, hash));
+        continue;
+      }
+
+      if (operation.entityType === "transfer") {
+        results.push(
+          await pushTransferOperation(
+            env,
+            tenantId,
+            input.clientId,
+            operation,
+            hash,
+            readEntitlement,
+          ),
+        );
+        continue;
+      }
+
+      if (operation.dependencyIds.length > 0) {
+        results.push(
+          await persistResult(
+            env,
+            tenantId,
+            input.clientId,
+            operation,
+            hash,
+            rejectedResult(
+              operation,
+              "unsupported_operation",
+              "Dependent operations require the future atomic dependency-graph protocol.",
+            ),
+          ),
+        );
+        continue;
+      }
+
+      let current = await readEntitySnapshot(
+        env,
+        tenantId,
+        operation.entityType,
+        operation.entityId,
+      );
+      if (operation.entityType === "category" && current) {
+        current = withCategoryLock(current, await readEntitlement(env, tenantId));
+      }
+      const conflict = revisionConflict(operation, current);
+      if (conflict) {
+        results.push(
+          await persistResult(
+            env,
+            tenantId,
+            input.clientId,
+            operation,
+            hash,
+            conflictResult(operation, conflict, current),
+          ),
+        );
+        continue;
+      }
+
+      const rejected = await businessRejection(env, tenantId, operation, current);
+      if (rejected) {
+        results.push(await persistResult(env, tenantId, input.clientId, operation, hash, rejected));
+        continue;
+      }
+
+      if (operation.entityType === "budget" && operation.operationType === "create") {
+        const payload = operation.payload;
+        if (!(await validateBudgetCategory(env, tenantId, payload.categoryId))) {
           results.push(
-            await pushTransferOperation(
+            await persistResult(
               env,
               tenantId,
               input.clientId,
               operation,
               hash,
-              readEntitlement,
+              rejectedResult(operation, "invalid_category", "Choose an active expense category."),
             ),
           );
           continue;
         }
+        const existing = await readBudgetByMonthCategory(
+          env,
+          tenantId,
+          payload.month,
+          payload.categoryId,
+        );
+        if (existing && existing.id !== operation.entityId) {
+          results.push(
+            await persistResult(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              conflictResult(operation, "entity_exists", existing),
+            ),
+          );
+          continue;
+        }
+      }
 
-        if (operation.dependencyIds.length > 0) {
+      if (operation.entityType === "subscription" && operation.operationType !== "delete") {
+        const payload = operation.payload;
+        try {
+          await validateSubscriptionReferences(
+            env,
+            tenantId,
+            payload.categoryId,
+            payload.accountId,
+            readEntitlement,
+          );
+        } catch (error) {
+          if (!(error instanceof HttpError)) throw error;
+          results.push(
+            await persistResult(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              subscriptionReferenceRejection(operation, error),
+            ),
+          );
+          continue;
+        }
+      }
+
+      if (operation.entityType === "event" && operation.operationType === "update" && current) {
+        const payload = operation.payload;
+        const event = mobileSyncEventSnapshotSchema.parse(current);
+        const merged = calendarEventInputSchema.safeParse({
+          title: payload.title ?? event.title,
+          date: payload.date ?? event.date,
+          startTime: payload.startTime === undefined ? event.startTime : payload.startTime,
+          endTime: payload.endTime === undefined ? event.endTime : payload.endTime,
+          notes: payload.notes === undefined ? event.notes : payload.notes,
+        });
+        if (!merged.success) {
+          results.push(
+            await persistResult(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              rejectedResult(operation, "invalid_operation", "Check the event fields."),
+            ),
+          );
+          continue;
+        }
+      }
+
+      const timestamp = serverTimestamp();
+      let transaction: NonTransferTransactionInput | null = null;
+      let currentTransaction: TransactionSnapshot | null = null;
+      let previousPayment: DebtPayment = null;
+      if (operation.entityType === "transaction" && current) {
+        currentTransaction = mobileSyncTransactionSnapshotSchema.parse(current);
+        previousPayment = await readTransactionDebtPayment(env, tenantId, operation.entityId);
+      }
+      if (operation.entityType === "transaction" && operation.operationType === "create") {
+        const candidate = operation.payload;
+        transaction = candidate.kind === "transfer" ? null : candidate;
+      } else if (
+        operation.entityType === "transaction" &&
+        operation.operationType === "update" &&
+        currentTransaction
+      ) {
+        transaction = updateInput(
+          operation.payload,
+          currentTransaction,
+          previousPayment?.debtId ?? null,
+        );
+      }
+      if (operation.entityType === "transaction" && operation.operationType !== "delete") {
+        if (!transaction) {
           results.push(
             await persistResult(
               env,
@@ -196,24 +394,22 @@ export function createMobileSyncRepository(
               rejectedResult(
                 operation,
                 "unsupported_operation",
-                "Dependent operations require the future atomic dependency-graph protocol.",
+                "Transfers require the atomic transfer synchronization command.",
               ),
             ),
           );
           continue;
         }
-
-        let current = await readEntitySnapshot(
-          env,
-          tenantId,
-          operation.entityType,
-          operation.entityId,
-        );
-        if (operation.entityType === "category" && current) {
-          current = withCategoryLock(current, await readEntitlement(env, tenantId));
-        }
-        const conflict = revisionConflict(operation, current);
-        if (conflict) {
+        try {
+          await validateTransactionReferences(
+            env,
+            tenantId,
+            transaction,
+            currentTransaction?.categoryId,
+            readEntitlement,
+          );
+        } catch (error) {
+          if (!(error instanceof HttpError)) throw error;
           results.push(
             await persistResult(
               env,
@@ -221,265 +417,114 @@ export function createMobileSyncRepository(
               input.clientId,
               operation,
               hash,
-              conflictResult(operation, conflict, current),
+              transactionReferenceRejection(operation, error),
             ),
           );
           continue;
         }
+      }
 
-        const rejected = await businessRejection(env, tenantId, operation, current);
-        if (rejected) {
+      const revision = operation.operationType === "create" ? 1 : operation.baseRevision + 1;
+      const acknowledged = mobileSyncPushResultSchema.parse({
+        operationId: operation.operationId,
+        entityType: operation.entityType,
+        entityId: operation.entityId,
+        status: "acknowledged",
+        revision,
+      });
+      const { mutation, extraStatements } = entityMutation(
+        env,
+        tenantId,
+        input.clientId,
+        operation,
+        current,
+        transaction,
+        previousPayment,
+        revision,
+        timestamp,
+      );
+
+      try {
+        const batch = await env.DB.batch([
+          mutation,
+          idempotencyInsert(env, tenantId, input.clientId, operation, hash, acknowledged, true),
+          ...extraStatements,
+        ]);
+        if (Number(batch[1]?.meta.changes ?? 0) === 1) {
+          results.push(acknowledged);
+          continue;
+        }
+      } catch {
+        const replay = await readIdempotency(
+          env,
+          tenantId,
+          input.clientId,
+          operation.idempotencyKey,
+        );
+        if (replay) {
+          results.push(replayedResult(replay, hash));
+          continue;
+        }
+      }
+
+      let concurrent = await readEntitySnapshot(
+        env,
+        tenantId,
+        operation.entityType,
+        operation.entityId,
+      );
+      if (operation.entityType === "category" && concurrent) {
+        concurrent = withCategoryLock(concurrent, await readEntitlement(env, tenantId));
+      }
+      const concurrentCode = revisionConflict(operation, concurrent);
+      if (
+        operation.entityType === "budget" &&
+        operation.operationType === "create" &&
+        !concurrentCode
+      ) {
+        const raced = await readBudgetByMonthCategory(
+          env,
+          tenantId,
+          operation.payload.month,
+          operation.payload.categoryId,
+        );
+        if (raced) {
           results.push(
-            await persistResult(env, tenantId, input.clientId, operation, hash, rejected),
+            await persistResult(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              conflictResult(operation, "entity_exists", raced),
+            ),
           );
           continue;
         }
-
-        if (operation.entityType === "budget" && operation.operationType === "create") {
-          const payload = operation.payload;
-          if (!(await validateBudgetCategory(env, tenantId, payload.categoryId))) {
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                rejectedResult(operation, "invalid_category", "Choose an active expense category."),
-              ),
-            );
-            continue;
-          }
-          const existing = await readBudgetByMonthCategory(
-            env,
-            tenantId,
-            payload.month,
-            payload.categoryId,
-          );
-          if (existing && existing.id !== operation.entityId) {
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                conflictResult(operation, "entity_exists", existing),
-              ),
-            );
-            continue;
-          }
-        }
-
-        if (operation.entityType === "subscription" && operation.operationType !== "delete") {
-          const payload = operation.payload;
-          try {
-            await validateSubscriptionReferences(
-              env,
-              tenantId,
-              payload.categoryId,
-              payload.accountId,
-              readEntitlement,
-            );
-          } catch (error) {
-            if (!(error instanceof HttpError)) throw error;
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                subscriptionReferenceRejection(operation, error),
-              ),
-            );
-            continue;
-          }
-        }
-
-        if (operation.entityType === "event" && operation.operationType === "update" && current) {
-          const payload = operation.payload;
-          const event = mobileSyncEventSnapshotSchema.parse(current);
-          const merged = calendarEventInputSchema.safeParse({
-            title: payload.title ?? event.title,
-            date: payload.date ?? event.date,
-            startTime: payload.startTime === undefined ? event.startTime : payload.startTime,
-            endTime: payload.endTime === undefined ? event.endTime : payload.endTime,
-            notes: payload.notes === undefined ? event.notes : payload.notes,
-          });
-          if (!merged.success) {
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                rejectedResult(operation, "invalid_operation", "Check the event fields."),
-              ),
-            );
-            continue;
-          }
-        }
-
-        const timestamp = serverTimestamp();
-        let transaction: NonTransferTransactionInput | null = null;
-        let currentTransaction: TransactionSnapshot | null = null;
-        if (operation.entityType === "transaction" && current) {
-          currentTransaction = mobileSyncTransactionSnapshotSchema.parse(current);
-        }
-        if (operation.entityType === "transaction" && operation.operationType === "create") {
-          const candidate = operation.payload;
-          transaction = candidate.kind === "transfer" ? null : candidate;
-        } else if (
-          operation.entityType === "transaction" &&
-          operation.operationType === "update" &&
-          currentTransaction
-        ) {
-          transaction = updateInput(operation.payload, currentTransaction);
-        }
-        if (operation.entityType === "transaction" && operation.operationType !== "delete") {
-          if (!transaction) {
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                rejectedResult(
-                  operation,
-                  "unsupported_operation",
-                  "Transfers require the atomic transfer synchronization command.",
-                ),
-              ),
-            );
-            continue;
-          }
-          try {
-            await validateTransactionReferences(
-              env,
-              tenantId,
-              transaction,
-              currentTransaction?.categoryId,
-              readEntitlement,
-            );
-          } catch (error) {
-            if (!(error instanceof HttpError)) throw error;
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                transactionReferenceRejection(operation, error),
-              ),
-            );
-            continue;
-          }
-        }
-
-        const revision = operation.operationType === "create" ? 1 : operation.baseRevision + 1;
-        const acknowledged = mobileSyncPushResultSchema.parse({
-          operationId: operation.operationId,
-          entityType: operation.entityType,
-          entityId: operation.entityId,
-          status: "acknowledged",
-          revision,
-        });
-        const { mutation, extraStatements } = entityMutation(
-          env,
-          tenantId,
-          operation,
-          current,
-          transaction,
-          revision,
-          timestamp,
-        );
-
-        try {
-          const batch = await env.DB.batch([
-            mutation,
-            idempotencyInsert(env, tenantId, input.clientId, operation, hash, acknowledged, true),
-            ...extraStatements,
-          ]);
-          if (Number(batch[1]?.meta.changes ?? 0) === 1) {
-            results.push(acknowledged);
-            continue;
-          }
-        } catch {
-          const replay = await readIdempotency(
-            env,
-            tenantId,
-            input.clientId,
-            operation.idempotencyKey,
-          );
-          if (replay) {
-            results.push(replayedResult(replay, hash));
-            continue;
-          }
-        }
-
-        let concurrent = await readEntitySnapshot(
-          env,
-          tenantId,
-          operation.entityType,
-          operation.entityId,
-        );
-        if (operation.entityType === "category" && concurrent) {
-          concurrent = withCategoryLock(concurrent, await readEntitlement(env, tenantId));
-        }
-        const concurrentCode = revisionConflict(operation, concurrent);
-        if (
-          operation.entityType === "budget" &&
-          operation.operationType === "create" &&
-          !concurrentCode
-        ) {
-          const raced = await readBudgetByMonthCategory(
-            env,
-            tenantId,
-            operation.payload.month,
-            operation.payload.categoryId,
-          );
-          if (raced) {
-            results.push(
-              await persistResult(
-                env,
-                tenantId,
-                input.clientId,
-                operation,
-                hash,
-                conflictResult(operation, "entity_exists", raced),
-              ),
-            );
-            continue;
-          }
-        }
-        const racedRejection = concurrentCode
-          ? null
-          : await businessRejection(env, tenantId, operation, concurrent);
-        results.push(
-          await persistResult(
-            env,
-            tenantId,
-            input.clientId,
-            operation,
-            hash,
-            racedRejection ??
-              (concurrentCode
-                ? conflictResult(operation, concurrentCode, concurrent)
-                : rejectedResult(
-                    operation,
-                    "invalid_operation",
-                    "The operation could not be applied safely.",
-                  )),
-          ),
-        );
       }
-      return { protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION, results };
-    },
-  };
+      const racedRejection = concurrentCode
+        ? null
+        : await businessRejection(env, tenantId, operation, concurrent);
+      results.push(
+        await persistResult(
+          env,
+          tenantId,
+          input.clientId,
+          operation,
+          hash,
+          racedRejection ??
+            (concurrentCode
+              ? conflictResult(operation, concurrentCode, concurrent)
+              : rejectedResult(
+                  operation,
+                  "invalid_operation",
+                  "The operation could not be applied safely.",
+                )),
+        ),
+      );
+    }
+    return { protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION, results };
+  }
 }
 
 export const mobileSyncRepository = createMobileSyncRepository();
