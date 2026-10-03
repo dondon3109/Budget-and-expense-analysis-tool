@@ -44,6 +44,14 @@ auditConfig:
     # Only reachable through @expo/cli (dev-server and code-signing certificates), never in
     # a shipped bundle. Replace with a "node-forge" override once 1.4.1 is published.
     - GHSA-86w9-cpqp-85rv
+    # http-cache-semantics <=4.2.0 max-stale handling can disclose cached responses; the patched
+    # 4.2.1 is not on npm yet. Reached only through astro at build time. Replace with an
+    # "http-cache-semantics" override once 4.2.1 is published.
+    - GHSA-ch52-4w7c-c8xp
+    # braces <=3.0.3 stack exhaustion on deeply nested patterns; the patched 3.0.4 is not on npm
+    # yet. Reached only through dev tooling (micromatch under semantic-release and expo). Replace
+    # with a "braces" override once 3.0.4 is published.
+    - GHSA-vfj7-8cjw-p6xm
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
