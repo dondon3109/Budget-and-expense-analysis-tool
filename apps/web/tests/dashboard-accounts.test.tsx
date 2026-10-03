@@ -539,12 +539,16 @@ describe("Profile dashboard account management", () => {
     fireEvent.change(within(accountManager).getByLabelText("Account type"), {
       target: { value: "savings" },
     });
+    expect(within(accountManager).getByLabelText("Currency")).toHaveValue("PHP");
+    fireEvent.change(within(accountManager).getByLabelText("Currency"), {
+      target: { value: "USD" },
+    });
     fireEvent.click(within(accountManager).getByRole("button", { name: "Add" }));
 
     await waitFor(() =>
       expect(apiMocks.createAccount).toHaveBeenCalledWith(
         { key: "user:user-1", userId: "user-1" },
-        { name: "SeaBank", type: "savings" },
+        { name: "SeaBank", type: "savings", currency: "USD" },
       ),
     );
   });

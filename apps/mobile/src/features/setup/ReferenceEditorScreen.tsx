@@ -15,6 +15,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   accountInputSchema,
   categoryInputSchema,
+  currencies,
+  currencyMetadata,
   interestAmountMinor,
   interestFrequencies,
   interestUpdateSchema,
@@ -22,6 +24,7 @@ import {
   resolveCategoryEmoji,
   type AccountInterestUpdate,
   type AccountType,
+  type Currency,
   type InterestFrequency,
   type TransactionKind,
 } from "@zoption/shared";
@@ -56,6 +59,11 @@ const accountOptions: Array<{ id: AccountType; label: string }> = [
   { id: "credit", label: "Credit" },
   { id: "other", label: "Other" },
 ];
+
+const currencyOptions: Array<{ id: Currency; label: string }> = currencies.map((code) => ({
+  id: code,
+  label: currencyMetadata[code].label,
+}));
 
 const categoryOptions: Array<{ id: TransactionKind; label: string }> = [
   { id: "expense", label: "Expense" },
@@ -160,6 +168,9 @@ export function ReferenceEditorScreen() {
   const initialized = useRef(false);
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("cash");
+  const [accountCurrency, setAccountCurrency] = useState<Currency>(
+    useWorkspaceCurrencyStore.getState().currency,
+  );
   const [categoryKind, setCategoryKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState("#0F766E");
   const [customColorOpen, setCustomColorOpen] = useState(false);
@@ -188,6 +199,7 @@ export function ReferenceEditorScreen() {
     if (id && !account && !category) return;
     setName(account?.name ?? category?.name ?? "");
     setAccountType(account?.type ?? "cash");
+    if (account) setAccountCurrency(account.currency);
     setCategoryKind(category?.kind ?? "expense");
     const savedColor = category?.color ?? "#0F766E";
     setColor(savedColor);
@@ -277,10 +289,10 @@ export function ReferenceEditorScreen() {
             ...(interest !== undefined && { interest }),
           });
         } else {
-          await local.workspace.transactionMutations.createAccount(
-            parsed.data,
-            useWorkspaceCurrencyStore.getState().currency,
-          );
+          await local.workspace.transactionMutations.createAccount({
+            ...parsed.data,
+            currency: accountCurrency,
+          });
         }
       } else if (entityType === "category") {
         const parsed = categoryInputSchema.safeParse({
@@ -462,6 +474,16 @@ export function ReferenceEditorScreen() {
                     setAccountType(value as AccountType);
                     setMessage(null);
                   }}
+                />
+                <SelectionField
+                  label="Currency"
+                  value={accountCurrency}
+                  options={currencyOptions}
+                  placeholder="Choose a currency"
+                  sheetTitle="Account currency"
+                  hint={editing ? "An account's currency cannot be changed." : undefined}
+                  disabled={editing || saving || blocked}
+                  onSelect={(value) => setAccountCurrency(value as Currency)}
                 />
                 {editing && accountType === "savings" ? (
                   <Card>

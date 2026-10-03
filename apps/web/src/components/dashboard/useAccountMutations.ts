@@ -2,6 +2,7 @@ import type {
   AccountBalanceSummaryItem,
   AccountInput,
   AccountRecord,
+  Currency,
   DashboardSummary,
   InterestFrequency,
 } from "@zoption/shared";
@@ -54,6 +55,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
   const [isAddingAccount, setIsAddingAccount] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState<AccountInput["type"]>("checking");
+  const [accountCurrency, setAccountCurrency] = useState<Currency>(workspaceCurrency());
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState<AccountInput["type"]>("checking");
@@ -98,7 +100,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
       const account: AccountRecord = {
         ...input,
         id,
-        currency: workspaceCurrency(),
+        currency: input.currency ?? workspaceCurrency(),
         balanceMinor: 0,
         balancesByCurrency: { PHP: 0, USD: 0 },
         archived: false,
@@ -125,6 +127,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
       restoreAccountContext(context?.cache);
       setAccountName(context?.input.name ?? "");
       setAccountType(context?.input.type ?? "checking");
+      setAccountCurrency(context?.input.currency ?? workspaceCurrency());
       setIsAddingAccount(true);
     },
     onSuccess: (saved, _input, context) => {
@@ -272,6 +275,8 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
     setAccountName,
     accountType,
     setAccountType,
+    accountCurrency,
+    setAccountCurrency,
     editingAccount,
     setEditingAccount,
     editName,

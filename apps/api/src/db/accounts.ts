@@ -195,7 +195,7 @@ export const accountRepository: AccountRepository = {
         tenantId,
         name: input.name,
         type: input.type,
-        currency: await loadWorkspaceCurrency(env, tenantId),
+        currency: input.currency ?? (await loadWorkspaceCurrency(env, tenantId)),
       });
     const created = await findAccount(env, tenantId, id);
     if (!created) throw new Error("Created account could not be read back.");

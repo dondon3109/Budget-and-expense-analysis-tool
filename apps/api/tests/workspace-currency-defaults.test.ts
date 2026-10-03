@@ -74,6 +74,33 @@ describe("new accounts start in the workspace currency", () => {
     expect(created.currency).toBe("USD");
   });
 
+  it("unless the account is created in another currency, over REST and mobile sync", async () => {
+    const { env, database } = usdWorkspace();
+    const created = await accountRepository.create!(env, "tenant-1", {
+      name: "Peso checking",
+      type: "checking",
+      currency: "PHP",
+    });
+    expect(created.currency).toBe("PHP");
+
+    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const synced = "60000000-0000-4000-8000-000000000201";
+    const result = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        operation(3, {
+          entityType: "account",
+          entityId: synced,
+          operationType: "create",
+          payload: { name: "Peso wallet", type: "cash", currency: "PHP" },
+        }),
+      ],
+    });
+    expect(result.results[0]).toMatchObject({ status: "acknowledged" });
+    expect(currencyOf(database, "accounts", synced)).toBe("PHP");
+  });
+
   it("over mobile sync push, with and without interest settings", async () => {
     const { env, database } = usdWorkspace();
     grantMobileSyncTestPro(database, "tenant-1");

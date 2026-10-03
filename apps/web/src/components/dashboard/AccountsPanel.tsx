@@ -1,4 +1,6 @@
 import {
+  currencies,
+  currencyMetadata,
   preferredTransactionAccount,
   type AccountBalanceSummaryItem,
   type AccountInput,
@@ -53,6 +55,8 @@ export function AccountsPanel({
     setAccountName,
     accountType,
     setAccountType,
+    accountCurrency,
+    setAccountCurrency,
     editingAccount,
     setEditingAccount,
     setEditName,
@@ -147,7 +151,11 @@ export function AccountsPanel({
                 className="dashboard-account-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  createAccountMutation.mutate({ name: accountName, type: accountType });
+                  createAccountMutation.mutate({
+                    name: accountName,
+                    type: accountType,
+                    currency: accountCurrency,
+                  });
                 }}
               >
                 <label>
@@ -169,6 +177,19 @@ export function AccountsPanel({
                     {accountTypes.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Currency</span>
+                  <select
+                    value={accountCurrency}
+                    onChange={(event) => setAccountCurrency(event.target.value as Currency)}
+                  >
+                    {currencies.map((option) => (
+                      <option key={option} value={option}>
+                        {currencyMetadata[option].label}
                       </option>
                     ))}
                   </select>
