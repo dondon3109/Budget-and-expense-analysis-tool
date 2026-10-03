@@ -12,6 +12,7 @@ All notable product changes are documented here.
 ### Changed
 
 - Web: the setup goal question now lets you pick all the goals that apply, with the first one you pick as your main focus, and thanks you once you have answered. You can change them in Account Settings. The privacy policy now says goals, not a single goal.
+- Adding, renaming, and removing accounts is now free on every plan, with no limit on how many accounts you keep. Automatic interest on savings accounts is still a Pro feature.
 
 ## 3.3.0 — 2026-10-03
 

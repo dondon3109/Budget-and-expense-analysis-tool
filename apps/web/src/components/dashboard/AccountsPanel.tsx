@@ -226,13 +226,11 @@ export function AccountsPanel({
                 >
                   {createAccountMutation.isPending ? "Adding…" : "Add"}
                 </button>
-                <UpgradePrompt error={createAccountMutation.error} />
-                {createAccountMutation.error &&
-                  !isBillingEnforcementError(createAccountMutation.error) && (
-                    <p className="form-error" role="alert">
-                      {createAccountMutation.error.message}
-                    </p>
-                  )}
+                {createAccountMutation.error && (
+                  <p className="form-error" role="alert">
+                    {createAccountMutation.error.message}
+                  </p>
+                )}
               </form>
             )}
             <ul>

@@ -26,7 +26,7 @@ describe("BillingLimitHost", () => {
 
     act(() =>
       reportBillingLimit(
-        new ApiRequestError("Pro", 403, "upgrade_required", { capability: "account_management" }),
+        new ApiRequestError("Pro", 403, "upgrade_required", { capability: "transaction_export" }),
       ),
     );
     expect(screen.getByRole("dialog", { name: "Zoption Pro is required" })).toBeInTheDocument();

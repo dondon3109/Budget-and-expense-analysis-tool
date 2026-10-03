@@ -453,7 +453,7 @@ export type BillingResource = "custom_category";
 export type BillingCapability =
   | BillingFeature
   | "category_management"
-  | "account_management"
+  | "account_interest"
   | "cashflow_analytics"
   | "transaction_export";
 

@@ -297,7 +297,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-10-01";
-const PRICING_LAST_MODIFIED = "2026-10-01";
+const PRICING_LAST_MODIFIED = "2026-10-03";
 const GUIDES_LAST_MODIFIED = "2026-10-01";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
