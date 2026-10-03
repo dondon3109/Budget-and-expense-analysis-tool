@@ -128,6 +128,22 @@ describe("atomic encrypted pull application", () => {
 
   afterEach(() => database.close());
 
+  it("stores a category's product key so the opening balance can be recognized", async () => {
+    const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
+    await repository.applyPullPage(null, {
+      ...bootstrapPage,
+      changes: bootstrapPage.changes.map((change) =>
+        change.entityType === "category"
+          ? { ...change, payload: { ...change.payload, systemKey: "opening:income" } }
+          : change,
+      ),
+    } as typeof bootstrapPage);
+
+    expect(
+      database.native.prepare("SELECT system_key FROM categories WHERE id = 'category-1'").get(),
+    ).toEqual({ system_key: "opening:income" });
+  });
+
   it("persists a validated page and cursor for process restart", async () => {
     const repository = new LocalSyncRepository(database as unknown as SQLiteDatabase);
     await repository.applyPullPage(null, bootstrapPage);

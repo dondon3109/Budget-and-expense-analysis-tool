@@ -67,6 +67,15 @@ describe("transaction list view", () => {
     expect(totals.USD).toEqual({ incomeMinor: 0, expenseMinor: 500, netMinor: -500 });
   });
 
+  it("leaves the opening balance out of income totals, as the web app does", () => {
+    const opening = item("opening", "2026-08-24", 50_000, "income");
+    opening.transaction.categorySystemKey = "opening:income";
+    const totals = summarizeTransactions([opening, item("salary", "2026-08-24", 12_000, "income")]);
+
+    expect(totals.PHP).toEqual({ incomeMinor: 12_000, expenseMinor: 0, netMinor: 12_000 });
+    expect(categorySummary([opening])[0]?.incomeMinor).toBe(0);
+  });
+
   it("shifts month starts and formats date identities without timezone drift", () => {
     expect(shiftMonthStart("2026-01-01", -1)).toBe("2025-12-01");
     expect(shiftMonthStart("2026-12-01", 1)).toBe("2027-01-01");

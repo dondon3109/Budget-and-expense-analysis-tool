@@ -1,4 +1,4 @@
-import type { Currency } from "@zoption/shared";
+import { countsAsIncome, type Currency } from "@zoption/shared";
 
 import type { LocalTransactionItem, TransactionKindFilter } from "@/db/view-models";
 
@@ -27,7 +27,7 @@ export function summarizeTransactions(
   for (const item of items) {
     const { transaction } = item;
     const currencyTotals = totals[transaction.currency] ?? emptyTotals();
-    if (transaction.kind === "income") {
+    if (countsAsIncome(transaction)) {
       currencyTotals.incomeMinor += Math.abs(transaction.amountMinor);
     } else if (transaction.kind === "expense") {
       currencyTotals.expenseMinor += Math.abs(transaction.amountMinor);
@@ -108,7 +108,7 @@ export function categorySummary(items: readonly LocalTransactionItem[]): Categor
       expenseMinor: 0,
       transferMinor: 0,
     };
-    if (transaction.kind === "income") row.incomeMinor += Math.abs(transaction.amountMinor);
+    if (countsAsIncome(transaction)) row.incomeMinor += Math.abs(transaction.amountMinor);
     if (transaction.kind === "expense") row.expenseMinor += Math.abs(transaction.amountMinor);
     if (transaction.kind === "transfer") row.transferMinor += Math.abs(transaction.amountMinor);
     rows.set(key, row);

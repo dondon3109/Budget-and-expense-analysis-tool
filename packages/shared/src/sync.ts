@@ -133,6 +133,8 @@ export const mobileSyncCategorySnapshotSchema = z
     iconEmoji: categoryIconEmojiSchema.nullable().default(null),
     archived: z.boolean(),
     system: z.boolean(),
+    // Older sync change-log rows predate the product key; they read as an ordinary category.
+    systemKey: z.string().nullable().optional(),
     origin: z.enum(categoryOrigins),
     requiredPlan: z.enum(categoryRequiredPlans),
     locked: z.boolean(),

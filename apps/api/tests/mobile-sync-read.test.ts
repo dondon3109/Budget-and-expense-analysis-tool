@@ -105,10 +105,10 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.a",
+      snapshotCursor: "s1.c",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.a",
+      resumeCursor: "v1.c",
     });
     expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
 
@@ -122,7 +122,7 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.a" });
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.c" });
     // A snapshot groups rows by entity, so the second category page precedes the budget.
     expect(second.changes.map((change) => change.entityId)).toEqual([
       "tenant-1:category:debt-payment",
@@ -235,7 +235,8 @@ describe("mobile sync retention compaction", () => {
 
     await expect(compactMobileSyncChanges(env, "2026-08-14 00:00:00")).resolves.toMatchObject({
       tenants: 1,
-      deletedChanges: 2,
+      // Two are the superseded first revisions of the product categories, re-sent by migration 0072.
+      deletedChanges: 4,
     });
     expect(
       database
@@ -326,17 +327,32 @@ describe("mobile sync pull repository", () => {
     expect(fourth).toMatchObject({ hasMore: true });
     expect(fourth.changes.map((change) => change.entityId)).toEqual(["subscription-1", "event-1"]);
 
-    // The debt payment category migration lands last in the fixture sequence.
+    // The product category migrations land last in the fixture sequence; 0072 sends them again
+    // with their product key.
     const fifth = await repository.pull(env, "tenant-1", {
       protocolVersion: 1,
       cursor: fourth.nextCursor,
       limit: 2,
     });
-    expect(fifth).toMatchObject({ hasMore: false });
+    expect(fifth).toMatchObject({ hasMore: true });
     expect(fifth.changes.map((change) => change.entityId)).toEqual([
       "tenant-1:category:debt-payment",
       "tenant-1:category:opening-balance",
     ]);
+    const sixth = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: fifth.nextCursor,
+      limit: 2,
+    });
+    expect(sixth).toMatchObject({ hasMore: false });
+    expect(sixth.changes.map((change) => change.entityId)).toEqual([
+      "tenant-1:category:debt-payment",
+      "tenant-1:category:opening-balance",
+    ]);
+    expect(sixth.changes[1]?.payload).toMatchObject({
+      systemKey: "opening:income",
+      archived: true,
+    });
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -349,7 +365,7 @@ describe("mobile sync pull repository", () => {
     const pulled = await repository.pull(env, "tenant-1", {
       protocolVersion: 1,
       cursor: "v1.3",
-      limit: 10,
+      limit: 12,
     });
     expect(pulled.changes).toMatchObject([
       {
@@ -402,6 +418,20 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Opening balance", kind: "income", origin: "system", system: true },
       },
       {
+        entityType: "category",
+        entityId: "tenant-1:category:debt-payment",
+        revision: 2,
+        operation: "upsert",
+        payload: { name: "Debt payment", systemKey: "debt:expense" },
+      },
+      {
+        entityType: "category",
+        entityId: "tenant-1:category:opening-balance",
+        revision: 2,
+        operation: "upsert",
+        payload: { name: "Opening balance", systemKey: "opening:income" },
+      },
+      {
         entityType: "account",
         entityId: "account-1",
         revision: 2,
@@ -416,7 +446,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.c");
+    expect(pulled.nextCursor).toBe("v1.e");
   });
 
   it("delivers a web-created subscription and its linked charge as adjacent group rows", async () => {
@@ -450,6 +480,20 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Opening balance" },
       },
       {
+        entityType: "category",
+        entityId: "tenant-1:category:debt-payment",
+        revision: 2,
+        operation: "upsert",
+        payload: { name: "Debt payment", systemKey: "debt:expense" },
+      },
+      {
+        entityType: "category",
+        entityId: "tenant-1:category:opening-balance",
+        revision: 2,
+        operation: "upsert",
+        payload: { name: "Opening balance", systemKey: "opening:income" },
+      },
+      {
         entityType: "subscription",
         entityId: "web-sub",
         revision: 1,
@@ -464,7 +508,7 @@ describe("mobile sync pull repository", () => {
         payload: { description: "Spotify", amountMinor: -19900 },
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.c");
+    expect(pulled.nextCursor).toBe("v1.e");
     expect(pulled.hasMore).toBe(false);
 
     const snapshot = await repository.snapshot(env, "tenant-1", {
