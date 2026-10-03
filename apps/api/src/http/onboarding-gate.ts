@@ -5,8 +5,8 @@ import type { AppEnvironment } from "../types";
 
 /**
  * The ledger routes the web app reads to draw the workspace. Only these wait for onboarding: the
- * native apps have no onboarding screens and use sync, billing, assistant, imports, receipts, and
- * entry from their first launch, so those stay open.
+ * native apps offer onboarding on a dismissible screen and use sync, billing, assistant, imports,
+ * receipts, and entry from their first launch, so those stay open.
  */
 const GATED_UNTIL_ONBOARDED = [
   "/api/app/dashboard",

@@ -8,6 +8,7 @@ All notable product changes are documented here.
 
 - Web and mobile: track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Yen, won, dong, and Chilean pesos show without decimals on mobile.
 - Imports, voice entries, and receipt scans now use your workspace currency instead of always pesos.
+- Mobile: new accounts are asked for their currency and the cash they have on hand the first time they open the app, the same two steps as the web app. You can dismiss it and finish later.
 
 ### Changed
 
