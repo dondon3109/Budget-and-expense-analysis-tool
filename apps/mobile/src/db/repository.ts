@@ -51,6 +51,7 @@ const localTransactionRowSchema = z.object({
   category_name: z.string(),
   category_color: z.string(),
   category_icon_emoji: z.string().nullable().optional(),
+  category_system_key: z.string().nullable().optional(),
   account_id: z.string().nullable(),
   account_name: z.string().nullable(),
   notes: z.string().nullable(),
@@ -179,6 +180,7 @@ const dashboardTransactionRowSchema = z.object({
   category_name: z.string(),
   category_color: z.string(),
   category_icon_emoji: z.string().nullable().optional(),
+  category_system_key: z.string().nullable().optional(),
   account_name: z.string(),
 });
 
@@ -234,6 +236,7 @@ const transactionListSelect = `SELECT
   category.name AS category_name,
   category.color AS category_color,
   category.icon_emoji AS category_icon_emoji,
+  category.system_key AS category_system_key,
   transaction_row.account_id,
   account.name AS account_name,
   transaction_row.notes,
@@ -270,6 +273,7 @@ const dashboardTransactionSelect = `SELECT
   c.name AS category_name,
   c.color AS category_color,
   c.icon_emoji AS category_icon_emoji,
+  c.system_key AS category_system_key,
   COALESCE(a.name, 'Unassigned') AS account_name
 FROM transactions t
 INNER JOIN categories c ON c.id = t.category_id AND c.deleted_at IS NULL
@@ -291,6 +295,7 @@ function decodeDashboardTransaction(row: unknown): TransactionRecord {
     categoryId: decoded.category_id,
     categoryName: decoded.category_name,
     categoryColor: decoded.category_color,
+    categorySystemKey: decoded.category_system_key ?? null,
     categoryIconEmoji:
       resolveCategoryEmoji({
         name: decoded.category_name,
@@ -317,6 +322,7 @@ function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
         categoryId: row.category_id,
         categoryName: row.category_name,
         categoryColor: row.category_color,
+        categorySystemKey: row.category_system_key ?? null,
         categoryIconEmoji:
           resolveCategoryEmoji({
             name: row.category_name,

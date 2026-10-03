@@ -136,9 +136,9 @@ async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange)
   const category = mobileSyncCategorySnapshotSchema.parse(change.payload);
   await database.runAsync(
     `INSERT INTO categories (
-      id, name, kind, color, icon_emoji, archived, system, origin, required_plan, locked,
+      id, name, kind, color, icon_emoji, archived, system, system_key, origin, required_plan, locked,
       server_revision, server_updated_at, deleted_at, sync_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       kind = excluded.kind,
@@ -146,6 +146,7 @@ async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange)
       icon_emoji = excluded.icon_emoji,
       archived = excluded.archived,
       system = excluded.system,
+      system_key = excluded.system_key,
       origin = excluded.origin,
       required_plan = excluded.required_plan,
       locked = excluded.locked,
@@ -160,6 +161,7 @@ async function applyCategory(database: SQLiteDatabase, change: MobileSyncChange)
     category.iconEmoji,
     category.archived ? 1 : 0,
     category.system ? 1 : 0,
+    category.systemKey ?? null,
     category.origin,
     category.requiredPlan,
     category.locked ? 1 : 0,

@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 15;
+export const LOCAL_SCHEMA_VERSION = 16;
 
 export const migrations: readonly Migration[] = [
   {
@@ -826,6 +826,14 @@ export const migrations: readonly Migration[] = [
         ON transactions(import_fingerprint)
         WHERE import_fingerprint IS NOT NULL;
     `,
+  },
+  {
+    version: 16,
+    // The Worker's category payload now carries its product key, which marks the archived opening
+    // balance category so income figures can skip it. Older rows read as ordinary categories until
+    // the Worker re-sends them.
+    name: "category_system_key",
+    sql: `ALTER TABLE categories ADD COLUMN system_key TEXT;`,
   },
 ] as const;
 

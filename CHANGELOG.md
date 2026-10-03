@@ -21,6 +21,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: starting cash you enter during setup no longer counts as income in the Transactions totals and category summary, matching the web app.
 - Budgets now count only spending in your workspace currency, so a purchase in another currency no longer adds its raw amount to a budget.
 - Web: the goal choices in Account Settings are back to compact rows with a small checkbox and normal text, instead of tall cards with a stretched checkbox and small uppercase labels.
 
