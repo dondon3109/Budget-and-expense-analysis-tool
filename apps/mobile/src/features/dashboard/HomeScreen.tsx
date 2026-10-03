@@ -6,6 +6,8 @@ import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
+import { PetHomeCard } from "@/features/pet/PetHomeCard";
+import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { useSyncState } from "@/sync/sync-state";
@@ -44,6 +46,7 @@ export function HomeScreen() {
   const subscriptions = useSubscriptions();
   useOnboardingPrompt();
   useGoalPrompt();
+  usePetIntroPrompt();
   const sync = useSyncState();
   // A guest never syncs, so the pill says where the data lives instead of "Waiting to sync".
   const guest = useSessionSnapshot().status === "guest";
@@ -115,6 +118,7 @@ export function HomeScreen() {
               onViewRenewals={() => router.push("/(app)/subscriptions")}
             />
           ) : null}
+          <PetHomeCard />
           <QuickActionBar />
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (

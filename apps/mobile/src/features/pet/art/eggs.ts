@@ -56,7 +56,7 @@ const patterns: Record<PetSpecies, PetShape[]> = {
       [78, 98],
       [102, 92],
       [126, 100],
-    ].map(([x, y]) => ({ kind: "path", d: triangle(x!, y!), fill: "#6B4527" }) as PetShape),
+    ].map(([x, y]) => ({ kind: "path" as const, d: triangle(x!, y!), fill: "#6B4527" })),
   ],
   pig: [
     shell("#F6A9B8"),
