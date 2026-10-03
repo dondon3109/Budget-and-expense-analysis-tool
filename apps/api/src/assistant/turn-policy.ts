@@ -11,7 +11,7 @@ import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
 
 /** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
-export const ASSISTANT_PROMPT_VERSION = "expert-v3";
+export const ASSISTANT_PROMPT_VERSION = "expert-v5";
 
 export type RequiredToolGroup =
   | "account_balance"
@@ -35,6 +35,8 @@ export interface AssistantTurnPolicy {
   };
   resolvedPeriod?: AssistantDateRange;
   requiredToolGroups: RequiredToolGroup[];
+  /** The user is creating, changing, or deleting a subscription, goal, or debt. */
+  actionFlow?: boolean;
   deterministicResponse?: string;
   disclaimer?: {
     text: string;
@@ -83,6 +85,39 @@ function isTransactionEntryRequest(message: string): boolean {
     return /\d|\b(?:at|sa|from)\s+\S/i.test(message);
   }
   return REMAINING_STATEMENT_PATTERN.test(message) && MONEY_CONTEXT_PATTERN.test(message);
+}
+
+// "Add a Netflix subscription", "delete my car loan", "idagdag ang goal na iPhone".
+const ACTION_VERB_PATTERN =
+  /\b(?:add|create|make|set\s*up|new|change|update|edit|rename|delete|remove|archive|set|cancel|pause|resume|reactivate|mark|adjust|increase|decrease|idagdag|gumawa|gawa|burahin|tanggalin|palitan|baguhin|i-?cancel|i-?delete|i-?update)\b/i;
+const ACTION_NOUN_PATTERN =
+  /\b(?:subscriptions?|subskripsyon|savings? goals?|goals?|layunin|debts?|loans?|credit cards?|utang|accounts?|wallets?|balances?)\b/i;
+
+/**
+ * A request to create, change, or delete a subscription, goal, or debt. It reads like a
+ * records question ("subscription" alone asks for recurring charges), so it is decided here
+ * first and never demands a reporting period.
+ */
+function isActionRequest(message: string): boolean {
+  if (/\b(?:how (?:do|can|to)|paano)\b/i.test(message)) return false;
+  return ACTION_VERB_PATTERN.test(message) && ACTION_NOUN_PATTERN.test(message);
+}
+
+/** The previous reply asked for details or proposed a change, and this message answers it. */
+function continuesActionFlow(
+  history: readonly AssistantHistoryMessage[],
+  message: string,
+  posture: AssistantCompliancePosture,
+): boolean {
+  const previous = history.at(-1);
+  if (previous?.role !== "assistant" || !previous.metadata?.assistantActionFlow) return false;
+  if (previous.metadata.assistantAction?.status === "done") return false;
+  if (posture !== "budgeting_allowed" || EDUCATION_PATTERN.test(message)) return false;
+  if (ACKNOWLEDGEMENT_PATTERN.test(message)) return false;
+  const asksForRecords =
+    QUESTION_PATTERN.test(message) ||
+    /\b(?:show|list|compare|tell me|ipakita|pakita|ilista)\b/i.test(message);
+  return !(asksForRecords && requiredGroups(message).length > 0);
 }
 
 /**
@@ -280,6 +315,22 @@ export function createAssistantTurnPolicy(input: {
     };
   }
 
+  if (
+    isActionRequest(input.message) ||
+    continuesActionFlow(input.history, input.message, compliance.posture)
+  ) {
+    return {
+      currentDate: input.currentDate,
+      timeZone: input.timeZone,
+      compliance: { posture: compliance.posture, topics: compliance.topics },
+      requiredToolGroups: [],
+      actionFlow: true,
+      ...(compliance.disclaimer
+        ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
+        : {}),
+    };
+  }
+
   const effectiveMessage = retryTargetMessage(input.history, input.message);
   const groups = requiredGroups(effectiveMessage);
   const period = resolveAssistantPeriod(
@@ -324,6 +375,7 @@ export function responseMetadataForPolicy(
     ...(policy.disclaimer ? { disclaimer: policy.disclaimer } : {}),
     sources,
     ...(policy.requiredToolGroups.includes("transaction_entry") ? { transactionEntry: true } : {}),
+    ...(policy.actionFlow ? { assistantActionFlow: true } : {}),
   };
 }
 

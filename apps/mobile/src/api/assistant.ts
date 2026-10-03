@@ -346,6 +346,25 @@ export async function confirmAssistantTransactionDraft(
   });
 }
 
+/**
+ * Applies the subscription, goal, or debt change an assistant reply proposed. The server applies
+ * its own stored proposal at most once, so the change reaches the local workspace through the
+ * next sync pull.
+ */
+export async function confirmAssistantAction(
+  api: AssistantApi,
+  messageId: string,
+): Promise<AssistantWireMessage> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/assistant/messages/" + encodeURIComponent(messageId) + "/action",
+    method: "POST",
+    body: {},
+    fallback: "The change could not be applied. Try again.",
+    decode: (value) => assistantMessageSchema.parse(value),
+  });
+}
+
 export async function deleteAssistantThread(api: AssistantApi, threadId: string): Promise<void> {
   try {
     await apiRequest({

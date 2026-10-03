@@ -24,9 +24,16 @@ import {
   STALE_CLAIM_MS,
   type AssistantTransactionDraftRepository,
 } from "../db/assistant-transaction-drafts";
+import { assistantActionRepository } from "../db/assistant-actions";
+import { accountRepository } from "../db/accounts";
+import { categoryRepository } from "../db/categories";
+import { debtRepository } from "../db/debts";
+import { financialGoalRepository } from "../db/goals";
+import { subscriptionRepository } from "../db/subscriptions";
 import { transactionRepository, type TransactionRepository } from "../db/transactions";
 import { consumeAiUsage as defaultConsumeAiUsage } from "../db/billing";
 import { HttpError } from "../errors";
+import { confirmAssistantAction, type AssistantActionDependencies } from "./action-confirm";
 import type { Bindings } from "../types";
 import {
   AssistantProviderError,
@@ -112,6 +119,7 @@ export interface AssistantService {
     tenantId: string,
     messageId: string,
   ): Promise<AssistantMessage>;
+  confirmAction(env: Bindings, tenantId: string, messageId: string): Promise<AssistantMessage>;
 }
 
 export interface AssistantTransactionDraftDependencies {
@@ -231,6 +239,15 @@ export function createAssistantService(
   telemetryFactory: AssistantAiTelemetryFactory = createPostHogAiTelemetry,
   transactionDrafts: AssistantTransactionDraftDependencies = {
     drafts: assistantTransactionDraftRepository,
+    transactions: transactionRepository,
+  },
+  actionDependencies: AssistantActionDependencies = {
+    actions: assistantActionRepository,
+    subscriptions: subscriptionRepository,
+    goals: financialGoalRepository,
+    debts: debtRepository,
+    accounts: accountRepository as AssistantActionDependencies["accounts"],
+    categories: categoryRepository,
     transactions: transactionRepository,
   },
 ): AssistantService {
@@ -588,6 +605,12 @@ export function createAssistantService(
 
     async deleteMemoryFact(env, tenantId, id) {
       await repository.deleteMemoryById(env, tenantId, id);
+    },
+
+    async confirmAction(env, tenantId, messageId) {
+      // Applying a change is part of the assistant surface, so it needs the same current consent.
+      await requireReadyPreferences(env, tenantId);
+      return confirmAssistantAction(actionDependencies, env, tenantId, messageId);
     },
 
     async confirmTransactionDraft(env, tenantId, messageId) {

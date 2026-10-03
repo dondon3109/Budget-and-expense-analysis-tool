@@ -9,6 +9,7 @@ import {
   type AssistantToolResultEnvelope,
   type Currency,
   type DashboardSummary,
+  type AssistantActionToolInput,
   type DebtProjectionInput,
   type TransactionKind,
 } from "@zoption/shared";
@@ -19,6 +20,7 @@ import { categoryRepository, type CategoryRepository } from "../db/categories";
 import { debtRepository, type DebtRepository } from "../db/debts";
 import { loadDashboard } from "../db/dashboard";
 import { financialGoalRepository, type FinancialGoalRepository } from "../db/goals";
+import { subscriptionRepository, type SubscriptionRepository } from "../db/subscriptions";
 import { transactionRepository, type TransactionRepository } from "../db/transactions";
 import { loadWorkspaceCurrency } from "../db/workspace-settings";
 import type { Bindings } from "../types";
@@ -27,6 +29,14 @@ import {
   type AssistantAnalysisTransaction,
   type DataQualityAssessment,
 } from "./data-quality";
+import {
+  coveredMonthCount,
+  daysInclusive,
+  monthEnd,
+  shiftDays,
+  shiftMonths,
+} from "./calendar-math";
+import { loadAndProposeAction, type ActionProposal } from "./actions";
 import {
   compactDescription,
   findAccountByName,
@@ -159,6 +169,10 @@ export interface FinancialReader {
     context: FinancialReadContext,
     input: TransactionDraftInput,
   ): Promise<TransactionDraftResult>;
+  proposeAction(
+    context: FinancialReadContext,
+    input: AssistantActionToolInput,
+  ): Promise<ActionProposal>;
 }
 
 type DashboardPeriod = Pick<PeriodSummaryInput, "from" | "to">;
@@ -216,48 +230,6 @@ function assessWorkspaceQuality(
   });
   if (quality.status === "reliable") quality.status = "limited";
   return quality;
-}
-
-function monthDifference(from: string, to: string): number {
-  return (
-    (Number(to.slice(0, 4)) - Number(from.slice(0, 4))) * 12 +
-    Number(to.slice(5, 7)) -
-    Number(from.slice(5, 7))
-  );
-}
-
-function coveredMonthCount(from: string, to: string): number {
-  return monthDifference(from, to) + 1;
-}
-
-function dateFromIso(value: string): Date {
-  return new Date(`${value}T00:00:00Z`);
-}
-
-function formatIsoDate(value: Date): string {
-  return value.toISOString().slice(0, 10);
-}
-
-function shiftDays(value: string, amount: number): string {
-  const date = dateFromIso(value);
-  date.setUTCDate(date.getUTCDate() + amount);
-  return formatIsoDate(date);
-}
-
-function shiftMonths(value: string, amount: number): string {
-  const date = dateFromIso(`${value.slice(0, 7)}-01`);
-  date.setUTCMonth(date.getUTCMonth() + amount);
-  return formatIsoDate(date);
-}
-
-function monthEnd(value: string): string {
-  const date = dateFromIso(shiftMonths(value, 1));
-  date.setUTCDate(date.getUTCDate() - 1);
-  return formatIsoDate(date);
-}
-
-function daysInclusive(from: string, to: string): number {
-  return Math.floor((dateFromIso(to).valueOf() - dateFromIso(from).valueOf()) / 86_400_000) + 1;
 }
 
 function source<T extends object>(
@@ -338,6 +310,7 @@ export function createFinancialReader(
     categories?: CategoryRepository;
     debts?: DebtRepository;
     goals?: FinancialGoalRepository;
+    subscriptions?: SubscriptionRepository;
     transactions?: TransactionRepository;
     dashboardLoader?: DashboardLoader;
     analysisLoader?: AnalysisLoader;
@@ -350,6 +323,7 @@ export function createFinancialReader(
   const categories = options.categories ?? categoryRepository;
   const debts = options.debts ?? debtRepository;
   const goals = options.goals ?? financialGoalRepository;
+  const subscriptions = options.subscriptions ?? subscriptionRepository;
   const transactions = options.transactions ?? transactionRepository;
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
   const analysisLoader = options.analysisLoader ?? loadAnalysisTransactions;
@@ -990,6 +964,15 @@ export function createFinancialReader(
         categories.list(context.env, context.tenantId),
       ]);
       return draftTransaction(input, accountItems, categoryItems);
+    },
+
+    proposeAction(context, input) {
+      return loadAndProposeAction(
+        { accounts, categories, goals, debts, subscriptions },
+        context,
+        input,
+        workspaceCurrencyLoader,
+      );
     },
   };
 }

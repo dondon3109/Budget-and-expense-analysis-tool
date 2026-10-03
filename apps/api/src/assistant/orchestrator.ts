@@ -13,6 +13,7 @@ import {
   correctivePrompt,
   deterministicDraftAnswer,
   deterministicPeriodSummaryAnswer,
+  latestAssistantAction,
   latestTransactionDraft,
   requiredGroupToolCall,
   safeFallback,
@@ -231,7 +232,15 @@ function responseMetadata(
     .map(sourceFromExecution)
     .filter((source): source is NonNullable<typeof source> => source !== null);
   const metadata = responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
+  const action = includeDraft ? latestAssistantAction(executions) : undefined;
   const execution = includeDraft ? latestTransactionDraft(executions) : undefined;
+  // Only one card per reply: the draft or the action, whichever the model prepared last.
+  if (
+    action &&
+    (!execution || executions.lastIndexOf(action) > executions.lastIndexOf(execution))
+  ) {
+    return { ...metadata, assistantActionFlow: true, assistantAction: action.assistantAction };
+  }
   if (!execution?.transactionDraft) return metadata;
   const replacesMessageId = replacedDraftMessageId(execution, history);
   // A draft keeps the flow open, so a follow-up correction ("make it 300") drafts again.

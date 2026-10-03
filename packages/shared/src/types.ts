@@ -1,6 +1,6 @@
 import type { AccountType } from "./accountTypes";
 import type { Currency, CurrencyTotals } from "./currencies";
-import type { AssistantTransactionDraft } from "./schemas/assistant";
+import type { AssistantAction, AssistantTransactionDraft } from "./schemas/assistant";
 
 export * from "./accountTypes";
 // Currencies live in their own module; re-exported so `./types` stays the one import site.
@@ -558,7 +558,7 @@ export interface AssistantDataQualitySignal {
 
 export interface AssistantSourceMetadata {
   label: string;
-  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts";
+  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts" | "subscriptions";
   period?: AssistantDateRange;
   baselinePeriod?: AssistantDateRange;
   filters?: {
@@ -587,6 +587,9 @@ export interface AssistantResponseMetadata {
   /** Set on turns that help the user log a transaction, so a short reply continues that flow. */
   transactionEntry?: boolean;
   transactionDraft?: AssistantTransactionDraft;
+  /** Set while the user is creating or changing a subscription, goal, or debt in chat. */
+  assistantActionFlow?: boolean;
+  assistantAction?: AssistantAction;
 }
 
 export const CURRENT_ASSISTANT_CONSENT_VERSION = 7;

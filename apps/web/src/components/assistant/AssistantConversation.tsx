@@ -1,4 +1,5 @@
 import {
+  assistantActionSchema,
   assistantTransactionDraftSchema,
   goalConfigFor,
   otherCurrenciesWithAmounts,
@@ -29,6 +30,7 @@ import { Fragment, useEffect, useRef } from "react";
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
 import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
+import { AssistantActionCard } from "./AssistantActionCard";
 import "./AssistantTransactionDraft.css";
 
 const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof Scale }[] = [
@@ -96,6 +98,7 @@ interface AssistantConversationProps {
   onPrompt: (prompt: string) => void;
   feeInsight?: TransferFeeInsight;
   draftSave?: AssistantDraftSave;
+  actionSave?: AssistantDraftSave;
 }
 
 export interface AssistantDraftSave {
@@ -139,6 +142,7 @@ function sourceTypeLabel(source: AssistantSourceMetadata): string {
       accounts: "account",
       goals: "goal",
       debts: "debt",
+      subscriptions: "subscription",
     }[source.sourceType];
     return `${source.recordCount} ${label}${source.recordCount === 1 ? "" : "s"}`;
   }
@@ -152,6 +156,7 @@ function sourceName(source: AssistantSourceMetadata): string {
     accounts: "Accounts",
     goals: "Goals",
     debts: "Debts",
+    subscriptions: "Subscriptions",
   }[source.sourceType];
 }
 
@@ -365,6 +370,7 @@ export function AssistantConversation({
   onPrompt,
   feeInsight,
   draftSave,
+  actionSave,
   goal,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -376,6 +382,13 @@ export function AssistantConversation({
       replacedDraftIds.add(parsed.data.replacesMessageId);
     }
   }
+
+  // Only the newest proposal in the chat can be confirmed; earlier ones would apply twice.
+  const lastActionId = [...messages]
+    .reverse()
+    .find(
+      (message) => assistantActionSchema.safeParse(message.metadata?.assistantAction).success,
+    )?.id;
 
   useEffect(() => {
     if (typeof endRef.current?.scrollIntoView === "function") {
@@ -465,6 +478,13 @@ export function AssistantConversation({
                   message={message}
                   draftSave={draftSave}
                   superseded={replacedDraftIds.has(message.id)}
+                />
+              )}
+              {message.role === "assistant" && (
+                <AssistantActionCard
+                  message={message}
+                  save={actionSave}
+                  superseded={lastActionId !== message.id}
                 />
               )}
               {message.role === "assistant" && <AssistantMessageEvidence message={message} />}

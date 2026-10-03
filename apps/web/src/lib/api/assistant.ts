@@ -296,6 +296,22 @@ export async function confirmAssistantTransactionDraft(
   return assistantMessageSchema.parse(value) as AssistantMessage;
 }
 
+/**
+ * Applies the subscription, goal, or debt change an assistant reply proposed. The server applies
+ * its own stored proposal at most once and answers with the reply, now marked done.
+ */
+export async function confirmAssistantAction(
+  workspace: AuthenticatedWorkspace,
+  messageId: string,
+): Promise<AssistantMessage> {
+  const value = await requestJson<unknown>(
+    workspace,
+    `/api/app/assistant/messages/${encodeURIComponent(messageId)}/action`,
+    { method: "POST", body: "{}" },
+  );
+  return assistantMessageSchema.parse(value) as AssistantMessage;
+}
+
 export function deleteAssistantThread(
   workspace: AuthenticatedWorkspace,
   threadId: string,

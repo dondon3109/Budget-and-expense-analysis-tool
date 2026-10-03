@@ -9,9 +9,11 @@ import {
   assistantSavingsGoalToolSchema,
   assistantSpendingAnomaliesToolSchema,
   assistantSpendingByCategoryToolSchema,
+  assistantActionToolSchema,
   assistantTransactionDraftToolSchema,
   assistantTransactionSuggestionToolSchema,
   assistantTransactionToolSchema,
+  type AssistantAction,
   type AssistantTransactionDraft,
 } from "@zoption/shared";
 import type { z } from "zod";
@@ -260,6 +262,87 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "propose_action",
+      description:
+        "Prepare a change to a subscription, savings goal, debt, or account for the user to review and confirm. adjust_balance sets an account to the balance the user states (amount) by recording an adjustment. It does not apply anything. Name existing records in target. Amounts are exact decimals in major units; apr is a percentage such as 24.5. Ask for missing details instead of guessing; the result lists any missing fields.",
+      parameters: {
+        type: "object",
+        properties: {
+          action: {
+            type: "string",
+            enum: [
+              "create_subscription",
+              "update_subscription",
+              "set_subscription_status",
+              "delete_subscription",
+              "create_goal",
+              "update_goal",
+              "delete_goal",
+              "create_debt",
+              "update_debt",
+              "delete_debt",
+              "create_account",
+              "update_account",
+              "archive_account",
+              "adjust_balance",
+            ],
+          },
+          target: {
+            type: "string",
+            description: "Name of the existing record to change or delete",
+          },
+          name: { type: "string", description: "Name for a new record, or the new name" },
+          amount: {
+            type: "string",
+            description:
+              "Subscription price, goal target, debt balance, or the account balance to set",
+          },
+          currentAmount: { type: "string", description: "Goal: amount saved so far" },
+          date: {
+            type: "string",
+            description: "ISO date: subscription next bill, goal target date, or debt balance date",
+          },
+          billingCycle: { type: "string", enum: ["monthly", "yearly"] },
+          categoryName: { type: "string", description: "Exact active expense category name" },
+          accountName: { type: "string", description: "Exact active account name" },
+          status: {
+            type: "string",
+            enum: ["active", "canceled", "paused", "completed", "paid"],
+            description:
+              "Subscription: active or canceled. Goal: active, paused, or completed. Debt: active or paid.",
+          },
+          debtType: {
+            type: "string",
+            enum: ["credit_card", "personal_loan", "auto_loan", "mortgage", "other"],
+          },
+          apr: { type: "string", description: "Debt interest rate as a percentage, e.g. 24.5" },
+          accountType: {
+            type: "string",
+            enum: [
+              "cash",
+              "checking",
+              "savings",
+              "credit",
+              "other",
+              "virtual",
+              "investment",
+              "receivable",
+              "payable",
+            ],
+            description: "Account type: checking is a bank or debit card account",
+          },
+          currency: { type: "string", description: "New account currency code, e.g. PHP" },
+          minimumPayment: { type: "string", description: "Debt minimum monthly payment" },
+          currentDate: { type: "string", description: "Trusted current ISO date" },
+        },
+        required: ["action", "currentDate"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 export class AssistantToolError extends Error {
@@ -276,6 +359,7 @@ export interface AssistantToolExecution {
   content: string;
   /** Kept out of `result`, so its record ids never reach the model or the audit trail. */
   transactionDraft?: AssistantTransactionDraft;
+  assistantAction?: AssistantAction;
 }
 
 function parseArguments(raw: string): unknown {
@@ -313,6 +397,7 @@ export async function executeAssistantToolDetailed(
     let args: unknown;
     let result: unknown;
     let transactionDraft: AssistantTransactionDraft | undefined;
+    let assistantAction: AssistantAction | undefined;
     const validate = (parsed: unknown) => {
       const errorCode = validateArguments?.(name, parsed);
       if (errorCode) throw new AssistantToolError(errorCode);
@@ -411,6 +496,15 @@ export async function executeAssistantToolDetailed(
         transactionDraft = drafted.draft;
         break;
       }
+      case "propose_action": {
+        const parsed = parseWithSchema(assistantActionToolSchema, rawArguments);
+        args = parsed;
+        validate(parsed);
+        const proposal = await reader.proposeAction(context, parsed);
+        result = proposal.envelope;
+        assistantAction = proposal.action;
+        break;
+      }
       default:
         throw new AssistantToolError("This tool is not available.");
     }
@@ -420,6 +514,7 @@ export async function executeAssistantToolDetailed(
       result,
       content: compactResult(result),
       ...(transactionDraft ? { transactionDraft } : {}),
+      ...(assistantAction ? { assistantAction } : {}),
     };
   } catch (error) {
     if (error instanceof AssistantToolError) throw error;

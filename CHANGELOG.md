@@ -8,9 +8,11 @@ All notable product changes are documented here.
 
 - Web and mobile: track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Yen, won, dong, and Chilean pesos show without decimals on mobile.
 - Imports, voice entries, and receipt scans now use your workspace currency instead of always pesos.
+- Mobile: new accounts are asked for their currency and the cash they have on hand the first time they open the app, the same two steps as the web app. You can dismiss it and finish later.
 - More account types when you add an account: General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables. Credit card and I owe / Payables are marked as liabilities.
 - Pay a debt with an account, not only the Debt payment category: a transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. Editing or deleting the transfer gives the amount back.
 - Mobile: debt payments link to a debt, as on the web. Choosing the Debt payment category, or transferring into a credit card or I owe / Payables account, asks which debt it pays, and the debt's balance updates once the payment syncs. Older app versions keep syncing, and accounts with the new types show there as Other.
+- Web and mobile: the AI Assistant can now add, edit, cancel, or delete a subscription, savings goal, or debt, and add, rename, or archive an account or set its balance, when you ask. It shows what it will do on a card and changes nothing until you tap Confirm.
 
 ### Changed
 
@@ -20,6 +22,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - Budgets now count only spending in your workspace currency, so a purchase in another currency no longer adds its raw amount to a budget.
+- Web: the goal choices in Account Settings are back to compact rows with a small checkbox and normal text, instead of tall cards with a stretched checkbox and small uppercase labels.
 
 ## 3.3.0 — 2026-10-03
 

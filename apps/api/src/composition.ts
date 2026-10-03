@@ -5,6 +5,7 @@ import { createFinancialReader } from "./assistant/financial-reader";
 import { createAssistantOrchestrator } from "./assistant/orchestrator";
 import type { AssistantAiTelemetryFactory } from "./assistant/posthog-ai";
 import type { AssistantProvider } from "./assistant/provider";
+import type { AssistantActionDependencies } from "./assistant/action-confirm";
 import { createAssistantService, type AssistantService } from "./assistant/service";
 import type { AssistantVoiceProviders } from "./assistant/voice-provider";
 import { createAssistantVoiceService, type AssistantVoiceService } from "./assistant/voice-service";
@@ -19,6 +20,7 @@ import {
   assistantModelMemoryUsageRepository,
   type AssistantModelMemoryUsageRepository,
 } from "./db/assistant-model-memory-usage";
+import { assistantActionRepository } from "./db/assistant-actions";
 import { assistantTransactionDraftRepository } from "./db/assistant-transaction-drafts";
 import {
   billingRepository,
@@ -162,6 +164,7 @@ export function createDependencies(overrides: AppOptions = {}) {
           transactions: transactionStore,
           goals: goalStore,
           debts: debtStore,
+          subscriptions: subscriptionStore,
           dashboardLoader,
         }),
       ),
@@ -171,6 +174,15 @@ export function createDependencies(overrides: AppOptions = {}) {
       assistantModelMemoryUsage,
       overrides.assistantTelemetryFactory,
       { drafts: assistantTransactionDraftRepository, transactions: transactionStore },
+      {
+        actions: assistantActionRepository,
+        subscriptions: subscriptionStore,
+        goals: goalStore,
+        debts: debtStore,
+        accounts: accountStore as AssistantActionDependencies["accounts"],
+        categories: categoryStore,
+        transactions: transactionStore,
+      },
     );
   const dynamicVoiceProviders: AssistantVoiceProviders =
     overrides.assistantVoiceProviders ??
