@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { GOAL_AND_DEBT_MAX_MINOR } from "../limits";
 import {
+  accountTypes,
   assistantSpeechVoices,
   currencies,
   debtTypes,
@@ -11,6 +12,7 @@ import {
   transactionKinds,
 } from "../types";
 import { isoDateSchema, resourceIdSchema } from "./common";
+import { accountInputSchema, accountUpdateSchema } from "./ledger";
 import {
   debtInputSchema,
   debtUpdateSchema,
@@ -350,6 +352,10 @@ export const assistantActionToolSchema = z
       "create_debt",
       "update_debt",
       "delete_debt",
+      "create_account",
+      "update_account",
+      "archive_account",
+      "adjust_balance",
     ]),
     target: z.string().trim().min(1).max(120).optional(),
     name: z.string().trim().min(1).max(120).optional(),
@@ -363,6 +369,8 @@ export const assistantActionToolSchema = z
     debtType: z.enum(debtTypes).optional(),
     apr: decimalMoneyStringSchema.optional(),
     minimumPayment: decimalMoneyStringSchema.optional(),
+    accountType: z.enum(accountTypes).optional(),
+    currency: z.enum(currencies).optional(),
     currentDate: isoDateSchema,
   })
   .strict();
@@ -370,7 +378,7 @@ export const assistantActionToolSchema = z
 export type AssistantActionToolInput = z.infer<typeof assistantActionToolSchema>;
 
 /**
- * A change to a subscription, goal, or debt the assistant proposed in chat. Nothing is written
+ * A change to a subscription, goal, debt, or account the assistant proposed in chat. Nothing is written
  * until the user confirms it: the confirm route runs the stored proposal through the same
  * repository the app's own forms use, at most once (`saving` claims it, `done` records it).
  * Updates carry only the fields to change; the card shows the server-written summary.
@@ -447,6 +455,37 @@ export const assistantActionSchema = z.discriminatedUnion("kind", [
     .strict(),
   z
     .object({ ...assistantActionBase, ...assistantActionTarget, kind: z.literal("delete_debt") })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      kind: z.literal("create_account"),
+      input: accountInputSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("update_account"),
+      input: accountUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("archive_account"),
+    })
+    .strict(),
+  // The adjustment is worked out when it is applied, from the balance the account holds then.
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("adjust_balance"),
+      input: z.object({ newBalanceMinor: z.number().int().safe().min(0) }).strict(),
+    })
     .strict(),
 ]);
 

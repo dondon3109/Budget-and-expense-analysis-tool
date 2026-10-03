@@ -45,6 +45,7 @@ import { userWorkspace } from "../lib/workspace";
 import { assistantPreferencesQueryOptions } from "../queries/assistant";
 import { invalidateBillingSummary } from "../queries/billing";
 import { useGoalProfile } from "../queries/goalProfile";
+import { invalidateAfterAccountWrite } from "../queries/accounts";
 import { invalidateAfterTransactionWrite } from "../queries/transactions";
 import "./AssistantPage.css";
 
@@ -249,6 +250,7 @@ export function AssistantPage() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.financialGoals(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) });
+      void invalidateAfterAccountWrite(queryClient, workspace);
     },
   });
 

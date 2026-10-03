@@ -267,7 +267,7 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
     function: {
       name: "propose_action",
       description:
-        "Prepare a change to a subscription, savings goal, or debt for the user to review and confirm. It does not apply anything. Name existing records in target. Amounts are exact decimals in major units; apr is a percentage such as 24.5. Ask for missing details instead of guessing; the result lists any missing fields.",
+        "Prepare a change to a subscription, savings goal, debt, or account for the user to review and confirm. adjust_balance sets an account to the balance the user states (amount) by recording an adjustment. It does not apply anything. Name existing records in target. Amounts are exact decimals in major units; apr is a percentage such as 24.5. Ask for missing details instead of guessing; the result lists any missing fields.",
       parameters: {
         type: "object",
         properties: {
@@ -284,6 +284,10 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
               "create_debt",
               "update_debt",
               "delete_debt",
+              "create_account",
+              "update_account",
+              "archive_account",
+              "adjust_balance",
             ],
           },
           target: {
@@ -293,7 +297,8 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
           name: { type: "string", description: "Name for a new record, or the new name" },
           amount: {
             type: "string",
-            description: "Subscription price, goal target, or debt balance",
+            description:
+              "Subscription price, goal target, debt balance, or the account balance to set",
           },
           currentAmount: { type: "string", description: "Goal: amount saved so far" },
           date: {
@@ -314,6 +319,22 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
             enum: ["credit_card", "personal_loan", "auto_loan", "mortgage", "other"],
           },
           apr: { type: "string", description: "Debt interest rate as a percentage, e.g. 24.5" },
+          accountType: {
+            type: "string",
+            enum: [
+              "cash",
+              "checking",
+              "savings",
+              "credit",
+              "other",
+              "virtual",
+              "investment",
+              "receivable",
+              "payable",
+            ],
+            description: "Account type: checking is a bank or debit card account",
+          },
+          currency: { type: "string", description: "New account currency code, e.g. PHP" },
           minimumPayment: { type: "string", description: "Debt minimum monthly payment" },
           currentDate: { type: "string", description: "Trusted current ISO date" },
         },

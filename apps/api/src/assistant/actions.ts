@@ -36,11 +36,18 @@ export interface ActionProposal {
   action?: AssistantAction;
 }
 
-type SourceType = "subscriptions" | "goals" | "debts";
+type SourceType = "subscriptions" | "goals" | "debts" | "accounts";
 
 function sourceFor(kind: AssistantActionToolInput["action"]): SourceType {
   if (kind.endsWith("subscription") || kind === "set_subscription_status") return "subscriptions";
-  return kind.endsWith("goal") ? "goals" : "debts";
+  if (kind.endsWith("goal")) return "goals";
+  if (kind.endsWith("debt")) return "debts";
+  return "accounts";
+}
+
+/** What the account holds in its own currency, as the account list and Adjust balance show it. */
+export function accountBalanceMinor(account: AccountRecord): number {
+  return account.balancesByCurrency?.[account.currency] ?? account.balanceMinor ?? 0;
 }
 
 function reply(
@@ -414,6 +421,92 @@ function proposeDebt(
   });
 }
 
+function proposeAccount(
+  input: AssistantActionToolInput,
+  records: ActionRecords,
+  workspaceCurrency: Currency,
+): ActionProposal {
+  const { action } = input;
+  const active = records.accounts.filter((item) => !item.archived);
+  if (action === "create_account") {
+    const absent = (
+      [
+        ["name", input.name],
+        ["accountType", input.accountType],
+      ] as const
+    )
+      .filter(([, value]) => value === undefined)
+      .map(([field]) => field);
+    if (absent.length > 0) return missing(input, absent);
+    if (active.some((item) => normalizedName(item.name) === normalizedName(input.name!))) {
+      return invalid(input, "An account with that name already exists.");
+    }
+    const currency = input.currency ?? workspaceCurrency;
+    return ready(input, {
+      kind: "create_account",
+      summary: `Add account ${input.name} (${input.accountType}) in ${currency}. Its balance starts at zero; set it afterwards by adjusting the balance.`,
+      input: {
+        name: input.name!,
+        type: input.accountType!,
+        ...(input.currency ? { currency: input.currency } : {}),
+      },
+    });
+  }
+  const target = resolveTarget(input, active);
+  if (isProposal(target)) return target;
+  const base = { targetId: target.id, targetName: target.name };
+  if (action === "archive_account") {
+    if (target.system) return invalid(input, "Permanent accounts cannot be removed.");
+    return ready(input, {
+      kind: "archive_account",
+      ...base,
+      summary: `Archive account ${target.name}. Its past transactions stay in your records.`,
+    });
+  }
+  if (action === "adjust_balance") {
+    if (input.amount === undefined) return missing(input, ["amount"]);
+    const newBalanceMinor = minor(input.amount);
+    const current = accountBalanceMinor(target);
+    if (newBalanceMinor === current) {
+      return {
+        envelope: reply(input, {
+          status: "already_matches",
+          balance: formatMoney(current, target.currency),
+        }),
+      };
+    }
+    const delta = Math.abs(newBalanceMinor - current);
+    return ready(input, {
+      kind: "adjust_balance",
+      ...base,
+      input: { newBalanceMinor },
+      summary: `Set ${target.name} balance from ${formatMoney(current, target.currency)} to ${formatMoney(newBalanceMinor, target.currency)}. This records a ${formatMoney(delta, target.currency)} ${newBalanceMinor > current ? "income" : "expense"} balance adjustment dated today.`,
+    });
+  }
+  // update_account
+  if (input.name === undefined && input.accountType === undefined) {
+    return missing(input, ["a field to change"]);
+  }
+  if (
+    input.name &&
+    active.some(
+      (item) => item.id !== target.id && normalizedName(item.name) === normalizedName(input.name!),
+    )
+  ) {
+    return invalid(input, "An account with that name already exists.");
+  }
+  const parts = [
+    input.name && `name ${input.name}`,
+    input.accountType && `type ${input.accountType}`,
+  ].filter(Boolean);
+  return ready(input, {
+    kind: "update_account",
+    ...base,
+    summary: `Change account ${target.name}: ${parts.join(", ")}`,
+    input: { name: input.name ?? target.name, type: input.accountType ?? target.type },
+  });
+}
+
 /**
  * Resolves what the model asked for against the tenant's own records and builds the proposal.
  * It never writes: the proposal waits in the reply until the user confirms it.
@@ -425,6 +518,7 @@ export function proposeAction(
 ): ActionProposal {
   const source = sourceFor(input.action);
   if (source === "subscriptions") return proposeSubscription(input, records);
+  if (source === "accounts") return proposeAccount(input, records, workspaceCurrency);
   if (source === "goals") return proposeGoal(input, records, workspaceCurrency);
   return proposeDebt(input, records, workspaceCurrency);
 }
@@ -449,7 +543,7 @@ export async function loadAndProposeAction(
   const subscription = source === "subscriptions";
   const [currency, accounts, categories, goals, debts, month] = await Promise.all([
     loadCurrency(env, tenantId),
-    subscription ? stores.accounts.list(env, tenantId) : [],
+    subscription || source === "accounts" ? stores.accounts.list(env, tenantId) : [],
     subscription ? stores.categories.list(env, tenantId) : [],
     source === "goals" ? stores.goals.list(env, tenantId) : [],
     source === "debts" ? stores.debts.list(env, tenantId) : [],

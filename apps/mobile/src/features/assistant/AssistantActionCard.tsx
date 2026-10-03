@@ -17,6 +17,8 @@ const DONE_LABEL: Record<string, string> = {
   update: "Changed",
   set: "Changed",
   delete: "Deleted",
+  archive: "Archived",
+  adjust: "Balance updated",
 };
 
 /** The newest reply that proposed a subscription, goal, or debt change; older ones are replaced. */

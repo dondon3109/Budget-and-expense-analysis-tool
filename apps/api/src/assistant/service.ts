@@ -25,6 +25,8 @@ import {
   type AssistantTransactionDraftRepository,
 } from "../db/assistant-transaction-drafts";
 import { assistantActionRepository } from "../db/assistant-actions";
+import { accountRepository } from "../db/accounts";
+import { categoryRepository } from "../db/categories";
 import { debtRepository } from "../db/debts";
 import { financialGoalRepository } from "../db/goals";
 import { subscriptionRepository } from "../db/subscriptions";
@@ -244,6 +246,9 @@ export function createAssistantService(
     subscriptions: subscriptionRepository,
     goals: financialGoalRepository,
     debts: debtRepository,
+    accounts: accountRepository as AssistantActionDependencies["accounts"],
+    categories: categoryRepository,
+    transactions: transactionRepository,
   },
 ): AssistantService {
   async function requireReadyPreferences(
