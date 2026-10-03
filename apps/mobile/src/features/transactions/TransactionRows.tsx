@@ -2,7 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { resolveCategoryEmoji, type Currency } from "@zoption/shared";
+import { currencies, resolveCategoryEmoji, type Currency } from "@zoption/shared";
 import type { LocalTransactionItem } from "@/db/view-models";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { CategoryBadge, MoneyValue } from "@/ui/components";
@@ -16,8 +16,6 @@ import {
   type TransactionTotals,
   type TransactionTotalsByCurrency,
 } from "./transaction-list-view";
-
-const currencies: Currency[] = ["PHP", "USD"];
 
 export function TotalsValue({
   totals,

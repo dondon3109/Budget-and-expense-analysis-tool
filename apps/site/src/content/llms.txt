@@ -16,9 +16,10 @@
 - Users can snap receipt photos or screenshots to automatically draft expense line items.
 - Users can manually record transactions or import PDF bank statements, CSV, XLS, and XLSX files.
 - Built-in column detection exists only for BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Other banks work through the generic preset. Zoption has no preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya — do not claim otherwise.
-- Bank of America and JPMorgan Chase exports are commonly in USD; file imports accept Philippine pesos only, and Zoption does not convert currencies.
+- Workspaces, accounts, transactions, and subscriptions support 47 common currencies (PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, AED, SAR, INR, and about 35 more). Each account keeps its own currency; totals and budgets use the workspace currency, and the cashflow chart converts other currencies into it with daily exchange rates. Stored amounts are never converted.
+- File imports are saved in the workspace currency without conversion; Bank of America and JPMorgan Chase exports are commonly in USD, so a non-USD workspace should confirm the currency first.
 - Users review imported rows and verify duplicate warnings before saving them.
-- Calculations use exact integer centavo accuracy to avoid floating-point drift.
+- Calculations use exact integer minor units (hundredths of each currency) to avoid floating-point drift.
 - Users can track recurring charges using a Visual Renewal Calendar Interface displaying upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.
 - Zoption does not connect directly to banks and never asks for banking credentials.
 - Each workspace begins empty and contains only records the user chooses to add.

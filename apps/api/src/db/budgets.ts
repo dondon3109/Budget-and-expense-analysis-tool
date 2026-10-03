@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/d1";
 import { budgets, categories, transactions } from "../../../../db/schema";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
+import { loadWorkspaceCurrency } from "./workspace-settings";
 
 export interface BudgetRepository {
   list(env: Bindings, tenantId: string, month: string): Promise<BudgetMonthPlan>;
@@ -27,6 +28,8 @@ export const budgetRepository: BudgetRepository = {
   async list(env, tenantId, month) {
     const db = drizzle(env.DB);
     const end = nextMonth(month);
+    // Limits are in the workspace currency, so only spending in it counts against them.
+    const currency = await loadWorkspaceCurrency(env, tenantId);
     const [categoryRows, budgetRows, spendingRows] = await Promise.all([
       db
         .select({
@@ -59,6 +62,7 @@ export const budgetRepository: BudgetRepository = {
           and(
             eq(transactions.tenantId, tenantId),
             eq(transactions.kind, "expense"),
+            eq(transactions.currency, currency),
             gte(transactions.date, month),
             lt(transactions.date, end),
           ),
@@ -88,7 +92,7 @@ export const budgetRepository: BudgetRepository = {
     );
     return {
       month,
-      currency: "PHP",
+      currency,
       totalLimitMinor,
       totalSpentMinor,
       remainingMinor: totalLimitMinor - totalSpentMinor,

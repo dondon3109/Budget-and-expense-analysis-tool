@@ -6,7 +6,7 @@ import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Card, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
-import type { Currency, DashboardSummary } from "@zoption/shared";
+import { otherCurrenciesWithAmounts, type DashboardSummary } from "@zoption/shared";
 
 import { homeCardStyles, SectionLabel } from "./HomeCardParts";
 
@@ -14,8 +14,8 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const balances = summary.accountBalances;
   const workspaceCurrency = useWorkspaceCurrency();
-  const otherCurrency: Currency = workspaceCurrency === "PHP" ? "USD" : "PHP";
-  const otherMinor = balances?.balancesByCurrency[otherCurrency] ?? 0;
+  const otherBalances = balances?.balancesByCurrency ?? {};
+  const otherCurrencies = otherCurrenciesWithAmounts(otherBalances, workspaceCurrency);
 
   return (
     <Pressable
@@ -35,19 +35,22 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
         </View>
         <View style={{ gap: spacing.xs }}>
           <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
-          {otherMinor !== 0 ? (
-            <View style={styles.usdMeta}>
-              {otherMinor > 0 ? (
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
-              ) : null}
-              <MoneyValue
-                amountMinor={otherMinor}
-                currency={otherCurrency}
-                tone={otherMinor < 0 ? "expense" : "default"}
-                style={styles.metaMoney}
-              />
-            </View>
-          ) : null}
+          {otherCurrencies.map((currency) => {
+            const otherMinor = otherBalances[currency] ?? 0;
+            return (
+              <View key={currency} style={styles.usdMeta}>
+                {otherMinor > 0 ? (
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
+                ) : null}
+                <MoneyValue
+                  amountMinor={otherMinor}
+                  currency={currency}
+                  tone={otherMinor < 0 ? "expense" : "default"}
+                  style={styles.metaMoney}
+                />
+              </View>
+            );
+          })}
         </View>
       </Card>
     </Pressable>

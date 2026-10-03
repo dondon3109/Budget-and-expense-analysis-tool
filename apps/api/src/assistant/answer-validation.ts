@@ -1,4 +1,10 @@
-import type { AssistantSourceMetadata, AssistantToolResultEnvelope } from "@zoption/shared";
+import {
+  currencies,
+  isCurrency,
+  type AssistantSourceMetadata,
+  type AssistantToolResultEnvelope,
+  type Currency,
+} from "@zoption/shared";
 
 import type { AssistantToolExecution } from "./tools";
 import type { AssistantTurnPolicy, RequiredToolGroup } from "./turn-policy";
@@ -124,31 +130,48 @@ function normalizedNumber(token: string): string {
 // centavo word. Plain integers in ordinary prose ("3 buckets", the 50/30/20 rule)
 // are counts or ratios, and treating them as amounts would refuse general
 // education prose the tools never produced a figure for.
-const CURRENCY_BEFORE = /(?:\bPHP|\bUSD|\bpesos?|\bdollars?|\bcentavos?|\bcents?|₱)\s*-?\s*$/i;
-const CURRENCY_AFTER = /^\s*-?\s*(?:\bPHP|\bUSD|\bpesos?|\bdollars?|\bcentavos?|\bcents?|₱)/i;
+// Codes match only in capitals, so prose such as "try 3" or "pen 2" is not read as money.
+const CURRENCY_CODES = currencies.join("|");
+const CODE_BEFORE = new RegExp(`\\b(${CURRENCY_CODES})\\s*-?\\s*$`);
+const CODE_AFTER = new RegExp(`^\\s*-?\\s*(${CURRENCY_CODES})\\b`);
+const WORD_BEFORE = /(\bpesos?|\bdollars?|\bcentavos?|\bcents?|₱)\s*-?\s*$/i;
+const WORD_AFTER = /^\s*-?\s*(pesos?\b|dollars?\b|centavos?\b|cents?\b|₱)/i;
 
 function isMoneyToken(content: string, token: string, index: number): boolean {
   if (token.includes(".")) return true;
   const before = content.slice(Math.max(0, index - 16), index);
   const after = content.slice(index + token.length, index + token.length + 16);
-  return CURRENCY_BEFORE.test(before) || CURRENCY_AFTER.test(after);
+  return (
+    CODE_BEFORE.test(before) ||
+    CODE_AFTER.test(after) ||
+    WORD_BEFORE.test(before) ||
+    WORD_AFTER.test(after)
+  );
 }
 
 // Tool results label every amount with its currency code ("USD 50.00"). An amount the
-// answer names in one currency but the tools only gave in the other is a relabel, even
+// answer names in one currency but the tools only gave in another is a relabel, even
 // though its number is grounded. Centavo and cent counts are minor units, not labels.
-const FORMATTED_AMOUNT_PATTERN = /\b(PHP|USD) (-?\d[\d,]*(?:\.\d+)?)/g;
-const PHP_BEFORE = /(?:\bPHP|\bpesos?|₱)\s*-?\s*$/i;
-const PHP_AFTER = /^\s*-?\s*(?:PHP\b|pesos?\b)/i;
-const USD_BEFORE = /(?:\bUSD|\bdollars?)\s*-?\s*$/i;
-const USD_AFTER = /^\s*-?\s*(?:USD\b|dollars?\b)/i;
+// "Pesos" and "dollars" read as PHP and USD, the currencies those words meant here first.
+const FORMATTED_AMOUNT_PATTERN = new RegExp(
+  `\\b(${CURRENCY_CODES}) (-?\\d[\\d,]*(?:\\.\\d+)?)`,
+  "g",
+);
 
-function statedCurrency(content: string, token: string, index: number): "PHP" | "USD" | null {
+function currencyForWord(word: string): Currency | null {
+  const lower = word.toLowerCase();
+  if (lower === "₱" || lower.startsWith("peso")) return "PHP";
+  if (lower.startsWith("dollar")) return "USD";
+  return null;
+}
+
+function statedCurrency(content: string, token: string, index: number): Currency | null {
   const before = content.slice(Math.max(0, index - 16), index);
   const after = content.slice(index + token.length, index + token.length + 16);
-  if (PHP_BEFORE.test(before) || PHP_AFTER.test(after)) return "PHP";
-  if (USD_BEFORE.test(before) || USD_AFTER.test(after)) return "USD";
-  return null;
+  const code = CODE_BEFORE.exec(before)?.[1] ?? CODE_AFTER.exec(after)?.[1];
+  if (code && isCurrency(code)) return code;
+  const word = WORD_BEFORE.exec(before)?.[1] ?? WORD_AFTER.exec(after)?.[1];
+  return word ? currencyForWord(word) : null;
 }
 
 export function toolGroupForName(name: string): RequiredToolGroup | undefined {
@@ -413,7 +436,7 @@ export function sanitizedAuditJson(value: unknown): string {
 const REPAIR_GUIDANCE: ReadonlyArray<readonly [string[], string]> = [
   [
     ["unsupported_currency_format", "unsupported_money", "currency_mismatch"],
-    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 or USD 12.00 — never ₱, $, a number that is not in the tool results, or one currency's code on the other's amount.",
+    "Copy money amounts exactly as shown, e.g. PHP 1,234.56 or USD 12.00 — never ₱, $, a number that is not in the tool results, or one currency's code on another's amount.",
   ],
   [
     ["unsupported_percentage", "unsupported_numeric_claim", "unsupported_date"],
@@ -494,7 +517,7 @@ export function deterministicPeriodSummaryAnswer(
       ? (summary.result.data as Record<string, unknown>)
       : null;
   const expenses = data?.["expenses"];
-  if (typeof expenses !== "string" || !/^(?:PHP|USD) -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
+  if (typeof expenses !== "string" || !/^[A-Z]{3} -?\d{1,3}(?:,\d{3})*\.\d{2}$/.test(expenses)) {
     return null;
   }
   const args =
@@ -504,13 +527,12 @@ export function deterministicPeriodSummaryAnswer(
   const accountName = args?.["accountName"];
   const qualifier =
     typeof accountName === "string" && accountName.trim() ? ` for ${accountName.trim()}` : "";
-  // A total that left out the other currency must say so, as the prompt requires of the model.
+  // A total that left out other currencies must say so, as the prompt requires of the model.
   const excludedOtherCurrency = summary.result.dataQuality.signals.some(
     (signal) => signal.code === "other_currency_excluded",
   );
-  const otherCurrency = expenses.startsWith("USD") ? "PHP" : "USD";
   const disclosure = excludedOtherCurrency
-    ? ` Transactions in ${otherCurrency} are not included.`
+    ? " Transactions in other currencies are not included."
     : "";
   const content = `From ${policy.resolvedPeriod.from} to ${policy.resolvedPeriod.to}, your recorded expenses${qualifier} were ${expenses}.${disclosure}`;
   return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   defaultTransactionCategory,
+  isCurrency,
   matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
@@ -192,7 +193,7 @@ export function TransactionEditorScreen() {
       : (paramAmount ?? "");
     const initialCurrency =
       existing?.currency ??
-      (paramCurrency === "PHP" || paramCurrency === "USD"
+      (isCurrency(paramCurrency)
         ? paramCurrency
         : (account?.currency ?? useWorkspaceCurrencyStore.getState().currency));
     const initialNotes = existing ? (existing.notes ?? "") : paramRef ? `Ref: ${paramRef}` : "";

@@ -1,11 +1,13 @@
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   normalizeImportDate,
+  type Currency,
   type ReceiptDraft,
   type ReceiptPreferences,
 } from "@zoption/shared";
 
 import { consumeAiUsage } from "../db/billing";
+import { loadWorkspaceCurrency } from "../db/workspace-settings";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -219,7 +221,12 @@ export function createReceiptService(
     };
   }
 
-  function normalizeDraft(env: Bindings, candidate: ReceiptVisionCandidate): ReceiptDraft {
+  /** Receipt totals are read in the workspace currency's hundredths, the only unit stored. */
+  function normalizeDraft(
+    env: Bindings,
+    candidate: ReceiptVisionCandidate,
+    currency: Currency,
+  ): ReceiptDraft {
     const merchant = candidate.merchant?.trim() ?? "";
     if (!merchant) {
       throw new HttpError(
@@ -246,7 +253,7 @@ export function createReceiptService(
       merchant,
       date: normalizeImportDate(candidate.date?.trim() ?? "") ?? currentDateInTimeZone(env),
       amountMinor,
-      currency: "PHP",
+      currency,
       kind,
       ...(candidate.categoryName?.trim()
         ? { categoryName: candidate.categoryName.trim().slice(0, 80) }
@@ -268,8 +275,11 @@ export function createReceiptService(
       // Receipt vision spends one billable provider call, drawn from the shared monthly pool.
       await consumeAiUsage(env, tenantId);
       try {
-        const candidate = await provider.extract(env, image);
-        return normalizeDraft(env, candidate);
+        const [candidate, currency] = await Promise.all([
+          provider.extract(env, image),
+          loadWorkspaceCurrency(env, tenantId),
+        ]);
+        return normalizeDraft(env, candidate, currency);
       } catch (error) {
         return mapProviderError(error, reporter);
       }

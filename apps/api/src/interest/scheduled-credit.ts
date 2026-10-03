@@ -16,7 +16,7 @@ interface InterestDueAccount {
   id: string;
   tenantId: string;
   /** Interest accrues on, and is credited in, the account's own currency. */
-  currency: "PHP" | "USD";
+  currency: string;
   annualRateBasisPoints: number;
   interestFrequency: "daily" | "monthly" | "yearly";
   interestPayDay: number | null;
@@ -210,7 +210,7 @@ export async function creditDueInterest(
       categoryId,
       today,
       amount,
-      account.currency === "USD" ? "USD" : "PHP",
+      account.currency,
       fingerprint,
     );
 

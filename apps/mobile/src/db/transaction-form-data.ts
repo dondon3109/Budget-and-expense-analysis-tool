@@ -1,4 +1,4 @@
-import { accountTypes, resolveCategoryEmoji } from "@zoption/shared";
+import { accountTypes, currencies, resolveCategoryEmoji } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
 
@@ -8,7 +8,7 @@ const localAccountOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(accountTypes),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   pending: z
     .number()
     .int()
@@ -43,7 +43,7 @@ const editableTransactionRowSchema = z.object({
   date: z.string(),
   description: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   kind: z.enum(["income", "expense", "transfer"]),
   notes: z.string().nullable(),
   transfer_group_id: z.string().nullable(),

@@ -1,28 +1,28 @@
 import { Text, type TextProps } from "react-native";
 
-import { currencyMetadata, type Currency } from "@zoption/shared";
+import { currencyFractionDigits, currencyMetadata, type Currency } from "@zoption/shared";
 import { typography } from "@/ui/tokens";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
+/** Two decimals, except none for a whole amount in a zero-decimal currency such as JPY. */
 export function formatMoneyMinor(amountMinor: number, currency: Currency): string {
-  const metadata = currencyMetadata[currency];
-  return new Intl.NumberFormat(metadata.locale, {
+  const digits = currencyFractionDigits(currency, amountMinor);
+  return new Intl.NumberFormat(currencyMetadata[currency].locale, {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(amountMinor / 100);
 }
 
 export function moneyAccessibilityLabel(amountMinor: number, currency: Currency): string {
-  const absolute = Math.abs(amountMinor) / 100;
+  const digits = currencyFractionDigits(currency, amountMinor);
   const formatted = new Intl.NumberFormat(currencyMetadata[currency].locale, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(absolute);
-  const unit = currency === "PHP" ? "Philippine pesos" : "US dollars";
-  return `${amountMinor < 0 ? "negative " : ""}${formatted} ${unit}`;
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(Math.abs(amountMinor) / 100);
+  return `${amountMinor < 0 ? "negative " : ""}${formatted} ${currencyMetadata[currency].plural}`;
 }
 
 /** Without `currency` the amount is labeled in the workspace currency. */

@@ -334,7 +334,7 @@ const CHANGELOG_LAST_MODIFIED = "2026-10-03";
 const TERMS_LAST_MODIFIED = "2026-10-01";
 const PRIVACY_LAST_MODIFIED = "2026-10-03";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-10-03";
-const IMPORT_LAST_MODIFIED = "2026-09-30";
+const IMPORT_LAST_MODIFIED = "2026-10-03";
 const TOOLS_LAST_MODIFIED = "2026-09-29";
 // The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
 // SoftwareApplication nodes; this drives the page's <lastmod> and WebPage dateModified.

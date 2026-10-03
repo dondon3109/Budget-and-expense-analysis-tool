@@ -1,4 +1,4 @@
-import type { Currency } from "./types";
+import { currencies, isCurrency, type Currency } from "./types";
 
 export type SupportedChannel =
   "gcash" | "maya" | "bpi" | "bdo" | "unionbank" | "shopeepay" | "grabpay" | "generic";
@@ -279,10 +279,10 @@ export function extractAccountSuffix(text: string): string | undefined {
 }
 
 export function inferCurrency(text: string): Currency {
-  if (/(?:\$|\bUSD\b)/i.test(text) && !/(?:PHP|\u20B1)/i.test(text)) {
-    return "USD";
-  }
-  return "PHP";
+  const code = new RegExp(`\\b(${currencies.join("|")})\\b`).exec(text)?.[1]; // capitals only
+  if (isCurrency(code)) return code;
+  if (/\$/.test(text) && !/\u20B1/.test(text)) return "USD";
+  return "PHP"; // Philippine bank messages name no currency, so that is the default.
 }
 
 function extractReferenceNumber(text: string): string | undefined {

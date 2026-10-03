@@ -1,4 +1,4 @@
-import type { Currency } from "@zoption/shared";
+import { isCurrency, type Currency } from "@zoption/shared";
 
 /**
  * The workspace currency that `formatMoney` falls back to for amounts with no currency of their
@@ -33,7 +33,7 @@ export function workspaceCurrencyStorageKey(userId: string): string {
 export function rememberedWorkspaceCurrency(userId: string): Currency | undefined {
   try {
     const stored = window.localStorage.getItem(workspaceCurrencyStorageKey(userId));
-    return stored === "PHP" || stored === "USD" ? stored : undefined;
+    return isCurrency(stored) ? stored : undefined;
   } catch {
     return undefined;
   }

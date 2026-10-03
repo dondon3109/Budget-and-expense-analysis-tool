@@ -75,8 +75,7 @@ function dashboardAccountFromRecord(
     type: account.type,
     currency: account.currency,
     balanceMinor: current?.balanceMinor ?? account.balanceMinor ?? 0,
-    balancesByCurrency: current?.balancesByCurrency ??
-      account.balancesByCurrency ?? { PHP: 0, USD: 0 },
+    balancesByCurrency: current?.balancesByCurrency ?? account.balancesByCurrency ?? {},
     archived: account.archived,
     system: account.system ?? false,
     interest: account.interest,
@@ -158,7 +157,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
         id,
         currency: input.currency ?? workspaceCurrency(),
         balanceMinor: 0,
-        balancesByCurrency: { PHP: 0, USD: 0 },
+        balancesByCurrency: {},
         archived: false,
         system: false,
       };

@@ -6,7 +6,6 @@ export interface MigrationTransaction {
 
 export interface MigrationDatabase {
   getFirstAsync(source: string): Promise<{ user_version: number } | null>;
-  execAsync(source: string): Promise<void>;
   withTransactionAsync(task: (transaction: MigrationTransaction) => Promise<void>): Promise<void>;
 }
 
@@ -14,12 +13,6 @@ interface Migration {
   version: number;
   name: string;
   sql: string;
-  /**
-   * Set when the migration drops and recreates a table other tables reference. SQLite
-   * only honors `PRAGMA foreign_keys` outside a transaction, so the runner turns
-   * enforcement off around it; the rows are copied 1:1, so references stay valid.
-   */
-  rebuildsReferencedTable?: true;
 }
 
 export const LOCAL_SCHEMA_VERSION = 15;
@@ -712,14 +705,16 @@ export const migrations: readonly Migration[] = [
   },
   {
     version: 14,
-    name: "more_account_types",
-    rebuildsReferencedTable: true,
+    // Accounts and transactions carried a PHP/USD CHECK; every supported currency is validated
+    // by the shared schemas instead. SQLite cannot drop a CHECK, so both tables are rebuilt
+    // (the child first, so no foreign key ever points at a dropped table).
+    name: "multi_currency",
     sql: `
       CREATE TABLE accounts_v14 (
         id TEXT PRIMARY KEY NOT NULL,
         name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('cash', 'checking', 'savings', 'credit', 'other', 'virtual', 'investment', 'receivable', 'payable')),
-        currency TEXT NOT NULL CHECK (currency IN ('PHP', 'USD')),
+        type TEXT NOT NULL CHECK (type IN ('cash', 'checking', 'savings', 'credit', 'other')),
+        currency TEXT NOT NULL,
         balance_minor INTEGER,
         balance_as_of TEXT,
         archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
@@ -731,26 +726,105 @@ export const migrations: readonly Migration[] = [
         sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
       );
 
-      INSERT INTO accounts_v14 (
-        id, name, type, currency, balance_minor, balance_as_of, archived, system,
-        interest_json, server_revision, server_updated_at, deleted_at, sync_state
-      )
-      SELECT
-        id, name, type, currency, balance_minor, balance_as_of, archived, system,
-        interest_json, server_revision, server_updated_at, deleted_at, sync_state
-      FROM accounts;
+      CREATE TABLE transactions_v14 (
+        id TEXT PRIMARY KEY NOT NULL,
+        account_id TEXT REFERENCES accounts_v14(id),
+        category_id TEXT NOT NULL REFERENCES categories(id),
+        date TEXT NOT NULL,
+        description TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'transfer')),
+        notes TEXT,
+        transfer_group_id TEXT,
+        from_account_id TEXT REFERENCES accounts_v14(id),
+        to_account_id TEXT REFERENCES accounts_v14(id),
+        transfer_fee_minor INTEGER CHECK (transfer_fee_minor IS NULL OR transfer_fee_minor >= 0),
+        import_fingerprint TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
 
+      INSERT INTO accounts_v14 SELECT * FROM accounts;
+      INSERT INTO transactions_v14 SELECT * FROM transactions;
+
+      DROP TABLE transactions;
       DROP TABLE accounts;
+
       ALTER TABLE accounts_v14 RENAME TO accounts;
+      ALTER TABLE transactions_v14 RENAME TO transactions;
+
+      CREATE INDEX transactions_date_idx ON transactions(date DESC, id);
+      CREATE INDEX transactions_category_idx ON transactions(category_id, date DESC);
+      CREATE INDEX transactions_account_idx ON transactions(account_id, date DESC);
+      CREATE UNIQUE INDEX transactions_import_fingerprint_unique
+        ON transactions(import_fingerprint)
+        WHERE import_fingerprint IS NOT NULL;
     `,
   },
   {
     version: 15,
-    name: "transaction_debt_links",
-    // The debt an expense, or a transfer's sending leg, pays down. No foreign key: the server
-    // owns debt balances and clears the link when a debt is deleted.
+    // Account types are validated by the shared schemas, like currencies since version 14, so the
+    // type CHECK goes and a new type needs no rebuild. Transactions gain debt_id, the debt an
+    // expense or a transfer's sending leg pays down; it has no foreign key because the server
+    // owns debt balances and clears the link when a debt is deleted. Rebuilt child first, as in 14.
+    name: "account_types_and_debt_links",
     sql: `
-      ALTER TABLE transactions ADD COLUMN debt_id TEXT;
+      CREATE TABLE accounts_v15 (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        currency TEXT NOT NULL,
+        balance_minor INTEGER,
+        balance_as_of TEXT,
+        archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
+        system INTEGER NOT NULL DEFAULT 0 CHECK (system IN (0, 1)),
+        interest_json TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
+
+      CREATE TABLE transactions_v15 (
+        id TEXT PRIMARY KEY NOT NULL,
+        account_id TEXT REFERENCES accounts_v15(id),
+        category_id TEXT NOT NULL REFERENCES categories(id),
+        date TEXT NOT NULL,
+        description TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'transfer')),
+        notes TEXT,
+        transfer_group_id TEXT,
+        from_account_id TEXT REFERENCES accounts_v15(id),
+        to_account_id TEXT REFERENCES accounts_v15(id),
+        transfer_fee_minor INTEGER CHECK (transfer_fee_minor IS NULL OR transfer_fee_minor >= 0),
+        import_fingerprint TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted')),
+        debt_id TEXT
+      );
+
+      INSERT INTO accounts_v15 SELECT * FROM accounts;
+      INSERT INTO transactions_v15 SELECT *, NULL FROM transactions;
+
+      DROP TABLE transactions;
+      DROP TABLE accounts;
+
+      ALTER TABLE accounts_v15 RENAME TO accounts;
+      ALTER TABLE transactions_v15 RENAME TO transactions;
+
+      CREATE INDEX transactions_date_idx ON transactions(date DESC, id);
+      CREATE INDEX transactions_category_idx ON transactions(category_id, date DESC);
+      CREATE INDEX transactions_account_idx ON transactions(account_id, date DESC);
+      CREATE UNIQUE INDEX transactions_import_fingerprint_unique
+        ON transactions(import_fingerprint)
+        WHERE import_fingerprint IS NOT NULL;
     `,
   },
 ] as const;
@@ -764,19 +838,13 @@ export async function applyLocalMigrations(database: MigrationDatabase): Promise
 
   for (const migration of migrations) {
     if (migration.version <= currentVersion) continue;
-    const disableForeignKeys = migration.rebuildsReferencedTable === true;
-    if (disableForeignKeys) await database.execAsync("PRAGMA foreign_keys = OFF");
-    try {
-      await database.withTransactionAsync(async (transaction) => {
-        await transaction.execAsync(migration.sql);
-        await transaction.execAsync(`PRAGMA user_version = ${migration.version}`);
-        await transaction.execAsync(
-          `INSERT INTO workspace_metadata (key, value) VALUES ('migration:${migration.version}', '${migration.name}')`,
-        );
-      });
-    } finally {
-      if (disableForeignKeys) await database.execAsync("PRAGMA foreign_keys = ON");
-    }
+    await database.withTransactionAsync(async (transaction) => {
+      await transaction.execAsync(migration.sql);
+      await transaction.execAsync(`PRAGMA user_version = ${migration.version}`);
+      await transaction.execAsync(
+        `INSERT INTO workspace_metadata (key, value) VALUES ('migration:${migration.version}', '${migration.name}')`,
+      );
+    });
   }
   return LOCAL_SCHEMA_VERSION;
 }
@@ -784,7 +852,6 @@ export async function applyLocalMigrations(database: MigrationDatabase): Promise
 export function asMigrationDatabase(database: SQLiteDatabase): MigrationDatabase {
   return {
     getFirstAsync: (source) => database.getFirstAsync<{ user_version: number }>(source),
-    execAsync: (source) => database.execAsync(source),
     // Expo's exclusive helper uses a separate native connection. A regular
     // transaction stays on this already-keyed SQLCipher connection; startup is
     // serialized and the database is not exposed until migrations finish.

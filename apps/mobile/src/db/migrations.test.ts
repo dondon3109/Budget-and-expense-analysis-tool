@@ -13,7 +13,6 @@ function nativeMigrationDatabase(native: DatabaseSync): MigrationDatabase {
   return {
     getFirstAsync: async (source) =>
       (native.prepare(source).get() as { user_version: number } | undefined) ?? null,
-    execAsync: async (source) => native.exec(source),
     withTransactionAsync: async (task) => {
       native.exec("BEGIN IMMEDIATE");
       try {
@@ -32,7 +31,6 @@ describe("local SQLCipher migrations", () => {
     const statements: string[] = [];
     const database = {
       getFirstAsync: jest.fn(() => Promise.resolve({ user_version: 0 })),
-      execAsync: jest.fn(() => Promise.resolve()),
       withTransactionAsync: jest.fn(
         async (
           task: (transaction: { execAsync(source: string): Promise<void> }) => Promise<void>,
@@ -91,7 +89,6 @@ describe("local SQLCipher migrations", () => {
   it("does not mutate a current workspace", async () => {
     const database = {
       getFirstAsync: jest.fn(() => Promise.resolve({ user_version: LOCAL_SCHEMA_VERSION })),
-      execAsync: jest.fn(),
       withTransactionAsync: jest.fn(),
     };
     await expect(applyLocalMigrations(database)).resolves.toBe(LOCAL_SCHEMA_VERSION);
@@ -101,7 +98,6 @@ describe("local SQLCipher migrations", () => {
   it("fails closed for a database from a newer application", async () => {
     const database = {
       getFirstAsync: jest.fn(() => Promise.resolve({ user_version: LOCAL_SCHEMA_VERSION + 1 })),
-      execAsync: jest.fn(),
       withTransactionAsync: jest.fn(),
     };
     await expect(applyLocalMigrations(database)).rejects.toThrow("newer Zoption version");
@@ -111,7 +107,6 @@ describe("local SQLCipher migrations", () => {
   it("propagates migration failure without advancing outside the transaction", async () => {
     const database = {
       getFirstAsync: jest.fn(() => Promise.resolve({ user_version: 0 })),
-      execAsync: jest.fn(),
       withTransactionAsync: jest.fn(
         async (
           task: (transaction: { execAsync(source: string): Promise<void> }) => Promise<void>,
@@ -123,13 +118,13 @@ describe("local SQLCipher migrations", () => {
     await expect(applyLocalMigrations(database)).rejects.toThrow("disk full");
   });
 
-  it("widens account types while transactions keep referencing their accounts", async () => {
+  it("widens account types and adds debt links while transactions keep their accounts", async () => {
     const native = new DatabaseSync(":memory:");
     native.exec("PRAGMA foreign_keys = ON");
-    for (const migration of migrations.filter((entry) => entry.version <= 13)) {
+    for (const migration of migrations.filter((entry) => entry.version <= 14)) {
       native.exec(migration.sql);
     }
-    native.exec("PRAGMA user_version = 13");
+    native.exec("PRAGMA user_version = 14");
     native.exec(`
       INSERT INTO accounts (id, name, type, currency) VALUES ('a1', 'Wallet', 'cash', 'PHP');
       INSERT INTO categories (id, name, kind, color, origin, required_plan)
@@ -145,8 +140,11 @@ describe("local SQLCipher migrations", () => {
     native.exec(
       "INSERT INTO accounts (id, name, type, currency) VALUES ('a2', 'Loan', 'payable', 'PHP')",
     );
+    expect(native.prepare("SELECT account_id, debt_id FROM transactions").get()).toEqual({
+      account_id: "a1",
+      debt_id: null,
+    });
     expect(native.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
-    expect(native.prepare("PRAGMA foreign_keys").get()).toEqual({ foreign_keys: 1 });
     expect(() =>
       native.exec(`INSERT INTO transactions (id, account_id, category_id, date, description, amount_minor, currency, kind)
         VALUES ('t2', 'missing', 'c1', '2026-10-01', 'x', -1, 'PHP', 'expense')`),

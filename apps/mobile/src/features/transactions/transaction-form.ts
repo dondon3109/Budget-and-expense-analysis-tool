@@ -5,6 +5,7 @@ import {
   parseAmountToMinor,
   transactionInputSchema,
   type TransactionInput,
+  type Currency,
 } from "@zoption/shared";
 
 export type TransactionFormKind = "income" | "expense" | "transfer";
@@ -18,7 +19,7 @@ export interface TransactionFormValues {
   description: string;
   amount: string;
   transferFee: string;
-  currency: "PHP" | "USD";
+  currency: Currency;
   notes: string;
   /** The debt this entry pays; empty when none is linked or the entry cannot pay one. */
   debtId: string;

@@ -1,5 +1,10 @@
-import { assistantTransactionDraftSchema, goalConfigFor } from "@zoption/shared";
+import {
+  assistantTransactionDraftSchema,
+  goalConfigFor,
+  otherCurrenciesWithAmounts,
+} from "@zoption/shared";
 import type {
+  Currency,
   PrimaryGoal,
   AssistantMessage,
   AssistantSourceMetadata,
@@ -22,6 +27,7 @@ import {
 import { Fragment, useEffect, useRef } from "react";
 
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
 import "./AssistantTransactionDraft.css";
 
@@ -282,8 +288,8 @@ function AssistantTransactionDraftCard({
   );
 }
 
-function phpAmountParts(amountMinor: number) {
-  return formatMoneyParts(amountMinor, "PHP").map((part, index) =>
+function amountParts(amountMinor: number, currency: Currency) {
+  return formatMoneyParts(amountMinor, currency).map((part, index) =>
     part.type === "currency" ? (
       <span className="assistant-fee-currency" key={`${part.type}-${index}`}>
         {part.value}
@@ -301,7 +307,9 @@ function FeeInsightWelcome({
   assistantName: string;
   insight: TransferFeeInsight;
 }) {
-  const hasUsdFees = insight.feesByCurrency.USD > 0;
+  // Fees lead with the workspace currency; fees paid in other currencies follow.
+  const baseCurrency = workspaceCurrency();
+  const otherFeeCurrencies = otherCurrenciesWithAmounts(insight.feesByCurrency, baseCurrency);
   const transferNoun = insight.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
   const weeklyLine =
     insight.totalTransfers > 0 && insight.recentAverageTransfersPerWeek > 0
@@ -325,13 +333,15 @@ function FeeInsightWelcome({
         </div>
         <p>
           Transfer fees are easy to miss amid your income and expenses. Based on your records
-          you&apos;ve paid <strong>{phpAmountParts(insight.feesByCurrency.PHP)}</strong>
-          {hasUsdFees && (
-            <>
+          you&apos;ve paid{" "}
+          <strong>{amountParts(insight.feesByCurrency[baseCurrency] ?? 0, baseCurrency)}</strong>
+          {otherFeeCurrencies.map((currency) => (
+            <Fragment key={currency}>
               {" "}
-              (<strong>{formatMoney(insight.feesByCurrency.USD, "USD")}</strong> USD)
-            </>
-          )}{" "}
+              (<strong>{formatMoney(insight.feesByCurrency[currency] ?? 0, currency)}</strong>{" "}
+              {currency})
+            </Fragment>
+          ))}{" "}
           in transfer fees across <strong>{insight.totalFeeChargedTransfers}</strong> fee-charged{" "}
           {transferNoun}.{weeklyLine}
           {adviceLine}

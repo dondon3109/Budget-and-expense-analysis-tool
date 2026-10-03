@@ -2,6 +2,7 @@ import {
   latestDueSubscriptionBillingDate,
   manilaDate,
   monthlySubscriptionCost,
+  isCurrency,
   normalizeSignedAmount,
   subscriptionBillingDateForMonth,
   type Currency,
@@ -22,9 +23,9 @@ import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { loadWorkspaceCurrency } from "./workspace-settings";
 
-/** Rows only ever hold PHP or USD (a CHECK-free text column, so narrow on read). */
+/** A CHECK-free text column, so narrow on read; PHP is what a row meant before currencies. */
 function storedCurrency(value: string): Currency {
-  return value === "USD" ? "USD" : "PHP";
+  return isCurrency(value) ? value : "PHP";
 }
 
 export interface SubscriptionRepository {

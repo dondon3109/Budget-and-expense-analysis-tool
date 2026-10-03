@@ -35,7 +35,7 @@ describe("workspace settings api", () => {
   });
 
   it("rejects an unknown currency or extra fields from the server", async () => {
-    for (const body of [{ currency: "EUR" }, { currency: "PHP", extra: true }, {}]) {
+    for (const body of [{ currency: "XAU" }, { currency: "PHP", extra: true }, {}]) {
       const fetchImpl = jest.fn(() => Promise.resolve(jsonResponse(body)));
       await expect(getWorkspaceSettings({ accessToken: "token", fetchImpl })).rejects.toThrow();
     }

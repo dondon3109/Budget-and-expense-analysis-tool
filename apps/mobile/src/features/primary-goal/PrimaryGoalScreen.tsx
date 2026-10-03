@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Text } from "react-native";
 
 import { markGoalShown } from "@/api/goal-profile";
@@ -19,6 +19,7 @@ export function PrimaryGoalScreen() {
   const session = useSessionSnapshot();
   const profile = useGoalProfileStore((state) => state.profile);
   const actions = useGoalActions();
+  const [thanked, setThanked] = useState(false);
 
   useEffect(() => {
     // Best effort: the server records one "shown" row per workspace.
@@ -29,12 +30,25 @@ export function PrimaryGoalScreen() {
   }, [session]);
 
   const choose = async (choice: GoalChoice) => {
-    if (await actions.save(choice)) router.back();
+    if (await actions.save(choice)) setThanked(true);
   };
   const skip = async () => {
     await actions.skip();
     router.back();
   };
+
+  // Only a saved answer is thanked: a failed save stays on the picker, and Skip just leaves.
+  if (thanked) {
+    return (
+      <Screen title="Thank you!">
+        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+          Thanks for taking a moment to tell us. We&apos;ve set Zoption up around what matters to
+          you.
+        </Text>
+        <Button onPress={() => router.back()}>Continue</Button>
+      </Screen>
+    );
+  }
 
   return (
     <Screen title="What brings you to Zoption?">
@@ -42,7 +56,8 @@ export function PrimaryGoalScreen() {
         So we can set up the right starting point for you.
       </Text>
       <GoalChoices
-        goal={profile?.goal ?? null}
+        goals={profile?.goals ?? []}
+        confirmLabel="Continue"
         otherText={profile?.otherText ?? null}
         disabled={actions.busy}
         onChoose={(choice) => void choose(choice)}

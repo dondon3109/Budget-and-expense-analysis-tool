@@ -9,6 +9,7 @@ import {
   parseAmountToMinor,
   preferredTransactionAccount,
   transactionInputSchema,
+  type Currency,
 } from "@zoption/shared";
 
 import {
@@ -350,7 +351,7 @@ function BalanceDeltaPreview({
 }: {
   currentBalanceMinor: number;
   newBalanceMinor: number;
-  currency: "PHP" | "USD";
+  currency: Currency;
 }) {
   const theme = useZoptionTheme();
   const preview = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor);

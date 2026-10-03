@@ -5,7 +5,6 @@ import {
   index,
   integer,
   primaryKey,
-  real,
   sqliteTable,
   text,
   uniqueIndex,
@@ -963,17 +962,6 @@ export const rateLimits = sqliteTable(
   (table) => [index("rate_limits_expiry_idx").on(table.expiresAt)],
 );
 
-export const fxRates = sqliteTable(
-  "fx_rates",
-  {
-    date: text("date").primaryKey(),
-    usdToPhp: real("usd_to_php").notNull(),
-    source: text("source").notNull(),
-    fetchedAt: text("fetched_at").notNull(),
-  },
-  (table) => [index("fx_rates_fetched_at_idx").on(table.fetchedAt)],
-);
-
 export const bugReports = sqliteTable(
   "bug_reports",
   {
@@ -1079,3 +1067,4 @@ export const customerReviews = sqliteTable(
 );
 
 export * from "./schema-providers";
+export * from "./schema-fx";

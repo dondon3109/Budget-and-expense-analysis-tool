@@ -140,9 +140,8 @@ export function SafeToSpendHero({
       ) : null}
       {excludedCount > 0 ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {excludedCount} {excludedCount === 1 ? "plan" : "plans"} billed in{" "}
-          {currency === "PHP" ? "USD" : "PHP"} {excludedCount === 1 ? "isn't" : "aren't"} counted
-          here.
+          {excludedCount} {excludedCount === 1 ? "plan" : "plans"} billed in another currency{" "}
+          {excludedCount === 1 ? "isn't" : "aren't"} counted here.
         </Text>
       ) : null}
     </Card>

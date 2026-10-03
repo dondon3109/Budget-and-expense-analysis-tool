@@ -123,7 +123,7 @@ describe("CashflowForecastCard", () => {
     expect(screen.getByText("Netflix")).toBeTruthy();
     expect(screen.queryByText("Figma")).toBeNull();
     expect(
-      screen.getByText("1 plan billed in USD isn't included in this PHP forecast."),
+      screen.getByText("1 plan billed in another currency isn't included in this PHP forecast."),
     ).toBeTruthy();
   });
 });

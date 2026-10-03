@@ -1,5 +1,5 @@
 import * as Notifications from "expo-notifications";
-import { router, useRootNavigationState } from "expo-router";
+import { router, useRootNavigationState, type Href } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
@@ -22,7 +22,7 @@ export const DAILY_REMINDERS = [
 const DAILY_REMINDER_CHANNEL_ID = "daily-reminder";
 
 /** Where a tap on the reminder lands: the new transaction editor. */
-const DAILY_REMINDER_ROUTE = "/(app)/transaction";
+const DAILY_REMINDER_ROUTE: Href = "/(app)/transaction";
 
 export type DailyReminderResult = "scheduled" | "off" | "denied";
 

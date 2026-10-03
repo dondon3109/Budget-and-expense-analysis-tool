@@ -1,4 +1,5 @@
 import {
+  addToCurrencyTotal,
   countsAsIncome,
   type CalendarEventInput,
   type CalendarEventMonth,
@@ -57,8 +58,8 @@ function emptyCalendarDay(): CalendarDayData {
     items: [],
     subscriptions: [],
     events: [],
-    incomeByCurrency: { PHP: 0, USD: 0 },
-    expenseByCurrency: { PHP: 0, USD: 0 },
+    incomeByCurrency: {},
+    expenseByCurrency: {},
     incomeCount: 0,
     expenseCount: 0,
     transferCount: 0,
@@ -77,11 +78,11 @@ export function buildCalendarDays(
     if (item.kind === "income") {
       // An opening balance is listed on its day but is not income earned.
       if (countsAsIncome(item)) {
-        day.incomeByCurrency[item.currency] += Math.abs(item.amountMinor);
+        addToCurrencyTotal(day.incomeByCurrency, item.currency, Math.abs(item.amountMinor));
         day.incomeCount += 1;
       }
     } else if (item.kind === "expense") {
-      day.expenseByCurrency[item.currency] += Math.abs(item.amountMinor);
+      addToCurrencyTotal(day.expenseByCurrency, item.currency, Math.abs(item.amountMinor));
       day.expenseCount += 1;
     } else {
       day.transferCount += 1;

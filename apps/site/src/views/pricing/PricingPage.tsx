@@ -119,7 +119,7 @@ const PRICING_FAQS = [
   {
     question: "What currencies and billing methods are supported?",
     answer:
-      "Subscriptions are billed in Philippine pesos (PHP). PayPal or Dodo Payments securely processes card payments and subscription approvals without Zoption ever touching your card data.",
+      "You can track money in 47 common currencies, including PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, and AED, with a separate currency per account. Zoption Pro itself is billed in Philippine pesos (PHP). PayPal or Dodo Payments securely processes card payments and subscription approvals without Zoption ever touching your card data.",
   },
   {
     question: "Can I cancel my Pro subscription at any time?",

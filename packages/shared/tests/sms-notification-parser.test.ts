@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  inferCurrency,
   parseSmsNotification,
   suggestCategory,
   type ParsedSmsTransaction,
@@ -640,5 +641,15 @@ describe("smsNotificationParser", () => {
     it("returns null on completely irrelevant text", () => {
       expect(parseSmsNotification("Hello, your verification code is 123456.")).toBeNull();
     });
+  });
+});
+
+describe("inferCurrency", () => {
+  it("reads a named supported currency, a bare dollar sign, and defaults to PHP", () => {
+    expect(inferCurrency("Card purchase of EUR 12.50 at CAFE PARIS")).toBe("EUR");
+    expect(inferCurrency("You paid $4.25 at STARBUCKS")).toBe("USD");
+    expect(inferCurrency("You paid 250.00 to JOLLIBEE")).toBe("PHP");
+    // Lower-case words are prose, not codes: "try" is not Turkish lira.
+    expect(inferCurrency("try again: paid 250.00 to JOLLIBEE")).toBe("PHP");
   });
 });

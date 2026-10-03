@@ -76,7 +76,7 @@ describe("loadTransferFeeInsight", () => {
       hasFees: true,
       totalTransfers: 2,
       totalFeeChargedTransfers: 1,
-      feesByCurrency: { PHP: 150, USD: 0 },
+      feesByCurrency: { PHP: 150 },
       recentWeekCount: 1,
       recentAverageTransfersPerWeek: 2,
       recentAverageFeeChargedTransfersPerWeek: 1,
@@ -87,7 +87,7 @@ describe("loadTransferFeeInsight", () => {
         weekEnd: "2026-08-09",
         transfers: 2,
         feeChargedTransfers: 1,
-        feesByCurrency: { PHP: 150, USD: 0 },
+        feesByCurrency: { PHP: 150 },
       },
     ]);
   });
