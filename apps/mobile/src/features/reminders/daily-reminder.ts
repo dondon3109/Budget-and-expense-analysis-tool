@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 
 import type { SessionStatus } from "@/auth/session-state";
+import { isPetNotification, PET_NOTIFICATION_ROUTE } from "@/features/pet/pet-notifications";
 import { isOverspendingNotification } from "@/features/reminders/overspending-notification";
 import {
   isWidgetNotification,
@@ -112,7 +113,8 @@ async function restoreDailyReminder(): Promise<void> {
       const show =
         isDailyReminder(identifier) ||
         isWidgetNotification(identifier) ||
-        isOverspendingNotification(identifier);
+        isOverspendingNotification(identifier) ||
+        isPetNotification(identifier);
       return Promise.resolve({
         shouldShowBanner: show,
         shouldShowList: show,
@@ -171,10 +173,13 @@ export function DailyReminderTapHandler() {
     const openEditor = (response: Notifications.NotificationResponse | null) => {
       if (!response) return;
       const { identifier, content } = response.notification.request;
-      // A daily reminder opens the editor; a widget review note opens its confirm screen.
+      // A daily reminder opens the editor, a pet alert opens the pet, and a widget review note
+      // opens its confirm screen.
       const route = isDailyReminder(identifier)
         ? DAILY_REMINDER_ROUTE
-        : widgetNotificationRoute(identifier, content.data);
+        : isPetNotification(identifier)
+          ? PET_NOTIFICATION_ROUTE
+          : widgetNotificationRoute(identifier, content.data);
       if (!route) return;
       const tap = `${response.notification.date}:${response.actionIdentifier}`;
       if (tap === handledTap) return;
