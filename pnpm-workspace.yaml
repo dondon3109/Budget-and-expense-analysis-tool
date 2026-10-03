@@ -44,6 +44,17 @@ auditConfig:
     # Only reachable through @expo/cli (dev-server and code-signing certificates), never in
     # a shipped bundle. Replace with a "node-forge" override once 1.4.1 is published.
     - GHSA-86w9-cpqp-85rv
+    # braces <=3.0.3 stack-exhaustion DoS on deeply nested patterns; npm has no release past
+    # 3.0.3. Only reached through micromatch and chokidar in build and dev tooling
+    # (semantic-release, tailwind, Expo and Metro), whose globs come from repo config rather
+    # than request input, and none of it ships in the Worker, web bundle, or app. Drop this
+    # once braces 3.0.4 is published and the lockfile picks it up.
+    - GHSA-vfj7-8cjw-p6xm
+    # http-cache-semantics <=4.2.0 max-stale handling can disclose cross-user cached
+    # responses; npm has no release past 4.2.0. Only reached through astro, and
+    # apps/site is a static build with no runtime HTTP cache. It audits as "prod" only
+    # because astro is a dependency of @zoption/site. Drop this once 4.2.1 is published.
+    - GHSA-ch52-4w7c-c8xp
 
 minimumReleaseAgeExclude:
   - miniflare@5.20260811.0-alpha
