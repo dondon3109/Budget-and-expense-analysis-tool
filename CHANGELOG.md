@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 3.4.0 — 2026-10-04
+
 ### Added
 
 - Web and mobile: a thank-you card appears when you create your account and when your Zoption Pro purchase is confirmed, each with its own message. On web, the review thank-you now uses the same wording. Accounts created with email on web or Google on mobile see the welcome once; Google sign-up on web does not show it yet.
