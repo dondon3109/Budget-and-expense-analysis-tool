@@ -34,7 +34,10 @@ export function CollapsibleCard({ title, summary, icon, children }: CollapsibleC
           <Text style={[typography.headline, styles.title, { color: theme.colors.text }]}>
             {title}
           </Text>
-          <Text numberOfLines={1} style={[typography.callout, { color: theme.colors.textMuted }]}>
+          <Text
+            numberOfLines={1}
+            style={[typography.callout, styles.summary, { color: theme.colors.textMuted }]}
+          >
             {summary}
           </Text>
           <MaterialCommunityIcons
@@ -51,6 +54,9 @@ export function CollapsibleCard({ title, summary, icon, children }: CollapsibleC
 }
 
 const styles = StyleSheet.create({
-  title: { flex: 1, minWidth: 0 },
+  // The title keeps its full width; a long summary is what yields and truncates. Letting the
+  // title shrink instead wrapped "Your goal" one character per line beside a long goal label.
+  title: { flexGrow: 1, flexShrink: 0 },
+  summary: { flexShrink: 1, minWidth: 0, textAlign: "right" },
   body: { gap: spacing.sm, paddingHorizontal: spacing.md, paddingBottom: spacing.md },
 });
