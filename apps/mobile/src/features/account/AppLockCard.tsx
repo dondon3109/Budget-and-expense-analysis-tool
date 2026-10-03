@@ -33,7 +33,7 @@ export function AppLockCard({ subject }: { subject: string }) {
   // The same limit as the lock screen, so an unlocked phone is no faster way to guess the PIN.
   const attempts = useAttemptLimit();
   const [feedback, setFeedback] = useState<{ error?: string; success?: string }>({});
-  // Whether this device has an enrolled strong biometric, and whether the user turned it on.
+  // Whether this device has an enrolled biometric, and whether the user turned it on.
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
 

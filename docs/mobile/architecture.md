@@ -98,8 +98,9 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
   Each relock mounts a fresh lock screen, so a half-finished legacy-password replacement starts
   over from the password. A user-initiated sign-out deletes the lock record.
 - Biometric unlock is an opt-in shortcut to that PIN, stored as `on` under
-  `zoption.app_lock_biometrics.<subject>` and deleted with the lock. It is offered only for a strong
-  enrolled biometric (Android Class 3; any Face ID or Touch ID on iOS), the prompt does not accept
+  `zoption.app_lock_biometrics.<subject>` and deleted with the lock. It is offered for any enrolled
+  biometric (fingerprint, face, or iris, including Android Class 2 camera face unlock, so the
+  prompt passes `biometricsSecurityLevel: "weak"`), the prompt does not accept
   the device passcode, and cancelling it leaves the PIN pad. Turning it on in Account settings
   requires one successful prompt. The lock screen prompts once on each lock.
 - Startup migrations use the keyed connection's regular transaction. Expo's exclusive transaction helper creates another native connection and therefore cannot be used unless that connection is separately keyed.

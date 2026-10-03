@@ -1,7 +1,6 @@
 import * as Crypto from "expo-crypto";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
-import { Platform } from "react-native";
 import { z } from "zod";
 
 export const PIN_LENGTH = 6;
@@ -90,15 +89,13 @@ function biometricKey(subject: string): string {
 }
 
 /**
- * Whether this device can unlock with a strong biometric (Android Class 3,
- * which excludes most camera face unlock; any Face ID or Touch ID on iOS)
- * that the user has enrolled.
+ * Whether the user has enrolled any biometric this device can check:
+ * fingerprint, face, or iris, including Android's weaker (Class 2) camera
+ * face unlock.
  */
 export async function isBiometricUnlockAvailable(): Promise<boolean> {
   const level = await LocalAuthentication.getEnrolledLevelAsync();
-  // iOS reports any enrolled Face ID or Touch ID as BIOMETRIC, never STRONG.
-  if (Platform.OS === "ios") return level >= LocalAuthentication.SecurityLevel.BIOMETRIC;
-  return level >= LocalAuthentication.SecurityLevel.BIOMETRIC_STRONG;
+  return level >= LocalAuthentication.SecurityLevel.BIOMETRIC_WEAK;
 }
 
 /** Biometric unlock is a shortcut to the PIN: it is only on while a PIN lock is set. */
@@ -124,7 +121,8 @@ export async function authenticateWithBiometrics(promptMessage: string): Promise
     promptMessage,
     cancelLabel: "Use PIN",
     disableDeviceFallback: true,
-    biometricsSecurityLevel: "strong",
+    // Android's default is strong only; weak also admits Class 2 face unlock.
+    biometricsSecurityLevel: "weak",
   });
   return result.success;
 }

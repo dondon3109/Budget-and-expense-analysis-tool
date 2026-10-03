@@ -142,7 +142,8 @@ describe("AppLockCard", () => {
     expect(screen.queryByLabelText("Unlock with biometrics")).toBeNull();
   });
 
-  it("hides biometric unlock on a device without a strong enrolled biometric", async () => {
+  it("hides biometric unlock on a device with no enrolled biometric", async () => {
+    mockBiometrics.level = 1;
     await setAppLock(subject, "246810");
     await renderCard();
     expect(screen.getByText("Change PIN")).toBeTruthy();

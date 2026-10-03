@@ -130,7 +130,7 @@ describe("app lock", () => {
 
     await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
     expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ disableDeviceFallback: true, biometricsSecurityLevel: "strong" }),
+      expect.objectContaining({ disableDeviceFallback: true }),
     );
   });
 
@@ -149,12 +149,22 @@ describe("app lock", () => {
     await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
   });
 
-  it.each([
-    ["no enrolled biometric", "ios", 1],
-    ["only a weak Android biometric", "android", 2],
-  ] as const)("does not offer biometrics with %s", async (_case, os, level) => {
-    jest.replaceProperty(Platform, "OS", os);
-    mockBiometrics.level = level;
+  it("unlocks with a weak Android biometric such as camera face unlock", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    mockBiometrics.level = 2;
+    await setAppLock(subject, "482913");
+    await setBiometricUnlock(subject, true);
+    await renderGate();
+
+    await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
+    expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ biometricsSecurityLevel: "weak" }),
+    );
+    jest.restoreAllMocks();
+  });
+
+  it("does not offer biometrics when none is enrolled", async () => {
+    mockBiometrics.level = 1;
     await setAppLock(subject, "482913");
     await setBiometricUnlock(subject, true);
     await renderGate();
@@ -162,7 +172,6 @@ describe("app lock", () => {
     expect(screen.getByText("Zoption is locked")).toBeTruthy();
     expect(screen.queryByText("Unlock with biometrics")).toBeNull();
     expect(LocalAuthentication.authenticateAsync).not.toHaveBeenCalled();
-    jest.restoreAllMocks();
   });
 
   it("opens straight into the workspace when no app lock is set", async () => {
