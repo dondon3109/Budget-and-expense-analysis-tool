@@ -2,10 +2,11 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
 
 import {
+  accountTypes,
   currencies,
+  debtLinkedTransferInputSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
-  transferInputSchema,
   type MobileSyncPushOperation,
   type AccountInterestUpdate,
   type DebtStatus,
@@ -14,8 +15,8 @@ import {
   type SubscriptionStatus,
   type FinancialGoalStatus,
   type TransactionInput,
+  type DebtLinkedTransferInput,
   type TransactionUpdate,
-  type TransferInput,
   type mobileSyncAccountSnapshotSchema,
   type mobileSyncCategorySnapshotSchema,
 } from "@zoption/shared";
@@ -58,6 +59,7 @@ export const transactionRowSchema = z.object({
   transfer_group_id: z.string().nullable(),
   transfer_fee_minor: z.number().int().safe().nullable(),
   import_fingerprint: z.string().nullable(),
+  debt_id: z.string().nullable(),
   server_revision: z.number().int().nonnegative(),
   server_updated_at: z.string().nullable(),
   deleted_at: z.string().nullable(),
@@ -69,12 +71,12 @@ export interface LocalTransferPair {
   groupId: string;
   from: TransactionRow;
   to: TransactionRow;
-  input: TransferInput;
+  input: DebtLinkedTransferInput;
 }
 export const accountRowSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(["cash", "checking", "savings", "credit", "other"]),
+  type: z.enum(accountTypes),
   currency: z.enum(currencies),
   archived: z.number().int().min(0).max(1),
   system: z.number().int().min(0).max(1),
@@ -545,6 +547,7 @@ export function commandFromRow(row: z.infer<typeof transactionRowSchema>): NonTr
     );
   }
   return {
+    ...(row.kind === "expense" ? { debtId: row.debt_id } : {}),
     kind: row.kind,
     accountId: row.account_id,
     categoryId: row.category_id,
@@ -572,6 +575,7 @@ export function snapshotFromRow(
     transferGroupId: row.transfer_group_id,
     transferFeeMinor: row.transfer_fee_minor,
     importFingerprint: row.import_fingerprint,
+    debtId: row.debt_id,
     revision: row.server_revision,
     updatedAt: row.server_updated_at,
   };
@@ -606,8 +610,9 @@ export function transferPairFromRows(rows: TransactionRow[]): LocalTransferPair 
       "unsupported_transfer",
     );
   }
-  const input = transferInputSchema.parse({
+  const input = debtLinkedTransferInputSchema.parse({
     kind: "transfer",
+    debtId: from.debt_id,
     fromAccountId: from.account_id,
     toAccountId: to.account_id,
     categoryId: from.category_id,
@@ -649,6 +654,7 @@ export function transferSnapshot(pair: LocalTransferPair): Record<string, unknow
     currency: pair.input.currency,
     notes: pair.input.notes ?? null,
     transferFeeMinor: pair.input.transferFeeMinor ?? 0,
+    debtId: pair.input.debtId ?? null,
     revision: pair.from.server_revision,
     updatedAt,
   });
@@ -656,6 +662,8 @@ export function transferSnapshot(pair: LocalTransferPair): Record<string, unknow
 
 export function fullUpdate(input: NonTransferInput): TransactionUpdate {
   return {
+    // Explicit null on income too, so an edit that turns a payment into income drops the link.
+    debtId: input.kind === "expense" ? (input.debtId ?? null) : null,
     kind: input.kind,
     accountId: input.accountId,
     categoryId: input.categoryId,
@@ -676,6 +684,7 @@ export function commandFromSnapshot(value: unknown): NonTransferInput {
     );
   }
   return {
+    ...(snapshot.kind === "expense" ? { debtId: snapshot.debtId ?? null } : {}),
     kind: snapshot.kind,
     accountId: snapshot.accountId,
     categoryId: snapshot.categoryId,
@@ -687,10 +696,11 @@ export function commandFromSnapshot(value: unknown): NonTransferInput {
   };
 }
 
-export function transferCommandFromSnapshot(value: unknown): TransferInput {
+export function transferCommandFromSnapshot(value: unknown): DebtLinkedTransferInput {
   const snapshot = mobileSyncTransferSnapshotSchema.parse(value);
-  return transferInputSchema.parse({
+  return debtLinkedTransferInputSchema.parse({
     kind: "transfer",
+    debtId: snapshot.debtId ?? null,
     fromAccountId: snapshot.fromAccountId,
     toAccountId: snapshot.toAccountId,
     categoryId: snapshot.categoryId,

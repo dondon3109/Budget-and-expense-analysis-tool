@@ -19,6 +19,12 @@
   font-size: 13px;
 }
 
+.goal-picker .goal-picker-option > .goal-picker-badge {
+  font-family: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .goal-picker-badge {
   margin-left: auto;
   padding: 2px 8px;
@@ -34,7 +40,9 @@
   gap: 8px;
 }
 
-.goal-picker-option {
+/* Prefixed with .goal-picker so the settings page's generic `.settings-form label/span/input` rules
+   (grid labels, mono uppercase text, full-height inputs) cannot reshape these rows. */
+.goal-picker .goal-picker-option {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -48,20 +56,31 @@
   cursor: pointer;
 }
 
-.goal-picker-option:has(input:checked) {
+.goal-picker .goal-picker-option:has(input:checked) {
   border-color: var(--brand-strong);
   background: var(--surface-muted);
 }
 
-.goal-picker-option:has(input:focus-visible) {
+.goal-picker .goal-picker-option:has(input:focus-visible) {
   outline: 2px solid var(--brand-strong);
   outline-offset: 2px;
 }
 
-.goal-picker-option input {
+.goal-picker .goal-picker-option > span:not(.goal-picker-badge) {
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.goal-picker .goal-picker-option input {
   flex-shrink: 0;
   width: 20px;
+  min-height: 0;
   height: 20px;
+  padding: 0;
   margin: 0;
   accent-color: var(--brand-strong);
 }
@@ -72,7 +91,8 @@
   margin-top: 12px;
 }
 
-.goal-picker-other label {
+.goal-picker .goal-picker-other > label {
+  display: block;
   color: var(--ink);
   font-size: 13px;
   font-weight: 500;

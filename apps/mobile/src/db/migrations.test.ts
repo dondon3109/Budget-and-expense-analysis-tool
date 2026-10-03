@@ -1,4 +1,30 @@
-import { applyLocalMigrations, LOCAL_SCHEMA_VERSION } from "./migrations";
+/// <reference types="node" />
+
+import { DatabaseSync } from "node:sqlite";
+
+import {
+  applyLocalMigrations,
+  LOCAL_SCHEMA_VERSION,
+  migrations,
+  type MigrationDatabase,
+} from "./migrations";
+
+function nativeMigrationDatabase(native: DatabaseSync): MigrationDatabase {
+  return {
+    getFirstAsync: async (source) =>
+      (native.prepare(source).get() as { user_version: number } | undefined) ?? null,
+    withTransactionAsync: async (task) => {
+      native.exec("BEGIN IMMEDIATE");
+      try {
+        await task({ execAsync: async (source) => native.exec(source) });
+        native.exec("COMMIT");
+      } catch (error) {
+        native.exec("ROLLBACK");
+        throw error;
+      }
+    },
+  };
+}
 
 describe("local SQLCipher migrations", () => {
   it("applies pending migrations transactionally and advances the version last", async () => {
@@ -90,5 +116,38 @@ describe("local SQLCipher migrations", () => {
       ),
     };
     await expect(applyLocalMigrations(database)).rejects.toThrow("disk full");
+  });
+
+  it("widens account types and adds debt links while transactions keep their accounts", async () => {
+    const native = new DatabaseSync(":memory:");
+    native.exec("PRAGMA foreign_keys = ON");
+    for (const migration of migrations.filter((entry) => entry.version <= 14)) {
+      native.exec(migration.sql);
+    }
+    native.exec("PRAGMA user_version = 14");
+    native.exec(`
+      INSERT INTO accounts (id, name, type, currency) VALUES ('a1', 'Wallet', 'cash', 'PHP');
+      INSERT INTO categories (id, name, kind, color, origin, required_plan)
+        VALUES ('c1', 'Food', 'expense', '#000000', 'starter', 'free');
+      INSERT INTO transactions (id, account_id, category_id, date, description, amount_minor, currency, kind)
+        VALUES ('t1', 'a1', 'c1', '2026-10-01', 'Lunch', -15000, 'PHP', 'expense');
+    `);
+
+    await expect(applyLocalMigrations(nativeMigrationDatabase(native))).resolves.toBe(
+      LOCAL_SCHEMA_VERSION,
+    );
+
+    native.exec(
+      "INSERT INTO accounts (id, name, type, currency) VALUES ('a2', 'Loan', 'payable', 'PHP')",
+    );
+    expect(native.prepare("SELECT account_id, debt_id FROM transactions").get()).toEqual({
+      account_id: "a1",
+      debt_id: null,
+    });
+    expect(native.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
+    expect(() =>
+      native.exec(`INSERT INTO transactions (id, account_id, category_id, date, description, amount_minor, currency, kind)
+        VALUES ('t2', 'missing', 'c1', '2026-10-01', 'x', -1, 'PHP', 'expense')`),
+    ).toThrow("FOREIGN KEY");
   });
 });

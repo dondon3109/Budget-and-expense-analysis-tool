@@ -135,7 +135,7 @@ describe("API ledger routes", () => {
     const requirePro = vi.fn();
     requirePro.mockRejectedValue(
       new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.", {
-        requested: "account_management",
+        requested: "account_interest",
         requiredPlan: "zoption_pro",
       }),
     );

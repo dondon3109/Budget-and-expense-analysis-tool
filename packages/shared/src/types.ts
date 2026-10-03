@@ -1,6 +1,8 @@
+import type { AccountType } from "./accountTypes";
 import type { Currency, CurrencyTotals } from "./currencies";
 import type { AssistantTransactionDraft } from "./schemas/assistant";
 
+export * from "./accountTypes";
 // Currencies live in their own module; re-exported so `./types` stays the one import site.
 export * from "./currencies";
 
@@ -79,9 +81,6 @@ export interface CalendarEventMonth {
   items: CalendarEventRecord[];
 }
 
-export const accountTypes = ["cash", "checking", "savings", "credit", "other"] as const;
-export type AccountType = (typeof accountTypes)[number];
-
 export const interestFrequencies = ["daily", "monthly", "yearly"] as const;
 export type InterestFrequency = (typeof interestFrequencies)[number];
 
@@ -140,6 +139,14 @@ export type CategoryRequiredPlan = (typeof categoryRequiredPlans)[number];
  * copy never silently disables the feature.
  */
 export const DEBT_PAYMENT_CATEGORY_SYSTEM_KEY = "debt:expense";
+
+/**
+ * Mobile sync payloads carry no system key, so native clients recognise the same category by
+ * its id, which the server mints as `<tenant>:category:debt-payment` and never changes.
+ */
+export function isDebtPaymentCategoryId(categoryId: string): boolean {
+  return categoryId.endsWith(":category:debt-payment");
+}
 
 /**
  * The product-owned, archived income category that holds a workspace's opening cash balance. The
@@ -446,7 +453,7 @@ export type BillingResource = "custom_category";
 export type BillingCapability =
   | BillingFeature
   | "category_management"
-  | "account_management"
+  | "account_interest"
   | "cashflow_analytics"
   | "transaction_export";
 

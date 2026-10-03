@@ -17,11 +17,6 @@ export const planFeatures = [
     pro: "Unlimited active custom categories",
   },
   {
-    feature: "Custom accounts",
-    free: "Use included accounts",
-    pro: "Add, rename, and remove custom accounts",
-  },
-  {
     feature: "Cashflow analytics",
     free: "Weekly cashflow view",
     pro: "Adds monthly and six-month cashflow views",

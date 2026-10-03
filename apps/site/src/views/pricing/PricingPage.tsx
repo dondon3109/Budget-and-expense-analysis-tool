@@ -51,11 +51,7 @@ const COMPARISON_ROWS = [
     category: "Accounts & Budgets",
     features: [
       { name: "Starter accounts (Cash, GCash, Maya, Bank)", free: "Included", pro: "Included" },
-      {
-        name: "Custom accounts creation & renaming",
-        free: "Default accounts",
-        pro: "Unlimited custom",
-      },
+      { name: "Custom accounts (add, rename, remove)", free: "Unlimited", pro: "Unlimited" },
       { name: "Custom budget categories", free: "4 custom + starters", pro: "Unlimited active" },
       {
         name: "High-yield savings interest compounding",
@@ -227,7 +223,7 @@ export function PricingPage() {
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Budget envelopes &amp; spending breakdown</span>
+                <span>Unlimited custom accounts, budget envelopes &amp; spending breakdown</span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
@@ -246,8 +242,8 @@ export function PricingPage() {
             <div className="pricing-card-header">
               <h2>Zoption Pro</h2>
               <p className="pricing-card-description">
-                For users who want multi-account automation, automatic interest compounding, 2,000
-                AI actions a month, and higher import limits.
+                For users who want automatic interest compounding, 2,000 AI actions a month, and
+                higher import limits.
               </p>
               <div className="pricing-card-price">
                 <strong data-interval-only="month">₱149</strong>
@@ -296,7 +292,7 @@ export function PricingPage() {
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Unlimited custom categories &amp; custom accounts</span>
+                <span>Unlimited custom categories</span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />

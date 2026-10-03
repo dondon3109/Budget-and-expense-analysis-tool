@@ -70,6 +70,25 @@ both rows in the same SQLCipher transaction. Transfer commands initially require
 accounts and a synchronized available transfer category; they do not join new-reference dependency
 graphs in protocol version 1.
 
+A payment can name the debt it pays (`debtId`): an expense, or a transfer into a credit card or
+payable account, where the link sits on the sending leg. The debt must already be synchronized, since
+a transaction cannot depend on a debt create. The server owns debt balances: it pays the debt down on
+push, gives the amount back on edit or delete, and the new balance reaches the device as a debt
+change. An edit without `debtId` keeps the stored link.
+
+## Client features
+
+Installed apps validate responses strictly and reject unknown keys or enum values, so a payload
+addition goes only to clients that name it in the `x-zoption-sync-features` header (comma separated,
+unknown names ignored; the list is `mobileSyncFeatures` in `packages/shared/src/sync.ts`). Without it
+the Worker sends version 1 payloads as first shipped. Shaping happens at read time in
+`apps/api/src/db/mobile-sync/features.ts`, so the change log and its triggers stay unchanged.
+
+| Feature            | Adds                                                             | Without it                       |
+| ------------------ | ---------------------------------------------------------------- | -------------------------------- |
+| `debt-links`       | `debtId` on transaction and transfer payloads, read from the row | No `debtId` key                  |
+| `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`   | Those accounts arrive as `other` |
+
 ## Push
 
 `POST /api/app/sync/push` accepts a bounded ordered batch. Operations include entity, command, entity UUID, base revision, idempotency key, dependencies, and a strictly validated command payload. The Worker:

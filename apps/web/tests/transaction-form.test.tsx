@@ -482,6 +482,49 @@ describe("TransactionForm", () => {
     );
   });
 
+  it("offers a debt link for a transfer into a liability account", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    const transferCategory: CategoryRecord = {
+      ...category,
+      id: "transfer",
+      name: "Transfer",
+      kind: "transfer",
+    };
+    const card = { ...accounts[0]!, id: "account-card", name: "Visa", type: "credit" as const };
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[transferCategory]}
+        accounts={[...accounts, card]}
+        debts={debts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Transaction type"), "transfer");
+    await user.selectOptions(screen.getByLabelText("To account"), "account-savings");
+    await user.selectOptions(screen.getByLabelText("From account"), "account-everyday");
+    expect(screen.queryByLabelText(/Debt paid/)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("To account"), "account-card");
+    await user.type(screen.getByLabelText("Amount (PHP)"), "500");
+    await user.selectOptions(screen.getByLabelText(/Debt paid/), "debt-card");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "transfer",
+          toAccountId: "account-card",
+          debtId: "debt-card",
+        }),
+      ),
+    );
+  });
+
   it("asks which debt was paid once the debt payment category is chosen", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);

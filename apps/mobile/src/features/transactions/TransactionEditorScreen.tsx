@@ -22,6 +22,7 @@ import {
 } from "@zoption/shared";
 
 import {
+  useDebts,
   useLocalWorkspace,
   useTransactionFormData,
   useTransactionPhoto,
@@ -45,6 +46,7 @@ import { spacing, typography } from "@/ui/tokens";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import {
+  debtPaymentApplies,
   fallbackDescription,
   formatMinorForInput,
   localCalendarDate,
@@ -59,6 +61,7 @@ import {
   remainingSecondsFromMs,
   type VoicePreviewState,
 } from "./voice-preview";
+import { DebtPaymentField } from "./DebtPaymentField";
 import { KindSelector } from "./KindSelector";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
@@ -75,6 +78,7 @@ const emptyForm: TransactionFormValues = {
   transferFee: "",
   currency: "PHP",
   notes: "",
+  debtId: "",
 };
 
 function singleParam(value: string | string[] | undefined): string | undefined {
@@ -206,6 +210,7 @@ export function TransactionEditorScreen() {
         existing?.kind === "transfer" ? formatMinorForInput(existing.transferFeeMinor ?? 0) : "",
       currency: initialCurrency,
       notes: initialNotes,
+      debtId: existing && existing.kind !== "income" ? (existing.debtId ?? "") : "",
     });
     initializedFor.current = key;
   }, [
@@ -254,6 +259,12 @@ export function TransactionEditorScreen() {
   // Transfers only list synced categories, so a category created here would not appear for them.
   const canCreateCategory = values.kind !== "transfer";
   const localWorkspace = local.workspace;
+  const { debts } = useDebts();
+  const accountType = (accountId: string) =>
+    formData.data?.accounts.find((account) => account.id === accountId)?.type;
+  const paysDebt = debtPaymentApplies(values, accountType(values.toAccountId));
+  // As on the web: the Debt payment category names its debt whenever there is one to name.
+  const debtRequired = values.kind === "expense" && debts.some((debt) => debt.status === "active");
 
   const updateValue = <Key extends keyof TransactionFormValues>(
     key: Key,
@@ -274,6 +285,10 @@ export function TransactionEditorScreen() {
     // (new, or a voice/receipt draft that left it empty) falls back to its notes or category.
     const targetValues: TransactionFormValues = {
       ...baseValues,
+      // A link the entry can no longer carry (another category or account) is dropped.
+      debtId: debtPaymentApplies(baseValues, accountType(baseValues.toAccountId))
+        ? baseValues.debtId
+        : "",
       description:
         baseValues.description.trim() ||
         fallbackDescription(
@@ -281,6 +296,17 @@ export function TransactionEditorScreen() {
           formData.data?.categories.find((item) => item.id === baseValues.categoryId)?.name,
         ),
     };
+    if (
+      targetValues.kind === "expense" &&
+      !targetValues.debtId &&
+      debtRequired &&
+      debtPaymentApplies(targetValues, undefined)
+    ) {
+      setErrors({ debtId: "Choose the debt this pays." });
+      playSound("error");
+      setMessage("Check the highlighted details.");
+      return false;
+    }
     const parsed = parseTransactionForm(targetValues);
     if (!parsed.success) {
       setErrors(parsed.errors);
@@ -388,6 +414,7 @@ export function TransactionEditorScreen() {
       transferFee: "",
       currency: defaultAccount?.currency ?? useWorkspaceCurrencyStore.getState().currency,
       notes: "",
+      debtId: "",
     });
     setErrors({});
     setMessage(null);
@@ -791,6 +818,16 @@ export function TransactionEditorScreen() {
             sheetTitle={`Choose ${values.kind} category`}
             value={values.categoryId}
           />
+          {paysDebt ? (
+            <DebtPaymentField
+              debts={debts}
+              disabled={saving || mutationBlocked}
+              error={errors.debtId}
+              onChange={(debtId) => updateValue("debtId", debtId)}
+              required={debtRequired}
+              value={values.debtId}
+            />
+          ) : null}
           {creatingCategory && canCreateCategory && localWorkspace ? (
             <NewCategoryInline
               kind={values.kind}

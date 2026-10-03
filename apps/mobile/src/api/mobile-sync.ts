@@ -1,5 +1,7 @@
 import {
+  MOBILE_SYNC_FEATURES_HEADER,
   MOBILE_SYNC_PROTOCOL_VERSION,
+  mobileSyncFeatures,
   mobileSyncAcknowledgeRequestSchema,
   mobileSyncAcknowledgeResponseSchema,
   mobileSyncPullResponseSchema,
@@ -17,6 +19,9 @@ import {
 import { publicConfig } from "@/config/public-config";
 
 const MAX_PULL_RESPONSE_BYTES = 512 * 1024;
+
+// This build understands every payload addition the shared contract defines.
+const SYNC_FEATURES = mobileSyncFeatures.join(",");
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -93,6 +98,7 @@ export async function pullMobileSync({
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
       },
       body: JSON.stringify({ protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION, cursor, limit }),
       signal,
@@ -195,6 +201,7 @@ export async function snapshotMobileSync({
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
       },
       body: JSON.stringify(request),
       signal,
@@ -291,6 +298,7 @@ export async function acknowledgeMobileSync({
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
       },
       body: JSON.stringify(request),
       signal,
@@ -371,6 +379,7 @@ export async function pushMobileSync({
         Accept: "application/json",
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
+        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
       },
       body: JSON.stringify(encodedRequest),
       signal,

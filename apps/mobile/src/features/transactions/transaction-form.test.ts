@@ -1,4 +1,5 @@
 import {
+  debtPaymentApplies,
   fallbackDescription,
   formatMinorForInput,
   localCalendarDate,
@@ -17,6 +18,7 @@ describe("native transaction form", () => {
     transferFee: "",
     currency: "PHP" as const,
     notes: "",
+    debtId: "",
   };
 
   it("converts decimal input to integer minor units without floating-point rounding", () => {
@@ -31,6 +33,7 @@ describe("native transaction form", () => {
         amountMinor: 123_450,
         currency: "PHP",
         notes: undefined,
+        debtId: null,
       },
     });
     expect(formatMinorForInput(-123_450)).toBe("1234.50");
@@ -58,6 +61,7 @@ describe("native transaction form", () => {
         transferFeeMinor: 1_250,
         currency: "PHP",
         notes: undefined,
+        debtId: null,
       },
     });
     const sameAccount = parseTransactionForm({ ...transfer, toAccountId: "account-1" });
@@ -90,5 +94,20 @@ describe("native transaction form", () => {
     );
     expect(fallbackDescription(valid, "Food")).toBe("Food");
     expect(fallbackDescription({ ...valid, kind: "transfer" }, "Food")).toBe("");
+  });
+
+  it("offers a debt link only where the server accepts one", () => {
+    const debtCategory = "tenant-1:category:debt-payment";
+    expect(debtPaymentApplies({ kind: "expense", categoryId: debtCategory }, undefined)).toBe(true);
+    expect(debtPaymentApplies({ kind: "expense", categoryId: "category-1" }, undefined)).toBe(
+      false,
+    );
+    expect(debtPaymentApplies({ kind: "income", categoryId: debtCategory }, undefined)).toBe(false);
+    expect(debtPaymentApplies({ kind: "transfer", categoryId: "t" }, "payable")).toBe(true);
+    expect(debtPaymentApplies({ kind: "transfer", categoryId: "t" }, "savings")).toBe(false);
+    expect(parseTransactionForm({ ...valid, debtId: "debt-1" })).toMatchObject({
+      success: true,
+      input: { debtId: "debt-1" },
+    });
   });
 });

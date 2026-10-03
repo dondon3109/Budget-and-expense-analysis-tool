@@ -329,6 +329,7 @@ export function ReceiptScanScreen() {
     for (const [index, item] of items.entries()) {
       const parsed = parseTransactionForm({
         kind,
+        debtId: "",
         accountId,
         toAccountId: "",
         categoryId: item.categoryId,

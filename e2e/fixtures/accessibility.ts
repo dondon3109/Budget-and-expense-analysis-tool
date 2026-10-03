@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { type ConsoleMessage, type Page } from "@playwright/test";
+import { test, type ConsoleMessage, type Page } from "@playwright/test";
 
 import { siteUrl } from "./site";
 
@@ -309,6 +309,14 @@ export async function captureRoute(page: Page, route: string, label: string): Pr
  */
 const MAX_SCROLL_STEPS = 80;
 
+/**
+ * Time budget per scroll step. Each step is one axe run, so a fixed test timeout eventually
+ * fails a page that only grew: /changelog took 93s of its 120s at phone width with 41 steps
+ * (about 2.3s each on CI). Scaling with the page keeps that headroom as releases are added.
+ */
+const SCAN_BASE_MS = 30_000;
+const SCAN_STEP_MS = 4_000;
+
 /** Indexes of the [data-scroll-fade] elements that are on screen and fully shown right now. */
 function settledFadesOnScreen(page: Page): Promise<number[]> {
   return page.evaluate(() =>
@@ -368,6 +376,8 @@ export async function analyseVisible(page: Page, label: string): Promise<Finding
         "so the scan refused rather than dropping everything below the guard silently.",
     );
   }
+
+  test.setTimeout(Math.max(test.info().timeout, SCAN_BASE_MS + steps * SCAN_STEP_MS));
 
   const found = new Map<string, Finding>();
   const advisory: string[] = [];

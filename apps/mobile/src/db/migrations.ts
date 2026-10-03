@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 14;
+export const LOCAL_SCHEMA_VERSION = 15;
 
 export const migrations: readonly Migration[] = [
   {
@@ -755,6 +755,69 @@ export const migrations: readonly Migration[] = [
 
       ALTER TABLE accounts_v14 RENAME TO accounts;
       ALTER TABLE transactions_v14 RENAME TO transactions;
+
+      CREATE INDEX transactions_date_idx ON transactions(date DESC, id);
+      CREATE INDEX transactions_category_idx ON transactions(category_id, date DESC);
+      CREATE INDEX transactions_account_idx ON transactions(account_id, date DESC);
+      CREATE UNIQUE INDEX transactions_import_fingerprint_unique
+        ON transactions(import_fingerprint)
+        WHERE import_fingerprint IS NOT NULL;
+    `,
+  },
+  {
+    version: 15,
+    // Account types are validated by the shared schemas, like currencies since version 14, so the
+    // type CHECK goes and a new type needs no rebuild. Transactions gain debt_id, the debt an
+    // expense or a transfer's sending leg pays down; it has no foreign key because the server
+    // owns debt balances and clears the link when a debt is deleted. Rebuilt child first, as in 14.
+    name: "account_types_and_debt_links",
+    sql: `
+      CREATE TABLE accounts_v15 (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL,
+        currency TEXT NOT NULL,
+        balance_minor INTEGER,
+        balance_as_of TEXT,
+        archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
+        system INTEGER NOT NULL DEFAULT 0 CHECK (system IN (0, 1)),
+        interest_json TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
+
+      CREATE TABLE transactions_v15 (
+        id TEXT PRIMARY KEY NOT NULL,
+        account_id TEXT REFERENCES accounts_v15(id),
+        category_id TEXT NOT NULL REFERENCES categories(id),
+        date TEXT NOT NULL,
+        description TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'transfer')),
+        notes TEXT,
+        transfer_group_id TEXT,
+        from_account_id TEXT REFERENCES accounts_v15(id),
+        to_account_id TEXT REFERENCES accounts_v15(id),
+        transfer_fee_minor INTEGER CHECK (transfer_fee_minor IS NULL OR transfer_fee_minor >= 0),
+        import_fingerprint TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted')),
+        debt_id TEXT
+      );
+
+      INSERT INTO accounts_v15 SELECT * FROM accounts;
+      INSERT INTO transactions_v15 SELECT *, NULL FROM transactions;
+
+      DROP TABLE transactions;
+      DROP TABLE accounts;
+
+      ALTER TABLE accounts_v15 RENAME TO accounts;
+      ALTER TABLE transactions_v15 RENAME TO transactions;
 
       CREATE INDEX transactions_date_idx ON transactions(date DESC, id);
       CREATE INDEX transactions_category_idx ON transactions(category_id, date DESC);

@@ -4,6 +4,7 @@ import {
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   defaultTransactionCategory,
   formatMinorAmount,
+  isLiabilityAccountType,
   matchCategory,
   parseAmountToMinor,
   preferredTransactionAccount,
@@ -157,6 +158,10 @@ export function TransactionForm({
     return linked && !open.includes(linked) ? [linked, ...open] : open;
   }, [debts, debtId]);
   const missingDebtChoice = debtPaymentSelected && selectableDebts.length > 0 && !debtId;
+  const toAccount = activeAccounts.find((account) => account.id === toAccountId);
+  /** A transfer into a credit card or payable account pays it down, so it can settle a debt. */
+  const debtPaymentByAccount =
+    kind === "transfer" && toAccount !== undefined && isLiabilityAccountType(toAccount.type);
 
   const transferNet = useMemo(() => {
     if (kind !== "transfer") return null;
@@ -244,11 +249,17 @@ export function TransactionForm({
       categoryId,
       notes,
     };
-    // Only an expense carries a debt link. The strict schema rejects the key on income,
-    // so an income entry must leave it out rather than send an explicit null.
+    // Only an expense or a transfer carries a debt link. The strict schema rejects the key
+    // on income, so an income entry must leave it out rather than send an explicit null.
     const parsed = transactionInputSchema.safeParse(
       kind === "transfer"
-        ? { ...base, fromAccountId, toAccountId, transferFeeMinor }
+        ? {
+            ...base,
+            fromAccountId,
+            toAccountId,
+            transferFeeMinor,
+            debtId: debtPaymentByAccount && debtId ? debtId : null,
+          }
         : kind === "income"
           ? { ...base, accountId }
           : { ...base, accountId, debtId: debtPaymentSelected && debtId ? debtId : null },
@@ -499,16 +510,27 @@ export function TransactionForm({
               onCancel={() => setCreatingCategory(false)}
             />
           )}
-          {debtPaymentSelected &&
+          {debtPaymentByAccount && (
+            <p className="form-hint">
+              Moving money into {toAccount.name} pays it down, so this counts as a debt payment.
+            </p>
+          )}
+          {(debtPaymentSelected || debtPaymentByAccount) &&
             (selectableDebts.length === 0 ? (
               <p className="form-hint">
                 Add a debt in Goals &amp; debt to say which one this payment pays off.
               </p>
             ) : (
               <label>
-                <span>Debt paid</span>
-                <select value={debtId} onChange={(event) => setDebtId(event.target.value)} required>
-                  <option value="">Choose a debt</option>
+                <span>Debt paid {debtPaymentByAccount && <small>Optional</small>}</span>
+                <select
+                  value={debtId}
+                  onChange={(event) => setDebtId(event.target.value)}
+                  required={debtPaymentSelected}
+                >
+                  <option value="">
+                    {debtPaymentSelected ? "Choose a debt" : "No linked debt"}
+                  </option>
                   {selectableDebts.map((debt) => (
                     <option key={debt.id} value={debt.id}>
                       {debt.name}

@@ -4,15 +4,20 @@ import {
   mobileSyncTransferSnapshotSchema,
   type MobileSyncPushOperation,
   type MobileSyncPushResult,
-  type TransferInput,
+  type TransactionInput,
 } from "@zoption/shared";
 
 import { HttpError } from "../../../errors";
 import type { Bindings } from "../../../types";
-import { validateTransactionReferences } from "../../transactions";
+import {
+  debtPaymentChanges,
+  readTransferDebtPayment,
+  validateTransactionReferences,
+} from "../../transactions";
 import { mobileSyncServerTimestamp as serverTimestamp } from "../protocol";
 import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import {
+  appliedOperationGuard,
   persistResult,
   readIdempotency,
   replayedResult,
@@ -46,8 +51,21 @@ export async function pushTransferOperation(
   }
 
   const existing = current ? mobileSyncTransferSnapshotSchema.parse(current) : null;
-  const transfer: TransferInput | null =
-    operation.operationType === "delete" ? null : operation.payload.transfer;
+  const previousPayment = existing
+    ? await readTransferDebtPayment(env, tenantId, operation.entityId)
+    : null;
+  // A client that predates debt links omits debtId. Its edit keeps the stored link while the
+  // money still goes to the same account, and drops it once the edit sends it elsewhere.
+  const sent = operation.operationType === "delete" ? null : operation.payload.transfer;
+  const transfer: Extract<TransactionInput, { kind: "transfer" }> | null = sent && {
+    ...sent,
+    debtId:
+      sent.debtId !== undefined
+        ? sent.debtId
+        : existing?.toAccountId === sent.toAccountId
+          ? (previousPayment?.debtId ?? null)
+          : null,
+  };
   if (transfer) {
     try {
       await validateTransactionReferences(
@@ -80,6 +98,11 @@ export async function pushTransferOperation(
   });
   const timestamp = serverTimestamp();
   const statements: D1PreparedStatement[] = [];
+  const [, receivedLeg] = transfer ? buildTransferLegs(transfer) : [];
+  const nextPayment =
+    transfer?.debtId && receivedLeg
+      ? { debtId: transfer.debtId, amountMinor: receivedLeg.amountMinor }
+      : null;
   if (operation.operationType === "create") {
     const payload = operation.payload;
     const [fromLeg, toLeg] = buildTransferLegs(payload.transfer);
@@ -91,9 +114,9 @@ export async function pushTransferOperation(
       env.DB.prepare(
         `INSERT INTO transactions (
           id, tenant_id, account_id, category_id, date, description, amount_minor,
-          currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind,
+          currency, kind, notes, transfer_group_id, transfer_fee_minor, debt_id, source_kind,
           revision, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', 1, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, 'manual', 1, ?)`,
       ).bind(
         payload.fromTransactionId,
         tenantId,
@@ -106,6 +129,7 @@ export async function pushTransferOperation(
         payload.transfer.notes || null,
         operation.entityId,
         fromLeg.transferFeeMinor,
+        nextPayment?.debtId ?? null,
         timestamp,
       ),
       env.DB.prepare(
@@ -135,8 +159,8 @@ export async function pushTransferOperation(
     statements.push(
       env.DB.prepare(
         `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?,
-          amount_minor = ?, currency = ?, notes = ?, transfer_fee_minor = ?, revision = ?,
-          updated_at = ?
+          amount_minor = ?, currency = ?, notes = ?, transfer_fee_minor = ?, debt_id = ?,
+          revision = ?, updated_at = ?
          WHERE id = ? AND tenant_id = ? AND transfer_group_id = ? AND kind = 'transfer'
            AND revision = ?`,
       ).bind(
@@ -148,6 +172,7 @@ export async function pushTransferOperation(
         operation.payload.transfer.currency,
         operation.payload.transfer.notes || null,
         fromLeg.transferFeeMinor,
+        nextPayment?.debtId ?? null,
         revision,
         timestamp,
         snapshot.fromTransactionId,
@@ -197,13 +222,21 @@ export async function pushTransferOperation(
       ).bind(tenantId, operation.entityId, snapshot.fromTransactionId, snapshot.toTransactionId),
     );
   }
+  const idempotencyIndex = statements.length;
   statements.push(
     requiredIdempotencyInsert(env, tenantId, clientId, operation, hash, acknowledged),
+    ...debtPaymentChanges(
+      env,
+      tenantId,
+      previousPayment,
+      nextPayment,
+      appliedOperationGuard(tenantId, clientId, operation),
+    ),
   );
 
   try {
     const batch = await env.DB.batch(statements);
-    if (Number(batch.at(-1)?.meta.changes ?? 0) === 1) return acknowledged;
+    if (Number(batch[idempotencyIndex]?.meta.changes ?? 0) === 1) return acknowledged;
   } catch {
     const replay = await readIdempotency(env, tenantId, clientId, operation.idempotencyKey);
     if (replay) return replayedResult(replay, hash);

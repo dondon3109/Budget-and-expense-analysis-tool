@@ -244,75 +244,20 @@ const POOLED_SERVICES = {
 };
 
 describe("Pro route enforcement", () => {
-  it.each([
-    {
-      name: "account creation",
-      request: {
-        path: "/api/app/accounts",
-        init: {
-          method: "POST",
-          headers: JSON_HEADERS,
-          body: JSON.stringify({ name: "Savings", type: "savings" }),
-        },
-      },
-      repositoryCall: "account.create" as const,
-      capability: "account_management" as const,
-    },
-    {
-      name: "account update",
-      request: {
-        path: "/api/app/accounts/account-1",
-        init: {
-          method: "PATCH",
-          headers: JSON_HEADERS,
-          body: JSON.stringify({ name: "Daily" }),
-        },
-      },
-      repositoryCall: "account.update" as const,
-      capability: "account_management" as const,
-    },
-    {
-      name: "account deletion",
-      request: {
-        path: "/api/app/accounts/account-1",
-        init: { method: "DELETE", headers: AUTHORIZATION },
-      },
-      repositoryCall: "account.remove" as const,
-      capability: "account_management" as const,
-    },
-    {
-      name: "transaction export",
-      request: {
-        path: "/api/app/exports/transactions.csv",
-        init: { headers: AUTHORIZATION },
-      },
-      repositoryCall: "transaction.export" as const,
-      capability: "transaction_export" as const,
-    },
-  ])("denies $name before its repository", async ({ request, repositoryCall, capability }) => {
+  it("denies transaction export before its repository", async () => {
     const requirePro = vi.fn(async () => {
       throw new HttpError(403, "pro_plan_required", "Upgrade to Zoption Pro to use this feature.");
     });
-    const stores = {
-      accounts: accounts(),
-      categories: categories(),
-      transactions: transactions(),
-    };
-    const app = testApp({ billing: billing(requirePro), ...stores });
+    const transactionStore = transactions();
+    const app = testApp({ billing: billing(requirePro), transactions: transactionStore });
 
-    const response = await app.request(request.path, request.init);
+    const response = await app.request("/api/app/exports/transactions.csv", {
+      headers: AUTHORIZATION,
+    });
 
     expect(response.status).toBe(403);
-    expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, capability);
-    const repositoryMethod =
-      repositoryCall === "account.create"
-        ? vi.mocked(stores.accounts.create!)
-        : repositoryCall === "account.update"
-          ? vi.mocked(stores.accounts.update!)
-          : repositoryCall === "account.remove"
-            ? vi.mocked(stores.accounts.remove!)
-            : vi.mocked(stores.transactions.export);
-    expect(repositoryMethod).not.toHaveBeenCalled();
+    expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "transaction_export");
+    expect(transactionStore.export).not.toHaveBeenCalled();
   });
 
   it("lets Free users load the weekly cashflow trend without a Pro check", async () => {
@@ -374,8 +319,10 @@ describe("Pro route enforcement", () => {
     expect(loader).not.toHaveBeenCalled();
   });
 
-  it("lets the category repository enforce its allowance while account writes remain Pro-gated", async () => {
-    const requirePro = vi.fn(async () => undefined);
+  it("lets the category repository enforce its allowance and leaves account writes ungated", async () => {
+    const requirePro = vi.fn(async () => {
+      throw new Error("account and category writes must not require Pro");
+    });
     const accountStore = accounts();
     const categoryStore = categories();
     const app = testApp({
@@ -402,11 +349,8 @@ describe("Pro route enforcement", () => {
       color: "#4f7faf",
     });
     expect(accountResponse.status).toBe(201);
-    expect(requirePro).toHaveBeenCalledOnce();
-    expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "account_management");
-    expect(requirePro.mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(accountStore.create!).mock.invocationCallOrder[0]!,
-    );
+    expect(accountStore.create).toHaveBeenCalledOnce();
+    expect(requirePro).not.toHaveBeenCalled();
   });
 
   it("checks Pro before export repositories and paid cashflow loaders", async () => {

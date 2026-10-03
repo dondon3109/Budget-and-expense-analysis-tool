@@ -593,7 +593,7 @@ describe("Profile dashboard account management", () => {
     );
     expect(apiMocks.createAccount).toHaveBeenCalledWith(
       { key: "user:user-1", userId: "user-1" },
-      { name: "SeaBank", type: "checking", currency: "USD" },
+      { name: "SeaBank", type: "other", currency: "USD" },
     );
   });
 
@@ -774,7 +774,7 @@ describe("Profile dashboard account management", () => {
     renderPage();
 
     const accountManager = await screen.findByRole("region", { name: "Account management" });
-    for (const label of ["Bank account", "Savings", "Cash", "Credit card", "Other"]) {
+    for (const label of ["Bank / debit card", "Savings", "Cash", "Credit card", "General"]) {
       expect(within(accountManager).getByText(label)).toBeInTheDocument();
     }
     for (const rawType of ["checking", "savings", "credit", "other"]) {

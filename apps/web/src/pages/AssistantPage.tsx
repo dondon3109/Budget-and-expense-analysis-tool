@@ -453,13 +453,9 @@ export function AssistantPage() {
                 <span className="assistant-history-label">History</span>
               </button>
               <div className="assistant-chat-status">
-                <span className="assistant-status-dot" aria-hidden="true" />
                 <div className="assistant-chat-identity">
                   <h1 className="assistant-chat-title">AI Financial Assistant</h1>
-                  <p className="assistant-chat-meta">
-                    <strong>{assistantName}</strong>
-                    <span className="assistant-status-readonly">You approve saves</span>
-                  </p>
+                  <p className="assistant-chat-meta">{assistantName}</p>
                 </div>
               </div>
               {aiUsage && (
@@ -474,7 +470,6 @@ export function AssistantPage() {
                 </div>
               )}
               <div className="assistant-chat-corner">
-                <small className="assistant-chat-retention">90-day private history</small>
                 <ThemeToggle variant="segmented" />
                 <button
                   type="button"
