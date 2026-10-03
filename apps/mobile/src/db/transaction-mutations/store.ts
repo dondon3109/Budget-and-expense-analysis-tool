@@ -3,9 +3,10 @@ import { z } from "zod";
 
 import {
   buildTransferLegs,
+  isLiabilityAccountType,
+  type DebtLinkedTransferInput,
   type MobileSyncPushOperation,
   type SubscriptionInput,
-  type TransferInput,
 } from "@zoption/shared";
 
 import {
@@ -140,6 +141,20 @@ export class LocalMutationStore {
       throw new LocalMutationError("Debt not found on this device.", "debt_missing");
     }
     return decoded.data;
+  }
+
+  /**
+   * A payment can link only a debt the server already has: it applies the payment on push,
+   * and a mobile push cannot make a transaction wait on a debt that is still being created.
+   */
+  async assertLinkableDebt(id: string): Promise<void> {
+    const debt = await this.currentDebtById(id);
+    if (debt.server_revision < 1) {
+      throw new LocalMutationError(
+        "Wait for this debt to finish synchronizing before recording a payment to it.",
+        "invalid_reference",
+      );
+    }
   }
 
   async currentDebtRowById(id: string) {
@@ -284,7 +299,7 @@ export class LocalMutationStore {
   async currentTransaction(id: string) {
     const row = await this.database.getFirstAsync(
       `SELECT id, account_id, category_id, date, description, amount_minor, currency, kind,
-        notes, transfer_group_id, transfer_fee_minor, import_fingerprint, server_revision,
+        notes, transfer_group_id, transfer_fee_minor, import_fingerprint, debt_id, server_revision,
         server_updated_at, deleted_at, sync_state
        FROM transactions WHERE id = ?`,
       id,
@@ -304,7 +319,7 @@ export class LocalMutationStore {
     const rows = z.array(transactionRowSchema).parse(
       await this.database.getAllAsync(
         `SELECT id, account_id, category_id, date, description, amount_minor, currency, kind,
-          notes, transfer_group_id, transfer_fee_minor, import_fingerprint, server_revision,
+          notes, transfer_group_id, transfer_fee_minor, import_fingerprint, debt_id, server_revision,
           server_updated_at, deleted_at, sync_state
          FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor, id`,
         selected.transfer_group_id,
@@ -313,7 +328,7 @@ export class LocalMutationStore {
     return transferPairFromRows(rows);
   }
 
-  async validateTransferReferences(input: TransferInput): Promise<void> {
+  async validateTransferReferences(input: DebtLinkedTransferInput): Promise<void> {
     const [category, fromAccount, toAccount] = await Promise.all([
       this.currentCategory(input.categoryId),
       this.currentAccount(input.fromAccountId),
@@ -334,13 +349,21 @@ export class LocalMutationStore {
         "invalid_reference",
       );
     }
+    if (!input.debtId) return;
+    if (!isLiabilityAccountType(toAccount.type)) {
+      throw new LocalMutationError(
+        "Pay a debt into a credit card or payable account.",
+        "invalid_reference",
+      );
+    }
+    await this.assertLinkableDebt(input.debtId);
   }
 
   async replaceTransferRows(
     groupId: string,
     fromId: string,
     toId: string,
-    input: TransferInput,
+    input: DebtLinkedTransferInput,
     serverRevision: number,
     serverUpdatedAt: string | null,
     syncState: "synced" | "pending",
@@ -354,9 +377,9 @@ export class LocalMutationStore {
       await this.database.runAsync(
         `INSERT INTO transactions (
           id, account_id, category_id, date, description, amount_minor, currency, kind,
-          notes, transfer_group_id, transfer_fee_minor, server_revision,
+          notes, transfer_group_id, transfer_fee_minor, debt_id, server_revision,
           server_updated_at, deleted_at, sync_state
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, ?, NULL, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, ?, ?, NULL, ?)`,
         id,
         leg.accountId,
         input.categoryId,
@@ -367,6 +390,8 @@ export class LocalMutationStore {
         input.notes || null,
         groupId,
         leg.transferFeeMinor,
+        // The link lives on the sending leg, as it does on the server.
+        leg === fromLeg ? (input.debtId ?? null) : null,
         serverRevision,
         serverUpdatedAt,
         syncState,

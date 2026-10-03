@@ -17,7 +17,7 @@ import {
   monthStartSchema,
   resourceIdSchema,
   subscriptionInputSchema,
-  transferInputSchema,
+  debtLinkedTransferInputSchema,
   transactionInputSchema,
   transactionUpdateSchema,
 } from "./schemas";
@@ -36,6 +36,31 @@ import {
 } from "./types";
 
 export const MOBILE_SYNC_PROTOCOL_VERSION = 1 as const;
+
+/**
+ * Installed apps validate pull and push responses strictly and reject unknown keys or enum
+ * values, so a payload addition reaches only clients that name its feature in this header.
+ * Clients that do not send it get payloads shaped for protocol version 1 as first shipped.
+ */
+export const MOBILE_SYNC_FEATURES_HEADER = "x-zoption-sync-features";
+export const mobileSyncFeatures = [
+  // Transactions and transfers carry `debtId`, the debt the payment went to.
+  "debt-links",
+  // Accounts may use the account types added after the first protocol release.
+  "account-types-v2",
+] as const;
+export type MobileSyncFeature = (typeof mobileSyncFeatures)[number];
+
+/** Reads the comma-separated feature header, ignoring names this build does not know. */
+export function parseMobileSyncFeatures(header: string | null | undefined): Set<MobileSyncFeature> {
+  const known = new Set<string>(mobileSyncFeatures);
+  return new Set(
+    (header ?? "")
+      .split(",")
+      .map((name) => name.trim())
+      .filter((name): name is MobileSyncFeature => known.has(name)),
+  );
+}
 export const mobileSyncEntityTypes = [
   "account",
   "category",
@@ -130,6 +155,8 @@ export const mobileSyncTransactionSnapshotSchema = z
     transferGroupId: resourceIdSchema.nullable(),
     transferFeeMinor: z.number().int().safe().min(0).nullable(),
     importFingerprint: z.string().max(200).nullable(),
+    // Sent only to "debt-links" clients; on a transfer it sits on the sending leg.
+    debtId: resourceIdSchema.nullable().optional(),
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })
@@ -149,6 +176,7 @@ export const mobileSyncTransferSnapshotSchema = z
     currency: z.enum(currencies),
     notes: z.string().max(500).nullable(),
     transferFeeMinor: z.number().int().safe().min(0),
+    debtId: resourceIdSchema.nullable().optional(),
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })
@@ -515,7 +543,7 @@ export const mobileSyncPushOperationSchema = z
         .object({
           fromTransactionId: uuidSchema,
           toTransactionId: uuidSchema,
-          transfer: transferInputSchema,
+          transfer: debtLinkedTransferInputSchema,
         })
         .strict()
         .refine((value) => value.fromTransactionId !== value.toTransactionId, {
@@ -523,7 +551,7 @@ export const mobileSyncPushOperationSchema = z
           message: "Transfer legs must use different IDs.",
         }),
     ),
-    updateOperation("transfer", z.object({ transfer: transferInputSchema }).strict()),
+    updateOperation("transfer", z.object({ transfer: debtLinkedTransferInputSchema }).strict()),
     deleteOperation("transfer"),
   ])
   .superRefine((operation, context) => {

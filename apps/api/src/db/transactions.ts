@@ -1,5 +1,6 @@
 import {
   buildTransferLegs,
+  isLiabilityAccountType,
   normalizeSignedAmount,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   transactionInputSchema,
@@ -275,7 +276,7 @@ export async function validateTransactionReferences(
   const found = await Promise.all(
     accountIds.map(async (accountId) => {
       const [account] = await db
-        .select({ id: accounts.id, archived: accounts.archived })
+        .select({ id: accounts.id, archived: accounts.archived, type: accounts.type })
         .from(accounts)
         .where(and(eq(accounts.id, accountId), eq(accounts.tenantId, tenantId)))
         .limit(1);
@@ -286,11 +287,20 @@ export async function validateTransactionReferences(
     throw new HttpError(400, "invalid_account", "Choose an active account.");
   }
 
-  if (input.kind === "expense" && input.debtId) {
+  const debtId = input.kind === "income" ? null : input.debtId;
+  // A transfer pays a debt only by moving money into an account that holds what is owed.
+  if (input.kind === "transfer" && debtId && !isLiabilityAccountType(found[1]!.type)) {
+    throw new HttpError(
+      400,
+      "invalid_debt_payment_account",
+      "Pay a debt into a credit card or payable account.",
+    );
+  }
+  if (debtId) {
     const [debt] = await db
       .select({ id: debts.id })
       .from(debts)
-      .where(and(eq(debts.id, input.debtId), eq(debts.tenantId, tenantId)))
+      .where(and(eq(debts.id, debtId), eq(debts.tenantId, tenantId)))
       .limit(1);
     if (!debt) throw new HttpError(400, "invalid_debt", "Choose a debt from this workspace.");
   }
@@ -364,14 +374,87 @@ function applyDebtPayment(
   tenantId: string,
   debtId: string,
   deltaMinor: number,
+  guard?: DebtPaymentGuard,
 ): D1PreparedStatement {
   return env.DB.prepare(
     `UPDATE debts
        SET balance_minor = MAX(0, balance_minor - ?),
            status = CASE WHEN balance_minor - ? <= 0 THEN 'paid' ELSE 'active' END,
            updated_at = datetime('now')
-     WHERE id = ? AND tenant_id = ?`,
-  ).bind(deltaMinor, deltaMinor, debtId, tenantId);
+     WHERE id = ? AND tenant_id = ?${guard ? ` AND ${guard.condition}` : ""}`,
+  ).bind(deltaMinor, deltaMinor, debtId, tenantId, ...(guard?.bindings ?? []));
+}
+
+export type DebtPayment = { debtId: string; amountMinor: number } | null;
+
+/**
+ * An extra SQL condition every balance write must meet. Mobile sync batches do not roll back
+ * when a revision-guarded write misses, so their debt writes require the operation's
+ * idempotency row, which the batch inserts only after the guarded write lands.
+ */
+export interface DebtPaymentGuard {
+  condition: string;
+  bindings: unknown[];
+}
+
+/**
+ * The balance writes for an edit that moves a debt payment: a dropped, re-linked, or
+ * re-priced payment gives back what it took before applying the new one. An unchanged
+ * payment yields no writes.
+ */
+export function debtPaymentChanges(
+  env: Bindings,
+  tenantId: string,
+  previous: DebtPayment,
+  next: DebtPayment,
+  guard?: DebtPaymentGuard,
+): D1PreparedStatement[] {
+  if (previous?.debtId === next?.debtId && previous?.amountMinor === next?.amountMinor) return [];
+  const statements: D1PreparedStatement[] = [];
+  if (previous) {
+    statements.push(applyDebtPayment(env, tenantId, previous.debtId, -previous.amountMinor, guard));
+  }
+  if (next) statements.push(applyDebtPayment(env, tenantId, next.debtId, next.amountMinor, guard));
+  return statements;
+}
+
+/** The payment an income or expense row makes today: its debt link and absolute amount. */
+export async function readTransactionDebtPayment(
+  env: Bindings,
+  tenantId: string,
+  id: string,
+): Promise<DebtPayment> {
+  const row = await env.DB.prepare(
+    `SELECT debt_id AS debtId, amount_minor AS amountMinor
+     FROM transactions WHERE id = ? AND tenant_id = ? AND kind = 'expense'`,
+  )
+    .bind(id, tenantId)
+    .first<{ debtId: string | null; amountMinor: number }>();
+  return row?.debtId ? { debtId: row.debtId, amountMinor: Math.abs(row.amountMinor) } : null;
+}
+
+/**
+ * A transfer's debt link lives on its sender leg, the row list reads return, and pays
+ * off what reached the liability account: the receiver leg's amount, after any fee.
+ */
+export async function readTransferDebtPayment(
+  env: Bindings,
+  tenantId: string,
+  transferGroupId: string,
+): Promise<DebtPayment> {
+  const row = await env.DB.prepare(
+    `SELECT sender.debt_id AS debtId, receiver.amount_minor AS amountMinor
+     FROM transactions sender
+     INNER JOIN transactions receiver
+       ON receiver.tenant_id = sender.tenant_id
+       AND receiver.transfer_group_id = sender.transfer_group_id
+       AND receiver.amount_minor > 0
+     WHERE sender.tenant_id = ? AND sender.transfer_group_id = ? AND sender.amount_minor < 0
+     LIMIT 1`,
+  )
+    .bind(tenantId, transferGroupId)
+    .first<{ debtId: string | null; amountMinor: number }>();
+  return row?.debtId ? { debtId: row.debtId, amountMinor: row.amountMinor } : null;
 }
 
 const EXPORT_ROW_LIMIT = 5000;
@@ -450,6 +533,7 @@ export const transactionRepository: TransactionRepository = {
       const fromId = crypto.randomUUID();
       const toId = crypto.randomUUID();
       const [fromLeg, toLeg] = buildTransferLegs(input);
+      const debtId = input.debtId ?? null;
       await env.DB.batch([
         env.DB.prepare(
           `INSERT INTO transfer_groups (id, tenant_id, from_transaction_id, to_transaction_id)
@@ -466,6 +550,7 @@ export const transactionRepository: TransactionRepository = {
           currency: input.currency,
           kind: input.kind,
           notes: input.notes,
+          debtId,
           transferGroupId: groupId,
           transferFeeMinor: fromLeg.transferFeeMinor,
         }),
@@ -483,6 +568,7 @@ export const transactionRepository: TransactionRepository = {
           transferGroupId: groupId,
           transferFeeMinor: toLeg.transferFeeMinor,
         }),
+        ...(debtId ? [applyDebtPayment(env, tenantId, debtId, toLeg.amountMinor)] : []),
       ]);
       const created = await findTransaction(env, tenantId, fromId);
       if (!created) throw new Error("Created transfer could not be read back.");
@@ -545,12 +631,23 @@ export const transactionRepository: TransactionRepository = {
       if (!parsed.success || parsed.data.kind !== "transfer") {
         throw new HttpError(400, "invalid_transfer_update", "Provide complete transfer details.");
       }
-      const transfer = parsed.data;
+      const previousPayment = await readTransferDebtPayment(
+        env,
+        tenantId,
+        existing.transferGroupId,
+      );
+      // Omitting debtId keeps the stored link, as it does for an expense; null drops it.
+      const nextDebtId =
+        parsed.data.debtId === undefined ? (previousPayment?.debtId ?? null) : parsed.data.debtId;
+      const transfer = { ...parsed.data, debtId: nextDebtId };
       await validateTransactionReferences(env, tenantId, transfer, existing.categoryId);
       const [fromLeg, toLeg] = buildTransferLegs(transfer);
+      const nextPayment = nextDebtId
+        ? { debtId: nextDebtId, amountMinor: toLeg.amountMinor }
+        : null;
       await env.DB.batch([
         env.DB.prepare(
-          `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, transfer_fee_minor = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,
+          `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, transfer_fee_minor = ?, debt_id = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,
         ).bind(
           fromLeg.accountId,
           transfer.categoryId,
@@ -560,6 +657,7 @@ export const transactionRepository: TransactionRepository = {
           transfer.currency,
           transfer.notes || null,
           fromLeg.transferFeeMinor,
+          nextDebtId,
           tenantId,
           existing.transferGroupId,
         ),
@@ -577,6 +675,7 @@ export const transactionRepository: TransactionRepository = {
           tenantId,
           existing.transferGroupId,
         ),
+        ...debtPaymentChanges(env, tenantId, previousPayment, nextPayment),
       ]);
       const updated = await findTransaction(env, tenantId, existing.canonicalTransferId ?? id);
       if (!updated) throw new Error("Updated transfer could not be read back.");
@@ -630,30 +729,16 @@ export const transactionRepository: TransactionRepository = {
       id,
       tenantId,
     );
-    // Reconsider both sides of the edit: a dropped, re-linked, or re-priced payment
-    // moves the balance it was applied to. An unchanged payment leaves the debt alone.
-    const previousPayment =
+    const paymentWrites = debtPaymentChanges(
+      env,
+      tenantId,
       current.kind === "expense" && current.debtId
         ? { debtId: current.debtId, amountMinor: Math.abs(current.amountMinor) }
-        : null;
-    const nextPayment =
-      nextDebtId !== null ? { debtId: nextDebtId, amountMinor: transaction.amountMinor } : null;
-    const paymentChanged =
-      previousPayment?.debtId !== nextPayment?.debtId ||
-      previousPayment?.amountMinor !== nextPayment?.amountMinor;
-    if (paymentChanged) {
-      const statements = [update];
-      if (previousPayment) {
-        statements.push(
-          applyDebtPayment(env, tenantId, previousPayment.debtId, -previousPayment.amountMinor),
-        );
-      }
-      if (nextPayment) {
-        statements.push(
-          applyDebtPayment(env, tenantId, nextPayment.debtId, nextPayment.amountMinor),
-        );
-      }
-      await env.DB.batch(statements);
+        : null,
+      nextDebtId !== null ? { debtId: nextDebtId, amountMinor: transaction.amountMinor } : null,
+    );
+    if (paymentWrites.length > 0) {
+      await env.DB.batch([update, ...paymentWrites]);
     } else {
       await update.run();
     }
@@ -676,6 +761,7 @@ export const transactionRepository: TransactionRepository = {
       }>();
     if (!existing) throw new HttpError(404, "transaction_not_found", "Transaction not found.");
     if (existing.transferGroupId) {
+      const payment = await readTransferDebtPayment(env, tenantId, existing.transferGroupId);
       await env.DB.batch([
         env.DB.prepare(
           "DELETE FROM transactions WHERE tenant_id = ? AND transfer_group_id = ?",
@@ -684,6 +770,7 @@ export const transactionRepository: TransactionRepository = {
           tenantId,
           existing.transferGroupId,
         ),
+        ...debtPaymentChanges(env, tenantId, payment, null),
       ]);
       return;
     }

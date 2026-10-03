@@ -1,8 +1,8 @@
 import {
   buildTransferLegs,
+  debtLinkedTransferInputSchema,
   mobileSyncPushOperationSchema,
-  transferInputSchema,
-  type TransferInput,
+  type DebtLinkedTransferInput,
 } from "@zoption/shared";
 
 import type { LocalCommandContext } from "../context";
@@ -12,9 +12,9 @@ import { assertNotQueuedForRemoval, assertNoAttemptInFlight } from "./outbox-wri
 export function updateTransfer(
   ctx: LocalCommandContext,
   id: string,
-  value: TransferInput,
+  value: DebtLinkedTransferInput,
 ): Promise<void> {
-  const input = transferInputSchema.parse(value);
+  const input = debtLinkedTransferInputSchema.parse(value);
   return ctx.writer.run(async () => {
     await ctx.database.withTransactionAsync(async () => {
       const pair = await ctx.store.currentTransfer(id);
@@ -89,7 +89,7 @@ export function updateTransfer(
         await ctx.database.runAsync(
           `UPDATE transactions SET account_id = ?, category_id = ?, date = ?,
             description = ?, amount_minor = ?, currency = ?, notes = ?,
-            transfer_fee_minor = ?, sync_state = 'pending' WHERE id = ?`,
+            transfer_fee_minor = ?, debt_id = ?, sync_state = 'pending' WHERE id = ?`,
           leg.accountId,
           input.categoryId,
           input.date,
@@ -98,6 +98,7 @@ export function updateTransfer(
           input.currency,
           input.notes || null,
           leg.transferFeeMinor,
+          row === pair.from ? (input.debtId ?? null) : null,
           row.id,
         );
       }

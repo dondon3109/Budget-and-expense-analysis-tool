@@ -8,10 +8,14 @@ All notable product changes are documented here.
 
 - Web and mobile: track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Yen, won, dong, and Chilean pesos show without decimals on mobile.
 - Imports, voice entries, and receipt scans now use your workspace currency instead of always pesos.
+- More account types when you add an account: General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables. Credit card and I owe / Payables are marked as liabilities.
+- Pay a debt with an account, not only the Debt payment category: a transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. Editing or deleting the transfer gives the amount back.
+- Mobile: debt payments link to a debt, as on the web. Choosing the Debt payment category, or transferring into a credit card or I owe / Payables account, asks which debt it pays, and the debt's balance updates once the payment syncs. Older app versions keep syncing, and accounts with the new types show there as Other.
 
 ### Changed
 
 - Web: the setup goal question now lets you pick all the goals that apply, with the first one you pick as your main focus, and thanks you once you have answered. You can change them in Account Settings. The privacy policy now says goals, not a single goal.
+- Adding, renaming, and removing accounts is now free on every plan, with no limit on how many accounts you keep. Automatic interest on savings accounts is still a Pro feature.
 
 ### Fixed
 

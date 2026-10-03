@@ -4,7 +4,7 @@ export const capabilityLabels: Record<BillingCapability, string> = {
   ai_usage: "AI actions",
   file_import: "file imports",
   category_management: "custom category management",
-  account_management: "custom account management",
+  account_interest: "automatic interest",
   cashflow_analytics: "cashflow analytics",
   transaction_export: "transaction exports",
 };

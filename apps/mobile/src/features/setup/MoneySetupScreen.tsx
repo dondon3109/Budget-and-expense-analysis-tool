@@ -9,25 +9,7 @@ import { Button, CategoryBadge, Card, EmptyState, ErrorState, Skeleton } from "@
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
-
-const accountTypeLabel: Record<LocalAccountItem["type"], string> = {
-  cash: "Cash",
-  checking: "Checking",
-  savings: "Savings",
-  credit: "Credit",
-  other: "Other",
-};
-
-const accountTypeIcon: Record<
-  LocalAccountItem["type"],
-  keyof typeof MaterialCommunityIcons.glyphMap
-> = {
-  cash: "cash-multiple",
-  checking: "bank-outline",
-  savings: "piggy-bank-outline",
-  credit: "credit-card-outline",
-  other: "wallet-outline",
-};
+import { accountTypeIcon, accountTypeLabel } from "./account-types";
 
 function statusText(state: LocalAccountItem["syncState"]): string | null {
   switch (state) {
@@ -213,9 +195,9 @@ export function MoneySetupScreen() {
                     ) : null}
                     <SetupRow
                       title={account.name}
-                      detail={`${accountTypeLabel[account.type]} · ${account.currency}${account.system ? " · Permanent" : ""}`}
+                      detail={`${accountTypeLabel(account.type)} · ${account.currency}${account.system ? " · Permanent" : ""}`}
                       state={account.syncState}
-                      icon={accountTypeIcon[account.type]}
+                      icon={accountTypeIcon(account.type)}
                       onPress={() =>
                         account.syncState === "conflicted"
                           ? openConflict("account", account.id)

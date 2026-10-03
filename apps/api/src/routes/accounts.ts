@@ -10,6 +10,10 @@ import type { BillingRepository } from "../db/billing";
 import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
+/**
+ * Account CRUD is open to every plan. Only turning on automatic interest needs
+ * Pro; switching it off stays free so a lapsed subscriber can clean up.
+ */
 export function createAccountRoutes(
   repository: AccountRepository,
   billing: Pick<BillingRepository, "requirePro">,
@@ -21,7 +25,6 @@ export function createAccountRoutes(
   );
 
   routes.post("/", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     const input = parseInput(
       accountInputSchema,
       await readJson(context),
@@ -34,12 +37,14 @@ export function createAccountRoutes(
   });
 
   routes.patch("/:id", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     const input = parseInput(
       accountUpdateWithInterestSchema,
       await readJson(context),
       "Check the account and interest details.",
     );
+    if (input.interest?.enabled) {
+      await billing.requirePro(context.env, context.get("tenant").tenantId, "account_interest");
+    }
     return context.json(
       await repository.update!(
         context.env,
@@ -51,7 +56,6 @@ export function createAccountRoutes(
   });
 
   routes.delete("/:id", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     await repository.remove!(
       context.env,
       context.get("tenant").tenantId,
@@ -61,12 +65,14 @@ export function createAccountRoutes(
   });
 
   routes.patch("/:id/interest", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "account_management");
     const input = parseInput(
       interestUpdateSchema,
       await readJson(context),
       "Check the interest settings.",
     );
+    if (input.enabled) {
+      await billing.requirePro(context.env, context.get("tenant").tenantId, "account_interest");
+    }
     return context.json(
       await repository.updateInterest!(
         context.env,

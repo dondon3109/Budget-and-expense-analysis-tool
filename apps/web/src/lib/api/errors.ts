@@ -39,7 +39,7 @@ const billingCapabilities = new Set<BillingCapability>([
   "ai_usage",
   "file_import",
   "category_management",
-  "account_management",
+  "account_interest",
   "cashflow_analytics",
   "transaction_export",
 ]);

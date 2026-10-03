@@ -1,4 +1,6 @@
 import {
+  isDebtPaymentCategoryId,
+  isLiabilityAccountType,
   MoneyParseError,
   parseAmountToMinor,
   transactionInputSchema,
@@ -19,6 +21,8 @@ export interface TransactionFormValues {
   transferFee: string;
   currency: Currency;
   notes: string;
+  /** The debt this entry pays; empty when none is linked or the entry cannot pay one. */
+  debtId: string;
 }
 
 export type TransactionFormErrors = Partial<
@@ -30,7 +34,8 @@ export type TransactionFormErrors = Partial<
     | "description"
     | "amount"
     | "transferFee"
-    | "notes",
+    | "notes"
+    | "debtId",
     string
   >
 >;
@@ -40,6 +45,20 @@ export function fallbackDescription(values: TransactionFormValues, categoryName?
   if (values.kind === "transfer") return "";
   const firstLine = values.notes.trim().split("\n")[0]?.trim().slice(0, 240);
   return firstLine || categoryName || "";
+}
+
+/**
+ * An entry can pay a debt when it is an expense in the Debt payment category, or a transfer
+ * into a liability account (credit card or payable), matching the web form and the server.
+ */
+export function debtPaymentApplies(
+  values: Pick<TransactionFormValues, "kind" | "categoryId">,
+  toAccountType: string | undefined,
+): boolean {
+  if (values.kind === "expense") return isDebtPaymentCategoryId(values.categoryId);
+  return values.kind === "transfer" && toAccountType !== undefined
+    ? isLiabilityAccountType(toAccountType)
+    : false;
 }
 
 export function formatMinorForInput(amountMinor: number): string {
@@ -98,6 +117,8 @@ export function parseTransactionForm(
           transferFeeMinor,
         }
       : { accountId: values.accountId }),
+    // The strict schema rejects a debt link on income; null is an explicit "no debt".
+    ...(values.kind === "income" ? {} : { debtId: values.debtId || null }),
     categoryId: values.categoryId,
     date: values.date,
     description: values.description,

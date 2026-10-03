@@ -129,6 +129,7 @@ function seedTransactions(database: DatabaseSync): void {
     INSERT INTO accounts (id, tenant_id, name, type) VALUES
       ('cash-1', 'tenant-1', 'Cash', 'cash'),
       ('savings-1', 'tenant-1', 'Savings', 'savings'),
+      ('card-1', 'tenant-1', 'Visa', 'credit'),
       ('cash-2', 'tenant-2', 'Other Cash', 'cash');
     INSERT INTO categories (id, tenant_id, name, kind, color) VALUES
       ('expense-1', 'tenant-1', 'Food', 'expense', '#ff0000'),
@@ -477,6 +478,60 @@ describe("transactionRepository SQLite behavior", () => {
     });
 
     expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+  });
+
+  it("pays a debt with a transfer into a liability account and reverses it on edit and delete", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    const payment = {
+      date: "2026-07-05",
+      description: "Card payment",
+      amountMinor: 2_100,
+      currency: "PHP" as const,
+      kind: "transfer" as const,
+      categoryId: "transfer-1",
+      fromAccountId: "cash-1",
+      toAccountId: "card-1",
+      transferFeeMinor: 100,
+    };
+
+    const created = await transactionRepository.create(env, "tenant-1", {
+      ...payment,
+      debtId: "debt-card",
+    });
+    expect(created).toMatchObject({ debtId: "debt-card", debtName: "Visa card" });
+    // Only what reached the card, after the fee, comes off the debt.
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 3_000, status: "active" });
+
+    // An edit that omits debtId keeps the link and re-prices the payment.
+    await transactionRepository.update(env, "tenant-1", created.id, {
+      ...payment,
+      amountMinor: 1_100,
+    });
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 4_000, status: "active" });
+
+    await transactionRepository.remove(env, "tenant-1", created.id);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+  });
+
+  it("refuses a debt link on a transfer into an account that is not a liability", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+
+    await expect(
+      transactionRepository.create(env, "tenant-1", {
+        date: "2026-07-05",
+        description: "Top-up",
+        amountMinor: 1_000,
+        currency: "PHP",
+        kind: "transfer",
+        categoryId: "transfer-1",
+        fromAccountId: "cash-1",
+        toAccountId: "savings-1",
+        debtId: "debt-card",
+      }),
+    ).rejects.toMatchObject({ status: 400, code: "invalid_debt_payment_account" });
   });
 
   it("updates and reads a transfer canonically through either physical leg ID", async () => {

@@ -26,7 +26,6 @@ const EXEMPT = new Set([
 export const OVERSIZE_CEILINGS = {
   "apps/api/src/db/billing.ts": 1116,
   "apps/api/tests/voice-stream.test.ts": 1015,
-  "apps/mobile/src/db/repository.ts": 1089,
   "apps/mobile/src/db/transaction-mutation-repository.test.ts": 2068,
   "apps/mobile/src/features/assistant/AssistantScreen.tsx": 1500,
   "apps/mobile/src/features/assistant/AssistantVoiceConversation.tsx": 1357,

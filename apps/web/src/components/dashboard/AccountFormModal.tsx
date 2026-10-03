@@ -14,7 +14,7 @@ import { useRootLock } from "../../hooks/useRootLock";
 import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
-import { accountTypes } from "./accountTypes";
+import { accountTypeOptionLabel, accountTypes } from "./accountTypes";
 
 interface DashboardFormModalProps {
   labelledBy: string;
@@ -156,7 +156,7 @@ export function AccountFormModal({
             >
               {accountTypes.map((type) => (
                 <option key={type.value} value={type.value}>
-                  {type.label}
+                  {accountTypeOptionLabel(type.value)}
                 </option>
               ))}
             </select>

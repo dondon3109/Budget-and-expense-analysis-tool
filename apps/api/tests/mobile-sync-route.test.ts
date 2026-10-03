@@ -74,15 +74,17 @@ describe("mobile sync route", () => {
 
     const valid = await app.request("/api/app/sync/pull", {
       method: "POST",
-      headers,
+      headers: { ...headers, "x-zoption-sync-features": "debt-links, someday-feature" },
       body: JSON.stringify({ protocolVersion: 1, cursor: null, limit: 10 }),
     });
     expect(valid.status).toBe(200);
-    expect(pull).toHaveBeenCalledWith(undefined, "tenant-safe", {
-      protocolVersion: 1,
-      cursor: null,
-      limit: 10,
-    });
+    // Unknown feature names are dropped rather than rejected, so newer clients stay compatible.
+    expect(pull).toHaveBeenCalledWith(
+      undefined,
+      "tenant-safe",
+      { protocolVersion: 1, cursor: null, limit: 10 },
+      new Set(["debt-links"]),
+    );
 
     const forged = await app.request("/api/app/sync/pull", {
       method: "POST",
@@ -133,13 +135,18 @@ describe("mobile sync route", () => {
       }),
     });
     expect(snapshotted.status).toBe(200);
-    expect(snapshot).toHaveBeenCalledWith(undefined, "tenant-safe", {
-      protocolVersion: 1,
-      clientId: "00000000-0000-4000-8000-000000000001",
-      snapshotCursor: null,
-      offset: 0,
-      limit: 10,
-    });
+    expect(snapshot).toHaveBeenCalledWith(
+      undefined,
+      "tenant-safe",
+      {
+        protocolVersion: 1,
+        clientId: "00000000-0000-4000-8000-000000000001",
+        snapshotCursor: null,
+        offset: 0,
+        limit: 10,
+      },
+      new Set(),
+    );
 
     const pushed = await app.request("/api/app/sync/push", {
       method: "POST",
@@ -162,7 +169,7 @@ describe("mobile sync route", () => {
       }),
     });
     expect(pushed.status).toBe(200);
-    expect(push).toHaveBeenCalledWith(undefined, "tenant-safe", expect.any(Object));
+    expect(push).toHaveBeenCalledWith(undefined, "tenant-safe", expect.any(Object), new Set());
 
     const forgedPush = await app.request("/api/app/sync/push", {
       method: "POST",

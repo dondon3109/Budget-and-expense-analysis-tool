@@ -72,7 +72,7 @@ export function optimisticTransaction(
   createdAt: string = pendingCreatedAt(),
 ): TransactionListItem {
   const category = categories.find((item) => item.id === input.categoryId);
-  const debtId = input.kind === "expense" ? (input.debtId ?? null) : null;
+  const debtId = input.kind === "income" ? null : (input.debtId ?? null);
   const debt = debts.find((item) => item.id === debtId);
   const account =
     "accountId" in input ? accounts.find((item) => item.id === input.accountId) : undefined;

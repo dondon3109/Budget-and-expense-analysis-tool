@@ -130,6 +130,16 @@ export const transferInputSchema = transactionBaseSchema
 
 export type TransferInput = z.infer<typeof transferInputSchema>;
 
+/**
+ * A transfer that may pay down a debt. Only a transfer into a liability account (credit card,
+ * payable) can carry the link; the server checks that against the stored account.
+ */
+export const debtLinkedTransferInputSchema = transferInputSchema.safeExtend({
+  debtId: resourceIdSchema.nullable().optional(),
+});
+
+export type DebtLinkedTransferInput = z.infer<typeof debtLinkedTransferInputSchema>;
+
 export const transactionInputSchema = z.discriminatedUnion("kind", [
   transactionBaseSchema.extend({ kind: z.literal("income"), accountId: resourceIdSchema }),
   transactionBaseSchema.extend({
@@ -140,7 +150,7 @@ export const transactionInputSchema = z.discriminatedUnion("kind", [
     // an explicit "no debt", which is how an edit drops a link it no longer wants.
     debtId: resourceIdSchema.nullable().optional(),
   }),
-  transferInputSchema,
+  debtLinkedTransferInputSchema,
 ]);
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
