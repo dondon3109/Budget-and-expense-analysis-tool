@@ -4,6 +4,8 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 3.3.0 — 2026-10-03
+
 ### Added
 
 - Mobile: short sound effects for taps, saved transactions, and errors. Turn them off under More → Preferences → Sound effects.
