@@ -11,57 +11,72 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 1, 2026",
+  releasedOn: "October 3, 2026",
   changes: [
     {
-      title: "Log a transaction by chatting with the assistant",
+      title: "Use Zoption on mobile without an account",
       description:
-        'Tell the assistant what you spent or where you went ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") and it drafts the transaction with a suggested category, account, and usual amount. If you only know what is left in an account, it works out the amount. Nothing is saved until you tap Save transaction. Because the assistant can now prepare drafts, you are asked to accept the updated assistant consent once before your next chat.',
+        'On the Android and iOS welcome screen, choose "Continue without an account" to track transactions, budgets, goals, debts, subscriptions, and your calendar on your phone. The AI Assistant, receipt scanning, voice entry, bank-file import, and Plan and billing need an account, and tapping one shows what an account adds, including backup and sync and a 7-day Pro trial. Data you enter without an account stays on this device and does not move into an account when you sign in.',
     },
     {
-      title: "Log several entries from the Android mic widget",
+      title: "Tell us what brings you to Zoption",
       description:
-        'Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves each as its own entry, up to 10 per note, without opening the app. A notification tells you how many were logged. Entries sync the next time Zoption opens.',
+        "Setup on the web and in the Android and iOS app now asks what you want from Zoption, such as tracking spending, budgeting, saving, or paying off debt. You can skip it and change it later in Account Settings on the web or under More → Preferences → Your goal on mobile. Your answer sets the first action on an empty dashboard or Home screen, a short getting-started checklist on the web, and the assistant's first suggested question. Existing web accounts are not asked during setup.",
     },
     {
-      title: "A new look for the Android mic widget",
+      title: "Alerts when you overspend",
       description:
-        'The mic widget is now a bordered card with a brand mic circle that follows your phone\'s light or dark theme. Stretch it wider to see the Zoption title and a "Tap and say what you spent" hint.',
+        'The Safe to spend card on the web dashboard and the Android and iOS Home screen warns you when nothing is left to spend safely this week, or when the 30-day forecast shows your balance going below zero, with the date. On Android and iOS it also arrives as a notification, once per week and once per deficit date, if you have allowed notifications. Over-limit categories on Budgets and on shared budget links turn red and say "Over by".',
     },
     {
-      title: "A clearer Home screen on Android and iOS",
+      title: "Safe to spend on the web dashboard",
       description:
-        "Home leads with a large safe-to-spend card and makes Add the main shortcut. Empty budget, category, and cash-flow cards fold away, categories show their emoji on a tinted badge everywhere, and the welcome screen is a single-screen landing.",
+        'The dashboard\'s Cash flow forecast card is now Safe to spend, showing what is safe to spend this week as on mobile, and it still opens the forecast. On mobile, the "days left · bills counted" line under the amount is gone.',
     },
     {
-      title: "Start a fresh assistant conversation",
+      title: "A cleaner Home screen on Android and iOS",
       description:
-        "Opening the AI assistant on mobile starts a new conversation. Past conversations are one tap away with the back arrow.",
+        "Home now shows only your Total Balance. Tap it to open Account Management, also under More → Accounts & categories. A switch at the top splits Home into Overview (balances, recent activity) and Analytics (this month, the cash flow chart, spending by category, budget, and the forecast).",
     },
     {
-      title: "Money in and out opens monthly for Pro",
+      title: "Select and delete several at once on mobile",
       description:
-        "The web dashboard's money in and out chart now opens on the monthly view for Pro, and the monthly view shows the past 30 days ending today, so it is never empty on the 1st of the month.",
+        "Press and hold a transaction or an assistant conversation to start select mode, pick several, and delete them in one step. Holding a conversation no longer opens a single-delete prompt.",
     },
     {
-      title: "Daily reminder on by default on Android and iOS",
+      title: "Sound effects on mobile",
       description:
-        "Zoption now reminds you at 12:00 PM and 9:00 PM. One switch under More → Preferences → Daily reminder turns it off.",
+        "Short sounds play for taps, saved transactions, and errors. Turn them off under More → Preferences → Sound effects.",
     },
     {
-      title: "Assistant answers keep to your workspace currency",
+      title: "Clearer plan limit pop-ups",
       description:
-        'Totals, category spending, budgets, and recurring charges count only your workspace currency and say when entries in the other currency were left out. "Show my recent transactions" works without a date range, and the biggest category is listed first.',
+        'Hitting a free plan limit on the web (custom categories, or Pro-only actions such as exporting transactions or managing accounts) or on mobile (the assistant, imports, or a custom category or account change refused during sync) opens a "Plan limit reached" pop-up with a link to Plan and billing.',
     },
     {
-      title: "Smoother sign-in links and a steadier PIN pad",
+      title: "Add a transaction without leaving the dashboard",
       description:
-        "Sign in and Start free on zoption.site open the app in a new tab. PIN digits you type are no longer lost when the screen refreshes.",
+        "On the web dashboard, Add transaction opens the form over the page instead of switching to Transactions, so you can add one and keep watching your balances.",
     },
     {
-      title: "Android Beta 0.2.43",
+      title: "A calmer, easier-to-read web app",
       description:
-        "The official Android Beta carries the redesigned mic widget with multi-entry logging, the new Home screen, a fresh assistant conversation on open, the default daily reminder, and the PIN fix.",
+        "No text is smaller than 11px, cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Category emojis sit on a soft tile tinted with the category colour. Sign-in, sign-up, password, and setup screens use a flat panel with larger labels, fill the screen on phones, and no longer make iOS zoom in when you tap a field.",
+    },
+    {
+      title: "Smaller fixes on the web",
+      description:
+        "Arrow keys on the setup goal step only move the selection, and you confirm with the button. Back and Confirm share the setup row. The calendar no longer draws a double line on its left edge, and its phone day markers use readable colours. The assistant's Memory button stays on screen on phones.",
+    },
+    {
+      title: "New budgeting guides",
+      description:
+        "zoption.site has three new guides: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines.",
+    },
+    {
+      title: "Android Beta 0.2.44",
+      description:
+        "The official Android Beta carries use without an account, the goal question, overspending notifications, the new Home screen, select mode, sound effects, and plan limit pop-ups.",
     },
   ],
 };
@@ -76,6 +91,62 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "3.1.0",
+    releasedOn: "October 1, 2026",
+    changes: [
+      {
+        title: "Log a transaction by chatting with the assistant",
+        description:
+          'Tell the assistant what you spent or where you went ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") and it drafts the transaction with a suggested category, account, and usual amount. If you only know what is left in an account, it works out the amount. Nothing is saved until you tap Save transaction. Because the assistant can now prepare drafts, you are asked to accept the updated assistant consent once before your next chat.',
+      },
+      {
+        title: "Log several entries from the Android mic widget",
+        description:
+          'Say "I spent 250 on Jollibee for lunch and 2,000 on groceries" and Zoption AI saves each as its own entry, up to 10 per note, without opening the app. A notification tells you how many were logged. Entries sync the next time Zoption opens.',
+      },
+      {
+        title: "A new look for the Android mic widget",
+        description:
+          'The mic widget is now a bordered card with a brand mic circle that follows your phone\'s light or dark theme. Stretch it wider to see the Zoption title and a "Tap and say what you spent" hint.',
+      },
+      {
+        title: "A clearer Home screen on Android and iOS",
+        description:
+          "Home leads with a large safe-to-spend card and makes Add the main shortcut. Empty budget, category, and cash-flow cards fold away, categories show their emoji on a tinted badge everywhere, and the welcome screen is a single-screen landing.",
+      },
+      {
+        title: "Start a fresh assistant conversation",
+        description:
+          "Opening the AI assistant on mobile starts a new conversation. Past conversations are one tap away with the back arrow.",
+      },
+      {
+        title: "Money in and out opens monthly for Pro",
+        description:
+          "The web dashboard's money in and out chart now opens on the monthly view for Pro, and the monthly view shows the past 30 days ending today, so it is never empty on the 1st of the month.",
+      },
+      {
+        title: "Daily reminder on by default on Android and iOS",
+        description:
+          "Zoption now reminds you at 12:00 PM and 9:00 PM. One switch under More → Preferences → Daily reminder turns it off.",
+      },
+      {
+        title: "Assistant answers keep to your workspace currency",
+        description:
+          'Totals, category spending, budgets, and recurring charges count only your workspace currency and say when entries in the other currency were left out. "Show my recent transactions" works without a date range, and the biggest category is listed first.',
+      },
+      {
+        title: "Smoother sign-in links and a steadier PIN pad",
+        description:
+          "Sign in and Start free on zoption.site open the app in a new tab. PIN digits you type are no longer lost when the screen refreshes.",
+      },
+      {
+        title: "Android Beta 0.2.43",
+        description:
+          "The official Android Beta carries the redesigned mic widget with multi-entry logging, the new Home screen, a fresh assistant conversation on open, the default daily reminder, and the PIN fix.",
+      },
+    ],
+  },
   {
     version: "3.0.0",
     releasedOn: "September 30, 2026",

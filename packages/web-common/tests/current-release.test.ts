@@ -25,6 +25,30 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Use Zoption on mobile without an account",
+      "Tell us what brings you to Zoption",
+      "Alerts when you overspend",
+      "Safe to spend on the web dashboard",
+      "A cleaner Home screen on Android and iOS",
+      "Select and delete several at once on mobile",
+      "Sound effects on mobile",
+      "Clearer plan limit pop-ups",
+      "Add a transaction without leaving the dashboard",
+      "A calmer, easier-to-read web app",
+      "Smaller fixes on the web",
+      "New budgeting guides",
+      "Android Beta 0.2.44",
+    ]);
+
+    const copy = currentRelease.changes
+      .map((change) => `${change.title} ${change.description}`)
+      .join(" ");
+    expect(copy).toMatch(/Continue without an account/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.44/);
+  });
+
+  it("keeps the assistant transaction drafts and mic widget notes as 3.1.0", () => {
+    expect(titles("3.1.0")).toEqual([
       "Log a transaction by chatting with the assistant",
       "Log several entries from the Android mic widget",
       "A new look for the Android mic widget",
@@ -37,9 +61,7 @@ describe("current release notes", () => {
       "Android Beta 0.2.43",
     ]);
 
-    const copy = currentRelease.changes
-      .map((change) => `${change.title} ${change.description}`)
-      .join(" ");
+    const copy = notes("3.1.0");
     expect(copy).toMatch(/Nothing is saved until you tap Save transaction/i);
     expect(copy).toMatch(/Android Beta 0\.2\.43/);
   });
@@ -182,6 +204,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "3.1.0",
       "3.0.0",
       "2.49.0",
       "2.48.0",
