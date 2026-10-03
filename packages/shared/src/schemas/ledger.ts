@@ -140,7 +140,9 @@ export const transactionInputSchema = z.discriminatedUnion("kind", [
     // an explicit "no debt", which is how an edit drops a link it no longer wants.
     debtId: resourceIdSchema.nullable().optional(),
   }),
-  transferInputSchema,
+  // A transfer into a liability account (credit card, payable) can pay down a debt. Only
+  // the REST API links it; the mobile sync contract keeps the plain transferInputSchema.
+  transferInputSchema.safeExtend({ debtId: resourceIdSchema.nullable().optional() }),
 ]);
 
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
