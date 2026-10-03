@@ -14,69 +14,54 @@ export const currentRelease: ProductRelease = {
   releasedOn: "October 3, 2026",
   changes: [
     {
-      title: "Use Zoption on mobile without an account",
+      title: "More currencies",
       description:
-        'On the Android and iOS welcome screen, choose "Continue without an account" to track transactions, budgets, goals, debts, subscriptions, and your calendar on your phone. The AI Assistant, receipt scanning, voice entry, bank-file import, and Plan and billing need an account, and tapping one shows what an account adds, including backup and sync and a 7-day Pro trial. Data you enter without an account stays on this device and does not move into an account when you sign in.',
+        "Track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Imports, voice entries, and receipt scans use your workspace currency, and budgets count only spending in it.",
     },
     {
-      title: "Tell us what brings you to Zoption",
+      title: "More account types, free for everyone",
       description:
-        "Setup on the web and in the Android and iOS app now asks what you want from Zoption, such as tracking spending, budgeting, saving, or paying off debt. You can skip it and change it later in Account Settings on the web or under More → Preferences → Your goal on mobile. Your answer sets the first action on an empty dashboard or Home screen, a short getting-started checklist on the web, and the assistant's first suggested question. Existing web accounts are not asked during setup.",
+        "Add General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables accounts. Adding, renaming, and removing accounts is now free on every plan with no limit; automatic interest on savings accounts is still Pro.",
     },
     {
-      title: "Alerts when you overspend",
+      title: "Pay a debt from an account",
       description:
-        'The Safe to spend card on the web dashboard and the Android and iOS Home screen warns you when nothing is left to spend safely this week, or when the 30-day forecast shows your balance going below zero, with the date. On Android and iOS it also arrives as a notification, once per week and once per deficit date, if you have allowed notifications. Over-limit categories on Budgets and on shared budget links turn red and say "Over by".',
+        "A transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. On mobile, choosing the Debt payment category or such a transfer asks which debt it pays. Editing or deleting the transfer gives the amount back.",
     },
     {
-      title: "Safe to spend on the web dashboard",
+      title: "The assistant can make changes for you",
       description:
-        'The dashboard\'s Cash flow forecast card is now Safe to spend, showing what is safe to spend this week as on mobile, and it still opens the forecast. On mobile, the "days left · bills counted" line under the amount is gone.',
+        "Ask the AI Assistant to add, edit, cancel, or delete a subscription, savings goal, or debt, or to add, rename, or archive an account or set its balance. It shows what it will do on a card and changes nothing until you tap Confirm.",
     },
     {
-      title: "A cleaner Home screen on Android and iOS",
+      title: "A pet companion on mobile",
       description:
-        "Home now shows only your Total Balance. Tap it to open Account Management, also under More → Accounts & categories. A switch at the top splits Home into Overview (balances, recent activity) and Analytics (this month, the cash flow chart, spending by category, budget, and the forecast).",
+        "Signed-in users on Android and iOS can pick one of six eggs and open Zoption seven days in a row to hatch it. It earns points when you use the app, on the web too, and grows from Baby to Monster. Left alone it gets sick and eventually passes away, and notifications warn you first, never between 10 PM and 7 AM. Turn it off under More → Preferences → Pet companion.",
     },
     {
-      title: "Select and delete several at once on mobile",
+      title: "Pick several goals and be thanked for answering",
       description:
-        "Press and hold a transaction or an assistant conversation to start select mode, pick several, and delete them in one step. Holding a conversation no longer opens a single-delete prompt.",
+        "The setup goal question lets you pick every goal that applies, with the first as your main focus, and thanks you once you answer. On mobile it also asks for your currency and cash on hand the first time you open the app. You can change goals in Account Settings.",
     },
     {
-      title: "Sound effects on mobile",
+      title: "Thank-you cards",
       description:
-        "Short sounds play for taps, saved transactions, and errors. Turn them off under More → Preferences → Sound effects.",
+        "A thank-you card appears when you create your account and when your Zoption Pro purchase is confirmed, on the web and in the Android and iOS app.",
     },
     {
-      title: "Clearer plan limit pop-ups",
+      title: "Unlock with biometrics on mobile",
       description:
-        'Hitting a free plan limit on the web (custom categories, or Pro-only actions such as exporting transactions or managing accounts) or on mobile (the assistant, imports, or a custom category or account change refused during sync) opens a "Plan limit reached" pop-up with a link to Plan and billing.',
+        'After you set a PIN, turn on "Unlock with biometrics" under More → Account to unlock with your fingerprint, face, or iris. Your PIN still works, and Zoption never receives your biometric data.',
     },
     {
-      title: "Add a transaction without leaving the dashboard",
+      title: "Fixes",
       description:
-        "On the web dashboard, Add transaction opens the form over the page instead of switching to Transactions, so you can add one and keep watching your balances.",
+        "Starting cash you enter during mobile setup no longer counts as income in Transactions totals. The goal choices in Account Settings are compact rows again, and settings row titles on mobile no longer wrap beside long values.",
     },
     {
-      title: "A calmer, easier-to-read web app",
+      title: "Android Beta 0.2.45",
       description:
-        "No text is smaller than 11px, cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Category emojis sit on a soft tile tinted with the category colour. Sign-in, sign-up, password, and setup screens use a flat panel with larger labels, fill the screen on phones, and no longer make iOS zoom in when you tap a field.",
-    },
-    {
-      title: "Smaller fixes on the web",
-      description:
-        "Arrow keys on the setup goal step only move the selection, and you confirm with the button. Back and Confirm share the setup row. The calendar no longer draws a double line on its left edge, and its phone day markers use readable colours. The assistant's Memory button stays on screen on phones.",
-    },
-    {
-      title: "New budgeting guides",
-      description:
-        "zoption.site has three new guides: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines.",
-    },
-    {
-      title: "Android Beta 0.2.44",
-      description:
-        "The official Android Beta carries use without an account, the goal question, overspending notifications, the new Home screen, select mode, sound effects, and plan limit pop-ups.",
+        "The official Android Beta carries the pet companion, more currencies and account types, debt payments from accounts, assistant changes with confirmation, biometric unlock, and the new setup questions.",
     },
   ],
 };
@@ -91,6 +76,77 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "3.3.0",
+    releasedOn: "October 3, 2026",
+    changes: [
+      {
+        title: "Use Zoption on mobile without an account",
+        description:
+          'On the Android and iOS welcome screen, choose "Continue without an account" to track transactions, budgets, goals, debts, subscriptions, and your calendar on your phone. The AI Assistant, receipt scanning, voice entry, bank-file import, and Plan and billing need an account, and tapping one shows what an account adds, including backup and sync and a 7-day Pro trial. Data you enter without an account stays on this device and does not move into an account when you sign in.',
+      },
+      {
+        title: "Tell us what brings you to Zoption",
+        description:
+          "Setup on the web and in the Android and iOS app now asks what you want from Zoption, such as tracking spending, budgeting, saving, or paying off debt. You can skip it and change it later in Account Settings on the web or under More → Preferences → Your goal on mobile. Your answer sets the first action on an empty dashboard or Home screen, a short getting-started checklist on the web, and the assistant's first suggested question. Existing web accounts are not asked during setup.",
+      },
+      {
+        title: "Alerts when you overspend",
+        description:
+          'The Safe to spend card on the web dashboard and the Android and iOS Home screen warns you when nothing is left to spend safely this week, or when the 30-day forecast shows your balance going below zero, with the date. On Android and iOS it also arrives as a notification, once per week and once per deficit date, if you have allowed notifications. Over-limit categories on Budgets and on shared budget links turn red and say "Over by".',
+      },
+      {
+        title: "Safe to spend on the web dashboard",
+        description:
+          'The dashboard\'s Cash flow forecast card is now Safe to spend, showing what is safe to spend this week as on mobile, and it still opens the forecast. On mobile, the "days left · bills counted" line under the amount is gone.',
+      },
+      {
+        title: "A cleaner Home screen on Android and iOS",
+        description:
+          "Home now shows only your Total Balance. Tap it to open Account Management, also under More → Accounts & categories. A switch at the top splits Home into Overview (balances, recent activity) and Analytics (this month, the cash flow chart, spending by category, budget, and the forecast).",
+      },
+      {
+        title: "Select and delete several at once on mobile",
+        description:
+          "Press and hold a transaction or an assistant conversation to start select mode, pick several, and delete them in one step. Holding a conversation no longer opens a single-delete prompt.",
+      },
+      {
+        title: "Sound effects on mobile",
+        description:
+          "Short sounds play for taps, saved transactions, and errors. Turn them off under More → Preferences → Sound effects.",
+      },
+      {
+        title: "Clearer plan limit pop-ups",
+        description:
+          'Hitting a free plan limit on the web (custom categories, or Pro-only actions such as exporting transactions or managing accounts) or on mobile (the assistant, imports, or a custom category or account change refused during sync) opens a "Plan limit reached" pop-up with a link to Plan and billing.',
+      },
+      {
+        title: "Add a transaction without leaving the dashboard",
+        description:
+          "On the web dashboard, Add transaction opens the form over the page instead of switching to Transactions, so you can add one and keep watching your balances.",
+      },
+      {
+        title: "A calmer, easier-to-read web app",
+        description:
+          "No text is smaller than 11px, cards sit flat instead of floating with heavy shadows, and the glass blur and glow effects are gone. The current page in the sidebar and tab bar uses one clear brand highlight. Category emojis sit on a soft tile tinted with the category colour. Sign-in, sign-up, password, and setup screens use a flat panel with larger labels, fill the screen on phones, and no longer make iOS zoom in when you tap a field.",
+      },
+      {
+        title: "Smaller fixes on the web",
+        description:
+          "Arrow keys on the setup goal step only move the selection, and you confirm with the button. Back and Confirm share the setup row. The calendar no longer draws a double line on its left edge, and its phone day markers use readable colours. The assistant's Memory button stays on screen on phones.",
+      },
+      {
+        title: "New budgeting guides",
+        description:
+          "zoption.site has three new guides: how to budget for beginners, how to budget an allowance, and how to save money in the Philippines.",
+      },
+      {
+        title: "Android Beta 0.2.44",
+        description:
+          "The official Android Beta carries use without an account, the goal question, overspending notifications, the new Home screen, select mode, sound effects, and plan limit pop-ups.",
+      },
+    ],
+  },
   {
     version: "3.1.0",
     releasedOn: "October 1, 2026",
