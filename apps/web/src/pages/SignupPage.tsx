@@ -10,6 +10,7 @@ import { AuthLayout } from "../components/auth/AuthLayout";
 import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { SocialAuthButtons } from "../components/auth/SocialAuthButtons";
+import { markSignupThankYouPending } from "../lib/thankYou";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -65,6 +66,7 @@ export function SignupPage() {
     setBusy(true);
     try {
       const result = await signUp(normalizedEmail, password);
+      markSignupThankYouPending();
       if (result.confirmationRequired) {
         setConfirmationSent(true);
         captureFunnelEvent("signup_submitted", { outcome: "confirmation_required" });

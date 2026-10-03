@@ -15,8 +15,10 @@ import { useBillingSummary } from "../../hooks/useBillingSummary";
 import { cancelBillingSubscription, reconcileBillingCheckout } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
 import { planFeatures } from "../billing/billingPlans";
+import { ThankYouDialog } from "../common/ThankYouDialog";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
 import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
+import { useProPurchaseThankYou } from "../billing/useProPurchaseThankYou";
 import { userWorkspace } from "../../lib/workspace";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
 import "./BillingSettings.css";
@@ -220,6 +222,12 @@ export function BillingSettings({ user }: { user: User }) {
 
   // Derived at render so the polling effect depends on a value instead of the summary object.
   const paymentConfirmed = isConfirmedPaidSummary(summary);
+
+  const proThankYou = useProPurchaseThankYou(
+    summary !== undefined,
+    paymentConfirmed,
+    checkoutCompleted,
+  );
 
   useEffect(() => {
     const pendingCheckoutKey = summary?.pendingCheckout?.createdAt;
@@ -697,6 +705,7 @@ export function BillingSettings({ user }: { user: User }) {
 
   return (
     <>
+      {proThankYou.open && <ThankYouDialog flow="pro" onClose={proThankYou.close} />}
       {summary && (
         <section id="plan-comparison" className="settings-section billing-plan-comparison-section">
           <div className="billing-plan-comparison-wrap">

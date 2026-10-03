@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Web and mobile: a thank-you card appears when you create your account and when your Zoption Pro purchase is confirmed, each with its own message. On web, the review thank-you now uses the same wording. Accounts created with email on web or Google on mobile see the welcome once; Google sign-up on web does not show it yet.
 - Web and mobile: track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Yen, won, dong, and Chilean pesos show without decimals on mobile.
 - Imports, voice entries, and receipt scans now use your workspace currency instead of always pesos.
 - More account types when you add an account: General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables. Credit card and I owe / Payables are marked as liabilities.

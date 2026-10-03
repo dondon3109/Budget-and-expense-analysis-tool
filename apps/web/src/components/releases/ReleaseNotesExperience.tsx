@@ -10,6 +10,7 @@ import {
   readReleaseAwarenessRecord,
   RELEASE_AWARENESS_STORAGE_KEY,
 } from "../../releases/releaseStorage";
+import { isSignupThankYouPending } from "../../lib/thankYou";
 import { useTheme } from "../../theme/ThemeProvider";
 import { ReleaseNotesDialog } from "./ReleaseNotesDialog";
 import "./releaseNotes.css";
@@ -32,6 +33,7 @@ export function ReleaseNotesExperience() {
     hasThemePreference &&
     hasDecision &&
     !hasPostAuthCheckoutIntent &&
+    !isSignupThankYouPending() &&
     !hasAcknowledgedCurrentRelease;
 
   useEffect(() => {

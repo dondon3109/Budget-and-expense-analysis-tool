@@ -23,6 +23,7 @@ import { useBillingSummary } from "../hooks/useBillingSummary";
 import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
 import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
 import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
+import { ThankYouDialog } from "../components/common/ThankYouDialog";
 import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
@@ -56,6 +57,7 @@ import {
 import { calculatePercentageChange, isDashboardEmpty, trendState } from "../lib/dashboard";
 import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
+import { clearSignupThankYouPending, isSignupThankYouPending } from "../lib/thankYou";
 import { userWorkspace } from "../lib/workspace";
 import { useGoalProfile } from "../queries/goalProfile";
 import { transactionsQueryOptions } from "../queries/transactions";
@@ -81,6 +83,7 @@ export function DashboardPage() {
   const cashflowView = chosenCashflowView ?? (isPro ? "monthly" : "weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
+  const [signupThankYouOpen, setSignupThankYouOpen] = useState(isSignupThankYouPending);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [addTransactionOpen, setAddTransactionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -583,6 +586,18 @@ export function DashboardPage() {
           onClose={closeProCheckout}
         />
       )}
+      {signupThankYouOpen &&
+        hasCompletedInitialDashboardExperience &&
+        !hasPostAuthCheckoutIntent &&
+        !isProCheckoutOpen && (
+          <ThankYouDialog
+            flow="signup"
+            onClose={() => {
+              clearSignupThankYouPending();
+              setSignupThankYouOpen(false);
+            }}
+          />
+        )}
       {addTransactionOpen && (
         <AddTransactionDialog workspace={workspace} onClose={() => setAddTransactionOpen(false)} />
       )}
