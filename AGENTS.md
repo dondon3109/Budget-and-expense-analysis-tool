@@ -7,8 +7,8 @@ Zoption is a budget and expense tracker: a public Astro site at `zoption.site`, 
 - A question is a read-only request. Answer it, then offer to implement.
 - Keep changes scoped, type-safe, and covered by focused tests, not broad regression suites.
 - Be cautious with destructive actions. Look before deleting or overwriting.
-- Do not spawn subagents for work one agent can finish. If parallel agents are justified, give each non-overlapping files.
 - Run `pnpm verify` before reporting done and report its result. A green scoped typecheck or test file does not prove the tree is green.
+- When I say mobile what I mean is the Android/iOS app unless I explicitly say web on mobile, always make changes on the Android/iOS app.
 
 ## Invariants
 
