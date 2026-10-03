@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { getGoalProfile } from "@/api/goal-profile";
+import { getGoalsProfile } from "@/api/goal-profile";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 
@@ -16,7 +16,7 @@ export function useGoalProfileSync(): void {
     void (async () => {
       try {
         const accessToken = await getAccessToken(false);
-        const profile = await getGoalProfile({ accessToken, signal: controller.signal });
+        const profile = await getGoalsProfile({ accessToken, signal: controller.signal });
         useGoalProfileStore.getState().setProfile(profile);
       } catch {
         // Offline or unreachable: no goal is known, so the default experience stays.

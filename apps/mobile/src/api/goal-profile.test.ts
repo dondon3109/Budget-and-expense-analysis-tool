@@ -2,9 +2,15 @@ jest.mock("@/config/public-config", () => ({
   publicConfig: { apiUrl: "https://api.zoption.test" },
 }));
 
-import { getGoalProfile, markGoalShown, saveGoal, skipGoal } from "./goal-profile";
+import { getGoalsProfile, markGoalShown, saveGoals, skipGoal } from "./goal-profile";
 
-const profile = { goal: "build_budget", otherText: null, selectedAt: "2026-10-02", skipped: false };
+const profile = {
+  goals: ["build_budget", "reduce_debt"],
+  otherText: null,
+  selectedAt: "2026-10-02",
+  skipped: false,
+};
+const single = { goal: null, otherText: null, selectedAt: null, skipped: true };
 
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
@@ -16,25 +22,29 @@ function jsonResponse(value: unknown, status = 200): Response {
 describe("goal profile api", () => {
   it("reads and validates the profile", async () => {
     const fetchImpl = jest.fn(() => Promise.resolve(jsonResponse(profile)));
-    await expect(getGoalProfile({ accessToken: "token", fetchImpl })).resolves.toEqual(profile);
+    await expect(getGoalsProfile({ accessToken: "token", fetchImpl })).resolves.toEqual(profile);
     expect(fetchImpl).toHaveBeenCalledWith(
-      "https://api.zoption.test/api/app/profile/goal",
+      "https://api.zoption.test/api/app/profile/goals",
       expect.objectContaining({ method: "GET" }),
     );
   });
 
-  it("PUTs the goal, POSTs skip and shown", async () => {
+  it("PUTs the goals in order, POSTs skip and shown on the single-goal routes", async () => {
     const fetchImpl = jest.fn(() => Promise.resolve(jsonResponse(profile)));
-    await saveGoal({ accessToken: "token", fetchImpl }, { goal: "other", otherText: "pets" });
+    await saveGoals(
+      { accessToken: "token", fetchImpl },
+      { goals: ["other", "build_budget"], otherText: "pets" },
+    );
     expect(fetchImpl).toHaveBeenLastCalledWith(
-      "https://api.zoption.test/api/app/profile/goal",
+      "https://api.zoption.test/api/app/profile/goals",
       expect.objectContaining({
         method: "PUT",
-        body: JSON.stringify({ goal: "other", otherText: "pets" }),
+        body: JSON.stringify({ goals: ["other", "build_budget"], otherText: "pets" }),
       }),
     );
-    await skipGoal({ accessToken: "token", fetchImpl });
-    expect(fetchImpl).toHaveBeenLastCalledWith(
+    const skipFetch = jest.fn(() => Promise.resolve(jsonResponse(single)));
+    await expect(skipGoal({ accessToken: "token", fetchImpl: skipFetch })).resolves.toEqual(single);
+    expect(skipFetch).toHaveBeenLastCalledWith(
       "https://api.zoption.test/api/app/profile/goal/skip",
       expect.objectContaining({ method: "POST" }),
     );
@@ -50,11 +60,11 @@ describe("goal profile api", () => {
 
   it("rejects an unknown goal or extra fields from the server", async () => {
     for (const body of [
-      { ...profile, goal: "win" },
+      { ...profile, goals: ["win"] },
       { ...profile, extra: true },
     ]) {
       const fetchImpl = jest.fn(() => Promise.resolve(jsonResponse(body)));
-      await expect(getGoalProfile({ accessToken: "token", fetchImpl })).rejects.toThrow();
+      await expect(getGoalsProfile({ accessToken: "token", fetchImpl })).rejects.toThrow();
     }
   });
 });
