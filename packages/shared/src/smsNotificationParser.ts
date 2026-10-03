@@ -1,4 +1,4 @@
-import type { Currency } from "./types";
+import { currencies, isCurrency, type Currency } from "./types";
 
 export type SupportedChannel =
   "gcash" | "maya" | "bpi" | "bdo" | "unionbank" | "shopeepay" | "grabpay" | "generic";
@@ -278,10 +278,16 @@ export function extractAccountSuffix(text: string): string | undefined {
   return undefined;
 }
 
+const ISO_CURRENCY_CODE = new RegExp(`\\b(${currencies.join("|")})\\b`);
+
+/**
+ * The currency a notification names: the first supported ISO code written in capitals, else a
+ * bare dollar sign for USD. Philippine bank messages are the default, so anything else is PHP.
+ */
 export function inferCurrency(text: string): Currency {
-  if (/(?:\$|\bUSD\b)/i.test(text) && !/(?:PHP|\u20B1)/i.test(text)) {
-    return "USD";
-  }
+  const code = ISO_CURRENCY_CODE.exec(text)?.[1];
+  if (code && isCurrency(code)) return code;
+  if (/\$/.test(text) && !/\u20B1/.test(text)) return "USD";
   return "PHP";
 }
 

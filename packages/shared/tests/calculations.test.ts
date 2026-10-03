@@ -435,7 +435,7 @@ describe("transfer fee insight calculations", () => {
       hasFees: false,
       totalTransfers: 0,
       totalFeeChargedTransfers: 0,
-      feesByCurrency: { PHP: 0, USD: 0 },
+      feesByCurrency: {},
       weekly: [],
       recentWeekCount: 0,
       recentAverageTransfersPerWeek: 0,
@@ -481,7 +481,7 @@ describe("transfer fee insight calculations", () => {
         weekEnd: "2026-07-19",
         transfers: 1,
         feeChargedTransfers: 1,
-        feesByCurrency: { PHP: 100, USD: 0 },
+        feesByCurrency: { PHP: 100 },
       },
     ]);
   });
@@ -502,14 +502,14 @@ describe("transfer fee insight calculations", () => {
         weekEnd: "2026-07-12",
         transfers: 1,
         feeChargedTransfers: 0,
-        feesByCurrency: { PHP: 0, USD: 0 },
+        feesByCurrency: {},
       },
       {
         weekStart: "2026-07-13",
         weekEnd: "2026-07-19",
         transfers: 1,
         feeChargedTransfers: 0,
-        feesByCurrency: { PHP: 0, USD: 0 },
+        feesByCurrency: {},
       },
     ]);
   });

@@ -2,6 +2,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 import { z } from "zod";
 
 import {
+  currencies,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
   transferInputSchema,
@@ -51,7 +52,7 @@ export const transactionRowSchema = z.object({
   date: z.string(),
   description: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   kind: z.enum(["income", "expense", "transfer"]),
   notes: z.string().nullable(),
   transfer_group_id: z.string().nullable(),
@@ -74,7 +75,7 @@ export const accountRowSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["cash", "checking", "savings", "credit", "other"]),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   archived: z.number().int().min(0).max(1),
   system: z.number().int().min(0).max(1),
   interest_json: z.string().nullable(),
@@ -125,7 +126,7 @@ export const subscriptionRowSchema = z.object({
   id: z.string(),
   name: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   billing_cycle: z.enum(["monthly", "yearly"]),
   next_billing_date: z.string(),
   status: z.enum(["active", "canceled"]),

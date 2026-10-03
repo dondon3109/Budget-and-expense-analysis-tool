@@ -1,5 +1,5 @@
 import type { TransactionInput } from "./schemas";
-import type { AccountType } from "./types";
+import type { AccountType, Currency } from "./types";
 
 /**
  * New entries prefer the account the user set as their default spending account,
@@ -88,7 +88,7 @@ export interface BalanceAdjustmentInput {
   accountId: string;
   accountName: string;
   categoryId: string;
-  currency: "PHP" | "USD";
+  currency: Currency;
   currentBalanceMinor: number;
   newBalanceMinor: number;
   date?: string;

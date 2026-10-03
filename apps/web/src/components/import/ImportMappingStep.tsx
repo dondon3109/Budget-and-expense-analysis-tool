@@ -2,6 +2,7 @@ import type { ImportMapping } from "@zoption/shared";
 import { AlertTriangle, FileCheck2 } from "lucide-react";
 
 import { useImportDraft } from "../../import/ImportDraftProvider";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 import {
   importPresets,
   type ImportAmountMode,
@@ -11,7 +12,7 @@ import {
 
 interface ImportMappingStepProps {
   resolvedPreset: ImportPreset;
-  requiresPhpConfirmation: boolean;
+  requiresCurrencyConfirmation: boolean;
   canAttemptPreview: boolean;
   descriptionMappingMissing: boolean;
   previewPending: boolean;
@@ -26,7 +27,7 @@ interface ImportMappingStepProps {
 /** Step 2: match the bank export's header row, format, amount layout, and columns. */
 export function ImportMappingStep({
   resolvedPreset,
-  requiresPhpConfirmation,
+  requiresCurrencyConfirmation,
   canAttemptPreview,
   descriptionMappingMissing,
   previewPending,
@@ -46,10 +47,11 @@ export function ImportMappingStep({
     mapping,
     fallbackDate,
     setFallbackDate,
-    phpConfirmed,
-    setPhpConfirmed,
+    currencyConfirmed,
+    setCurrencyConfirmed,
     previewError,
   } = useImportDraft();
+  const importCurrency = useWorkspaceCurrency();
 
   return (
     <section className={`import-card ${headers.length === 0 ? "disabled-card" : ""}`}>
@@ -161,7 +163,7 @@ export function ImportMappingStep({
                     : key === "kind"
                       ? "Infer from amount"
                       : key === "currency"
-                        ? "Assume PHP"
+                        ? `Assume ${importCurrency}`
                         : "Choose column"}
               </option>
               {headers.map((header) => (
@@ -193,29 +195,30 @@ export function ImportMappingStep({
         )}
       </div>
 
-      {resolvedPreset.requiresPhpConfirmation && (
+      {resolvedPreset.exportCurrency !== null && resolvedPreset.exportCurrency !== importCurrency && (
         <div className="php-import-warning" role="alert">
           <AlertTriangle size={20} />
           <div>
-            <strong>PHP-only import</strong>
+            <strong>{importCurrency}-only import</strong>
             <span>
-              {resolvedPreset.label} exports commonly contain USD. Zoption does not convert
-              currencies, and any mapped non-PHP currency will be rejected.
+              {resolvedPreset.label} exports commonly contain {resolvedPreset.exportCurrency}.
+              Imports are saved in {importCurrency}, your workspace currency, without conversion,
+              and any mapped currency other than {importCurrency} will be rejected.
             </span>
-            {requiresPhpConfirmation ? (
+            {requiresCurrencyConfirmation ? (
               <label>
                 <input
                   type="checkbox"
-                  checked={phpConfirmed}
+                  checked={currencyConfirmed}
                   onChange={(event) => {
-                    setPhpConfirmed(event.target.checked);
+                    setCurrencyConfirmed(event.target.checked);
                     invalidatePreview();
                   }}
                 />
-                Store these numeric values as PHP without currency conversion
+                Store these numeric values as {importCurrency} without currency conversion
               </label>
             ) : (
-              <small>The mapped Currency column confirms that every row is PHP.</small>
+              <small>The mapped Currency column confirms that every row is {importCurrency}.</small>
             )}
           </div>
         </div>

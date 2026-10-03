@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { transactionKinds } from "../types";
+import { currencies, transactionKinds } from "../types";
 import { isoDateSchema } from "./common";
 
 export const receiptConsentUpdateSchema = z.object({ consented: z.literal(true) }).strict();
@@ -23,7 +23,7 @@ export const receiptDraftSchema = z
     merchant: z.string().trim().min(1).max(240),
     date: isoDateSchema,
     amountMinor: z.number().int(),
-    currency: z.literal("PHP"),
+    currency: z.enum(currencies),
     kind: z.enum(transactionKinds),
     categoryName: z.string().trim().min(1).max(80).optional(),
     items: z
@@ -63,7 +63,7 @@ export const transactionVoiceDraftSchema = z
     description: z.string().trim().min(1).max(240),
     date: isoDateSchema,
     amountMinor: z.number().int().positive(),
-    currency: z.literal("PHP"),
+    currency: z.enum(currencies),
     kind: z.enum(transactionKinds),
     categoryName: z.string().trim().min(1).max(80).optional(),
   })

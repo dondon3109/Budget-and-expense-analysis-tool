@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 13;
+export const LOCAL_SCHEMA_VERSION = 14;
 
 export const migrations: readonly Migration[] = [
   {
@@ -701,6 +701,67 @@ export const migrations: readonly Migration[] = [
         data_base64 TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
+    `,
+  },
+  {
+    version: 14,
+    // Accounts and transactions carried a PHP/USD CHECK; every supported currency is validated
+    // by the shared schemas instead. SQLite cannot drop a CHECK, so both tables are rebuilt
+    // (the child first, so no foreign key ever points at a dropped table).
+    name: "multi_currency",
+    sql: `
+      CREATE TABLE accounts_v14 (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('cash', 'checking', 'savings', 'credit', 'other')),
+        currency TEXT NOT NULL,
+        balance_minor INTEGER,
+        balance_as_of TEXT,
+        archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1)),
+        system INTEGER NOT NULL DEFAULT 0 CHECK (system IN (0, 1)),
+        interest_json TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
+
+      CREATE TABLE transactions_v14 (
+        id TEXT PRIMARY KEY NOT NULL,
+        account_id TEXT REFERENCES accounts_v14(id),
+        category_id TEXT NOT NULL REFERENCES categories(id),
+        date TEXT NOT NULL,
+        description TEXT NOT NULL,
+        amount_minor INTEGER NOT NULL,
+        currency TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('income', 'expense', 'transfer')),
+        notes TEXT,
+        transfer_group_id TEXT,
+        from_account_id TEXT REFERENCES accounts_v14(id),
+        to_account_id TEXT REFERENCES accounts_v14(id),
+        transfer_fee_minor INTEGER CHECK (transfer_fee_minor IS NULL OR transfer_fee_minor >= 0),
+        import_fingerprint TEXT,
+        server_revision INTEGER NOT NULL DEFAULT 0 CHECK (server_revision >= 0),
+        server_updated_at TEXT,
+        deleted_at TEXT,
+        sync_state TEXT NOT NULL DEFAULT 'synced' CHECK (sync_state IN ('synced', 'pending', 'failed', 'conflicted'))
+      );
+
+      INSERT INTO accounts_v14 SELECT * FROM accounts;
+      INSERT INTO transactions_v14 SELECT * FROM transactions;
+
+      DROP TABLE transactions;
+      DROP TABLE accounts;
+
+      ALTER TABLE accounts_v14 RENAME TO accounts;
+      ALTER TABLE transactions_v14 RENAME TO transactions;
+
+      CREATE INDEX transactions_date_idx ON transactions(date DESC, id);
+      CREATE INDEX transactions_category_idx ON transactions(category_id, date DESC);
+      CREATE INDEX transactions_account_idx ON transactions(account_id, date DESC);
+      CREATE UNIQUE INDEX transactions_import_fingerprint_unique
+        ON transactions(import_fingerprint)
+        WHERE import_fingerprint IS NOT NULL;
     `,
   },
 ] as const;

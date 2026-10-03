@@ -1,10 +1,37 @@
-import type { SubscriptionBillingCycle } from "./types";
+import {
+  addToCurrencyTotal,
+  type Currency,
+  type CurrencyTotals,
+  type SubscriptionBillingCycle,
+  type SubscriptionStatus,
+} from "./types";
 
 export function monthlySubscriptionCost(
   amountMinor: number,
   billingCycle: SubscriptionBillingCycle,
 ): number {
   return billingCycle === "monthly" ? amountMinor : Math.round(amountMinor / 12);
+}
+
+/** Active plans' monthly cost per billing currency. Plans in different currencies never add up. */
+export function activeMonthlyCostByCurrency(
+  subscriptions: readonly {
+    status: SubscriptionStatus;
+    currency: Currency;
+    amountMinor: number;
+    billingCycle: SubscriptionBillingCycle;
+  }[],
+): CurrencyTotals {
+  const totals: CurrencyTotals = {};
+  for (const subscription of subscriptions) {
+    if (subscription.status !== "active") continue;
+    addToCurrencyTotal(
+      totals,
+      subscription.currency,
+      monthlySubscriptionCost(subscription.amountMinor, subscription.billingCycle),
+    );
+  }
+  return totals;
 }
 
 export function subscriptionBillingDateForMonth(

@@ -34,7 +34,7 @@ function useImportDraftState() {
   const [amountMode, setAmountMode] = useState<ImportAmountMode>("amount");
   const [selectedPresetId, setSelectedPresetId] = useState<ImportPresetId>("auto");
   const [resolvedPresetId, setResolvedPresetId] = useState<ImportPreset["id"]>("generic");
-  const [phpConfirmed, setPhpConfirmed] = useState(false);
+  const [currencyConfirmed, setCurrencyConfirmed] = useState(false);
   const [fallbackDate, setFallbackDate] = useState(localToday);
   const [worksheetNames, setWorksheetNames] = useState<string[]>([]);
   const [selectedWorksheet, setSelectedWorksheet] = useState("");
@@ -84,8 +84,8 @@ function useImportDraftState() {
     setSelectedPresetId,
     resolvedPresetId,
     setResolvedPresetId,
-    phpConfirmed,
-    setPhpConfirmed,
+    currencyConfirmed,
+    setCurrencyConfirmed,
     fallbackDate,
     setFallbackDate,
     worksheetNames,

@@ -4,6 +4,7 @@ import {
   normalizeSignedAmount,
   parseAmountToMinor,
   type CategoryRecord,
+  type Currency,
   type ImportMapping,
   type ImportPreviewRow,
   type ParsedCsv,
@@ -48,6 +49,8 @@ export async function prepareImportRows(
   existingFingerprints: ReadonlySet<string>,
   accountSource: string,
   fallbackDate?: string,
+  /** Every row is booked in this currency (the workspace's); a mapped Currency column must agree. */
+  currency: Currency = "PHP",
 ): Promise<PreparedImport> {
   if (Boolean(mapping.date) === Boolean(fallbackDate)) {
     throw new Error("Choose a Date column or enter one date for every row.");
@@ -139,7 +142,7 @@ export async function prepareImportRows(
     const categoryText = indexes.category >= 0 ? (row.values[indexes.category]?.trim() ?? "") : "";
     const kindText = indexes.kind >= 0 ? (row.values[indexes.kind]?.trim() ?? "") : "";
     const currencyText =
-      indexes.currency >= 0 ? (row.values[indexes.currency]?.trim() ?? "") : "PHP";
+      indexes.currency >= 0 ? (row.values[indexes.currency]?.trim() ?? "") : currency;
 
     if (!date) errors.push("Date must be a real YYYY-MM-DD or MM/DD/YYYY date.");
     if (!description) errors.push("Description is required.");
@@ -200,7 +203,7 @@ export async function prepareImportRows(
     ) {
       errors.push("Type must match whether the value is in Debit or Credit.");
     }
-    if (currencyText.toUpperCase() !== "PHP") errors.push("Currency must be PHP.");
+    if (currencyText.toUpperCase() !== currency) errors.push(`Currency must be ${currency}.`);
     const matchedCategory =
       kind && categoryText
         ? categoryLookups.get(kind)?.get(normalizeLookup(categoryText))

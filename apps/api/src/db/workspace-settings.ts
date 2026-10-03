@@ -1,4 +1,4 @@
-import type { Currency, WorkspaceSettings } from "@zoption/shared";
+import { isCurrency, type Currency, type WorkspaceSettings } from "@zoption/shared";
 
 import type { Bindings } from "../types";
 
@@ -7,12 +7,15 @@ export interface WorkspaceSettingsRepository {
   update(env: Bindings, tenantId: string, input: WorkspaceSettings): Promise<WorkspaceSettings>;
 }
 
-/** PHP is what every amount meant before the setting existed, so a missing row reads as PHP. */
+/**
+ * PHP is what every amount meant before the setting existed, so a missing row reads as PHP. The
+ * column has no CHECK, so an unsupported value reads as PHP too.
+ */
 export async function loadWorkspaceCurrency(env: Bindings, tenantId: string): Promise<Currency> {
   const row = await env.DB.prepare("SELECT currency FROM tenants WHERE id = ?")
     .bind(tenantId)
     .first<{ currency: string }>();
-  return row?.currency === "USD" ? "USD" : "PHP";
+  return isCurrency(row?.currency) ? row.currency : "PHP";
 }
 
 /** The one statement that writes the workspace currency; `onlyDuringOnboarding` guards the step. */

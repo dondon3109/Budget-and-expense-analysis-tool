@@ -1,13 +1,16 @@
 import {
+  addToCurrencyTotal,
   buildCashflowTrend,
   buildCashflowTrendFromDayTotals,
   buildDashboardSummary,
   buildTransferFeeInsight,
+  isCurrency,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   summarizeAccountBalances,
   type CashflowTrend,
   type CashflowTrendView,
   type Currency,
+  type CurrencyTotals,
   type DashboardSummary,
   type TransferFeeActivityRow,
   type TransferFeeInsight,
@@ -18,7 +21,7 @@ import { and, eq, gte, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, budgets, categories, transactions } from "../../../../db/schema";
-import { loadUsdToPhp } from "../fx/rates";
+import { convertMinor, loadUnitsPerUsd } from "../fx/rates";
 import { accountRepository } from "./accounts";
 import { loadWorkspaceCurrency } from "./workspace-settings";
 import type { Bindings } from "../types";
@@ -35,54 +38,49 @@ export async function loadCashflowTrend(
   query: { view: CashflowTrendView; anchorDate: string },
 ): Promise<CashflowTrend> {
   const preview = buildCashflowTrend([], query.view, query.anchorDate);
-  // Aggregate per day in SQL and convert the other currency's subtotals into the workspace
-  // currency with the stored daily rate. FLOOR(x + 0.5) mirrors Math.round exactly in IEEE
-  // doubles, keeping per-row conversion identical to the JS implementation. USD converts
-  // into whole pesos, as it always has; pesos convert into cents.
+  // Aggregate per day and currency in SQL, then convert each currency's daily subtotal into the
+  // workspace currency with the latest stored rate.
   // Transfers are excluded by buildCashflowTrendFromDayTotals' input contract.
-  // A missing rate row falls back to the latest stored rate.
-  const [usdToPhp, workspaceCurrency] = await Promise.all([
-    loadUsdToPhp(env),
+  const [rates, workspaceCurrency] = await Promise.all([
+    loadUnitsPerUsd(env),
     loadWorkspaceCurrency(env, tenantId),
   ]);
   const totalsResult = await env.DB.prepare(
     `SELECT date,
-              COALESCE(SUM(CASE WHEN kind = 'income' THEN convertedMinor ELSE 0 END), 0) AS incomeMinor,
-              COALESCE(SUM(CASE WHEN kind = 'expense' THEN convertedMinor ELSE 0 END), 0) AS expenseMinor
-       FROM (
-         SELECT date,
-                kind,
-                CASE WHEN currency = ?5 THEN ABS(amount_minor)
-                     WHEN ?5 = 'PHP'
-                     THEN ABS(CAST(FLOOR((amount_minor / 100.0) * ?1 + 0.5) AS INTEGER) * 100)
-                     ELSE ABS(CAST(FLOOR(amount_minor / ?1 + 0.5) AS INTEGER))
-                END AS convertedMinor
-         FROM transactions
-         WHERE tenant_id = ?2 AND kind != 'transfer' AND date >= ?3 AND date <= ?4
-           AND category_id NOT IN (
-             SELECT id FROM categories
-             WHERE tenant_id = ?2 AND system_key = '${OPENING_BALANCE_CATEGORY_SYSTEM_KEY}')
-       )
-       GROUP BY date`,
+            currency,
+            COALESCE(SUM(CASE WHEN kind = 'income' THEN ABS(amount_minor) ELSE 0 END), 0) AS incomeMinor,
+            COALESCE(SUM(CASE WHEN kind = 'expense' THEN ABS(amount_minor) ELSE 0 END), 0) AS expenseMinor
+     FROM transactions
+     WHERE tenant_id = ?1 AND kind != 'transfer' AND date >= ?2 AND date <= ?3
+       AND category_id NOT IN (
+         SELECT id FROM categories
+         WHERE tenant_id = ?1 AND system_key = '${OPENING_BALANCE_CATEGORY_SYSTEM_KEY}')
+     GROUP BY date, currency`,
   )
-    .bind(usdToPhp, tenantId, preview.range.from, preview.range.to, workspaceCurrency)
-    .all<{ date: string; incomeMinor: number; expenseMinor: number }>();
+    .bind(tenantId, preview.range.from, preview.range.to)
+    .all<{ date: string; currency: string; incomeMinor: number; expenseMinor: number }>();
 
-  return buildCashflowTrendFromDayTotals(
-    totalsResult.results.map((row) => ({
-      date: row.date,
-      incomeMinor: Number(row.incomeMinor),
-      expenseMinor: Number(row.expenseMinor),
-    })),
-    query.view,
-    query.anchorDate,
-  );
+  const byDate = new Map<string, { date: string; incomeMinor: number; expenseMinor: number }>();
+  for (const row of totalsResult.results) {
+    if (!isCurrency(row.currency)) continue;
+    const day = byDate.get(row.date) ?? { date: row.date, incomeMinor: 0, expenseMinor: 0 };
+    day.incomeMinor += convertMinor(Number(row.incomeMinor), row.currency, workspaceCurrency, rates);
+    day.expenseMinor += convertMinor(
+      Number(row.expenseMinor),
+      row.currency,
+      workspaceCurrency,
+      rates,
+    );
+    byDate.set(row.date, day);
+  }
+
+  return buildCashflowTrendFromDayTotals([...byDate.values()], query.view, query.anchorDate);
 }
 
 async function loadBalancesByCurrency(
   env: Bindings,
   tenantId: string,
-): Promise<Record<Currency, number>> {
+): Promise<CurrencyTotals> {
   const result = await env.DB.prepare(
     `SELECT currency AS currency,
             COALESCE(SUM(CASE
@@ -96,10 +94,10 @@ async function loadBalancesByCurrency(
     .bind(tenantId)
     .all<{ currency: string; total: number | null }>();
 
-  const balances: Record<Currency, number> = { PHP: 0, USD: 0 };
+  const balances: CurrencyTotals = {};
   for (const row of result.results) {
-    if (row.currency === "PHP" || row.currency === "USD") {
-      balances[row.currency] += Number(row.total ?? 0);
+    if (isCurrency(row.currency)) {
+      addToCurrencyTotal(balances, row.currency, Number(row.total ?? 0));
     }
   }
   return balances;
@@ -181,7 +179,7 @@ export async function loadDashboard(
 
   return buildDashboardSummary(normalizedTransactions, budgetRows, period, {
     ...accountSummary,
-    overallBalanceMinor: overallBalances[workspaceCurrency],
+    overallBalanceMinor: overallBalances[workspaceCurrency] ?? 0,
     balancesByCurrency: overallBalances,
   });
 }
@@ -232,7 +230,7 @@ export async function loadTransferFeeInsight(
 
   const totals: TransferFeeTotalsByCurrency[] = [];
   for (const row of totalsResult.results) {
-    if (row.currency !== "PHP" && row.currency !== "USD") continue;
+    if (!isCurrency(row.currency)) continue;
     totals.push({
       currency: row.currency,
       transfers: Number(row.transfers ?? 0),
@@ -243,10 +241,6 @@ export async function loadTransferFeeInsight(
 
   return buildTransferFeeInsight({
     totals,
-    recent: recentResult.results.map((row) => ({
-      date: row.date,
-      currency: row.currency === "USD" ? "USD" : "PHP",
-      transferFeeMinor: row.transferFeeMinor,
-    })),
+    recent: recentResult.results.filter((row) => isCurrency(row.currency)),
   });
 }

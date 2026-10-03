@@ -109,7 +109,7 @@ describe("AI entry service", () => {
       }
       return {
         response: {
-          draft: { description: "Lunch", amountPhp: "250.00", kind: "expense" },
+          draft: { description: "Lunch", amount: "250.00", kind: "expense" },
         },
       };
     });
@@ -175,7 +175,7 @@ describe("AI entry service", () => {
         response: {
           draft: {
             description: "Lunch",
-            amountPhp: "250.00",
+            amount: "250.00",
             kind: "expense",
             categoryName: "Food",
           },
@@ -207,7 +207,7 @@ describe("AI entry service", () => {
         response: {
           draft: {
             description: "Snacks",
-            amountPhp: "1000.00",
+            amount: "1000.00",
             kind: "expense",
           },
         },
@@ -231,7 +231,7 @@ describe("AI entry service", () => {
       }
       return {
         response: {
-          draft: { description: "Snacks", amountPhp: "10.00", kind: "expense" },
+          draft: { description: "Snacks", amount: "10.00", kind: "expense" },
         },
       };
     });
@@ -251,7 +251,7 @@ describe("AI entry service", () => {
       response: {
         draft: {
           description: "Shoes",
-          amountPhp: "2000.00",
+          amount: "2000.00",
           kind: "expense",
           categoryName: "Shopping",
         },
@@ -276,10 +276,10 @@ describe("AI entry service", () => {
     const run = vi.fn(async () => ({
       response: {
         drafts: [
-          { description: "Jollibee lunch", amountPhp: "250.00", kind: "expense" },
+          { description: "Jollibee lunch", amount: "250.00", kind: "expense" },
           {
             description: "Groceries",
-            amountPhp: "2000.00",
+            amount: "2000.00",
             kind: "expense",
             categoryName: "Groceries",
           },
@@ -310,8 +310,8 @@ describe("AI entry service", () => {
     const wrongAmount = vi.fn(async () => ({
       response: {
         drafts: [
-          { description: "Lunch", amountPhp: "250.00", kind: "expense" },
-          { description: "Groceries", amountPhp: "9000.00", kind: "expense" },
+          { description: "Lunch", amount: "250.00", kind: "expense" },
+          { description: "Groceries", amount: "9000.00", kind: "expense" },
         ],
       },
     }));
@@ -324,7 +324,7 @@ describe("AI entry service", () => {
     ).rejects.toMatchObject({ status: 422, code: "voice_transaction_amount_mismatch" });
 
     const transfer = vi.fn(async () => ({
-      response: { drafts: [{ description: "Move", amountPhp: "500.00", kind: "transfer" }] },
+      response: { drafts: [{ description: "Move", amount: "500.00", kind: "transfer" }] },
     }));
     await expect(
       service.extractVoiceTranscriptEntries(
@@ -340,7 +340,7 @@ describe("AI entry service", () => {
       response: {
         draft: {
           description: "Weekly groceries at SM",
-          amountPhp: "1500.00",
+          amount: "1500.00",
           kind: "expense",
           categoryName: "Groceries",
         },
@@ -396,7 +396,7 @@ describe("AI entry service", () => {
       response: {
         draft: {
           description: "Transfer to Maya",
-          amountPhp: "500.00",
+          amount: "500.00",
           kind: "transfer",
           categoryName: "Transfer",
         },

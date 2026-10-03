@@ -610,7 +610,7 @@ describe("assistant financial reader workspace currency", () => {
     expect(result.data).toMatchObject({ total: "USD 50.00" });
     expect(result.dataQuality.signals).toContainEqual({
       code: "other_currency_excluded",
-      message: expect.stringContaining("transactions in PHP were left out"),
+      message: expect.stringContaining("transactions in other currencies were left out"),
       count: 1,
     });
   });

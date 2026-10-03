@@ -46,8 +46,9 @@ export interface WidgetLogDeps {
 
 /**
  * Turns AI drafts into transaction inputs. The speaker's named account (or the
- * device's default) applies to the whole note, and the draft amounts are pesos,
- * so only PHP accounts qualify. Returns null when no account can take them.
+ * device's default) applies to the whole note, and the draft amounts are in the
+ * workspace currency, so only accounts held in it qualify. Returns null when no
+ * account can take them.
  */
 export function buildWidgetTransactionInputs({
   drafts,
@@ -62,10 +63,13 @@ export function buildWidgetTransactionInputs({
   categories: readonly LocalCategoryOption[];
   defaultAccountId: string | null;
 }): TransactionInput[] | null {
-  const phpAccounts = accounts.filter((account) => account.currency === "PHP" && !account.pending);
+  const currency = drafts[0]?.currency ?? "PHP";
+  const eligibleAccounts = accounts.filter(
+    (account) => account.currency === currency && !account.pending,
+  );
   const accountId =
-    resolveWidgetAccountFromTranscript(phpAccounts, transcript) ??
-    preferredTransactionAccount(phpAccounts, defaultAccountId)?.id;
+    resolveWidgetAccountFromTranscript(eligibleAccounts, transcript) ??
+    preferredTransactionAccount(eligibleAccounts, defaultAccountId)?.id;
   if (!accountId) return null;
 
   const inputs: TransactionInput[] = [];
@@ -87,7 +91,7 @@ export function buildWidgetTransactionInputs({
       date: draft.date,
       description: draft.description,
       amountMinor: draft.amountMinor,
-      currency: "PHP",
+      currency: draft.currency,
     });
     if (!parsed.success) return null;
     inputs.push(parsed.data);
@@ -154,7 +158,8 @@ export async function logWidgetVoiceNote(
 const FAILURE_MESSAGE: Record<WidgetLogFailure, string> = {
   signed_out: "Sign in to Zoption, then try the widget again.",
   workspace_unavailable: "Open Zoption once so it can unlock your data, then try again.",
-  no_account: "Add a PHP account in Zoption so voice entries have somewhere to go.",
+  no_account:
+    "Add an account in your workspace currency in Zoption so voice entries have somewhere to go.",
   consent_required: "Open Zoption and accept the AI entry notice to log by voice.",
   limit_reached: "You have used this month's AI allowance.",
   unreadable: "Couldn't find an amount. Say each amount and what it was for.",

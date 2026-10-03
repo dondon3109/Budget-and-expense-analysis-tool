@@ -209,10 +209,9 @@ function assessWorkspaceQuality(
 ): DataQualityAssessment {
   const quality = assessTransactionDataQuality(rows, period);
   if (excludedCount === 0) return quality;
-  const otherCurrency: Currency = currency === "PHP" ? "USD" : "PHP";
   quality.signals.push({
     code: "other_currency_excluded",
-    message: `Totals count only ${currency}, the workspace currency; transactions in ${otherCurrency} were left out and not converted.`,
+    message: `Totals count only ${currency}, the workspace currency; transactions in other currencies were left out and not converted.`,
     count: excludedCount,
   });
   if (quality.status === "reliable") quality.status = "limited";

@@ -83,7 +83,18 @@ describe("API request boundary schemas", () => {
         date: "2026-07-18",
         description: "Groceries",
         amountMinor: 2_455,
-        currency: "EUR",
+        currency: "JPY",
+        kind: "expense",
+        categoryId: "food",
+        accountId: "account-everyday",
+      }).success,
+    ).toBe(true);
+    expect(
+      transactionInputSchema.safeParse({
+        date: "2026-07-18",
+        description: "Groceries",
+        amountMinor: 2_455,
+        currency: "XAU",
         kind: "expense",
         categoryId: "food",
         accountId: "account-everyday",

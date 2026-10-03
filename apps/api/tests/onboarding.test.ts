@@ -103,7 +103,7 @@ describe("onboarding gate", () => {
 describe("onboarding validation", () => {
   it("rejects an unsupported currency and never stores it", async () => {
     const { call } = createHarness();
-    for (const currency of ["EUR", "php", "", 5, null]) {
+    for (const currency of ["XAU", "php", "", 5, null]) {
       const response = await call("/api/app/onboarding/currency", ALICE, "POST", { currency });
       expect(response.status).toBe(400);
     }

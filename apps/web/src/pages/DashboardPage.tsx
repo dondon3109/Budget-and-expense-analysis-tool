@@ -31,7 +31,11 @@ import { DashboardToolCards } from "../components/dashboard/DashboardToolCards";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalChecklist";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
-import { OverviewStatBar, type OverviewStatItem } from "../components/dashboard/OverviewStatBar";
+import {
+  amountsLeadingWith,
+  OverviewStatBar,
+  type OverviewStatItem,
+} from "../components/dashboard/OverviewStatBar";
 import { QuickStartTutorial } from "../components/dashboard/QuickStartTutorial";
 import { SafeToSpendCard } from "../components/dashboard/SafeToSpendCard";
 import { SpreadsheetMigrationWizard } from "../components/onboarding/SpreadsheetMigrationWizard";
@@ -264,38 +268,27 @@ export function DashboardPage() {
   const empty =
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
-  // Totals lead with the workspace currency; the other currency follows as a secondary line.
+  // Totals lead with the workspace currency; other currencies follow as secondary lines.
   const baseCurrency = data.currency;
-  const otherCurrency: Currency = baseCurrency === "PHP" ? "USD" : "PHP";
   const overallBalanceMinor = accountBalances?.balancesByCurrency[baseCurrency] ?? 0;
   const transferFeeInsight = transferFeeInsightQuery.data;
   const transferNoun =
     transferFeeInsight?.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
-  const transferFeeOtherMinor = transferFeeInsight?.feesByCurrency[otherCurrency] ?? 0;
   const previousMetrics = previousSummaryQuery.data?.metrics;
-  const currentNetMinor =
-    metrics.incomeByCurrency[baseCurrency] - metrics.expenseByCurrency[baseCurrency];
-  const previousNetMinor = previousMetrics
-    ? previousMetrics.incomeByCurrency[baseCurrency] -
-      previousMetrics.expenseByCurrency[baseCurrency]
-    : 0;
-  const incomeChangePercent = calculatePercentageChange(
-    metrics.incomeByCurrency[baseCurrency],
-    previousMetrics?.incomeByCurrency[baseCurrency] ?? 0,
-  );
-  const expenseChangePercent = calculatePercentageChange(
-    metrics.expenseByCurrency[baseCurrency],
-    previousMetrics?.expenseByCurrency[baseCurrency] ?? 0,
-  );
+  const incomeMinor = metrics.incomeByCurrency[baseCurrency] ?? 0;
+  const expenseMinor = metrics.expenseByCurrency[baseCurrency] ?? 0;
+  const previousIncomeMinor = previousMetrics?.incomeByCurrency[baseCurrency] ?? 0;
+  const previousExpenseMinor = previousMetrics?.expenseByCurrency[baseCurrency] ?? 0;
+  const currentNetMinor = incomeMinor - expenseMinor;
+  const previousNetMinor = previousMetrics ? previousIncomeMinor - previousExpenseMinor : 0;
+  const incomeChangePercent = calculatePercentageChange(incomeMinor, previousIncomeMinor);
+  const expenseChangePercent = calculatePercentageChange(expenseMinor, previousExpenseMinor);
   const netChangePercent = calculatePercentageChange(currentNetMinor, previousNetMinor);
   const trendComparison = `vs ${formatMonth(previousSummaryMonth)}`;
   const overviewItems: OverviewStatItem[] = [
     {
       label: "Income",
-      amounts: [
-        { amountMinor: metrics.incomeByCurrency[baseCurrency], currency: baseCurrency },
-        { amountMinor: metrics.incomeByCurrency[otherCurrency], currency: otherCurrency },
-      ],
+      amounts: amountsLeadingWith(metrics.incomeByCurrency, baseCurrency),
       detail: `Income received in ${selectedMonthLabel}`,
       icon: ArrowDownRight,
       tone: "income",
@@ -309,10 +302,7 @@ export function DashboardPage() {
     },
     {
       label: "Expenses",
-      amounts: [
-        { amountMinor: metrics.expenseByCurrency[baseCurrency], currency: baseCurrency },
-        { amountMinor: metrics.expenseByCurrency[otherCurrency], currency: otherCurrency },
-      ],
+      amounts: amountsLeadingWith(metrics.expenseByCurrency, baseCurrency),
       detail:
         metrics.moneyInMinor === 0
           ? `No income recorded in ${selectedMonthLabel}`
@@ -329,15 +319,7 @@ export function DashboardPage() {
     },
     {
       label: "Transfer fees (all time)",
-      amounts: [
-        {
-          amountMinor: transferFeeInsight?.feesByCurrency[baseCurrency] ?? 0,
-          currency: baseCurrency,
-        },
-        ...(transferFeeOtherMinor > 0
-          ? [{ amountMinor: transferFeeOtherMinor, currency: otherCurrency }]
-          : []),
-      ],
+      amounts: amountsLeadingWith(transferFeeInsight?.feesByCurrency ?? {}, baseCurrency),
       detail: transferFeeInsightQuery.isPending
         ? "Loading transfer fees…"
         : transferFeeInsightQuery.isError

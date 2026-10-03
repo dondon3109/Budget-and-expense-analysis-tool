@@ -6,6 +6,7 @@ import {
   parseSmsNotification,
   type AccountRecord,
   type CategoryRecord,
+  type Currency,
   type TransactionListItem,
 } from "@zoption/shared";
 
@@ -24,7 +25,7 @@ export interface ParsedSmsTransaction {
   suggestedCategory?: string;
   referenceNumber?: string;
   channel?: string;
-  currency?: string;
+  currency?: Currency;
 }
 
 export interface SmsQuickPasteModalProps {

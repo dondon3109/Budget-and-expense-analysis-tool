@@ -530,7 +530,7 @@ function aiBinding() {
               response: {
                 draft: {
                   description: "Lunch",
-                  amountPhp: "250.00",
+                  amount: "250.00",
                   kind: "expense",
                   categoryName: "Food",
                 },

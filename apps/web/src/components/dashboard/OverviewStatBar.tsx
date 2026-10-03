@@ -1,4 +1,4 @@
-import type { Currency } from "@zoption/shared";
+import { otherCurrenciesWithAmounts, type Currency, type CurrencyTotals } from "@zoption/shared";
 import type { LucideIcon } from "lucide-react";
 import { Fragment } from "react";
 
@@ -7,6 +7,14 @@ import { formatMoney, formatMoneyParts } from "../../lib/formatters";
 export interface OverviewStatAmount {
   amountMinor: number;
   currency: Currency;
+}
+
+/** The workspace-currency total first (even when zero), then each other non-zero currency. */
+export function amountsLeadingWith(totals: CurrencyTotals, base: Currency): OverviewStatAmount[] {
+  return [base, ...otherCurrenciesWithAmounts(totals, base)].map((currency) => ({
+    amountMinor: totals[currency] ?? 0,
+    currency,
+  }));
 }
 
 export interface OverviewStatTrend {

@@ -1,5 +1,5 @@
 import { normalizeCsvHeader } from "./csv";
-import type { ImportMapping } from "./types";
+import type { Currency, ImportMapping } from "./types";
 
 export type ImportPresetId =
   "auto" | "generic" | "bpi" | "bdo" | "maribank" | "bank-of-america" | "jpmorgan";
@@ -16,7 +16,11 @@ export interface ImportPreset {
   signatureAliases: string[];
   aliases: Record<MappingField, string[]>;
   preferredAmountMode: ImportAmountMode;
-  requiresPhpConfirmation: boolean;
+  /**
+   * The currency this bank's exports usually use, when it is fixed. Imports are saved in the
+   * workspace currency without conversion, so a mismatch asks the user to confirm first.
+   */
+  exportCurrency: Currency | null;
   guidance: string;
 }
 
@@ -57,7 +61,7 @@ export const importPresets: ImportPreset[] = [
     signatureAliases: [],
     aliases: genericAliases,
     preferredAmountMode: "amount",
-    requiresPhpConfirmation: false,
+    exportCurrency: null,
     guidance: "Matches common Date, Description, Amount, Debit, and Credit headings.",
   },
   {
@@ -72,7 +76,7 @@ export const importPresets: ImportPreset[] = [
       credit: ["credit amount"],
     }),
     preferredAmountMode: "debit-credit",
-    requiresPhpConfirmation: false,
+    exportCurrency: null,
     guidance: "Supports BPI exports with either Amount or separate Debit and Credit columns.",
   },
   {
@@ -87,7 +91,7 @@ export const importPresets: ImportPreset[] = [
       credit: ["credit amount", "deposit amount"],
     }),
     preferredAmountMode: "debit-credit",
-    requiresPhpConfirmation: false,
+    exportCurrency: null,
     guidance: "Supports common BDO statement headings and split Debit/Credit exports.",
   },
   {
@@ -102,7 +106,7 @@ export const importPresets: ImportPreset[] = [
       kind: ["transaction type"],
     }),
     preferredAmountMode: "amount",
-    requiresPhpConfirmation: false,
+    exportCurrency: null,
     guidance: "Matches MariBank transaction history exports, including transaction-time headings.",
   },
   {
@@ -116,9 +120,9 @@ export const importPresets: ImportPreset[] = [
       amount: ["amount"],
     }),
     preferredAmountMode: "amount",
-    requiresPhpConfirmation: true,
+    exportCurrency: "USD",
     guidance:
-      "Bank of America commonly exports USD. Zoption stores PHP only and does not convert currencies.",
+      "Bank of America commonly exports USD. Imports are saved in your workspace currency without conversion.",
   },
   {
     id: "jpmorgan",
@@ -132,9 +136,9 @@ export const importPresets: ImportPreset[] = [
       kind: ["type", "details"],
     }),
     preferredAmountMode: "amount",
-    requiresPhpConfirmation: true,
+    exportCurrency: "USD",
     guidance:
-      "JPMorgan and Chase exports commonly use USD. Zoption stores PHP only and does not convert currencies.",
+      "JPMorgan and Chase exports commonly use USD. Imports are saved in your workspace currency without conversion.",
   },
 ];
 

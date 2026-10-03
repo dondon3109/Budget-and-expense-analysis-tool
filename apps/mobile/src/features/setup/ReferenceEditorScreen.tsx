@@ -30,6 +30,7 @@ import {
   type Currency,
   type InterestFrequency,
   type TransactionKind,
+  type Currency,
 } from "@zoption/shared";
 
 import {
@@ -110,7 +111,7 @@ function InterestProjection({
   annualRateBasisPoints: number;
   frequency: InterestFrequency;
   payDay: number | null;
-  currency: "PHP" | "USD";
+  currency: Currency;
 }) {
   const theme = useZoptionTheme();
   if (balanceMinor == null) {

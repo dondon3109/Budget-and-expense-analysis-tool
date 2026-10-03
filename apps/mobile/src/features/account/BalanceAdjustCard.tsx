@@ -1,3 +1,4 @@
+import type { Currency } from "@zoption/shared";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -31,7 +32,7 @@ export function BalanceAdjustCard({
 }: {
   accountId: string;
   accountName: string;
-  currency: "PHP" | "USD";
+  currency: Currency;
   currentBalanceMinor: number;
   disabled?: boolean;
 }) {

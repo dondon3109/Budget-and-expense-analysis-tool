@@ -18,6 +18,7 @@ import { SubscriptionForm } from "../subscriptions/SubscriptionForm";
 import { createSubscription } from "../../lib/api";
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import "./ImportSubscriptionSuggestions.css";
 
@@ -132,7 +133,8 @@ export function ImportSubscriptionSuggestions({
         id: "new-subscription",
         name: activeCandidate.description,
         amountMinor: activeCandidate.typicalAmountMinor,
-        currency: "PHP" as const,
+        // Imported rows were saved in the workspace currency.
+        currency: workspaceCurrency(),
         billingCycle: activeCandidate.billingCycle,
         nextBillingDate: activeCandidate.nextBillingDate,
         status: "active" as const,
