@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type * as NodeCrypto from "crypto";
-import { AppState, Text, type AppStateStatus } from "react-native";
+import { AppState, Platform, Text, type AppStateStatus } from "react-native";
 
 const mockSecureValues = new Map<string, string>();
 
@@ -15,6 +15,17 @@ jest.mock("expo-secure-store", () => ({
     mockSecureValues.delete(key);
     return Promise.resolve();
   }),
+}));
+
+const mockBiometrics = { level: 0, succeed: true };
+jest.mock("expo-local-authentication", () => ({
+  SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC: 2, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+  getEnrolledLevelAsync: jest.fn(() => Promise.resolve(mockBiometrics.level)),
+  authenticateAsync: jest.fn(() =>
+    Promise.resolve(
+      mockBiometrics.succeed ? { success: true } : { success: false, error: "user_cancel" },
+    ),
+  ),
 }));
 
 let mockUuid = 0;
@@ -36,7 +47,16 @@ jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({ signOut: mockSignOut }),
 }));
 
-import { clearAppLock, readAppLockKind, setAppLock, verifyAppLock } from "@/auth/app-lock";
+import * as LocalAuthentication from "expo-local-authentication";
+
+import {
+  clearAppLock,
+  readAppLockKind,
+  readBiometricUnlock,
+  setAppLock,
+  setBiometricUnlock,
+  verifyAppLock,
+} from "@/auth/app-lock";
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 
 import { AppLockGate, MAX_ATTEMPTS, RELOCK_AFTER_MS } from "./AppLockGate";
@@ -63,6 +83,9 @@ describe("app lock", () => {
   beforeEach(() => {
     mockSecureValues.clear();
     mockSignOut.mockReset().mockResolvedValue(undefined);
+    mockBiometrics.level = 0;
+    mockBiometrics.succeed = true;
+    jest.mocked(LocalAuthentication.authenticateAsync).mockClear();
   });
 
   it("stores only a salted hash and verifies per subject", async () => {
@@ -88,6 +111,67 @@ describe("app lock", () => {
     mockSecureValues.set(`zoption.app_lock.${subject}`, "not json");
     await expect(readAppLockKind(subject)).resolves.toBe("pin");
     await expect(verifyAppLock(subject, "anything")).resolves.toBe(false);
+  });
+
+  it("clears biometric unlock with the lock", async () => {
+    await setAppLock(subject, "482913");
+    await setBiometricUnlock(subject, true);
+    await expect(readBiometricUnlock(subject)).resolves.toBe(true);
+
+    await clearAppLock(subject);
+    await expect(readBiometricUnlock(subject)).resolves.toBe(false);
+  });
+
+  it("unlocks with biometrics when they are on and enrolled", async () => {
+    mockBiometrics.level = 3;
+    await setAppLock(subject, "482913");
+    await setBiometricUnlock(subject, true);
+    await renderGate();
+
+    await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
+    expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ disableDeviceFallback: true }),
+    );
+  });
+
+  it("falls back to the PIN pad when the biometric prompt is cancelled", async () => {
+    mockBiometrics.level = 3;
+    mockBiometrics.succeed = false;
+    await setAppLock(subject, "482913");
+    await setBiometricUnlock(subject, true);
+    await renderGate();
+
+    expect(await screen.findByText("Unlock with biometrics")).toBeTruthy();
+    expect(screen.getByText("Zoption is locked")).toBeTruthy();
+
+    mockBiometrics.succeed = true;
+    await fireEvent.press(screen.getByText("Unlock with biometrics"));
+    await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
+  });
+
+  it("unlocks with a weak Android biometric such as camera face unlock", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    mockBiometrics.level = 2;
+    await setAppLock(subject, "482913");
+    await setBiometricUnlock(subject, true);
+    await renderGate();
+
+    await waitFor(() => expect(screen.queryByText("Zoption is locked")).toBeNull());
+    expect(LocalAuthentication.authenticateAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ biometricsSecurityLevel: "weak" }),
+    );
+    jest.restoreAllMocks();
+  });
+
+  it("does not offer biometrics when none is enrolled", async () => {
+    mockBiometrics.level = 1;
+    await setAppLock(subject, "482913");
+    await setBiometricUnlock(subject, true);
+    await renderGate();
+
+    expect(screen.getByText("Zoption is locked")).toBeTruthy();
+    expect(screen.queryByText("Unlock with biometrics")).toBeNull();
+    expect(LocalAuthentication.authenticateAsync).not.toHaveBeenCalled();
   });
 
   it("opens straight into the workspace when no app lock is set", async () => {

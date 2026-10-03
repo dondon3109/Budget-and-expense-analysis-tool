@@ -1,4 +1,5 @@
 import * as Crypto from "expo-crypto";
+import * as LocalAuthentication from "expo-local-authentication";
 import * as SecureStore from "expo-secure-store";
 import { z } from "zod";
 
@@ -77,5 +78,51 @@ export async function verifyAppLock(subject: string, secret: string): Promise<bo
 }
 
 export async function clearAppLock(subject: string): Promise<void> {
+  await SecureStore.deleteItemAsync(biometricKey(subject), secureStoreOptions);
   await SecureStore.deleteItemAsync(lockKey(subject), secureStoreOptions);
+}
+
+// Kept beside the PIN record rather than inside it: the strict record schema
+// would make an older build read a record with an extra field as unreadable.
+function biometricKey(subject: string): string {
+  return `zoption.app_lock_biometrics.${subject}`;
+}
+
+/**
+ * Whether the user has enrolled any biometric this device can check:
+ * fingerprint, face, or iris, including Android's weaker (Class 2) camera
+ * face unlock.
+ */
+export async function isBiometricUnlockAvailable(): Promise<boolean> {
+  const level = await LocalAuthentication.getEnrolledLevelAsync();
+  return level >= LocalAuthentication.SecurityLevel.BIOMETRIC_WEAK;
+}
+
+/** Biometric unlock is a shortcut to the PIN: it is only on while a PIN lock is set. */
+export async function readBiometricUnlock(subject: string): Promise<boolean> {
+  const value = await SecureStore.getItemAsync(biometricKey(subject), secureStoreOptions);
+  return value === "on";
+}
+
+export async function setBiometricUnlock(subject: string, enabled: boolean): Promise<void> {
+  if (!enabled) {
+    await SecureStore.deleteItemAsync(biometricKey(subject), secureStoreOptions);
+    return;
+  }
+  await SecureStore.setItemAsync(biometricKey(subject), "on", secureStoreOptions);
+}
+
+/**
+ * Shows the system biometric prompt. The device passcode is not accepted in
+ * its place: the app's own PIN is the fallback, so cancelling returns to it.
+ */
+export async function authenticateWithBiometrics(promptMessage: string): Promise<boolean> {
+  const result = await LocalAuthentication.authenticateAsync({
+    promptMessage,
+    cancelLabel: "Use PIN",
+    disableDeviceFallback: true,
+    // Android's default is strong only; weak also admits Class 2 face unlock.
+    biometricsSecurityLevel: "weak",
+  });
+  return result.success;
 }

@@ -161,6 +161,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         },
       ],
       ["expo-secure-store", { configureAndroidBackup: true }],
+      // Adds USE_BIOMETRIC on Android and the Face ID usage string on iOS for app lock.
+      [
+        "expo-local-authentication",
+        { faceIDPermission: "Zoption uses Face ID to unlock the app when you turn it on." },
+      ],
       // Registered before expo-notifications: its entitlement mod must run after
       // that plugin's, and mods of one type run in reverse registration order.
       withoutPushEntitlement as unknown as [string, unknown],

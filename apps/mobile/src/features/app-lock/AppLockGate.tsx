@@ -5,7 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   PIN_LENGTH,
+  authenticateWithBiometrics,
+  isBiometricUnlockAvailable,
   readAppLockKind,
+  readBiometricUnlock,
   setAppLock,
   verifyAppLock,
   type AppLockKind,
@@ -152,6 +155,41 @@ function AppLockScreen({
   const [replacingPassword, setReplacingPassword] = useState(false);
   const [signOutStep, setSignOutStep] = useState<"idle" | "confirm" | "discard">("idle");
   const [signingOut, setSigningOut] = useState(false);
+  const [biometricReady, setBiometricReady] = useState(false);
+  // The parent passes a fresh onUnlock each render; the prompt below runs once per mount.
+  const onUnlockRef = useRef(onUnlock);
+  onUnlockRef.current = onUnlock;
+
+  const unlockWithBiometrics = async (): Promise<void> => {
+    try {
+      if (await authenticateWithBiometrics("Unlock Zoption")) onUnlock();
+    } catch {
+      // A failed or unavailable prompt leaves the PIN pad, which always works.
+    }
+  };
+
+  // Offer biometrics straight away when the user turned them on. The screen
+  // remounts on every relock, so each lock prompts once; cancelling leaves the
+  // PIN pad and a button to try again.
+  useEffect(() => {
+    if (kind !== "pin") return;
+    let active = true;
+    void (async () => {
+      try {
+        if (!(await readBiometricUnlock(subject))) return;
+        if (!(await isBiometricUnlockAvailable()) || !active) return;
+        setBiometricReady(true);
+        if (await authenticateWithBiometrics("Unlock Zoption")) {
+          if (active) onUnlockRef.current();
+        }
+      } catch {
+        // Fall back to the PIN pad.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [kind, subject]);
 
   const unlock = async (attempt: string): Promise<void> => {
     if (checking || coolingDown || attempt.length === 0) return;
@@ -238,7 +276,11 @@ function AppLockScreen({
     return (
       <PinPadScreen
         title="Zoption is locked"
-        message="Enter your PIN to open your workspace."
+        message={
+          biometricReady
+            ? "Use biometrics or enter your PIN to open your workspace."
+            : "Enter your PIN to open your workspace."
+        }
         value={secret}
         onChange={(next) => {
           setError(null);
@@ -247,7 +289,20 @@ function AppLockScreen({
         }}
         error={error}
         disabled={checking || coolingDown || signingOut}
-        footer={signOutControls}
+        footer={
+          <>
+            {biometricReady ? (
+              <Button
+                variant="secondary"
+                disabled={signingOut}
+                onPress={() => void unlockWithBiometrics()}
+              >
+                Unlock with biometrics
+              </Button>
+            ) : null}
+            {signOutControls}
+          </>
+        }
       />
     );
   }
