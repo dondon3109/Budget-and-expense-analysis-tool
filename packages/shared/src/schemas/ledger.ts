@@ -29,6 +29,8 @@ export const accountInputSchema = z
   .object({
     name: z.string().trim().min(1).max(80),
     type: z.enum(accountTypes),
+    /** Chosen when the account is created and fixed after; omitted means the workspace currency. */
+    currency: z.enum(currencies).optional(),
   })
   .strict();
 

@@ -14,14 +14,20 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   accountInputSchema,
+  buildBalanceAdjustmentInput,
   categoryInputSchema,
+  currencies,
+  currencyMetadata,
   interestAmountMinor,
   interestFrequencies,
   interestUpdateSchema,
   nextInterestCreditDate,
+  parseAmountToMinor,
+  resolveAdjustmentCategoryId,
   resolveCategoryEmoji,
   type AccountInterestUpdate,
   type AccountType,
+  type Currency,
   type InterestFrequency,
   type TransactionKind,
 } from "@zoption/shared";
@@ -56,6 +62,11 @@ const accountOptions: Array<{ id: AccountType; label: string }> = [
   { id: "credit", label: "Credit" },
   { id: "other", label: "Other" },
 ];
+
+const currencyOptions: Array<{ id: Currency; label: string }> = currencies.map((code) => ({
+  id: code,
+  label: currencyMetadata[code].label,
+}));
 
 const categoryOptions: Array<{ id: TransactionKind; label: string }> = [
   { id: "expense", label: "Expense" },
@@ -160,6 +171,10 @@ export function ReferenceEditorScreen() {
   const initialized = useRef(false);
   const [name, setName] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("cash");
+  const [startingBalance, setStartingBalance] = useState("");
+  const [accountCurrency, setAccountCurrency] = useState<Currency>(
+    useWorkspaceCurrencyStore.getState().currency,
+  );
   const [categoryKind, setCategoryKind] = useState<TransactionKind>("expense");
   const [color, setColor] = useState("#0F766E");
   const [customColorOpen, setCustomColorOpen] = useState(false);
@@ -188,6 +203,7 @@ export function ReferenceEditorScreen() {
     if (id && !account && !category) return;
     setName(account?.name ?? category?.name ?? "");
     setAccountType(account?.type ?? "cash");
+    if (account) setAccountCurrency(account.currency);
     setCategoryKind(category?.kind ?? "expense");
     const savedColor = category?.color ?? "#0F766E";
     setColor(savedColor);
@@ -243,6 +259,16 @@ export function ReferenceEditorScreen() {
       : ` ${payingSubscriptions.length} active ${payingSubscriptions.length === 1 ? "subscription is" : "subscriptions are"} paid from this account: ${payingNames}. Zoption skips due subscription charges while this account stays archived and emails you once per cycle.`;
   const archiveMessage = `It will stop appearing in new transaction choices. Existing records keep their ${entityType} reference.${archiveWarning}`;
 
+  // Blank means no starting balance; text that is not an amount blocks the save.
+  const startingBalanceMinor = (() => {
+    if (!startingBalance.trim()) return undefined;
+    try {
+      return parseAmountToMinor(startingBalance);
+    } catch {
+      return null;
+    }
+  })();
+
   const save = async (): Promise<void> => {
     if (!local.workspace || saving || blocked || unavailable) return;
     setMessage(null);
@@ -252,6 +278,10 @@ export function ReferenceEditorScreen() {
         const parsed = accountInputSchema.safeParse({ name, type: accountType });
         if (!parsed.success) {
           setMessage("Enter an account name and choose its type.");
+          return;
+        }
+        if (!id && startingBalanceMinor === null) {
+          setMessage("Enter a valid starting balance with no more than two decimal places.");
           return;
         }
         if (id) {
@@ -277,10 +307,33 @@ export function ReferenceEditorScreen() {
             ...(interest !== undefined && { interest }),
           });
         } else {
-          await local.workspace.transactionMutations.createAccount(
-            parsed.data,
-            useWorkspaceCurrencyStore.getState().currency,
-          );
+          const mutations = local.workspace.transactionMutations;
+          const accountId = await mutations.createAccount({
+            ...parsed.data,
+            currency: accountCurrency,
+          });
+          // The starting balance is the same adjustment entry "Adjust balance" books.
+          if (startingBalanceMinor) {
+            const kind = startingBalanceMinor > 0 ? "income" : "expense";
+            const categoryId = resolveAdjustmentCategoryId(references.data?.categories ?? [], kind);
+            const adjustment =
+              categoryId &&
+              buildBalanceAdjustmentInput({
+                accountId,
+                accountName: parsed.data.name,
+                categoryId,
+                currency: accountCurrency,
+                currentBalanceMinor: 0,
+                newBalanceMinor: startingBalanceMinor,
+              });
+            if (!adjustment) {
+              setMessage(
+                "The account was created, but no category is available to book its starting balance.",
+              );
+              return;
+            }
+            await mutations.createTransaction(adjustment);
+          }
         }
       } else if (entityType === "category") {
         const parsed = categoryInputSchema.safeParse({
@@ -463,6 +516,35 @@ export function ReferenceEditorScreen() {
                     setMessage(null);
                   }}
                 />
+                <SelectionField
+                  label="Currency"
+                  value={accountCurrency}
+                  options={currencyOptions}
+                  placeholder="Choose a currency"
+                  sheetTitle="Account currency"
+                  hint={editing ? "An account's currency cannot be changed." : undefined}
+                  disabled={editing || saving || blocked}
+                  onSelect={(value) => setAccountCurrency(value as Currency)}
+                />
+                {editing ? null : (
+                  <FormField
+                    label="Starting balance (optional)"
+                    value={startingBalance}
+                    onChangeText={(value) => {
+                      setStartingBalance(value);
+                      setMessage(null);
+                    }}
+                    placeholder="0.00"
+                    inputMode="decimal"
+                    keyboardType="decimal-pad"
+                    editable={!saving && !blocked}
+                    error={
+                      startingBalanceMinor === null
+                        ? "Enter a valid amount with no more than two decimal places."
+                        : undefined
+                    }
+                  />
+                )}
                 {editing && accountType === "savings" ? (
                   <Card>
                     <Text style={[typography.headline, { color: theme.colors.text }]}>

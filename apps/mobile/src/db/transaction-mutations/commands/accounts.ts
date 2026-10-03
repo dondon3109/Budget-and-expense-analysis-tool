@@ -2,7 +2,9 @@ import {
   accountInputSchema,
   accountUpdateWithInterestSchema,
   interestUpdateSchema,
-  mobileSyncAccountUpdateSchema,
+  // Queued account payloads always carry a name and type, so the create shape reads both a
+  // pending create (which may hold a currency) and a pending update.
+  mobileSyncAccountCreateSchema,
   type AccountInput,
   type AccountInterestUpdate,
   type AccountUpdateWithInterest,
@@ -20,8 +22,9 @@ import {
 } from "./outbox-writes";
 
 /**
- * `currency` is the workspace currency, which the Worker also assigns when the create syncs, so
- * the local row reads the same before and after the round trip.
+ * The account keeps the currency chosen in `value`. `currency` is the workspace currency used when
+ * none was chosen, which the Worker also assigns when the create syncs, so the local row reads
+ * the same before and after the round trip.
  */
 export function createAccount(
   ctx: LocalCommandContext,
@@ -43,7 +46,7 @@ export function createAccount(
         entityId,
         input.name,
         input.type,
-        currency,
+        input.currency ?? currency,
         JSON.stringify({
           enabled: false,
           annualRateBasisPoints: null,
@@ -75,11 +78,13 @@ export function updateAccount(
       assertNotQueuedForRemoval(outbox, "account", "archived");
       assertNoAttemptInFlight(outbox, "account", "editing");
       const pending = outbox
-        ? mobileSyncAccountUpdateSchema.safeParse(JSON.parse(outbox.payload_json) as unknown)
+        ? mobileSyncAccountCreateSchema.safeParse(JSON.parse(outbox.payload_json) as unknown)
         : null;
       const next: AccountInput & { interest?: AccountInterestUpdate } = {
         name: update.name,
         type: update.type ?? current.type,
+        // A create that has not synced still carries the chosen currency; an update payload never does.
+        ...(outbox?.operation_type === "create" && { currency: current.currency }),
       };
       if (update.interest !== undefined && next.type !== "savings") {
         throw new LocalMutationError("Only savings accounts earn interest.", "mutation_blocked");
@@ -150,7 +155,7 @@ export function retryAccountInterestSync(ctx: LocalCommandContext, id: string): 
       } catch {
         throw new LocalMutationError("The encrypted outbox is invalid.", "invalid_outbox");
       }
-      const parsed = mobileSyncAccountUpdateSchema.safeParse(payload);
+      const parsed = mobileSyncAccountCreateSchema.safeParse(payload);
       if (
         !parsed.success ||
         parsed.data.interest === undefined ||
@@ -189,7 +194,7 @@ export function updateAccountInterest(
       assertNoAttemptInFlight(outbox, "account", "editing");
       const next = outbox
         ? {
-            ...mobileSyncAccountUpdateSchema.parse(JSON.parse(outbox.payload_json) as unknown),
+            ...mobileSyncAccountCreateSchema.parse(JSON.parse(outbox.payload_json) as unknown),
             interest,
           }
         : { name: current.name, type: current.type, interest };
