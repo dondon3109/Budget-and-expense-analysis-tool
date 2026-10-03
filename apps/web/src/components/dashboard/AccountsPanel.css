@@ -217,7 +217,7 @@
   margin-top: 16px;
   padding: 18px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.7fr) minmax(120px, 0.7fr) auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, minmax(120px, 0.7fr)) auto;
   gap: 12px;
   align-items: end;
   border: 1px solid var(--line);

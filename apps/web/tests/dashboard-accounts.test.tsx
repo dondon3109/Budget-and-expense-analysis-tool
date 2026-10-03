@@ -16,6 +16,7 @@ const apiMocks = vi.hoisted(() => ({
   getTransferFeeInsight: vi.fn(),
   getBillingSummary: vi.fn(),
   createAccount: vi.fn(),
+  createTransaction: vi.fn(),
   updateAccount: vi.fn(),
   updateAccountInterest: vi.fn(),
   deleteAccount: vi.fn(),
@@ -318,6 +319,7 @@ describe("Profile dashboard account management", () => {
       items: [],
     });
     apiMocks.createAccount.mockReset().mockResolvedValue({});
+    apiMocks.createTransaction.mockReset().mockResolvedValue({ id: "transaction-1" });
     apiMocks.updateAccount.mockReset().mockResolvedValue({});
     apiMocks.updateAccountInterest.mockReset().mockResolvedValue({});
     apiMocks.deleteAccount.mockReset().mockResolvedValue(undefined);
@@ -550,6 +552,48 @@ describe("Profile dashboard account management", () => {
         { key: "user:user-1", userId: "user-1" },
         { name: "SeaBank", type: "savings", currency: "USD" },
       ),
+    );
+  });
+
+  it("books a starting balance for a new account as an adjustment", async () => {
+    apiMocks.createAccount.mockResolvedValue({
+      id: "account-new",
+      name: "SeaBank",
+      currency: "USD",
+    });
+    apiMocks.getCategories.mockResolvedValue([
+      { id: "category-income", name: "Uncategorized", kind: "income" },
+    ]);
+    renderPage();
+    const accountManager = await screen.findByRole("region", { name: "Account management" });
+
+    fireEvent.click(within(accountManager).getByRole("button", { name: "Add account" }));
+    fireEvent.change(within(accountManager).getByLabelText("Account name"), {
+      target: { value: "SeaBank" },
+    });
+    fireEvent.change(within(accountManager).getByLabelText("Currency"), {
+      target: { value: "USD" },
+    });
+    fireEvent.change(within(accountManager).getByLabelText("Starting balance (optional)"), {
+      target: { value: "1,250.50" },
+    });
+    fireEvent.click(within(accountManager).getByRole("button", { name: "Add" }));
+
+    await waitFor(() =>
+      expect(apiMocks.createTransaction).toHaveBeenCalledWith(
+        { key: "user:user-1", userId: "user-1" },
+        expect.objectContaining({
+          kind: "income",
+          accountId: "account-new",
+          categoryId: "category-income",
+          amountMinor: 125_050,
+          currency: "USD",
+        }),
+      ),
+    );
+    expect(apiMocks.createAccount).toHaveBeenCalledWith(
+      { key: "user:user-1", userId: "user-1" },
+      { name: "SeaBank", type: "checking", currency: "USD" },
     );
   });
 

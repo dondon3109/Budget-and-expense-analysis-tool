@@ -1,15 +1,24 @@
-import type {
-  AccountBalanceSummaryItem,
-  AccountInput,
-  AccountRecord,
-  Currency,
-  DashboardSummary,
-  InterestFrequency,
+import {
+  buildBalanceAdjustmentInput,
+  formatMinorAmount,
+  resolveAdjustmentCategoryId,
+  type AccountBalanceSummaryItem,
+  type AccountInput,
+  type AccountRecord,
+  type Currency,
+  type DashboardSummary,
+  type InterestFrequency,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { createAccount, deleteAccount, updateAccount } from "../../lib/api";
+import {
+  createAccount,
+  createTransaction,
+  deleteAccount,
+  getCategories,
+  updateAccount,
+} from "../../lib/api";
 import {
   optimisticId,
   restoreOptimisticSnapshot,
@@ -20,6 +29,36 @@ import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { invalidateAfterAccountWrite } from "../../queries/accounts";
 import { workspaceCurrency } from "../../lib/workspaceCurrency";
+
+/** A new account's starting balance is booked as the same adjustment entry "Adjust balance" makes. */
+async function bookStartingBalance(
+  workspace: AuthenticatedWorkspace,
+  account: AccountRecord,
+  startingBalanceMinor: number,
+): Promise<void> {
+  const kind = startingBalanceMinor > 0 ? "income" : "expense";
+  const categories = await getCategories(workspace, true);
+  const categoryId =
+    resolveAdjustmentCategoryId(categories, kind) ??
+    categories.find((category) => category.kind === kind)?.id;
+  const input =
+    categoryId &&
+    buildBalanceAdjustmentInput({
+      accountId: account.id,
+      accountName: account.name,
+      categoryId,
+      currency: account.currency,
+      currentBalanceMinor: 0,
+      newBalanceMinor: startingBalanceMinor,
+    });
+  if (!input) throw new Error("No category is available to book the starting balance.");
+  await createTransaction(workspace, input);
+}
+
+interface StartingBalance {
+  /** Optional opening balance in minor units; zero or absent books nothing. */
+  startingBalanceMinor?: number;
+}
 
 interface AccountOptimisticContext {
   accountSnapshot: OptimisticCacheSnapshot;
@@ -56,6 +95,7 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
   const [accountName, setAccountName] = useState("");
   const [accountType, setAccountType] = useState<AccountInput["type"]>("checking");
   const [accountCurrency, setAccountCurrency] = useState<Currency>(workspaceCurrency());
+  const [accountStartingBalance, setAccountStartingBalance] = useState("");
   const [editingAccount, setEditingAccount] = useState<AccountBalanceSummaryItem>();
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState<AccountInput["type"]>("checking");
@@ -94,8 +134,24 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
   };
 
   const createAccountMutation = useMutation({
-    mutationFn: (input: AccountInput) => createAccount(workspace, input),
-    onMutate: async (input) => {
+    mutationFn: async ({ startingBalanceMinor, ...input }: AccountInput & StartingBalance) => {
+      const saved = await createAccount(workspace, input);
+      if (!startingBalanceMinor) return saved;
+      try {
+        await bookStartingBalance(workspace, saved, startingBalanceMinor);
+      } catch {
+        throw new Error(
+          `${saved.name} was created, but its starting balance was not saved. Use Adjust balance to set it.`,
+        );
+      }
+      return saved;
+    },
+    onMutate: async (variables) => {
+      const input: AccountInput = {
+        name: variables.name,
+        type: variables.type,
+        currency: variables.currency,
+      };
       const id = optimisticId("account");
       const account: AccountRecord = {
         ...input,
@@ -120,11 +176,15 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
             : current,
       );
       setAccountName("");
+      setAccountStartingBalance("");
       setIsAddingAccount(false);
       return { cache, id, input };
     },
-    onError: (_error, _input, context) => {
+    onError: (_error, variables, context) => {
       restoreAccountContext(context?.cache);
+      setAccountStartingBalance(
+        variables.startingBalanceMinor ? formatMinorAmount(variables.startingBalanceMinor) : "",
+      );
       setAccountName(context?.input.name ?? "");
       setAccountType(context?.input.type ?? "checking");
       setAccountCurrency(context?.input.currency ?? workspaceCurrency());
@@ -277,6 +337,8 @@ export function useAccountMutations(workspace: AuthenticatedWorkspace) {
     setAccountType,
     accountCurrency,
     setAccountCurrency,
+    accountStartingBalance,
+    setAccountStartingBalance,
     editingAccount,
     setEditingAccount,
     editName,

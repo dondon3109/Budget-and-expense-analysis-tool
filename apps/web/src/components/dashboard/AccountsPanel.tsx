@@ -1,6 +1,7 @@
 import {
   currencies,
   currencyMetadata,
+  parseAmountToMinor,
   preferredTransactionAccount,
   type AccountBalanceSummaryItem,
   type AccountInput,
@@ -33,6 +34,15 @@ interface AccountsPanelProps {
   onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
 }
 
+function parseOptionalAmount(value: string): number | undefined | null {
+  if (!value.trim()) return undefined;
+  try {
+    return parseAmountToMinor(value);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The overall balance and the account list with its add form, plus the edit and remove dialogs
  * the list opens. Styles live in AccountsPanel.css, which DashboardPage imports right after its
@@ -57,6 +67,8 @@ export function AccountsPanel({
     setAccountType,
     accountCurrency,
     setAccountCurrency,
+    accountStartingBalance,
+    setAccountStartingBalance,
     editingAccount,
     setEditingAccount,
     setEditName,
@@ -76,6 +88,8 @@ export function AccountsPanel({
     activeAccounts,
     defaultSpendingAccountId,
   );
+  // Blank means no starting balance; text that is not an amount blocks the add.
+  const startingBalanceMinor = parseOptionalAmount(accountStartingBalance);
   const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
   // Balances lead with the workspace currency; the other currency shows only when it is used.
   const baseCurrency: Currency = accountBalances?.currency ?? "PHP";
@@ -155,6 +169,7 @@ export function AccountsPanel({
                     name: accountName,
                     type: accountType,
                     currency: accountCurrency,
+                    ...(startingBalanceMinor ? { startingBalanceMinor } : {}),
                   });
                 }}
               >
@@ -194,10 +209,20 @@ export function AccountsPanel({
                     ))}
                   </select>
                 </label>
+                <label>
+                  <span>Starting balance (optional)</span>
+                  <input
+                    value={accountStartingBalance}
+                    onChange={(event) => setAccountStartingBalance(event.target.value)}
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    aria-invalid={startingBalanceMinor === null}
+                  />
+                </label>
                 <button
                   className="button primary"
                   type="submit"
-                  disabled={createAccountMutation.isPending}
+                  disabled={createAccountMutation.isPending || startingBalanceMinor === null}
                 >
                   {createAccountMutation.isPending ? "Adding…" : "Add"}
                 </button>
