@@ -85,14 +85,6 @@ main:has(.assistant-page) > .legal-footer,
   gap: 12px;
 }
 
-.assistant-history-title-row > div:first-child {
-  min-width: 0;
-}
-
-.assistant-history-heading .eyebrow {
-  margin-bottom: 2px;
-}
-
 .assistant-history-heading h2 {
   margin: 0;
   color: var(--ink);
@@ -581,64 +573,12 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-chat-meta {
   margin: 0;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  line-height: 1.3;
-}
-
-.assistant-status-dot {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-  background: var(--action);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--action) 22%, transparent);
-}
-
-.assistant-status-dot::before {
-  position: absolute;
-  inset: -3px;
-  content: "";
-  border-radius: 999px;
-  border: 1.5px solid var(--action);
-  opacity: 0.8;
-  animation: assistant-status-ping 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes assistant-status-ping {
-  0% {
-    transform: scale(0.6);
-    opacity: 0.9;
-  }
-  70%,
-  100% {
-    transform: scale(2.2);
-    opacity: 0;
-  }
-}
-
-.assistant-chat-status strong {
-  min-width: 0;
   overflow: hidden;
   color: var(--muted);
   font-weight: 580;
+  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.assistant-status-readonly {
-  padding: 2px 8px;
-  color: var(--subtle);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--surface);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 620;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 /* plan usage meter sits in the topbar centre — slim label + track + % row,
@@ -763,16 +703,6 @@ main:has(.assistant-page) > .legal-footer,
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-}
-
-.assistant-chat-retention {
-  min-width: 0;
-  color: var(--subtle);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.35;
-  text-align: right;
-  letter-spacing: 0.02em;
 }
 
 .assistant-memory-trigger {
@@ -2718,7 +2648,6 @@ main:has(.assistant-page) > .legal-footer,
     grid-area: corner;
   }
 
-  .assistant-chat-retention,
   .assistant-chat-corner .theme-sw,
   .assistant-memory-label {
     display: none;
@@ -2917,7 +2846,6 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .assistant-status-dot::before,
   .assistant-empty-core-beacon,
   .assistant-empty > span,
   .assistant-thinking-dots i,
