@@ -1,0 +1,307 @@
+import { CURRENT_ASSISTANT_CONSENT_VERSION } from "@zoption/shared";
+import type {
+  AccountRecord,
+  AssistantAction,
+  AssistantActionToolInput,
+  CategoryRecord,
+  Debt,
+  FinancialGoal,
+  SubscriptionRecord,
+} from "@zoption/shared";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { proposeAction, type ActionRecords } from "../src/assistant/actions";
+import type { AssistantOrchestrator } from "../src/assistant/orchestrator";
+import { createAssistantService } from "../src/assistant/service";
+import { createAssistantTurnPolicy } from "../src/assistant/turn-policy";
+import { assistantRepository } from "../src/db/assistant";
+import { assistantActionRepository } from "../src/db/assistant-actions";
+import { assistantTransactionDraftRepository } from "../src/db/assistant-transaction-drafts";
+import type { Bindings } from "../src/types";
+import { createD1TestDatabase } from "./helpers/d1-test-harness";
+
+const TENANT = "user:tenant-a";
+const THREAD = "11111111-1111-4111-8111-111111111111";
+const FIRST = "22222222-2222-4222-8222-222222222222";
+const SECOND = "33333333-3333-4333-8333-333333333333";
+
+const records: ActionRecords = {
+  accounts: [
+    { id: "account-gcash", name: "GCash", currency: "PHP", archived: false },
+  ] as AccountRecord[],
+  categories: [
+    {
+      id: "category-streaming",
+      name: "Streaming",
+      kind: "expense",
+      archived: false,
+      locked: false,
+    },
+  ] as CategoryRecord[],
+  goals: [
+    {
+      id: "goal-1",
+      name: "Emergency fund",
+      targetAmountMinor: 5_000_000,
+      currentAmountMinor: 100_000,
+      targetDate: "2027-06-30",
+      status: "active",
+    },
+  ] as FinancialGoal[],
+  debts: [
+    {
+      id: "debt-1",
+      name: "Visa",
+      type: "credit_card",
+      balanceMinor: 2_000_000,
+      aprBasisPoints: 3_600,
+      minimumPaymentMinor: 100_000,
+      balanceAsOf: "2026-08-01",
+      status: "active",
+    },
+  ] as Debt[],
+  subscriptions: [
+    {
+      id: "sub-1",
+      name: "Netflix",
+      amountMinor: 54_900,
+      currency: "PHP",
+      billingCycle: "monthly",
+      nextBillingDate: "2026-09-01",
+      status: "active",
+      categoryId: "category-streaming",
+      categoryName: "Streaming",
+      accountId: "account-gcash",
+      accountName: "GCash",
+    },
+  ] as SubscriptionRecord[],
+};
+
+function propose(
+  input: Partial<AssistantActionToolInput> & { action: AssistantActionToolInput["action"] },
+) {
+  return proposeAction({ currentDate: "2026-08-02", ...input }, records, "PHP");
+}
+
+describe("proposeAction", () => {
+  it("builds a subscription in minor units from names and exact decimals", () => {
+    const result = propose({
+      action: "create_subscription",
+      name: "Spotify",
+      amount: "149.50",
+      billingCycle: "monthly",
+      date: "2026-09-05",
+      categoryName: "streaming",
+      accountName: "GCash",
+    });
+    expect(result.action).toMatchObject({
+      kind: "create_subscription",
+      status: "pending",
+      input: {
+        name: "Spotify",
+        amountMinor: 14_950,
+        accountId: "account-gcash",
+        categoryId: "category-streaming",
+      },
+    });
+    expect(result.action?.summary).toContain("PHP 149.50");
+    expect(JSON.stringify(result.envelope)).not.toContain("account-gcash");
+  });
+
+  it("asks for missing details instead of guessing", () => {
+    const result = propose({ action: "create_debt", name: "Car loan", amount: "500000" });
+    expect(result.action).toBeUndefined();
+    expect(result.envelope.data).toMatchObject({
+      status: "missing_details",
+      missing: ["debtType", "apr", "minimumPayment"],
+    });
+  });
+
+  it("converts an APR percentage to basis points", () => {
+    const result = propose({
+      action: "create_debt",
+      name: "Car loan",
+      debtType: "auto_loan",
+      amount: "500000",
+      apr: "7.25",
+      minimumPayment: "12000",
+    });
+    expect(result.action).toMatchObject({
+      input: { aprBasisPoints: 725, balanceMinor: 50_000_000, balanceAsOf: "2026-08-02" },
+    });
+  });
+
+  it("finds a record by a partial name and lists choices when it cannot", () => {
+    expect(propose({ action: "delete_subscription", target: "netflix" }).action).toMatchObject({
+      kind: "delete_subscription",
+      targetId: "sub-1",
+    });
+    expect(propose({ action: "delete_goal", target: "vacation" }).envelope.data).toMatchObject({
+      status: "target_not_found",
+      available: ["Emergency fund"],
+    });
+  });
+
+  it("keeps unchanged subscription fields and rejects an empty update", () => {
+    const result = propose({ action: "update_subscription", target: "Netflix", amount: "649" });
+    expect(result.action).toMatchObject({
+      input: {
+        name: "Netflix",
+        amountMinor: 64_900,
+        billingCycle: "monthly",
+        accountId: "account-gcash",
+      },
+    });
+    expect(propose({ action: "update_subscription", target: "Netflix" }).action).toBeUndefined();
+  });
+
+  it("refuses a goal update that leaves savings above the target", () => {
+    const result = propose({
+      action: "update_goal",
+      target: "Emergency fund",
+      currentAmount: "60000",
+    });
+    expect(result.action).toBeUndefined();
+  });
+});
+
+describe("assistant turn policy for actions", () => {
+  const base = {
+    history: [],
+    currentDate: "2026-08-02",
+    timeZone: "Asia/Manila",
+    transactionBounds: null,
+  };
+  it("does not ask for a month when the user adds a subscription", () => {
+    const policy = createAssistantTurnPolicy({
+      ...base,
+      message: "Add a Netflix subscription for 549 monthly",
+    });
+    expect(policy).toMatchObject({ actionFlow: true, requiredToolGroups: [] });
+    expect(policy.deterministicResponse).toBeUndefined();
+  });
+
+  it("still reads a plain subscription question as a records question", () => {
+    const policy = createAssistantTurnPolicy({
+      ...base,
+      message: "What are my recurring subscription charges this month?",
+    });
+    expect(policy.actionFlow).toBeUndefined();
+  });
+});
+
+const databases: Array<{ close(): void }> = [];
+afterEach(() => {
+  for (const database of databases.splice(0)) database.close();
+});
+
+function setupConfirm() {
+  const { binding, database } = createD1TestDatabase();
+  databases.push(database);
+  database.prepare("INSERT INTO tenants (id, kind, name) VALUES (?, 'user', 'One')").run(TENANT);
+  database
+    .prepare(
+      `INSERT INTO assistant_preferences
+       (tenant_id, consented_at, consent_version, assistant_name, user_preferred_name)
+       VALUES (?, '2026-08-01T00:00:00.000Z', ?, 'Aster', 'Sam')`,
+    )
+    .run(TENANT, CURRENT_ASSISTANT_CONSENT_VERSION);
+  database
+    .prepare(
+      `INSERT INTO assistant_threads (id, tenant_id, title, last_message_at, retention_expires_at)
+       VALUES (?, ?, 'Goals', '2026-08-02T00:00:00.000Z', '2999-01-01T00:00:00.000Z')`,
+    )
+    .run(THREAD, TENANT);
+  const insert = (id: string, createdAt: string, action: AssistantAction) =>
+    database
+      .prepare(
+        `INSERT INTO assistant_messages
+         (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+         VALUES (?, ?, ?, 'assistant', 'Review it.', 'completed', ?, ?)`,
+      )
+      .run(
+        id,
+        TENANT,
+        THREAD,
+        JSON.stringify({
+          promptVersion: "expert-v4",
+          compliance: { posture: "budgeting_allowed", topics: [] },
+          sources: [],
+          assistantActionFlow: true,
+          assistantAction: action,
+        }),
+        createdAt,
+      );
+  const goal: AssistantAction = {
+    kind: "create_goal",
+    status: "pending",
+    summary: "Add savings goal Trip",
+    input: {
+      name: "Trip",
+      targetAmountMinor: 3_000_000,
+      currentAmountMinor: 0,
+      targetDate: "2027-01-31",
+      status: "active",
+    },
+  };
+  insert(FIRST, "2026-08-02T00:00:00.000Z", goal);
+  const goals = { create: vi.fn(async () => ({}) as never), update: vi.fn(), remove: vi.fn() };
+  const env = { DB: binding } as unknown as Bindings;
+  const service = createAssistantService(
+    assistantRepository,
+    {} as AssistantOrchestrator,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    { drafts: assistantTransactionDraftRepository, transactions: { create: vi.fn() } },
+    {
+      actions: assistantActionRepository,
+      subscriptions: { create: vi.fn(), update: vi.fn(), setStatus: vi.fn(), remove: vi.fn() },
+      goals,
+      debts: { create: vi.fn(), update: vi.fn(), remove: vi.fn() },
+    },
+  );
+  return { env, service, goals, insert, goal };
+}
+
+describe("assistant action confirmation", () => {
+  it("applies the stored proposal once and marks it done", async () => {
+    const { env, service, goals } = setupConfirm();
+    const done = await service.confirmAction(env, TENANT, FIRST);
+    const again = await service.confirmAction(env, TENANT, FIRST);
+    expect(goals.create).toHaveBeenCalledTimes(1);
+    expect(goals.create).toHaveBeenCalledWith(
+      env,
+      TENANT,
+      expect.objectContaining({ name: "Trip" }),
+    );
+    expect(done.metadata?.assistantAction?.status).toBe("done");
+    expect(again.metadata?.assistantAction?.status).toBe("done");
+  });
+
+  it("refuses a proposal a later one replaced", async () => {
+    const { env, service, goals, insert, goal } = setupConfirm();
+    insert(SECOND, "2026-08-02T00:05:00.000Z", goal);
+    await expect(service.confirmAction(env, TENANT, FIRST)).rejects.toMatchObject({
+      code: "assistant_action_superseded",
+    });
+    expect(goals.create).not.toHaveBeenCalled();
+  });
+
+  it("releases the claim when applying fails so the user can retry", async () => {
+    const { env, service, goals } = setupConfirm();
+    goals.create.mockRejectedValueOnce(new Error("boom"));
+    await expect(service.confirmAction(env, TENANT, FIRST)).rejects.toThrow("boom");
+    const retried = await service.confirmAction(env, TENANT, FIRST);
+    expect(retried.metadata?.assistantAction?.status).toBe("done");
+  });
+
+  it("returns 404 for a reply with no proposal", async () => {
+    const { env, service } = setupConfirm();
+    await expect(
+      service.confirmAction(env, TENANT, "99999999-9999-4999-8999-999999999999"),
+    ).rejects.toMatchObject({ code: "assistant_action_not_found" });
+  });
+});

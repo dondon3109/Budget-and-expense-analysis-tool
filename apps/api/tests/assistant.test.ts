@@ -96,6 +96,9 @@ function createReader(): FinancialReader {
         ],
       }),
     ),
+    proposeAction: vi.fn(async () => ({
+      envelope: envelope({ status: "missing_details", missing: [] }),
+    })),
     draftTransaction: vi.fn(async () => ({
       envelope: envelope({
         status: "ready",
@@ -478,6 +481,7 @@ describe("assistant orchestration", () => {
       "list_categories",
       "suggest_transaction_details",
       "draft_transaction",
+      "propose_action",
     ]);
     expect(names.join(" ")).not.toMatch(/sql|secret|token|create|update|delete|save/i);
     expect(JSON.stringify(assistantToolDefinitions)).not.toMatch(/accountId|tenantId/);

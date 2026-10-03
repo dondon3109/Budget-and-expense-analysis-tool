@@ -3,8 +3,25 @@
 import { z } from "zod";
 
 import { GOAL_AND_DEBT_MAX_MINOR } from "../limits";
-import { assistantSpeechVoices, currencies, transactionKinds } from "../types";
+import {
+  assistantSpeechVoices,
+  currencies,
+  debtTypes,
+  subscriptionBillingCycles,
+  transactionKinds,
+} from "../types";
 import { isoDateSchema, resourceIdSchema } from "./common";
+import {
+  debtInputSchema,
+  debtUpdateSchema,
+  financialGoalInputSchema,
+  financialGoalUpdateSchema,
+} from "./planning";
+import {
+  subscriptionInputSchema,
+  subscriptionStatusUpdateSchema,
+  subscriptionUpdateSchema,
+} from "./subscriptions";
 
 export const assistantThreadIdSchema = z.string().uuid();
 export const assistantMessageIdSchema = z.string().uuid();
@@ -314,6 +331,127 @@ export const assistantTransactionDraftSchema = z
   .strict();
 
 export type AssistantTransactionDraft = z.infer<typeof assistantTransactionDraftSchema>;
+
+/**
+ * What the model supplies to propose a change. Amounts are exact decimal strings in major
+ * units, and `apr` is a percentage ("24.5"); the server resolves names to records and builds
+ * the stored proposal, so the model never handles ids or minor units.
+ */
+export const assistantActionToolSchema = z
+  .object({
+    action: z.enum([
+      "create_subscription",
+      "update_subscription",
+      "set_subscription_status",
+      "delete_subscription",
+      "create_goal",
+      "update_goal",
+      "delete_goal",
+      "create_debt",
+      "update_debt",
+      "delete_debt",
+    ]),
+    target: z.string().trim().min(1).max(120).optional(),
+    name: z.string().trim().min(1).max(120).optional(),
+    amount: decimalMoneyStringSchema.optional(),
+    currentAmount: decimalMoneyStringSchema.optional(),
+    date: isoDateSchema.optional(),
+    billingCycle: z.enum(subscriptionBillingCycles).optional(),
+    categoryName: z.string().trim().min(1).max(80).optional(),
+    accountName: z.string().trim().min(1).max(120).optional(),
+    status: z.enum(["active", "canceled", "paused", "completed", "paid"]).optional(),
+    debtType: z.enum(debtTypes).optional(),
+    apr: decimalMoneyStringSchema.optional(),
+    minimumPayment: decimalMoneyStringSchema.optional(),
+    currentDate: isoDateSchema,
+  })
+  .strict();
+
+export type AssistantActionToolInput = z.infer<typeof assistantActionToolSchema>;
+
+/**
+ * A change to a subscription, goal, or debt the assistant proposed in chat. Nothing is written
+ * until the user confirms it: the confirm route runs the stored proposal through the same
+ * repository the app's own forms use, at most once (`saving` claims it, `done` records it).
+ * Updates carry only the fields to change; the card shows the server-written summary.
+ */
+const assistantActionBase = {
+  status: z.enum(["pending", "saving", "done"]),
+  summary: z.string().min(1).max(400),
+  claimedAt: z.iso.datetime().optional(),
+};
+const assistantActionTarget = {
+  targetId: resourceIdSchema,
+  targetName: z.string().min(1).max(120),
+};
+
+export const assistantActionSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      ...assistantActionBase,
+      kind: z.literal("create_subscription"),
+      input: subscriptionInputSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("update_subscription"),
+      input: subscriptionUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("set_subscription_status"),
+      input: subscriptionStatusUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("delete_subscription"),
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      kind: z.literal("create_goal"),
+      input: financialGoalInputSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("update_goal"),
+      input: financialGoalUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({ ...assistantActionBase, ...assistantActionTarget, kind: z.literal("delete_goal") })
+    .strict(),
+  z
+    .object({ ...assistantActionBase, kind: z.literal("create_debt"), input: debtInputSchema })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("update_debt"),
+      input: debtUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({ ...assistantActionBase, ...assistantActionTarget, kind: z.literal("delete_debt") })
+    .strict(),
+]);
+
+export type AssistantAction = z.infer<typeof assistantActionSchema>;
+export type AssistantActionKind = AssistantAction["kind"];
 
 // Assistant (online-only, server-grounded) response contracts shared
 // by the mobile client so network payloads are validated before display.

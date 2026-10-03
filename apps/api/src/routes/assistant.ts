@@ -177,6 +177,18 @@ export function createAssistantRoutes(service: AssistantService) {
     ),
   );
 
+  // Applies the subscription, goal, or debt change an assistant reply proposed. Empty body for
+  // the same reason: the server applies its own stored proposal.
+  routes.post("/messages/:id/action", async (context) =>
+    context.json(
+      await service.confirmAction(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id"), assistantMessageIdSchema),
+      ),
+    ),
+  );
+
   routes.delete("/threads/:id", async (context) => {
     await service.deleteThread(
       context.env,

@@ -79,6 +79,7 @@ import {
 } from "./assistant-ui";
 import { AssistantEmptyChat, VoiceStatusBanner } from "./assistant-chat-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
+import { latestActionMessageId } from "./AssistantActionCard";
 import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
@@ -735,11 +736,13 @@ export function AssistantScreen() {
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
   const replacedDraftIds = useMemo(() => replacedDraftMessageIds(messages), [messages]);
+  const latestActionId = useMemo(() => latestActionMessageId(messages), [messages]);
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
       <AssistantMessageRow
         message={item}
         superseded={replacedDraftIds.has(item.id)}
+        latestActionId={latestActionId}
         onDraftSaved={(saved) =>
           setMessages((previous) =>
             previous.map((message) => (message.id === saved.id ? saved : message)),
@@ -747,7 +750,7 @@ export function AssistantScreen() {
         }
       />
     ),
-    [replacedDraftIds],
+    [replacedDraftIds, latestActionId],
   );
 
   const settingsAction = (
