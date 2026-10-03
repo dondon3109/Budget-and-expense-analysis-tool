@@ -24,6 +24,7 @@ import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
+import { usePetStore } from "@/stores/pet-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { telemetry } from "@/telemetry/telemetry";
 
@@ -108,6 +109,7 @@ export function clearUserScopedRuntimeState(): void {
   clearPlanCache();
   useWorkspaceCurrencyStore.getState().setCurrency("PHP");
   useGoalProfileStore.getState().reset();
+  usePetStore.getState().reset();
   useOnboardingStore.getState().reset();
   // Best-effort like the rest of this boundary: a native notification failure
   // must never block an identity transition.
