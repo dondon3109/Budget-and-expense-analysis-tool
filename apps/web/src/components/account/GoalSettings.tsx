@@ -1,12 +1,12 @@
 import { primaryGoalLabels } from "@zoption/shared";
 
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { useGoalProfile, useSaveGoal } from "../../queries/goalProfile";
+import { useGoalProfile, useSaveGoals } from "../../queries/goalProfile";
 import { GoalPicker } from "../onboarding/GoalPicker";
 
 export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace }) {
   const profileQuery = useGoalProfile(workspace);
-  const saveGoal = useSaveGoal(workspace);
+  const saveGoals = useSaveGoals(workspace);
   const profile = profileQuery.data;
 
   return (
@@ -18,8 +18,8 @@ export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace 
     >
       <div className="settings-section-heading">
         <div>
-          <h2 id="primary-goal-title">Your goal</h2>
-          <p>What you mainly want Zoption for. You can change it any time.</p>
+          <h2 id="primary-goal-title">Your goals</h2>
+          <p>What you want Zoption for. You can change them any time.</p>
         </div>
         <span>Workspace</span>
       </div>
@@ -35,23 +35,32 @@ export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace 
       ) : (
         <div className="settings-form">
           <p className="settings-helper" role="status">
-            {profile.goal
-              ? `Current goal: ${primaryGoalLabels[profile.goal]}${
-                  profile.goal === "other" && profile.otherText ? ` (${profile.otherText})` : ""
-                }`
+            {profile.goals.length > 0
+              ? `Current goals: ${profile.goals
+                  .map(
+                    (goal) =>
+                      primaryGoalLabels[goal] +
+                      (goal === "other" && profile.otherText ? ` (${profile.otherText})` : ""),
+                  )
+                  .join(", ")}`
               : "Not set. Choose what fits you best, whenever you like."}
           </p>
           <GoalPicker
-            legend="Change your goal"
-            goal={profile.goal}
+            legend="Change your goals"
+            goals={profile.goals}
             otherText={profile.otherText}
-            disabled={saveGoal.isPending}
-            confirmLabel="Save goal"
-            onChoose={(choice) => saveGoal.mutate(choice)}
+            disabled={saveGoals.isPending}
+            confirmLabel="Save goals"
+            onChoose={(choice) => saveGoals.mutate(choice)}
           />
-          {saveGoal.isError && (
+          {saveGoals.isSuccess && (
+            <p className="settings-helper" role="status">
+              Thank you! Your goals are saved.
+            </p>
+          )}
+          {saveGoals.isError && (
             <p className="form-error" role="alert">
-              Your goal could not be saved. Try again.
+              Your goals could not be saved. Try again.
             </p>
           )}
         </div>

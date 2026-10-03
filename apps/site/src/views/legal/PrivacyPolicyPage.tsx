@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="October 2, 2026"
+      lastUpdated="October 3, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -90,17 +90,17 @@ export function PrivacyPolicyPage() {
             and security diagnostics, rate-limit data, errors, and service-health information.
           </li>
           <li>
-            <strong>Your setup goal:</strong> when you set up Zoption you can say what you want to
-            use it for, or skip the question. Zoption stores your chosen goal, when you chose it,
-            and, if you pick Other, the optional text you type (up to 140 characters) with your
-            workspace. Please do not type account numbers or other sensitive details into that
-            field. Zoption also keeps a small first-party log of goal steps: the goal screen was
-            shown, a goal was chosen or skipped or changed, and the first matching action was done.
-            Each log entry holds only the step name and goal and action names, so goal events carry
-            no financial detail, and they are not sent to PostHog or any other provider. We use them
-            to see whether setup helps people get started. Your goal, its optional text, and the log
-            are deleted with your account, and your goal and optional text are included in your
-            account data export.
+            <strong>Your setup goals:</strong> when you set up Zoption you can say what you want to
+            use it for, choosing as many as apply, or skip the question. Zoption stores the goals
+            you chose in the order you picked them, when you chose them, and, if you pick Other, the
+            optional text you type (up to 140 characters) with your workspace. Please do not type
+            account numbers or other sensitive details into that field. Zoption also keeps a small
+            first-party log of goal steps: the goal screen was shown, goals were chosen or skipped
+            or changed, and the first matching action was done. Each log entry holds only the step
+            name and goal and action names, so goal events carry no financial detail, and they are
+            not sent to PostHog or any other provider. We use them to see whether setup helps people
+            get started. Your goals, their optional text, and the log are deleted with your account,
+            and your goals and optional text are included in your account data export.
           </li>
           <li>
             <strong>Measurement and optional analytics:</strong> limited aggregate page-use and Core

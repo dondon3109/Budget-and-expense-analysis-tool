@@ -2,8 +2,12 @@ import {
   firstActionByGoal,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   type GoalFirstAction,
+  primaryGoals,
   type GoalProfile,
   type GoalSelection,
+  type GoalsProfile,
+  type GoalsSelection,
+  type PrimaryGoal,
 } from "@zoption/shared";
 
 import type { Bindings } from "../types";
@@ -13,28 +17,57 @@ export interface GoalProfileRepository {
   /** Records that the goal screen was shown, once per workspace. */
   markShown(env: Bindings, tenantId: string): Promise<void>;
   select(env: Bindings, tenantId: string, input: GoalSelection): Promise<GoalProfile>;
+  /** Every chosen goal, lead goal first; reading it also records the first action once. */
+  getGoals(env: Bindings, tenantId: string): Promise<GoalsProfile>;
+  selectGoals(env: Bindings, tenantId: string, input: GoalsSelection): Promise<GoalsProfile>;
   /** Skipping never clears a goal that was already chosen. */
   skip(env: Bindings, tenantId: string): Promise<GoalProfile>;
 }
 
 interface GoalRow {
   goal: GoalProfile["goal"];
+  secondary: string;
   otherText: string | null;
   selectedAt: string | null;
   skipped: number;
 }
 
-const SELECT_GOAL = `SELECT primary_goal AS goal, goal_other_text AS otherText,
-  goal_selected_at AS selectedAt, goal_skipped AS skipped FROM tenants WHERE id = ?`;
+const SELECT_GOAL = `SELECT primary_goal AS goal, secondary_goals AS secondary,
+  goal_other_text AS otherText, goal_selected_at AS selectedAt, goal_skipped AS skipped
+  FROM tenants WHERE id = ?`;
 
-async function loadProfile(env: Bindings, tenantId: string): Promise<GoalProfile> {
+/** The column is a JSON array the CHECK keeps valid; unknown or repeated keys are dropped anyway. */
+function parseSecondary(json: string, lead: PrimaryGoal | null): PrimaryGoal[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const known = new Set<PrimaryGoal>(primaryGoals);
+  const seen = new Set<unknown>([lead]);
+  return parsed.filter((goal): goal is PrimaryGoal => {
+    if (!known.has(goal as PrimaryGoal) || seen.has(goal)) return false;
+    seen.add(goal);
+    return true;
+  });
+}
+
+async function loadGoals(env: Bindings, tenantId: string): Promise<GoalsProfile> {
   const row = await env.DB.prepare(SELECT_GOAL).bind(tenantId).first<GoalRow>();
+  const lead = row?.goal ?? null;
   return {
-    goal: row?.goal ?? null,
+    goals: lead === null ? [] : [lead, ...parseSecondary(row?.secondary ?? "[]", lead)],
     otherText: row?.otherText ?? null,
     selectedAt: row?.selectedAt ?? null,
     skipped: row?.skipped === 1,
   };
+}
+
+async function loadProfile(env: Bindings, tenantId: string): Promise<GoalProfile> {
+  const { goals, otherText, selectedAt, skipped } = await loadGoals(env, tenantId);
+  return { goal: goals[0] ?? null, otherText, selectedAt, skipped };
 }
 
 /**
@@ -82,6 +115,42 @@ async function recordFirstAction(env: Bindings, tenantId: string, profile: GoalP
 }
 
 /**
+ * The first goal is the lead goal and the only one events are about: an event is recorded when it
+ * changes. The rest are stored in pick order and replace any earlier list.
+ */
+async function saveGoals(
+  env: Bindings,
+  tenantId: string,
+  goals: PrimaryGoal[],
+  otherText: string | null,
+) {
+  const [lead, ...rest] = goals;
+  if (!lead) return;
+  const before = await loadProfile(env, tenantId);
+  const eventName = before.goal === null ? "onboarding_goal_selected" : "goal_changed";
+  const statements = [];
+  if (before.goal !== lead) {
+    statements.push(
+      env.DB.prepare(
+        `INSERT INTO goal_events (id, tenant_id, name, goal, from_goal)
+           SELECT ?, id, ?, ?, primary_goal FROM tenants
+           WHERE id = ? AND primary_goal IS ?`,
+      ).bind(crypto.randomUUID(), eventName, lead, tenantId, before.goal),
+    );
+  }
+  statements.push(
+    env.DB.prepare(
+      `UPDATE tenants
+         SET primary_goal = ?, secondary_goals = ?, goal_other_text = ?, goal_skipped = 0,
+             goal_selected_at = COALESCE(goal_selected_at, datetime('now')),
+             updated_at = datetime('now')
+         WHERE id = ?`,
+    ).bind(lead, JSON.stringify(rest), otherText, tenantId),
+  );
+  await env.DB.batch(statements);
+}
+
+/**
  * Every statement is scoped by the tenant from the auth context. Each event row is inserted before
  * the update and guarded by the goal it was decided against, so a concurrent change cannot record
  * an event for a transition that did not happen.
@@ -105,29 +174,18 @@ export const goalProfileRepository: GoalProfileRepository = {
   },
 
   async select(env, tenantId, input) {
-    const before = await loadProfile(env, tenantId);
-    const eventName = before.goal === null ? "onboarding_goal_selected" : "goal_changed";
-    const statements = [];
-    if (before.goal !== input.goal) {
-      statements.push(
-        env.DB.prepare(
-          `INSERT INTO goal_events (id, tenant_id, name, goal, from_goal)
-             SELECT ?, id, ?, ?, primary_goal FROM tenants
-             WHERE id = ? AND primary_goal IS ?`,
-        ).bind(crypto.randomUUID(), eventName, input.goal, tenantId, before.goal),
-      );
-    }
-    statements.push(
-      env.DB.prepare(
-        `UPDATE tenants
-           SET primary_goal = ?, goal_other_text = ?, goal_skipped = 0,
-               goal_selected_at = COALESCE(goal_selected_at, datetime('now')),
-               updated_at = datetime('now')
-           WHERE id = ?`,
-      ).bind(input.goal, input.otherText, tenantId),
-    );
-    await env.DB.batch(statements);
+    await saveGoals(env, tenantId, [input.goal], input.otherText);
     return loadProfile(env, tenantId);
+  },
+
+  async getGoals(env, tenantId) {
+    await recordFirstAction(env, tenantId, await loadProfile(env, tenantId));
+    return loadGoals(env, tenantId);
+  },
+
+  async selectGoals(env, tenantId, input) {
+    await saveGoals(env, tenantId, input.goals, input.otherText);
+    return loadGoals(env, tenantId);
   },
 
   async skip(env, tenantId) {

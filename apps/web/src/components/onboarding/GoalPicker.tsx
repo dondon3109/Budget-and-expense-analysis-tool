@@ -4,75 +4,70 @@ import {
   primaryGoals,
   type PrimaryGoal,
 } from "@zoption/shared";
-import { useId, useState, type FormEvent, type MouseEvent } from "react";
+import { useId, useState } from "react";
 
 import "./GoalPicker.css";
 
-export type GoalChoice = { goal: PrimaryGoal; otherText?: string };
+export type GoalChoice = { goals: PrimaryGoal[]; otherText?: string };
 
 type GoalPickerProps = {
   legend: string;
-  /** The saved goal, if any. */
-  goal: PrimaryGoal | null;
+  /** The saved goals, lead goal first. */
+  goals: PrimaryGoal[];
   otherText: string | null;
   disabled: boolean;
-  /** Label of the button that confirms a keyboard pick or an "Other" answer. */
+  /** Label of the button that saves the picks. */
   confirmLabel: string;
   onChoose: (choice: GoalChoice) => void;
 };
 
 /**
- * Single-select goal cards. Clicking a preset goal chooses it at once. Arrow keys move the
- * selection without choosing, so a keyboard user can pass over cards without leaving the step;
- * they confirm with the button. "Other" also reveals an optional note and is confirmed the same way.
+ * Pick any number of goals. The order they are picked in is kept: the first is the lead goal. Nothing
+ * is saved until the confirm button, so keyboard users can move through the boxes freely.
  */
 export function GoalPicker({
   legend,
-  goal,
+  goals,
   otherText,
   disabled,
   confirmLabel,
   onChoose,
 }: GoalPickerProps) {
   const noteId = useId();
-  // Local only: a pick or note the user has not confirmed yet.
-  const [picked, setPicked] = useState<PrimaryGoal>();
+  // Local only: the picks and note the user has not confirmed yet.
+  const [picked, setPicked] = useState<PrimaryGoal[]>();
   const [note, setNote] = useState<string>();
-  const selected = picked ?? goal;
+  const selected = picked ?? goals;
   const noteValue = note ?? otherText ?? "";
 
-  // A pointer click has detail >= 1; the click a browser fires for an arrow key or Space has 0.
-  function chooseOnClick(event: MouseEvent<HTMLInputElement>, next: PrimaryGoal) {
-    if (event.detail > 0 && next !== "other") onChoose({ goal: next });
+  function toggle(goal: PrimaryGoal) {
+    setPicked(selected.includes(goal) ? selected.filter((g) => g !== goal) : [...selected, goal]);
   }
-
-  function confirm(event: FormEvent) {
-    event.preventDefault();
-    if (!selected) return;
-    onChoose(selected === "other" ? { goal: "other", otherText: noteValue } : { goal: selected });
-  }
-
-  const unconfirmed = selected !== null && selected !== goal;
 
   return (
     <fieldset className="goal-picker" disabled={disabled}>
       <legend>{legend}</legend>
+      <p className="goal-picker-hint">
+        Pick all that apply. The first one you pick is your main focus.
+      </p>
       <div className="goal-picker-options">
         {primaryGoals.map((option) => (
           <label key={option} className="goal-picker-option">
             <input
-              type="radio"
-              name="primary-goal"
+              type="checkbox"
+              name="goals"
               value={option}
-              checked={selected === option}
-              onChange={() => setPicked(option)}
-              onClick={(event) => chooseOnClick(event, option)}
+              checked={selected.includes(option)}
+              onChange={() => toggle(option)}
             />
             <span>{primaryGoalLabels[option]}</span>
+            {selected.length > 1 && selected[0] === option && (
+              <span className="goal-picker-badge">Main focus</span>
+            )}
           </label>
         ))}
       </div>
-      {selected === "other" && (
+      {selected.includes("other") && (
         <div className="goal-picker-other">
           <label htmlFor={noteId}>
             <span>Tell us more (optional)</span>
@@ -87,11 +82,14 @@ export function GoalPicker({
           />
         </div>
       )}
-      {(unconfirmed || selected === "other") && (
-        <button className="button primary" type="button" onClick={confirm}>
-          {confirmLabel}
-        </button>
-      )}
+      <button
+        className="button primary"
+        type="button"
+        disabled={selected.length === 0}
+        onClick={() => onChoose({ goals: selected, otherText: noteValue })}
+      >
+        {confirmLabel}
+      </button>
     </fieldset>
   );
 }

@@ -68,6 +68,40 @@ export const goalSelectionSchema = z
 
 export type GoalSelection = z.infer<typeof goalSelectionSchema>;
 
+/**
+ * Choosing several goals. Order is priority: the first is the lead goal that drives the first-run
+ * experience and the retention segment, the rest only describe the user. Text is kept only when
+ * 'other' is among them.
+ */
+export const goalsSelectionSchema = z
+  .object({
+    goals: z
+      .array(z.enum(primaryGoals))
+      .min(1, "Choose at least one goal.")
+      .max(primaryGoals.length)
+      .refine((goals) => new Set(goals).size === goals.length, "Choose each goal once."),
+    otherText: goalOtherTextSchema.nullish(),
+  })
+  .strict()
+  .transform(({ goals, otherText }) => ({
+    goals,
+    otherText: goals.includes("other") ? (otherText ?? null) : null,
+  }));
+
+export type GoalsSelection = z.infer<typeof goalsSelectionSchema>;
+
+/** The stored goals, lead goal first. Empty for skippers, existing users, and new signups. */
+export const goalsProfileSchema = z
+  .object({
+    goals: z.array(z.enum(primaryGoals)).max(primaryGoals.length),
+    otherText: z.string().max(GOAL_OTHER_TEXT_MAX_LENGTH).nullable(),
+    selectedAt: z.string().nullable(),
+    skipped: z.boolean(),
+  })
+  .strict();
+
+export type GoalsProfile = z.infer<typeof goalsProfileSchema>;
+
 /** What the workspace stores. `goal` is null for skippers, existing users, and new signups. */
 export const goalProfileSchema = z
   .object({

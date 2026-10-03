@@ -199,7 +199,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/budgets", createBudgetRoutes(dependencies.budgets));
   app.route("/api/app/settings", createWorkspaceSettingsRoutes(dependencies.workspaceSettings));
   app.route("/api/app/onboarding", createOnboardingRoutes(dependencies.onboarding));
-  app.route("/api/app/profile/goal", createGoalProfileRoutes(dependencies.goalProfile));
+  app.route("/api/app/profile", createGoalProfileRoutes(dependencies.goalProfile));
   app.route("/api/app/billing", createBillingRoutes(dependencies.billing));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(dependencies.subscriptions));
   app.route("/api/app/events", createCalendarEventRoutes(dependencies.events));

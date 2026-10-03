@@ -1,6 +1,6 @@
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getGoalProfile, markGoalShown, saveGoal, skipGoal } from "../lib/api";
+import { getGoalProfile, markGoalShown, saveGoals, skipGoal } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
@@ -12,7 +12,7 @@ export function goalProfileQueryOptions(workspace: AuthenticatedWorkspace) {
   });
 }
 
-/** The workspace's goal. `data.goal` is null for skippers and users who never chose one. */
+/** The workspace's goals. `data.goal` (the lead goal) is null for skippers and users who never chose. */
 export function useGoalProfile(workspace: AuthenticatedWorkspace) {
   return useQuery(goalProfileQueryOptions(workspace));
 }
@@ -28,8 +28,8 @@ function useGoalWrite<Input>(
   });
 }
 
-export function useSaveGoal(workspace: AuthenticatedWorkspace) {
-  return useGoalWrite(workspace, saveGoal);
+export function useSaveGoals(workspace: AuthenticatedWorkspace) {
+  return useGoalWrite(workspace, saveGoals);
 }
 
 export function useSkipGoal(workspace: AuthenticatedWorkspace) {
