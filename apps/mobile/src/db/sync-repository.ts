@@ -176,9 +176,9 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
   await database.runAsync(
     `INSERT INTO transactions (
       id, account_id, category_id, date, description, amount_minor, currency, kind,
-      notes, transfer_group_id, transfer_fee_minor, import_fingerprint,
+      notes, transfer_group_id, transfer_fee_minor, import_fingerprint, debt_id,
       server_revision, server_updated_at, deleted_at, sync_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
     ON CONFLICT(id) DO UPDATE SET
       account_id = excluded.account_id,
       category_id = excluded.category_id,
@@ -191,6 +191,7 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
       transfer_group_id = excluded.transfer_group_id,
       transfer_fee_minor = excluded.transfer_fee_minor,
       import_fingerprint = excluded.import_fingerprint,
+      debt_id = excluded.debt_id,
       server_revision = excluded.server_revision,
       server_updated_at = excluded.server_updated_at,
       deleted_at = NULL,
@@ -207,6 +208,7 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
     transaction.transferGroupId,
     transaction.transferFeeMinor,
     transaction.importFingerprint,
+    transaction.debtId ?? null,
     change.revision,
     change.serverUpdatedAt,
   );

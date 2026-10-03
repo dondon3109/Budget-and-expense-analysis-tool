@@ -48,6 +48,7 @@ const editableTransactionRowSchema = z.object({
   notes: z.string().nullable(),
   transfer_group_id: z.string().nullable(),
   transfer_fee_minor: z.number().int().safe().nullable(),
+  debt_id: z.string().nullable(),
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
@@ -92,7 +93,7 @@ export async function readTransactionFormData(
     id
       ? database.getFirstAsync(
           `SELECT id, account_id, category_id, date, description, amount_minor, currency,
-            kind, notes, transfer_group_id, transfer_fee_minor, deleted_at, sync_state
+            kind, notes, transfer_group_id, transfer_fee_minor, debt_id, deleted_at, sync_state
            FROM transactions WHERE id = ?`,
           id,
         )
@@ -129,7 +130,7 @@ export async function readTransactionFormData(
     const pair = z.array(editableTransactionRowSchema).parse(
       await database.getAllAsync(
         `SELECT id, account_id, category_id, date, description, amount_minor, currency,
-          kind, notes, transfer_group_id, transfer_fee_minor, deleted_at, sync_state
+          kind, notes, transfer_group_id, transfer_fee_minor, debt_id, deleted_at, sync_state
          FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor, id`,
         decoded.data.transfer_group_id,
       ),
@@ -158,6 +159,7 @@ export async function readTransactionFormData(
         id: from.id,
         input: {
           kind: "transfer",
+          debtId: from.debt_id,
           fromAccountId: from.account_id,
           toAccountId: to.account_id,
           categoryId: from.category_id,
@@ -195,6 +197,7 @@ export async function readTransactionFormData(
     transaction: {
       id: decoded.data.id,
       input: {
+        ...(decoded.data.kind === "expense" ? { debtId: decoded.data.debt_id } : {}),
         kind: decoded.data.kind,
         accountId: decoded.data.account_id,
         categoryId: decoded.data.category_id,

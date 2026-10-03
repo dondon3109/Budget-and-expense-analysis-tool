@@ -6,8 +6,9 @@ All notable product changes are documented here.
 
 ### Added
 
-- More account types when you add an account: Default, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables. Credit card and I owe / Payables are marked as liabilities.
-- Pay a debt with an account, not only the Debt payment category: on the web, a transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. Editing or deleting the transfer gives the amount back.
+- More account types when you add an account: General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables. Credit card and I owe / Payables are marked as liabilities.
+- Pay a debt with an account, not only the Debt payment category: a transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. Editing or deleting the transfer gives the amount back.
+- Mobile: debt payments link to a debt, as on the web. Choosing the Debt payment category, or transferring into a credit card or I owe / Payables account, asks which debt it pays, and the debt's balance updates once the payment syncs. Older app versions keep syncing, and accounts with the new types show there as Other.
 
 ### Changed
 

@@ -230,7 +230,7 @@ export function resolveConflict(
           `UPDATE transactions SET
             account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?,
             currency = ?, kind = ?, notes = ?, transfer_group_id = ?,
-            transfer_fee_minor = ?, import_fingerprint = ?, server_revision = ?,
+            transfer_fee_minor = ?, import_fingerprint = ?, debt_id = ?, server_revision = ?,
             server_updated_at = ?, deleted_at = NULL, sync_state = 'synced'
            WHERE id = ?`,
           serverSnapshot.accountId,
@@ -244,6 +244,7 @@ export function resolveConflict(
           serverSnapshot.transferGroupId,
           serverSnapshot.transferFeeMinor,
           serverSnapshot.importFingerprint,
+          serverSnapshot.debtId ?? null,
           serverSnapshot.revision,
           serverSnapshot.updatedAt,
           entityId,

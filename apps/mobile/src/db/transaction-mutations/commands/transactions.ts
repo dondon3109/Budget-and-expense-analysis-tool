@@ -33,6 +33,7 @@ export async function createNonTransfer(
   ctx: LocalCommandContext,
   input: NonTransferInput,
 ): Promise<string> {
+  if (input.kind === "expense" && input.debtId) await ctx.store.assertLinkableDebt(input.debtId);
   const dependencyIds = await validateLocalReferences(ctx.database, input, true);
   await ctx.clientId();
   const transactionId = uuidSchema.parse(ctx.randomUuid());
@@ -42,8 +43,8 @@ export async function createNonTransfer(
   await ctx.database.runAsync(
     `INSERT INTO transactions (
       id, account_id, category_id, date, description, amount_minor, currency, kind,
-      notes, server_revision, server_updated_at, deleted_at, sync_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
+      notes, debt_id, server_revision, server_updated_at, deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
     transactionId,
     input.accountId,
     input.categoryId,
@@ -53,6 +54,7 @@ export async function createNonTransfer(
     input.currency,
     input.kind,
     input.notes || null,
+    input.kind === "expense" ? (input.debtId ?? null) : null,
   );
   await ctx.database.runAsync(
     `INSERT INTO sync_outbox (
@@ -125,9 +127,9 @@ export function createTransaction(
           await ctx.database.runAsync(
             `INSERT INTO transactions (
               id, account_id, category_id, date, description, amount_minor, currency, kind,
-              notes, transfer_group_id, transfer_fee_minor, server_revision,
+              notes, transfer_group_id, transfer_fee_minor, debt_id, server_revision,
               server_updated_at, deleted_at, sync_state
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 0, NULL, NULL, 'pending')`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, 0, NULL, NULL, 'pending')`,
             id,
             leg.accountId,
             input.categoryId,
@@ -138,6 +140,7 @@ export function createTransaction(
             input.notes || null,
             groupId,
             leg.transferFeeMinor,
+            id === fromId ? (input.debtId ?? null) : null,
           );
         }
         await ctx.database.runAsync(
@@ -180,14 +183,26 @@ export function updateTransaction(
         );
       }
       const existing = commandFromRow(current);
+      const kind = update.kind ?? existing.kind;
+      const debtId =
+        update.debtId !== undefined
+          ? update.debtId
+          : existing.kind === "expense"
+            ? existing.debtId
+            : null;
       const merged = asNonTransfer(
         transactionInputSchema.parse({
           ...existing,
           ...update,
+          // Only an expense carries a debt link; the strict schema rejects the key on income.
+          debtId: kind === "expense" ? debtId : undefined,
           amountMinor: Math.abs(update.amountMinor ?? existing.amountMinor),
           notes: update.notes !== undefined ? update.notes : existing.notes,
         }),
       );
+      if (merged.kind === "expense" && merged.debtId && merged.debtId !== current.debt_id) {
+        await ctx.store.assertLinkableDebt(merged.debtId);
+      }
       const outbox = await ctx.store.currentOutbox("transaction", id);
       assertNotQueuedForRemoval(outbox, "transaction", "deleted");
       assertNoAttemptInFlight(outbox, "transaction", "editing");
@@ -227,7 +242,7 @@ export function updateTransaction(
       await ctx.database.runAsync(
         `UPDATE transactions SET
           account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?,
-          currency = ?, kind = ?, notes = ?, sync_state = 'pending'
+          currency = ?, kind = ?, notes = ?, debt_id = ?, sync_state = 'pending'
          WHERE id = ?`,
         merged.accountId,
         merged.categoryId,
@@ -237,6 +252,7 @@ export function updateTransaction(
         merged.currency,
         merged.kind,
         merged.notes || null,
+        merged.kind === "expense" ? (merged.debtId ?? null) : null,
         id,
       );
     });

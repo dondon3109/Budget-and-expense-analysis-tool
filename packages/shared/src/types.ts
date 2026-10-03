@@ -149,6 +149,14 @@ export type CategoryRequiredPlan = (typeof categoryRequiredPlans)[number];
 export const DEBT_PAYMENT_CATEGORY_SYSTEM_KEY = "debt:expense";
 
 /**
+ * Mobile sync payloads carry no system key, so native clients recognise the same category by
+ * its id, which the server mints as `<tenant>:category:debt-payment` and never changes.
+ */
+export function isDebtPaymentCategoryId(categoryId: string): boolean {
+  return categoryId.endsWith(":category:debt-payment");
+}
+
+/**
  * The product-owned, archived income category that holds a workspace's opening cash balance. The
  * amount adds to the account balance but is money the user already had, so income figures skip it.
  */

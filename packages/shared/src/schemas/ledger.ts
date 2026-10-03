@@ -138,6 +138,8 @@ export const debtLinkedTransferInputSchema = transferInputSchema.safeExtend({
   debtId: resourceIdSchema.nullable().optional(),
 });
 
+export type DebtLinkedTransferInput = z.infer<typeof debtLinkedTransferInputSchema>;
+
 export const transactionInputSchema = z.discriminatedUnion("kind", [
   transactionBaseSchema.extend({ kind: z.literal("income"), accountId: resourceIdSchema }),
   transactionBaseSchema.extend({

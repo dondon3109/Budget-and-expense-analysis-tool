@@ -22,7 +22,7 @@ interface Migration {
   rebuildsReferencedTable?: true;
 }
 
-export const LOCAL_SCHEMA_VERSION = 14;
+export const LOCAL_SCHEMA_VERSION = 15;
 
 export const migrations: readonly Migration[] = [
   {
@@ -742,6 +742,15 @@ export const migrations: readonly Migration[] = [
 
       DROP TABLE accounts;
       ALTER TABLE accounts_v14 RENAME TO accounts;
+    `,
+  },
+  {
+    version: 15,
+    name: "transaction_debt_links",
+    // The debt an expense, or a transfer's sending leg, pays down. No foreign key: the server
+    // owns debt balances and clears the link when a debt is deleted.
+    sql: `
+      ALTER TABLE transactions ADD COLUMN debt_id TEXT;
     `,
   },
 ] as const;
