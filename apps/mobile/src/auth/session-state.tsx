@@ -19,6 +19,7 @@ import { isSupabaseConfigured } from "@/config/public-config";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
+import { clearPetNotifications } from "@/features/pet/pet-notifications";
 import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
 import { isNewAccount, showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -116,6 +117,7 @@ export function clearUserScopedRuntimeState(): void {
   // must never block an identity transition.
   void clearDailyReminder().catch(() => undefined);
   void clearOverspendingNotification().catch(() => undefined);
+  void clearPetNotifications();
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {

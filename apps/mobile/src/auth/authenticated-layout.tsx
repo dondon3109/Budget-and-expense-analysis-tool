@@ -6,6 +6,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { useGoalProfileSync } from "@/auth/goal-profile-sync";
 import { usePetSync } from "@/auth/pet-sync";
+import { usePetNotifications } from "@/features/pet/pet-notifications";
 import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { AccountPromptHost } from "@/features/account-prompt/AccountPromptHost";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
@@ -64,6 +65,7 @@ function LocalWorkspaceGate({
   useWorkspaceCurrencySync();
   useGoalProfileSync();
   usePetSync();
+  usePetNotifications();
   const theme = useZoptionTheme();
   if (local.status === "opening") {
     return (

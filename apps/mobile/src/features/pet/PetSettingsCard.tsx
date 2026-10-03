@@ -35,8 +35,8 @@ export function PetSettingsCard() {
   return (
     <CollapsibleCard title="Pet companion" summary={pet.enabled ? "On" : "Off"} icon="paw-outline">
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-        Your pet grows as you log money every day. Turning it off hides it and pauses its health, so
-        it never gets sick while it is off.
+        Your pet grows as you log money every day. Turning it off hides it, stops its alerts, and
+        pauses its health, so it never gets sick while it is off.
       </Text>
       <View style={styles.option}>
         <Text style={[typography.headline, { color: theme.colors.text }]}>Show my pet</Text>

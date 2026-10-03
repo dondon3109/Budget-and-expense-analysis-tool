@@ -4,7 +4,7 @@
 // reminder cleanup. Suites that assert on notifications mock it explicitly.
 module.exports = {
   AndroidImportance: { DEFAULT: 5 },
-  SchedulableTriggerInputTypes: { DAILY: "daily" },
+  SchedulableTriggerInputTypes: { DAILY: "daily", DATE: "date" },
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
   dismissNotificationAsync: jest.fn(async () => undefined),
   setNotificationChannelAsync: jest.fn(async () => null),
