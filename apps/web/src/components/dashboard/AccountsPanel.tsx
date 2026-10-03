@@ -1,6 +1,7 @@
 import {
   currencies,
   currencyMetadata,
+  otherCurrenciesWithAmounts,
   parseAmountToMinor,
   preferredTransactionAccount,
   type AccountBalanceSummaryItem,
@@ -91,11 +92,14 @@ export function AccountsPanel({
   // Blank means no starting balance; text that is not an amount blocks the add.
   const startingBalanceMinor = parseOptionalAmount(accountStartingBalance);
   const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
-  // Balances lead with the workspace currency; the other currency shows only when it is used.
+  // Balances lead with the workspace currency; other currencies show only when they are used.
   const baseCurrency: Currency = accountBalances?.currency ?? "PHP";
-  const otherCurrency: Currency = baseCurrency === "PHP" ? "USD" : "PHP";
   const overallBalanceMinor = accountBalances?.balancesByCurrency[baseCurrency] ?? 0;
-  const removalBalanceMinor = removingAccount?.balancesByCurrency[baseCurrency] ?? 0;
+  const otherBalanceCurrencies = accountBalances
+    ? otherCurrenciesWithAmounts(accountBalances.balancesByCurrency, baseCurrency)
+    : [];
+  const removalCurrency = removingAccount?.currency ?? baseCurrency;
+  const removalBalanceMinor = removingAccount?.balancesByCurrency[removalCurrency] ?? 0;
   // A removed account stops being charged, so say which plans that affects before it happens.
   const linkedSubscriptions = removingAccount?.activeSubscriptions ?? [];
   const linkedSubscriptionWarning =
@@ -130,10 +134,12 @@ export function AccountsPanel({
               </div>
             )}
             <span>Calculated from your recorded transactions</span>
-            <p className="dashboard-balance-usd">
-              {formatMoney(accountBalances.balancesByCurrency[otherCurrency], otherCurrency)} in{" "}
-              {otherCurrency === "USD" ? "US dollars" : "Philippine pesos"}
-            </p>
+            {otherBalanceCurrencies.map((currency) => (
+              <p className="dashboard-balance-usd" key={currency}>
+                {formatMoney(accountBalances.balancesByCurrency[currency] ?? 0, currency)} in{" "}
+                {currencyMetadata[currency].plural}
+              </p>
+            ))}
           </section>
           <section className="dashboard-account-breakdown" aria-label="Account management">
             <div className="dashboard-account-breakdown-heading">
@@ -318,17 +324,7 @@ export function AccountsPanel({
                           <SlidersHorizontal size={14} aria-hidden="true" />
                         </button>
                       </span>
-                      <span className="dashboard-account-balances">
-                        <strong>
-                          {formatMoney(account.balancesByCurrency[baseCurrency], baseCurrency)}
-                        </strong>
-                        {account.balancesByCurrency[otherCurrency] !== 0 && (
-                          <em>
-                            {formatMoney(account.balancesByCurrency[otherCurrency], otherCurrency)}{" "}
-                            {otherCurrency}
-                          </em>
-                        )}
-                      </span>
+                      <AccountBalances account={account} />
                     </div>
                   </li>
                 );
@@ -347,20 +343,7 @@ export function AccountsPanel({
                     .map((account) => (
                       <li key={account.id}>
                         <span>{account.name}</span>
-                        <span className="dashboard-account-balances">
-                          <strong>
-                            {formatMoney(account.balancesByCurrency[baseCurrency], baseCurrency)}
-                          </strong>
-                          {account.balancesByCurrency[otherCurrency] !== 0 && (
-                            <em>
-                              {formatMoney(
-                                account.balancesByCurrency[otherCurrency],
-                                otherCurrency,
-                              )}{" "}
-                              {otherCurrency}
-                            </em>
-                          )}
-                        </span>
+                        <AccountBalances account={account} />
                       </li>
                     ))}
                 </ul>
@@ -392,7 +375,7 @@ export function AccountsPanel({
             <>
               Removing <strong>{removingAccount.name}</strong> takes it out of your account list, so
               it can no longer be chosen for new transactions. Its{" "}
-              {formatMoney(removalBalanceMinor, baseCurrency)} balance and every transaction
+              {formatMoney(removalBalanceMinor, removalCurrency)} balance and every transaction
               recorded against it stay in your history as read-only records, and because your
               overall balance is calculated from recorded transactions, the{" "}
               {formatMoney(overallBalanceMinor, baseCurrency)} total does not change. This cannot be
@@ -409,5 +392,21 @@ export function AccountsPanel({
         />
       )}
     </>
+  );
+}
+
+/** An account's balance in its own currency, then any other currency it holds entries in. */
+function AccountBalances({ account }: { account: AccountBalanceSummaryItem }) {
+  return (
+    <span className="dashboard-account-balances">
+      <strong>
+        {formatMoney(account.balancesByCurrency[account.currency] ?? 0, account.currency)}
+      </strong>
+      {otherCurrenciesWithAmounts(account.balancesByCurrency, account.currency).map((currency) => (
+        <em key={currency}>
+          {formatMoney(account.balancesByCurrency[currency] ?? 0, currency)} {currency}
+        </em>
+      ))}
+    </span>
   );
 }

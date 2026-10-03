@@ -335,7 +335,11 @@ export function TransactionsPage() {
       categoryId,
       accountId: matchedAccount?.id ?? "",
       notes,
-      currency: parsed.currency === "USD" ? "USD" : matchedAccount?.currency || workspaceCurrency(),
+      // The parser falls back to PHP, so only another named currency overrides the account's.
+      currency:
+        parsed.currency !== "PHP"
+          ? parsed.currency
+          : matchedAccount?.currency || workspaceCurrency(),
     });
     setEditing(undefined);
     setFormOpen(true);

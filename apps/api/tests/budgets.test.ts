@@ -46,4 +46,30 @@ describe("budgetRepository", () => {
       usedPercent: 0,
     });
   });
+
+  it("counts only spending in the workspace currency against its limits", async () => {
+    const { binding, database } = createD1TestDatabase();
+    databases.push(database);
+    const env = { DB: binding } satisfies Bindings;
+
+    database.exec(`
+      INSERT INTO tenants (id, kind, name, currency) VALUES ('tenant-1', 'user', 'Test', 'EUR');
+      INSERT INTO categories (id, tenant_id, name, kind, color)
+        VALUES ('food', 'tenant-1', 'Food', 'expense', '#123456');
+      INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor)
+        VALUES ('budget-1', 'tenant-1', 'food', '2026-08-01', 40000);
+      INSERT INTO transactions
+        (id, tenant_id, category_id, date, description, amount_minor, currency, kind)
+        VALUES ('euro-lunch', 'tenant-1', 'food', '2026-08-05', 'Lunch', -1500, 'EUR', 'expense'),
+               ('yen-ramen', 'tenant-1', 'food', '2026-08-06', 'Ramen', -120000, 'JPY', 'expense');
+    `);
+
+    const plan = await budgetRepository.list(env, "tenant-1", "2026-08-01");
+
+    expect(plan).toMatchObject({
+      currency: "EUR",
+      totalLimitMinor: 40_000,
+      totalSpentMinor: 1_500,
+    });
+  });
 });

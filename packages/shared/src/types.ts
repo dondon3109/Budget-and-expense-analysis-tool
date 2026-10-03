@@ -1,18 +1,11 @@
+import type { Currency, CurrencyTotals } from "./currencies";
 import type { AssistantTransactionDraft } from "./schemas/assistant";
+
+// Currencies live in their own module; re-exported so `./types` stays the one import site.
+export * from "./currencies";
 
 export const transactionKinds = ["income", "expense", "transfer"] as const;
 export type TransactionKind = (typeof transactionKinds)[number];
-
-export const currencies = ["PHP", "USD"] as const;
-export type Currency = (typeof currencies)[number];
-
-export const currencyMetadata: Record<
-  Currency,
-  { label: string; name: string; symbol: string; locale: string }
-> = {
-  PHP: { label: "Philippine Peso (PHP)", name: "Philippine Peso", symbol: "₱", locale: "en-PH" },
-  USD: { label: "US Dollar (USD)", name: "US Dollar", symbol: "$", locale: "en-US" },
-};
 
 export interface TransactionRecord {
   id: string;
@@ -106,7 +99,7 @@ export interface AccountRecord {
   currency: Currency;
   balanceMinor: number | null;
   balanceAsOf?: string | null;
-  balancesByCurrency?: Record<Currency, number>;
+  balancesByCurrency?: CurrencyTotals;
   archived: boolean;
   system?: boolean;
   interest?: InterestSettings;
@@ -120,7 +113,7 @@ export interface AccountBalanceSummaryItem {
   type: AccountType;
   currency: Currency;
   balanceMinor: number;
-  balancesByCurrency: Record<Currency, number>;
+  balancesByCurrency: CurrencyTotals;
   archived: boolean;
   system: boolean;
   interest?: InterestSettings;
@@ -131,7 +124,7 @@ export interface AccountBalanceSummaryItem {
 export interface AccountBalanceSummary {
   currency: Currency;
   overallBalanceMinor: number;
-  balancesByCurrency: Record<Currency, number>;
+  balancesByCurrency: CurrencyTotals;
   items: AccountBalanceSummaryItem[];
 }
 
@@ -288,7 +281,7 @@ export interface BudgetPlanItem {
 
 export interface BudgetMonthPlan {
   month: string;
-  currency: "PHP";
+  currency: Currency;
   totalLimitMinor: number;
   totalSpentMinor: number;
   remainingMinor: number;
@@ -357,8 +350,8 @@ export interface DashboardSummary {
     moneyInMinor: number;
     moneyOutMinor: number;
     netMinor: number;
-    incomeByCurrency: Record<Currency, number>;
-    expenseByCurrency: Record<Currency, number>;
+    incomeByCurrency: CurrencyTotals;
+    expenseByCurrency: CurrencyTotals;
     budgetLimitMinor: number;
     remainingBudgetMinor: number;
     budgetUsedPercent: number;
@@ -408,7 +401,7 @@ export interface TransferFeeWeek {
   /** Number of transfers that carried a fee in that week. */
   feeChargedTransfers: number;
   /** Total transfer fees paid in that week, per currency. */
-  feesByCurrency: Record<Currency, number>;
+  feesByCurrency: CurrencyTotals;
 }
 
 export interface TransferFeeInsight {
@@ -419,7 +412,7 @@ export interface TransferFeeInsight {
   /** All-time number of transfers that carried a fee. */
   totalFeeChargedTransfers: number;
   /** All-time transfer fees paid, per currency. */
-  feesByCurrency: Record<Currency, number>;
+  feesByCurrency: CurrencyTotals;
   /** Per-week breakdown for the trailing 8 weeks, oldest first. */
   weekly: TransferFeeWeek[];
   /** Number of weeks within the window that had at least one transfer. */
@@ -811,7 +804,7 @@ export interface TransactionVoiceDraft {
   description: string;
   date: string;
   amountMinor: number;
-  currency: "PHP";
+  currency: Currency;
   kind: TransactionKind;
   categoryName?: string;
 }
@@ -820,7 +813,7 @@ export interface ReceiptDraft {
   merchant: string;
   date: string;
   amountMinor: number;
-  currency: "PHP";
+  currency: Currency;
   kind: TransactionKind;
   categoryName?: string;
   /** Omitted by earlier API deployments; an empty list means no line could be read confidently. */

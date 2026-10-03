@@ -1,10 +1,11 @@
-import type {
-  Currency,
-  SubscriptionInput,
-  SubscriptionMonthItem,
-  SubscriptionMonthSummary,
-  SubscriptionRecord,
-  SubscriptionStatus,
+import {
+  activeMonthlyCostByCurrency,
+  otherCurrenciesWithAmounts,
+  type SubscriptionInput,
+  type SubscriptionMonthItem,
+  type SubscriptionMonthSummary,
+  type SubscriptionRecord,
+  type SubscriptionStatus,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
@@ -51,17 +52,8 @@ function updateSubscriptionSummary(
   return {
     ...current,
     items,
-    totalMonthlyCostMinor: activeMonthlyCost(items, current.currency),
+    totalMonthlyCostMinor: activeMonthlyCostByCurrency(items)[current.currency] ?? 0,
   };
-}
-
-/** Active monthly cost of the plans billed in one currency; the total never mixes currencies. */
-function activeMonthlyCost(items: readonly SubscriptionMonthItem[], currency: Currency): number {
-  return items.reduce(
-    (total, item) =>
-      total + (item.status === "active" && item.currency === currency ? item.monthlyCostMinor : 0),
-    0,
-  );
 }
 
 export function SubscriptionsPage() {
@@ -225,18 +217,23 @@ export function SubscriptionsPage() {
   const formError = createMutation.error?.message ?? updateMutation.error?.message;
 
   const data = subscriptionsQuery.data;
-  // The headline total is the workspace currency; plans billed in the other one get a line of
+  // The headline total is the workspace currency; plans billed in other ones get a line of
   // their own instead of being added into it.
-  const otherCurrency: Currency = data?.currency === "USD" ? "PHP" : "USD";
-  const otherMonthlyCostMinor = data ? activeMonthlyCost(data.items, otherCurrency) : 0;
+  const monthlyCosts = activeMonthlyCostByCurrency(data?.items ?? []);
+  const otherCostLines = data
+    ? otherCurrenciesWithAmounts(monthlyCosts, data.currency).map(
+        (other) => ` · Plus ${formatMoney(monthlyCosts[other] ?? 0, other)} billed in ${other}`,
+      )
+    : [];
   const categories = categoriesQuery.data ?? [];
   const accounts = accountsQuery.data ?? [];
-  // The forecast projects in pesos, so an account contributes its peso balance. Reading the
-  // account's own-currency balance second would add USD cents to pesos.
-  const phpBalanceMinor = (account: (typeof accounts)[number]) =>
-    account.balancesByCurrency?.PHP ?? account.balanceMinor ?? 0;
+  // The forecast projects in the workspace currency, so an account contributes only its balance
+  // in that currency. Falling back to its own-currency balance would add yen to pesos.
+  const forecastCurrency = workspaceCurrency();
+  const forecastBalanceMinor = (account: (typeof accounts)[number]) =>
+    account.balancesByCurrency?.[forecastCurrency] ?? 0;
   const totalBalanceMinor = accounts.reduce(
-    (total, account) => total + phpBalanceMinor(account),
+    (total, account) => total + forecastBalanceMinor(account),
     0,
   );
 
@@ -323,11 +320,7 @@ export function SubscriptionsPage() {
               <MetricCard
                 label="Total monthly cost"
                 value={formatMoney(data.totalMonthlyCostMinor, data.currency)}
-                detail={`${formatFullMonth(month)} · Active plans only · Yearly plans divided across 12 months${
-                  otherMonthlyCostMinor > 0
-                    ? ` · Plus ${formatMoney(otherMonthlyCostMinor, otherCurrency)} billed in ${otherCurrency}`
-                    : ""
-                }`}
+                detail={`${formatFullMonth(month)} · Active plans only · Yearly plans divided across 12 months${otherCostLines.join("")}`}
                 icon={Repeat2}
                 tone="sage"
               />
@@ -399,7 +392,7 @@ export function SubscriptionsPage() {
                   accounts={accounts.map((account) => ({
                     id: account.id,
                     name: account.name,
-                    balanceMinor: phpBalanceMinor(account),
+                    balanceMinor: forecastBalanceMinor(account),
                   }))}
                   totalBalanceMinor={totalBalanceMinor}
                 />

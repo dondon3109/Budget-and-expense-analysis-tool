@@ -3,7 +3,11 @@ import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { monthlySubscriptionCost, resolveCategoryEmoji, type Currency } from "@zoption/shared";
+import {
+  activeMonthlyCostByCurrency,
+  otherCurrenciesWithAmounts,
+  resolveCategoryEmoji,
+} from "@zoption/shared";
 
 import {
   useDashboardData,
@@ -281,22 +285,8 @@ function MonthlyCostCard({
 }) {
   const theme = useZoptionTheme();
   const workspaceCurrency = useWorkspaceCurrency();
-  // Pesos and dollars are never added: the other currency gets its own line.
-  const monthlyTotals = useMemo(() => {
-    const totals: Record<Currency, number> = { PHP: 0, USD: 0 };
-    for (const subscription of subscriptions) {
-      if (subscription.status !== "active") continue;
-      totals[subscription.currency] += monthlySubscriptionCost(
-        subscription.amountMinor,
-        subscription.billingCycle,
-      );
-    }
-    return totals;
-  }, [subscriptions]);
-  const otherCurrency: Currency = workspaceCurrency === "PHP" ? "USD" : "PHP";
-  const hasOtherCurrency = subscriptions.some(
-    (subscription) => subscription.status === "active" && subscription.currency === otherCurrency,
-  );
+  // Currencies are never added together: each other currency gets its own line.
+  const monthlyTotals = activeMonthlyCostByCurrency(subscriptions);
 
   const yearlyCount = useMemo(
     () => subscriptions.filter((s) => s.status === "active" && s.billingCycle === "yearly").length,
@@ -311,16 +301,16 @@ function MonthlyCostCard({
             Total monthly cost
           </Text>
           <MoneyValue
-            amountMinor={monthlyTotals[workspaceCurrency]}
+            amountMinor={monthlyTotals[workspaceCurrency] ?? 0}
             currency={workspaceCurrency}
             style={typography.display}
           />
-          {hasOtherCurrency ? (
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              <MoneyValue amountMinor={monthlyTotals[otherCurrency]} currency={otherCurrency} />
-              /mo billed in {otherCurrency}
+          {otherCurrenciesWithAmounts(monthlyTotals, workspaceCurrency).map((other) => (
+            <Text key={other} style={[typography.callout, { color: theme.colors.textMuted }]}>
+              <MoneyValue amountMinor={monthlyTotals[other] ?? 0} currency={other} />
+              /mo billed in {other}
             </Text>
-          ) : null}
+          ))}
           <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 11 }]}>
             Active plans only · Yearly plans divided across 12 months
           </Text>

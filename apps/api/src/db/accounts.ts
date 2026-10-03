@@ -1,9 +1,11 @@
-import type {
-  AccountInput,
-  AccountInterestUpdate,
-  AccountRecord,
-  AccountUpdateWithInterest,
-  Currency,
+import {
+  isCurrency,
+  type AccountInput,
+  type AccountInterestUpdate,
+  type AccountRecord,
+  type AccountUpdateWithInterest,
+  type Currency,
+  type CurrencyTotals,
 } from "@zoption/shared";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
@@ -48,18 +50,14 @@ const accountSelection = {
   annualRateBasisPoints: accounts.annualRateBasisPoints,
   interestFrequency: accounts.interestFrequency,
   interestPayDay: accounts.interestPayDay,
-  balancePhpMinor: sql<number>`COALESCE(SUM(CASE
-    WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
-      AND ${transactions.currency} = 'PHP'
-    THEN ${transactions.amountMinor}
-    ELSE 0
-  END), 0)`,
-  balanceUsdMinor: sql<number>`COALESCE(SUM(CASE
-    WHEN (${transactions.kind} != 'transfer' OR ${transactions.transferGroupId} IS NOT NULL)
-      AND ${transactions.currency} = 'USD'
-    THEN ${transactions.amountMinor}
-    ELSE 0
-  END), 0)`,
+  /** `{ "<currency>": balanceMinor }` for every currency the account holds entries in. */
+  balancesJson: sql<string | null>`(SELECT json_group_object(currency, total) FROM (
+    SELECT t.currency AS currency, SUM(t.amount_minor) AS total
+    FROM transactions t
+    WHERE t.account_id = ${accounts.id} AND t.tenant_id = ${accounts.tenantId}
+      AND (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL)
+    GROUP BY t.currency
+  ))`,
   activeSubscriptions: sql<string>`json_group_array(
     (SELECT s.name FROM subscriptions s
      WHERE s.tenant_id = ${accounts.tenantId} AND s.account_id = ${accounts.id}
@@ -80,13 +78,21 @@ function subscriptionNames(value: unknown): string[] {
   }
 }
 
+function currencyBalances(value: unknown): CurrencyTotals {
+  const balances: CurrencyTotals = {};
+  if (typeof value !== "string") return balances;
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== "object" || parsed === null) return balances;
+  for (const [currency, total] of Object.entries(parsed)) {
+    if (isCurrency(currency)) balances[currency] = Number(total ?? 0);
+  }
+  return balances;
+}
+
 function normalize(
   row: typeof accountSelection extends never ? never : Record<string, unknown>,
 ): AccountRecord {
-  const balancesByCurrency: Record<Currency, number> = {
-    PHP: Number(row.balancePhpMinor ?? 0),
-    USD: Number(row.balanceUsdMinor ?? 0),
-  };
+  const balancesByCurrency = currencyBalances(row.balancesJson);
   const currency = row.currency as Currency;
   const interestEnabled = Boolean(row.interestEnabled);
   return {
@@ -96,7 +102,7 @@ function normalize(
     currency,
     archived: row.archived as boolean,
     system: Boolean(row.systemKey),
-    balanceMinor: balancesByCurrency[currency],
+    balanceMinor: balancesByCurrency[currency] ?? 0,
     balancesByCurrency,
     interest: interestEnabled
       ? {

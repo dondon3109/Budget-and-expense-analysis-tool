@@ -9,6 +9,7 @@
     "tests",
     "../../db/schema.ts",
     "../../db/schema-providers.ts",
-    "../../db/schema-goals.ts"
+    "../../db/schema-goals.ts",
+    "../../db/schema-fx.ts"
   ]
 }

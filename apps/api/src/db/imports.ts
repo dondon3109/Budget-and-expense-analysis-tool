@@ -23,6 +23,7 @@ import { HttpError } from "../errors";
 import { prepareImportRows, type PreparedImportRecord } from "../imports/prepare";
 import type { Bindings } from "../types";
 import { defaultAccountIdForTenant } from "./tenants";
+import { loadWorkspaceCurrency } from "./workspace-settings";
 
 const MAX_FILE_BYTES = 1_000_000;
 const MAX_ROWS = 500;
@@ -30,7 +31,7 @@ const PREVIEW_LIFETIME_MS = 15 * 60 * 1000;
 
 export function buildImportTransactionInsertSql(requireNonSystemCategory: boolean): string {
   const systemConstraint = requireNonSystemCategory ? " AND system_key IS NULL" : "";
-  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind, import_id, import_row_number) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION})), ?, ?, ?, 'PHP', ?, ?, 'import', ?, ?)`;
+  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind, import_id, import_row_number) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION})), ?, ?, ?, ?, ?, ?, 'import', ?, ?)`;
 }
 
 export function assertImportFileSize(csvText: string): void {
@@ -325,6 +326,7 @@ export function createImportRepository(
         );
       }
       const defaultAccountId = defaultAccountIdForTenant(tenantId);
+      const currency = await loadWorkspaceCurrency(env, tenantId);
 
       let initial;
       try {
@@ -335,6 +337,7 @@ export function createImportRepository(
           new Set(),
           defaultAccountId,
           input.fallbackDate,
+          currency,
         );
       } catch (error) {
         throw new HttpError(
@@ -358,6 +361,7 @@ export function createImportRepository(
               existing,
               defaultAccountId,
               input.fallbackDate,
+              currency,
             );
 
       const token = crypto.randomUUID();
@@ -423,6 +427,8 @@ export function createImportRepository(
       if (storedRows.length !== preview.acceptedCount) invalidStoredPreview();
       const defaultAccountId = defaultAccountIdForTenant(tenantId);
       const rows = await applyImportOverrides(env, tenantId, storedRows, input, defaultAccountId);
+      // The preview validated each row against the workspace currency; it lives 15 minutes.
+      const currency = await loadWorkspaceCurrency(env, tenantId);
       if (input.kindOverrides.length > 0) {
         const fingerprints = rows.map((row) => row.fingerprint);
         if (new Set(fingerprints).size !== fingerprints.length) {
@@ -470,6 +476,7 @@ export function createImportRepository(
             row.date,
             row.description,
             row.amountMinor,
+            currency,
             row.kind,
             row.fingerprint,
             importId,

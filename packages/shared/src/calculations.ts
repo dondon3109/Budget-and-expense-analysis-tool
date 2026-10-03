@@ -9,7 +9,7 @@ import type {
   TransferFeeInsight,
 } from "./types";
 import { resolveCategoryEmoji, type TransferInput } from "./schemas";
-import { countsAsIncome } from "./types";
+import { addToCurrencyTotal, countsAsIncome, type CurrencyTotals } from "./types";
 
 function clampRoundPercent(value: number): number {
   return Math.round(value * 10) / 10;
@@ -57,7 +57,7 @@ function buildRecurringExpenses(transactions: readonly TransactionRecord[]) {
     .slice(0, 3);
 }
 
-/** The overall balance is the workspace-currency total; the other currency stays in `balancesByCurrency`. */
+/** The overall balance is the workspace-currency total; other currencies stay in `balancesByCurrency`. */
 export function summarizeAccountBalances(
   accounts: readonly AccountRecord[],
   currency: Currency = "PHP",
@@ -70,11 +70,7 @@ export function summarizeAccountBalances(
       type: account.type,
       currency: account.currency,
       balanceMinor,
-      balancesByCurrency:
-        account.balancesByCurrency ??
-        (account.currency === "USD"
-          ? { PHP: 0, USD: balanceMinor }
-          : { PHP: balanceMinor, USD: 0 }),
+      balancesByCurrency: account.balancesByCurrency ?? { [account.currency]: balanceMinor },
       archived: account.archived,
       system: Boolean(account.system),
       interest: account.interest,
@@ -82,14 +78,14 @@ export function summarizeAccountBalances(
     };
   });
 
-  const balancesByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
+  const balancesByCurrency: CurrencyTotals = {};
   for (const item of items) {
-    balancesByCurrency[item.currency] += item.balanceMinor;
+    addToCurrencyTotal(balancesByCurrency, item.currency, item.balanceMinor);
   }
 
   return {
     currency,
-    overallBalanceMinor: balancesByCurrency[currency],
+    overallBalanceMinor: balancesByCurrency[currency] ?? 0,
     balancesByCurrency,
     items,
   };
@@ -234,7 +230,7 @@ export function buildDashboardSummary(
   accountBalances: AccountBalanceSummary = {
     currency: "PHP",
     overallBalanceMinor: 0,
-    balancesByCurrency: { PHP: 0, USD: 0 },
+    balancesByCurrency: {},
     items: [],
   },
 ): DashboardSummary {
@@ -248,13 +244,17 @@ export function buildDashboardSummary(
     .filter((transaction) => transaction.kind === "expense")
     .reduce((sum, transaction) => sum + Math.abs(transaction.amountMinor), 0);
 
-  const incomeByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
-  const expenseByCurrency: Record<Currency, number> = { PHP: 0, USD: 0 };
+  const incomeByCurrency: CurrencyTotals = {};
+  const expenseByCurrency: CurrencyTotals = {};
   for (const transaction of inPeriod) {
     if (countsAsIncome(transaction)) {
-      incomeByCurrency[transaction.currency] += Math.abs(transaction.amountMinor);
+      addToCurrencyTotal(incomeByCurrency, transaction.currency, Math.abs(transaction.amountMinor));
     } else if (transaction.kind === "expense") {
-      expenseByCurrency[transaction.currency] += Math.abs(transaction.amountMinor);
+      addToCurrencyTotal(
+        expenseByCurrency,
+        transaction.currency,
+        Math.abs(transaction.amountMinor),
+      );
     }
   }
 
@@ -409,23 +409,18 @@ function startOfWeekMonday(isoDate: string): string {
   return shiftUtcDays(isoDate, -isoDayOfWeekMondayZero(isoDate));
 }
 
-function emptyFeeCurrencyTotals(): Record<Currency, number> {
-  return { PHP: 0, USD: 0 };
-}
-
 function roundToOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
 export function buildTransferFeeInsight(input: TransferFeeInsightInput): TransferFeeInsight {
-  const feesByCurrency = emptyFeeCurrencyTotals();
+  const feesByCurrency: CurrencyTotals = {};
   let totalTransfers = 0;
   let totalFeeChargedTransfers = 0;
   for (const row of input.totals) {
     totalTransfers += row.transfers;
     totalFeeChargedTransfers += row.feeChargedTransfers;
-    const currency = row.currency;
-    feesByCurrency[currency] += row.feesMinor;
+    addToCurrencyTotal(feesByCurrency, row.currency, row.feesMinor);
   }
 
   const weeklyByStart = new Map<string, TransferFeeInsight["weekly"][number]>();
@@ -436,12 +431,12 @@ export function buildTransferFeeInsight(input: TransferFeeInsightInput): Transfe
       weekEnd: shiftUtcDays(weekStart, 6),
       transfers: 0,
       feeChargedTransfers: 0,
-      feesByCurrency: emptyFeeCurrencyTotals(),
+      feesByCurrency: {},
     };
     current.transfers += 1;
     if (row.transferFeeMinor != null && row.transferFeeMinor > 0) {
       current.feeChargedTransfers += 1;
-      current.feesByCurrency[row.currency] += row.transferFeeMinor;
+      addToCurrencyTotal(current.feesByCurrency, row.currency, row.transferFeeMinor);
     }
     weeklyByStart.set(weekStart, current);
   }

@@ -568,9 +568,8 @@ export function CashflowForecastSection({
           </p>
           {otherCurrencyPlans > 0 && (
             <p className="forecast-subheading">
-              {otherCurrencyPlans} plan{otherCurrencyPlans === 1 ? " is" : "s are"} billed in{" "}
-              {workspaceCurrency() === "PHP" ? "USD" : "PHP"} and not included in this{" "}
-              {workspaceCurrency()} forecast.
+              {otherCurrencyPlans} plan{otherCurrencyPlans === 1 ? " is" : "s are"} billed in
+              another currency and not included in this {workspaceCurrency()} forecast.
             </p>
           )}
         </div>

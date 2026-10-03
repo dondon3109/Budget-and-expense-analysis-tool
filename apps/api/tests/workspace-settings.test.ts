@@ -22,8 +22,9 @@ function seededEnv(): { env: Bindings; database: DatabaseSync } {
   databases.push(database);
   database.exec(`
     INSERT INTO tenants (id, kind, name) VALUES ('tenant-1', 'user', 'Test'), ('tenant-2', 'user', 'Other');
-    INSERT INTO fx_rates (date, usd_to_php, source, fetched_at)
-      VALUES ('2026-07-01', 50, 'test', '2026-07-01T00:00:00Z');
+    INSERT INTO fx_usd_rates (date, currency, units_per_usd, source, fetched_at)
+      VALUES ('2026-07-01', 'PHP', 50, 'test', '2026-07-01T00:00:00Z'),
+             ('2026-07-01', 'EUR', 0.8, 'test', '2026-07-01T00:00:00Z');
     INSERT INTO categories (id, tenant_id, name, kind, color)
       VALUES ('salary', 'tenant-1', 'Salary', 'income', '#123456');
     INSERT INTO accounts (id, tenant_id, name, type, currency)
@@ -52,19 +53,27 @@ describe("workspaceSettingsRepository", () => {
 describe("dashboard in the workspace currency", () => {
   const query = { view: "weekly", anchorDate: "2026-07-20" } as const;
 
-  it("converts USD into whole pesos for a PHP workspace", async () => {
+  it("converts USD into pesos for a PHP workspace", async () => {
     const { env } = seededEnv();
     const trend = await loadCashflowTrend(env, "tenant-1", query);
     // 5,000.00 PHP + 100.00 USD at 50 = 10,000.00 PHP
     expect(trend.points.at(-1)?.incomeMinor).toBe(1_000_000);
   });
 
-  it("converts pesos into cents for a USD workspace", async () => {
+  it("converts pesos into dollars for a USD workspace", async () => {
     const { env } = seededEnv();
     await workspaceSettingsRepository.update(env, "tenant-1", { currency: "USD" });
     const trend = await loadCashflowTrend(env, "tenant-1", query);
     // 100.00 USD + 5,000.00 PHP at 50 = 200.00 USD
     expect(trend.points.at(-1)?.incomeMinor).toBe(20_000);
+  });
+
+  it("converts every currency into a EUR workspace through USD", async () => {
+    const { env } = seededEnv();
+    await workspaceSettingsRepository.update(env, "tenant-1", { currency: "EUR" });
+    const trend = await loadCashflowTrend(env, "tenant-1", query);
+    // 100.00 USD at 0.8 + 5,000.00 PHP at 0.8 / 50 = 80.00 + 80.00 EUR
+    expect(trend.points.at(-1)?.incomeMinor).toBe(16_000);
   });
 
   it("reports the overall balance in the workspace currency", async () => {
@@ -108,14 +117,14 @@ describe("workspace settings routes", () => {
     });
   });
 
-  it("rejects a currency outside PHP and USD", async () => {
+  it("rejects a currency Zoption does not support", async () => {
     const workspaceSettings = fakeRepository();
     const app = createAppWithFakes({ workspaceSettings });
 
     const response = await app.request("/api/app/settings", {
       method: "PUT",
       headers: privateHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ currency: "EUR" }),
+      body: JSON.stringify({ currency: "XAU" }),
     });
     expect(response.status).toBe(400);
     expect(workspaceSettings.update).not.toHaveBeenCalled();

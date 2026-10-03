@@ -1,9 +1,12 @@
 import {
   accountTypes,
+  currencies,
   cashflowWindowStart,
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
+  type Currency,
+  type CurrencyTotals,
   type InterestSettings,
   type TransactionListItem,
   type TransactionRecord,
@@ -43,7 +46,7 @@ const localTransactionRowSchema = z.object({
   date: z.string(),
   description: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   kind: z.enum(["income", "expense", "transfer"]),
   category_id: z.string(),
   category_name: z.string(),
@@ -63,7 +66,7 @@ const localAccountOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(accountTypes),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   pending: z
     .number()
     .int()
@@ -98,7 +101,7 @@ const editableTransactionRowSchema = z.object({
   date: z.string(),
   description: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   kind: z.enum(["income", "expense", "transfer"]),
   notes: z.string().nullable(),
   transfer_group_id: z.string().nullable(),
@@ -143,7 +146,7 @@ const subscriptionItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   billing_cycle: z.enum(["monthly", "yearly"]),
   next_billing_date: z.string(),
   status: z.enum(["active", "canceled"]),
@@ -169,9 +172,8 @@ const calendarSubscriptionItemSchema = subscriptionItemSchema.omit({
 
 const accountModelingRowSchema = z.object({
   interest_json: z.string().nullable(),
-  currency: z.enum(["PHP", "USD"]),
-  balance_php_minor: z.number().int().safe(),
-  balance_usd_minor: z.number().int().safe(),
+  currency: z.enum(currencies),
+  balance_minor: z.number().int().safe(),
 });
 
 const eventItemSchema = z.object({
@@ -188,7 +190,7 @@ const localAccountItemSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["cash", "checking", "savings", "credit", "other"]),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   system: z.number().int().min(0).max(1),
   server_revision: z.number().int().nonnegative(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
@@ -220,7 +222,7 @@ const dashboardTransactionRowSchema = z.object({
   date: z.string(),
   description: z.string(),
   amount_minor: z.number().int().safe(),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   kind: z.enum(["income", "expense", "transfer"]),
   category_id: z.string(),
   category_name: z.string(),
@@ -233,12 +235,16 @@ const dashboardAccountRowSchema = z.object({
   id: z.string(),
   name: z.string(),
   type: z.enum(["cash", "checking", "savings", "credit", "other"]),
-  currency: z.enum(["PHP", "USD"]),
+  currency: z.enum(currencies),
   archived: z.number().int().min(0).max(1),
   system: z.number().int().min(0).max(1),
   interest_json: z.string().nullable(),
-  balance_php_minor: z.number().int().safe(),
-  balance_usd_minor: z.number().int().safe(),
+});
+
+const accountBalanceRowSchema = z.object({
+  account_id: z.string(),
+  currency: z.enum(currencies),
+  balance_minor: z.number().int().safe(),
 });
 
 const budgetRowSchema = z.object({
@@ -684,21 +690,23 @@ LIMIT ?`;
         a.currency,
         a.archived,
         a.system,
-        a.interest_json,
-        COALESCE(SUM(CASE
-          WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'PHP'
-          THEN t.amount_minor ELSE 0
-        END), 0) AS balance_php_minor,
-        COALESCE(SUM(CASE
-          WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'USD'
-          THEN t.amount_minor ELSE 0
-        END), 0) AS balance_usd_minor
+        a.interest_json
       FROM accounts a
-      LEFT JOIN transactions t ON t.account_id = a.id AND t.deleted_at IS NULL
       WHERE a.deleted_at IS NULL
-      GROUP BY a.id
       ORDER BY a.archived, a.name COLLATE NOCASE
     `);
+    // Each account's balance in every currency it holds entries in; transfers count once.
+    const balanceRows = await this.database.getAllAsync(`
+      SELECT account_id, currency, SUM(amount_minor) AS balance_minor FROM transactions
+      WHERE deleted_at IS NULL AND account_id IS NOT NULL
+        AND (kind != 'transfer' OR transfer_group_id IS NOT NULL)
+      GROUP BY account_id, currency
+    `);
+    const balancesByAccount = new Map<string, CurrencyTotals>();
+    for (const row of balanceRows) {
+      const { account_id: id, currency, balance_minor } = accountBalanceRowSchema.parse(row);
+      balancesByAccount.set(id, { ...balancesByAccount.get(id), [currency]: balance_minor });
+    }
 
     const budgetRows = await this.database.getAllAsync(`
       SELECT
@@ -718,16 +726,13 @@ LIMIT ?`;
       recentTransactions: recentRows.map(decodeDashboardTransaction),
       accounts: accountRows.map((row) => {
         const decoded = dashboardAccountRowSchema.parse(row);
-        const balancesByCurrency = {
-          PHP: decoded.balance_php_minor,
-          USD: decoded.balance_usd_minor,
-        };
+        const balancesByCurrency = balancesByAccount.get(decoded.id) ?? {};
         return {
           id: decoded.id,
           name: decoded.name,
           type: decoded.type,
           currency: decoded.currency,
-          balanceMinor: balancesByCurrency[decoded.currency],
+          balanceMinor: balancesByCurrency[decoded.currency] ?? 0,
           balancesByCurrency,
           archived: decoded.archived === 1,
           system: decoded.system === 1,
@@ -747,7 +752,8 @@ LIMIT ?`;
     };
   }
 
-  async getBudgetMonth(month: string): Promise<LocalBudgetMonthData> {
+  /** Limits are in the workspace `currency`, so only spending in it counts against them. */
+  async getBudgetMonth(month: string, currency: Currency = "PHP"): Promise<LocalBudgetMonthData> {
     const monthStart = monthStartSchema.parse(month);
     const [budgetRows, categoryRows] = await Promise.all([
       this.database.getAllAsync(
@@ -763,11 +769,12 @@ LIMIT ?`;
          FROM budgets b
          INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
          LEFT JOIN transactions t ON t.category_id = b.category_id AND t.deleted_at IS NULL
-           AND substr(t.date, 1, 7) = substr(?, 1, 7)
+           AND substr(t.date, 1, 7) = substr(?, 1, 7) AND t.currency = ?
          WHERE b.month = ? AND b.deleted_at IS NULL
          GROUP BY b.category_id
          ORDER BY c.name COLLATE NOCASE`,
         monthStart,
+        currency,
         monthStart,
       ),
       this.database.getAllAsync(
@@ -887,13 +894,9 @@ LIMIT ?`;
          a.interest_json,
          a.currency,
          COALESCE(SUM(CASE
-           WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'PHP'
+           WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = a.currency
            THEN t.amount_minor ELSE 0
-         END), 0) AS balance_php_minor,
-         COALESCE(SUM(CASE
-           WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = 'USD'
-           THEN t.amount_minor ELSE 0
-         END), 0) AS balance_usd_minor
+         END), 0) AS balance_minor
        FROM accounts a
        LEFT JOIN transactions t ON t.account_id = a.id AND t.deleted_at IS NULL
        WHERE a.id = ? AND a.deleted_at IS NULL
@@ -902,13 +905,9 @@ LIMIT ?`;
     );
     if (!row) return null;
     const decoded = accountModelingRowSchema.parse(row);
-    const balancesByCurrency = {
-      PHP: decoded.balance_php_minor,
-      USD: decoded.balance_usd_minor,
-    };
     return {
       currency: decoded.currency,
-      balanceMinor: balancesByCurrency[decoded.currency],
+      balanceMinor: decoded.balance_minor,
       interest: decodeInterest(decoded.interest_json),
     };
   }

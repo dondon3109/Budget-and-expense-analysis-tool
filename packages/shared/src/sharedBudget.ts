@@ -1,4 +1,4 @@
-import type { Currency } from "./types";
+import { isCurrency, type Currency } from "./types";
 
 export interface SharedEnvelopeItem {
   categoryId: string;
@@ -123,7 +123,7 @@ function parseSharedBudgetPayload(
     !isString(value.shareId) ||
     !isString(value.title) ||
     !isString(value.month) ||
-    (value.currency !== "PHP" && value.currency !== "USD") ||
+    !isCurrency(value.currency) ||
     !Array.isArray(value.envelopes) ||
     !value.envelopes.every(isSharedEnvelopeItem) ||
     !isNumber(value.totalAllocatedMinor) ||

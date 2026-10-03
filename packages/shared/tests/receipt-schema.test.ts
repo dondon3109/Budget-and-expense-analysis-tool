@@ -49,12 +49,12 @@ describe("receiptDraftSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects currencies other than PHP", () => {
+  it("rejects currencies Zoption does not support", () => {
     const result = receiptDraftSchema.safeParse({
       merchant: "Jollibee",
       date: "2026-08-16",
       amountMinor: 25_000,
-      currency: "USD",
+      currency: "XAU",
       kind: "expense",
       rawText: "JOLLIBEE * 250.00",
     });

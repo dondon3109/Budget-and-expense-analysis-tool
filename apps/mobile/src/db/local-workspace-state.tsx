@@ -10,6 +10,7 @@ import {
 } from "react";
 
 import { markStartupPhase } from "@/diagnostics/startup-timing";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 
 import { useLocalQuery } from "./local-workspace/use-local-query";
 import {
@@ -168,9 +169,10 @@ export function useBudgetMonth(month: string): {
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
+  const currency = useWorkspaceCurrency();
   const read = useCallback(
-    (current: LocalWorkspace) => current.repository.getBudgetMonth(month),
-    [month],
+    (current: LocalWorkspace) => current.repository.getBudgetMonth(month, currency),
+    [month, currency],
   );
   const { data, error, retry } = useLocalQuery(workspace, {
     read,

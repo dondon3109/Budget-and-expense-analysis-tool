@@ -41,6 +41,7 @@ import {
 import { queryKeys } from "../lib/queryKeys";
 import { WorkbookImportClient } from "../lib/workbookImportClient";
 import { userWorkspace } from "../lib/workspace";
+import { useWorkspaceCurrency } from "../lib/workspaceCurrency";
 import { useAccounts } from "../queries/accounts";
 import { invalidateBillingSummary } from "../queries/billing";
 import { useCategories } from "../queries/categories";
@@ -98,8 +99,8 @@ export function ImportPage() {
     setSelectedPresetId,
     resolvedPresetId,
     setResolvedPresetId,
-    phpConfirmed,
-    setPhpConfirmed,
+    currencyConfirmed,
+    setCurrencyConfirmed,
     fallbackDate,
     setFallbackDate,
     setWorksheetNames,
@@ -272,7 +273,7 @@ export function ImportPage() {
     setAmountMode("amount");
     setSelectedPresetId("auto");
     setResolvedPresetId("generic");
-    setPhpConfirmed(false);
+    setCurrencyConfirmed(false);
     setFallbackDate(localToday());
     setWorksheetRowCount(undefined);
     setWorkbookWarnings([]);
@@ -296,7 +297,7 @@ export function ImportPage() {
     setResolvedPresetId(preset.id);
     setAmountMode(suggested.amountMode);
     setMapping(suggested.mapping);
-    setPhpConfirmed(false);
+    setCurrencyConfirmed(false);
     setFileError(
       parsed.rows.length === 0
         ? "The selected header has no data rows below it."
@@ -323,7 +324,7 @@ export function ImportPage() {
     setResolvedPresetId(detectedPreset.id);
     setAmountMode(suggested.amountMode);
     setMapping(suggested.mapping);
-    setPhpConfirmed(false);
+    setCurrencyConfirmed(false);
     setFallbackDate(localToday());
     setFileError(
       parsed.rows.length === 0
@@ -512,7 +513,7 @@ export function ImportPage() {
     setResolvedPresetId(preset.id);
     setAmountMode(suggested.amountMode);
     setMapping(suggested.mapping);
-    setPhpConfirmed(false);
+    setCurrencyConfirmed(false);
     invalidatePreview();
   }
 
@@ -546,7 +547,9 @@ export function ImportPage() {
     invalidatePreview();
   }
 
-  const currencyColumnProvesPhp = useMemo(() => {
+  // Imports are saved in the workspace currency; the server rejects a row in any other.
+  const importCurrency = useWorkspaceCurrency();
+  const currencyColumnProvesImportCurrency = useMemo(() => {
     if (!csvText || !headerRowNumber || !mapping.currency) return false;
     try {
       const parsed = parseCsv(csvText, { headerRowNumber });
@@ -554,22 +557,25 @@ export function ImportPage() {
       return (
         index >= 0 &&
         parsed.rows.length > 0 &&
-        parsed.rows.every((row) => (row.values[index]?.trim().toUpperCase() ?? "") === "PHP")
+        parsed.rows.every(
+          (row) => (row.values[index]?.trim().toUpperCase() ?? "") === importCurrency,
+        )
       );
     } catch {
       return false;
     }
-  }, [csvText, headerRowNumber, mapping.currency]);
+  }, [csvText, headerRowNumber, mapping.currency, importCurrency]);
 
   const resolvedPreset = getImportPreset(resolvedPresetId);
-  const requiresPhpConfirmation =
-    resolvedPreset.requiresPhpConfirmation && !currencyColumnProvesPhp;
+  const exportCurrencyDiffers =
+    resolvedPreset.exportCurrency !== null && resolvedPreset.exportCurrency !== importCurrency;
+  const requiresCurrencyConfirmation = exportCurrencyDiffers && !currencyColumnProvesImportCurrency;
   const canAttemptPreview = Boolean(
     csvText &&
     !workbookBusy &&
     selectedRowCount > 0 &&
     selectedRowCount <= MAX_IMPORT_ROWS &&
-    (!requiresPhpConfirmation || phpConfirmed),
+    (!requiresCurrencyConfirmation || currencyConfirmed),
   );
   const descriptionMappingMissing = previewAttempted && !mapping.description.trim();
 
@@ -679,7 +685,7 @@ export function ImportPage() {
 
               <ImportMappingStep
                 resolvedPreset={resolvedPreset}
-                requiresPhpConfirmation={requiresPhpConfirmation}
+                requiresCurrencyConfirmation={requiresCurrencyConfirmation}
                 canAttemptPreview={canAttemptPreview}
                 descriptionMappingMissing={descriptionMappingMissing}
                 previewPending={previewMutation.isPending}

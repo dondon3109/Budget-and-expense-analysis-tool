@@ -80,7 +80,7 @@ describe("SafeToSpendHero (mobile)", () => {
       />,
     );
 
-    expect(screen.getByText("1 plan billed in USD isn't counted here.")).toBeTruthy();
+    expect(screen.getByText("1 plan billed in another currency isn't counted here.")).toBeTruthy();
   });
 
   it("raises no overspending alert while there is still something safe to spend", async () => {

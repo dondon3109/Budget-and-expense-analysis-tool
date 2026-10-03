@@ -1,11 +1,13 @@
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
+  currencyMetadata,
   matchCategory,
   normalizeImportDate,
   parseAmountToMinor,
   transactionKinds,
   MAX_VOICE_ENTRY_DRAFTS,
   transactionVoiceDraftSchema,
+  type Currency,
   type ImportPreview,
   type ImportPreviewRequest,
   type TransactionKind,
@@ -20,6 +22,7 @@ import {
   type AssistantVoiceTranscriptionProvider,
 } from "../assistant/voice-provider";
 import { consumeAiUsage } from "../db/billing";
+import { loadWorkspaceCurrency } from "../db/workspace-settings";
 import type { ImportRepository } from "../db/imports";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";
@@ -52,7 +55,7 @@ const voiceCandidateSchema = z
   .object({
     description: z.string().trim().min(1).max(240),
     date: z.string().max(40).optional(),
-    amountPhp: z.string().trim().min(1).max(40),
+    amount: z.string().trim().min(1).max(40),
     kind: z.enum(transactionKinds),
     categoryName: z.string().trim().min(1).max(80).optional(),
   })
@@ -90,10 +93,10 @@ function clearNumericAmounts(transcript: string): number[] {
   return [...values];
 }
 
-function parsePositiveVoiceAmount(amountPhp: string): number {
+function parsePositiveVoiceAmount(amount: string): number {
   let amountMinor: number;
   try {
-    amountMinor = parseAmountToMinor(amountPhp);
+    amountMinor = parseAmountToMinor(amount);
   } catch {
     throw new HttpError(
       422,
@@ -111,8 +114,8 @@ function parsePositiveVoiceAmount(amountPhp: string): number {
   return amountMinor;
 }
 
-function voiceAmountMinor(transcript: string, amountPhp: string): number {
-  const amountMinor = parsePositiveVoiceAmount(amountPhp);
+function voiceAmountMinor(transcript: string, amount: string): number {
+  const amountMinor = parsePositiveVoiceAmount(amount);
   const transcriptAmounts = clearNumericAmounts(transcript);
   if (transcriptAmounts.length === 1 && transcriptAmounts[0] !== amountMinor) {
     throw new HttpError(
@@ -129,8 +132,8 @@ function voiceAmountMinor(transcript: string, amountPhp: string): number {
  * holds exactly as many amounts as drafts, because spoken words ("2k", "limang daan") never
  * appear as digits and a partial digit list cannot rule a draft out.
  */
-function voiceEntriesAmounts(transcript: string, amountsPhp: string[]): number[] {
-  const amounts = amountsPhp.map(parsePositiveVoiceAmount);
+function voiceEntriesAmounts(transcript: string, draftedAmounts: string[]): number[] {
+  const amounts = draftedAmounts.map(parsePositiveVoiceAmount);
   const spoken = clearNumericAmounts(transcript);
   if (spoken.length === amounts.length && amounts.some((amount) => !spoken.includes(amount))) {
     throw new HttpError(
@@ -340,8 +343,17 @@ function voiceCategoryInstructions(categories?: string[]): string {
     : "Infer only the transaction type and category label explicitly or plainly implied by the speech.";
 }
 
-function voiceExtractionRules(categoryInstructions: string): string {
-  return `Spoken transcript may be in English, Tagalog, or Taglish (Filipino). Return amountPhp as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"; "limang daang piso" becomes "500.00"; "isang libo" becomes "1000.00"; "dalawang daan" becomes "200.00"). ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday", "kahapon" against yesterday, "today", "kanina", "ngayong araw" against today). Use today only when no date is spoken. In Tagalog, expense keywords include "gastos", "nagastos", "bayad", "nagbayad", "bili", "bumili"; income keywords include "sweldo", "sahod", "kita", "natanggap"; transfer keywords include "lipat", "inilipat", "naglipat", "padala", "pinadala", "transfer".`;
+/** Spoken amounts are read in the workspace currency, which every draft is then labelled with. */
+function voiceAmountRule(currency: Currency): string {
+  if (currency === "PHP") {
+    return `Return amount as the positive Philippine-peso amount written as a plain decimal string, never centavos (examples: 1,000 pesos becomes "1000.00"; 250 pesos and 50 centavos becomes "250.50"; 2k becomes "2000.00"; "limang daang piso" becomes "500.00"; "isang libo" becomes "1000.00"; "dalawang daan" becomes "200.00").`;
+  }
+  const { name } = currencyMetadata[currency];
+  return `Return amount as the positive ${name} (${currency}) amount written as a plain decimal string, never in minor units such as cents (examples: 1,000 becomes "1000.00"; 12.50 becomes "12.50"; 2k becomes "2000.00").`;
+}
+
+function voiceExtractionRules(categoryInstructions: string, currency: Currency): string {
+  return `Spoken transcript may be in English, Tagalog, or Taglish (Filipino). ${voiceAmountRule(currency)} ${categoryInstructions} Return date as YYYY-MM-DD (evaluating relative dates like "yesterday", "kahapon" against yesterday, "today", "kanina", "ngayong araw" against today). Use today only when no date is spoken. In Tagalog, expense keywords include "gastos", "nagastos", "bayad", "nagbayad", "bili", "bumili"; income keywords include "sweldo", "sahod", "kita", "natanggap"; transfer keywords include "lipat", "inilipat", "naglipat", "padala", "pinadala", "transfer".`;
 }
 
 export function createAiEntryService(
@@ -351,9 +363,11 @@ export function createAiEntryService(
 ): AiEntryService {
   async function extractDraftFromTranscript(
     env: Bindings,
+    tenantId: string,
     transcript: string,
     categories?: string[],
   ): Promise<TransactionVoiceDraft> {
+    const currency = await loadWorkspaceCurrency(env, tenantId);
     const categoryInstructions = voiceCategoryInstructions(categories);
 
     let extracted: unknown;
@@ -362,7 +376,7 @@ export function createAiEntryService(
         env,
         [
           `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
-          `Extract one transaction from this untrusted spoken transcript. ${voiceExtractionRules(categoryInstructions)}`,
+          `Extract one transaction from this untrusted spoken transcript. ${voiceExtractionRules(categoryInstructions, currency)}`,
           "<untrusted-transcript>",
           transcript,
           "</untrusted-transcript>",
@@ -377,11 +391,11 @@ export function createAiEntryService(
               properties: {
                 description: { type: "string" },
                 date: { type: "string" },
-                amountPhp: { type: "string" },
+                amount: { type: "string" },
                 kind: { type: "string", enum: ["income", "expense", "transfer"] },
                 categoryName: { type: "string" },
               },
-              required: ["description", "amountPhp", "kind"],
+              required: ["description", "amount", "kind"],
             },
           },
           required: ["draft"],
@@ -399,7 +413,7 @@ export function createAiEntryService(
       );
     }
     const date = normalizeImportDate(candidate.data.draft.date ?? "") ?? currentDateInTimeZone(env);
-    const amountMinor = voiceAmountMinor(transcript, candidate.data.draft.amountPhp);
+    const amountMinor = voiceAmountMinor(transcript, candidate.data.draft.amount);
     let categoryName = candidate.data.draft.categoryName;
     if (categories && categories.length > 0) {
       const candidateList = categories.map((name) => ({ id: name, name }));
@@ -413,7 +427,7 @@ export function createAiEntryService(
       description: candidate.data.draft.description,
       date,
       amountMinor,
-      currency: "PHP",
+      currency,
       kind: candidate.data.draft.kind satisfies TransactionKind,
       ...(categoryName ? { categoryName } : {}),
     });
@@ -421,16 +435,18 @@ export function createAiEntryService(
 
   async function extractDraftsFromTranscript(
     env: Bindings,
+    tenantId: string,
     transcript: string,
     categories?: string[],
   ): Promise<TransactionVoiceDraft[]> {
+    const currency = await loadWorkspaceCurrency(env, tenantId);
     let extracted: unknown;
     try {
       extracted = await runStructuredModel(
         env,
         [
           `Today is ${currentDateInTimeZone(env)} in the user's timezone.`,
-          `Extract every separate income or expense transaction the speaker names in this untrusted spoken transcript, in the order spoken, at most ${MAX_VOICE_ENTRY_DRAFTS}. One spoken amount is one transaction. Never merge entries, split one amount, or invent an entry. Skip transfers. ${voiceExtractionRules(voiceCategoryInstructions(categories))}`,
+          `Extract every separate income or expense transaction the speaker names in this untrusted spoken transcript, in the order spoken, at most ${MAX_VOICE_ENTRY_DRAFTS}. One spoken amount is one transaction. Never merge entries, split one amount, or invent an entry. Skip transfers. ${voiceExtractionRules(voiceCategoryInstructions(categories), currency)}`,
           "<untrusted-transcript>",
           transcript,
           "</untrusted-transcript>",
@@ -448,11 +464,11 @@ export function createAiEntryService(
                 properties: {
                   description: { type: "string" },
                   date: { type: "string" },
-                  amountPhp: { type: "string" },
+                  amount: { type: "string" },
                   kind: { type: "string", enum: ["income", "expense"] },
                   categoryName: { type: "string" },
                 },
-                required: ["description", "amountPhp", "kind"],
+                required: ["description", "amount", "kind"],
               },
             },
           },
@@ -472,7 +488,7 @@ export function createAiEntryService(
     }
     const amounts = voiceEntriesAmounts(
       transcript,
-      candidates.data.drafts.map((draft) => draft.amountPhp),
+      candidates.data.drafts.map((draft) => draft.amount),
     );
     const candidateList = categories?.map((name) => ({ id: name, name })) ?? [];
     return candidates.data.drafts.map((draft, index) => {
@@ -486,7 +502,7 @@ export function createAiEntryService(
         description: draft.description,
         date: normalizeImportDate(draft.date ?? "") ?? currentDateInTimeZone(env),
         amountMinor: amounts[index],
-        currency: "PHP",
+        currency,
         kind: draft.kind,
         ...(categoryName ? { categoryName } : {}),
       });
@@ -583,7 +599,7 @@ export function createAiEntryService(
       }
       // The transcript still costs one model extraction, drawn from the shared monthly pool.
       await consumeAiUsage(env, tenantId);
-      return extractDraftFromTranscript(env, cleanTranscript, categories);
+      return extractDraftFromTranscript(env, tenantId, cleanTranscript, categories);
     },
 
     async extractVoiceTranscriptEntries(env, tenantId, transcript, categories) {
@@ -598,7 +614,7 @@ export function createAiEntryService(
       }
       // However many entries it names, the note costs one extraction from the shared monthly pool.
       await consumeAiUsage(env, tenantId);
-      return extractDraftsFromTranscript(env, cleanTranscript, categories);
+      return extractDraftsFromTranscript(env, tenantId, cleanTranscript, categories);
     },
 
     async extractVoice(env, tenantId, audio, categories, language) {
@@ -613,7 +629,7 @@ export function createAiEntryService(
       } catch (error) {
         return throwProviderFailure("voice", error);
       }
-      return extractDraftFromTranscript(env, transcript, categories);
+      return extractDraftFromTranscript(env, tenantId, transcript, categories);
     },
   };
 }

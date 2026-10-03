@@ -5,7 +5,7 @@ import { trialEmailService } from "./billing/trial-emails";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
-import { refreshDailyFxRate } from "./fx/rates";
+import { refreshDailyFxRates } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
 import { handleQueuedJob } from "./job-handler";
 import type { JobMessage } from "./jobs";
@@ -106,13 +106,13 @@ export default {
     }
     if (controller.cron !== DAILY_MAINTENANCE_CRON) return;
 
-    const fx = await refreshDailyFxRate(env);
+    const fx = await refreshDailyFxRates(env);
     if (fx) {
       console.log(
         JSON.stringify({
-          message: "Daily exchange rate refreshed",
+          message: "Daily exchange rates refreshed",
           date: fx.date,
-          rate: fx.usdToPhp,
+          currencies: Object.keys(fx.unitsPerUsd).length,
         }),
       );
     }

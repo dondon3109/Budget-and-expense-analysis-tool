@@ -78,9 +78,8 @@ export function MonthlyTrend({
   onSubscribeToPro,
 }: Props) {
   const reduceMotion = useReducedMotion();
-  // The server converts the other currency into the workspace currency before it sums.
+  // The server converts other currencies into the workspace currency before it sums.
   const currency = useWorkspaceCurrency();
-  const otherCurrency = currency === "PHP" ? "USD" : "PHP";
   const narrowViewport = useNarrowViewport();
   const optionRefs = useRef<Partial<Record<CashflowTrendView, HTMLButtonElement | null>>>({});
   const maximumMinor = data?.points.reduce(
@@ -124,7 +123,7 @@ export function MonthlyTrend({
               {formatPeriod(data.range.from, data.range.to)}
               <span className="trend-currency-note">
                 {" "}
-                · {otherCurrency} converted to {currencyMetadata[currency].symbol}
+                · Other currencies converted to {currency}
               </span>
             </p>
           )}

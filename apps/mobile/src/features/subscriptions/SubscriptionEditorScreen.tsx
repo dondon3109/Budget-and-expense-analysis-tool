@@ -121,9 +121,12 @@ export function SubscriptionEditorScreen() {
     () =>
       (referenceState.data?.accounts ?? []).map((account) => ({
         id: account.id,
-        label: account.currency === "USD" ? `${account.name} (USD)` : account.name,
+        label:
+          account.currency === workspaceCurrency
+            ? account.name
+            : `${account.name} (${account.currency})`,
       })),
-    [referenceState.data],
+    [referenceState.data, workspaceCurrency],
   );
 
   const blocked =

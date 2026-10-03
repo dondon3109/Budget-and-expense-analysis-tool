@@ -190,7 +190,7 @@ describe("assistant answer validation", () => {
     };
 
     expect(deterministicPeriodSummaryAnswer(policy, [usdSummary], satisfied)).toBe(
-      "From 2026-07-01 to 2026-07-31, your recorded expenses were USD 50.00. Transactions in PHP are not included.",
+      "From 2026-07-01 to 2026-07-31, your recorded expenses were USD 50.00. Transactions in other currencies are not included.",
     );
   });
 
