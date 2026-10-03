@@ -2,7 +2,7 @@ import { goalConfigFor, type GoalCtaTarget, type PrimaryGoal } from "@zoption/sh
 import { router, type Href } from "expo-router";
 import { useEffect } from "react";
 
-import { useGoalProfileStore } from "@/stores/goal-profile-store";
+import { useGoalProfileStore, useLeadGoal } from "@/stores/goal-profile-store";
 
 /** The shared config names web destinations; this maps each to its mobile screen. */
 function hrefForTarget(goal: PrimaryGoal, target: GoalCtaTarget): Href {
@@ -22,7 +22,7 @@ function hrefForTarget(goal: PrimaryGoal, target: GoalCtaTarget): Href {
 
 /** The goal's first-action CTA for the empty home state, or null for today's default. */
 export function useGoalCta(): { label: string; open: () => void } | null {
-  const goal = useGoalProfileStore((state) => state.profile?.goal ?? null);
+  const goal = useLeadGoal();
   const cta = goalConfigFor(goal).cta;
   if (!goal || !cta) return null;
   return { label: cta.label, open: () => router.push(hrefForTarget(goal, cta.target)) };
@@ -43,7 +43,7 @@ export function promptsForGoal(defaults: readonly string[], goal: PrimaryGoal | 
 export function useGoalPrompt(): void {
   const profile = useGoalProfileStore((state) => state.profile);
   const prompted = useGoalProfileStore((state) => state.prompted);
-  const needsPrompt = Boolean(profile && profile.goal === null && !profile.skipped);
+  const needsPrompt = Boolean(profile && profile.goals.length === 0 && !profile.skipped);
 
   useEffect(() => {
     if (!needsPrompt || prompted) return;

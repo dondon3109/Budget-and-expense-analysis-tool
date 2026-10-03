@@ -9,7 +9,7 @@ jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
 const defaults = ["a?", "b?", "c?"];
 const profile = (goal: string | null, skipped = false) =>
-  ({ goal, otherText: null, selectedAt: null, skipped }) as never;
+  ({ goals: goal ? [goal] : [], otherText: null, selectedAt: null, skipped }) as never;
 
 describe("goal personalization", () => {
   beforeEach(() => {
