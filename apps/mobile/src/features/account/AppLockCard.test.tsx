@@ -16,6 +16,17 @@ jest.mock("expo-secure-store", () => ({
   }),
 }));
 
+const mockBiometrics = { level: 0, succeed: true };
+jest.mock("expo-local-authentication", () => ({
+  SecurityLevel: { NONE: 0, SECRET: 1, BIOMETRIC: 2, BIOMETRIC_WEAK: 2, BIOMETRIC_STRONG: 3 },
+  getEnrolledLevelAsync: jest.fn(() => Promise.resolve(mockBiometrics.level)),
+  authenticateAsync: jest.fn(() =>
+    Promise.resolve(
+      mockBiometrics.succeed ? { success: true } : { success: false, error: "user_cancel" },
+    ),
+  ),
+}));
+
 jest.mock("expo-crypto", () => ({
   CryptoDigestAlgorithm: { SHA256: "SHA-256" },
   randomUUID: () => "salt",
@@ -29,7 +40,7 @@ jest.mock("expo-crypto", () => ({
     ),
 }));
 
-import { readAppLockKind, setAppLock, verifyAppLock } from "@/auth/app-lock";
+import { readAppLockKind, readBiometricUnlock, setAppLock, verifyAppLock } from "@/auth/app-lock";
 import { MAX_ATTEMPTS } from "@/features/app-lock/AppLockGate";
 
 import { AppLockCard } from "./AppLockCard";
@@ -49,7 +60,11 @@ async function enterPin(pin: string) {
 }
 
 describe("AppLockCard", () => {
-  beforeEach(() => mockSecureValues.clear());
+  beforeEach(() => {
+    mockSecureValues.clear();
+    mockBiometrics.level = 0;
+    mockBiometrics.succeed = true;
+  });
 
   it("turns the lock on with a confirmed PIN and off with the current one", async () => {
     await renderCard();
@@ -100,6 +115,38 @@ describe("AppLockCard", () => {
     expect(await screen.findByText(/Too many attempts/)).toBeTruthy();
     expect(screen.getByLabelText("1").props.accessibilityState.disabled).toBe(true);
     await expect(readAppLockKind(subject)).resolves.toBe("pin");
+  });
+
+  it("turns biometric unlock on only after a successful prompt", async () => {
+    mockBiometrics.level = 3;
+    await setAppLock(subject, "246810");
+    await renderCard();
+    const toggle = await screen.findByLabelText("Unlock with biometrics");
+
+    mockBiometrics.succeed = false;
+    await fireEvent(toggle, "valueChange", true);
+    await expect(readBiometricUnlock(subject)).resolves.toBe(false);
+    expect(screen.getByLabelText("Unlock with biometrics").props.value).toBe(false);
+
+    mockBiometrics.succeed = true;
+    await fireEvent(toggle, "valueChange", true);
+    await waitFor(() =>
+      expect(screen.getByLabelText("Unlock with biometrics").props.value).toBe(true),
+    );
+    await expect(readBiometricUnlock(subject)).resolves.toBe(true);
+
+    await fireEvent.press(screen.getByText("Turn off app lock"));
+    await enterPin("246810");
+    expect(await screen.findByText("App lock is off.")).toBeTruthy();
+    await expect(readBiometricUnlock(subject)).resolves.toBe(false);
+    expect(screen.queryByLabelText("Unlock with biometrics")).toBeNull();
+  });
+
+  it("hides biometric unlock on a device without a strong enrolled biometric", async () => {
+    await setAppLock(subject, "246810");
+    await renderCard();
+    expect(screen.getByText("Change PIN")).toBeTruthy();
+    expect(screen.queryByLabelText("Unlock with biometrics")).toBeNull();
   });
 
   it("does not offer the number pad for a legacy app password", async () => {

@@ -1,11 +1,15 @@
 import { useEffect, useState } from "react";
-import { Modal, Text, View } from "react-native";
+import { Modal, StyleSheet, Switch, Text, View } from "react-native";
 
 import {
   PIN_LENGTH,
+  authenticateWithBiometrics,
   clearAppLock,
+  isBiometricUnlockAvailable,
   readAppLockKind,
+  readBiometricUnlock,
   setAppLock,
+  setBiometricUnlock,
   verifyAppLock,
   type AppLockKind,
 } from "@/auth/app-lock";
@@ -13,7 +17,7 @@ import { COOLDOWN_MESSAGE, useAttemptLimit } from "@/features/app-lock/AppLockGa
 import { PinPadScreen, PinSetupScreen } from "@/features/app-lock/PinPad";
 import { Button, Card, SkeletonLines } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { spacing, touchTarget, typography } from "@/ui/tokens";
 
 /** Which full-screen PIN step is open. Changing and turning off check the current PIN first. */
 type PinStep = "create" | "verify-to-change" | "verify-to-turn-off";
@@ -29,6 +33,9 @@ export function AppLockCard({ subject }: { subject: string }) {
   // The same limit as the lock screen, so an unlocked phone is no faster way to guess the PIN.
   const attempts = useAttemptLimit();
   const [feedback, setFeedback] = useState<{ error?: string; success?: string }>({});
+  // Whether this device has an enrolled strong biometric, and whether the user turned it on.
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -39,10 +46,30 @@ export function AppLockCard({ subject }: { subject: string }) {
       .catch(() => {
         if (active) setFeedback({ error: "Zoption could not read the app lock setting." });
       });
+    // A device without biometrics simply does not show the option.
+    Promise.all([isBiometricUnlockAvailable(), readBiometricUnlock(subject)])
+      .then(([available, enabled]) => {
+        if (!active) return;
+        setBiometricAvailable(available);
+        setBiometricEnabled(enabled);
+      })
+      .catch(() => undefined);
     return () => {
       active = false;
     };
   }, [subject]);
+
+  const toggleBiometrics = async (next: boolean): Promise<void> => {
+    setFeedback({});
+    try {
+      // Turning it on proves the prompt works first; turning it off only tightens the lock.
+      if (next && !(await authenticateWithBiometrics("Use biometrics to unlock Zoption"))) return;
+      await setBiometricUnlock(subject, next);
+      setBiometricEnabled(next);
+    } catch {
+      setFeedback({ error: "Zoption could not change the biometrics setting." });
+    }
+  };
 
   const open = (next: PinStep): void => {
     setPin("");
@@ -72,6 +99,7 @@ export function AppLockCard({ subject }: { subject: string }) {
       }
       await clearAppLock(subject);
       setLockKind(null);
+      setBiometricEnabled(false);
       close();
       setFeedback({ success: "App lock is off." });
     } catch {
@@ -124,6 +152,19 @@ export function AppLockCard({ subject }: { subject: string }) {
           </Text>
         ) : lockKind === "pin" ? (
           <View className="gap-2">
+            {biometricAvailable ? (
+              <View style={styles.option}>
+                <Text style={[typography.headline, { color: theme.colors.text }]}>
+                  Unlock with biometrics
+                </Text>
+                <Switch
+                  accessibilityLabel="Unlock with biometrics"
+                  value={biometricEnabled}
+                  onValueChange={(next) => void toggleBiometrics(next)}
+                  trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
+                />
+              </View>
+            ) : null}
             <Button variant="secondary" onPress={() => open("verify-to-change")}>
               Change PIN
             </Button>
@@ -172,3 +213,13 @@ export function AppLockCard({ subject }: { subject: string }) {
     </Card>
   );
 }
+
+const styles = StyleSheet.create({
+  option: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: touchTarget,
+    gap: spacing.sm,
+  },
+});
