@@ -1,14 +1,15 @@
 import { useState } from "react";
 
-import { saveGoal, skipGoal } from "@/api/goal-profile";
+import { saveGoals, skipGoal } from "@/api/goal-profile";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import type { PrimaryGoal } from "@zoption/shared";
 
-export type GoalChoice = { goal: PrimaryGoal; otherText?: string };
+/** `goals` is in the order they were picked; the first is the lead goal. */
+export type GoalChoice = { goals: PrimaryGoal[]; otherText?: string };
 
 /**
- * Saves or skips the goal on the Worker. Both need a connection; a failure leaves the stored
+ * Saves or skips the goals on the Worker. Both need a connection; a failure leaves the stored
  * profile as it was and returns false with a message, so the screen stays usable and Skip still works.
  */
 export function useGoalActions() {
@@ -18,15 +19,15 @@ export function useGoalActions() {
   const [error, setError] = useState<string | null>(null);
 
   const run = async (
-    request: (api: { accessToken: string }) => ReturnType<typeof skipGoal>,
+    request: (api: { accessToken: string }) => Promise<void>,
   ): Promise<boolean> => {
     setBusy(true);
     setError(null);
     try {
-      setProfile(await request({ accessToken: await session.getAccessToken(false) }));
+      await request({ accessToken: await session.getAccessToken(false) });
       return true;
     } catch (failure) {
-      setError(failure instanceof Error ? failure.message : "Your goal could not be saved.");
+      setError(failure instanceof Error ? failure.message : "Your goals could not be saved.");
       return false;
     } finally {
       setBusy(false);
@@ -36,7 +37,12 @@ export function useGoalActions() {
   return {
     busy,
     error,
-    save: (choice: GoalChoice) => run((api) => saveGoal(api, choice)),
-    skip: () => run(skipGoal),
+    save: (choice: GoalChoice) => run(async (api) => setProfile(await saveGoals(api, choice))),
+    skip: () =>
+      run(async (api) => {
+        // Skip answers in the single-goal shape; a skipper has no goals.
+        const { goal, otherText, selectedAt, skipped } = await skipGoal(api);
+        setProfile({ goals: goal ? [goal] : [], otherText, selectedAt, skipped });
+      }),
   };
 }
