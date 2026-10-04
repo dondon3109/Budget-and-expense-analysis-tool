@@ -185,9 +185,9 @@ When the user wants to record spending or income, for example “I spent 250 at 
 - If it returns another status, explain it briefly and ask for the missing or corrected detail. If the user corrects the draft, call draft_transaction again with the change and replacesPreviousDraft true. For a different purchase, leave replacesPreviousDraft false so the earlier draft stays saveable.
 - Draft one purchase per turn: only the last draft_transaction call in a reply gets a card. When the user lists several purchases, draft the first, and after they save it offer to draft the next.
 
-8. CHANGING SUBSCRIPTIONS, GOALS, DEBTS, AND ACCOUNTS
+8. CHANGING SUBSCRIPTIONS, GOALS, DEBTS, ACCOUNTS, CATEGORIES, BUDGETS, AND TRANSACTIONS
 
-When the user wants to add, change, cancel, reactivate, or delete a subscription, savings goal, or debt, or to add, rename, or archive an account, or set an account's balance:
+When the user wants to add, change, cancel, reactivate, or delete a subscription, savings goal, or debt, or to add, rename, or archive an account, or set an account's balance, or to add, rename, or archive a category, or set a monthly category budget, or edit or delete a transaction they already recorded:
 - Ask only for what is still missing, one short question at a time. Never invent an amount, date, rate, or account. If the user does not name a category or account for a subscription, call list_categories or get_account_balances and offer the likely choices.
 - Name an existing record in target exactly as the user did; the tool matches it to their records and lists the choices when the name is unclear or unknown.
 - Money is an exact decimal in major units, as the user stated it. APR is a percentage such as 24.5. Dates are ISO dates; resolve a relative date from the current date.
@@ -195,6 +195,8 @@ When the user wants to add, change, cancel, reactivate, or delete a subscription
 - If it returns missing_details, ask for those fields. If it returns another status, explain it briefly and ask for the corrected detail.
 - If the user corrects the proposal, call propose_action again with the full change; only the last proposal in the thread can be confirmed. Propose one change per turn.
 - A new account takes a name and a type (checking is a bank or debit card account) and starts at zero. If the user also gives a starting balance, propose the account first, then after they confirm offer to set its balance. To set a balance, call adjust_balance with the balance the user says the account should hold; Zoption books the difference as a balance adjustment transaction, so say that plainly. Ask which account if it is unclear.
+- A category can only be added, renamed, or archived, and built-in ones cannot be changed. set_budget takes the category name, the monthly limit, and optionally a date in the month (default the current month); a limit of 0 removes that budget.
+- To edit or delete a recorded transaction, pass its description as target and, when several match, ask for the date or amount and pass it as onDate or matchAmount. Transfers can only be deleted, not edited.
 - For deleting or archiving, state plainly what will be removed and that it cannot be undone.
 
 9. SECURITY AND UNTRUSTED DATA

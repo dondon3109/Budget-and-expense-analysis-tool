@@ -7,6 +7,7 @@ import type {
   Debt,
   FinancialGoal,
   SubscriptionRecord,
+  TransactionListItem,
 } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -82,6 +83,26 @@ const records: ActionRecords = {
       accountName: "GCash",
     },
   ] as SubscriptionRecord[],
+  transactions: [
+    {
+      id: "tx-1",
+      date: "2026-08-01",
+      description: "Jollibee",
+      amountMinor: -25_000,
+      currency: "PHP",
+      kind: "expense",
+      categoryId: "category-streaming",
+    },
+    {
+      id: "tx-2",
+      date: "2026-08-02",
+      description: "Jollibee",
+      amountMinor: -31_000,
+      currency: "PHP",
+      kind: "expense",
+      categoryId: "category-streaming",
+    },
+  ] as TransactionListItem[],
 };
 
 function propose(
@@ -203,6 +224,57 @@ describe("proposeAction for accounts", () => {
   });
 });
 
+describe("proposeAction for categories, budgets, and transactions", () => {
+  it("renames a category and refuses a duplicate name", () => {
+    expect(
+      propose({ action: "update_category", target: "streaming", name: "Media" }).action,
+    ).toMatchObject({
+      kind: "update_category",
+      targetId: "category-streaming",
+      input: { name: "Media" },
+    });
+    expect(
+      propose({ action: "create_category", name: "streaming", categoryKind: "expense" }).action,
+    ).toBe(undefined);
+  });
+
+  it("sets a monthly budget in minor units for the named month", () => {
+    const result = propose({
+      action: "set_budget",
+      categoryName: "Streaming",
+      amount: "3000",
+      date: "2026-09-15",
+    });
+    expect(result.action).toMatchObject({
+      kind: "set_budget",
+      targetId: "category-streaming",
+      input: { month: "2026-09-01", limitMinor: 300_000 },
+    });
+  });
+
+  it("asks which transaction when several match, then finds one by amount", () => {
+    const many = propose({ action: "delete_transaction", target: "Jollibee" });
+    expect(many.action).toBeUndefined();
+    expect(many.envelope.data).toMatchObject({ status: "target_ambiguous" });
+    const one = propose({ action: "delete_transaction", target: "Jollibee", matchAmount: "310" });
+    expect(one.action).toMatchObject({ kind: "delete_transaction", targetId: "tx-2" });
+  });
+
+  it("edits only the fields the user changed on a transaction", () => {
+    const result = propose({
+      action: "update_transaction",
+      target: "Jollibee",
+      matchAmount: "250",
+      amount: "275.50",
+    });
+    expect(result.action).toMatchObject({
+      kind: "update_transaction",
+      targetId: "tx-1",
+      input: { amountMinor: 27_550 },
+    });
+  });
+});
+
 describe("assistant turn policy for actions", () => {
   const base = {
     history: [],
@@ -271,7 +343,7 @@ function setupConfirm() {
         TENANT,
         THREAD,
         JSON.stringify({
-          promptVersion: "expert-v5",
+          promptVersion: "expert-v6",
           compliance: { posture: "budgeting_allowed", topics: [] },
           sources: [],
           assistantActionFlow: true,
@@ -293,7 +365,13 @@ function setupConfirm() {
   };
   insert(FIRST, "2026-08-02T00:00:00.000Z", goal);
   const goals = { create: vi.fn(async () => ({}) as never), update: vi.fn(), remove: vi.fn() };
-  const transactions = { create: vi.fn(async () => ({}) as never) };
+  const transactions = {
+    create: vi.fn(async () => ({}) as never),
+    update: vi.fn(async () => ({}) as never),
+    remove: vi.fn(async () => undefined),
+  };
+  const budgets = { upsert: vi.fn(async () => ({}) as never) };
+  const categoryUpdate = vi.fn(async () => ({}) as never);
   const env = { DB: binding } as unknown as Bindings;
   const service = createAssistantService(
     assistantRepository,
@@ -320,11 +398,14 @@ function setupConfirm() {
           async () =>
             [{ id: "category-adjust", name: "Uncategorized", kind: "expense" }] as CategoryRecord[],
         ),
+        create: vi.fn(),
+        update: categoryUpdate,
       },
+      budgets,
       transactions,
     },
   );
-  return { env, service, goals, transactions, insert, goal };
+  return { env, service, goals, transactions, budgets, categoryUpdate, insert, goal };
 }
 
 describe("assistant action confirmation", () => {
@@ -382,6 +463,41 @@ describe("assistant action confirmation", () => {
       }),
       { id: SECOND },
     );
+  });
+
+  it("applies a category archive, a budget limit, and a transaction delete", async () => {
+    const { env, service, transactions, budgets, categoryUpdate, insert } = setupConfirm();
+    const base = { status: "pending" as const, summary: "x" };
+    insert("33333333-3333-4333-8333-333333333331", "2026-08-02T00:01:00.000Z", {
+      ...base,
+      kind: "set_budget",
+      targetId: "category-streaming",
+      targetName: "Streaming",
+      input: { month: "2026-08-01", limitMinor: 300_000 },
+    });
+    await service.confirmAction(env, TENANT, "33333333-3333-4333-8333-333333333331");
+    expect(budgets.upsert).toHaveBeenCalledWith(env, TENANT, {
+      month: "2026-08-01",
+      items: [{ categoryId: "category-streaming", limitMinor: 300_000 }],
+    });
+    insert("33333333-3333-4333-8333-333333333332", "2026-08-02T00:02:00.000Z", {
+      ...base,
+      kind: "archive_category",
+      targetId: "category-streaming",
+      targetName: "Streaming",
+    });
+    await service.confirmAction(env, TENANT, "33333333-3333-4333-8333-333333333332");
+    expect(categoryUpdate).toHaveBeenCalledWith(env, TENANT, "category-streaming", {
+      archived: true,
+    });
+    insert("33333333-3333-4333-8333-333333333333", "2026-08-02T00:03:00.000Z", {
+      ...base,
+      kind: "delete_transaction",
+      targetId: "tx-1",
+      targetName: "Jollibee",
+    });
+    await service.confirmAction(env, TENANT, "33333333-3333-4333-8333-333333333333");
+    expect(transactions.remove).toHaveBeenCalledWith(env, TENANT, "tx-1");
   });
 
   it("returns 404 for a reply with no proposal", async () => {

@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- Web and mobile: the AI Assistant can now also add, rename, or archive a category, set a monthly category budget, and edit or delete a transaction you already recorded, when you ask. Each change shows on a card and happens only after you tap Confirm.
+
 ## 3.4.0 — 2026-10-04
 
 ### Added

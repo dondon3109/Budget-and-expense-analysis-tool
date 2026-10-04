@@ -181,6 +181,7 @@ export function createDependencies(overrides: AppOptions = {}) {
         debts: debtStore,
         accounts: accountStore as AssistantActionDependencies["accounts"],
         categories: categoryStore,
+        budgets: budgetStore,
         transactions: transactionStore,
       },
     );

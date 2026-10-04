@@ -8,6 +8,7 @@ import {
 } from "@zoption/shared";
 
 import type { AccountRepository } from "../db/accounts";
+import type { BudgetRepository } from "../db/budgets";
 import type { AssistantActionRepository } from "../db/assistant-actions";
 import type { CategoryRepository } from "../db/categories";
 import type { DebtRepository } from "../db/debts";
@@ -24,8 +25,9 @@ export interface AssistantActionDependencies {
   goals: Pick<FinancialGoalRepository, "create" | "update" | "remove">;
   debts: Pick<DebtRepository, "create" | "update" | "remove">;
   accounts: Required<Pick<AccountRepository, "list" | "create" | "update" | "remove">>;
-  categories: Pick<CategoryRepository, "list">;
-  transactions: Pick<TransactionRepository, "create">;
+  categories: Pick<CategoryRepository, "list" | "create" | "update">;
+  budgets: Pick<BudgetRepository, "upsert">;
+  transactions: Pick<TransactionRepository, "create" | "update" | "remove">;
 }
 
 /** The user's calendar day, so an early-morning adjustment is not booked on yesterday. */
@@ -132,6 +134,27 @@ async function apply(
         action.targetId,
         action.input.newBalanceMinor,
       );
+      return;
+    case "create_category":
+      await deps.categories.create(env, tenantId, action.input);
+      return;
+    case "update_category":
+      await deps.categories.update(env, tenantId, action.targetId, action.input);
+      return;
+    case "archive_category":
+      await deps.categories.update(env, tenantId, action.targetId, { archived: true });
+      return;
+    case "set_budget":
+      await deps.budgets.upsert(env, tenantId, {
+        month: action.input.month,
+        items: [{ categoryId: action.targetId, limitMinor: action.input.limitMinor }],
+      });
+      return;
+    case "update_transaction":
+      await deps.transactions.update(env, tenantId, action.targetId, action.input);
+      return;
+    case "delete_transaction":
+      await deps.transactions.remove(env, tenantId, action.targetId);
       return;
   }
 }

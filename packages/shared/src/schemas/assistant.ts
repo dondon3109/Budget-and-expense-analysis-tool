@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { GOAL_AND_DEBT_MAX_MINOR } from "../limits";
+import { BUDGET_AND_SUBSCRIPTION_MAX_MINOR, GOAL_AND_DEBT_MAX_MINOR } from "../limits";
 import {
   accountTypes,
   assistantSpeechVoices,
@@ -11,8 +11,9 @@ import {
   subscriptionBillingCycles,
   transactionKinds,
 } from "../types";
-import { isoDateSchema, resourceIdSchema } from "./common";
-import { accountInputSchema, accountUpdateSchema } from "./ledger";
+import { categoryInputSchema, categoryUpdateSchema } from "./categories";
+import { isoDateSchema, monthStartSchema, resourceIdSchema } from "./common";
+import { accountInputSchema, accountUpdateSchema, transactionUpdateSchema } from "./ledger";
 import {
   debtInputSchema,
   debtUpdateSchema,
@@ -356,6 +357,12 @@ export const assistantActionToolSchema = z
       "update_account",
       "archive_account",
       "adjust_balance",
+      "create_category",
+      "update_category",
+      "archive_category",
+      "set_budget",
+      "update_transaction",
+      "delete_transaction",
     ]),
     target: z.string().trim().min(1).max(120).optional(),
     name: z.string().trim().min(1).max(120).optional(),
@@ -371,6 +378,10 @@ export const assistantActionToolSchema = z
     minimumPayment: decimalMoneyStringSchema.optional(),
     accountType: z.enum(accountTypes).optional(),
     currency: z.enum(currencies).optional(),
+    categoryKind: z.enum(["income", "expense"]).optional(),
+    /** Finds an existing transaction: its date and amount, which `date` and `amount` do not mean there. */
+    onDate: isoDateSchema.optional(),
+    matchAmount: decimalMoneyStringSchema.optional(),
     currentDate: isoDateSchema,
   })
   .strict();
@@ -485,6 +496,57 @@ export const assistantActionSchema = z.discriminatedUnion("kind", [
       ...assistantActionTarget,
       kind: z.literal("adjust_balance"),
       input: z.object({ newBalanceMinor: z.number().int().safe().min(0) }).strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      kind: z.literal("create_category"),
+      input: categoryInputSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("update_category"),
+      input: categoryUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("archive_category"),
+    })
+    .strict(),
+  // The target is the category; the month's limit for it is replaced.
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("set_budget"),
+      input: z
+        .object({
+          month: monthStartSchema,
+          limitMinor: z.number().int().safe().min(0).max(BUDGET_AND_SUBSCRIPTION_MAX_MINOR),
+        })
+        .strict(),
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("update_transaction"),
+      input: transactionUpdateSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...assistantActionBase,
+      ...assistantActionTarget,
+      kind: z.literal("delete_transaction"),
     })
     .strict(),
 ]);
