@@ -167,33 +167,6 @@ export function TransactionVoiceEntry({
   return (
     <>
       <Card style={styles.card}>
-        <View className="flex-row items-start gap-3">
-          <View
-            style={[
-              styles.icon,
-              { backgroundColor: recording ? theme.colors.dangerSoft : theme.colors.brandSoft },
-            ]}
-          >
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={recording ? theme.colors.danger : theme.colors.brand}
-              name={recording ? "waveform" : "microphone-outline"}
-              size={24}
-            />
-          </View>
-          <View className="min-w-0 flex-1 gap-1">
-            <Text style={[typography.headline, { color: theme.colors.text }]}>
-              Say it, then inspect it
-            </Text>
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              {voiceLanguage === "fil"
-                ? "Subukan: “Gumastos ng 250 pesos sa tanghalian kanina.” Nothing saves until you review this form."
-                : voiceLanguage === "auto"
-                  ? "Try “Spent 250 pesos on lunch today” or “Gumastos ng 250 kahapon”. Nothing saves until you review this form."
-                  : "Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form."}
-            </Text>
-          </View>
-        </View>
         <VoiceLanguageToggleGroup language={voiceLanguage} onLanguageChange={setVoiceLanguage} />
         {recording ? (
           <View
@@ -286,13 +259,6 @@ export function TransactionVoiceEntry({
 
 const styles = StyleSheet.create({
   card: { gap: spacing.md },
-  icon: {
-    alignItems: "center",
-    borderRadius: radii.md,
-    height: touchTarget,
-    justifyContent: "center",
-    width: touchTarget,
-  },
   recordingStatus: {
     borderWidth: 1,
     borderRadius: radii.md,

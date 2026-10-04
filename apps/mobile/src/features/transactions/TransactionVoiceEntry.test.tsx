@@ -65,12 +65,9 @@ describe("TransactionVoiceEntry language support", () => {
       true,
     );
     expect(capturedRecorderOptions.language).toBe("auto");
-    expect(
-      screen.getByText(/Try “Spent 250 pesos on lunch today” or “Gumastos ng 250 kahapon”/),
-    ).toBeTruthy();
   });
 
-  it("switches language to Tagalog and updates helper guidance", async () => {
+  it("switches language to Tagalog", async () => {
     render(<TransactionVoiceEntry onDraft={jest.fn()} />);
 
     await waitFor(() => {
@@ -82,14 +79,10 @@ describe("TransactionVoiceEntry language support", () => {
     });
 
     expect(useVoiceLanguageStore.getState().language).toBe("fil");
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Subukan: “Gumastos ng 250 pesos sa tanghalian kanina.”/),
-      ).toBeTruthy();
-    });
+    expect(capturedRecorderOptions.language).toBe("fil");
   });
 
-  it("switches language to English and updates helper guidance", async () => {
+  it("switches language to English", async () => {
     render(<TransactionVoiceEntry onDraft={jest.fn()} />);
 
     await waitFor(() => {
@@ -101,12 +94,6 @@ describe("TransactionVoiceEntry language support", () => {
     });
 
     expect(useVoiceLanguageStore.getState().language).toBe("en");
-    await waitFor(() => {
-      expect(
-        screen.getByText(
-          /Try “Spent 250 pesos on lunch today.” Nothing saves until you review this form./,
-        ),
-      ).toBeTruthy();
-    });
+    expect(capturedRecorderOptions.language).toBe("en");
   });
 });
