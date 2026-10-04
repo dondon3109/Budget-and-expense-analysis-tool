@@ -558,7 +558,8 @@ export interface AssistantDataQualitySignal {
 
 export interface AssistantSourceMetadata {
   label: string;
-  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts" | "subscriptions";
+  sourceType:
+    "transactions" | "categories" | "budgets" | "accounts" | "goals" | "debts" | "subscriptions";
   period?: AssistantDateRange;
   baselinePeriod?: AssistantDateRange;
   filters?: {

@@ -138,6 +138,7 @@ function sourceTypeLabel(source: AssistantSourceMetadata): string {
   if (source.recordCount !== undefined) {
     const label = {
       transactions: "transaction",
+      categories: "category",
       budgets: "budget record",
       accounts: "account",
       goals: "goal",
@@ -152,6 +153,7 @@ function sourceTypeLabel(source: AssistantSourceMetadata): string {
 function sourceName(source: AssistantSourceMetadata): string {
   return {
     transactions: "Transactions",
+    categories: "Categories",
     budgets: "Budgets",
     accounts: "Accounts",
     goals: "Goals",

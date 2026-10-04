@@ -26,6 +26,7 @@ import {
 } from "../db/assistant-transaction-drafts";
 import { assistantActionRepository } from "../db/assistant-actions";
 import { accountRepository } from "../db/accounts";
+import { budgetRepository } from "../db/budgets";
 import { categoryRepository } from "../db/categories";
 import { debtRepository } from "../db/debts";
 import { financialGoalRepository } from "../db/goals";
@@ -248,6 +249,7 @@ export function createAssistantService(
     debts: debtRepository,
     accounts: accountRepository as AssistantActionDependencies["accounts"],
     categories: categoryRepository,
+    budgets: budgetRepository,
     transactions: transactionRepository,
   },
 ): AssistantService {

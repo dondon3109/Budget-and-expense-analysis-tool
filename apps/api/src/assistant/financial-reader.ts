@@ -968,7 +968,7 @@ export function createFinancialReader(
 
     proposeAction(context, input) {
       return loadAndProposeAction(
-        { accounts, categories, goals, debts, subscriptions },
+        { accounts, categories, goals, debts, subscriptions, transactions },
         context,
         input,
         workspaceCurrencyLoader,

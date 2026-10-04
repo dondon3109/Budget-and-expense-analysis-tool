@@ -267,7 +267,7 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
     function: {
       name: "propose_action",
       description:
-        "Prepare a change to a subscription, savings goal, debt, or account for the user to review and confirm. adjust_balance sets an account to the balance the user states (amount) by recording an adjustment. It does not apply anything. Name existing records in target. Amounts are exact decimals in major units; apr is a percentage such as 24.5. Ask for missing details instead of guessing; the result lists any missing fields.",
+        "Prepare a change to a subscription, savings goal, debt, account, category, monthly budget, or an existing transaction for the user to review and confirm. adjust_balance sets an account to the balance the user states (amount) by recording an adjustment. It does not apply anything. Name existing records in target; for a transaction, target is its description and onDate/matchAmount pick one when several match, while date, amount, name, categoryName and accountName are the new values. set_budget takes categoryName, amount (monthly limit, 0 removes it) and optional date for the month. Amounts are exact decimals in major units; apr is a percentage such as 24.5. Ask for missing details instead of guessing; the result lists any missing fields.",
       parameters: {
         type: "object",
         properties: {
@@ -288,6 +288,12 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
               "update_account",
               "archive_account",
               "adjust_balance",
+              "create_category",
+              "update_category",
+              "archive_category",
+              "set_budget",
+              "update_transaction",
+              "delete_transaction",
             ],
           },
           target: {
@@ -336,6 +342,19 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
           },
           currency: { type: "string", description: "New account currency code, e.g. PHP" },
           minimumPayment: { type: "string", description: "Debt minimum monthly payment" },
+          categoryKind: {
+            type: "string",
+            enum: ["income", "expense"],
+            description: "New category kind",
+          },
+          onDate: {
+            type: "string",
+            description: "update/delete_transaction: ISO date of the existing transaction",
+          },
+          matchAmount: {
+            type: "string",
+            description: "update/delete_transaction: amount of the existing transaction",
+          },
           currentDate: { type: "string", description: "Trusted current ISO date" },
         },
         required: ["action", "currentDate"],

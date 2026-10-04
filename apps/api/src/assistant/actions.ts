@@ -1,16 +1,13 @@
 import {
-  assistantActionSchema,
-  parseAmountToMinor,
   matchCategory,
   type AccountRecord,
-  type AssistantAction,
   type AssistantActionToolInput,
   type Currency,
-  type AssistantToolResultEnvelope,
   type CategoryRecord,
   type Debt,
   type FinancialGoal,
   type SubscriptionRecord,
+  type TransactionListItem,
 } from "@zoption/shared";
 
 import type { AccountRepository } from "../db/accounts";
@@ -18,110 +15,38 @@ import type { CategoryRepository } from "../db/categories";
 import type { DebtRepository } from "../db/debts";
 import type { FinancialGoalRepository } from "../db/goals";
 import type { SubscriptionRepository } from "../db/subscriptions";
+import type { TransactionRepository } from "../db/transactions";
 import type { Bindings } from "../types";
+import {
+  invalid,
+  isProposal,
+  minor,
+  missing,
+  ready,
+  reply,
+  resolveTarget,
+  sourceFor,
+  type ActionProposal,
+} from "./action-helpers";
+import { proposeBudget, proposeCategory, proposeTransaction } from "./actions-ledger";
 import { findAccountByName, formatMoney, normalizedName } from "./record-format";
 
 /** The tenant's records a proposal is resolved against. Only the kinds an action needs are loaded. */
+export type { ActionProposal };
+
 export interface ActionRecords {
   accounts: readonly AccountRecord[];
   categories: readonly CategoryRecord[];
   goals: readonly FinancialGoal[];
   debts: readonly Debt[];
   subscriptions: readonly SubscriptionRecord[];
-}
-
-export interface ActionProposal {
-  envelope: AssistantToolResultEnvelope<unknown>;
-  /** Kept out of the envelope, so its record ids never reach the model or the audit trail. */
-  action?: AssistantAction;
-}
-
-type SourceType = "subscriptions" | "goals" | "debts" | "accounts";
-
-function sourceFor(kind: AssistantActionToolInput["action"]): SourceType {
-  if (kind.endsWith("subscription") || kind === "set_subscription_status") return "subscriptions";
-  if (kind.endsWith("goal")) return "goals";
-  if (kind.endsWith("debt")) return "debts";
-  return "accounts";
+  /** Candidates for a transaction target, already narrowed by the search the request named. */
+  transactions: readonly TransactionListItem[];
 }
 
 /** What the account holds in its own currency, as the account list and Adjust balance show it. */
 export function accountBalanceMinor(account: AccountRecord): number {
   return account.balancesByCurrency?.[account.currency] ?? account.balanceMinor ?? 0;
-}
-
-function reply(
-  input: AssistantActionToolInput,
-  data: Record<string, unknown>,
-): AssistantToolResultEnvelope<unknown> {
-  return {
-    data,
-    source: { sourceType: sourceFor(input.action) },
-    dataQuality: { status: "reliable", signals: [] },
-  };
-}
-
-function missing(input: AssistantActionToolInput, fields: string[]): ActionProposal {
-  return { envelope: reply(input, { status: "missing_details", missing: fields }) };
-}
-
-function invalid(input: AssistantActionToolInput, reason: string): ActionProposal {
-  return { envelope: reply(input, { status: "invalid", reason }) };
-}
-
-/** An exact name wins; otherwise a single partial match does, so "netflix" finds "Netflix Premium". */
-function findByName<T extends { name: string }>(
-  items: readonly T[],
-  name: string,
-): T | "many" | undefined {
-  const wanted = normalizedName(name);
-  const exact = items.filter((item) => normalizedName(item.name) === wanted);
-  if (exact.length === 1) return exact[0];
-  if (exact.length > 1) return "many";
-  const partial = items.filter((item) => normalizedName(item.name).includes(wanted));
-  if (partial.length === 1) return partial[0];
-  return partial.length > 1 ? "many" : undefined;
-}
-
-function resolveTarget<T extends { id: string; name: string }>(
-  input: AssistantActionToolInput,
-  items: readonly T[],
-): T | ActionProposal {
-  if (!input.target) return missing(input, ["target"]);
-  const found = findByName(items, input.target);
-  if (found && found !== "many") return found;
-  return {
-    envelope: reply(input, {
-      status: found === "many" ? "target_ambiguous" : "target_not_found",
-      target: input.target,
-      available: items.map((item) => item.name),
-    }),
-  };
-}
-
-function isProposal(value: object): value is ActionProposal {
-  return "envelope" in value;
-}
-
-function ready(input: AssistantActionToolInput, action: Record<string, unknown>): ActionProposal {
-  const parsed = assistantActionSchema.safeParse({ ...action, status: "pending" });
-  if (!parsed.success) {
-    return invalid(input, parsed.error.issues[0]?.message ?? "The details are not valid.");
-  }
-  const destructive = parsed.data.kind.startsWith("delete_");
-  return {
-    action: parsed.data,
-    envelope: reply(input, {
-      status: "ready",
-      applied: false,
-      summary: parsed.data.summary,
-      nextStep: `Not applied yet. Ask the user to review the card and tap ${destructive ? "Delete" : "Confirm"}.`,
-    }),
-  };
-}
-
-function minor(value: string): number {
-  return parseAmountToMinor(value);
 }
 
 function resolveCategoryAndAccount(
@@ -519,6 +444,9 @@ export function proposeAction(
   const source = sourceFor(input.action);
   if (source === "subscriptions") return proposeSubscription(input, records);
   if (source === "accounts") return proposeAccount(input, records, workspaceCurrency);
+  if (source === "categories") return proposeCategory(input, records);
+  if (source === "budgets") return proposeBudget(input, records, workspaceCurrency);
+  if (source === "transactions") return proposeTransaction(input, records);
   if (source === "goals") return proposeGoal(input, records, workspaceCurrency);
   return proposeDebt(input, records, workspaceCurrency);
 }
@@ -529,6 +457,7 @@ export interface ActionStores {
   goals: FinancialGoalRepository;
   debts: DebtRepository;
   subscriptions: SubscriptionRepository;
+  transactions: Pick<TransactionRepository, "list">;
 }
 
 /** Loads only the records the action's kind needs, then resolves the proposal against them. */
@@ -541,19 +470,40 @@ export async function loadAndProposeAction(
   const { env, tenantId } = context;
   const source = sourceFor(input.action);
   const subscription = source === "subscriptions";
-  const [currency, accounts, categories, goals, debts, month] = await Promise.all([
+  const transaction = source === "transactions";
+  const [currency, accounts, categories, goals, debts, month, page] = await Promise.all([
     loadCurrency(env, tenantId),
-    subscription || source === "accounts" ? stores.accounts.list(env, tenantId) : [],
-    subscription ? stores.categories.list(env, tenantId) : [],
+    subscription || transaction || source === "accounts" ? stores.accounts.list(env, tenantId) : [],
+    subscription || transaction || source === "categories" || source === "budgets"
+      ? stores.categories.list(env, tenantId)
+      : [],
     source === "goals" ? stores.goals.list(env, tenantId) : [],
     source === "debts" ? stores.debts.list(env, tenantId) : [],
     subscription
       ? stores.subscriptions.list(env, tenantId, `${input.currentDate.slice(0, 7)}-01`)
       : undefined,
+    transaction && input.target
+      ? stores.transactions.list(env, tenantId, {
+          search: input.target,
+          from: input.onDate,
+          to: input.onDate,
+          sortBy: "date",
+          sortDirection: "desc",
+          page: 1,
+          pageSize: 50,
+        })
+      : undefined,
   ]);
   return proposeAction(
     input,
-    { accounts, categories, goals, debts, subscriptions: month?.items ?? [] },
+    {
+      accounts,
+      categories,
+      goals,
+      debts,
+      subscriptions: month?.items ?? [],
+      transactions: page?.items ?? [],
+    },
     currency,
   );
 }

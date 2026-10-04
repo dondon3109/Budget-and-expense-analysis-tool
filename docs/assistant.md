@@ -1,6 +1,6 @@
 # AI Financial Assistant
 
-Zoption's AI Financial Assistant is a budgeting and financial-wellness interface over the authenticated user's financial workspace. It reads records through fixed tools and never writes on its own: the writes it can lead to are a transaction it drafted, saved only when the user taps Save (see Logging transactions), and a subscription, goal, debt, or account change it proposed, applied only when the user taps Confirm (see Changing subscriptions, goals, debts, and accounts). The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
+Zoption's AI Financial Assistant is a budgeting and financial-wellness interface over the authenticated user's financial workspace. It reads records through fixed tools and never writes on its own: the writes it can lead to are a transaction it drafted, saved only when the user taps Save (see Logging transactions), and a subscription, goal, debt, account, category, budget, or transaction change it proposed, applied only when the user taps Confirm (see Changing subscriptions, goals, debts, and accounts). The configured AI provider (DeepSeek by default; OpenAI, Anthropic, Gemini, Meta, or Muse Spark when activated) interprets questions and explains verified results; Zoption's Worker owns tenant scope, compliance classification, date resolution, financial calculations, data-quality checks, and final-answer validation.
 
 ## Data flow
 
@@ -96,7 +96,7 @@ next to Cloudflare Workers AI.
 - `list_categories` — active category names and kinds.
 - `suggest_transaction_details` — for logging: the user's own entries from the trailing 12 months at a named place (grouped by description, with the usual category, account, typical and last amount), otherwise their most frequent entries; a category matched from the place name when history has none; active categories; and active accounts with their recorded balances.
 - `draft_transaction` — resolves an income or expense against active accounts and categories and returns a draft. It writes nothing.
-- `propose_action` — resolves a subscription, goal, debt, or account create, edit, delete, archive, status, or balance change against the tenant's own records and returns a proposal (or the missing details). It writes nothing.
+- `propose_action` — resolves a subscription, goal, debt, account, category, budget, or transaction create, edit, delete, archive, status, or balance change against the tenant's own records and returns a proposal (or the missing details). It writes nothing.
 
 There is no SQL, D1, arbitrary HTTP, environment, credential, secret, or import tool, and no tool that writes directly. Tenant identity is injected by the Worker and is never model-visible.
 
@@ -112,7 +112,7 @@ Only a turn's last ready draft becomes a card, so the prompt has the model draft
 
 Answer validation rejects a reply in this flow that claims the draft was saved, added, or logged. If the model keeps failing validation after a draft exists, the Worker restates the draft from the tool result; a reply that falls back to the generic refusal carries no draft.
 
-## Changing subscriptions, goals, debts, and accounts
+## Changing subscriptions, goals, debts, accounts, categories, budgets, and transactions
 
 A message that asks to add, change, cancel, delete, or archive a subscription, savings goal, debt, or account, or to set an account balance ("add a Netflix subscription for 549 monthly", "delete my Visa debt", "idagdag ang goal na Trip") gets no reporting tool group, so it never triggers a "which month?" clarification. Replies in that flow carry `assistantActionFlow: true`, and the next short answer continues it until the change is applied.
 
@@ -133,7 +133,13 @@ Accounts follow the same flow with the app's own rules:
 - **Set balance** (`adjust_balance`) stores only the target balance. When it is applied, the Worker re-reads the account's current balance, books the difference as the same "Balance adjustment" transaction the Adjust balance dialog creates (dated today in `ASSISTANT_TIME_ZONE`, default `Asia/Manila`), and keys it on the reply's id. If the balance already matches by then, nothing is booked. The card summary shows the balance at proposal time, so a balance that moved in between changes the amount booked.
 - Balances are ledger balances (see Account balances), so setting one records an adjustment rather than overwriting history.
 
-Not yet available through chat: transaction edits and deletes, categories, budgets, and workspace settings.
+Categories, budgets, and recorded transactions use the same flow:
+
+- A category can be added (name and income or expense kind, with a default color), renamed, or archived. Built-in and plan-locked categories are refused, and a name already in use is refused.
+- **Set budget** (`set_budget`) replaces one expense category's limit for a month (the current month unless a date names another); a limit of 0 removes it. It uses the same upsert as the Budgets page.
+- A transaction is found by its description (`target`), narrowed by `onDate` and `matchAmount`. Several matches return `target_ambiguous` with up to five date and amount candidates, so the model asks which one. Edits change only the named fields (description, amount, date, category, account) through the normal update, which re-validates references and debt links. Transfers can be deleted but not edited. A delete removes both legs of a transfer and gives a linked debt payment back, as the app does.
+
+Not yet available through chat: workspace settings (currency).
 
 ## Account balances
 
