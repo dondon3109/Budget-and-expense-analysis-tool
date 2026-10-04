@@ -141,6 +141,10 @@ Categories, budgets, and recorded transactions use the same flow:
 
 Not yet available through chat: workspace settings (currency).
 
+### How-to questions
+
+A question about using the app ("how do I import a statement?", "paano mag-export ng transactions") is answered from `apps/api/src/product-help.ts`, the same product notes Zoption Support uses, so the two never disagree. The turn policy recognizes it by a how-to opener followed by a product task verb (add, import, export, change, cancel, and similar), requires no tool group, and never asks for a reporting period. A spending question that merely starts with "how" ("how much did I spend") stays a records question. The prompt tells the model to name the exact page or control in a few short sentences and to say so when the notes do not cover something rather than invent steps. Regulated-topic redirects still run first.
+
 ## Account balances
 
 Account balances are sums of the user's recorded transaction ledger entries. They are not live bank balances and Zoption does not currently store an opening-balance snapshot.
