@@ -1,0 +1,45 @@
+name: Record a D1 restore point
+description: >-
+  Reads the current D1 Time Travel bookmark for one Wrangler environment and writes it, with the
+  exact restore command, to the job summary. The release jobs run it right before applying
+  migrations, so a migration that damages data has a known point to return to. Needs
+  CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in the environment and a workspace install.
+
+inputs:
+  environment:
+    description: The Wrangler environment (preview or production)
+    required: true
+
+outputs:
+  bookmark:
+    description: The Time Travel bookmark taken before the migrations
+    value: ${{ steps.bookmark.outputs.bookmark }}
+
+runs:
+  using: composite
+  steps:
+    - id: bookmark
+      shell: bash
+      working-directory: apps/api
+      env:
+        WRANGLER_ENV: ${{ inputs.environment }}
+      run: |
+        set -euo pipefail
+        info="$(./node_modules/.bin/wrangler d1 time-travel info DB --json \
+          --config wrangler.deploy.jsonc --env "$WRANGLER_ENV")"
+        bookmark="$(jq -r '.bookmark // empty' <<<"$info")"
+        if [[ -z "$bookmark" ]]; then
+          echo "::error::Could not read a D1 Time Travel bookmark for $WRANGLER_ENV: $info"
+          exit 1
+        fi
+        echo "bookmark=$bookmark" >> "$GITHUB_OUTPUT"
+        echo "D1 $WRANGLER_ENV restore point before migrations: $bookmark"
+        {
+          echo "### D1 $WRANGLER_ENV restore point"
+          echo
+          echo "Taken before this run applied migrations. Restoring discards every write made after it."
+          echo
+          echo '```bash'
+          echo "pnpm --filter @zoption/api exec wrangler d1 time-travel restore DB --bookmark=$bookmark --config wrangler.deploy.jsonc --env $WRANGLER_ENV"
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"

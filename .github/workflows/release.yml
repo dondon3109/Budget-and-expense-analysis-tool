@@ -90,6 +90,9 @@ jobs:
         run: |
           node scripts/validate-deployment-config.mjs
           node scripts/export-deployment-env.mjs preview
+      - uses: ./.github/actions/d1-restore-point
+        with:
+          environment: preview
       - name: Apply preview D1 migrations
         working-directory: apps/api
         run: ./node_modules/.bin/wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env preview
@@ -250,6 +253,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+      - name: Record the production D1 restore point
+        if: steps.deployment.outputs.worker_deployed != 'true'
+        uses: ./.github/actions/d1-restore-point
+        with:
+          environment: production
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Apply production D1 migrations
         if: steps.deployment.outputs.worker_deployed != 'true'
         working-directory: apps/api

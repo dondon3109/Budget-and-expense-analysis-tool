@@ -310,7 +310,7 @@ For a release-producing commit, the workflow uses one version and commit SHA thr
 
 1. Validate the tracked production Wrangler configuration and perform a Worker dry run.
 2. Create or resume a GitHub production deployment record for duplicate protection.
-3. Apply pending production D1 migrations. Wrangler captures the documented backup automatically in non-interactive CI.
+3. Record the D1 Time Travel bookmark (`.github/actions/d1-restore-point`) in the run summary with the exact restore command, then apply pending production D1 migrations. Time Travel keeps 30 days of history on Workers Paid (7 on Free), so the bookmark is the restore point if a migration damages data; restoring discards every write made after it.
 4. Deploy the production Worker, tagged with the selected semantic version.
 5. Build the app with that same version and deploy it to `clarity-budget` with the exact Git SHA, then build the public site (after the Worker, because it reads the published reviews) and deploy it to `zoption-site` from `apps/site`, so its `/ingest` Pages Function is included. Each deploy is checkpointed (`worker`, `pages`, `site`) so a rerun skips what already shipped.
 6. Wait until both custom domains serve the versioned `release.json` marker, and run the non-mutating production smoke gate against the site, the app, and the API.
@@ -485,7 +485,7 @@ Manual rollback, when the workflow cannot run:
 
 - **Pages:** promote the previously verified deployment of each project (`clarity-budget` for the app, `zoption-site` for the public site).
 - **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
-- **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.
+- **D1:** migrations are forward-only, and the rollback workflow never touches data. Each release run's summary records the Time Travel bookmark taken right before its migrations, for preview and production, with the restore command. Restore only when a migration damaged data, because it discards every write made after the bookmark; rehearse it on the preview bookmark first. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
 - After rollback, rerun the documented environment-specific smoke command with `EXPECTED_SUPABASE_URL` (and any distinct `FORBIDDEN_SUPABASE_ORIGINS`) and verify unauthenticated `/api/app/*` requests still return `401`.
 
