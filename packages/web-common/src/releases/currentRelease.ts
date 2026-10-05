@@ -63,7 +63,7 @@ export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
   {
     version: "3.4.0",
-    releasedOn: "October 3, 2026",
+    releasedOn: "October 4, 2026",
     changes: [
       {
         title: "More currencies",
