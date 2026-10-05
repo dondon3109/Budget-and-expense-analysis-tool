@@ -118,25 +118,27 @@ jobs:
           ./node_modules/.bin/wrangler deploy --config wrangler.deploy.jsonc --env preview
           --tag "v${ZOPTION_RELEASE_VERSION}" --message "Preview of ${{ github.event.workflow_run.head_sha }}"
       # Preview builds omit PostHog, so the smoke gate expects no PostHog origin in the CSP.
-      - name: Build and deploy preview web app
+      - name: Build preview web app
+        run: pnpm --filter @zoption/web build
         env:
           CF_PAGES: "1"
-        run: |
-          pnpm --filter @zoption/web build
-          apps/api/node_modules/.bin/wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist" \
-            --project-name=clarity-budget-preview --branch=main \
-            --commit-hash="${{ github.event.workflow_run.head_sha }}" \
-            --commit-message="Preview v${ZOPTION_RELEASE_VERSION}"
-      - name: Build and deploy preview public site
+      - name: Deploy preview web app
+        uses: ./.github/actions/pages-deploy
+        with:
+          project: clarity-budget-preview
+          directory: apps/web/dist
+          message: Preview v${{ needs.preflight.outputs.version }}
+      - name: Build preview public site
+        run: pnpm --filter @zoption/site build
         env:
           CF_PAGES: "1"
-        run: |
-          pnpm --filter @zoption/site build
-          cd apps/site
-          ../api/node_modules/.bin/wrangler pages deploy dist \
-            --project-name=zoption-site-preview --branch=main \
-            --commit-hash="${{ github.event.workflow_run.head_sha }}" \
-            --commit-message="Preview v${ZOPTION_RELEASE_VERSION}"
+      - name: Deploy preview public site
+        uses: ./.github/actions/pages-deploy
+        with:
+          project: zoption-site-preview
+          working-directory: apps/site
+          directory: dist
+          message: Preview v${{ needs.preflight.outputs.version }}
       - name: Wait for preview propagation
         env:
           EXPECTED_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
@@ -439,11 +441,11 @@ jobs:
           echo "Deploying the build approved as $actual."
       - name: Deploy production web app
         if: steps.deployment.outputs.pages_deployed != 'true'
-        run: >-
-          apps/api/node_modules/.bin/wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist"
-          --project-name=clarity-budget --branch=main
-          --commit-hash="${{ github.event.workflow_run.head_sha }}"
-          --commit-message="Release v${{ needs.preflight.outputs.version }}"
+        uses: ./.github/actions/pages-deploy
+        with:
+          project: clarity-budget
+          directory: apps/web/dist
+          message: Release v${{ needs.preflight.outputs.version }}
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -456,12 +458,12 @@ jobs:
       # Deployed from apps/site so wrangler compiles its functions/ directory (the /ingest proxy).
       - name: Deploy production public site
         if: steps.deployment.outputs.site_deployed != 'true'
-        working-directory: apps/site
-        run: >-
-          ../api/node_modules/.bin/wrangler pages deploy dist
-          --project-name=zoption-site --branch=main
-          --commit-hash="${{ github.event.workflow_run.head_sha }}"
-          --commit-message="Release v${{ needs.preflight.outputs.version }}"
+        uses: ./.github/actions/pages-deploy
+        with:
+          project: zoption-site
+          working-directory: apps/site
+          directory: dist
+          message: Release v${{ needs.preflight.outputs.version }}
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

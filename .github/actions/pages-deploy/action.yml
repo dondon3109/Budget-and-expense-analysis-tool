@@ -1,0 +1,43 @@
+name: Deploy to Cloudflare Pages
+description: >-
+  Uploads a built directory to a Pages project's production branch, stamped with the release
+  commit (which the rollback finds deployments by). A failed upload is retried once after 15
+  seconds: re-uploading the same files only creates another identical deployment, and a single
+  network blip should not stop a release. Needs CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in
+  the environment and the workspace install.
+
+inputs:
+  project:
+    description: Pages project name
+    required: true
+  directory:
+    description: Built output to upload, relative to working-directory
+    required: true
+  working-directory:
+    description: Where wrangler runs; the site deploys from apps/site so its functions/ compile
+    default: .
+  message:
+    description: Deployment commit message
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PROJECT: ${{ inputs.project }}
+        DIRECTORY: ${{ inputs.directory }}
+        MESSAGE: ${{ inputs.message }}
+        COMMIT: ${{ github.event.workflow_run.head_sha }}
+      run: |
+        for attempt in 1 2; do
+          if "$GITHUB_WORKSPACE/apps/api/node_modules/.bin/wrangler" pages deploy "$DIRECTORY" \
+            --project-name="$PROJECT" --branch=main \
+            --commit-hash="$COMMIT" --commit-message="$MESSAGE"; then
+            exit 0
+          fi
+          if [[ "$attempt" == 2 ]]; then exit 1; fi
+          echo "::warning::Uploading to $PROJECT failed; retrying once in 15 seconds."
+          sleep 15
+        done
