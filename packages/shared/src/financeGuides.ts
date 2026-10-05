@@ -1178,6 +1178,311 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
       },
     ],
   },
+  {
+    slug: "budget-ofw-remittance-philippines",
+    title: "How to Budget Remittances as an OFW or an OFW Family",
+    seoTitle: "How to Budget Remittances: An OFW and Family Guide in Pesos",
+    description:
+      "A peso plan for OFW households: budget the remittance, not the salary, agree on a sending schedule, compare provider fees before each transfer, and track dollars and pesos in one place.",
+    category: "budgeting",
+    readTimeMinutes: 7,
+    publishedDate: "2026-10-05",
+    updatedDate: "2026-10-05",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "ofw budget",
+      "how to budget remittance",
+      "ofw family budget philippines",
+      "remittance calculator philippines",
+      "track usd and php expenses",
+      "ofw savings plan",
+    ],
+    sections: [
+      {
+        id: "budget-the-remittance",
+        title: "Budget the Remittance, Not the Salary",
+        content:
+          "An OFW household has two budgets: the one abroad and the one at home. The family at home lives on what actually arrives in pesos, so that is the figure to plan with. Start from the amount received after the exchange rate and the transfer fee, not from the amount sent. If $500 is sent and ₱27,900 arrives, the home budget is ₱27,900, and every category is planned inside it.",
+        keyTakeaways: [
+          "Plan the home budget from pesos received, after the rate and the fee.",
+          "Keep the budget abroad and the budget at home as two separate plans.",
+        ],
+      },
+      {
+        id: "agree-on-a-schedule",
+        title: "Agree on an Amount and a Schedule",
+        content:
+          "A remittance that changes every month makes the family budget a guess. Agree on a fixed amount and a fixed date, and send extra only for named needs such as tuition or a repair. A steady schedule also lets the family match each bill to the remittance that comes before it is due. Put the amount and date in writing so a surprise request does not become a negotiation.",
+        keyTakeaways: [
+          "A fixed amount on a fixed date lets the household plan bills ahead.",
+          "Treat extra sends as named, one-off needs, not as the baseline.",
+        ],
+      },
+      {
+        id: "compare-before-you-send",
+        title: "Compare the Real Cost Before Each Transfer",
+        content:
+          "The cost of a transfer is the fee plus the gap between the exchange rate you are given and the mid-market rate, and the gap is often larger than the fee. On a $500 transfer, a spread of 1.5 percent costs about $7.50 on top of any fee. Zoption's remittance calculator compares providers using benchmark rates and typical spreads, and lets you enter the rate you were actually quoted. Treat its figures as estimates and confirm the final rate in the provider's app before sending.",
+        keyTakeaways: [
+          "The exchange-rate spread is often a bigger cost than the listed fee.",
+          "Enter the rate you were quoted to see what will really arrive in pesos.",
+          "Calculator figures are estimates, not live quotes.",
+        ],
+      },
+      {
+        id: "dollars-and-pesos-in-one-place",
+        title: "Track Dollars and Pesos in One Place",
+        content:
+          "Zoption supports 47 currencies. Pick one as the workspace currency, then give each account its own, for example a peso account for home spending and a dollar account for money held abroad. Balances list every currency you use, and the cashflow chart converts them into the workspace currency with daily exchange rates. The amounts you recorded are never converted in storage, so a ₱27,900 entry stays ₱27,900.",
+        keyTakeaways: [
+          "One workspace currency, and a separate currency for each account.",
+          "Stored amounts are never converted; only the chart uses daily rates.",
+        ],
+      },
+      {
+        id: "save-before-it-is-spent",
+        title: "Set Savings Aside Before the Month Starts",
+        content:
+          "When the remittance lands, move the savings share first, then pay the fixed bills, then give the rest to the household as a weekly amount. A common starting point is 10 to 20 percent of the amount received toward an emergency fund held in pesos, since that is where the family would need it. Record the transfer to savings as a transfer, not as an expense, so the month still shows what was really spent.",
+        keyTakeaways: [
+          "Savings first, fixed bills second, a weekly household amount last.",
+          "Record moves to savings as transfers so spending stays accurate.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/emergency-fund-philippines",
+        label: "How to Build an Emergency Fund in the Philippines",
+        description: "Decide the peso target the savings share of each remittance builds toward.",
+      },
+      {
+        to: "/guides/budget-semi-monthly-pay-kinsenas-katapusan",
+        label: "How to Budget Semi-Monthly Pay",
+        description: "Match bills to each payday, the same way you match them to each remittance.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Should the family budget in dollars or pesos?",
+        answer:
+          "In pesos, because that is what the household spends. Plan from the amount that actually arrives after the exchange rate and the fee, and track the dollar side separately if you hold money abroad.",
+      },
+      {
+        question: "Does Zoption send money or connect to remittance providers?",
+        answer:
+          "No. The remittance calculator only estimates what a transfer would deliver, and Zoption never connects to a bank or a provider. You send the money in your provider's app and record it in Zoption.",
+      },
+      {
+        question: "How do I record a remittance in Zoption?",
+        answer:
+          "Add it as income in the peso account that receives it, on the day it arrives. If you also track the dollar side, record the move from that account as a transfer so it is not counted as spending.",
+      },
+    ],
+  },
+  {
+    slug: "debt-snowball-vs-avalanche-philippines",
+    title: "Debt Snowball vs Avalanche: Which Payoff Method Fits You",
+    seoTitle: "Debt Snowball vs Avalanche in the Philippines: Peso Examples",
+    description:
+      "Compare the debt snowball and avalanche methods with a peso example, see how a monthly interest rate adds up on a credit card, and choose the order to pay your utang.",
+    category: "budgeting",
+    readTimeMinutes: 7,
+    publishedDate: "2026-10-05",
+    updatedDate: "2026-10-05",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "debt snowball vs avalanche",
+      "how to pay off credit card debt philippines",
+      "debt payoff plan pesos",
+      "pay off utang",
+      "debt payoff tracker",
+      "minimum payment credit card",
+    ],
+    sections: [
+      {
+        id: "list-every-debt",
+        title: "List Every Debt With Three Numbers",
+        content:
+          "A payoff plan needs the balance, the interest rate, and the minimum payment for each debt, whether it is a credit card, a salary loan, an installment, or money owed to a person. Write them in one list. Credit card interest is usually quoted per month, so a 3 percent monthly rate is roughly 36 percent a year, which is why a card balance grows even while you make minimum payments.",
+        keyTakeaways: [
+          "Balance, interest rate, and minimum payment for every debt.",
+          "Convert a monthly rate to a yearly one before comparing debts.",
+        ],
+      },
+      {
+        id: "how-the-snowball-works",
+        title: "The Snowball: Smallest Balance First",
+        content:
+          "Pay the minimum on every debt, then put every extra peso on the smallest balance. When it is cleared, add its payment to the next smallest. With a ₱5,000 balance, a ₱20,000 balance, and a ₱60,000 balance, the first debt disappears quickly, and the quick win is what keeps many people going. It can cost more interest overall when the small debt has the lowest rate.",
+        keyTakeaways: [
+          "Minimums on everything, extra money on the smallest balance.",
+          "Fastest to the first win, but not always the cheapest overall.",
+        ],
+      },
+      {
+        id: "how-the-avalanche-works",
+        title: "The Avalanche: Highest Rate First",
+        content:
+          "Pay the minimum on every debt, then put every extra peso on the debt with the highest interest rate, whatever its size. This usually pays the least total interest. If a ₱20,000 card charges 3 percent a month and a ₱60,000 loan charges 1 percent, the card is costing about ₱600 a month in interest against ₱600 on a loan three times its size, so clearing the card first stops the faster leak. The cost is a longer wait before the first debt is gone.",
+        keyTakeaways: [
+          "Minimums on everything, extra money on the highest interest rate.",
+          "Usually the lowest total interest, with a slower first win.",
+        ],
+      },
+      {
+        id: "choose-one-and-keep-going",
+        title: "Choose One and Keep Going",
+        content:
+          "The best method is the one you will finish. If the interest difference between the two orders is small, choose the snowball for motivation. If one debt has a much higher rate, as credit card balances often do, choose the avalanche. Whichever you choose, keep paying the minimum on every debt, because a missed payment adds fees and can hurt your credit record.",
+        keyTakeaways: [
+          "Small rate gap: the snowball. One very expensive debt: the avalanche.",
+          "Never skip a minimum payment on the debts you are not targeting.",
+        ],
+      },
+      {
+        id: "track-it-in-zoption",
+        title: "Track the Payoff in Zoption",
+        content:
+          "On your planning page, the Debt balances section keeps the balance, interest rate, and minimum payment for each debt. The optional AI Assistant, which asks for its own consent, can project a payoff from those figures, and you can set its debt payoff preference to Avalanche or Snowball. Zoption does not read your lender's records, so update a balance whenever a new statement arrives. Projections are estimates and do not know about late fees or a change in rate.",
+        keyTakeaways: [
+          "Enter balance, rate, and minimum payment once per debt.",
+          "Choose Avalanche or Snowball as the assistant's debt payoff preference.",
+          "Projections are estimates; update the balance when a statement arrives.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/budget-monthly-salary-philippines",
+        label: "How to Budget a Monthly Salary in the Philippines",
+        description: "Find the monthly amount you can put toward debt after fixed bills.",
+      },
+      {
+        to: "/guides/emergency-fund-philippines",
+        label: "How to Build an Emergency Fund in the Philippines",
+        description: "Keep a small buffer so a surprise does not go back on the card.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Which is better, the snowball or the avalanche?",
+        answer:
+          "The avalanche usually costs less interest, and the snowball often keeps people motivated longer. If the rates are close, the difference in cost is small, so pick the one you will stick with.",
+      },
+      {
+        question: "Should I build an emergency fund before paying off debt?",
+        answer:
+          "Many people keep a small starter fund, such as one month of essentials, while paying down high-interest debt, so an unexpected bill does not go back on the card. Then they put extra money on the debt.",
+      },
+      {
+        question: "Does Zoption give debt or financial advice?",
+        answer:
+          "No. The optional AI Assistant projects payoff from the numbers you enter. Zoption is not financial, investment, tax, or legal advice, so confirm terms with your lender.",
+      },
+    ],
+  },
+  {
+    slug: "budget-irregular-income-philippines",
+    title: "How to Budget Irregular Income as a Freelancer in the Philippines",
+    seoTitle: "How to Budget Irregular Income in the Philippines (Freelancer Guide)",
+    description:
+      "Budget a variable income in pesos: plan from your lowest recent month, pay yourself a steady amount, set aside money for taxes and contributions, and keep a buffer for slow months.",
+    category: "budgeting",
+    readTimeMinutes: 7,
+    publishedDate: "2026-10-05",
+    updatedDate: "2026-10-05",
+    author: "Zoption Personal Finance Team",
+    keywords: [
+      "budget irregular income",
+      "freelancer budget philippines",
+      "variable income budget pesos",
+      "budget for commission income",
+      "freelance income tracker",
+      "pay yourself a salary freelancer",
+    ],
+    sections: [
+      {
+        id: "plan-from-your-lowest-month",
+        title: "Plan From Your Lowest Recent Month",
+        content:
+          "When income swings, an average hides the bad months. Look at the last six months of money received and take the lowest one as your planning figure. If your months were ₱18,000, ₱42,000, ₱25,000, ₱31,000, ₱22,000, and ₱38,000, plan the month on ₱18,000. Anything above it is a bonus that goes to the buffer or to a goal, and the plan holds even in a slow month.",
+        keyTakeaways: [
+          "Use the lowest of the last six months as the planning figure.",
+          "Money above it goes to the buffer or a goal, not to higher spending.",
+        ],
+      },
+      {
+        id: "pay-yourself-a-steady-amount",
+        title: "Pay Yourself a Steady Amount",
+        content:
+          "Keep client payments in one account and move a fixed amount to your spending account on a fixed date, like a salary. A good month then builds a cushion and a poor month draws on it. Your fixed bills are covered from the spending account, so the household sees one predictable figure.",
+        keyTakeaways: [
+          "Pay yourself the same amount on the same date each month.",
+          "Let good months fill the cushion and slow months draw on it.",
+        ],
+      },
+      {
+        id: "set-aside-taxes-and-contributions",
+        title: "Set Aside Money for Taxes and Contributions",
+        content:
+          "A freelancer or self-employed worker has no employer withholding, so tax and contributions are paid by you. When a payment arrives, move a share to a separate savings account right away, and treat it as money that is not yours to spend. The right share depends on your income and tax option, so check the Bureau of Internal Revenue (BIR) guidance for your case, and look up your SSS, PhilHealth, and Pag-IBIG contributions.",
+        keyTakeaways: [
+          "Move a tax share aside the day a payment arrives.",
+          "Confirm your rate and contributions with the BIR, SSS, PhilHealth, and Pag-IBIG.",
+        ],
+      },
+      {
+        id: "build-a-slow-month-buffer",
+        title: "Build a Buffer for Slow Months",
+        content:
+          "Variable income needs a larger cushion than a steady salary. Many freelancers aim for three to six months of essential expenses, built in steps: first one month, then three. If your essentials cost ₱20,000 a month, the first step is ₱20,000. Keep it in a separate account so it does not get spent on ordinary months.",
+        keyTakeaways: [
+          "Aim for three to six months of essentials, built one month at a time.",
+          "Keep the buffer in a separate account.",
+        ],
+      },
+      {
+        id: "record-income-as-it-lands",
+        title: "Record Income as It Lands",
+        content:
+          "In Zoption, record each payment as income on the day it arrives, then set monthly category budgets from your planning figure rather than from your best month. Income and expenses are reported separately, so a large month does not hide overspending in the same month. Add a savings goal for the buffer to see its progress.",
+        keyTakeaways: [
+          "Record each payment as income on the day it arrives.",
+          "Base category budgets on the planning figure, not on your best month.",
+        ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/guides/emergency-fund-philippines",
+        label: "How to Build an Emergency Fund in the Philippines",
+        description: "Set the size of the cushion that carries you through slow months.",
+      },
+      {
+        to: "/tools/50-30-20-calculator",
+        label: "50/30/20 Calculator for Philippine Pesos",
+        description: "Split the planning figure into needs, wants, and savings in exact centavos.",
+      },
+    ],
+    faqs: [
+      {
+        question: "How do I budget when my income changes every month?",
+        answer:
+          "Plan from your lowest recent month and pay yourself a fixed amount from a separate account that holds client payments. Extra money in a good month goes to the buffer.",
+      },
+      {
+        question: "How much should a freelancer set aside for taxes?",
+        answer:
+          "It depends on your income and the tax option you registered under, so check the BIR guidance for your case. Whatever the share is, move it to a separate account when each payment arrives.",
+      },
+      {
+        question: "Can Zoption track more than one client or income source?",
+        answer:
+          "Yes. Record each payment as income and use a category or a note for the client, then compare months in the reports. Zoption does not connect to your bank, so you record or import the payments.",
+      },
+    ],
+  },
 ];
 
 export function getAllFinanceGuides(): FinanceGuide[] {
