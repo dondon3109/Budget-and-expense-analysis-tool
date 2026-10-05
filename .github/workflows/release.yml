@@ -30,6 +30,7 @@ jobs:
     outputs:
       release_needed: ${{ steps.next_release.outputs.release_needed }}
       version: ${{ steps.next_release.outputs.version }}
+      previous_version: ${{ steps.previous_release.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -62,6 +63,12 @@ jobs:
         run: node scripts/next-semantic-release.mjs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # The release production falls back to if this one fails after changing it.
+      - name: Find the current release
+        id: previous_release
+        run: |
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${{ github.event.workflow_run.head_sha }}")"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
   # Rehearses the release on the preview stack before anyone is asked to approve production: the
   # same migrations against the preview D1, the same Worker and both Pages builds, and the same
@@ -417,6 +424,30 @@ jobs:
           APP_URL: https://app.zoption.site
           API_URL: https://api.zoption.site
           EXPECTED_POSTHOG_HOST: https://us.i.posthog.com
+      # Any failure once this run has touched the Worker puts production back on the previous
+      # release, Pages included, so a broken release never waits for a human to notice. Crossing
+      # this release's migrations is safe by the expand-then-contract rule: each must work with the
+      # Worker one release back. Data is never rolled back; the D1 restore point is in the summary.
+      - name: Roll production back to the previous release
+        id: auto_rollback
+        if: >-
+          failure() &&
+          steps.deployment.outputs.skip_deploy != 'true' &&
+          (steps.worker.outcome != 'skipped' || steps.deployment.outputs.worker_deployed == 'true')
+        uses: ./.github/actions/rollback-production
+        with:
+          version: ${{ needs.preflight.outputs.previous_version }}
+          reason: Release v${{ needs.preflight.outputs.version }} failed its checks
+          allow-newer-migrations: "true"
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      - name: Void the deployment checkpoints after the rollback
+        if: failure() && steps.auto_rollback.outcome == 'success'
+        run: node scripts/github-production-deployment.mjs stage rollback
+        env:
+          DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Best effort: a search-engine ping must never block or fail a release.
       - name: Submit URLs to IndexNow
         if: steps.deployment.outputs.skip_deploy != 'true'
