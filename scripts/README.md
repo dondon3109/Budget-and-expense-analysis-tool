@@ -18,10 +18,10 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 | ---------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
 | `next-semantic-release`            | Production Release           | Turns the semantic-release dry run into workflow outputs                               |
 | `validate-deployment-config`       | Production Release           | Checks `apps/api/wrangler.deploy.jsonc` has every required variable                    |
-| `export-production-deployment-env` | Production Release, Android  | Exports production values from the Wrangler config into the job environment            |
+| `export-deployment-env`            | Production Release, Android  | Exports one environment's public build and smoke values from the Wrangler config       |
 | `github-production-deployment`     | Production Release           | Records the GitHub deployment and its stage statuses                                   |
 | `wait-for-production-release`      | Production Release           | Waits until the deployed site reports the expected app version                         |
-| `smoke-production`                 | `pnpm smoke:production`      | Read-only production smoke checks; uses `deployment-smoke-helpers`                     |
+| `smoke-production`                 | `pnpm smoke:production`      | Read-only smoke checks of production or preview; uses `deployment-smoke-helpers`       |
 | `rollback-pages`                   | Production Rollback          | Rolls a Pages project back to the production deployment of a release commit            |
 | `submit-indexnow`                  | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release |
 | `android-release-metadata`         | Android Beta Build           | Resolves the signed Android release identity from the two version sources              |

@@ -1,9 +1,10 @@
 /**
  * Runs after `astro build`. It writes `dist/_headers` (security headers, the
  * CSP with a hash for every inline script Astro emitted, and cache rules),
- * drops the sitemap from non-production builds, then checks the output: every
- * page the llms.txt list names exists with a matching canonical, and pages
- * without an island ship no module script besides the shared one.
+ * drops the sitemap from non-production builds, points `_redirects` at the
+ * build's own app, then checks the output: every page the llms.txt list names
+ * exists with a matching canonical, and pages without an island ship no module
+ * script besides the shared one.
  */
 import { createHash } from "node:crypto";
 import { readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -110,6 +111,13 @@ async function main() {
   await writeFile(join(dist, "_headers"), headersFile(policy));
 
   if (!config.indexingEnabled) await rm(join(dist, "sitemap.xml"), { force: true });
+
+  // public/_redirects names the production app; a preview site hands off to its own app.
+  const redirects = await readFile(join(dist, "_redirects"), "utf8");
+  await writeFile(
+    join(dist, "_redirects"),
+    redirects.replaceAll("https://app.zoption.site", config.appOrigin),
+  );
 
   const sitemap = config.indexingEnabled ? await readFile(join(dist, "sitemap.xml"), "utf8") : "";
   const lastModified = new Map(

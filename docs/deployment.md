@@ -304,7 +304,7 @@ Public canonical URLs do not use trailing slashes, and the legal, pricing, FAQ, 
 
 ## Automated production release
 
-CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck, and `actionlint` over the workflows, pinned by version and checksum), `unit` (Vitest and mobile Jest), and `e2e` (shared and API builds, preview and production builds of the app and the public site, Playwright against the app, site, and API dev servers, then Lighthouse against the production site build; a failed run keeps the Playwright report and traces as an artifact for seven days). A new push to a pull request cancels that pull request's running CI; runs on `main` are never cancelled. Every job installs through the `.github/actions/setup` composite action, which takes pnpm's version from `packageManager` in `package.json`. Dependabot (`.github/dependabot.yml`) opens one grouped pull request a week to move the SHA-pinned actions forward; npm dependencies are updated by hand. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, the Worker and both Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
+CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck, and `actionlint` over the workflows, pinned by version and checksum), `unit` (Vitest and mobile Jest), and `e2e` (shared and API builds, preview and production builds of the app and the public site, Playwright against the app, site, and API dev servers, then Lighthouse against the production site build; a failed run keeps the Playwright report and traces as an artifact for seven days). A new push to a pull request cancels that pull request's running CI; runs on `main` are never cancelled. Every job installs through the `.github/actions/setup` composite action, which takes pnpm's version from `packageManager` in `package.json`. Dependabot (`.github/dependabot.yml`) opens one grouped pull request a week to move the SHA-pinned actions forward; npm dependencies are updated by hand. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts the ungated `preview` job, which rehearses the release on the preview stack (see [Preview release](#preview-release)), and only after it passes does `deploy-and-release` start, which runs in the `production` environment, requires a reviewer, and performs the migration, the Worker and both Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
 
 For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
 
@@ -373,7 +373,13 @@ The Pages build derives its public Supabase URL and publishable key from the exi
 
 ## Preview release
 
-Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker. The tracked Preview environment overrides the root cron list to omit daily interest crediting: Preview keeps billing reconciliation and daily maintenance, while Production retains all three schedules. This also keeps the current Cloudflare account within its account-wide Cron Trigger quota.
+Every release is rehearsed on preview automatically. The `preview` job in `Production Release` runs after `preflight` for every commit that owes a release and before `deploy-and-release` can ask for approval. It exports the preview values with `node scripts/export-deployment-env.mjs preview`, applies the preview D1 migrations, deploys the preview Worker (without `--strict`; the tracked config always wins in preview), builds and deploys the app to `clarity-budget-preview` and the public site to `zoption-site-preview` with the release version, waits for both to serve it, and runs the smoke gate with `EXPECT_SEARCH_INDEXING=0`. Preview builds omit PostHog. A preview failure stops the release before any production approval is requested; fix forward with a pull request.
+
+The preview hosts are fixed: the API at `https://budget-expense-api-preview.dondon3109.workers.dev`, the app at `https://clarity-budget-preview.pages.dev` (the preview `WEB_APP_URL`), and the site at `https://zoption-site-preview.pages.dev`. The preview `ALLOWED_ORIGINS` includes the preview site so its support chat preflight passes, and the site build rewrites its `_redirects` to hand app paths to the preview app.
+
+One-time setup: the `zoption-site-preview` Pages project must exist (`pnpm --dir apps/api exec wrangler pages project create zoption-site-preview --production-branch=main`). The preview Worker secrets are the ones listed above for `--env preview`.
+
+The manual commands below are for running preview outside the workflow. Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker. The tracked Preview environment overrides the root cron list to omit daily interest crediting: Preview keeps billing reconciliation and daily maintenance, while Production retains all three schedules. This also keeps the current Cloudflare account within its account-wide Cron Trigger quota.
 
 ```bash
 node scripts/validate-deployment-config.mjs
@@ -387,36 +393,30 @@ Inspect the preview database after migration: the retired public tenant should b
 Build and deploy the browser app:
 
 ```bash
-VITE_API_URL=https://PREVIEW_API_HOST \
+VITE_API_URL=https://budget-expense-api-preview.dondon3109.workers.dev \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
 VITE_POSTHOG_KEY=phc_PREVIEW_KEY \
 ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/web build
-pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
+pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=clarity-budget-preview --branch=main
 ```
 
 Build and deploy the public site from `apps/site`, so the `/ingest` function deploys with it:
 
 ```bash
-PUBLIC_API_URL=https://PREVIEW_API_HOST \
-PUBLIC_APP_URL=https://PREVIEW_WEB_HOST \
+PUBLIC_API_URL=https://budget-expense-api-preview.dondon3109.workers.dev \
+PUBLIC_APP_URL=https://clarity-budget-preview.pages.dev \
 ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/site build
-cd apps/site && ../api/node_modules/.bin/wrangler pages deploy dist --project-name=PREVIEW_SITE_PROJECT --branch=main && cd ../..
+cd apps/site && ../api/node_modules/.bin/wrangler pages deploy dist --project-name=zoption-site-preview --branch=main && cd ../..
 ```
 
-Run the non-mutating smoke gate:
+Run the non-mutating smoke gate (the exported values are the preview hosts and Supabase origins):
 
 ```bash
-EXPECT_SEARCH_INDEXING=0 \
-SITE_URL=https://PREVIEW_SITE_HOST \
-APP_URL=https://PREVIEW_WEB_HOST \
-API_URL=https://PREVIEW_API_HOST \
-EXPECTED_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
-FORBIDDEN_SUPABASE_ORIGINS=https://PRODUCTION_PROJECT_REF.supabase.co \
-EXPECTED_POSTHOG_HOST=https://us.i.posthog.com \
-pnpm smoke:production
+GITHUB_ENV=/tmp/preview.env node scripts/export-deployment-env.mjs preview
+env $(cat /tmp/preview.env) pnpm smoke:production
 ```
 
 `EXPECTED_SUPABASE_URL` is required. `EXPECTED_POSTHOG_HOST` is required unless `EXPECT_SEARCH_INDEXING=0`; drop that line when the Preview build omitted `VITE_POSTHOG_KEY`, because its CSP then has no PostHog origin. Set `FORBIDDEN_SUPABASE_ORIGINS` to the other deployment's distinct Supabase origin and add any custom-domain origins that must be absent. The smoke gate rejects every CSP wildcard source and, for managed `*.supabase.co` projects, rejects every managed Supabase origin other than the expected one. It also confirms the frontend bundle embeds the expected API and Supabase origins and none of the explicitly forbidden origins.
@@ -597,7 +597,7 @@ The intended production endpoints are:
 - Production web app: <https://app.zoption.site> (Pages project `clarity-budget`)
 - Production API: <https://api.zoption.site>
 
-Preview endpoints are deployment-specific. Supply them through `PREVIEW_SITE_HOST`, `PREVIEW_WEB_HOST`, and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
+Preview endpoints are provider hostnames, recorded once in `scripts/export-deployment-env.mjs`: <https://zoption-site-preview.pages.dev> (Pages project `zoption-site-preview`), <https://clarity-budget-preview.pages.dev> (Pages project `clarity-budget-preview`), and <https://budget-expense-api-preview.dondon3109.workers.dev>.
 
 ## Cloudflare dashboard and repository sync
 

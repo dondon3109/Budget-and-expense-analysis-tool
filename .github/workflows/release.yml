@@ -63,6 +63,72 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  # Rehearses the release on the preview stack before anyone is asked to approve production: the
+  # same migrations against the preview D1, the same Worker and both Pages builds, and the same
+  # smoke gate with indexing expected off. It needs no approval because preview holds no real
+  # user data, and production waits for it, so a migration or deploy that breaks fails here first.
+  preview:
+    needs: preflight
+    if: needs.preflight.outputs.release_needed == 'true'
+    concurrency:
+      group: preview-release-main
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      ZOPTION_DEPLOY_ENV: preview
+      ZOPTION_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Validate preview deployment configuration
+        run: |
+          node scripts/validate-deployment-config.mjs
+          node scripts/export-deployment-env.mjs preview
+      - name: Apply preview D1 migrations
+        working-directory: apps/api
+        run: ./node_modules/.bin/wrangler d1 migrations apply DB --remote --config wrangler.deploy.jsonc --env preview
+      # No --strict: preview has no dashboard-only settings worth protecting, so the tracked
+      # config always wins here.
+      - name: Deploy preview Worker
+        working-directory: apps/api
+        run: >-
+          ./node_modules/.bin/wrangler deploy --config wrangler.deploy.jsonc --env preview
+          --tag "v${ZOPTION_RELEASE_VERSION}" --message "Preview of ${{ github.event.workflow_run.head_sha }}"
+      # Preview builds omit PostHog, so the smoke gate expects no PostHog origin in the CSP.
+      - name: Build and deploy preview web app
+        env:
+          CF_PAGES: "1"
+        run: |
+          pnpm --filter @zoption/web build
+          apps/api/node_modules/.bin/wrangler pages deploy "$GITHUB_WORKSPACE/apps/web/dist" \
+            --project-name=clarity-budget-preview --branch=main \
+            --commit-hash="${{ github.event.workflow_run.head_sha }}" \
+            --commit-message="Preview v${ZOPTION_RELEASE_VERSION}"
+      - name: Build and deploy preview public site
+        env:
+          CF_PAGES: "1"
+        run: |
+          pnpm --filter @zoption/site build
+          cd apps/site
+          ../api/node_modules/.bin/wrangler pages deploy dist \
+            --project-name=zoption-site-preview --branch=main \
+            --commit-hash="${{ github.event.workflow_run.head_sha }}" \
+            --commit-message="Preview v${ZOPTION_RELEASE_VERSION}"
+      - name: Wait for preview propagation
+        env:
+          EXPECTED_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          WEB_URL="$APP_URL" node scripts/wait-for-production-release.mjs
+          WEB_URL="$SITE_URL" node scripts/wait-for-production-release.mjs
+      - name: Verify preview
+        run: pnpm smoke:production
+
   # A run parked at the production gate holds the deploy job's concurrency group, and nobody
   # approves a superseded one, so later releases would queue behind it indefinitely. Once this
   # run's preflight has confirmed it is current main, cancel older runs of another commit that are
@@ -99,9 +165,10 @@ jobs:
   # a release reaches this job; a newer run's cancel-superseded job cancels it if it is still
   # unapproved.
   # The concurrency group lives here, not on the workflow, so a run parked at this gate can never
-  # stop a newer run's preflight from starting, while deploys still never overlap.
+  # stop a newer run's preflight from starting, while deploys still never overlap. It waits for
+  # preview, so a release that fails there never asks for approval.
   deploy-and-release:
-    needs: preflight
+    needs: [preflight, preview]
     if: needs.preflight.outputs.release_needed == 'true'
     concurrency:
       group: production-release-main
@@ -156,7 +223,7 @@ jobs:
       - name: Validate production deployment configuration
         run: |
           node scripts/validate-deployment-config.mjs
-          node scripts/export-production-deployment-env.mjs
+          node scripts/export-deployment-env.mjs production
           apps/api/node_modules/.bin/wrangler deploy --dry-run --outdir /tmp/zoption-worker-dist \
             --config apps/api/wrangler.deploy.jsonc --env production
         env:

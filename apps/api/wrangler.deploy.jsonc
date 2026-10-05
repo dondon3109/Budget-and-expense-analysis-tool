@@ -40,7 +40,7 @@
         },
       ],
       "vars": {
-        "ALLOWED_ORIGINS": "https://clarity-budget-preview.pages.dev,https://codex-webapp.clarity-budget-preview.pages.dev",
+        "ALLOWED_ORIGINS": "https://clarity-budget-preview.pages.dev,https://codex-webapp.clarity-budget-preview.pages.dev,https://zoption-site-preview.pages.dev",
         "SUPABASE_URL": "https://kkxzpjdsvcbveuuiyomk.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
         "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_yIO74YZrjUkxIZQrGm0lEQ_HgKKsyF5",
