@@ -1,3 +1,4 @@
+import { mobileSyncFeatures } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -14,6 +15,9 @@ import {
 } from "./helpers/mobile-sync-test-environment";
 
 afterEach(closeSyncEnvironments);
+
+// Category system keys reach only clients that announce the current sync features.
+const currentClient = new Set(mobileSyncFeatures);
 
 describe("mobile sync cursor", () => {
   it("round-trips canonical opaque sequences", () => {
@@ -339,11 +343,16 @@ describe("mobile sync pull repository", () => {
       "tenant-1:category:debt-payment",
       "tenant-1:category:opening-balance",
     ]);
-    const sixth = await repository.pull(env, "tenant-1", {
-      protocolVersion: 1,
-      cursor: fifth.nextCursor,
-      limit: 2,
-    });
+    const sixth = await repository.pull(
+      env,
+      "tenant-1",
+      {
+        protocolVersion: 1,
+        cursor: fifth.nextCursor,
+        limit: 2,
+      },
+      currentClient,
+    );
     expect(sixth).toMatchObject({ hasMore: false });
     expect(sixth.changes.map((change) => change.entityId)).toEqual([
       "tenant-1:category:debt-payment",
@@ -362,11 +371,16 @@ describe("mobile sync pull repository", () => {
     database.prepare("UPDATE accounts SET name = ? WHERE id = ?").run("Main wallet", "account-1");
     database.prepare("DELETE FROM transactions WHERE id = ?").run("transaction-1");
 
-    const pulled = await repository.pull(env, "tenant-1", {
-      protocolVersion: 1,
-      cursor: "v1.3",
-      limit: 12,
-    });
+    const pulled = await repository.pull(
+      env,
+      "tenant-1",
+      {
+        protocolVersion: 1,
+        cursor: "v1.3",
+        limit: 12,
+      },
+      currentClient,
+    );
     expect(pulled.changes).toMatchObject([
       {
         entityType: "budget",
@@ -459,11 +473,16 @@ describe("mobile sync pull repository", () => {
         "COMMIT;",
     );
 
-    const pulled = await repository.pull(env, "tenant-1", {
-      protocolVersion: 1,
-      cursor: "v1.8",
-      limit: 10,
-    });
+    const pulled = await repository.pull(
+      env,
+      "tenant-1",
+      {
+        protocolVersion: 1,
+        cursor: "v1.8",
+        limit: 10,
+      },
+      currentClient,
+    );
     expect(pulled.changes).toMatchObject([
       {
         entityType: "category",

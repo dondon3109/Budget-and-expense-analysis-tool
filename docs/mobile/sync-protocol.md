@@ -89,6 +89,13 @@ the Worker sends version 1 payloads as first shipped. Shaping happens at read ti
 | `debt-links`       | `debtId` on transaction and transfer payloads, read from the row | No `debtId` key                  |
 | `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`   | Those accounts arrive as `other` |
 
+`account-types-v2` shipped in 0.2.45 together with category `systemKey` and every currency beyond
+PHP and USD, so it also gates those. A client without it (0.2.43, 0.2.44) gets categories without
+`systemKey`, and no upserts for accounts, transactions, transfers, or subscriptions in another
+currency or belonging to an account in one, since its local store rejects the currency and holds a
+foreign key to the account. Account currencies never change, so it never holds a row this hides;
+the rows reach it once it updates and resyncs.
+
 ## Released app contracts
 
 `packages/shared/contracts/mobile-sync/<versionName>.json` records, for every app release still
@@ -108,9 +115,8 @@ version in `x-zoption-app-version` on every sync request; a release below the fl
 `426 app_update_required`, shows "update the app to keep syncing", keeps its outbox, and stops
 scheduling retries. Releases before 0.2.46 send no version and are let through. Retiring a release
 means deleting its contract and raising the floor in `apps/api/wrangler.deploy.jsonc` in the same
-change. 0.2.43 and 0.2.44 are not supported: they reject the `systemKey` on
-category payloads and currencies other than PHP and USD, both of which production sends to every
-client.
+change. 0.2.43 is the oldest supported release; it and 0.2.44 send no sync features and get the
+protocol version 1 shaping described under Client features.
 
 ## Push
 

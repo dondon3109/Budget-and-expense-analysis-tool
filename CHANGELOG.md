@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Fixed
+
+- Android Beta 0.2.43 and 0.2.44 sync again. They skip accounts and entries in currencies other than Philippine Peso and US Dollar until you update the app.
+
 ### Added
 
 - Web and mobile: the AI Assistant can now also add, rename, or archive a category, set a monthly category budget, and edit or delete a transaction you already recorded, when you ask. Each change shows on a card and happens only after you tap Confirm.

@@ -46,7 +46,8 @@ export const MOBILE_SYNC_FEATURES_HEADER = "x-zoption-sync-features";
 export const mobileSyncFeatures = [
   // Transactions and transfers carry `debtId`, the debt the payment went to.
   "debt-links",
-  // Accounts may use the account types added after the first protocol release.
+  // Accounts may use the account types added after the first protocol release. The same release
+  // (0.2.45) began accepting category `systemKey` and every currency, so this gates those too.
   "account-types-v2",
 ] as const;
 export type MobileSyncFeature = (typeof mobileSyncFeatures)[number];
