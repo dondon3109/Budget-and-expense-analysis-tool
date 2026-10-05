@@ -1,106 +1,18 @@
-import {
-  DEFAULT_OFW_EXCHANGE_RATES,
-  getDaysLeftInWeek,
-  projectCashflow,
-  forecastSubscriptions,
-  safeToSpend,
-  type CashflowForecastResult,
-} from "@zoption/shared";
-import { CalendarClock, ChevronRight, Coins } from "lucide-react";
+import { DEFAULT_OFW_EXCHANGE_RATES } from "@zoption/shared";
+import { ChevronRight, Coins } from "lucide-react";
 import { Link } from "react-router-dom";
 
-import { currentMonth, monthStart } from "../../lib/calendar";
-import { formatMoney } from "../../lib/formatters";
-import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { workspaceCurrency } from "../../lib/workspaceCurrency";
-import { useSubscriptions } from "../../queries/subscriptions";
 import "./DashboardToolCards.css";
 
-export interface DashboardToolCardsProps {
-  workspace: AuthenticatedWorkspace;
-  startingBalanceMinor: number;
-  remainingBudgetMinor?: number;
-}
-
-type ToolCardTone = "neutral" | "danger";
-
-// Projected balances are calendar days rather than instants, so they are read in UTC the
-// way projectCashflow builds them.
-const forecastDateFormatter = new Intl.DateTimeFormat("en-PH", {
-  month: "short",
-  day: "numeric",
-  timeZone: "UTC",
-});
-
-/** How many renewals the projection found, in the words the card shows. */
-function renewalSummary(renewalCount: number): string {
-  if (renewalCount === 0) return "No renewals scheduled";
-  if (renewalCount === 1) return "1 renewal in the next 30 days";
-  return `${renewalCount} renewals in the next 30 days`;
-}
-
 /**
- * A renewal lookup that is still running or has failed projects no bills, so it must not
- * warn: the card would otherwise blame a deficit on renewals it has not seen yet.
+ * The dashboard doorway into the remittance calculator, which the mobile home screen also
+ * surfaces. Safe to spend lives in its own hero card above, so it is not repeated here.
  */
-function projectionTone(forecast: CashflowForecastResult, renewalsLoaded: boolean): ToolCardTone {
-  if (!renewalsLoaded) return "neutral";
-  return forecast.hasDeficit ? "danger" : "neutral";
-}
-
-/**
- * The dashboard doorways into the two tools the mobile home screen already surfaces: the
- * safe to spend figure and the remittance calculator. Both cards are single links, so
- * each one reads as a destination rather than as a widget with its own controls.
- */
-export function DashboardToolCards({
-  workspace,
-  startingBalanceMinor,
-  remainingBudgetMinor,
-}: DashboardToolCardsProps) {
-  const subscriptionMonth = currentMonth();
-  const subscriptionsQuery = useSubscriptions(workspace, monthStart(subscriptionMonth));
-
-  const subscriptions = forecastSubscriptions(
-    subscriptionsQuery.data?.items ?? [],
-    workspaceCurrency(),
-  );
-
-  const forecast = projectCashflow({ startingBalanceMinor, subscriptions, horizonDays: 30 });
-  const safeAmountMinor = safeToSpend({
-    remainingWeeklyEnvelopeMinor: Math.max(0, remainingBudgetMinor ?? startingBalanceMinor),
-    daysLeftInWeek: getDaysLeftInWeek(new Date(), "monday"),
-    forecast: { minProjectedBalanceMinor: forecast.minProjectedBalanceMinor },
-  });
-  const renewalsLoaded = subscriptionsQuery.data !== undefined;
-  const renewalsUnavailable = subscriptionsQuery.isError;
-  const tone = projectionTone(forecast, renewalsLoaded);
-  const renewalCount = forecast.upcomingBillRisks.length;
-  const lowestBalanceOn = forecastDateFormatter.format(
-    new Date(`${forecast.minBalanceDate}T00:00:00Z`),
-  );
+export function DashboardToolCards() {
   const usdMidMarketRate = DEFAULT_OFW_EXCHANGE_RATES.USD.midMarketRate.toFixed(2);
 
   return (
     <div className="dashboard-tool-cards">
-      <Link className="dashboard-tool-card" data-tone={tone} to="/app/subscriptions?view=forecast">
-        <span className="dashboard-tool-card-icon">
-          <CalendarClock size={14} aria-hidden="true" />
-        </span>
-        <h3 className="dashboard-tool-card-title">Safe to spend</h3>
-        {tone === "danger" && <span className="dashboard-tool-card-status">Deficit risk</span>}
-        <ChevronRight className="dashboard-tool-card-chevron" size={16} aria-hidden="true" />
-        <strong className="dashboard-tool-card-value">
-          {renewalsUnavailable ? "Renewals unavailable" : formatMoney(safeAmountMinor)}
-        </strong>
-        <p className="dashboard-tool-card-meta">
-          {renewalsUnavailable
-            ? "Your renewals could not be loaded, so this projection is incomplete."
-            : `Lowest on ${lowestBalanceOn} · ${renewalSummary(renewalCount)}`}
-        </p>
-        <p className="dashboard-tool-card-copy">See how each renewal moves your balance.</p>
-      </Link>
-
       <Link className="dashboard-tool-card" to="/app/plan#remittance-calculator">
         <span className="dashboard-tool-card-icon">
           <Coins size={14} aria-hidden="true" />

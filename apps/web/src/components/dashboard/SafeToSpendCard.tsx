@@ -93,7 +93,7 @@ export function SafeToSpendCard({
           <span className="safe-to-spend-pill">
             {daysLeftInWeek} day{daysLeftInWeek === 1 ? "" : "s"} left
           </span>
-          <Link className="safe-to-spend-renewals" to="/app/subscriptions">
+          <Link className="safe-to-spend-renewals" to="/app/subscriptions?view=forecast">
             <CalendarClock size={13} aria-hidden="true" />
             Renewals
           </Link>
