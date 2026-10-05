@@ -1,8 +1,7 @@
 # scripts
 
 Repository tooling. Every `*.mjs` with logic has a `*.test.mjs` beside it, collected by the
-root Vitest `scripts` project (`pnpm vitest run --project scripts`). This whole directory is
-high risk in `pr-risk.mjs`, so a change here always needs a human merge.
+root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 
 ## Verification and guardrails
 
@@ -11,7 +10,6 @@ high risk in `pr-risk.mjs`, so a change here always needs a human merge.
 | `verify-workspace-links` | `pnpm verify`, `verify:changed` | Proves the `@zoption/*` workspace links exist before anything typechecks              |
 | `check-structure`        | `pnpm verify`, CI `static`      | Enforces the 1000 line file limit (with shrink-only ceilings) and one-line app routes |
 | `verify-changed`         | `pnpm verify:changed`           | Runs only the scoped `verify:<scope>` commands the current diff needs                 |
-| `pr-risk`                | PR Review workflow              | The high-risk path list that keeps a pull request away from auto-merge                |
 | `bugfix-scrub`           | Bugfix Draft workflow           | Fails a bugfix draft that carries user identifiers                                    |
 
 ## Release and deployment (run by workflows)
@@ -24,6 +22,7 @@ high risk in `pr-risk.mjs`, so a change here always needs a human merge.
 | `github-production-deployment`     | Production Release           | Records the GitHub deployment and its stage statuses                                   |
 | `wait-for-production-release`      | Production Release           | Waits until the deployed site reports the expected app version                         |
 | `smoke-production`                 | `pnpm smoke:production`      | Read-only production smoke checks; uses `deployment-smoke-helpers`                     |
+| `rollback-pages`                   | Production Rollback          | Rolls a Pages project back to the production deployment of a release commit            |
 | `submit-indexnow`                  | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release |
 | `android-release-metadata`         | Android Beta Build           | Resolves the signed Android release identity from the two version sources              |
 | `validate-mobile-telemetry-env`    | Android Beta Build           | Rejects a release build with an unapproved PostHog host or flag                        |

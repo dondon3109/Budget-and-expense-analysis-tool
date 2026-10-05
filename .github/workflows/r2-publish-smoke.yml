@@ -42,7 +42,7 @@ jobs:
         run: |
           printf '%s' 'Zoption R2 GitHub Actions smoke test' > /tmp/r2-smoke.txt
           DOWNLOADED=0
-          for attempt in $(seq 1 12); do
+          for _ in $(seq 1 12); do
             if curl -fsS --max-time 15 "$PUBLIC_URL" -o /tmp/r2-download.txt; then
               DOWNLOADED=1
               break

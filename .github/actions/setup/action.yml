@@ -1,0 +1,18 @@
+name: Set up the workspace
+description: >-
+  Installs pnpm (the version pinned by packageManager in package.json), Node 24 with the pnpm
+  store cached, and the workspace dependencies from the frozen lockfile. Every workflow job that
+  runs pnpm uses this after its own checkout, so the toolchain changes in one place.
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      with:
+        run_install: false
+    - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: 24
+        cache: pnpm
+    - shell: bash
+      run: pnpm install --frozen-lockfile
