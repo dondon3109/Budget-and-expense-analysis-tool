@@ -177,7 +177,7 @@ jobs:
       group: production-release-main
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: production
     permissions:
       contents: write
@@ -253,6 +253,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+      - name: Plan the production Worker rollout
+        id: rollout
+        if: steps.deployment.outputs.worker_deployed != 'true'
+        run: node scripts/worker-canary.mjs plan
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       - name: Record the production D1 restore point
         if: steps.deployment.outputs.worker_deployed != 'true'
         uses: ./.github/actions/d1-restore-point
@@ -268,18 +275,22 @@ jobs:
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      - name: Deploy production Worker
+      # The new Worker version takes traffic in stages: 0% while version-pinned probes check it,
+      # then CANARY_PERCENTAGE while it soaks, then 100%. --strict aborts when the tracked config
+      # differs from what Cloudflare reports for the deployed Worker. That stays the default,
+      # because an unplanned override should stop a release. Set CLOUDFLARE_WORKER_CONFIG_OVERRIDE
+      # to true only for a run that must write the tracked config over the remote one, and unset it
+      # afterwards; it still needs the production approval.
+      - name: Upload production Worker version
+        id: worker
         if: steps.deployment.outputs.worker_deployed != 'true'
         working-directory: apps/api
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          # --strict aborts when the tracked config differs from what Cloudflare reports for the
-          # deployed Worker. That stays the default, because an unplanned override should stop a
-          # release. Set this repository variable to true only for a run that must write the
-          # tracked config over the remote one, and unset it afterwards. The deploy job still sits
-          # behind the production environment, so the override needs a human approval too.
           WORKER_CONFIG_OVERRIDE: ${{ vars.CLOUDFLARE_WORKER_CONFIG_OVERRIDE }}
+          STRATEGY: ${{ steps.rollout.outputs.strategy }}
+          WRANGLER_OUTPUT_FILE_PATH: ${{ runner.temp }}/wrangler-worker.ndjson
         run: |
           set -euo pipefail
           args=(--config wrangler.deploy.jsonc --env production --strict)
@@ -287,9 +298,46 @@ jobs:
             echo "::warning::CLOUDFLARE_WORKER_CONFIG_OVERRIDE is true, deploying without --strict."
             args=(--config wrangler.deploy.jsonc --env production)
           fi
-          ./node_modules/.bin/wrangler deploy "${args[@]}" \
-            --tag "v${{ needs.preflight.outputs.version }}" \
-            --message "GitHub Actions release ${{ github.event.workflow_run.head_sha }}"
+          args+=(--tag "v${{ needs.preflight.outputs.version }}"
+            --message "GitHub Actions release ${{ github.event.workflow_run.head_sha }}")
+          # Durable Object migrations and queue consumer changes apply only through a full deploy.
+          if [[ "$STRATEGY" == "atomic" ]]; then
+            echo "::warning::This release changes settings a gradual rollout cannot apply; deploying to 100% at once."
+            ./node_modules/.bin/wrangler deploy "${args[@]}"
+            echo "version_id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ./node_modules/.bin/wrangler versions upload "${args[@]}"
+          version_id="$(jq -r 'select(.type == "version-upload") | .version_id' "$WRANGLER_OUTPUT_FILE_PATH" | tail -n 1)"
+          if [[ -z "$version_id" || "$version_id" == "null" ]]; then
+            echo "::error::wrangler versions upload reported no version ID."
+            exit 1
+          fi
+          echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
+      - name: Canary the new Worker version
+        if: steps.deployment.outputs.worker_deployed != 'true' && steps.worker.outputs.version_id != ''
+        working-directory: apps/api
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          NEW_VERSION: ${{ steps.worker.outputs.version_id }}
+          PREVIOUS_VERSION: ${{ steps.rollout.outputs.previous_version }}
+          CANARY_PERCENTAGE: 10
+          SOAK_MINUTES: 5
+        run: |
+          set -euo pipefail
+          deploy() {
+            ./node_modules/.bin/wrangler versions deploy "$@" --yes \
+              --config wrangler.deploy.jsonc --env production \
+              --message "Canary v${{ needs.preflight.outputs.version }}"
+          }
+          deploy "$NEW_VERSION@0" "$PREVIOUS_VERSION@100"
+          node ../../scripts/worker-canary.mjs probe
+          deploy "$NEW_VERSION@$CANARY_PERCENTAGE" "$PREVIOUS_VERSION@$((100 - CANARY_PERCENTAGE))"
+          node ../../scripts/worker-canary.mjs soak
+          deploy "$NEW_VERSION@100"
+          # versions upload leaves routes, the custom domain, and cron triggers alone.
+          ./node_modules/.bin/wrangler triggers deploy --config wrangler.deploy.jsonc --env production
       - name: Checkpoint production Worker deployment
         if: steps.deployment.outputs.worker_deployed != 'true'
         run: node scripts/github-production-deployment.mjs stage worker
