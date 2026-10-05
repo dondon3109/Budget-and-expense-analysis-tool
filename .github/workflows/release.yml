@@ -32,6 +32,13 @@ jobs:
       version: ${{ steps.next_release.outputs.version }}
       previous_version: ${{ steps.previous_release.outputs.version }}
     steps:
+      # Set the repository variable PRODUCTION_DEPLOY_FREEZE to true to hold every release (during an
+      # incident, say) before any approval is requested; unset it to resume. Rollback ignores it.
+      - name: Respect a production deploy freeze
+        if: vars.PRODUCTION_DEPLOY_FREEZE == 'true'
+        run: |
+          echo "::error::PRODUCTION_DEPLOY_FREEZE is true, so no release starts. Unset it and rerun this workflow."
+          exit 1
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
@@ -138,6 +145,13 @@ jobs:
           WEB_URL="$SITE_URL" node scripts/wait-for-production-release.mjs
       - name: Verify preview
         run: pnpm smoke:production
+      - name: Announce the failed preview
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          text: "Zoption v${{ needs.preflight.outputs.version }} failed on preview, so production was not asked for approval. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
 
   # Builds the production app and public site once, before approval, so the gated job deploys
   # bytes that existed when the human approved and spends its time only on deploying. The site
@@ -525,3 +539,20 @@ jobs:
         run: pnpm release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Announce the release
+        if: success() && steps.deployment.outputs.skip_deploy != 'true'
+        uses: ./.github/actions/notify
+        with:
+          text: "Zoption v${{ needs.preflight.outputs.version }} is live. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Announce the failed release
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          text: >-
+            Zoption v${{ needs.preflight.outputs.version }} failed in production.
+            ${{ steps.auto_rollback.outcome == 'success' && format('Production is back on v{0}.', needs.preflight.outputs.previous_version) || (steps.auto_rollback.outcome == 'failure' && 'The automatic rollback failed; production needs attention now.' || 'Production was not changed.') }}
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}

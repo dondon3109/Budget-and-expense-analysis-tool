@@ -1,0 +1,35 @@
+name: Notify the maintainer
+description: >-
+  Sends one Telegram message through the bot the bugfix automation already uses. Best effort: it
+  never fails the job, and it does nothing when TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is unset.
+  Telegram is a third party, so messages carry versions, status, and links, never user data.
+
+inputs:
+  text:
+    description: The message
+    required: true
+  bot-token:
+    description: secrets.TELEGRAM_BOT_TOKEN
+    required: true
+  chat-id:
+    description: secrets.TELEGRAM_CHAT_ID
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        TEXT: ${{ inputs.text }}
+        TELEGRAM_BOT_TOKEN: ${{ inputs.bot-token }}
+        TELEGRAM_CHAT_ID: ${{ inputs.chat-id }}
+      run: |
+        if [[ -z "$TELEGRAM_BOT_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+          echo "::notice::Telegram is not configured, so no message was sent."
+          exit 0
+        fi
+        curl --silent --show-error --fail --max-time 15 -o /dev/null \
+          --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+          --data-urlencode "text=${TEXT}" \
+          "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" ||
+          echo "::warning::The Telegram notification could not be sent."

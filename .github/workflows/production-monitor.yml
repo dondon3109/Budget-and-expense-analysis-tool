@@ -2,8 +2,9 @@ name: Production Monitor
 
 # Runs the read-only production smoke gate every 10 minutes, outside any release. Two failures a
 # minute apart open one `production-down` issue assigned to the repository owner, which is what
-# notifies them; later failures comment on it, and the next pass closes it. GitHub delays
-# scheduled runs under load and disables them after 60 days without repository activity.
+# notifies them, along with a Telegram message; later failures comment on it, and the next pass
+# closes it with another message. GitHub delays scheduled runs under load and disables them after
+# 60 days without repository activity.
 on:
   schedule:
     - cron: "*/10 * * * *"
@@ -45,6 +46,7 @@ jobs:
             cat "$RUNNER_TEMP/smoke.log"
           fi
       - name: Report the result
+        id: report
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -57,6 +59,7 @@ jobs:
           if [[ "$HEALTHY" == "true" ]]; then
             if [[ -n "$open" ]]; then
               gh issue close "$open" --comment "Production passes the smoke checks again ($RUN_URL)."
+              echo "message=Zoption production passes its smoke checks again. $RUN_URL" >> "$GITHUB_OUTPUT"
             fi
             exit 0
           fi
@@ -73,5 +76,14 @@ jobs:
           Run: $RUN_URL
 
           Check the latest Production Release run, then roll back with the Production Rollback workflow if a release caused it (docs/deployment.md#rollback). This issue closes itself on the next passing check."
+            echo "message=Zoption production is failing its smoke checks. $RUN_URL" >> "$GITHUB_OUTPUT"
           fi
           exit 1
+      # Only the start and the end of an outage notify; the issue holds everything in between.
+      - name: Notify about the change
+        if: always() && steps.report.outputs.message != ''
+        uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.report.outputs.message }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
