@@ -77,11 +77,16 @@ export function HomeScreen() {
 
   return (
     <Screen
-      action={<SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />}
+      action={
+        hasTransactions ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null
+      }
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
       title="Home"
     >
+      <View style={{ alignItems: "flex-end", marginTop: -spacing.sm }}>
+        <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
+      </View>
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
         <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
@@ -123,7 +128,6 @@ export function HomeScreen() {
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
-              <HomeViewSwitch selected={homeView} onSelect={setHomeView} />
               {homeView === "overview" ? (
                 <>
                   <BalanceCard summary={view.summary} />
