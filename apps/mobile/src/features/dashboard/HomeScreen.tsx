@@ -70,6 +70,7 @@ export function HomeScreen() {
       (dashboard.data?.accounts.length ?? 0) > 0),
   );
   const isPro = planState.plan === "zoption_pro";
+  const showViewSwitch = menuView === "home" && !dashboard.error && hasTransactions;
 
   const handleRefresh = useCallback(async () => {
     sync.retry();
@@ -88,6 +89,9 @@ export function HomeScreen() {
         style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}
       >
         <HomeViewMenu selected={menuView} onSelect={setMenuView} />
+        {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
+      </View>
+      <View style={{ alignItems: "flex-end" }}>
         <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
       </View>
       <OfflineBanner />
@@ -115,9 +119,6 @@ export function HomeScreen() {
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
-              <View style={{ alignItems: "center" }}>
-                <HomeViewSwitch selected={homeView} onSelect={setHomeView} />
-              </View>
               {homeView === "overview" ? (
                 <>
                   <BalanceCard summary={view.summary} />
