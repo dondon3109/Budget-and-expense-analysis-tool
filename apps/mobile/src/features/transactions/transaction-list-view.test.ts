@@ -3,6 +3,7 @@ import type { TransactionListItem } from "@zoption/shared";
 import type { LocalTransactionItem } from "@/db/view-models";
 import {
   categorySummary,
+  compactAmountLabel,
   groupTransactionsByDate,
   monthStartForDate,
   shiftMonthStart,
@@ -115,5 +116,15 @@ describe("transaction list view", () => {
       { key: "transit:PHP", incomeMinor: 0, expenseMinor: 500, transferMinor: 0 },
       { key: "food:USD", incomeMinor: 0, expenseMinor: 500, transferMinor: 0 },
     ]);
+  });
+});
+
+describe("compactAmountLabel", () => {
+  it("shortens whole-unit amounts for calendar cells", () => {
+    expect(compactAmountLabel(85_000)).toBe("850");
+    expect(compactAmountLabel(-210_000)).toBe("2.1k");
+    expect(compactAmountLabel(1_200_000)).toBe("12k");
+    expect(compactAmountLabel(150_000_000)).toBe("1.5M");
+    expect(compactAmountLabel(99)).toBe("0");
   });
 });

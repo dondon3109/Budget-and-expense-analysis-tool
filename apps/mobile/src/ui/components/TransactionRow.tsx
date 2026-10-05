@@ -98,7 +98,7 @@ export function TransactionRow({
 const styles = StyleSheet.create({
   row: {
     minHeight: touchTarget,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xs,
     borderRadius: radii.md,
   },
