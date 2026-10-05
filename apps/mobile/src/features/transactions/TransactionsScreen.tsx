@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLocalTransactions, useLocalWorkspace } from "@/db/local-workspace-state";
 import { transactionKindFilters, type TransactionKindFilter } from "@/db/view-models";
-import { monthLabel } from "@/features/calendar/event-form";
+import { monthLabel, todayIso } from "@/features/calendar/event-form";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
@@ -41,12 +41,14 @@ import {
   summarizeTransactions,
 } from "./transaction-list-view";
 import { CategorySummaryRow, DateHeader, TotalsValue, TransactionItemRow } from "./TransactionRows";
+import { TransactionCalendarGrid } from "./TransactionCalendarGrid";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
 
-type ViewMode = "daily" | "monthly" | "summary";
+type ViewMode = "daily" | "calendar" | "monthly" | "summary";
 
 const viewTabs: Array<{ key: ViewMode; label: string }> = [
   { key: "daily", label: "Daily" },
+  { key: "calendar", label: "Calendar" },
   { key: "monthly", label: "Monthly" },
   { key: "summary", label: "Summary" },
 ];
@@ -89,6 +91,7 @@ export function TransactionsScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const [view, setView] = useState<ViewMode>("daily");
+  const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const [smsQuickPasteVisible, setSmsQuickPasteVisible] = useState(false);
   const [netInfoVisible, setNetInfoVisible] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -129,6 +132,12 @@ export function TransactionsScreen() {
   const items = useMemo(() => local.items ?? [], [local.items]);
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
+  // Derived so changing month never leaves a selection outside the visible month.
+  const activeDate = selectedDate.startsWith(month.slice(0, 7)) ? selectedDate : month;
+  const activeDayItems = useMemo(
+    () => dateGroups.find((group) => group.date === activeDate)?.items ?? [],
+    [dateGroups, activeDate],
+  );
   const summaryItems = useMemo(() => categorySummary(items), [items]);
   const existingTransactions = useMemo(
     () =>
@@ -477,6 +486,33 @@ export function TransactionsScreen() {
           showsVerticalScrollIndicator={false}
           stickySectionHeadersEnabled
         />
+      ) : view === "calendar" ? (
+        <FlatList
+          alwaysBounceVertical
+          contentContainerStyle={styles.listContent}
+          data={activeDayItems}
+          extraData={selectedIds}
+          keyExtractor={(item) => item.transaction.id}
+          ListHeaderComponent={
+            <TransactionCalendarGrid
+              groups={dateGroups}
+              month={month}
+              onSelectDate={setSelectedDate}
+              selectedDate={activeDate}
+              today={todayIso()}
+            />
+          }
+          refreshControl={refreshControl}
+          renderItem={({ item }) => (
+            <TransactionItemRow
+              item={item}
+              onToggleSelect={toggleSelected}
+              selected={selectedIds.includes(item.transaction.id)}
+              selecting={selecting}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+        />
       ) : view === "summary" ? (
         <FlatList
           alwaysBounceVertical
@@ -599,7 +635,7 @@ export function TransactionsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   toolbar: {
-    minHeight: 56,
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -627,7 +663,7 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, minHeight: touchTarget, fontSize: 16 },
   monthNav: {
-    minHeight: 52,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -641,7 +677,7 @@ const styles = StyleSheet.create({
   },
   viewTab: {
     flex: 1,
-    height: 44,
+    height: 40,
     alignItems: "center",
     justifyContent: "center",
     borderBottomWidth: 3,
@@ -649,7 +685,7 @@ const styles = StyleSheet.create({
     marginBottom: -StyleSheet.hairlineWidth,
   },
   monthTotals: {
-    minHeight: 72,
+    minHeight: 60,
     flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
