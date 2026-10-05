@@ -139,6 +139,56 @@ jobs:
       - name: Verify preview
         run: pnpm smoke:production
 
+  # Builds the production app and public site once, before approval, so the gated job deploys
+  # bytes that existed when the human approved and spends its time only on deploying. The site
+  # reads the published reviews from the live production API here, so /api/reviews must keep its
+  # response shape for one release (it fails the build rather than ship without them).
+  build-production:
+    needs: preflight
+    if: needs.preflight.outputs.release_needed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      manifest_sha256: ${{ steps.manifest.outputs.sha256 }}
+    env:
+      CF_PAGES: "1"
+      ZOPTION_DEPLOY_ENV: production
+      ZOPTION_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - run: node scripts/export-deployment-env.mjs production
+      - name: Build versioned production web app
+        run: pnpm --filter @zoption/web build
+        env:
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: https://us.i.posthog.com
+      # Same PostHog project key as the app.
+      - name: Build versioned production public site
+        run: pnpm --filter @zoption/site build
+        env:
+          PUBLIC_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+      - name: Hash the build
+        id: manifest
+        working-directory: apps
+        run: |
+          set -euo pipefail
+          find web/dist site/dist -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/manifest.sha256"
+          echo "sha256=$(sha256sum "$RUNNER_TEMP/manifest.sha256" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      # A run can wait at the production gate for days, so the build outlives the default.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: production-dist
+          path: |
+            apps/web/dist
+            apps/site/dist
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
   # A run parked at the production gate holds the deploy job's concurrency group, and nobody
   # approves a superseded one, so later releases would queue behind it indefinitely. Once this
   # run's preflight has confirmed it is current main, cancel older runs of another commit that are
@@ -178,7 +228,7 @@ jobs:
   # stop a newer run's preflight from starting, while deploys still never overlap. It waits for
   # preview, so a release that fails there never asks for approval.
   deploy-and-release:
-    needs: [preflight, preview]
+    needs: [preflight, preview, build-production]
     if: needs.preflight.outputs.release_needed == 'true'
     concurrency:
       group: production-release-main
@@ -351,15 +401,28 @@ jobs:
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build versioned production web app
-        if: steps.deployment.outputs.pages_deployed != 'true'
-        run: pnpm --filter @zoption/web build
+      # The app and site were built before approval by build-production. Deploy exactly those
+      # bytes: the manifest must match the hash that job reported, file for file.
+      - name: Fetch the approved production build
+        if: steps.deployment.outputs.pages_deployed != 'true' || steps.deployment.outputs.site_deployed != 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: production-dist
+          path: apps
+      - name: Verify the production build is unchanged
+        if: steps.deployment.outputs.pages_deployed != 'true' || steps.deployment.outputs.site_deployed != 'true'
+        working-directory: apps
         env:
-          CF_PAGES: "1"
-          ZOPTION_DEPLOY_ENV: production
-          ZOPTION_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
-          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
-          VITE_POSTHOG_HOST: https://us.i.posthog.com
+          EXPECTED_MANIFEST_SHA256: ${{ needs.build-production.outputs.manifest_sha256 }}
+        run: |
+          set -euo pipefail
+          find web/dist site/dist -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/manifest.sha256"
+          actual="$(sha256sum "$RUNNER_TEMP/manifest.sha256" | cut -d' ' -f1)"
+          if [[ "$actual" != "$EXPECTED_MANIFEST_SHA256" ]]; then
+            echo "::error::The downloaded build does not match the one built before approval."
+            exit 1
+          fi
+          echo "Deploying the build approved as $actual."
       - name: Deploy production web app
         if: steps.deployment.outputs.pages_deployed != 'true'
         run: >-
@@ -376,16 +439,6 @@ jobs:
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # The public site reads the published reviews from the API deployed above, so it builds
-      # after the Worker. It uses the same PostHog project key as the app.
-      - name: Build versioned production public site
-        if: steps.deployment.outputs.site_deployed != 'true'
-        run: pnpm --filter @zoption/site build
-        env:
-          CF_PAGES: "1"
-          ZOPTION_DEPLOY_ENV: production
-          ZOPTION_RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
-          PUBLIC_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
       # Deployed from apps/site so wrangler compiles its functions/ directory (the /ingest proxy).
       - name: Deploy production public site
         if: steps.deployment.outputs.site_deployed != 'true'
