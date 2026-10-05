@@ -1,0 +1,31 @@
+name: Cancel Superseded Releases
+
+# A Production Release waiting at the production gate can only ship the commit that is main when
+# it is approved; its deploy job's Verify release source guard fails once main moves on. This runs
+# on every push to main and cancels such runs at once, so a stale approval request disappears
+# when something merges instead of lingering until the new commit's CI finishes. Release's own
+# cancel-superseded job still covers a run that reaches the gate after this sweep.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  actions: write
+
+jobs:
+  cancel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cancel releases of older commits waiting for approval
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          MAIN_COMMIT: ${{ github.sha }}
+        run: |
+          gh run list --workflow release.yml --status waiting --json databaseId,headSha \
+            --jq ".[] | select(.headSha != \"$MAIN_COMMIT\") | .databaseId" |
+            while read -r id; do
+              echo "Cancelling run $id: main moved to $MAIN_COMMIT while it waited for approval."
+              gh run cancel "$id" || echo "::warning::Could not cancel run $id; it may have just been approved or finished."
+            done

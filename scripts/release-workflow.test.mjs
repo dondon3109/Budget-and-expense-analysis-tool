@@ -50,3 +50,16 @@ describe("Production Release concurrency", () => {
     expect(workflow.match(/^ +actions: write$/gm)).toHaveLength(1);
   });
 });
+
+describe("Cancel Superseded Releases", () => {
+  // It runs on every push to main with the only actions: write token outside release.yml, so it
+  // must never check out or install code, and must never cancel a release of the pushed commit.
+  it("cancels only parked releases of other commits, without touching the code", async () => {
+    const workflow = await readFile(".github/workflows/release-superseded.yml", "utf8");
+    expect(workflow).toMatch(/^ {2}push:\n {4}branches: \[main\]$/m);
+    expect(workflow).toMatch(/^permissions:\n {2}actions: write\n\n/m);
+    expect(workflow).not.toMatch(/checkout|pnpm|uses:/);
+    expect(workflow).toContain("--status waiting");
+    expect(workflow).toContain('select(.headSha != \\"$MAIN_COMMIT\\")');
+  });
+});
