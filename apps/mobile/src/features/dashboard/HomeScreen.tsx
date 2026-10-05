@@ -105,24 +105,6 @@ export function HomeScreen() {
         </View>
       ) : (
         <View style={{ gap: spacing.md }}>
-          {hasTransactions ? (
-            <SafeToSpendHero
-              startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-              subscriptions={subscriptions.subscriptions}
-              remainingBudgetMinor={
-                view.summary.budgetProgress.length > 0
-                  ? Math.max(
-                      0,
-                      view.summary.budgetProgress.reduce(
-                        (sum, item) => sum + item.remainingMinor,
-                        0,
-                      ),
-                    )
-                  : undefined
-              }
-              onViewRenewals={() => router.push("/(app)/subscriptions")}
-            />
-          ) : null}
           <PetHomeCard />
           <QuickActionBar />
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
@@ -131,6 +113,22 @@ export function HomeScreen() {
               {homeView === "overview" ? (
                 <>
                   <BalanceCard summary={view.summary} />
+                  <SafeToSpendHero
+                    startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                    subscriptions={subscriptions.subscriptions}
+                    remainingBudgetMinor={
+                      view.summary.budgetProgress.length > 0
+                        ? Math.max(
+                            0,
+                            view.summary.budgetProgress.reduce(
+                              (sum, item) => sum + item.remainingMinor,
+                              0,
+                            ),
+                          )
+                        : undefined
+                    }
+                    onViewRenewals={() => router.push("/(app)/subscriptions")}
+                  />
                   <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
                   <RemittanceCalculatorCard />
                 </>
