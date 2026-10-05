@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 
 export type HomeViewName = "overview" | "analytics";
 
@@ -41,7 +41,7 @@ export function HomeViewSwitch({
           >
             <Text
               style={[
-                typography.body,
+                typography.callout,
                 {
                   color: active ? theme.colors.onBrand : theme.colors.text,
                   fontWeight: active ? "600" : "500",
@@ -65,8 +65,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   segment: {
-    flex: 1,
-    minHeight: touchTarget,
+    minHeight: 36,
+    paddingHorizontal: spacing.sm,
     alignItems: "center",
     justifyContent: "center",
     borderRadius: radii.round,
