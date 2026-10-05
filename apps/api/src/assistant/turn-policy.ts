@@ -11,7 +11,7 @@ import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
 
 /** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
-export const ASSISTANT_PROMPT_VERSION = "expert-v6";
+export const ASSISTANT_PROMPT_VERSION = "expert-v7";
 
 export type RequiredToolGroup =
   | "account_balance"
@@ -92,6 +92,16 @@ const ACTION_VERB_PATTERN =
   /\b(?:add|create|make|set\s*up|new|change|update|edit|rename|delete|remove|archive|set|cancel|pause|resume|reactivate|mark|adjust|increase|decrease|idagdag|gumawa|gawa|burahin|tanggalin|palitan|baguhin|i-?cancel|i-?delete|i-?update)\b/i;
 const ACTION_NOUN_PATTERN =
   /\b(?:subscriptions?|subskripsyon|savings? goals?|goals?|layunin|debts?|loans?|credit cards?|utang|accounts?|wallets?|balances?|categor(?:y|ies)|budgets?|transactions?)\b/i;
+
+// "How do I import a statement?", "paano mag-export ng transactions". Verbs are limited to
+// product tasks so "how do I compare to last month" still reads as a records question.
+const HELP_PATTERN =
+  /\b(?:how (?:do|can|could|would|should) (?:i|we|you)|how to|where (?:do|can|could) i|paano (?:ako |ko )?(?:mag|mo|i-?|maka|mai))\s*(?:\w+\s+){0,2}?(?:add|create|set ?up|change|edit|delete|remove|import|export|upload|cancel|reset|upgrade|connect|install|download|sign|log ?in|enable|disable|turn|switch|find|use|rename|archive|link|delete|mag-?\w+|i-?\w+)\b/i;
+
+/** A how-to question about the app itself. It needs no records, so it never asks for a period. */
+function isHelpRequest(message: string): boolean {
+  return HELP_PATTERN.test(message);
+}
 
 /**
  * A request to create, change, or delete a subscription, goal, or debt. It reads like a
@@ -309,6 +319,18 @@ export function createAssistantTurnPolicy(input: {
       compliance: { posture: compliance.posture, topics: compliance.topics },
       requiredToolGroups: ["transaction_entry"],
       ...(period.period ? { resolvedPeriod: period.period } : {}),
+      ...(compliance.disclaimer
+        ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
+        : {}),
+    };
+  }
+
+  if (isHelpRequest(input.message) && !isTransactionEntryRequest(input.message)) {
+    return {
+      currentDate: input.currentDate,
+      timeZone: input.timeZone,
+      compliance: { posture: "general_education", topics: compliance.topics },
+      requiredToolGroups: [],
       ...(compliance.disclaimer
         ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
         : {}),

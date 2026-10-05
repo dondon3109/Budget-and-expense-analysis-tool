@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - Web and mobile: the AI Assistant can now also add, rename, or archive a category, set a monthly category budget, and edit or delete a transaction you already recorded, when you ask. Each change shows on a card and happens only after you tap Confirm.
+- Web and mobile: ask the AI Assistant how to do something in Zoption, such as importing a statement or setting a budget, and it answers with the page and control to use, the same guidance as Help & contact.
 
 ## 3.4.0 — 2026-10-04
 

@@ -300,6 +300,27 @@ describe("assistant turn policy for actions", () => {
     ).toBeUndefined();
   });
 
+  it("answers a how-to question without records, tools, or a period question", () => {
+    for (const message of [
+      "How do I import a bank statement?",
+      "How do I set a budget for groceries?",
+      "Paano mag-export ng transactions?",
+    ]) {
+      const policy = createAssistantTurnPolicy({ ...base, message });
+      expect(policy.requiredToolGroups).toEqual([]);
+      expect(policy.deterministicResponse).toBeUndefined();
+      expect(policy.actionFlow).toBeUndefined();
+    }
+  });
+
+  it("keeps a spending question that starts with how as a records question", () => {
+    const policy = createAssistantTurnPolicy({
+      ...base,
+      message: "How much did I spend on food this month?",
+    });
+    expect(policy.requiredToolGroups.length).toBeGreaterThan(0);
+  });
+
   it("still reads a plain subscription question as a records question", () => {
     const policy = createAssistantTurnPolicy({
       ...base,
@@ -343,7 +364,7 @@ function setupConfirm() {
         TENANT,
         THREAD,
         JSON.stringify({
-          promptVersion: "expert-v6",
+          promptVersion: "expert-v7",
           compliance: { posture: "budgeting_allowed", topics: [] },
           sources: [],
           assistantActionFlow: true,
