@@ -507,7 +507,20 @@ Manual rollback, when the workflow cannot run:
 
 ## Production monitoring
 
-The `Production Monitor` workflow (`.github/workflows/production-monitor.yml`) runs the read-only production smoke gate every 10 minutes and on demand. A pass that fails is retried after a minute; a second failure opens one issue labelled `production-down`, assigned to the repository owner so GitHub notifies them, and later failures comment on that issue. The next passing check closes it. The workflow needs no secrets: it reads the production hosts and Supabase origins from `scripts/export-deployment-env.mjs`. GitHub delays scheduled runs under load and disables them after 60 days without repository activity; re-enable it from the Actions tab if that happens.
+The `Production Monitor` workflow (`.github/workflows/production-monitor.yml`) runs the read-only production smoke gate every 10 minutes and on demand. A pass that fails is retried after a minute; a second failure opens one issue labelled `production-down`, assigned to the repository owner so GitHub notifies them, and later failures comment on that issue. The next passing check closes it. The workflow needs no secrets: it reads the production hosts and Supabase origins from `scripts/export-deployment-env.mjs`. The same check also runs `scripts/android-channel-check.mjs`, so a bad `android/latest.json` or a missing APK opens the same issue. GitHub delays scheduled runs under load and disables them after 60 days without repository activity; re-enable it from the Actions tab if that happens.
+
+## Android Beta release
+
+`Android Beta Build` (`.github/workflows/android-beta.yml`) publishes the signed APK after the release bump merges; the steps are in `docs/mobile/build-instructions.md`. `Android Beta Rollback` re-advertises an earlier release. Both run in the `android-beta` GitHub environment, which requires the maintainer's approval, accepts deployments only from `main`, and leaves "Prevent self-review" off for the same reason as `production`. Read it back:
+
+```bash
+gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments/android-beta \
+  --jq '{reviewers: [.protection_rules[] | select(.type=="required_reviewers") | .reviewers[].reviewer.login], deployment_branch_policy}'
+gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments/android-beta/deployment-branch-policies \
+  --jq '[.branch_policies[] | {name, type}]'
+```
+
+The signing key and R2 credentials belong in that environment's secrets so only an approved run on `main` can read them: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`. An environment secret takes precedence over a repository secret of the same name, so the workflows work with either; list where each currently lives with `gh secret list --env android-beta` and `gh secret list`. `scripts/android-workflow.test.mjs` pins which jobs may reference them: only the approved release job, and no job keeps the APK as an artifact. The R2 account, bucket, and public base URL are repository variables (`R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_BASE_URL`).
 
 ## Custom-domain verification
 

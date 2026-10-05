@@ -1,0 +1,119 @@
+name: Android Beta Rollback
+
+# Points android/latest.json back at an earlier release. Versioned APKs are immutable in R2 and
+# every release since this pipeline keeps its own metadata at android/releases/<version>.json, so
+# a rollback re-verifies that release's public APK and copies its metadata back. It does not
+# downgrade anyone: Android refuses to install an older versionCode over a newer one, so it only
+# stops new installs and updates from receiving the bad build. Users already on it need a fix
+# shipped with a higher versionCode through the normal pipeline.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release to advertise again, as in latest.json (e.g. 0.2.45-beta)"
+        type: string
+        required: true
+      reason:
+        description: "Why the channel is being rolled back"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-beta-build
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    name: Re-advertise an earlier Android Beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: android-beta
+    env:
+      VERSION: ${{ inputs.version }}
+      PUBLIC_BASE: https://downloads.zoption.site/android
+      EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
+      EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Fetch that release's kept metadata
+        run: |
+          set -euo pipefail
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::version must look like 0.2.45-beta."
+            exit 1
+          fi
+          if ! curl -fsS --max-time 30 "$PUBLIC_BASE/releases/${VERSION}.json" -o /tmp/rollback.json; then
+            echo "::error::No kept metadata for ${VERSION}; it was published before the pipeline kept a copy."
+            exit 1
+          fi
+          curl -fsS --max-time 30 "$PUBLIC_BASE/latest.json" -o /tmp/live.json
+          node -e '
+            const target = JSON.parse(require("fs").readFileSync("/tmp/rollback.json", "utf8"));
+            const live = JSON.parse(require("fs").readFileSync("/tmp/live.json", "utf8"));
+            if (target.version !== process.env.VERSION) throw new Error("Kept metadata names " + target.version);
+            if (target.versionCode >= live.versionCode) {
+              throw new Error(target.version + " is not older than the advertised " + live.version + ".");
+            }
+          '
+      - name: Re-verify that release's public APK
+        run: |
+          set -euo pipefail
+          url="$(node -p 'JSON.parse(require("fs").readFileSync("/tmp/rollback.json","utf8")).downloadUrl')"
+          want_sha="$(node -p 'JSON.parse(require("fs").readFileSync("/tmp/rollback.json","utf8")).sha256')"
+          want_size="$(node -p 'JSON.parse(require("fs").readFileSync("/tmp/rollback.json","utf8")).size')"
+          want_code="$(node -p 'JSON.parse(require("fs").readFileSync("/tmp/rollback.json","utf8")).versionCode')"
+          curl -fsS --retry 5 --retry-delay 5 --max-time 120 "$url" -o /tmp/zoption-public.apk
+          [ "$(shasum -a 256 /tmp/zoption-public.apk | awk '{print $1}')" = "$want_sha" ] \
+            || { echo "::error::The public APK's SHA-256 no longer matches the kept metadata."; exit 1; }
+          [ "$(stat -c%s /tmp/zoption-public.apk)" = "$want_size" ] \
+            || { echo "::error::The public APK's size no longer matches the kept metadata."; exit 1; }
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs /tmp/zoption-public.apk > /tmp/zoption-public-certs.txt
+          grep -q "certificate SHA-256 digest: $EXPECTED_FINGERPRINT" /tmp/zoption-public-certs.txt \
+            || { echo "::error::The public APK is not signed by the permanent Zoption key."; exit 1; }
+          grep -q "certificate DN: $EXPECTED_DN" /tmp/zoption-public-certs.txt \
+            || { echo "::error::The public APK's certificate DN does not match."; exit 1; }
+          [ "$(grep -o 'certificate SHA-256 digest: [0-9a-f]*' /tmp/zoption-public-certs.txt | sort -u | wc -l | tr -d ' ')" = "1" ] \
+            || { echo "::error::The public APK has more than one signer."; exit 1; }
+          "$AAPT" dump badging /tmp/zoption-public.apk | grep -q "package: name='site.zoption.android' versionCode='$want_code' versionName='$VERSION'" \
+            || { echo "::error::The public APK's identity does not match ${VERSION}."; exit 1; }
+      - name: Point android/latest.json back at it
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          aws s3api put-object --endpoint-url "$R2_ENDPOINT" --region auto --bucket "$R2_BUCKET" \
+            --key android/latest.json --body /tmp/rollback.json --content-type application/json \
+            --cache-control "no-store, max-age=0, must-revalidate"
+          curl -fsS --retry 5 --retry-delay 5 --max-time 60 "$PUBLIC_BASE/latest.json" -o /tmp/zoption-public-latest.json
+          cmp -s /tmp/rollback.json /tmp/zoption-public-latest.json \
+            || { echo "::error::The public latest.json does not match the restored metadata."; exit 1; }
+          {
+            echo "### Android Beta rolled back to ${VERSION}"
+            echo
+            echo "Reason: ${REASON}"
+            echo
+            echo "Users already on a newer build keep it; Android will not downgrade them."
+            echo "The install page's offline snapshot still describes the newer build. Refresh it with"
+            echo "node scripts/refresh-android-release-snapshot.mjs --write --allow-downgrade"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Tell the maintainer
+        if: always()
+        uses: ./.github/actions/notify
+        with:
+          text: >-
+            Android Beta rollback to ${{ inputs.version }}: ${{ job.status }}.
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}

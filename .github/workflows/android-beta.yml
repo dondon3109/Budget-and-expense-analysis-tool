@@ -1,27 +1,28 @@
 name: Android Beta Build
 
 on:
+  # Runs after every Production Release on main. Most do nothing: the plan job publishes only when
+  # the version in apps/mobile is newer than the one android/latest.json advertises, so a merged
+  # version bump ships the APK once production is settled on the release it was built for.
+  workflow_run:
+    workflows: ["Production Release"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
-      publish_apk:
-        description: "Upload the verified APK to R2 and re-verify the public object"
-        type: boolean
-        required: true
-        default: false
-      publish_latest_json:
-        description: "Verify the public R2 APK, then upload android/latest.json"
+      publish:
+        description: "Publish the verified APK and android/latest.json (build-only validation when false)"
         type: boolean
         required: true
         default: false
       release_notes:
-        description: "User-facing release notes for android/latest.json (one line per bullet)"
+        description: "User-facing notes for android/latest.json, one per line (default: the in-app patch note titles)"
         type: string
         required: false
         default: ""
 
-# The workflow stays read-only over the repository: it publishes artifacts to
-# R2 but never commits. After publication, refresh the website fallback through
-# the explicit post-release procedure in docs/mobile/build-instructions.md.
+# The workflow publishes artifacts to R2; its only repository write is the snapshot pull request,
+# opened by a job that holds nothing else.
 permissions:
   contents: read
 
@@ -30,13 +31,70 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build and verify signed release APK
+  # Decides whether a release is owed (scripts/android-release-plan.mjs). Ungated and secret-free,
+  # so a run with nothing to do never asks for an approval.
+  plan:
+    name: Plan the Android Beta release
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      reason: ${{ steps.plan.outputs.reason }}
+      version: ${{ steps.identity.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Resolve Android release identity
+        id: identity
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: production
+        run: |
+          pnpm exec expo config --type introspect --json > "$RUNNER_TEMP/zoption-release-config.json"
+          node "$GITHUB_WORKSPACE/scripts/android-release-metadata.mjs" \
+            < "$RUNNER_TEMP/zoption-release-config.json" | tee -a "$GITHUB_ENV"
+          echo "version=$(grep '^RELEASE_VERSION_NAME=' "$GITHUB_ENV" | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+      - name: Decide whether a release is owed
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+          TRIGGER_RUN_ID: ${{ github.event.workflow_run.id }}
+          # A manual dispatch is an operator's decision; only the version and contract are checked.
+          CHECKS: ${{ github.event_name == 'workflow_dispatch' && 'identity' || 'full' }}
+        run: node scripts/android-release-plan.mjs
+
+  # One gated job from build to publication. The approval comes before the build because the
+  # signing key and R2 credentials live only in the android-beta environment, and the signed APK
+  # must never leave the runner (see below), so it cannot be handed from a build job to a
+  # publish job.
+  release:
+    name: Build, verify, and publish the signed release APK
+    needs: plan
+    if: needs.plan.outputs.action == 'release'
+    environment: android-beta
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    outputs:
+      published: ${{ steps.published.outputs.published }}
+    env:
+      # An automatic run always publishes; a dispatch publishes only when asked.
+      PUBLISH: ${{ github.event_name != 'workflow_dispatch' || inputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup
@@ -182,7 +240,7 @@ jobs:
       # Phase 3: publish the verified APK to the Zoption R2 bucket. This step
       # only runs after every signing/identity gate above has passed.
       - name: Publish APK to R2
-        if: inputs.publish_apk
+        if: env.PUBLISH == 'true'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -204,7 +262,7 @@ jobs:
       # Phase 4: re-verify the PUBLIC object through the Zoption domain. Never
       # trust only the local CI build.
       - name: Verify public R2 APK
-        if: inputs.publish_apk
+        if: env.PUBLISH == 'true'
         env:
           PUBLIC_URL: ${{ env.APK_PUBLIC_URL }}
           EXPECTED_FINGERPRINT: f94670eb9411f3da683a1333dd7f6c6958b0083ccec47e75894c38dbc6a5a58d
@@ -241,7 +299,7 @@ jobs:
       # passes every verification gate. The metadata is built from the verified
       # public object, never from unverified local values.
       - name: Publish android/latest.json
-        if: inputs.publish_latest_json
+        if: env.PUBLISH == 'true'
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -254,6 +312,10 @@ jobs:
           EXPECTED_DN: CN=Zoption, O=Zoption, C=PH
           RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
         run: |
+          # Default to the in-app patch note titles the release PR already wrote.
+          if [ -z "${RELEASE_NOTES_INPUT//[[:space:]]/}" ]; then
+            RELEASE_NOTES_INPUT="$(node --experimental-strip-types scripts/android-release-notes.mjs)"
+          fi
           curl -fsS --retry 5 --retry-delay 5 --max-time 60 "$PUBLIC_URL" -o /tmp/zoption-public.apk
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
@@ -334,3 +396,123 @@ jobs:
           grep -Eiq '^cache-control:.*no-store' /tmp/zoption-public-latest-headers.txt \
             || { echo "::error::public latest.json must disable caching."; exit 1; }
           echo "uploaded android/latest.json"
+
+      # A rollback re-points latest.json at an earlier release by copying its kept metadata back
+      # (android-rollback.yml), so every published release keeps its own copy.
+      - name: Keep a copy of this release's metadata
+        if: env.PUBLISH == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_EC2_METADATA_DISABLED: "true"
+          R2_ENDPOINT: https://${{ vars.R2_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          R2_BUCKET: ${{ vars.R2_BUCKET_NAME }}
+        run: |
+          aws s3api put-object \
+            --endpoint-url "$R2_ENDPOINT" \
+            --region auto \
+            --bucket "$R2_BUCKET" \
+            --key "android/releases/${RELEASE_VERSION_NAME}.json" \
+            --body /tmp/zoption-latest.json \
+            --content-type application/json \
+            --cache-control "no-store, max-age=0, must-revalidate"
+
+      - name: Record that the release is published
+        id: published
+        if: env.PUBLISH == 'true'
+        run: echo "published=true" >> "$GITHUB_OUTPUT"
+
+  # The website ships a build-time fallback of the release metadata. Refreshing it is a normal
+  # pull request: it is a fix(web) commit on purpose, so the Production Release that follows
+  # deploys the new fallback and the SEO metadata (docs/mobile/build-instructions.md). The job
+  # holds only the run token, which cannot reach main, and starts CI by hand because a pull
+  # request opened with that token does not trigger pull_request workflows.
+  snapshot:
+    name: Open the install-page snapshot pull request
+    needs: [plan, release]
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Refresh the snapshot from the live channel
+        run: node scripts/refresh-android-release-snapshot.mjs --write
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.plan.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "The snapshot already matches the live channel."
+            exit 0
+          fi
+          branch="chore/android-snapshot-${VERSION}"
+          if [[ -n "$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')" ]]; then
+            echo "A snapshot pull request for ${VERSION} is already open."
+            exit 0
+          fi
+          git switch --create "$branch"
+          git add packages/web-common/src/releases/androidRelease.json
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit --message "fix(web): refresh Android install snapshot for ${VERSION}"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push --set-upstream origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "fix(web): refresh Android install snapshot for ${VERSION}" \
+            --body "The install page's offline fallback now describes ${VERSION}, the build android/latest.json advertises. Merging it ships a patch web release on purpose, so the deployed fallback and SEO metadata are not one release behind.
+
+          Opened by the Android Beta Build workflow."
+          gh workflow run ci.yml --ref "$branch"
+
+  notify:
+    name: Tell the maintainer how the Android Beta release went
+    needs: [plan, release, snapshot]
+    if: always() && needs.plan.result != 'skipped'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compose the message
+        id: message
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          PLAN_ACTION: ${{ needs.plan.outputs.action }}
+          PLAN_REASON: ${{ needs.plan.outputs.reason }}
+          RELEASE_RESULT: ${{ needs.release.result }}
+          PUBLISHED: ${{ needs.release.outputs.published }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # Nothing owed is the usual case and not worth a message.
+          if [[ "$PLAN_RESULT" == "success" && "$PLAN_ACTION" == "skip" ]]; then exit 0; fi
+          if [[ "$PLAN_RESULT" != "success" ]]; then
+            text="Android Beta ${VERSION:-release} is blocked: ${PLAN_REASON:-the plan step failed}"
+          elif [[ "$RELEASE_RESULT" == "success" && "$PUBLISHED" == "true" ]]; then
+            text="Android Beta ${VERSION} is live."
+          elif [[ "$RELEASE_RESULT" == "success" ]]; then
+            text="Android Beta ${VERSION} built and verified; nothing was published."
+          elif [[ "$RELEASE_RESULT" == "cancelled" ]]; then
+            text="Android Beta ${VERSION} was cancelled or not approved."
+          else
+            text="Android Beta ${VERSION} failed before it was published."
+          fi
+          echo "text=${text} ${RUN_URL}" >> "$GITHUB_OUTPUT"
+      - name: Send it
+        if: steps.message.outputs.text != ''
+        uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.message.outputs.text }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}

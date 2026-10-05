@@ -108,29 +108,43 @@ npx expo export --platform ios   # bundle sanity; delete dist afterwards
 
 ## Signed production artifacts
 
-The website-linked Android Beta is built and published only through the
-manually dispatched `Android Beta Build` GitHub Actions workflow. Its signing
-key and R2 credentials remain in GitHub Actions secrets; the workflow prebuilds
-the production variant, signs with the permanent Zoption key, verifies the APK
-identity, publishes the immutable versioned object, verifies that public object,
-and advances `android/latest.json` last. Both publish inputs must remain false
-for a build-only validation run and may be enabled only with explicit release
-approval. That workflow never commits to this repository.
+The website-linked Android Beta is built and published only by the `Android Beta Build` workflow
+(`.github/workflows/android-beta.yml`). It runs after every `Production Release` on `main`, and a
+`workflow_dispatch` run covers a rebuild or a build-only check.
 
-After `android/latest.json` is publicly verified, refresh the build-time website
-fallback from the repository root:
+1. **Plan** (`scripts/android-release-plan.mjs`, no secrets, no approval). It reads the version and
+   `android.versionCode` the bump PR set and compares the versionCode with the published
+   `android/latest.json`. Nothing newer means it stops quietly. It also requires a frozen sync
+   contract for the version, the commit to still be `main`, no other `Production Release` running,
+   and production to be serving the latest release tag, because the APK talks to that API. A
+   blocked plan fails the run and sends a Telegram message.
+2. **Release** (one job, in the `android-beta` environment, which asks the maintainer for approval).
+   It prebuilds the production variant, signs with the permanent Zoption key, verifies the APK
+   identity, uploads the immutable versioned object, verifies that public object, and advances
+   `android/latest.json` last, then keeps a copy of that metadata at
+   `android/releases/<version>.json`. The signed APK never leaves the runner: it is not a workflow
+   artifact, which is why the approval comes before the build rather than between build and
+   publish. The notes in `latest.json` default to the titles of the in-app patch notes
+   (`scripts/android-release-notes.mjs`); a dispatch can override them.
+3. **Snapshot pull request.** After publication the workflow opens
+   `fix(web): refresh Android install snapshot for <version>` from the live channel and starts its CI.
+   Merging it ships a patch web release on purpose, so the deployed fallback and SEO metadata are not
+   one release behind. The maintainer merges it.
+4. **Notification.** A Telegram message says the release is live, blocked, failed, or not approved.
 
-```bash
-node scripts/refresh-android-release-snapshot.mjs --write
-git diff -- packages/web-common/src/releases/androidRelease.json
-```
+A dispatch run with `publish` off builds and verifies only. It still waits for the approval,
+because the signing key exists only in that environment.
 
-Commit the reviewed snapshot as `fix(web): refresh Android install snapshot`
-and let the normal CI/`Production Release` workflow deploy and smoke-test it.
-This explicit second commit is intentional: refreshing after Pages deployment
-or committing with `[skip ci]` would leave the deployed fallback and SEO
-metadata one release behind. The script rejects a lower live `versionCode`;
-an approved rollback must additionally pass `--allow-downgrade`.
+To roll the channel back, run `Android Beta Rollback` with the version to re-advertise. It
+re-verifies that release's public APK against its kept metadata and copies the metadata back to
+`android/latest.json`. Android refuses to install an older versionCode over a newer one, so this
+only stops new installs and updates from receiving the bad build; users already on it need a fix
+with a higher versionCode through the normal pipeline. Refresh the snapshot afterwards with
+`node scripts/refresh-android-release-snapshot.mjs --write --allow-downgrade`.
+
+The `Production Monitor` also checks the channel every 10 minutes (`scripts/android-channel-check.mjs`):
+`latest.json` must parse, name the permanent signing certificate, and point at an APK that is
+reachable at its declared size.
 
 Local release builds remain compile proofs and must never be distributed. iOS
 production signing is still unconfigured and requires an Apple Developer
