@@ -27,16 +27,22 @@ export function GoalsScreen() {
     router.push("/(app)/goal");
   };
 
+  const goals = state.goals;
+  const hasGoals = !state.error && !state.loading && goals.length > 0;
+
   return (
     <Screen
-      action={
-        <Button disabled={!local.workspace} onPress={addGoal} variant="primary">
-          Add goal
-        </Button>
-      }
-      description="Save toward a target. Changes sync when you reconnect."
       hasHeader
       onRefresh={handleRefresh}
+      overlay={
+        hasGoals ? (
+          <View pointerEvents="box-none" style={styles.fab}>
+            <Button disabled={!local.workspace} icon="plus" onPress={addGoal} variant="primary">
+              Goal
+            </Button>
+          </View>
+        ) : null
+      }
       refreshing={sync.status === "syncing"}
       title="Goals"
     >
@@ -47,29 +53,46 @@ export function GoalsScreen() {
           <Skeleton height={88} />
           <Skeleton height={88} />
         </View>
-      ) : state.goals.length === 0 ? (
+      ) : goals.length === 0 ? (
         <EmptyState
           icon="target"
           title="No goals yet"
-          description="Add a savings goal like an emergency fund or a big purchase to track your progress."
+          description="Save toward an emergency fund or a big purchase and watch it grow."
           action={
-            <Button disabled={!local.workspace} onPress={addGoal} variant="secondary">
-              Create your first goal
+            <Button disabled={!local.workspace} onPress={addGoal} variant="primary">
+              Add goal
             </Button>
           }
         />
       ) : (
-        <View style={{ gap: spacing.md }}>
-          {state.goals.map((goal) => (
+        <View style={{ gap: spacing.sm }}>
+          <GoalsSummary goals={goals} />
+          {goals.map((goal) => (
             <GoalRow
               key={goal.id}
               goal={goal}
               onPress={() => router.push({ pathname: "/(app)/goal", params: { id: goal.id } })}
             />
           ))}
+          <View style={styles.fabClearance} />
         </View>
       )}
     </Screen>
+  );
+}
+
+function GoalsSummary({ goals }: { goals: LocalGoalItem[] }) {
+  const theme = useZoptionTheme();
+  const saved = goals.reduce((sum, goal) => sum + goal.currentAmountMinor, 0);
+  const target = goals.reduce((sum, goal) => sum + goal.targetAmountMinor, 0);
+  return (
+    <Card>
+      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Saved so far</Text>
+      <Text style={[typography.title, { color: theme.colors.text }]}>
+        <MoneyValue amountMinor={saved} style={typography.title} /> of{" "}
+        <MoneyValue amountMinor={target} style={typography.title} />
+      </Text>
+    </Card>
   );
 }
 
@@ -79,6 +102,7 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
     goal.targetAmountMinor > 0
       ? Math.min(100, Math.round((goal.currentAmountMinor / goal.targetAmountMinor) * 100))
       : 0;
+  const remainingMinor = Math.max(0, goal.targetAmountMinor - goal.currentAmountMinor);
   const conflicted = goal.syncState === "conflicted";
   const failed = goal.syncState === "failed";
   return (
@@ -107,9 +131,11 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
             >
               {goal.name}
             </Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              {goalStatusLabel(goal.status)}
-            </Text>
+            <View style={[styles.chip, { backgroundColor: theme.colors.brandSoft }]}>
+              <Text style={[typography.caption, { color: theme.colors.brand }]}>
+                {goalStatusLabel(goal.status)}
+              </Text>
+            </View>
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -131,7 +157,19 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
           </View>
           <View style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.sm }}>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Target {goal.targetDate}
+              {remainingMinor > 0 ? (
+                <>
+                  <MoneyValue
+                    amountMinor={remainingMinor}
+                    style={[typography.caption, { color: theme.colors.textMuted }]}
+                  />{" "}
+                  to go
+                </>
+              ) : (
+                "Goal reached"
+              )}
+              {" · by "}
+              {goal.targetDate}
             </Text>
             {conflicted ? (
               <Button
@@ -176,6 +214,9 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
 }
 
 const styles = StyleSheet.create({
-  track: { height: 6, borderRadius: radii.round, overflow: "hidden", marginTop: spacing.xxs },
-  fill: { height: 6, borderRadius: radii.round },
+  track: { height: 8, borderRadius: radii.round, overflow: "hidden" },
+  fill: { height: 8, borderRadius: radii.round },
+  chip: { borderRadius: radii.round, paddingHorizontal: spacing.xs, paddingVertical: spacing.xxs },
+  fab: { position: "absolute", right: spacing.md, bottom: spacing.md },
+  fabClearance: { height: 48 },
 });

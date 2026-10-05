@@ -13,16 +13,33 @@ export interface OverspendingAlertInput {
   safeToSpendMinor: number;
   /** The forecast that figure was capped by. */
   forecast: Pick<CashflowForecastResult, "dailyTimeline">;
+  /** False for an account with no balance or budget; it is never "spent out". Defaults to true. */
+  hasBasis?: boolean;
+}
+
+/**
+ * Whether there is any balance or budget to spend from. Zero safe to spend with neither is a new
+ * or empty account, not a spent-out week, so it earns a getting-started line instead of an alert.
+ */
+export function hasSpendingBasis({
+  startingBalanceMinor,
+  remainingBudgetMinor,
+}: {
+  startingBalanceMinor: number;
+  remainingBudgetMinor?: number;
+}): boolean {
+  return startingBalanceMinor !== 0 || remainingBudgetMinor !== undefined;
 }
 
 /** The alert for the current safe-to-spend figure and forecast, or null when spending is on track. */
 export function overspendingAlert({
   safeToSpendMinor,
   forecast,
+  hasBasis = true,
 }: OverspendingAlertInput): OverspendingAlert | null {
   const firstDeficitDay = forecast.dailyTimeline.find((day) => day.isDeficit);
   if (firstDeficitDay) return { kind: "deficit_risk", deficitDate: firstDeficitDay.date };
-  if (safeToSpendMinor <= 0) return { kind: "overspent" };
+  if (hasBasis && safeToSpendMinor <= 0) return { kind: "overspent" };
   return null;
 }
 
