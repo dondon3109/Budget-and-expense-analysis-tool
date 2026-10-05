@@ -103,7 +103,7 @@ describe("SafeToSpendCard", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Renewals" })).toHaveAttribute(
       "href",
-      "/app/subscriptions",
+      "/app/subscriptions?view=forecast",
     );
     await waitFor(() => expect(getSubscriptions).toHaveBeenCalledWith(workspace, "2026-08-01"));
   });
