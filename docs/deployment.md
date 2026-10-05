@@ -491,6 +491,10 @@ Manual rollback, when the workflow cannot run:
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
 - After rollback, rerun the documented environment-specific smoke command with `EXPECTED_SUPABASE_URL` (and any distinct `FORBIDDEN_SUPABASE_ORIGINS`) and verify unauthenticated `/api/app/*` requests still return `401`.
 
+## Production monitoring
+
+The `Production Monitor` workflow (`.github/workflows/production-monitor.yml`) runs the read-only production smoke gate every 10 minutes and on demand. A pass that fails is retried after a minute; a second failure opens one issue labelled `production-down`, assigned to the repository owner so GitHub notifies them, and later failures comment on that issue. The next passing check closes it. The workflow needs no secrets: it reads the production hosts and Supabase origins from `scripts/export-deployment-env.mjs`. GitHub delays scheduled runs under load and disables them after 60 days without repository activity; re-enable it from the Actions tab if that happens.
+
 ## Custom-domain verification
 
 Before treating the domain migration as complete:
