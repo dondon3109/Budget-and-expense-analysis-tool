@@ -13,15 +13,15 @@ describe("worker canary", () => {
       migrations: [{ tag: "v1" }],
       env: { production: { vars: { A: "1" }, queues: { consumers: [{ queue: "jobs" }] } } },
     };
-    const varsOnly = structuredClone(config);
+    const varsOnly = JSON.parse(JSON.stringify(config));
     varsOnly.env.production.vars.A = "2";
     expect(atomicSettings(varsOnly)).toBe(atomicSettings(config));
 
-    const migrated = structuredClone(config);
+    const migrated = JSON.parse(JSON.stringify(config));
     migrated.migrations.push({ tag: "v2" });
     expect(atomicSettings(migrated)).not.toBe(atomicSettings(config));
 
-    const consumers = structuredClone(config);
+    const consumers = JSON.parse(JSON.stringify(config));
     consumers.env.production.queues.consumers[0].max_retries = 3;
     expect(atomicSettings(consumers)).not.toBe(atomicSettings(config));
   });

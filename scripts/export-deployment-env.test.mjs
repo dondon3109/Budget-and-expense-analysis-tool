@@ -49,7 +49,7 @@ describe("deployment environment", () => {
   });
 
   it("rejects missing or multiline public values", () => {
-    const unsafe = structuredClone(config);
+    const unsafe = JSON.parse(JSON.stringify(config));
     unsafe.env.production.vars.SUPABASE_URL = "https://production.supabase.co\nUNSAFE=value";
     expect(() => deploymentEnvironment(unsafe, "production")).toThrow("single-line string");
     expect(() => deploymentEnvironment(config, "staging")).toThrow("production or preview");
