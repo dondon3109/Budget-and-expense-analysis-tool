@@ -41,7 +41,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "Fixes",
       description:
-        'A new account with no balance or budget no longer says "You\'ve used up what\'s safe to spend"; it asks you to add a balance or first transaction. The web dashboard no longer shows the Safe to spend tile twice.',
+        "A new account with no balance or budget no longer says \"You've used up what's safe to spend\"; it asks you to add a balance or first transaction. The web dashboard no longer shows the Safe to spend tile twice.",
     },
     {
       title: "Android Beta 0.2.46",
