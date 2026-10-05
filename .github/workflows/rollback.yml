@@ -1,0 +1,114 @@
+name: Production Rollback
+
+# Puts production back on an earlier release without a rebuild: both Pages projects are rolled
+# back to the deployments built from that release's commit, then the Worker to the version tagged
+# with it. It shares the production environment, so a human approves it, and the deploy concurrency
+# group, so it never overlaps a release. D1 is never rolled back; migrations are forward-only.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Released version to restore, without the v (e.g. 3.4.0)"
+        required: true
+        type: string
+      reason:
+        description: "Why production is being rolled back (recorded on the Worker version)"
+        required: true
+        type: string
+      allow_newer_migrations:
+        description: "Proceed even though D1 migrations landed after this version"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: production-release-main
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TARGET_VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: main
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+
+      - name: Resolve the release to restore
+        env:
+          ALLOW_NEWER_MIGRATIONS: ${{ inputs.allow_newer_migrations }}
+        run: |
+          set -euo pipefail
+          if ! [[ "$TARGET_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::version must look like 3.4.0."
+            exit 1
+          fi
+          if ! commit="$(git rev-parse --verify --quiet "refs/tags/v${TARGET_VERSION}^{commit}")"; then
+            echo "::error::No release tag v${TARGET_VERSION} exists."
+            exit 1
+          fi
+          # Each migration only promises compatibility with the Worker one release back (the
+          # expand-then-contract rule in apps/api/AGENTS.md), so rolling code back past a newer
+          # migration needs a human to confirm that schema still works with the old Worker.
+          newer="$(git diff --name-only --diff-filter=A "$commit" HEAD -- db/migrations)"
+          if [[ -n "$newer" ]]; then
+            echo "D1 migrations added since v${TARGET_VERSION}:"
+            printf '%s\n' "$newer"
+            if [[ "$ALLOW_NEWER_MIGRATIONS" != "true" ]]; then
+              echo "::error::Confirm the old Worker works with this schema, then rerun with allow_newer_migrations."
+              exit 1
+            fi
+            echo "::warning::Rolling back past newer D1 migrations by operator confirmation."
+          fi
+          echo "TARGET_COMMIT=$commit" >> "$GITHUB_ENV"
+
+      # The frontends go first: the release deploys the Worker before them because a new frontend
+      # may need the new API, so in reverse the old API must outlive the new frontends.
+      - name: Roll back the web app
+        run: node scripts/rollback-pages.mjs clarity-budget
+      - name: Roll back the public site
+        run: node scripts/rollback-pages.mjs zoption-site
+
+      - name: Roll back the Worker
+        working-directory: apps/api
+        env:
+          REASON: ${{ inputs.reason }}
+        run: |
+          set -euo pipefail
+          wrangler=./node_modules/.bin/wrangler
+          version_id="$("$wrangler" versions list --json --config wrangler.deploy.jsonc --env production \
+            | jq -r --arg tag "v${TARGET_VERSION}" \
+              '[.[] | select(.annotations["workers/tag"] == $tag)] | last | .id // empty')"
+          if [[ -z "$version_id" ]]; then
+            echo "::error::No recent Worker version is tagged v${TARGET_VERSION}; use the emergency runbook."
+            exit 1
+          fi
+          "$wrangler" rollback "$version_id" --yes --config wrangler.deploy.jsonc --env production \
+            --message "Rollback to v${TARGET_VERSION}: ${REASON:0:90}"
+
+      - name: Wait for the app to serve the restored release
+        run: node scripts/wait-for-production-release.mjs
+        env:
+          EXPECTED_RELEASE_VERSION: ${{ inputs.version }}
+          WEB_URL: https://app.zoption.site
+      - name: Wait for the public site to serve the restored release
+        run: node scripts/wait-for-production-release.mjs
+        env:
+          EXPECTED_RELEASE_VERSION: ${{ inputs.version }}
+          WEB_URL: https://zoption.site
+      - name: Verify production
+        run: pnpm smoke:production
+        env:
+          SITE_URL: https://zoption.site
+          APP_URL: https://app.zoption.site
+          API_URL: https://api.zoption.site
+          EXPECTED_POSTHOG_HOST: https://us.i.posthog.com

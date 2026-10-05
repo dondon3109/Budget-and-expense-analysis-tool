@@ -479,6 +479,10 @@ The normal workflow publishes semantic release metadata automatically only after
 
 ## Rollback
 
+The `Production Rollback` workflow (`.github/workflows/rollback.yml`) is the normal rollback. Run it from the Actions tab with the released `version` to restore and a `reason`; it waits for approval in the `production` environment and shares the release's concurrency group, so it never overlaps a deploy. It rolls back `clarity-budget` and `zoption-site` to the production deployments built from the `v<version>` commit (`scripts/rollback-pages.mjs`), then the Worker to the version tagged `v<version>`, waits for both domains to serve that version's `release.json`, and runs the production smoke gate. It refuses when D1 migrations were added after that version unless `allow_newer_migrations` is set, and it fails closed when the target is older than the last 100 Pages deployments or the Worker's recent version list. The next release from `main` deploys forward again, so fix forward with a normal pull request.
+
+Manual rollback, when the workflow cannot run:
+
 - **Pages:** promote the previously verified deployment of each project (`clarity-budget` for the app, `zoption-site` for the public site).
 - **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
 - **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.

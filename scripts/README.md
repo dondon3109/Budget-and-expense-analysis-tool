@@ -22,6 +22,7 @@ high risk in `pr-risk.mjs`, so a change here always needs a human merge.
 | `validate-deployment-config`       | Production Release           | Checks `apps/api/wrangler.deploy.jsonc` has every required variable                    |
 | `export-production-deployment-env` | Production Release, Android  | Exports production values from the Wrangler config into the job environment            |
 | `github-production-deployment`     | Production Release           | Records the GitHub deployment and its stage statuses                                   |
+| `rollback-pages`                   | Production Rollback          | Rolls a Pages project back to the production deployment of a release commit            |
 | `wait-for-production-release`      | Production Release           | Waits until the deployed site reports the expected app version                         |
 | `smoke-production`                 | `pnpm smoke:production`      | Read-only production smoke checks; uses `deployment-smoke-helpers`                     |
 | `submit-indexnow`                  | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release |
