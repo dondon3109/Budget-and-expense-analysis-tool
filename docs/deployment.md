@@ -374,6 +374,17 @@ Do these outside the repository before enabling `Production Release`; the workfl
 
    Leave "Prevent self-review" off. The maintainer is the only human and is the actor on his own merges, so enabling it would leave every production deployment unapprovable.
 
+   The environment also accepts deployments only from `main` (a custom deployment branch policy, set 2026-10-05). `Production Release` always runs on `main`; `Production Rollback` must be dispatched from `main`, and a run dispatched from any other branch fails before it reaches the approval, so a pushed branch cannot carry its own workflow file to production. Read it back:
+
+   ```bash
+   gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments/production \
+     --jq .deployment_branch_policy
+   gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments/production/deployment-branch-policies \
+     --jq '[.branch_policies[] | {name, type}]'
+   ```
+
+   `CLOUDFLARE_API_TOKEN` is still a repository secret, readable by a workflow on any branch without this environment; the branch policy guards the approval path, not the token.
+
 The Pages build derives its public Supabase URL and publishable key from the existing tracked production Wrangler configuration. Do not add service-role keys, provider API keys, or other Worker runtime secrets to GitHub.
 
 ## Preview release
