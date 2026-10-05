@@ -14,6 +14,8 @@ export interface Bindings {
   JOBS?: Queue;
   AVATARS?: R2Bucket;
   AI?: Ai;
+  // Deployed environments bind it so /health names the serving version for the release canary.
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
   SUPABASE_JWT_AUDIENCE?: string;

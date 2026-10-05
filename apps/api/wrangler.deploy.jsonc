@@ -13,6 +13,7 @@
       "ai": {
         "binding": "AI",
       },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "triggers": {
         "crons": ["*/5 * * * *", "17 3 * * *"],
       },
@@ -77,6 +78,7 @@
       "ai": {
         "binding": "AI",
       },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "routes": [
         {
           "pattern": "api.zoption.site",
