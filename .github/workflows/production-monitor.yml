@@ -29,17 +29,22 @@ jobs:
       - uses: ./.github/actions/setup
       - run: node scripts/export-deployment-env.mjs production
       # A deploy in flight or a transient edge error can fail one pass, so only a repeat counts.
+      # The Android Beta channel is checked with production: a bad latest.json or a missing APK
+      # breaks in-app updates and the install page for every user, with no deploy involved.
       - name: Check production
         id: check
         env:
           EXPECTED_POSTHOG_HOST: https://us.i.posthog.com
         run: |
-          if pnpm smoke:production > "$RUNNER_TEMP/smoke.log" 2>&1; then
+          check() {
+            pnpm smoke:production && node --experimental-strip-types scripts/android-channel-check.mjs
+          }
+          if check > "$RUNNER_TEMP/smoke.log" 2>&1; then
             echo "healthy=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           sleep 60
-          if pnpm smoke:production > "$RUNNER_TEMP/smoke.log" 2>&1; then
+          if check > "$RUNNER_TEMP/smoke.log" 2>&1; then
             echo "healthy=true" >> "$GITHUB_OUTPUT"
           else
             echo "healthy=false" >> "$GITHUB_OUTPUT"
