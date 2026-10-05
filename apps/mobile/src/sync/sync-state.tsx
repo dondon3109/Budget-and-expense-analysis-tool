@@ -372,7 +372,9 @@ export function SyncProvider({
           error instanceof MobileSyncTransportError &&
           error.code !== "session_expired" &&
           error.code !== "permanent_rejection" &&
-          error.code !== "idempotency_mismatch"
+          error.code !== "idempotency_mismatch" &&
+          // Only an app update clears it; the outbox waits for the updated app's next sync.
+          error.code !== "update_required"
         ) {
           await scheduleOutstandingRetry().catch(() => undefined);
         }

@@ -63,6 +63,8 @@ export interface Bindings {
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;
   POSTHOG_AI_ENVIRONMENT?: string;
+  // Oldest app release sync still serves; it must match the oldest frozen sync contract.
+  MOBILE_SYNC_MINIMUM_APP_VERSION?: string;
   PAYPAL_ENVIRONMENT?: "sandbox" | "production";
   PAYPAL_PRO_MONTHLY_PLAN_ID?: string;
   PAYPAL_PRO_ANNUAL_PLAN_ID?: string;

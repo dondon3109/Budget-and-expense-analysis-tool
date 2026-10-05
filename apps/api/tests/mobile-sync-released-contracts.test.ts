@@ -71,6 +71,19 @@ describe("released app contracts", () => {
     ) as { version: string };
     expect(contracts.map((contract) => contract.versionName)).toContain(version);
   });
+
+  // The sync floor and the oldest contract are the same decision: retiring a release deletes its
+  // contract and raises MOBILE_SYNC_MINIMUM_APP_VERSION together.
+  it("start at the minimum app version every deployed Worker enforces", () => {
+    const config = readFileSync(new URL("../wrangler.deploy.jsonc", import.meta.url), "utf8");
+    const floors = [...config.matchAll(/"MOBILE_SYNC_MINIMUM_APP_VERSION": "([^"]+)"/g)].map(
+      (match) => match[1],
+    );
+    const oldest = contracts
+      .map((contract) => contract.versionName.replace(/-.*$/, ""))
+      .sort((a, b) => a.localeCompare(b, "en", { numeric: true }))[0];
+    expect(floors).toEqual([oldest, oldest]);
+  });
 });
 
 describe.each(contracts)("released app $versionName", (contract) => {

@@ -607,7 +607,7 @@ Preview endpoints are provider hostnames, recorded once in `scripts/export-deplo
 
 ## Cloudflare dashboard and repository sync
 
-The API Worker's dashboard `vars` and `apps/api/wrangler.deploy.jsonc` carry the same set of names in each environment (checked 2026-09-21; both environments have since gained the three Dodo Payments variables, so each carries 28 names). A discrepancy in Cloudflare's "keep your Wrangler config in sync" prompt is not on its own evidence that the repository is behind.
+The API Worker's dashboard `vars` and `apps/api/wrangler.deploy.jsonc` carry the same set of names in each environment (checked 2026-09-21; both environments have since gained the three Dodo Payments variables and `MOBILE_SYNC_MINIMUM_APP_VERSION`, so each carries 29 names). A discrepancy in Cloudflare's "keep your Wrangler config in sync" prompt is not on its own evidence that the repository is behind.
 
 The dashboard renders its own copy of each value, and Workers AI model IDs are rewritten in that rendering: `RECEIPT_VISION_MODEL` (`@cf/meta/llama-3.2-11b-vision-instruct`) displays there with an `@file:`-prefixed form that is not the stored value. Do not transcribe dashboard values into the Wrangler config; change the config and let the release workflow deploy it.
 

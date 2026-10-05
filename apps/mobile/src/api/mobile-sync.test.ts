@@ -5,6 +5,11 @@ import {
   snapshotMobileSync,
 } from "./mobile-sync";
 
+jest.mock("expo-constants", () => ({
+  __esModule: true,
+  default: { expoConfig: { version: "0.2.46-beta" } },
+}));
+
 const accountChange = {
   entityType: "account",
   entityId: "account-1",
@@ -54,6 +59,23 @@ describe("fixed mobile synchronization transport", () => {
     expect(new Headers(request[1].headers).get("Authorization")).toBe("Bearer token");
     expect(request[1].body).toBe(JSON.stringify({ protocolVersion: 1, cursor: null, limit: 100 }));
     expect(request[1].body).not.toContain("tenant");
+  });
+
+  it("names its release and stops on the server's update-required answer", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "app_update_required" }), {
+          status: 426,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    await expect(
+      pullMobileSync({ accessToken: "token", cursor: null, fetchImpl }),
+    ).rejects.toMatchObject({ code: "update_required", status: 426 });
+    const request = fetchImpl.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(new Headers(request[1].headers).get("x-zoption-app-version")).toBe("0.2.46-beta");
   });
 
   it("pushes a validated outbox batch only to the fixed Worker route", async () => {

@@ -102,8 +102,13 @@ contract when bumping the mobile version, from the commit the APK is built from:
 node scripts/freeze-mobile-sync-contract.mjs 0.2.46-beta
 ```
 
-The test requires a contract for the version in `apps/mobile/package.json`. Retiring a release
-means deleting its contract. 0.2.43 and 0.2.44 are not supported: they reject the `systemKey` on
+The test requires a contract for the version in `apps/mobile/package.json`, and that the oldest
+contract matches `MOBILE_SYNC_MINIMUM_APP_VERSION` in both Worker environments. The app sends its
+version in `x-zoption-app-version` on every sync request; a release below the floor gets
+`426 app_update_required`, shows "update the app to keep syncing", keeps its outbox, and stops
+scheduling retries. Releases before 0.2.46 send no version and are let through. Retiring a release
+means deleting its contract and raising the floor in `apps/api/wrangler.deploy.jsonc` in the same
+change. 0.2.43 and 0.2.44 are not supported: they reject the `systemKey` on
 category payloads and currencies other than PHP and USD, both of which production sends to every
 client.
 

@@ -1,4 +1,7 @@
+import Constants from "expo-constants";
+
 import {
+  MOBILE_APP_VERSION_HEADER,
   MOBILE_SYNC_FEATURES_HEADER,
   MOBILE_SYNC_PROTOCOL_VERSION,
   mobileSyncFeatures,
@@ -22,6 +25,18 @@ const MAX_PULL_RESPONSE_BYTES = 512 * 1024;
 
 // This build understands every payload addition the shared contract defines.
 const SYNC_FEATURES = mobileSyncFeatures.join(",");
+// The server refuses sync below its minimum app version; a build without a version sends none.
+const APP_VERSION = Constants.expoConfig?.version ?? "";
+
+function syncHeaders(accessToken: string): Record<string, string> {
+  return {
+    Accept: "application/json",
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+    [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
+    ...(APP_VERSION ? { [MOBILE_APP_VERSION_HEADER]: APP_VERSION } : {}),
+  };
+}
 
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
@@ -35,7 +50,8 @@ export type MobileSyncTransportErrorCode =
   | "retryable"
   | "permanent_rejection"
   | "idempotency_mismatch"
-  | "invalid_response";
+  | "invalid_response"
+  | "update_required";
 
 export class MobileSyncTransportError extends Error {
   constructor(
@@ -47,6 +63,15 @@ export class MobileSyncTransportError extends Error {
     super(message);
     this.name = "MobileSyncTransportError";
   }
+}
+
+/** 426: this release is below the server's floor; retrying cannot help until the app updates. */
+function updateRequiredError(): MobileSyncTransportError {
+  return new MobileSyncTransportError(
+    "This version of Zoption can no longer sync. Update the app to keep your records in step.",
+    "update_required",
+    426,
+  );
 }
 
 async function decodeResponse(response: Response): Promise<unknown> {
@@ -94,12 +119,7 @@ export async function pullMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/pull", publicConfig.apiUrl), {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
-      },
+      headers: syncHeaders(accessToken),
       body: JSON.stringify({ protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION, cursor, limit }),
       signal,
     });
@@ -141,6 +161,7 @@ export async function pullMobileSync({
       );
     }
   }
+  if (response.status === 426) throw updateRequiredError();
   if (response.status === 429) {
     const retryAfter = Number(response.headers.get("Retry-After"));
     throw new MobileSyncTransportError(
@@ -197,12 +218,7 @@ export async function snapshotMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/snapshot", publicConfig.apiUrl), {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
-      },
+      headers: syncHeaders(accessToken),
       body: JSON.stringify(request),
       signal,
     });
@@ -244,6 +260,7 @@ export async function snapshotMobileSync({
       );
     }
   }
+  if (response.status === 426) throw updateRequiredError();
   if (response.status === 429) {
     const retryAfter = Number(response.headers.get("Retry-After"));
     throw new MobileSyncTransportError(
@@ -294,12 +311,7 @@ export async function acknowledgeMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/acknowledge", publicConfig.apiUrl), {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
-      },
+      headers: syncHeaders(accessToken),
       body: JSON.stringify(request),
       signal,
     });
@@ -332,6 +344,7 @@ export async function acknowledgeMobileSync({
       409,
     );
   }
+  if (response.status === 426) throw updateRequiredError();
   if (response.status === 429) {
     const retryAfter = Number(response.headers.get("Retry-After"));
     throw new MobileSyncTransportError(
@@ -375,12 +388,7 @@ export async function pushMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/push", publicConfig.apiUrl), {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
-      },
+      headers: syncHeaders(accessToken),
       body: JSON.stringify(encodedRequest),
       signal,
     });
@@ -407,6 +415,7 @@ export async function pushMobileSync({
       410,
     );
   }
+  if (response.status === 426) throw updateRequiredError();
   if (response.status === 429) {
     const retryAfter = Number(response.headers.get("Retry-After"));
     throw new MobileSyncTransportError(
