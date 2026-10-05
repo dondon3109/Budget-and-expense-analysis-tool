@@ -72,7 +72,7 @@ Start from the first file listed, then read the package guide for that area. Eve
 | Billing                          | `apps/api/src/billing/`, `apps/api/src/db/billing.ts`, `apps/api/src/routes/{billing,paypal-webhooks,dodo-webhooks}.ts`                                                                      |
 | Adding an entity end to end      | The checklists in `docs/maintainability.md`                                                                                                                                                  |
 | Release notes and versions       | `packages/web-common/src/releases/currentRelease.ts`, `CHANGELOG.md`, `apps/mobile/package.json`, `apps/mobile/app.config.ts`                                                                |
-| CI and what forces a human merge | `.github/workflows/`, `scripts/pr-risk.mjs`                                                                                                                                                  |
+| CI, release, and rollback        | `.github/workflows/`, `.github/actions/setup/`, rulesets in `docs/deployment.md`                                                                                                             |
 | Promo video                      | `promo/README.md`; the cut and every timing live in `promo/src/timing.ts`                                                                                                                    |
 | Deployed dashboards and secrets  | `docs/deployment.md`                                                                                                                                                                         |
 
