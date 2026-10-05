@@ -56,6 +56,16 @@ export function groupTransactionsByDate(
     }));
 }
 
+/** Short whole-unit label for a tight calendar cell, e.g. 850, 2.1k, 12k, 1.5M. Display only. */
+export function compactAmountLabel(amountMinor: number): string {
+  const whole = Math.trunc(Math.abs(amountMinor) / 100);
+  if (whole < 1000) return String(whole);
+  const [divisor, suffix] = whole >= 1_000_000 ? [1_000_000, "M"] : [1000, "k"];
+  const tenths = Math.trunc((whole * 10) / divisor);
+  const value = tenths >= 100 ? String(Math.trunc(tenths / 10)) : (tenths / 10).toFixed(1);
+  return value.replace(/\.0$/, "") + suffix;
+}
+
 export function shiftMonthStart(month: string, delta: number): string {
   const date = new Date(month + "T00:00:00Z");
   date.setUTCMonth(date.getUTCMonth() + delta);

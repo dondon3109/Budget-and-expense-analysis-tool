@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   forecastSubscriptions,
   getDaysLeftInWeek,
+  hasSpendingBasis,
   overspendingAlert,
   overspendingAlertMessage,
   projectCashflow,
@@ -82,9 +83,10 @@ export function SafeToSpendHero({
     });
   }, [remainingWeeklyEnvelopeMinor, daysLeftInWeek, forecast, safetyBufferMinor]);
 
+  const hasBasis = hasSpendingBasis({ startingBalanceMinor, remainingBudgetMinor });
   const alert = useMemo(
-    () => overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast }),
-    [safeAmountMinor, forecast],
+    () => overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast, hasBasis }),
+    [safeAmountMinor, forecast, hasBasis],
   );
   const alertMessage = alert ? overspendingAlertMessage(alert) : null;
   useOverspendingNotification(alert);
@@ -118,7 +120,9 @@ export function SafeToSpendHero({
       <MoneyValue amountMinor={safeAmountMinor} currency={currency} style={styles.heroAmount} />
       {safeAmountMinor > 0 ? null : (
         <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-          Keep spending minimal until your next planned deposit or balance adjustment.
+          {hasBasis
+            ? "Keep spending minimal until your next planned deposit or balance adjustment."
+            : "Add your balance or a first transaction to see what's safe to spend."}
         </Text>
       )}
       {alertMessage ? (

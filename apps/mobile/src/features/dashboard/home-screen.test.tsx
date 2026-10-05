@@ -60,6 +60,23 @@ describe("HomeScreen", () => {
     });
   });
 
+  it("switches to the Remittance view from the title menu", async () => {
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+    expect(screen.queryByLabelText("Remittance calculator")).toBeNull();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Home, change view" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Remittance" }));
+
+    expect(screen.getByLabelText("Remittance calculator")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add transaction" })).toBeNull();
+  });
+
   it("renders quick actions and onboarding step cards when workspace has no transactions", async () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {

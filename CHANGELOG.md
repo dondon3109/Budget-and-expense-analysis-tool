@@ -8,6 +8,17 @@ All notable product changes are documented here.
 
 - Web and mobile: the AI Assistant can now also add, rename, or archive a category, set a monthly category budget, and edit or delete a transaction you already recorded, when you ask. Each change shows on a card and happens only after you tap Confirm.
 - Web and mobile: ask the AI Assistant how to do something in Zoption, such as importing a statement or setting a budget, and it answers with the page and control to use, the same guidance as Help & contact.
+- Mobile: a Calendar tab on Transactions shows each day's income and expenses in a compact month grid; tap a day to see its transactions below.
+- Mobile: the Home title is now a dropdown. Pick Remittance to open the remittance calculator on its own; the Overview / Analytics switch sits centered at the top of the Home view.
+- Mobile: a cleaner Goals page with a proper title, a single add button, a saved-so-far summary, and the amount left on each goal.
+
+### Changed
+
+- Mobile: tighter spacing across the app, so more fits on each screen.
+
+### Fixed
+
+- Web and mobile: a new account with no balance or budget no longer shows "You've used up what's safe to spend" on the Safe to spend card; it asks you to add a balance or first transaction instead.
 
 ## 3.4.0 — 2026-10-04
 

@@ -22,6 +22,7 @@ import { CashflowCard } from "./CashflowCard";
 import { CashflowForecastCard } from "./CashflowForecastCard";
 import { buildDashboardView, localIsoDate } from "./dashboard-view";
 import { HomeEmptyView } from "./HomeEmptyView";
+import { HomeViewMenu, type HomeMenuView } from "./HomeViewMenu";
 import { HomeViewSwitch, type HomeViewName } from "./HomeViewSwitch";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
@@ -52,6 +53,7 @@ export function HomeScreen() {
   const guest = useSessionSnapshot().status === "guest";
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
+  const [menuView, setMenuView] = useState<HomeMenuView>("home");
   const [homeView, setHomeView] = useState<HomeViewName>("overview");
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
@@ -77,21 +79,24 @@ export function HomeScreen() {
 
   return (
     <Screen
-      action={
-        hasTransactions ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null
-      }
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
+      showHeading={false}
       title="Home"
     >
-      <View style={{ alignItems: "flex-end", marginTop: -spacing.sm }}>
+      <View
+        style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}
+      >
+        <HomeViewMenu selected={menuView} onSelect={setMenuView} />
         <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
       </View>
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
         <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
       ) : null}
-      {dashboard.error ? (
+      {menuView === "remittance" ? (
+        <RemittanceCalculatorCard />
+      ) : dashboard.error ? (
         <ErrorState
           message={dashboard.error}
           onRetry={dashboard.retry}
@@ -110,6 +115,9 @@ export function HomeScreen() {
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (
             <>
+              <View style={{ alignItems: "center" }}>
+                <HomeViewSwitch selected={homeView} onSelect={setHomeView} />
+              </View>
               {homeView === "overview" ? (
                 <>
                   <BalanceCard summary={view.summary} />
@@ -130,7 +138,6 @@ export function HomeScreen() {
                     onViewRenewals={() => router.push("/(app)/subscriptions")}
                   />
                   <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
-                  <RemittanceCalculatorCard />
                 </>
               ) : (
                 <>

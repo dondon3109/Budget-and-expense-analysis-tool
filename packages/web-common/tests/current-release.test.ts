@@ -25,23 +25,25 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "More currencies",
-      "More account types, free for everyone",
-      "Pay a debt from an account",
-      "The assistant can make changes for you",
-      "A pet companion on mobile",
-      "Pick several goals and be thanked for answering",
-      "Thank-you cards",
-      "Unlock with biometrics on mobile",
+      "Ask the assistant to manage categories, budgets, and transactions",
+      "Ask the assistant how to do something",
+      "A Calendar tab on Android and iOS",
+      "A Home view dropdown with Remittance on mobile",
+      "A cleaner Goals page on mobile",
       "Fixes",
-      "Android Beta 0.2.45",
+      "Android Beta 0.2.46",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/47 common currencies/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.45/);
+    expect(copy).toMatch(/Calendar tab/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.46/);
+  });
+
+  it("keeps the 3.4.0 currency and account type notes", () => {
+    expect(titles("3.4.0")).toContain("More currencies");
+    expect(notes("3.4.0")).toMatch(/Android Beta 0\.2\.45/);
   });
 
   it("keeps the no-account and goal question notes as 3.3.0", () => {
@@ -206,6 +208,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "3.4.0",
       "3.3.0",
       "3.1.0",
       "3.0.0",
