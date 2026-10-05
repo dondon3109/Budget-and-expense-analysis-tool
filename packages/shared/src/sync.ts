@@ -61,6 +61,24 @@ export function parseMobileSyncFeatures(header: string | null | undefined): Set<
       .filter((name): name is MobileSyncFeature => known.has(name)),
   );
 }
+/**
+ * The app's own version (`apps/mobile/package.json`). Sync refuses releases below the deployed
+ * MOBILE_SYNC_MINIMUM_APP_VERSION with `426 app_update_required`; apps that predate this header
+ * cannot be told apart and are let through.
+ */
+export const MOBILE_APP_VERSION_HEADER = "x-zoption-app-version";
+
+/** Whether `version` (e.g. "0.2.46-beta") is older than `minimum`; an unreadable one counts as older. */
+export function isMobileAppVersionBelow(version: string, minimum: string): boolean {
+  const parse = (value: string) => /^(\d+)\.(\d+)\.(\d+)/.exec(value.trim())?.slice(1).map(Number);
+  const actual = parse(version);
+  const floor = parse(minimum);
+  if (!floor) throw new Error(`Minimum app version ${minimum} is not major.minor.patch.`);
+  if (!actual) return true;
+  const difference = actual.map((part, index) => part - (floor[index] ?? 0)).find((d) => d !== 0);
+  return (difference ?? 0) < 0;
+}
+
 export const mobileSyncEntityTypes = [
   "account",
   "category",

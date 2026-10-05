@@ -7,6 +7,8 @@ const stageDescriptions = {
   pages: "pages-deployed",
   site: "site-deployed",
   worker: "worker-deployed",
+  // Recorded after an automatic rollback; it voids every stage before it.
+  rollback: "rolled-back",
 };
 
 function requiredEnvironment(name) {
@@ -42,7 +44,13 @@ async function deploymentsForCommit(repository, sha) {
   return deployments.filter((deployment) => deployment.task === deploymentTask);
 }
 
-export function deploymentProgress(statuses) {
+// GitHub lists statuses newest first. A rollback put production back on the previous release, so
+// a rerun after it must deploy every stage again rather than resume past them.
+export function deploymentProgress(allStatuses) {
+  const rollback = allStatuses.findIndex(
+    (status) => status.description === stageDescriptions.rollback,
+  );
+  const statuses = rollback === -1 ? allStatuses : allStatuses.slice(0, rollback);
   const complete = statuses.some((status) => status.state === "success");
   const reached = (name) =>
     complete ||
@@ -131,7 +139,7 @@ async function finish(state) {
 
 async function stage(name) {
   const description = stageDescriptions[name];
-  if (!description) throw new Error("Deployment stage must be worker, pages, or site.");
+  if (!description) throw new Error("Deployment stage must be worker, pages, site, or rollback.");
   const repository = requiredEnvironment("GITHUB_REPOSITORY");
   const deploymentId = requiredEnvironment("DEPLOYMENT_ID");
   await createDeploymentStatus(repository, deploymentId, "in_progress", description);
@@ -145,7 +153,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   else if (command === "stage") await stage(state);
   else {
     throw new Error(
-      "Usage: github-production-deployment.mjs begin|stage <worker|pages|site>|finish <success|failure>",
+      "Usage: github-production-deployment.mjs begin|stage <worker|pages|site|rollback>|finish <success|failure>",
     );
   }
 }

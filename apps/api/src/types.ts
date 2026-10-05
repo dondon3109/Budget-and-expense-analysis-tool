@@ -14,6 +14,8 @@ export interface Bindings {
   JOBS?: Queue;
   AVATARS?: R2Bucket;
   AI?: Ai;
+  // Deployed environments bind it so /health names the serving version for the release canary.
+  CF_VERSION_METADATA?: WorkerVersionMetadata;
   ALLOWED_ORIGINS?: string;
   SUPABASE_URL?: string;
   SUPABASE_JWT_AUDIENCE?: string;
@@ -61,6 +63,8 @@ export interface Bindings {
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;
   POSTHOG_AI_ENVIRONMENT?: string;
+  // Oldest app release sync still serves; it must match the oldest frozen sync contract.
+  MOBILE_SYNC_MINIMUM_APP_VERSION?: string;
   PAYPAL_ENVIRONMENT?: "sandbox" | "production";
   PAYPAL_PRO_MONTHLY_PLAN_ID?: string;
   PAYPAL_PRO_ANNUAL_PLAN_ID?: string;

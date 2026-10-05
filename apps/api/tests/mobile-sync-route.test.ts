@@ -5,6 +5,7 @@ import type { AuthVerifier } from "../src/auth";
 import type { MobileSyncRepository } from "../src/db/mobile-sync";
 import type { TenantResolver } from "../src/db/tenants";
 import type { RateLimiter } from "../src/rate-limit";
+import { createAppWithFakes, privateHeaders } from "./helpers/app-fakes";
 
 describe("mobile sync route", () => {
   it("derives the tenant and rejects ownership fields", async () => {
@@ -183,5 +184,39 @@ describe("mobile sync route", () => {
     });
     expect(forgedPush.status).toBe(400);
     expect(push).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells an app below the minimum version to update before touching sync data", async () => {
+    const pull = vi.fn(async () => ({
+      protocolVersion: 1 as const,
+      changes: [],
+      nextCursor: "v1.0",
+      hasMore: false,
+    }));
+    const app = createAppWithFakes({
+      mobileSync: { pull } as unknown as MobileSyncRepository,
+    });
+    const request = (version?: string) =>
+      app.request(
+        "/api/app/sync/pull",
+        {
+          method: "POST",
+          headers: privateHeaders({
+            "Content-Type": "application/json",
+            ...(version ? { "x-zoption-app-version": version } : {}),
+          }),
+          body: JSON.stringify({ protocolVersion: 1, cursor: null, limit: 10 }),
+        },
+        { DB: {} as D1Database, MOBILE_SYNC_MINIMUM_APP_VERSION: "0.2.46" },
+      );
+
+    const outdated = await request("0.2.45-beta");
+    expect(outdated.status).toBe(426);
+    await expect(outdated.json()).resolves.toMatchObject({ error: "app_update_required" });
+    expect(pull).not.toHaveBeenCalled();
+
+    expect((await request("0.2.46-beta")).status).toBe(200);
+    // Releases from before the header cannot be identified, so they keep syncing.
+    expect((await request()).status).toBe(200);
   });
 });

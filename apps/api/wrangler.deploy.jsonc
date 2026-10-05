@@ -13,6 +13,7 @@
       "ai": {
         "binding": "AI",
       },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "triggers": {
         "crons": ["*/5 * * * *", "17 3 * * *"],
       },
@@ -40,7 +41,7 @@
         },
       ],
       "vars": {
-        "ALLOWED_ORIGINS": "https://clarity-budget-preview.pages.dev,https://codex-webapp.clarity-budget-preview.pages.dev",
+        "ALLOWED_ORIGINS": "https://clarity-budget-preview.pages.dev,https://codex-webapp.clarity-budget-preview.pages.dev,https://zoption-site-preview.pages.dev",
         "SUPABASE_URL": "https://kkxzpjdsvcbveuuiyomk.supabase.co",
         "SUPABASE_JWT_AUDIENCE": "authenticated",
         "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_yIO74YZrjUkxIZQrGm0lEQ_HgKKsyF5",
@@ -68,6 +69,7 @@
         "DODO_PAYMENTS_ENVIRONMENT": "test_mode",
         "DODO_PRO_MONTHLY_PRODUCT_ID": "pdt_0NoEA8HfvVNl6bUFJDX69",
         "DODO_PRO_ANNUAL_PRODUCT_ID": "pdt_0NoEBCVETqnXUrInuW5mn",
+        "MOBILE_SYNC_MINIMUM_APP_VERSION": "0.2.45",
         // Secret placeholder: OPS_EGRESS_TOKEN must be provisioned via
         // `wrangler secret put OPS_EGRESS_TOKEN --config wrangler.deploy.jsonc --env preview`
       },
@@ -77,6 +79,7 @@
       "ai": {
         "binding": "AI",
       },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "routes": [
         {
           "pattern": "api.zoption.site",
@@ -135,6 +138,7 @@
         "DODO_PAYMENTS_ENVIRONMENT": "live_mode",
         "DODO_PRO_MONTHLY_PRODUCT_ID": "pdt_0NoEnmPkv8ZLevmzC1W1I",
         "DODO_PRO_ANNUAL_PRODUCT_ID": "pdt_0NoEqAi0Q6kkOnvC1pWpw",
+        "MOBILE_SYNC_MINIMUM_APP_VERSION": "0.2.45",
         // Secret placeholder: OPS_EGRESS_TOKEN must be provisioned via
         // `wrangler secret put OPS_EGRESS_TOKEN --config wrangler.deploy.jsonc --env production`
       },

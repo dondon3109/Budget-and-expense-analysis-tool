@@ -50,7 +50,7 @@ jobs:
       # writes VITE_API_URL / VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY
       # to the job environment.
       - name: Export production public configuration
-        run: node scripts/export-production-deployment-env.mjs
+        run: node scripts/export-deployment-env.mjs production
 
       - name: Validate mobile crash telemetry configuration
         run: node scripts/validate-mobile-telemetry-env.mjs

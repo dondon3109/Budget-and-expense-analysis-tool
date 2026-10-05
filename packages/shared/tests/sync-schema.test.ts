@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isMobileAppVersionBelow,
   mobileSyncAcknowledgeRequestSchema,
   mobileSyncAcknowledgeResponseSchema,
   mobileSyncPullRequestSchema,
@@ -296,5 +297,19 @@ describe("mobile sync boundary schemas", () => {
         ],
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("mobile app version floor", () => {
+  it("compares major, minor, and patch numerically and ignores the prerelease label", () => {
+    expect(isMobileAppVersionBelow("0.2.45-beta", "0.2.46")).toBe(true);
+    expect(isMobileAppVersionBelow("0.2.46-beta", "0.2.46")).toBe(false);
+    expect(isMobileAppVersionBelow("0.10.0-beta", "0.9.12")).toBe(false);
+    expect(isMobileAppVersionBelow("1.0.0", "0.99.99")).toBe(false);
+  });
+
+  it("treats an unreadable app version as too old", () => {
+    expect(isMobileAppVersionBelow("dev", "0.2.46")).toBe(true);
+    expect(() => isMobileAppVersionBelow("0.2.46", "latest")).toThrow("major.minor.patch");
   });
 });

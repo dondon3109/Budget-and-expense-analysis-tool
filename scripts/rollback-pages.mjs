@@ -48,7 +48,16 @@ async function main() {
   if (!project) throw new Error("Usage: rollback-pages.mjs <project-name>");
   const account = requiredEnvironment("CLOUDFLARE_ACCOUNT_ID");
   const commit = requiredEnvironment("TARGET_COMMIT");
-  const base = `/accounts/${account}/pages/projects/${encodeURIComponent(project)}/deployments`;
+  const projectPath = `/accounts/${account}/pages/projects/${encodeURIComponent(project)}`;
+  const base = `${projectPath}/deployments`;
+
+  // An automatic rollback can run before this release reached Pages; rolling back onto the
+  // deployment already serving would only churn the project.
+  const { canonical_deployment: serving } = await cloudflare(projectPath);
+  if (serving?.deployment_trigger?.metadata?.commit_hash === commit) {
+    console.log(`${project}: production already serves ${commit}.`);
+    return;
+  }
 
   for (let page = 1; page <= MAX_PAGES; page += 1) {
     const deployments = await cloudflare(

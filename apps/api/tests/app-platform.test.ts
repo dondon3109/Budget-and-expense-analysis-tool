@@ -23,6 +23,15 @@ describe("API platform routes", () => {
     await expect(response.json()).resolves.toMatchObject({ status: "ok" });
   });
 
+  it("names the serving Worker version when the deployment binds its metadata", async () => {
+    const app = createAppWithFakes();
+    const response = await app.request("/health", undefined, {
+      DB: {} as D1Database,
+      CF_VERSION_METADATA: { id: "version-b", tag: "v3.5.0", timestamp: "" },
+    });
+    await expect(response.json()).resolves.toMatchObject({ status: "ok", version: "version-b" });
+  });
+
   it("returns authenticated public PayPal SDK configuration without exposing its secret", async () => {
     const app = createAppWithFakes();
     const response = await app.request(

@@ -99,7 +99,13 @@ export function createApp(options: AppOptions = {}) {
   app.get("/health", async (context) => {
     try {
       await dependencies.readinessCheck(context.env);
-      return context.json({ status: "ok", service: "budget-expense-api" });
+      // Optional: the in-process test app runs without an env.
+      const version = context.env?.CF_VERSION_METADATA?.id;
+      return context.json({
+        status: "ok",
+        service: "budget-expense-api",
+        ...(version ? { version } : {}),
+      });
     } catch (error) {
       console.error(
         JSON.stringify({

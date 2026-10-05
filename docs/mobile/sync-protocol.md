@@ -89,6 +89,29 @@ the Worker sends version 1 payloads as first shipped. Shaping happens at read ti
 | `debt-links`       | `debtId` on transaction and transfer payloads, read from the row | No `debtId` key                  |
 | `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`   | Those accounts arrive as `other` |
 
+## Released app contracts
+
+`packages/shared/contracts/mobile-sync/<versionName>.json` records, for every app release still
+supported, the features it sends, JSON Schemas of the strict responses it accepts, and one push
+request it sends. `apps/api/tests/mobile-sync-released-contracts.test.ts` replays the current sync
+engine against each contract (snapshot, pull, push, and acknowledge over fixtures that reach every
+feature-gated field), so a server change that would break an installed app fails CI. Freeze the
+contract when bumping the mobile version, from the commit the APK is built from:
+
+```bash
+node scripts/freeze-mobile-sync-contract.mjs 0.2.46-beta
+```
+
+The test requires a contract for the version in `apps/mobile/package.json`, and that the oldest
+contract matches `MOBILE_SYNC_MINIMUM_APP_VERSION` in both Worker environments. The app sends its
+version in `x-zoption-app-version` on every sync request; a release below the floor gets
+`426 app_update_required`, shows "update the app to keep syncing", keeps its outbox, and stops
+scheduling retries. Releases before 0.2.46 send no version and are let through. Retiring a release
+means deleting its contract and raising the floor in `apps/api/wrangler.deploy.jsonc` in the same
+change. 0.2.43 and 0.2.44 are not supported: they reject the `systemKey` on
+category payloads and currencies other than PHP and USD, both of which production sends to every
+client.
+
 ## Push
 
 `POST /api/app/sync/push` accepts a bounded ordered batch. Operations include entity, command, entity UUID, base revision, idempotency key, dependencies, and a strictly validated command payload. The Worker:

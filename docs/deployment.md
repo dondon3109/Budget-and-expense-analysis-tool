@@ -304,17 +304,22 @@ Public canonical URLs do not use trailing slashes, and the legal, pricing, FAQ, 
 
 ## Automated production release
 
-CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck, and `actionlint` over the workflows, pinned by version and checksum), `unit` (Vitest and mobile Jest), and `e2e` (shared and API builds, preview and production builds of the app and the public site, Playwright against the app, site, and API dev servers, then Lighthouse against the production site build; a failed run keeps the Playwright report and traces as an artifact for seven days). A new push to a pull request cancels that pull request's running CI; runs on `main` are never cancelled. Every job installs through the `.github/actions/setup` composite action, which takes pnpm's version from `packageManager` in `package.json`. Dependabot (`.github/dependabot.yml`) opens one grouped pull request a week to move the SHA-pinned actions forward; npm dependencies are updated by hand. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts `deploy-and-release`, which runs in the `production` environment, requires a reviewer, and performs the migration, the Worker and both Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
+CI validates every pull request and push to `main` in three parallel jobs: `static` (dependency audit, lint, format, typecheck, and `actionlint` over the workflows, pinned by version and checksum), `unit` (Vitest and mobile Jest), and `e2e` (shared and API builds, preview and production builds of the app and the public site, Playwright against the app, site, and API dev servers, then Lighthouse against the production site build; a failed run keeps the Playwright report and traces as an artifact for seven days). A new push to a pull request cancels that pull request's running CI; runs on `main` are never cancelled. Every job installs through the `.github/actions/setup` composite action, which takes pnpm's version from `packageManager` in `package.json`. Dependabot (`.github/dependabot.yml`) opens one grouped pull request a week to move the SHA-pinned actions forward; npm dependencies are updated by hand. The `Production Release` workflow is the only normal production deployment authority: it runs from the successful `CI` workflow result for a push to `main` and decides in two jobs. The ungated `preflight` job fails at its `Verify release source` guard when `main` has already moved past the CI commit, and otherwise asks semantic-release whether the unreleased Conventional Commits require a release. A superseded result therefore fails before the `production` environment gate is reached and never requests an approval, while a non-releasing change ends in `preflight` without starting the deploy job. Only a current result that owes a release starts the ungated `preview` job, which rehearses the release on the preview stack (see [Preview release](#preview-release)), and only after it passes does `deploy-and-release` start, which runs in the `production` environment, requires a reviewer, and performs the migration, the Worker and both Pages deploys, and publication once a human approves. No approval is ever requested for a run that could only do nothing.
 
 For a release-producing commit, the workflow uses one version and commit SHA throughout this sequence:
 
 1. Validate the tracked production Wrangler configuration and perform a Worker dry run.
 2. Create or resume a GitHub production deployment record for duplicate protection.
-3. Apply pending production D1 migrations. Wrangler captures the documented backup automatically in non-interactive CI.
-4. Deploy the production Worker, tagged with the selected semantic version.
-5. Build the app with that same version and deploy it to `clarity-budget` with the exact Git SHA, then build the public site (after the Worker, because it reads the published reviews) and deploy it to `zoption-site` from `apps/site`, so its `/ingest` Pages Function is included. Each deploy is checkpointed (`worker`, `pages`, `site`) so a rerun skips what already shipped.
+3. Record the D1 Time Travel bookmark (`.github/actions/d1-restore-point`) in the run summary with the exact restore command, then apply pending production D1 migrations. Time Travel keeps 30 days of history on Workers Paid (7 on Free), so the bookmark is the restore point if a migration damages data; restoring discards every write made after it.
+4. Roll the production Worker out gradually (`scripts/worker-canary.mjs`). Before anything deploys, `plan` reads the live deployment (it refuses to start while production is already split across two versions) and confirms the Cloudflare token can read Workers analytics. The release uploads a new version tagged with the semantic version (`wrangler versions upload --strict`), deploys it at 0%, and `probe` sends version-pinned requests (`Cloudflare-Workers-Version-Overrides`) that must reach it: `/health` reports the serving version from the `CF_VERSION_METADATA` binding, and the private API must still answer `401`. It then serves 10% of traffic for a 5-minute soak, probed every 30 seconds, after which the new version's invocation error rate (Workers analytics by `scriptVersion`) may exceed the old version's by at most one percentage point; with fewer than 20 requests on the new version the probes decide alone. Then it goes to 100% and `wrangler triggers deploy` applies routes, the custom domain, and cron triggers, which a version upload leaves alone. A release that changes Durable Object migrations or queue consumers since the last release tag deploys atomically with `wrangler deploy` instead, because Cloudflare applies those only on a full deploy.
+5. Deploy the app to `clarity-budget` with the exact Git SHA, then the public site to `zoption-site` from `apps/site`, so its `/ingest` Pages Function is included. Both were built with that same version before approval by the ungated `build-production` job, which runs beside `preview`, hashes every output file into a manifest, and uploads them as the `production-dist` artifact (kept 30 days). The gated job downloads it and refuses to deploy unless the recomputed manifest hash matches the one `build-production` reported, so production gets exactly the bytes that existed at approval. The site build reads the published reviews from the live production API, so `/api/reviews` must keep its response shape for one release; the build fails rather than ship without them. Each deploy is checkpointed (`worker`, `pages`, `site`) so a rerun skips what already shipped.
 6. Wait until both custom domains serve the versioned `release.json` marker, and run the non-mutating production smoke gate against the site, the app, and the API.
 7. Mark the GitHub deployment successful, then let semantic-release create the matching `v*` tag and GitHub Release.
+8. Send a Telegram message through `.github/actions/notify` (the bot the bugfix automation uses, `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`): the release is live, failed on preview, or failed in production with or without a successful automatic rollback. Messages carry versions, status, and the run link only. Cloudflare's Workers Metrics charts mark every Worker release and gradual rollout on their own.
+
+Setting the repository variable `PRODUCTION_DEPLOY_FREEZE=true` holds every release at the first `preflight` step, before any approval is requested; unset it and rerun to resume. The `Production Rollback` workflow ignores it.
+
+If any step fails after the run has touched the Worker (a failed canary, Pages deploy, propagation wait, or smoke check), the job rolls production back automatically to the release it replaced (`preflight` resolves it from the newest reachable `v*` tag) through the same `.github/actions/rollback-production` steps the `Production Rollback` workflow uses, then records a `rolled-back` deployment status so a rerun deploys every stage again instead of resuming past them. It crosses this release's migrations without asking, because every migration must already work with the Worker one release back. The run still fails and no tag is published.
 
 If semantic-release publication fails after a successful Cloudflare deployment, rerunning the failed workflow while that commit is still `main` reuses the successful GitHub deployment record and does not deploy the Worker or either Pages project again. Semantic-release is also idempotent once the tag exists.
 
@@ -340,7 +345,7 @@ Do these outside the repository before enabling `Production Release`; the workfl
 
 1. In Cloudflare Workers Builds for `budget-expense-api-production`, disable the production Git-connected deployment from `main`. Remote verification on 2026-08-17 showed that it deployed `203ef8c` even though GitHub CI failed. Keep it disabled to prevent a duplicate Worker deployment racing GitHub Actions.
 2. Stop routine manual production Worker and Pages deployments. The commands below are retained only for emergency recovery when the Actions workflow is disabled.
-3. Add the GitHub Actions secret `CLOUDFLARE_API_TOKEN` with only the account permissions needed for Workers Scripts, Pages, and D1 production deployment. Existing Worker runtime secrets stay in Cloudflare and are neither copied to nor exposed by GitHub Actions.
+3. Add the GitHub Actions secret `CLOUDFLARE_API_TOKEN` with only the account permissions needed for Workers Scripts, Pages, and D1 production deployment, plus Account Analytics: Read for the Worker canary. Existing Worker runtime secrets stay in Cloudflare and are neither copied to nor exposed by GitHub Actions.
 4. Add the GitHub Actions variable `CLOUDFLARE_ACCOUNT_ID`.
 5. After completing steps 1-4, add `CLOUDFLARE_PRODUCTION_GIT_DEPLOY_DISABLED=true`. The workflow refuses to deploy without this explicit operator acknowledgement.
 6. Allow the workflow's `GITHUB_TOKEN` to write contents and deployments, and keep `main` protected. The rules are external state, so read them back rather than trusting this list:
@@ -369,11 +374,28 @@ Do these outside the repository before enabling `Production Release`; the workfl
 
    Leave "Prevent self-review" off. The maintainer is the only human and is the actor on his own merges, so enabling it would leave every production deployment unapprovable.
 
+   The environment also accepts deployments only from `main` (a custom deployment branch policy, set 2026-10-05). `Production Release` always runs on `main`; `Production Rollback` must be dispatched from `main`, and a run dispatched from any other branch fails before it reaches the approval, so a pushed branch cannot carry its own workflow file to production. Read it back:
+
+   ```bash
+   gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments/production \
+     --jq .deployment_branch_policy
+   gh api repos/dondon3109/Budget-and-expense-analysis-tool/environments/production/deployment-branch-policies \
+     --jq '[.branch_policies[] | {name, type}]'
+   ```
+
+   `CLOUDFLARE_API_TOKEN` is still a repository secret, readable by a workflow on any branch without this environment; the branch policy guards the approval path, not the token.
+
 The Pages build derives its public Supabase URL and publishable key from the existing tracked production Wrangler configuration. Do not add service-role keys, provider API keys, or other Worker runtime secrets to GitHub.
 
 ## Preview release
 
-Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker. The tracked Preview environment overrides the root cron list to omit daily interest crediting: Preview keeps billing reconciliation and daily maintenance, while Production retains all three schedules. This also keeps the current Cloudflare account within its account-wide Cron Trigger quota.
+Every release is rehearsed on preview automatically. The `preview` job in `Production Release` runs after `preflight` for every commit that owes a release and before `deploy-and-release` can ask for approval. It exports the preview values with `node scripts/export-deployment-env.mjs preview`, applies the preview D1 migrations, deploys the preview Worker (without `--strict`; the tracked config always wins in preview), builds and deploys the app to `clarity-budget-preview` and the public site to `zoption-site-preview` with the release version, waits for both to serve it, and runs the smoke gate with `EXPECT_SEARCH_INDEXING=0`. Preview builds omit PostHog. A preview failure stops the release before any production approval is requested; fix forward with a pull request.
+
+The preview hosts are fixed: the API at `https://budget-expense-api-preview.dondon3109.workers.dev`, the app at `https://clarity-budget-preview.pages.dev` (the preview `WEB_APP_URL`), and the site at `https://zoption-site-preview.pages.dev`. The preview `ALLOWED_ORIGINS` includes the preview site so its support chat preflight passes, and the site build rewrites its `_redirects` to hand app paths to the preview app.
+
+One-time setup: the `zoption-site-preview` Pages project must exist (`pnpm --dir apps/api exec wrangler pages project create zoption-site-preview --production-branch=main`). The preview Worker secrets are the ones listed above for `--env preview`.
+
+The manual commands below are for running preview outside the workflow. Create a D1 Time Travel recovery point before applying migrations that remove retired data, then apply migrations and deploy the Worker. The tracked Preview environment overrides the root cron list to omit daily interest crediting: Preview keeps billing reconciliation and daily maintenance, while Production retains all three schedules. This also keeps the current Cloudflare account within its account-wide Cron Trigger quota.
 
 ```bash
 node scripts/validate-deployment-config.mjs
@@ -387,36 +409,30 @@ Inspect the preview database after migration: the retired public tenant should b
 Build and deploy the browser app:
 
 ```bash
-VITE_API_URL=https://PREVIEW_API_HOST \
+VITE_API_URL=https://budget-expense-api-preview.dondon3109.workers.dev \
 VITE_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
 VITE_SUPABASE_PUBLISHABLE_KEY=PREVIEW_PUBLISHABLE_KEY \
 VITE_POSTHOG_KEY=phc_PREVIEW_KEY \
 ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/web build
-pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=PREVIEW_PAGES_PROJECT --branch=main
+pnpm --dir apps/api exec wrangler pages deploy ../web/dist --project-name=clarity-budget-preview --branch=main
 ```
 
 Build and deploy the public site from `apps/site`, so the `/ingest` function deploys with it:
 
 ```bash
-PUBLIC_API_URL=https://PREVIEW_API_HOST \
-PUBLIC_APP_URL=https://PREVIEW_WEB_HOST \
+PUBLIC_API_URL=https://budget-expense-api-preview.dondon3109.workers.dev \
+PUBLIC_APP_URL=https://clarity-budget-preview.pages.dev \
 ZOPTION_DEPLOY_ENV=preview \
 pnpm --filter @zoption/site build
-cd apps/site && ../api/node_modules/.bin/wrangler pages deploy dist --project-name=PREVIEW_SITE_PROJECT --branch=main && cd ../..
+cd apps/site && ../api/node_modules/.bin/wrangler pages deploy dist --project-name=zoption-site-preview --branch=main && cd ../..
 ```
 
-Run the non-mutating smoke gate:
+Run the non-mutating smoke gate (the exported values are the preview hosts and Supabase origins):
 
 ```bash
-EXPECT_SEARCH_INDEXING=0 \
-SITE_URL=https://PREVIEW_SITE_HOST \
-APP_URL=https://PREVIEW_WEB_HOST \
-API_URL=https://PREVIEW_API_HOST \
-EXPECTED_SUPABASE_URL=https://PREVIEW_PROJECT_REF.supabase.co \
-FORBIDDEN_SUPABASE_ORIGINS=https://PRODUCTION_PROJECT_REF.supabase.co \
-EXPECTED_POSTHOG_HOST=https://us.i.posthog.com \
-pnpm smoke:production
+GITHUB_ENV=/tmp/preview.env node scripts/export-deployment-env.mjs preview
+env $(cat /tmp/preview.env) pnpm smoke:production
 ```
 
 `EXPECTED_SUPABASE_URL` is required. `EXPECTED_POSTHOG_HOST` is required unless `EXPECT_SEARCH_INDEXING=0`; drop that line when the Preview build omitted `VITE_POSTHOG_KEY`, because its CSP then has no PostHog origin. Set `FORBIDDEN_SUPABASE_ORIGINS` to the other deployment's distinct Supabase origin and add any custom-domain origins that must be absent. The smoke gate rejects every CSP wildcard source and, for managed `*.supabase.co` projects, rejects every managed Supabase origin other than the expected one. It also confirms the frontend bundle embeds the expected API and Supabase origins and none of the explicitly forbidden origins.
@@ -479,15 +495,19 @@ The normal workflow publishes semantic release metadata automatically only after
 
 ## Rollback
 
-The `Production Rollback` workflow (`.github/workflows/rollback.yml`) is the normal rollback. Run it from the Actions tab with the released `version` to restore and a `reason`; it waits for approval in the `production` environment and shares the release's concurrency group, so it never overlaps a deploy. It rolls back `clarity-budget` and `zoption-site` to the production deployments built from the `v<version>` commit (`scripts/rollback-pages.mjs`), then the Worker to the version tagged `v<version>`, waits for both domains to serve that version's `release.json`, and runs the production smoke gate. It refuses when D1 migrations were added after that version unless `allow_newer_migrations` is set, and it fails closed when the target is older than the last 100 Pages deployments or the Worker's recent version list. The next release from `main` deploys forward again, so fix forward with a normal pull request.
+A release that fails after touching production rolls itself back (see [Automated production release](#automated-production-release)). The `Production Rollback` workflow (`.github/workflows/rollback.yml`) is the normal rollback for a release that passed its checks and turned out bad later. Both run `.github/actions/rollback-production`. Run it from the Actions tab with the released `version` to restore and a `reason`; it waits for approval in the `production` environment and shares the release's concurrency group, so it never overlaps a deploy. It rolls back `clarity-budget` and `zoption-site` to the production deployments built from the `v<version>` commit (`scripts/rollback-pages.mjs`), then the Worker to the version tagged `v<version>`, waits for both domains to serve that version's `release.json`, and runs the production smoke gate. It refuses when D1 migrations were added after that version unless `allow_newer_migrations` is set, and it fails closed when the target is older than the last 100 Pages deployments or the Worker's recent version list. The next release from `main` deploys forward again, so fix forward with a normal pull request.
 
 Manual rollback, when the workflow cannot run:
 
 - **Pages:** promote the previously verified deployment of each project (`clarity-budget` for the app, `zoption-site` for the public site).
 - **Worker:** roll back to the previous Worker version, but do not roll code back past an incompatible D1 migration.
-- **D1:** migrations are forward-only. Create a Time Travel restore point before destructive schema changes and rehearse recovery in preview. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.
+- **D1:** migrations are forward-only, and the rollback workflow never touches data. Each release run's summary records the Time Travel bookmark taken right before its migrations, for preview and production, with the restore command. Restore only when a migration damaged data, because it discards every write made after the bookmark; rehearse it on the preview bookmark first. Because migrations run before the Worker deploy, every migration must stay compatible with the previously deployed Worker; `apps/api/AGENTS.md` states the expand-then-contract rule.
 - **Supabase Auth:** do not rotate or remove signing keys as an application rollback mechanism. Follow Supabase key-rotation guidance and keep old keys valid through their transition window.
 - After rollback, rerun the documented environment-specific smoke command with `EXPECTED_SUPABASE_URL` (and any distinct `FORBIDDEN_SUPABASE_ORIGINS`) and verify unauthenticated `/api/app/*` requests still return `401`.
+
+## Production monitoring
+
+The `Production Monitor` workflow (`.github/workflows/production-monitor.yml`) runs the read-only production smoke gate every 10 minutes and on demand. A pass that fails is retried after a minute; a second failure opens one issue labelled `production-down`, assigned to the repository owner so GitHub notifies them, and later failures comment on that issue. The next passing check closes it. The workflow needs no secrets: it reads the production hosts and Supabase origins from `scripts/export-deployment-env.mjs`. GitHub delays scheduled runs under load and disables them after 60 days without repository activity; re-enable it from the Actions tab if that happens.
 
 ## Custom-domain verification
 
@@ -597,11 +617,11 @@ The intended production endpoints are:
 - Production web app: <https://app.zoption.site> (Pages project `clarity-budget`)
 - Production API: <https://api.zoption.site>
 
-Preview endpoints are deployment-specific. Supply them through `PREVIEW_SITE_HOST`, `PREVIEW_WEB_HOST`, and `PREVIEW_API_HOST` in release commands instead of committing provider-generated hostnames.
+Preview endpoints are provider hostnames, recorded once in `scripts/export-deployment-env.mjs`: <https://zoption-site-preview.pages.dev> (Pages project `zoption-site-preview`), <https://clarity-budget-preview.pages.dev> (Pages project `clarity-budget-preview`), and <https://budget-expense-api-preview.dondon3109.workers.dev>.
 
 ## Cloudflare dashboard and repository sync
 
-The API Worker's dashboard `vars` and `apps/api/wrangler.deploy.jsonc` carry the same set of names in each environment (checked 2026-09-21; both environments have since gained the three Dodo Payments variables, so each carries 28 names). A discrepancy in Cloudflare's "keep your Wrangler config in sync" prompt is not on its own evidence that the repository is behind.
+The API Worker's dashboard `vars` and `apps/api/wrangler.deploy.jsonc` carry the same set of names in each environment (checked 2026-09-21; both environments have since gained the three Dodo Payments variables and `MOBILE_SYNC_MINIMUM_APP_VERSION`, so each carries 29 names). A discrepancy in Cloudflare's "keep your Wrangler config in sync" prompt is not on its own evidence that the repository is behind.
 
 The dashboard renders its own copy of each value, and Workers AI model IDs are rewritten in that rendering: `RECEIPT_VISION_MODEL` (`@cf/meta/llama-3.2-11b-vision-instruct`) displays there with an `@file:`-prefixed form that is not the stored value. Do not transcribe dashboard values into the Wrangler config; change the config and let the release workflow deploy it.
 
