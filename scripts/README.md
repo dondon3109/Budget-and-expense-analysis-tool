@@ -28,6 +28,7 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 | `android-release-metadata`         | Android Beta Build           | Resolves the signed Android release identity from the two version sources              |
 | `validate-mobile-telemetry-env`    | Android Beta Build           | Rejects a release build with an unapproved PostHog host or flag                        |
 | `refresh-android-release-snapshot` | By hand after an APK release | Refreshes `packages/web-common/src/releases/androidRelease.json` from the live release |
+| `freeze-mobile-sync-contract`      | By hand at a mobile bump     | Records a release's sync contract for the API compatibility test                       |
 | `r2-android-cors.json`             | By hand                      | The R2 CORS rules for the APK bucket (`docs/deployment.md`)                            |
 
 ## Local development

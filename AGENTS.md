@@ -41,7 +41,7 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 - Never edit the web/product version by hand. semantic-release tags `main` after CI.
 - Never deploy production manually. The `Production Release` workflow runs D1 migrations, the Worker and Pages deploys, smoke checks, and semantic-release; approving its `production` environment gate is the deploy. Manual commands are emergency recovery only and never run alongside it.
 - Before a release, update the in-app patch notes so they match what ships: `packages/web-common/src/releases/currentRelease.ts` (the "What's new" list and `releaseHistory`), plus `packages/web-common/src/releases/androidRelease.json` once a new APK is published.
-- Every release is a new web **and** mobile version. Bump `apps/mobile/package.json` `version` and `android.versionCode` in `apps/mobile/app.config.ts` (`0.2.34-beta` → `20334`). The signed APK is built and published by the `Android Beta Build` workflow (`docs/mobile/build-instructions.md`).
+- Every release is a new web **and** mobile version. Bump `apps/mobile/package.json` `version` and `android.versionCode` in `apps/mobile/app.config.ts` (`0.2.34-beta` → `20334`), and freeze that version's sync contract (`node scripts/freeze-mobile-sync-contract.mjs <version>`, `docs/mobile/sync-protocol.md`). The signed APK is built and published by the `Android Beta Build` workflow (`docs/mobile/build-instructions.md`).
 - `CHANGELOG.md`: add notable user-facing changes under `Unreleased`. After semantic-release succeeds, move them under the exact released version and date in a follow-up `docs:` commit. Never guess a version or mark a failed release as published.
 
 ## Stack
