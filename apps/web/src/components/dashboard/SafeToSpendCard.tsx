@@ -1,5 +1,6 @@
 import {
   getDaysLeftInWeek,
+  hasSpendingBasis,
   overspendingAlert,
   overspendingAlertMessage,
   projectCashflow,
@@ -30,12 +31,14 @@ function guidanceText(
   renewalLookup: "pending" | "error" | "ready",
   safeAmountMinor: number,
   activeBillCount: number,
+  hasBasis: boolean,
 ): string {
   if (renewalLookup === "pending") return "Checking your renewals, so this figure may still fall.";
   if (renewalLookup === "error") {
     return "Renewals could not be loaded, so this figure may be optimistic.";
   }
   if (safeAmountMinor <= 0) {
+    if (!hasBasis) return "Add your balance or a first transaction to see what's safe to spend.";
     return "Keep spending minimal until your next planned deposit or balance adjustment.";
   }
   return `Forward guidance accounting for ${activeBillCount} active recurring bill${
@@ -76,7 +79,8 @@ export function SafeToSpendCard({
     daysLeftInWeek,
     forecast: { minProjectedBalanceMinor: forecast.minProjectedBalanceMinor },
   });
-  const alert = overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast });
+  const hasBasis = hasSpendingBasis({ startingBalanceMinor, remainingBudgetMinor });
+  const alert = overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast, hasBasis });
   const alertMessage = alert ? overspendingAlertMessage(alert) : null;
 
   return (
@@ -109,7 +113,7 @@ export function SafeToSpendCard({
         </div>
       ) : null}
       <p className="safe-to-spend-guidance">
-        {guidanceText(renewalLookup, safeAmountMinor, subscriptions.length)}
+        {guidanceText(renewalLookup, safeAmountMinor, subscriptions.length, hasBasis)}
       </p>
     </section>
   );
