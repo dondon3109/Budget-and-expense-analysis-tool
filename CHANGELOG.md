@@ -10,6 +10,10 @@ All notable product changes are documented here.
 - Web and mobile: ask the AI Assistant how to do something in Zoption, such as importing a statement or setting a budget, and it answers with the page and control to use, the same guidance as Help & contact.
 - Mobile: a cleaner Goals page with a proper title, a single add button, a saved-so-far summary, and the amount left on each goal.
 
+### Fixed
+
+- Web and mobile: a new account with no balance or budget no longer shows "You've used up what's safe to spend" on the Safe to spend card; it asks you to add a balance or first transaction instead.
+
 ## 3.4.0 — 2026-10-04
 
 ### Added

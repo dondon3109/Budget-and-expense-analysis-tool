@@ -167,6 +167,19 @@ describe("SafeToSpendCard", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("You've used up what's safe to spend");
   });
 
+  it("shows a getting-started line, not an alert, for an empty account", async () => {
+    mockSubscriptions([]);
+
+    renderCard({ startingBalanceMinor: 0 });
+
+    expect(
+      await screen.findByText(
+        "Add your balance or a first transaction to see what's safe to spend.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("warns of a deficit when a renewal would take the balance below zero", async () => {
     mockSubscriptions([subscription()]);
 

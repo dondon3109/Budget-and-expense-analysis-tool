@@ -70,6 +70,16 @@ describe("SafeToSpendHero (mobile)", () => {
       ),
     ).toBeTruthy();
   });
+  it("shows a getting-started line, not an alert, for an empty account", async () => {
+    await render(<SafeToSpendHero startingBalanceMinor={0} subscriptions={[]} />);
+
+    expect(
+      screen.getByText("Add your balance or a first transaction to see what's safe to spend."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(useOverspendingNotification).toHaveBeenLastCalledWith(null);
+  });
+
   it("says when a plan billed in the other currency is left out", async () => {
     await render(
       <SafeToSpendHero
