@@ -551,13 +551,7 @@ export function DashboardPage() {
                 }
               />
             )}
-            <DashboardToolCards
-              workspace={workspace}
-              startingBalanceMinor={overallBalanceMinor}
-              remainingBudgetMinor={
-                data.budgetProgress.length > 0 ? metrics.remainingBudgetMinor : undefined
-              }
-            />
+            <DashboardToolCards />
             {goalConfig.emphasis === "recent_transactions" && transactionHistory}
             <div className="dashboard-grid">
               {sectionOrder.map((name) => (

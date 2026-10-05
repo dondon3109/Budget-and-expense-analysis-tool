@@ -84,6 +84,7 @@ export default function AuthenticatedLayout() {
         <Stack.Screen
           name="goals"
           options={{
+            title: "Goals",
             headerShown: true,
             headerBackTitle: "More",
           }}
