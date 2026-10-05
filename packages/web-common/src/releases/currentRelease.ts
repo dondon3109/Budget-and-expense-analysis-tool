@@ -11,57 +11,42 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 3, 2026",
+  releasedOn: "October 5, 2026",
   changes: [
     {
-      title: "More currencies",
+      title: "Ask the assistant to manage categories, budgets, and transactions",
       description:
-        "Track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Imports, voice entries, and receipt scans use your workspace currency, and budgets count only spending in it.",
+        "Ask the AI Assistant to add, rename, or archive a category, set a monthly category budget, or edit or delete a transaction you already recorded. Each change shows on a card and happens only after you tap Confirm.",
     },
     {
-      title: "More account types, free for everyone",
+      title: "Ask the assistant how to do something",
       description:
-        "Add General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables accounts. Adding, renaming, and removing accounts is now free on every plan with no limit; automatic interest on savings accounts is still Pro.",
+        "Ask how to import a statement or set a budget, and the assistant answers with the page and control to use, the same guidance as Help & contact.",
     },
     {
-      title: "Pay a debt from an account",
+      title: "A Calendar tab on Android and iOS",
       description:
-        "A transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. On mobile, choosing the Debt payment category or such a transfer asks which debt it pays. Editing or deleting the transfer gives the amount back.",
+        "Transactions has a Calendar tab with a compact month grid of each day's income and expenses. Tap a day to see its transactions below.",
     },
     {
-      title: "The assistant can make changes for you",
+      title: "A Home view dropdown with Remittance on mobile",
       description:
-        "Ask the AI Assistant to add, edit, cancel, or delete a subscription, savings goal, or debt, or to add, rename, or archive an account or set its balance. It shows what it will do on a card and changes nothing until you tap Confirm.",
+        "The Home title is now a dropdown. Pick Remittance to open the remittance calculator on its own. The Overview / Analytics switch sits centered at the top, and Safe to spend shows below Total Balance.",
     },
     {
-      title: "A pet companion on mobile",
+      title: "A cleaner Goals page on mobile",
       description:
-        "Signed-in users on Android and iOS can pick one of six eggs and open Zoption seven days in a row to hatch it. It earns points when you use the app, on the web too, and grows from Baby to Monster. Left alone it gets sick and eventually passes away, and notifications warn you first, never between 10 PM and 7 AM. Turn it off under More → Preferences → Pet companion.",
-    },
-    {
-      title: "Pick several goals and be thanked for answering",
-      description:
-        "The setup goal question lets you pick every goal that applies, with the first as your main focus, and thanks you once you answer. On mobile it also asks for your currency and cash on hand the first time you open the app. You can change goals in Account Settings.",
-    },
-    {
-      title: "Thank-you cards",
-      description:
-        "A thank-you card appears when you create your account and when your Zoption Pro purchase is confirmed, on the web and in the Android and iOS app.",
-    },
-    {
-      title: "Unlock with biometrics on mobile",
-      description:
-        'After you set a PIN, turn on "Unlock with biometrics" under More → Account to unlock with your fingerprint, face, or iris. Your PIN still works, and Zoption never receives your biometric data.',
+        "Goals has a proper title, a single add button, a saved-so-far summary, and the amount left on each goal. Spacing is tighter across the app, so more fits on each screen, and the new transaction voice card is simpler.",
     },
     {
       title: "Fixes",
       description:
-        "Starting cash you enter during mobile setup no longer counts as income in Transactions totals. The goal choices in Account Settings are compact rows again, and settings row titles on mobile no longer wrap beside long values.",
+        'A new account with no balance or budget no longer says "You\'ve used up what\'s safe to spend"; it asks you to add a balance or first transaction. The web dashboard no longer shows the Safe to spend tile twice.',
     },
     {
-      title: "Android Beta 0.2.45",
+      title: "Android Beta 0.2.46",
       description:
-        "The official Android Beta carries the pet companion, more currencies and account types, debt payments from accounts, assistant changes with confirmation, biometric unlock, and the new setup questions.",
+        "The official Android Beta carries the Calendar tab, the Home view dropdown, the refreshed Goals page, and the assistant's new abilities.",
     },
   ],
 };
@@ -76,6 +61,62 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "3.4.0",
+    releasedOn: "October 3, 2026",
+    changes: [
+      {
+        title: "More currencies",
+        description:
+          "Track money in 47 common currencies instead of only Philippine Peso and US Dollar, including EUR, GBP, JPY, CNY, KRW, SGD, AUD, CAD, INR, AED, SAR, and KWD. Pick one as your workspace currency and give each account its own. Balances, income, expenses, transfer fees, and subscription totals list every currency you use, and the cashflow chart converts them into your workspace currency with daily exchange rates. Imports, voice entries, and receipt scans use your workspace currency, and budgets count only spending in it.",
+      },
+      {
+        title: "More account types, free for everyone",
+        description:
+          "Add General, Cash, Bank / debit card, Savings, Credit card, Virtual account, Investment, Owes me / Receivables, and I owe / Payables accounts. Adding, renaming, and removing accounts is now free on every plan with no limit; automatic interest on savings accounts is still Pro.",
+      },
+      {
+        title: "Pay a debt from an account",
+        description:
+          "A transfer into a credit card or I owe / Payables account counts as a debt payment and can be linked to a debt in Goals & debt, whose balance drops by the amount that reached the account. On mobile, choosing the Debt payment category or such a transfer asks which debt it pays. Editing or deleting the transfer gives the amount back.",
+      },
+      {
+        title: "The assistant can make changes for you",
+        description:
+          "Ask the AI Assistant to add, edit, cancel, or delete a subscription, savings goal, or debt, or to add, rename, or archive an account or set its balance. It shows what it will do on a card and changes nothing until you tap Confirm.",
+      },
+      {
+        title: "A pet companion on mobile",
+        description:
+          "Signed-in users on Android and iOS can pick one of six eggs and open Zoption seven days in a row to hatch it. It earns points when you use the app, on the web too, and grows from Baby to Monster. Left alone it gets sick and eventually passes away, and notifications warn you first, never between 10 PM and 7 AM. Turn it off under More → Preferences → Pet companion.",
+      },
+      {
+        title: "Pick several goals and be thanked for answering",
+        description:
+          "The setup goal question lets you pick every goal that applies, with the first as your main focus, and thanks you once you answer. On mobile it also asks for your currency and cash on hand the first time you open the app. You can change goals in Account Settings.",
+      },
+      {
+        title: "Thank-you cards",
+        description:
+          "A thank-you card appears when you create your account and when your Zoption Pro purchase is confirmed, on the web and in the Android and iOS app.",
+      },
+      {
+        title: "Unlock with biometrics on mobile",
+        description:
+          'After you set a PIN, turn on "Unlock with biometrics" under More → Account to unlock with your fingerprint, face, or iris. Your PIN still works, and Zoption never receives your biometric data.',
+      },
+      {
+        title: "Fixes",
+        description:
+          "Starting cash you enter during mobile setup no longer counts as income in Transactions totals. The goal choices in Account Settings are compact rows again, and settings row titles on mobile no longer wrap beside long values.",
+      },
+      {
+        title: "Android Beta 0.2.45",
+        description:
+          "The official Android Beta carries the pet companion, more currencies and account types, debt payments from accounts, assistant changes with confirmation, biometric unlock, and the new setup questions.",
+      },
+    ],
+  },
   {
     version: "3.3.0",
     releasedOn: "October 3, 2026",
