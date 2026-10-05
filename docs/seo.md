@@ -171,6 +171,10 @@ Android use, no bank connection, e-wallet tracking.
   the two feature pages carry voice input, receipt, and transaction wording for the rest.
   Search Console (2026-10-01) listed only `zoption` (61 impressions), spaced and hyphenated
   brand misspellings (`z option`, `z-option`), and Maya cancellation queries.
+- `/guides/budget-ofw-remittance-philippines`, `/guides/debt-snowball-vs-avalanche-philippines`,
+  `/guides/budget-irregular-income-philippines`: OFW remittance budgeting, payoff order for
+  utang, and freelancer income. A 2026-10-05 check of 35 Philippine budgeting queries found
+  Zoption in no non-brand search answer and no Zoption page on these three topics.
 
 Legal and tax facts (13th month pay, deposit insurance) are stated without figures that
 change by statute, such as the bonus tax ceiling or the PDIC maximum, and point to the

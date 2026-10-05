@@ -14,10 +14,10 @@ describe("finance guides content and helper functions", () => {
     expect(SharedIndex.FINANCE_GUIDES).toBeDefined();
   });
 
-  it("contains the twelve Philippine personal finance guides", () => {
+  it("contains the fifteen Philippine personal finance guides", () => {
     const guides = getAllFinanceGuides();
-    expect(guides).toHaveLength(12);
-    expect(FINANCE_GUIDES).toHaveLength(12);
+    expect(guides).toHaveLength(15);
+    expect(FINANCE_GUIDES).toHaveLength(15);
 
     const slugs = guides.map((g) => g.slug);
     expect(slugs).toEqual([
@@ -33,6 +33,9 @@ describe("finance guides content and helper functions", () => {
       "how-to-budget-for-beginners-philippines",
       "budget-allowance-philippines",
       "how-to-save-money-philippines",
+      "budget-ofw-remittance-philippines",
+      "debt-snowball-vs-avalanche-philippines",
+      "budget-irregular-income-philippines",
     ]);
   });
 
@@ -88,6 +91,9 @@ describe("finance guides content and helper functions", () => {
       "how-to-budget-for-beginners-philippines",
       "budget-allowance-philippines",
       "how-to-save-money-philippines",
+      "budget-ofw-remittance-philippines",
+      "debt-snowball-vs-avalanche-philippines",
+      "budget-irregular-income-philippines",
     ]) {
       const guide = getFinanceGuideBySlug(slug);
       expect(guide).not.toBeNull();

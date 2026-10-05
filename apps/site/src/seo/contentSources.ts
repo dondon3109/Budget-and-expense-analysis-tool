@@ -79,6 +79,9 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/guides/how-to-budget-for-beginners-philippines": GUIDE_PAGE_SOURCES,
   "/guides/budget-allowance-philippines": GUIDE_PAGE_SOURCES,
   "/guides/how-to-save-money-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/budget-ofw-remittance-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/debt-snowball-vs-avalanche-philippines": GUIDE_PAGE_SOURCES,
+  "/guides/budget-irregular-income-philippines": GUIDE_PAGE_SOURCES,
   "/tutorials": ["apps/site/src/views/tutorials/TutorialsPage.tsx"],
   "/import": [
     "apps/site/src/views/import/ImportHubPage.tsx",
