@@ -25,20 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Ask the assistant to manage categories, budgets, and transactions",
-      "Ask the assistant how to do something",
-      "A Calendar tab on Android and iOS",
-      "A Home view dropdown with Remittance on mobile",
-      "A cleaner Goals page on mobile",
-      "Fixes",
-      "Android Beta 0.2.46",
+      "A more compact mobile app",
+      "The Overview / Analytics switch moved into the Home header",
+      "Three new guides",
+      "Android Beta 0.2.47",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Calendar tab/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.46/);
+    expect(copy).toMatch(/compact/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.47/);
+  });
+
+  it("keeps the assistant, calendar, and goals notes as 3.6.0", () => {
+    expect(titles("3.6.0")).toContain("A Calendar tab on Android and iOS");
+    expect(notes("3.6.0")).toMatch(/Android Beta 0\.2\.46/);
   });
 
   it("keeps the 3.4.0 currency and account type notes", () => {
@@ -208,6 +210,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "3.6.0",
       "3.4.0",
       "3.3.0",
       "3.1.0",
