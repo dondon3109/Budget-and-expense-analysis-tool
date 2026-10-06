@@ -40,15 +40,15 @@ export interface ThemeTokens {
 
 export const spacing = {
   xxs: 4,
-  xs: 8,
-  sm: 12,
-  md: 14,
-  lg: 20,
-  xl: 24,
-  xxl: 36,
+  xs: 6,
+  sm: 10,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 28,
 } as const;
 
-export const radii = { sm: 8, md: 12, lg: 16, xl: 22, sheet: 24, round: 999 } as const;
+export const radii = { sm: 6, md: 10, lg: 14, xl: 18, sheet: 22, round: 999 } as const;
 
 /**
  * Headings use Bricolage Grotesque, embedded at build time by the expo-font
@@ -66,26 +66,26 @@ export const touchTarget = Platform.OS === "ios" ? 44 : 48;
 export const typography = {
   display: {
     fontFamily: fonts.headingBold,
-    fontSize: 28,
-    lineHeight: 33,
+    fontSize: 24,
+    lineHeight: 29,
     fontWeight: "normal" as const,
     letterSpacing: -0.8,
   },
   title: {
     fontFamily: fonts.heading,
-    fontSize: 21,
-    lineHeight: 26,
+    fontSize: 18,
+    lineHeight: 23,
     fontWeight: "normal" as const,
     letterSpacing: -0.4,
   },
-  headline: { fontSize: 16, lineHeight: 21, fontWeight: "600" as const },
-  body: { fontSize: 15, lineHeight: 22, fontWeight: "400" as const },
-  callout: { fontSize: 14, lineHeight: 20, fontWeight: "400" as const },
-  label: { fontSize: 14, lineHeight: 19, fontWeight: "600" as const },
-  caption: { fontSize: 12, lineHeight: 16, fontWeight: "500" as const },
+  headline: { fontSize: 15, lineHeight: 20, fontWeight: "600" as const },
+  body: { fontSize: 14, lineHeight: 20, fontWeight: "400" as const },
+  callout: { fontSize: 13, lineHeight: 18, fontWeight: "400" as const },
+  label: { fontSize: 13, lineHeight: 18, fontWeight: "600" as const },
+  caption: { fontSize: 11, lineHeight: 15, fontWeight: "500" as const },
   money: {
-    fontSize: 24,
-    lineHeight: 30,
+    fontSize: 22,
+    lineHeight: 27,
     fontWeight: "700" as const,
     letterSpacing: -0.5,
     fontVariant: ["tabular-nums"] as TextStyle["fontVariant"],

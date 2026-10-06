@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
   totalValues: { alignItems: "center", minWidth: 0 },
   totalMoney: { fontSize: 16, lineHeight: 21, fontWeight: "600" },
   dateHeader: {
-    minHeight: 62,
+    minHeight: 54,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   summaryRow: {
-    minHeight: 64,
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,

@@ -37,7 +37,7 @@ function TabIcon({
   );
 }
 
-const PILL = { width: 56, height: 30 } as const;
+const PILL = { width: 52, height: 28 } as const;
 
 const styles = StyleSheet.create({
   iconPill: {
@@ -70,8 +70,8 @@ export default function TabLayout() {
           backgroundColor: theme.colors.surfaceRaised,
           borderTopColor: theme.colors.border,
           borderTopWidth: StyleSheet.hairlineWidth,
-          height: 60 + bottomInset,
-          paddingTop: 8,
+          height: 54 + bottomInset,
+          paddingTop: 6,
           paddingBottom: bottomInset,
         },
       }}

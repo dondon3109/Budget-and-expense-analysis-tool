@@ -15,7 +15,7 @@ All notable product changes are documented here.
 
 ### Changed
 
-- Mobile: tighter spacing across the app, so more fits on each screen.
+- Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
 
 ### Fixed
 
