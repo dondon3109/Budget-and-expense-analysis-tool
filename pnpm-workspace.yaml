@@ -33,6 +33,9 @@ overrides:
   "ip-address": 10.7.1
   "dompurify": 3.4.16
   "basic-ftp": 6.2.1
+  "source-map-js": 1.2.2
+  "proxy-addr": 2.0.8
+  "compression": 1.8.2
 
 auditConfig:
   ignoreGhsas:

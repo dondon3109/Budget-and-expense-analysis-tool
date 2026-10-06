@@ -10,7 +10,7 @@ import { radii } from "@/ui/tokens";
 export function CategoryBadge({
   emoji,
   color,
-  size = 36,
+  size = 32,
 }: {
   emoji: string | null;
   color: string;

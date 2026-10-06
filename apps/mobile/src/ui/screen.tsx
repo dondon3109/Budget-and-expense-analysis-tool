@@ -80,7 +80,7 @@ export function Screen({
       />
     ) : undefined);
   const body = (
-    <View className="w-full gap-6 px-4 pb-8 pt-3" style={[styles.content, !scroll && styles.fill]}>
+    <View className="w-full px-4 pb-6 pt-2" style={[styles.content, !scroll && styles.fill]}>
       {shouldRenderHeading ? (
         <View
           style={[
