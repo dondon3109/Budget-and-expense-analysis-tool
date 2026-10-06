@@ -11,42 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 5, 2026",
+  releasedOn: "October 6, 2026",
   changes: [
     {
-      title: "Ask the assistant to manage categories, budgets, and transactions",
+      title: "A more compact mobile app",
       description:
-        "Ask the AI Assistant to add, rename, or archive a category, set a monthly category budget, or edit or delete a transaction you already recorded. Each change shows on a card and happens only after you tap Confirm.",
+        "Android and iOS use smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen.",
     },
     {
-      title: "Ask the assistant how to do something",
+      title: "The Overview / Analytics switch moved into the Home header",
       description:
-        "Ask how to import a statement or set a budget, and the assistant answers with the page and control to use, the same guidance as Help & contact.",
+        "On mobile, the switch sits centered at the top of Home, next to the view dropdown, so it stays in reach while you scroll.",
     },
     {
-      title: "A Calendar tab on Android and iOS",
+      title: "Three new guides",
       description:
-        "Transactions has a Calendar tab with a compact month grid of each day's income and expenses. Tap a day to see its transactions below.",
+        "zoption.site has new guides on budgeting remittances as an OFW family, debt snowball vs avalanche, and budgeting irregular income as a freelancer.",
     },
     {
-      title: "A Home view dropdown with Remittance on mobile",
+      title: "Android Beta 0.2.47",
       description:
-        "The Home title is now a dropdown. Pick Remittance to open the remittance calculator on its own. The Overview / Analytics switch sits centered at the top, and Safe to spend shows below Total Balance.",
-    },
-    {
-      title: "A cleaner Goals page on mobile",
-      description:
-        "Goals has a proper title, a single add button, a saved-so-far summary, and the amount left on each goal. Spacing is tighter across the app, so more fits on each screen, and the new transaction voice card is simpler.",
-    },
-    {
-      title: "Fixes",
-      description:
-        "A new account with no balance or budget no longer says \"You've used up what's safe to spend\"; it asks you to add a balance or first transaction. The web dashboard no longer shows the Safe to spend tile twice.",
-    },
-    {
-      title: "Android Beta 0.2.46",
-      description:
-        "The official Android Beta carries the Calendar tab, the Home view dropdown, the refreshed Goals page, and the assistant's new abilities.",
+        "The official Android Beta carries the compact layout and the Home header switch.",
     },
   ],
 };
@@ -61,6 +46,47 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "3.6.0",
+    releasedOn: "October 5, 2026",
+    changes: [
+      {
+        title: "Ask the assistant to manage categories, budgets, and transactions",
+        description:
+          "Ask the AI Assistant to add, rename, or archive a category, set a monthly category budget, or edit or delete a transaction you already recorded. Each change shows on a card and happens only after you tap Confirm.",
+      },
+      {
+        title: "Ask the assistant how to do something",
+        description:
+          "Ask how to import a statement or set a budget, and the assistant answers with the page and control to use, the same guidance as Help & contact.",
+      },
+      {
+        title: "A Calendar tab on Android and iOS",
+        description:
+          "Transactions has a Calendar tab with a compact month grid of each day's income and expenses. Tap a day to see its transactions below.",
+      },
+      {
+        title: "A Home view dropdown with Remittance on mobile",
+        description:
+          "The Home title is now a dropdown. Pick Remittance to open the remittance calculator on its own. The Overview / Analytics switch sits centered at the top, and Safe to spend shows below Total Balance.",
+      },
+      {
+        title: "A cleaner Goals page on mobile",
+        description:
+          "Goals has a proper title, a single add button, a saved-so-far summary, and the amount left on each goal. Spacing is tighter across the app, so more fits on each screen, and the new transaction voice card is simpler.",
+      },
+      {
+        title: "Fixes",
+        description:
+          "A new account with no balance or budget no longer says \"You've used up what's safe to spend\"; it asks you to add a balance or first transaction. The web dashboard no longer shows the Safe to spend tile twice.",
+      },
+      {
+        title: "Android Beta 0.2.46",
+        description:
+          "The official Android Beta carries the Calendar tab, the Home view dropdown, the refreshed Goals page, and the assistant's new abilities.",
+      },
+    ],
+  },
   {
     version: "3.4.0",
     releasedOn: "October 4, 2026",

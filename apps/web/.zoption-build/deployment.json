@@ -1,0 +1,9 @@
+{
+  "deployEnvironment": "production",
+  "apiOrigin": "https://api.zoption.site",
+  "supabaseOrigin": "https://tsgfhhmpkvzmcxzbdtic.supabase.co",
+  "posthogEnabled": false,
+  "posthogHost": "https://us.i.posthog.com",
+  "appVersion": "2.2.1",
+  "contentSecurityPolicy": "default-src 'self'; script-src 'self' https://www.paypal.com; style-src 'self' 'unsafe-inline' https://www.paypal.com https://www.sandbox.paypal.com https://www.paypalobjects.com; img-src 'self' data: blob: https://api.zoption.site https://tsgfhhmpkvzmcxzbdtic.supabase.co https://www.paypal.com https://www.sandbox.paypal.com https://www.paypalobjects.com; connect-src 'self' https://tsgfhhmpkvzmcxzbdtic.supabase.co https://api.zoption.site wss://api.zoption.site https://downloads.zoption.site https://www.paypal.com https://www.sandbox.paypal.com https://www.paypalobjects.com; media-src 'self' blob:; frame-src https://www.paypal.com https://www.sandbox.paypal.com https://www.paypalobjects.com; child-src https://www.paypal.com https://www.sandbox.paypal.com https://www.paypalobjects.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+}
