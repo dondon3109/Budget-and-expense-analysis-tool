@@ -49,5 +49,8 @@ Still yours to do, none of it scriptable from here:
      skips every one of them.
   2. CLAUDE_CODE_OAUTH_TOKEN comes from claude setup-token, which prints it once in the
      terminal after you authorize in the browser.
-  3. OPEN_BUGFIX_PRS=true opens draft pull requests; unset it to go back to shadow mode.
+  3. GITHUB_BUGFIX_DISPATCH_TOKEN is a Worker secret, not a repository secret, so this script
+     cannot set it. Without it no report is ever drafted. From apps/api:
+       pnpm exec wrangler secret put GITHUB_BUGFIX_DISPATCH_TOKEN --config wrangler.deploy.jsonc --env production
+  4. OPEN_BUGFIX_PRS=true opens draft pull requests; unset it to go back to shadow mode.
 NEXT

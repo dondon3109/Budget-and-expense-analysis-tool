@@ -317,6 +317,10 @@ jobs:
             exit 1
           fi
           echo "PROVIDER_CREDENTIAL_ENCRYPTION_KEY is present on the production Worker."
+          # Not fatal: a missing dispatch token stalls bug report drafting, not the app.
+          if ! grep -qE '"name"[[:space:]]*:[[:space:]]*"GITHUB_BUGFIX_DISPATCH_TOKEN"' <<<"$secrets"; then
+            echo "::warning::GITHUB_BUGFIX_DISPATCH_TOKEN is not set on the production Worker, so no bug report is drafted. See the bugfix automation section of docs/deployment.md."
+          fi
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
