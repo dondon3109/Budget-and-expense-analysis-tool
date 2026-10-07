@@ -118,11 +118,9 @@ export function SafeToSpendHero({
       </View>
 
       <MoneyValue amountMinor={safeAmountMinor} currency={currency} style={styles.heroAmount} />
-      {safeAmountMinor > 0 ? null : (
+      {hasBasis ? null : (
         <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-          {hasBasis
-            ? "Keep spending minimal until your next planned deposit or balance adjustment."
-            : "Add your balance or a first transaction to see what's safe to spend."}
+          Add your balance or a first transaction to see what's safe to spend.
         </Text>
       )}
       {alertMessage ? (
@@ -132,14 +130,9 @@ export function SafeToSpendHero({
           style={[styles.alert, { backgroundColor: theme.colors.dangerSoft }]}
         >
           <MaterialCommunityIcons name="alert-outline" size={18} color={theme.colors.danger} />
-          <View style={styles.alertText}>
-            <Text style={[typography.headline, { color: theme.colors.danger }]}>
-              {alertMessage.title}
-            </Text>
-            <Text style={[typography.caption, { color: theme.colors.text }]}>
-              {alertMessage.body}
-            </Text>
-          </View>
+          <Text style={[typography.headline, styles.alertTitle, { color: theme.colors.danger }]}>
+            {alertMessage.title}
+          </Text>
         </View>
       ) : null}
       {excludedCount > 0 ? (
@@ -173,15 +166,12 @@ const styles = StyleSheet.create({
   },
   alert: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: spacing.xs,
     padding: spacing.sm,
     borderRadius: radii.md,
   },
-  alertText: {
-    flex: 1,
-    gap: spacing.xxs,
-  },
+  alertTitle: { flex: 1 },
   heroAmount: {
     fontSize: 44,
     lineHeight: 50,

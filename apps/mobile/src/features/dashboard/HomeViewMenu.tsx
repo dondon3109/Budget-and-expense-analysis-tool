@@ -1,19 +1,25 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
 export type HomeMenuView = "home" | "remittance";
 
-const OPTIONS: { value: HomeMenuView; label: string }[] = [
-  { value: "home", label: "Home" },
-  { value: "remittance", label: "Remittance" },
+const OPTIONS: {
+  value: HomeMenuView;
+  label: string;
+  icon: "home-outline" | "cash-fast";
+}[] = [
+  { value: "home", label: "Home", icon: "home-outline" },
+  { value: "remittance", label: "Remittance", icon: "cash-fast" },
 ];
 
-// The screen title doubles as a view switch. The list renders in flow under the
-// title so it scrolls with the page and needs no overlay.
+const BUTTON_SIZE = 44;
+
+// An icon button that opens the view list as an overlay, so opening it never
+// moves the page content. The view names appear only inside the list.
 export function HomeViewMenu({
   selected,
   onSelect,
@@ -22,69 +28,131 @@ export function HomeViewMenu({
   onSelect: (view: HomeMenuView) => void;
 }) {
   const theme = useZoptionTheme();
-  const [open, setOpen] = useState(false);
-  const label = OPTIONS.find((option) => option.value === selected)?.label ?? "Home";
+  const buttonRef = useRef<View>(null);
+  const [visible, setVisible] = useState(false);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const current = OPTIONS.find((option) => option.value === selected) ?? OPTIONS[0]!;
+
+  // A Modal sits above the scroll view, and Android only delivers touches inside a
+  // parent's bounds, so the list is placed from the button's window position.
+  const open = () => {
+    setVisible(true);
+    buttonRef.current?.measureInWindow((x, y, _width, height) => {
+      setAnchor({ x, y: y + height + spacing.xs });
+    });
+  };
+  const close = () => setVisible(false);
+
   return (
-    <View style={styles.root}>
+    <>
       <Pressable
-        accessibilityLabel={`${label}, change view`}
+        ref={buttonRef}
+        accessibilityLabel={`${current.label}, change view`}
         accessibilityRole="button"
-        accessibilityState={{ expanded: open }}
-        onPress={() => setOpen((value) => !value)}
-        style={styles.title}
+        accessibilityState={{ expanded: visible }}
+        collapsable={false}
+        onPress={open}
+        style={[
+          styles.button,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+        ]}
       >
-        <Text accessibilityRole="header" style={[typography.display, { color: theme.colors.text }]}>
-          {label}
-        </Text>
-        <MaterialCommunityIcons
-          color={String(theme.colors.textMuted)}
-          name={open ? "chevron-up" : "chevron-down"}
-          size={26}
-        />
+        <MaterialCommunityIcons color={String(theme.colors.text)} name={current.icon} size={22} />
       </Pressable>
-      {open ? (
-        <View
-          style={[
-            styles.list,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          {OPTIONS.map((option) => {
-            const active = option.value === selected;
-            return (
-              <Pressable
-                key={option.value}
-                accessibilityRole="menuitem"
-                accessibilityState={{ selected: active }}
-                onPress={() => {
-                  onSelect(option.value);
-                  setOpen(false);
-                }}
-                style={styles.item}
-              >
-                <Text
-                  style={[
-                    typography.body,
-                    {
-                      color: active ? theme.colors.brand : theme.colors.text,
-                      fontWeight: active ? "600" : "400",
-                    },
-                  ]}
+      <Modal
+        animationType="fade"
+        onRequestClose={close}
+        statusBarTranslucent
+        transparent
+        visible={visible}
+      >
+        <View style={StyleSheet.absoluteFill}>
+          <Pressable
+            accessibilityLabel="Close menu"
+            onPress={close}
+            style={StyleSheet.absoluteFill}
+          />
+          <View
+            style={[
+              styles.list,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+                left: anchor?.x ?? 0,
+                top: anchor?.y ?? 0,
+              },
+            ]}
+          >
+            {OPTIONS.map((option) => {
+              const active = option.value === selected;
+              const color = active ? theme.colors.brand : theme.colors.text;
+              return (
+                <Pressable
+                  key={option.value}
+                  accessibilityLabel={option.label}
+                  accessibilityRole="menuitem"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => {
+                    onSelect(option.value);
+                    close();
+                  }}
+                  style={styles.item}
                 >
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+                  <MaterialCommunityIcons color={String(color)} name={option.icon} size={20} />
+                  <Text
+                    style={[
+                      typography.body,
+                      styles.itemLabel,
+                      { color, fontWeight: active ? "600" : "400" },
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  {active ? (
+                    <MaterialCommunityIcons
+                      color={String(theme.colors.brand)}
+                      name="check"
+                      size={18}
+                    />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      ) : null}
-    </View>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { gap: spacing.xs, alignSelf: "flex-start" },
-  title: { flexDirection: "row", alignItems: "center", gap: spacing.xs, minHeight: 44 },
-  list: { borderRadius: radii.md, borderWidth: 1, overflow: "hidden", minWidth: 180 },
-  item: { minHeight: 44, paddingHorizontal: spacing.md, justifyContent: "center" },
+  button: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: radii.round,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  list: {
+    position: "absolute",
+    minWidth: 200,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    overflow: "hidden",
+    paddingVertical: spacing.xxs,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  item: {
+    minHeight: 48,
+    paddingHorizontal: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  itemLabel: { flex: 1 },
 });
