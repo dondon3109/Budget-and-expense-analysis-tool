@@ -174,7 +174,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "How does the AI Financial Assistant work, and what does it read?",
     answer:
-      "The assistant is optional and requires separate, versioned consent. It answers questions about your workspace, reads only what you ask about, and explains the reasoning behind each answer. It can also help you log a transaction: it suggests the details from your past entries and prepares a draft, and only your Save tap adds it. It never edits or deletes your existing records.",
+      "The assistant is optional and requires separate, versioned consent. It answers questions about your workspace, reads only what you ask about, and explains the reasoning behind each answer. It can also act on your behalf: it logs a transaction from your past entries, and it can propose adding, editing, or removing a subscription, savings goal, debt, account, category, budget, or existing transaction. It prepares each change as a draft or proposal, and nothing is applied until you tap Save or Confirm.",
   },
   {
     question: "Can I track subscriptions and recurring charges?",
@@ -296,8 +296,8 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-10-01";
-const PRICING_LAST_MODIFIED = "2026-10-03";
+const LANDING_LAST_MODIFIED = "2026-10-07";
+const PRICING_LAST_MODIFIED = "2026-10-07";
 const GUIDES_LAST_MODIFIED = "2026-10-01";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
@@ -329,7 +329,7 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
     isPartOf: { "@id": WEBSITE_ID },
   });
 }
-const FAQ_LAST_MODIFIED = "2026-10-01";
+const FAQ_LAST_MODIFIED = "2026-10-07";
 const CHANGELOG_LAST_MODIFIED = "2026-10-06";
 const TERMS_LAST_MODIFIED = "2026-10-01";
 const PRIVACY_LAST_MODIFIED = "2026-10-03";

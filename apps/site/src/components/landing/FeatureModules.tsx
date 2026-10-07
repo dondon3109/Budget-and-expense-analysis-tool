@@ -314,12 +314,14 @@ export function FeatureModules() {
             <p>
               The AI Financial Assistant answers questions about <em>your</em> data with evidence
               and clear limits. It reads only what you ask about, explains the reasoning behind each
-              answer, and drafts a transaction for you to save only when you tap Save.
+              answer, and can log a transaction or propose a change to your budgets, goals, debts,
+              subscriptions, accounts, or categories. Nothing is applied until you tap Save or
+              Confirm.
             </p>
             <div className="facet-tags">
               <span>Your data only</span>
               <span>Grounded answers</span>
-              <span>You approve saves</span>
+              <span>You approve changes</span>
               <span>You consent first</span>
             </div>
           </div>

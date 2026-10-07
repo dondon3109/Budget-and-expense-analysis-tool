@@ -199,7 +199,7 @@ export function LandingPage({
             <div>
               <div className="pillar-badge-slot" />
               <strong>Grounded AI Assistant</strong>
-              <p>Ask questions about your numbers with evidence &amp; 0 bank passwords</p>
+              <p>Ask, log, and update your budget in chat &mdash; you confirm every change</p>
             </div>
           </div>
         </section>
@@ -585,9 +585,10 @@ export function LandingPage({
               <summary>How does the AI Financial Assistant work?</summary>
               <p className="faq-answer">
                 The assistant answers questions about your real numbers with grounded evidence and
-                verified mathematical calculations. It operates only with your explicit consent, can
-                draft a transaction that is saved only when you tap Save, and never edits or deletes
-                your existing records.
+                verified mathematical calculations. It operates only with your explicit consent. It
+                can also log transactions and prepare changes to your subscriptions, goals, debts,
+                accounts, categories, budgets, and existing transactions, but nothing is applied
+                until you tap Save or Confirm.
               </p>
             </details>
             <details className="faq-item">
