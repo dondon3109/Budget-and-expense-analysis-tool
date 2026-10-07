@@ -41,7 +41,7 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 | `local-supabase`        | `pnpm supabase:local`                   | Switches web and API between cloud and a Docker Supabase stack    |
 | `fake-supabase-auth`    | `pnpm audit:auth-stub`                  | Dependency-free Supabase Auth stand-in for signed-in local audits |
 | `local-audit`           | `pnpm test:e2e:stub`                    | Runs the authenticated accessibility audit against the auth stub  |
-| `seed-local-workspace`  | `pnpm seed:local`                       | Seeds a local D1 workspace with realistic data                    |
+| `seed-local-workspace`  | `pnpm seed:local`                       | Seeds a local (or, with `--preview`, the preview) D1 workspace    |
 | `a11y-source-audit`     | `pnpm audit:a11y`                       | Source-level accessibility checks for routes axe cannot reach     |
 | `setup-paypal-sandbox`  | `pnpm paypal:sandbox:setup`             | Creates the sandbox PayPal product, plan, and webhook             |
 | `setup-paypal-live`     | `pnpm paypal:live:setup`                | Creates or verifies the live PayPal product, plan, and webhook    |

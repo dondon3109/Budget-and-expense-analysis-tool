@@ -63,7 +63,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["e2e/**/*.ts", "playwright.config.ts"],
+    files: ["e2e/**/*.ts", "playwright.config.ts", "playwright.preview.config.ts"],
     languageOptions: {
       parserOptions: {
         project: "./tsconfig.e2e.json",

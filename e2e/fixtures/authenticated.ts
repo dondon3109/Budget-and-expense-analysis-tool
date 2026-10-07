@@ -13,7 +13,9 @@ import { type Browser, type BrowserContextOptions } from "@playwright/test";
  *
  * When credentials are absent, or sign-in fails, this returns undefined and the caller skips
  * the authenticated checks instead of failing the run. That keeps CI green on machines
- * without a Supabase stack while still covering the app routes locally.
+ * without a Supabase stack while still covering the app routes locally. The release's preview
+ * run sets E2E_REQUIRE_AUTH=1 (playwright.preview.config.ts), where a failed sign-in throws
+ * instead, because skipping there would let a release through with nothing checked.
  */
 interface Credentials {
   email: string | undefined;
@@ -37,6 +39,8 @@ type StorageState = BrowserContextOptions["storageState"];
 
 const cache = new Map<string, StorageState | undefined>();
 const attempted = new Set<string>();
+
+const requireAuth = process.env.E2E_REQUIRE_AUTH === "1";
 
 export const authConfigured = Boolean(SEEDED.email && SEEDED.password);
 export const emptyAuthConfigured = Boolean(EMPTY.email && EMPTY.password);
@@ -94,6 +98,13 @@ async function signIn(
 
     state = await context.storageState();
   } catch (error) {
+    if (requireAuth) {
+      throw new Error(
+        `[auth] ${credentials.label} sign-in failed. Check that the account exists and that its ` +
+          `E2E_* secrets on the preview environment still match: ${String(error)}`,
+        { cause: error },
+      );
+    }
     console.warn(
       `[auth] ${credentials.label} sign-in failed, those checks will be skipped: ${String(error)}`,
     );

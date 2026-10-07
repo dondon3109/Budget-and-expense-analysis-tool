@@ -105,7 +105,8 @@ jobs:
       group: preview-release-main
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # The signed-in audit adds about fifteen minutes to the deploy and smoke gate.
+    timeout-minutes: 50
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -164,6 +165,26 @@ jobs:
           WEB_URL="$SITE_URL" node scripts/wait-for-production-release.mjs
       - name: Verify preview
         run: pnpm smoke:production
+      # The only place the signed-in pages are tested against a real Supabase. Pull request CI
+      # has no session, so those specs skip there; here a failed sign-in fails the release.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Audit signed-in pages on preview
+        run: pnpm test:e2e:preview
+        env:
+          E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+          E2E_EMPTY_EMAIL: ${{ secrets.E2E_EMPTY_EMAIL }}
+          E2E_EMPTY_PASSWORD: ${{ secrets.E2E_EMPTY_PASSWORD }}
+      - name: Keep the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: preview-playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
       - name: Announce the failed preview
         if: failure()
         uses: ./.github/actions/notify
