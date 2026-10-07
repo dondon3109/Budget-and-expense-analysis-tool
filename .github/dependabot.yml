@@ -99,6 +99,19 @@ updates:
           - version-update:semver-major
           - version-update:semver-minor
           - version-update:semver-patch
+      # NativeWind 4 compiles mobile styles with Tailwind CSS 3, and prettier-plugin-tailwindcss
+      # (mobile only) must match that Tailwind. Web and site are on Tailwind 4, so only majors are
+      # skipped there; the 0.x plugin breaks on a minor.
+      - dependency-name: "tailwindcss"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "nativewind"
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "prettier-plugin-tailwindcss"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
       # Mobile's Jest transform runs on Babel 7 through babel-preset-expo; Babel 8 plugins need
       # @babel/core 8.
       - dependency-name: "@babel/*"
