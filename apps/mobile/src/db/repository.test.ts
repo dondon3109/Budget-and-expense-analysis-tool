@@ -1,5 +1,10 @@
+/// <reference types="node" />
+
+import { DatabaseSync, type SQLInputValue } from "node:sqlite";
+
 import { cashflowWindowStart } from "@zoption/shared";
 
+import { migrations } from "./migrations";
 import { LocalWorkspaceRepository } from "./repository";
 
 describe("encrypted local workspace repository", () => {
@@ -566,5 +571,30 @@ describe("encrypted local workspace repository", () => {
         pending: false,
       },
     ]);
+  });
+
+  it("offers plan-locked expense categories for a budget, as the web and Worker do", async () => {
+    const native = new DatabaseSync(":memory:");
+    for (const migration of migrations) native.exec(migration.sql);
+    native.exec(`
+      INSERT INTO categories (
+        id, name, kind, color, archived, system, origin, required_plan, locked,
+        server_revision, sync_state
+      ) VALUES
+        ('debt', 'Debt payment', 'expense', '#e34948', 0, 1, 'system', 'free', 0, 1, 'synced'),
+        ('food', 'Food', 'expense', '#e87ba4', 0, 0, 'custom', 'zoption_pro', 1, 1, 'synced'),
+        ('old', 'Old', 'expense', '#123456', 1, 0, 'custom', 'free', 0, 1, 'synced'),
+        ('pay', 'Salary', 'income', '#2a78d6', 0, 0, 'starter', 'free', 0, 1, 'synced');
+    `);
+    const database = {
+      getAllAsync: async (source: string, ...params: unknown[]) =>
+        native.prepare(source).all(...(params as SQLInputValue[])),
+    };
+
+    const result = await new LocalWorkspaceRepository(database as never).getBudgetMonth(
+      "2026-08-01",
+    );
+
+    expect(result.categories.map((category) => category.id)).toEqual(["debt", "food"]);
   });
 });
