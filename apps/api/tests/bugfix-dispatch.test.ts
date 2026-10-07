@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { BugReportRepository } from "../src/db/bug-reports";
 import { dispatchBugfixDraft } from "../src/support/bugfix-dispatch";
@@ -11,9 +11,12 @@ function repository(waiting: number) {
   return { repository: { listForEgress } as unknown as BugReportRepository, listForEgress };
 }
 
+const production = { POSTHOG_AI_ENVIRONMENT: "production" } as Bindings;
 const configured = { GITHUB_BUGFIX_DISPATCH_TOKEN: "github_pat_test" } as Bindings;
 
 describe("dispatchBugfixDraft", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("does nothing without a token, so a Preview Worker never starts drafts", async () => {
     const { repository: repo, listForEgress } = repository(1);
     const fetcher = vi.fn();
@@ -49,11 +52,43 @@ describe("dispatchBugfixDraft", () => {
     expect((init.headers as Record<string, string>).Authorization).toBe("Bearer github_pat_test");
   });
 
-  it("fails loudly when GitHub refuses the dispatch", async () => {
+  it("logs an error in production when a report waits and no token is set", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { repository: repo } = repository(1);
+    const fetcher = vi.fn();
+
+    await expect(dispatchBugfixDraft(production, repo, fetcher)).resolves.toBe("not_configured");
+    expect(error).toHaveBeenCalledWith(expect.stringContaining("GITHUB_BUGFIX_DISPATCH_TOKEN"));
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("stays quiet in production without a token when nothing is waiting", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(dispatchBugfixDraft(production, repository(0).repository, vi.fn())).resolves.toBe(
+      "idle",
+    );
+    expect(error).not.toHaveBeenCalled();
+  });
+
+  it("logs the status and returns failed when GitHub refuses the dispatch", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const fetcher = vi.fn(async () => new Response("Bad credentials", { status: 401 }));
 
-    await expect(
-      dispatchBugfixDraft(configured, repository(1).repository, fetcher),
-    ).rejects.toThrow("status 401");
+    await expect(dispatchBugfixDraft(configured, repository(1).repository, fetcher)).resolves.toBe(
+      "failed",
+    );
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('"status":401'));
+  });
+
+  it("returns failed instead of throwing when the request itself fails", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const fetcher = vi.fn(async () => {
+      throw new TypeError("network down");
+    });
+
+    await expect(dispatchBugfixDraft(configured, repository(1).repository, fetcher)).resolves.toBe(
+      "failed",
+    );
   });
 });
