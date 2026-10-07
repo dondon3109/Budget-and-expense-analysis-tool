@@ -80,7 +80,7 @@ import {
 import { AssistantEmptyChat, VoiceStatusBanner } from "./assistant-chat-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
 import { latestActionMessageId } from "./AssistantActionCard";
-import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
+import { AssistantMessageRow, replacedDraftKeys } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
@@ -735,13 +735,13 @@ export function AssistantScreen() {
   );
 
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
-  const replacedDraftIds = useMemo(() => replacedDraftMessageIds(messages), [messages]);
+  const replacedDrafts = useMemo(() => replacedDraftKeys(messages), [messages]);
   const latestActionId = useMemo(() => latestActionMessageId(messages), [messages]);
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
       <AssistantMessageRow
         message={item}
-        superseded={replacedDraftIds.has(item.id)}
+        replacedDrafts={replacedDrafts}
         latestActionId={latestActionId}
         onDraftSaved={(saved) =>
           setMessages((previous) =>
@@ -750,7 +750,7 @@ export function AssistantScreen() {
         }
       />
     ),
-    [replacedDraftIds, latestActionId],
+    [replacedDrafts, latestActionId],
   );
 
   const settingsAction = (

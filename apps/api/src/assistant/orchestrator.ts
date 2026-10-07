@@ -1,4 +1,10 @@
-import { DEFAULT_ASSISTANT_MODEL, type PrimaryGoal } from "@zoption/shared";
+import {
+  assistantReplyDrafts,
+  assistantTransactionDraftSchema,
+  DEFAULT_ASSISTANT_MODEL,
+  type AssistantTransactionDraft,
+  type PrimaryGoal,
+} from "@zoption/shared";
 import { goalProfileRepository } from "../db/goal-profile";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
@@ -14,12 +20,12 @@ import {
   deterministicDraftAnswer,
   deterministicPeriodSummaryAnswer,
   latestAssistantAction,
-  latestTransactionDraft,
   requiredGroupToolCall,
   safeFallback,
   sanitizedAuditJson,
   sourceFromExecution,
   toolGroupForName,
+  turnTransactionDrafts,
   validateAssistantAnswer,
   validateToolArguments,
 } from "./answer-validation";
@@ -42,8 +48,9 @@ import {
 } from "./tools";
 
 const MAX_PROVIDER_CALLS = 4;
-const MAX_TOOL_CALLS_PER_RESPONSE = 4;
-const MAX_TOOL_CALLS_TOTAL = 6;
+// Room to look up and draft a handful of purchases listed in one message.
+const MAX_TOOL_CALLS_PER_RESPONSE = 6;
+const MAX_TOOL_CALLS_TOTAL = 10;
 const MAX_HISTORY_CHARACTERS = 12_000;
 const MAX_TOOL_VALIDATION_ERRORS = 2;
 const EMPTY_RESPONSE_RETRY_PROMPT =
@@ -200,26 +207,42 @@ function auditForPolicy(
 }
 
 /**
- * The draft a correction replaces: the newest earlier reply in this thread that holds one. A
- * draft for a different purchase names none, so both stay saveable.
+ * The earlier draft a correction replaces: within the newest earlier reply that holds drafts,
+ * the one of the same kind that matches the description, or the only one of that kind. A draft
+ * for a different purchase names none, so both stay saveable. `taken` keeps two corrections in
+ * one turn from retiring the same draft.
  */
-function replacedDraftMessageId(
+function replacedDraft(
   execution: AssistantToolExecution,
   history: readonly AssistantHistoryMessage[],
-): string | undefined {
+  taken: Set<string>,
+): { messageId: string; slot: number } | undefined {
   const args = execution.arguments as { replacesPreviousDraft?: boolean } | null;
-  if (!args?.replacesPreviousDraft) return undefined;
+  const draft = execution.transactionDraft;
+  if (!args?.replacesPreviousDraft || !draft) return undefined;
   const previous = [...history]
     .reverse()
     .find((item) => item.role === "assistant" && item.id && item.metadata?.transactionDraft);
+  if (!previous?.id) return undefined;
   // An expense never corrects an income or the reverse, so a wrongly set flag cannot retire
   // an unrelated draft of the other kind.
-  if (previous?.metadata?.transactionDraft?.kind !== execution.transactionDraft?.kind) {
-    return undefined;
-  }
+  const candidates = assistantReplyDrafts(previous.metadata)
+    .map((value, slot) => ({ slot, parsed: assistantTransactionDraftSchema.safeParse(value) }))
+    .filter(
+      (item) =>
+        item.parsed.success &&
+        item.parsed.data.kind === draft.kind &&
+        !taken.has(`${previous.id}:${item.slot}`),
+    );
+  const match =
+    candidates.find(
+      (item) => item.parsed.data!.description.toLowerCase() === draft.description.toLowerCase(),
+    ) ?? (candidates.length === 1 ? candidates[0] : undefined);
+  if (!match) return undefined;
+  taken.add(`${previous.id}:${match.slot}`);
   // Named whatever its status: if it is saved or mid-save, confirming this correction is
   // refused, so the purchase is never recorded twice.
-  return previous?.id;
+  return { messageId: previous.id, slot: match.slot };
 }
 
 function responseMetadata(
@@ -233,24 +256,35 @@ function responseMetadata(
     .filter((source): source is NonNullable<typeof source> => source !== null);
   const metadata = responseMetadataForPolicy(policy, sources, ASSISTANT_PROMPT_VERSION);
   const action = includeDraft ? latestAssistantAction(executions) : undefined;
-  const execution = includeDraft ? latestTransactionDraft(executions) : undefined;
-  // Only one card per reply: the draft or the action, whichever the model prepared last.
-  if (
-    action &&
-    (!execution || executions.lastIndexOf(action) > executions.lastIndexOf(execution))
-  ) {
+  const draftExecutions = includeDraft ? turnTransactionDrafts(executions) : [];
+  const lastDraftIndex = Math.max(...draftExecutions.map((item) => executions.lastIndexOf(item)));
+  // The drafts or the action, whichever the model prepared last; a reply never carries both.
+  if (action && (draftExecutions.length === 0 || executions.lastIndexOf(action) > lastDraftIndex)) {
     return { ...metadata, assistantActionFlow: true, assistantAction: action.assistantAction };
   }
-  if (!execution?.transactionDraft) return metadata;
-  const replacesMessageId = replacedDraftMessageId(execution, history);
+  if (draftExecutions.length === 0) return metadata;
+  const taken = new Set<string>();
+  const drafts = draftExecutions.map((execution, slot): AssistantTransactionDraft => {
+    const replaced = replacedDraft(execution, history, taken);
+    return {
+      ...execution.transactionDraft!,
+      // The first draft's row is keyed on the reply's id; the others need an id of their own.
+      ...(slot > 0 ? { transactionId: crypto.randomUUID() } : {}),
+      ...(replaced
+        ? {
+            replacesMessageId: replaced.messageId,
+            ...(replaced.slot > 0 ? { replacesSlot: replaced.slot } : {}),
+          }
+        : {}),
+    };
+  });
+  const [first, ...extras] = drafts;
   // A draft keeps the flow open, so a follow-up correction ("make it 300") drafts again.
   return {
     ...metadata,
     transactionEntry: true,
-    transactionDraft: {
-      ...execution.transactionDraft,
-      ...(replacesMessageId ? { replacesMessageId } : {}),
-    },
+    transactionDraft: first!,
+    ...(extras.length > 0 ? { extraTransactionDrafts: extras } : {}),
   };
 }
 

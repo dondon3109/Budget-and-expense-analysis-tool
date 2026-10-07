@@ -1,4 +1,5 @@
 import {
+  ASSISTANT_MAX_TRANSACTION_DRAFTS,
   currencies,
   isCurrency,
   type AssistantSourceMetadata,
@@ -551,14 +552,33 @@ export function deterministicPeriodSummaryAnswer(
     : null;
 }
 
-/** The draft the turn ends with: the latest draft call, if it produced one. */
-export function latestTransactionDraft(
+/**
+ * The drafts the turn ends with, in the order they were prepared: one per purchase the model
+ * drafted. A call that restates an earlier one (identical, or marked as a correction of the
+ * same description) replaces it, so a retry inside the turn never yields two cards.
+ */
+export function turnTransactionDrafts(
   executions: readonly AssistantToolExecution[],
-): AssistantToolExecution | undefined {
-  const latest = [...executions]
-    .reverse()
-    .find((execution) => execution.name === "draft_transaction");
-  return latest?.transactionDraft ? latest : undefined;
+): AssistantToolExecution[] {
+  const kept: AssistantToolExecution[] = [];
+  for (const execution of executions) {
+    const draft = execution.transactionDraft;
+    if (execution.name !== "draft_transaction" || !draft) continue;
+    const corrects = (execution.arguments as { replacesPreviousDraft?: boolean } | null)
+      ?.replacesPreviousDraft;
+    const index = kept.findIndex((earlier) => {
+      const before = earlier.transactionDraft!;
+      if (before.kind !== draft.kind) return false;
+      const sameDescription = before.description.toLowerCase() === draft.description.toLowerCase();
+      return (
+        sameDescription &&
+        (corrects || (before.amountMinor === draft.amountMinor && before.date === draft.date))
+      );
+    });
+    if (index >= 0) kept.splice(index, 1);
+    kept.push(execution);
+  }
+  return kept.slice(0, ASSISTANT_MAX_TRANSACTION_DRAFTS);
 }
 
 /** The proposal the turn ends with: the latest propose_action call, if it produced one. */
@@ -586,12 +606,21 @@ export function deterministicDraftAnswer(
       ? content
       : null;
   }
-  const execution = latestTransactionDraft(executions);
-  if (!execution || !isEnvelope(execution.result)) return null;
-  const data = execution.result.data as { draft?: Record<string, unknown> } | null;
-  const draft = data?.draft;
-  if (!draft) return null;
-  const content = `I prepared this ${String(draft.kind)} for you to review: ${String(draft.amount)} for ${String(draft.description)} (${String(draft.categoryName)}, ${String(draft.accountName)}) on ${String(draft.date)}. It is not saved yet. Tap Save transaction on the draft card below to add it; if you do not see the card, update the app.`;
+  const lines: Array<{ kind: string; detail: string }> = [];
+  for (const execution of turnTransactionDrafts(executions)) {
+    if (!isEnvelope(execution.result)) continue;
+    const draft = (execution.result.data as { draft?: Record<string, unknown> } | null)?.draft;
+    if (!draft) continue;
+    lines.push({
+      kind: String(draft.kind),
+      detail: `${String(draft.amount)} for ${String(draft.description)} (${String(draft.categoryName)}, ${String(draft.accountName)}) on ${String(draft.date)}`,
+    });
+  }
+  if (lines.length === 0) return null;
+  const content =
+    lines.length === 1
+      ? `I prepared this ${lines[0]!.kind} for you to review: ${lines[0]!.detail}. It is not saved yet. Tap Save transaction on the draft card below to add it; if you do not see the card, update the app.`
+      : `I prepared these drafts for you to review: ${lines.map((line) => `${line.kind} ${line.detail}`).join("; ")}. None are saved yet. Tap Save transaction on each draft card below to add it; if you do not see the cards, update the app.`;
   return validateAssistantAnswer(content, policy, executions, satisfiedGroups).valid
     ? content
     : null;

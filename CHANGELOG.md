@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Web and mobile: when you tell the AI Assistant about several purchases in one message ("50 for gas and 40 for gym"), it now prepares a draft for each one right away, with its own Save button, instead of only the first.
 - Web and mobile: the AI Assistant's consent screen now says it can propose changes to your records and that only your Save or Confirm tap applies them, so everyone is asked to accept the updated consent once. The Terms of Service and Privacy Policy say the same.
 - Three new guides on zoption.site: how to budget remittances as an OFW family, debt snowball vs avalanche, and how to budget irregular income as a freelancer.
 - Web and mobile: the AI Assistant can now also add, rename, or archive a category, set a monthly category budget, and edit or delete a transaction you already recorded, when you ask. Each change shows on a card and happens only after you tap Confirm.

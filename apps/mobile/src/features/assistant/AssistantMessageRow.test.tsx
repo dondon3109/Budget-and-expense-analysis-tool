@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 
 import { confirmAssistantTransactionDraft, type AssistantWireMessage } from "@/api/assistant";
 
-import { AssistantMessageRow, replacedDraftMessageIds } from "./AssistantMessageRow";
+import { AssistantMessageRow, replacedDraftKeys } from "./AssistantMessageRow";
 
 const mockRetry = jest.fn();
 
@@ -65,8 +65,31 @@ describe("AssistantMessageRow", () => {
     expect(confirmAssistantTransactionDraft).toHaveBeenCalledWith(
       { accessToken: "access-token" },
       message.id,
+      0,
     );
     expect(mockRetry).toHaveBeenCalled();
+  });
+
+  it("shows a card per draft and saves the one that was tapped", async () => {
+    const gym = { ...draft, description: "Gym session", amountMinor: 4_000, transactionId: "t-2" };
+    const two: AssistantWireMessage = {
+      ...message,
+      metadata: { transactionEntry: true, transactionDraft: draft, extraTransactionDrafts: [gym] },
+    };
+    jest.mocked(confirmAssistantTransactionDraft).mockResolvedValue(two);
+
+    await render(<AssistantMessageRow message={two} onDraftSaved={jest.fn()} />);
+    expect(screen.getAllByLabelText("Transaction draft")).toHaveLength(2);
+    expect(screen.getByText("Gym session")).toBeTruthy();
+    await fireEvent.press(screen.getAllByText("Save transaction")[1]!);
+
+    await waitFor(() =>
+      expect(confirmAssistantTransactionDraft).toHaveBeenCalledWith(
+        { accessToken: "access-token" },
+        message.id,
+        1,
+      ),
+    );
   });
 
   it("shows a saved draft without a save button", async () => {
@@ -91,15 +114,11 @@ describe("AssistantMessageRow", () => {
         transactionDraft: { ...draft, amountMinor: 30_000, replacesMessageId: message.id },
       },
     };
-    const replaced = replacedDraftMessageIds([message, correction]);
-    expect([...replaced]).toEqual([message.id]);
+    const replaced = replacedDraftKeys([message, correction]);
+    expect([...replaced]).toEqual([message.id + ":0"]);
 
     await render(
-      <AssistantMessageRow
-        message={message}
-        superseded={replaced.has(message.id)}
-        onDraftSaved={jest.fn()}
-      />,
+      <AssistantMessageRow message={message} replacedDrafts={replaced} onDraftSaved={jest.fn()} />,
     );
     expect(screen.getByText("Replaced by a newer draft below.")).toBeTruthy();
     expect(screen.queryByText("Save transaction")).toBeNull();

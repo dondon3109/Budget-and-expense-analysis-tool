@@ -310,6 +310,9 @@ export const assistantTransactionDraftToolSchema = z
     path: ["balanceBefore"],
   });
 
+/** The most drafts one reply carries, so a long list of purchases stays reviewable. */
+export const ASSISTANT_MAX_TRANSACTION_DRAFTS = 5;
+
 /**
  * A transaction the assistant prepared in chat. Nothing is written until the user confirms it,
  * and the confirm route saves it at most once: `saving` claims it, `saved` records the result.
@@ -330,10 +333,44 @@ export const assistantTransactionDraftSchema = z
     claimedAt: z.iso.datetime().optional(),
     /** The earlier reply whose draft this one corrects; that draft can no longer be saved. */
     replacesMessageId: z.string().uuid().optional(),
+    /** Which draft of that reply it corrects; the first draft when absent. */
+    replacesSlot: z
+      .number()
+      .int()
+      .min(0)
+      .max(ASSISTANT_MAX_TRANSACTION_DRAFTS - 1)
+      .optional(),
   })
   .strict();
 
 export type AssistantTransactionDraft = z.infer<typeof assistantTransactionDraftSchema>;
+
+/**
+ * Which draft of a reply to save. It only selects among the reply's stored drafts; any other
+ * field in the body is ignored, because the server saves its own stored draft.
+ */
+export const assistantTransactionDraftConfirmSchema = z.object({
+  slot: z
+    .number()
+    .int()
+    .min(0)
+    .max(ASSISTANT_MAX_TRANSACTION_DRAFTS - 1)
+    .default(0),
+});
+
+/**
+ * The raw drafts of a reply, indexed by slot. Slot 0 is `transactionDraft`, which installed
+ * apps already read; the rest are `extraTransactionDrafts`. The confirm route takes the slot.
+ */
+export function assistantReplyDrafts(
+  metadata: { transactionDraft?: unknown; extraTransactionDrafts?: unknown } | undefined,
+): unknown[] {
+  if (!metadata?.transactionDraft) return [];
+  const extras: unknown[] = Array.isArray(metadata.extraTransactionDrafts)
+    ? (metadata.extraTransactionDrafts as unknown[])
+    : [];
+  return [metadata.transactionDraft, ...extras];
+}
 
 /**
  * What the model supplies to propose a change. Amounts are exact decimal strings in major

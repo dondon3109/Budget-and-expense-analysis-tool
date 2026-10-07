@@ -134,6 +134,89 @@ describe("assistant transaction draft confirmation", () => {
     expect(again.metadata?.transactionDraft?.status).toBe("saved");
   });
 
+  it("saves each of several drafts on its own, with its own transaction id", async () => {
+    const gym: AssistantTransactionDraft = {
+      ...draft,
+      description: "Gym session",
+      amountMinor: 4_000,
+      transactionId: "33333333-3333-4333-8333-333333333333",
+    };
+    const { env, create, service } = setup({
+      transactionDraft: draft,
+      extraTransactionDrafts: [gym],
+    });
+
+    const second = await service.confirmTransactionDraft(env, TENANT, MESSAGE, 1);
+    expect(second.metadata?.transactionDraft?.status).toBe("pending");
+    expect(second.metadata?.extraTransactionDrafts?.[0]?.status).toBe("saved");
+    expect(create).toHaveBeenCalledWith(
+      env,
+      TENANT,
+      expect.objectContaining({ description: "Gym session", amountMinor: 4_000 }),
+      { id: gym.transactionId },
+    );
+
+    const first = await service.confirmTransactionDraft(env, TENANT, MESSAGE, 0);
+    expect(first.metadata?.transactionDraft?.status).toBe("saved");
+    expect(first.metadata?.extraTransactionDrafts?.[0]?.status).toBe("saved");
+    expect(create).toHaveBeenLastCalledWith(
+      env,
+      TENANT,
+      expect.objectContaining({ description: "Jollibee" }),
+      { id: MESSAGE },
+    );
+
+    // A repeat tap on either returns the saved reply without a third row.
+    await service.confirmTransactionDraft(env, TENANT, MESSAGE, 1);
+    expect(create).toHaveBeenCalledTimes(2);
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE, 2)).rejects.toMatchObject({
+      status: 404,
+      code: "assistant_draft_not_found",
+    });
+  });
+
+  it("retires only the draft slot a correction replaced", async () => {
+    const gym: AssistantTransactionDraft = {
+      ...draft,
+      description: "Gym session",
+      transactionId: "33333333-3333-4333-8333-333333333333",
+    };
+    const { env, database, create, service } = setup({
+      transactionDraft: draft,
+      extraTransactionDrafts: [gym],
+    });
+    database
+      .prepare(
+        `INSERT INTO assistant_messages
+         (id, tenant_id, thread_id, role, content, status, response_metadata_json, created_at)
+         VALUES ('44444444-4444-4444-8444-444444444444', ?, ?, 'assistant', 'Updated.', 'completed', ?, '2026-08-02T00:05:00.000Z')`,
+      )
+      .run(
+        TENANT,
+        THREAD,
+        JSON.stringify({
+          promptVersion: "expert-v3",
+          compliance: { posture: "budgeting_allowed", topics: [] },
+          sources: [],
+          transactionDraft: {
+            ...gym,
+            amountMinor: 6_000,
+            transactionId: undefined,
+            replacesMessageId: MESSAGE,
+            replacesSlot: 1,
+          },
+        }),
+      );
+
+    await expect(service.confirmTransactionDraft(env, TENANT, MESSAGE, 1)).rejects.toMatchObject({
+      status: 409,
+      code: "assistant_draft_superseded",
+    });
+    const first = await service.confirmTransactionDraft(env, TENANT, MESSAGE, 0);
+    expect(first.metadata?.transactionDraft?.status).toBe("saved");
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   it("refuses a second save while the first is still in flight", async () => {
     const { env, service } = setup({
       transactionDraft: { ...draft, status: "saving", claimedAt: new Date().toISOString() },
