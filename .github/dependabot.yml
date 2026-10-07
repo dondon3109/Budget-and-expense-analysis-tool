@@ -26,3 +26,80 @@ updates:
     groups:
       npm-minor-patch:
         update-types: [minor, patch]
+    # Expo pins these to one tested set per SDK, and mobile tests mock native modules, so CI
+    # passes on versions the SDK does not support (react-native 0.x minors break, and a newer
+    # SDK's modules need a new native build). Update them with `npx expo install --fix` or an
+    # SDK upgrade instead. React is listed because react-native requires the exact React version
+    # it was built against; web and site follow mobile's React with each SDK upgrade.
+    # Each rule names update-types so it only skips version updates: a bare ignore also
+    # suppresses security updates for that package.
+    ignore:
+      - dependency-name: "expo"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "expo-*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "@expo/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "jest-expo"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "babel-preset-expo"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "react-native"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "react-native-*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "@react-native/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "@react-native-community/*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "react"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "react-dom"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "@types/react"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: "@types/react-dom"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
+      # Mobile's Jest transform runs on Babel 7 through babel-preset-expo; Babel 8 plugins need
+      # @babel/core 8.
+      - dependency-name: "@babel/*"
+        update-types: ["version-update:semver-major"]
