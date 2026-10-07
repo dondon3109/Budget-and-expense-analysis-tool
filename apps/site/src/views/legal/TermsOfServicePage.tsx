@@ -5,7 +5,7 @@ export function TermsOfServicePage() {
     <LegalPageLayout
       title="Terms of Service"
       summary="These terms explain the rules for using Zoption, including its Free and Pro plans, personal-finance workspace, file imports, exports, and optional AI assistant."
-      lastUpdated="October 1, 2026"
+      lastUpdated="October 7, 2026"
     >
       <section>
         <h2>1. Who operates Zoption</h2>
@@ -87,9 +87,10 @@ export function TermsOfServicePage() {
           provider through Zoption&apos;s server. Those results may use recorded transactions,
           calculated balances, budgets, categories, savings goals, debt inputs, and deterministic
           planning projections. The assistant never writes on its own. It can prepare an income or
-          expense draft for you to review, and only your tap on Save transaction adds it to your
-          records. It does not edit or delete your financial records. You are responsible for
-          checking a draft&apos;s amount, category, account, and date before you save it.
+          expense draft, and it can propose a change to a subscription, savings goal, debt, account,
+          category, budget, or an existing transaction, including a deletion. Only your tap on Save
+          transaction or Confirm applies it to your records. You are responsible for checking a
+          draft&apos;s or proposal&apos;s amounts, names, accounts, and dates before you apply it.
         </p>
         <p>
           AI output and planning projections can be incomplete or wrong. They provide educational

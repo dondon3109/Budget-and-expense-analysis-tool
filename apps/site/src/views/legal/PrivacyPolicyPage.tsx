@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="October 3, 2026"
+      lastUpdated="October 7, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -310,10 +310,11 @@ export function PrivacyPolicyPage() {
         <p>
           Browser cookie consent does not enable the assistant. The assistant has separate,
           versioned, server-persisted consent. It may retrieve bounded tenant-scoped financial
-          information needed to answer a question. It can prepare a transaction draft, which is
-          saved to your records only when you tap Save transaction; it does not edit or delete
-          records. Saved goals and debt-planning records may be used for deterministic projections.
-          Zoption assistant conversations and their sanitized audit snapshots share a 90-day
+          information needed to answer a question. It can prepare a transaction draft or propose a
+          change to a subscription, goal, debt, account, category, budget, or existing transaction,
+          which is applied to your records only when you tap Save transaction or Confirm. Saved
+          goals and debt-planning records may be used for deterministic projections. Zoption
+          assistant conversations and their sanitized audit snapshots share a 90-day
           thread-retention window. The assistant may also remember durable facts you share and the
           debt payoff preference you set in its Memory panel; those memories are kept until you
           delete them individually, clear assistant memory, or delete your account.

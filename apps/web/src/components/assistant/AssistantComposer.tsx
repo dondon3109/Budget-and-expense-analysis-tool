@@ -67,7 +67,7 @@ export function AssistantComposer({
       </button>
       <div className="assistant-composer-note">
         <span className="assistant-composer-privacy">
-          <ShieldCheck size={13} aria-hidden="true" /> You approve every save · Server-verified
+          <ShieldCheck size={13} aria-hidden="true" /> You approve every change · Server-verified
           calculations
         </span>
         <div className="assistant-composer-meta">

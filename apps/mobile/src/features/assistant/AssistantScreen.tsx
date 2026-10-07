@@ -889,7 +889,7 @@ export function AssistantScreen() {
                 <Text
                   style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}
                 >
-                  Online · You approve saves
+                  Online · You approve changes
                 </Text>
               </View>
             ) : null}

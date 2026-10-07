@@ -159,7 +159,7 @@ export function AssistantConsentCard({
 }) {
   const theme = useZoptionTheme();
   const points = [
-    "Nothing saves without you. The assistant can draft a transaction, but only your Save tap adds it, and it never edits existing records.",
+    "Nothing changes without you. The assistant can draft a transaction or propose a change to your subscriptions, goals, debts, accounts, categories, budgets, or transactions, and only your Save or Confirm tap applies it.",
     "Your credentials stay private. Only your question and the data needed to answer it go to the AI provider.",
     "Audit snapshots of what the assistant read are sanitized and kept only for review.",
     "Operational monitoring is metadata-only — never your transaction descriptions.",

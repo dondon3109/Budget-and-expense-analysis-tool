@@ -39,8 +39,9 @@ export function AssistantConsent({ accepting, error, onAccept }: AssistantConsen
           <div>
             <strong>Nothing saves without you</strong>
             <p>
-              The assistant can draft a transaction for you to review, but only your Save tap adds
-              it. It cannot edit, delete, import, or transfer your records.
+              The assistant can draft a transaction and propose changes to your subscriptions,
+              goals, debts, accounts, categories, budgets, and recorded transactions. Only your Save
+              or Confirm tap applies one. It cannot import or transfer your records.
             </p>
           </div>
         </article>
