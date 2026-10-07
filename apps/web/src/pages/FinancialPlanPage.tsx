@@ -301,8 +301,8 @@ export function FinancialPlanPage() {
           <div>
             <strong>You stay in control of every record.</strong>
             <span>
-              The assistant can read saved goals and debts for calculations, but chat can never edit
-              or delete them.
+              The assistant can read saved goals and debts for calculations. It can also propose
+              changes in chat, but nothing is edited or deleted until you tap Confirm.
             </span>
           </div>
         </section>
