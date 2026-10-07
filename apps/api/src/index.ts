@@ -51,6 +51,15 @@ export default {
   async scheduled(controller, env) {
     validateRequiredApiBindings(env);
     if (controller.cron === FIVE_MINUTE_CRON) {
+      // Every third tick: a draft takes longer than five minutes, and a slower cadence keeps two
+      // runs from claiming the same report at once. First, so a failure in the work below cannot
+      // skip it; the dispatch itself never throws.
+      if (new Date(controller.scheduledTime).getUTCMinutes() % 15 === 0) {
+        const bugfix = await dispatchBugfixDraft(env);
+        if (bugfix === "dispatched") {
+          console.log(JSON.stringify({ message: "Bugfix draft workflow dispatched" }));
+        }
+      }
       const result = await reconcileDueBillingCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
         console.log(JSON.stringify({ message: "Pending billing checkouts reconciled", ...result }));
@@ -86,14 +95,6 @@ export default {
         console.log(
           JSON.stringify({ message: "Expired rate limit counters deleted", expiredCounters }),
         );
-      }
-      // Every third tick: a draft takes longer than five minutes, and a slower cadence keeps two
-      // runs from claiming the same report at once. Last, so a GitHub failure skips nothing above.
-      if (new Date(controller.scheduledTime).getUTCMinutes() % 15 === 0) {
-        const bugfix = await dispatchBugfixDraft(env);
-        if (bugfix === "dispatched") {
-          console.log(JSON.stringify({ message: "Bugfix draft workflow dispatched" }));
-        }
       }
       return;
     }
