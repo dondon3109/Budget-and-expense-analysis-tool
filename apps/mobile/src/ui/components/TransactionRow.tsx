@@ -66,13 +66,13 @@ export function TransactionRow({
           {transaction.description}
         </Text>
         <View style={styles.metaRow}>
-          <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
+          <Text numberOfLines={1} style={[typography.callout, { color: theme.colors.textMuted }]}>
             {transaction.categoryName} · {transaction.date}
           </Text>
           {stateLabel ? (
             <Text
               numberOfLines={1}
-              style={[typography.caption, { color: statusColor, fontWeight: "600" }]}
+              style={[typography.callout, { color: statusColor, fontWeight: "600" }]}
             >
               · {stateLabel}
             </Text>
@@ -97,8 +97,8 @@ export function TransactionRow({
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: touchTarget,
-    paddingVertical: spacing.xs,
+    minHeight: touchTarget + spacing.sm,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.xs,
     borderRadius: radii.md,
   },
