@@ -21,6 +21,8 @@ All notable product changes are documented here.
 
 - Web and mobile: a new account with no balance or budget no longer shows "You've used up what's safe to spend" on the Safe to spend card; it asks you to add a balance or first transaction instead.
 - Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
+- Mobile: Budgets now offers every active expense category, including custom ones that locked when your Pro plan or free trial ended, so "Debt payment" is no longer the only choice.
+- Web and mobile: adding notes to a transaction that was titled by its category, such as "Uncategorized", now updates its title to the note instead of keeping the category name.
 
 ## 3.4.0 — 2026-10-04
 
