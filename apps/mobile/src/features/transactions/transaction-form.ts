@@ -48,6 +48,18 @@ export function fallbackDescription(values: TransactionFormValues, categoryName?
 }
 
 /**
+ * The description an edit starts from. A stored description that is only the fallback label
+ * is cleared, so saving derives it again from the edited notes or category.
+ */
+export function initialEditDescription(
+  values: TransactionFormValues,
+  categoryName?: string,
+): string {
+  const fallback = fallbackDescription(values, categoryName);
+  return fallback && values.description.trim() === fallback ? "" : values.description;
+}
+
+/**
  * An entry can pay a debt when it is an expense in the Debt payment category, or a transfer
  * into a liability account (credit card or payable), matching the web form and the server.
  */

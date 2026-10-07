@@ -68,6 +68,22 @@ function toAmountText(item?: TransactionListItem): string {
   return item ? formatMinorAmount(Math.abs(item.amountMinor)) : "";
 }
 
+/** The list label for an entry that has no description: its first note line, else its category. */
+function fallbackDescription(kind: TransactionKind, notes: string, categoryName?: string): string {
+  if (kind === "transfer") return "";
+  return notes.trim().split("\n")[0]?.trim().slice(0, 240) || categoryName || "";
+}
+
+/**
+ * The description an edit starts from. A stored description that is only the fallback label
+ * is cleared, so saving derives it again from the edited notes or category.
+ */
+function initialEditDescription(item: TransactionListItem, categories: CategoryRecord[]): string {
+  const categoryName = categories.find((category) => category.id === item.categoryId)?.name;
+  const fallback = fallbackDescription(item.kind, item.notes ?? "", categoryName);
+  return fallback && item.description.trim() === fallback ? "" : item.description;
+}
+
 export function TransactionForm({
   workspace,
   item,
@@ -84,7 +100,7 @@ export function TransactionForm({
   const [kind, setKind] = useState<TransactionKind>(initialDraft?.kind ?? item?.kind ?? "expense");
   const [date, setDate] = useState(initialDraft?.date ?? item?.date ?? initialDate ?? localIsoDate);
   const [description, setDescription] = useState(
-    initialDraft?.description ?? item?.description ?? "",
+    () => initialDraft?.description ?? (item ? initialEditDescription(item, categoriesProp) : ""),
   );
   const [amount, setAmount] = useState(initialDraft?.amount ?? toAmountText(item));
   const [categoryId, setCategoryId] = useState(initialDraft?.categoryId ?? item?.categoryId ?? "");
@@ -235,11 +251,11 @@ export function TransactionForm({
     // falls back to its first note line, else its category name.
     const resolvedDescription =
       description.trim() ||
-      (kind === "transfer"
-        ? ""
-        : notes.trim().split("\n")[0]?.trim().slice(0, 240) ||
-          categories.find((category) => category.id === categoryId)?.name ||
-          "");
+      fallbackDescription(
+        kind,
+        notes,
+        categories.find((category) => category.id === categoryId)?.name,
+      );
     const base = {
       date,
       description: resolvedDescription,
