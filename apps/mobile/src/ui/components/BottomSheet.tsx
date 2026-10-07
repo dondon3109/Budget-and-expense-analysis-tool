@@ -1,5 +1,14 @@
 import { createContext, useContext, type PropsWithChildren } from "react";
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -23,7 +32,13 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
       visible={visible}
       onRequestClose={onDismiss}
     >
-      <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
+      {/* A Modal is its own window, so the activity's pan mode never moves it, and the
+          keyboard covered the sheet's last field and its save button. Lift the sheet above
+          the keyboard on both platforms instead. */}
+      <KeyboardAvoidingView
+        behavior="padding"
+        style={[styles.layer, { backgroundColor: theme.colors.overlay }]}
+      >
         <Pressable
           accessibilityLabel="Close sheet"
           accessibilityRole="button"
@@ -63,7 +78,7 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
             <BottomSheetContext.Provider value={true}>{children}</BottomSheetContext.Provider>
           </ScrollView>
         </SafeAreaView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
