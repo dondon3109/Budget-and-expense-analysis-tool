@@ -271,6 +271,32 @@ describe("TransactionForm", () => {
     );
   });
 
+  it("relabels a category-labeled entry from notes added on edit", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    render(
+      <TransactionForm
+        workspace={workspace}
+        item={{ ...transaction, description: category.name, notes: null }}
+        categories={[category]}
+        accounts={accounts}
+        debts={debts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/Notes/), "Market run");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Market run", notes: "Market run" }),
+      ),
+    );
+  });
+
   it("lets the user record a transaction in USD", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);

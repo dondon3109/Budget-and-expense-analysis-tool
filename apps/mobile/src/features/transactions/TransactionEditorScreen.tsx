@@ -49,6 +49,7 @@ import {
   debtPaymentApplies,
   fallbackDescription,
   formatMinorForInput,
+  initialEditDescription,
   localCalendarDate,
   parseTransactionForm,
   type TransactionFormErrors,
@@ -198,7 +199,7 @@ export function TransactionEditorScreen() {
         : (account?.currency ?? useWorkspaceCurrencyStore.getState().currency));
     const initialNotes = existing ? (existing.notes ?? "") : paramRef ? `Ref: ${paramRef}` : "";
 
-    setValues({
+    const initialValues: TransactionFormValues = {
       kind,
       accountId: account?.id ?? existingAccountId ?? "",
       toAccountId: existing?.kind === "transfer" ? existing.toAccountId : "",
@@ -211,7 +212,15 @@ export function TransactionEditorScreen() {
       currency: initialCurrency,
       notes: initialNotes,
       debtId: existing && existing.kind !== "income" ? (existing.debtId ?? "") : "",
-    });
+    };
+    setValues(
+      existing
+        ? {
+            ...initialValues,
+            description: initialEditDescription(initialValues, category?.name),
+          }
+        : initialValues,
+    );
     initializedFor.current = key;
   }, [
     formData.data,

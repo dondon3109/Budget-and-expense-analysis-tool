@@ -2,6 +2,7 @@ import {
   debtPaymentApplies,
   fallbackDescription,
   formatMinorForInput,
+  initialEditDescription,
   localCalendarDate,
   parseTransactionForm,
 } from "./transaction-form";
@@ -94,6 +95,15 @@ describe("native transaction form", () => {
     );
     expect(fallbackDescription(valid, "Food")).toBe("Food");
     expect(fallbackDescription({ ...valid, kind: "transfer" }, "Food")).toBe("");
+  });
+
+  it("re-derives a fallback description when an edit changes the notes", () => {
+    const uncategorized = { ...valid, description: "Uncategorized" };
+    expect(initialEditDescription(uncategorized, "Uncategorized")).toBe("");
+    expect(initialEditDescription({ ...valid, description: "Taxi", notes: "Taxi" }, "Food")).toBe(
+      "",
+    );
+    expect(initialEditDescription(valid, "Food")).toBe("Lunch");
   });
 
   it("offers a debt link only where the server accepts one", () => {
