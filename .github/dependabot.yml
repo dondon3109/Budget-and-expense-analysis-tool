@@ -1,6 +1,9 @@
 # Every action is pinned to a commit SHA, so nothing updates on its own; this keeps the pins
-# current. One grouped pull request a week, each one high risk and merged by a human under the
-# CI gate. npm dependencies stay manual so every lockfile change is a deliberate one.
+# current. One grouped pull request a week per ecosystem keeps the volume down.
+#
+# auto-merge.yml arms patch and minor updates (never a major) once CI and dependency-review pass.
+# Action updates touch .github/, which CODEOWNERS owns, so they wait for the maintainer's review;
+# npm updates touch only package.json and the lockfile, which are not owned, and merge on green.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -12,3 +15,14 @@ updates:
     groups:
       actions:
         patterns: ["*"]
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
+    # Majors stay out of the groups, so each one is its own pull request that is never auto-armed.
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]

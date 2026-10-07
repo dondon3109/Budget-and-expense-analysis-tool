@@ -14,22 +14,24 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 
 ## Release and deployment (run by workflows)
 
-| Script                             | Workflow                     | Purpose                                                                                |
-| ---------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
-| `next-semantic-release`            | Production Release           | Turns the semantic-release dry run into workflow outputs                               |
-| `validate-deployment-config`       | Production Release           | Checks `apps/api/wrangler.deploy.jsonc` has every required variable                    |
-| `export-deployment-env`            | Production Release, Android  | Exports one environment's public build and smoke values from the Wrangler config       |
-| `github-production-deployment`     | Production Release           | Records the GitHub deployment and its stage statuses                                   |
-| `wait-for-production-release`      | Production Release           | Waits until the deployed site reports the expected app version                         |
-| `smoke-production`                 | `pnpm smoke:production`      | Read-only smoke checks of production or preview; uses `deployment-smoke-helpers`       |
-| `worker-canary`                    | Production Release           | Plans, probes, and soaks the gradual production Worker rollout                         |
-| `rollback-pages`                   | Production Rollback          | Rolls a Pages project back to the production deployment of a release commit            |
-| `submit-indexnow`                  | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release |
-| `android-release-metadata`         | Android Beta Build           | Resolves the signed Android release identity from the two version sources              |
-| `validate-mobile-telemetry-env`    | Android Beta Build           | Rejects a release build with an unapproved PostHog host or flag                        |
-| `refresh-android-release-snapshot` | By hand after an APK release | Refreshes `packages/web-common/src/releases/androidRelease.json` from the live release |
-| `freeze-mobile-sync-contract`      | By hand at a mobile bump     | Records a release's sync contract for the API compatibility test                       |
-| `r2-android-cors.json`             | By hand                      | The R2 CORS rules for the APK bucket (`docs/deployment.md`)                            |
+| Script                             | Workflow                     | Purpose                                                                                                  |
+| ---------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `next-semantic-release`            | Production Release           | Turns the semantic-release dry run into workflow outputs                                                 |
+| `release-summary`                  | Production Release           | Writes the approval summary (changes, bot authors, migrations, CODEOWNERS paths) and the Telegram notice |
+| `check-migration-safety`           | Migration safety             | Fails a new migration that drops or renames unless the destructive-migration label is set                |
+| `validate-deployment-config`       | Production Release           | Checks `apps/api/wrangler.deploy.jsonc` has every required variable                                      |
+| `export-deployment-env`            | Production Release, Android  | Exports one environment's public build and smoke values from the Wrangler config                         |
+| `github-production-deployment`     | Production Release           | Records the GitHub deployment and its stage statuses                                                     |
+| `wait-for-production-release`      | Production Release           | Waits until the deployed site reports the expected app version                                           |
+| `smoke-production`                 | `pnpm smoke:production`      | Read-only smoke checks of production or preview; uses `deployment-smoke-helpers`                         |
+| `worker-canary`                    | Production Release           | Plans, probes, and soaks the gradual production Worker rollout                                           |
+| `rollback-pages`                   | Production Rollback          | Rolls a Pages project back to the production deployment of a release commit                              |
+| `submit-indexnow`                  | Production Release           | Submits the live sitemap URLs to IndexNow (Bing) after a deploy; never fails a release                   |
+| `android-release-metadata`         | Android Beta Build           | Resolves the signed Android release identity from the two version sources                                |
+| `validate-mobile-telemetry-env`    | Android Beta Build           | Rejects a release build with an unapproved PostHog host or flag                                          |
+| `refresh-android-release-snapshot` | By hand after an APK release | Refreshes `packages/web-common/src/releases/androidRelease.json` from the live release                   |
+| `freeze-mobile-sync-contract`      | By hand at a mobile bump     | Records a release's sync contract for the API compatibility test                                         |
+| `r2-android-cors.json`             | By hand                      | The R2 CORS rules for the APK bucket (`docs/deployment.md`)                                              |
 
 ## Local development
 

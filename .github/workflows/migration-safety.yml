@@ -1,0 +1,38 @@
+name: Migration safety
+
+# Fails a pull request that adds a migration containing DROP or RENAME, unless it carries the
+# destructive-migration label. Labeling reruns only this workflow, not the whole CI. The check
+# name, migration-safety, is the one the main CI gate ruleset requires.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migration-safety-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  migration-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check the new migrations
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ALLOW_DESTRUCTIVE: ${{ contains(github.event.pull_request.labels.*.name, 'destructive-migration') }}
+        run: |
+          set -euo pipefail
+          # db/migrations is D1; supabase/migrations is Supabase Auth and Storage.
+          mapfile -t added < <(git diff --name-only --diff-filter=A "$BASE_SHA" HEAD -- db/migrations supabase/migrations | grep -E '\.sql$' || true)
+          if [[ "${#added[@]}" -eq 0 ]]; then
+            echo "No new migrations."
+            exit 0
+          fi
+          node scripts/check-migration-safety.mjs "${added[@]}"

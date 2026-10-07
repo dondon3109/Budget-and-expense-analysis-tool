@@ -38,7 +38,7 @@ runs:
           exit 1
         fi
         # Each migration only promises compatibility with the Worker one release back (the
-        # expand-then-contract rule in apps/api/AGENTS.md), so rolling code back past a newer
+        # expand-then-contract rule in docs/deployment.md), so rolling code back past a newer
         # migration needs a human to confirm that schema still works with the old Worker.
         newer="$(git diff --name-only --diff-filter=A "$commit" HEAD -- db/migrations)"
         if [[ -n "$newer" ]]; then

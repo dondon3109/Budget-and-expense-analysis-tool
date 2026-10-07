@@ -3,7 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+  # ready_for_review reruns CI (and dependency-review) when the maintainer marks a bugfix draft
+  # ready, the click that also arms auto-merge, so the review of its dependencies is fresh.
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   # A pull request the bugfix automation opens uses the run token, which does not trigger
   # pull_request workflows. workflow_dispatch is the documented exception, so that workflow
   # starts this one explicitly on the draft branch.
@@ -18,8 +21,9 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# The three jobs run in parallel and share no state; the Production Release workflow waits for the
-# whole CI run, so a failure in any job still blocks a release.
+# The jobs run in parallel and share no state; the Production Release workflow waits for the
+# whole CI run, so a failure in any job still blocks a release. static, unit, e2e,
+# dependency-review, and codeql are the required checks of the main CI gate ruleset.
 jobs:
   static:
     runs-on: ubuntu-latest
@@ -125,3 +129,43 @@ jobs:
             test-results
           retention-days: 7
           if-no-files-found: ignore
+
+  # Fails on a newly added dependency with a high severity advisory, and runs on every pull
+  # request and every dispatched bugfix run, so a bot pull request that changes package.json or
+  # the lockfile can never reach the gate without it: a required check that is skipped counts as
+  # passing. Only a push to main skips it, where the pull request already passed.
+  dependency-review:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # No comment: it would need pull-requests: write, which this job does not hold.
+          comment-summary-in-pr: never
+          # A dispatched run has no pull request to compare, so it compares its branch with main.
+          base-ref: ${{ github.event_name == 'workflow_dispatch' && 'main' || '' }}
+          head-ref: ${{ github.event_name == 'workflow_dispatch' && github.sha || '' }}
+
+  codeql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - uses: github/codeql-action/analyze@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        with:
+          category: /language:javascript-typescript
