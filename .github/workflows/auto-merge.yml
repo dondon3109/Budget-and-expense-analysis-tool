@@ -1,0 +1,67 @@
+name: Auto-merge
+
+# Arms squash auto-merge on three kinds of pull request. Arming only asks GitHub to merge later:
+# the main rulesets still require every check (static, unit, e2e, dependency-review, codeql) and
+# a Code Owner review for anything under a CODEOWNERS path, so a pull request that touches an
+# owned path waits for the maintainer however it was armed. Nothing here approves anything.
+#
+# This is pull_request, never pull_request_target, and it checks out no code: the job reads event
+# metadata only, and every value from the pull request reaches the shell through env.
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  arm:
+    # Auto-merge cannot be enabled on a draft, and a fork never matches any rule below.
+    if: >-
+      !github.event.pull_request.draft
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PR_URL: ${{ github.event.pull_request.html_url }}
+    steps:
+      # The maintainer's own pull requests.
+      - name: Arm the maintainer's pull request
+        if: github.event.pull_request.user.login == 'dondon3109'
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      # The bugfix bot's pull requests open as drafts and are armed only when the maintainer marks
+      # one ready for review. That click is the human review of bot-written code, so "opened" and
+      # "reopened" never arm one.
+      - name: Arm a bugfix pull request the maintainer marked ready
+        if: >-
+          github.event.action == 'ready_for_review'
+          && github.event.pull_request.user.login == 'github-actions[bot]'
+          && startsWith(github.event.pull_request.head.ref, 'bugfix/')
+          && github.actor == 'dondon3109'
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Read the Dependabot update types
+        id: metadata
+        if: github.event.pull_request.user.login == 'dependabot[bot]'
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ github.token }}
+      # A group reports every dependency it updates; one major among them keeps the whole pull
+      # request unarmed. The check is on the full list, not on a single summary value.
+      - name: Arm a Dependabot pull request without a major update
+        if: steps.metadata.outcome == 'success'
+        env:
+          UPDATES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+        run: |
+          set -euo pipefail
+          if ! jq -e 'length > 0 and all(.[]; .updateType == "version-update:semver-patch" or .updateType == "version-update:semver-minor")' <<<"$UPDATES" > /dev/null; then
+            echo "Not arming: the update list is empty or includes a major or unknown update type."
+            exit 0
+          fi
+          gh pr merge --auto --squash "$PR_URL"

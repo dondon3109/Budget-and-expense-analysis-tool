@@ -9,6 +9,14 @@ on:
 permissions:
   contents: read
 
+# One human checkpoint: approving the production environment on deploy-and-release. Everything
+# before it is automatic, and approval-summary writes what the approver needs to see (changes, bot
+# authorship, migrations, CODEOWNERS paths, preview result, bundle hash) and announces the wait.
+#
+# contents: write is held by exactly two jobs. preflight needs it only because semantic-release's
+# dry run authenticates a push; it publishes nothing. publish-release runs semantic-release after
+# production is fully green. The Cloudflare token is read only by jobs in the preview or
+# production environment (preview, deploy-and-release), never by a job outside one.
 jobs:
   # Preflight is deliberately outside the production environment. It decides whether this CI
   # result is still main and whether it owes a release, and a superseded result fails at the
@@ -81,9 +89,18 @@ jobs:
   # same migrations against the preview D1, the same Worker and both Pages builds, and the same
   # smoke gate with indexing expected off. It needs no approval because preview holds no real
   # user data, and production waits for it, so a migration or deploy that breaks fails here first.
+  #
+  # Preview and production are two builds on purpose, not an oversight to "fix" by promoting one
+  # bundle. Vite bakes the environment into the bundle: VITE_API_URL, the Supabase URL and
+  # publishable key, and the PostHog key (preview omits PostHog, and the CSP the build emits lists
+  # a PostHog origin only when it is set). The same bytes cannot be correct for both. What is
+  # promoted is the production build: build-production hashes it once before approval, attests
+  # it, and the gated job deploys those exact bytes after re-verifying the hash.
   preview:
     needs: preflight
     if: needs.preflight.outputs.release_needed == 'true'
+    # Holds the preview Cloudflare token; the environment has no required reviewer.
+    environment: preview
     concurrency:
       group: preview-release-main
       cancel-in-progress: false
@@ -164,8 +181,14 @@ jobs:
     if: needs.preflight.outputs.release_needed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    # id-token and attestations are only for signing the build's provenance below.
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     outputs:
       manifest_sha256: ${{ steps.manifest.outputs.sha256 }}
+      attestation_url: ${{ steps.attest.outputs.attestation-url }}
     env:
       CF_PAGES: "1"
       ZOPTION_DEPLOY_ENV: production
@@ -194,6 +217,12 @@ jobs:
           set -euo pipefail
           find web/dist site/dist -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/manifest.sha256"
           echo "sha256=$(sha256sum "$RUNNER_TEMP/manifest.sha256" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+      # Signed build provenance for every file in the bundle, from the manifest just hashed.
+      - name: Attest the build provenance
+        id: attest
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: ${{ runner.temp }}/manifest.sha256
       # A run can wait at the production gate for days, so the build outlives the default.
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -204,6 +233,38 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 30
+
+  # Runs after preview and the production build and before the gate, so the summary is on the run
+  # page when the approval request appears. It holds no write token and no Cloudflare token.
+  # deploy-and-release needs it, so an approver is never asked without the summary. The Telegram
+  # notice is best effort and skipped when the bot is not configured.
+  approval-summary:
+    needs: [preflight, preview, build-production]
+    if: needs.preflight.outputs.release_needed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Write the approval summary
+        id: summary
+        run: node scripts/release-summary.mjs
+        env:
+          RELEASE_VERSION: ${{ needs.preflight.outputs.version }}
+          PREVIOUS_VERSION: ${{ needs.preflight.outputs.previous_version }}
+          BUNDLE_SHA256: ${{ needs.build-production.outputs.manifest_sha256 }}
+          ATTESTATION_URL: ${{ needs.build-production.outputs.attestation_url }}
+          PREVIEW_RESULT: ${{ needs.preview.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Announce the wait for approval
+        uses: ./.github/actions/notify
+        with:
+          text: ${{ steps.summary.outputs.message }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
 
   # A run parked at the production gate holds the deploy job's concurrency group, and nobody
   # approves a superseded one, so later releases would queue behind it indefinitely. Once this
@@ -234,8 +295,8 @@ jobs:
               gh run cancel "$id" || echo "::warning::Could not cancel run $id; it may have just been approved or finished."
             done
 
-  # This job holds every production action: D1 migration, Worker and Pages deploys, and the
-  # semantic-release publication. The production environment requires a reviewer, so a release
+  # This job holds every production action: D1 migration and the Worker and Pages deploys. The
+  # production environment requires a reviewer, so a release
   # cannot reach production until a human approves the run. Keep "Prevent self-review" off; the
   # maintainer is the only human and acts on his own merges. Only a current CI result that owes
   # a release reaches this job; a newer run's cancel-superseded job cancels it if it is still
@@ -244,17 +305,24 @@ jobs:
   # stop a newer run's preflight from starting, while deploys still never overlap. It waits for
   # preview, so a release that fails there never asks for approval.
   deploy-and-release:
-    needs: [preflight, preview, build-production]
+    needs: [preflight, preview, build-production, approval-summary]
     if: needs.preflight.outputs.release_needed == 'true'
+    # One production deploy at a time, shared with Production Rollback. A newer run waiting behind
+    # a parked one replaces it (cancel-superseded and Cancel Superseded Releases cancel the old
+    # one), so a batch of merges is approved once.
     concurrency:
-      group: production-release-main
+      group: production
       cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production
+    # No contents: write: publishing the tag is publish-release's job, after this one is green.
     permissions:
-      contents: write
+      contents: read
       deployments: write
+    outputs:
+      skip_deploy: ${{ steps.deployment.outputs.skip_deploy }}
+      low_sample: ${{ steps.canary.outputs.low_sample }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -391,7 +459,14 @@ jobs:
             exit 1
           fi
           echo "version_id=$version_id" >> "$GITHUB_OUTPUT"
+      # The soak length and thresholds are repository variables, so they change without a code
+      # change: CANARY_DWELL_MINUTES (default 10), CANARY_MAX_EXTRA_ERROR_POINTS (how many
+      # percentage points above the old version's error rate the new one may run, default 1), and
+      # CANARY_MIN_REQUESTS (requests to the new version needed to judge a rate, default 50). Below
+      # the minimum the release is promoted on the probes alone, with a warning in the summary and
+      # the announcement. Analytics that cannot be queried fail the step, which rolls back.
       - name: Canary the new Worker version
+        id: canary
         if: steps.deployment.outputs.worker_deployed != 'true' && steps.worker.outputs.version_id != ''
         working-directory: apps/api
         env:
@@ -400,7 +475,9 @@ jobs:
           NEW_VERSION: ${{ steps.worker.outputs.version_id }}
           PREVIOUS_VERSION: ${{ steps.rollout.outputs.previous_version }}
           CANARY_PERCENTAGE: 10
-          SOAK_MINUTES: 5
+          CANARY_DWELL_MINUTES: ${{ vars.CANARY_DWELL_MINUTES }}
+          CANARY_MAX_EXTRA_ERROR_POINTS: ${{ vars.CANARY_MAX_EXTRA_ERROR_POINTS }}
+          CANARY_MIN_REQUESTS: ${{ vars.CANARY_MIN_REQUESTS }}
         run: |
           set -euo pipefail
           deploy() {
@@ -541,17 +618,6 @@ jobs:
         env:
           DEPLOYMENT_ID: ${{ steps.deployment.outputs.deployment_id }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish semantic release
-        run: pnpm release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Announce the release
-        if: success() && steps.deployment.outputs.skip_deploy != 'true'
-        uses: ./.github/actions/notify
-        with:
-          text: "Zoption v${{ needs.preflight.outputs.version }} is live. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
       - name: Announce the failed release
         if: failure()
         uses: ./.github/actions/notify
@@ -560,5 +626,47 @@ jobs:
             Zoption v${{ needs.preflight.outputs.version }} failed in production.
             ${{ steps.auto_rollback.outcome == 'success' && format('Production is back on v{0}.', needs.preflight.outputs.previous_version) || (steps.auto_rollback.outcome == 'failure' && 'The automatic rollback failed; production needs attention now.' || 'Production was not changed.') }}
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+  # The only job besides preflight with contents: write, and it runs only once production is fully
+  # green: deployed, propagated, smoke-tested, and recorded. It holds no Cloudflare token and sits
+  # in no environment, so there is no second approval. semantic-release refuses to publish when
+  # main has moved past the release commit, as before.
+  publish-release:
+    needs: [preflight, deploy-and-release]
+    if: needs.deploy-and-release.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+          # Publishing goes through the GitHub API and semantic-release's own token handling; no
+          # push-capable credential is left in .git/config.
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Publish semantic release
+        run: pnpm release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Announce the release
+        if: success() && needs.deploy-and-release.outputs.skip_deploy != 'true'
+        uses: ./.github/actions/notify
+        with:
+          text: >-
+            Zoption v${{ needs.preflight.outputs.version }} is live.
+            ${{ needs.deploy-and-release.outputs.low_sample == 'true' && 'Warning: the canary was promoted on probes alone because too little traffic reached the new version to judge its error rate.' || '' }}
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+      - name: Announce the failed publication
+        if: failure()
+        uses: ./.github/actions/notify
+        with:
+          text: "Zoption v${{ needs.preflight.outputs.version }} is deployed but publishing the release tag failed. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}

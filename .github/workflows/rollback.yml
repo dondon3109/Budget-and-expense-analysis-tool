@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 20
     environment: production
     concurrency:
-      group: production-release-main
+      group: production
       cancel-in-progress: false
     env:
       CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}

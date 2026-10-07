@@ -1,0 +1,49 @@
+# Only paths that can move money, widen access, or change what runs with deploy credentials have
+# an owner. Everything else merges on green CI. The main ruleset requires Code Owner review, so
+# a pull request that touches any line below waits for the owner, auto-merge or not.
+# release.yml's approval summary reads this file to say whether a release batch touched them.
+# package.json and pnpm-lock.yaml are deliberately not owned: npm updates auto-merge behind CI
+# and dependency-review (see docs/deployment.md).
+
+# Workflows, composite actions, this file, and the Dependabot config.
+/.github/ @dondon3109
+
+# Deploy tooling and release configuration. These run with the Cloudflare token.
+/scripts/ @dondon3109
+/release.config.mjs @dondon3109
+
+# Database schema: D1 migrations, the Drizzle config, and Supabase Auth configuration.
+/db/ @dondon3109
+/drizzle.config.ts @dondon3109
+/supabase/ @dondon3109
+
+# Worker and Pages deployment configuration, including bindings and routes.
+/apps/api/wrangler*.jsonc @dondon3109
+/apps/site/wrangler.jsonc @dondon3109
+
+# API authentication, tenant resolution, and stored provider credentials.
+/apps/api/src/auth.ts @dondon3109
+/apps/api/src/composition.ts @dondon3109
+/apps/api/src/provider-credentials/ @dondon3109
+/apps/api/src/db/provider-credentials.ts @dondon3109
+/apps/api/src/db/provider-configs.ts @dondon3109
+/apps/api/src/db/tenants.ts @dondon3109
+/apps/api/src/routes/provider-credentials.ts @dondon3109
+/apps/api/src/routes/admin-provider-configs.ts @dondon3109
+/apps/api/src/routes/platform-admin.ts @dondon3109
+/apps/api/src/platform-admin.ts @dondon3109
+
+# Billing: PayPal and Dodo Payments adapters, webhooks, and entitlements.
+/apps/api/src/billing/ @dondon3109
+/apps/api/src/db/billing.ts @dondon3109
+/apps/api/src/routes/billing.ts @dondon3109
+/apps/api/src/routes/paypal-webhooks.ts @dondon3109
+/apps/api/src/routes/dodo-webhooks.ts @dondon3109
+
+# Client session handling and the Supabase clients.
+/apps/web/src/lib/supabase.ts @dondon3109
+/apps/mobile/src/auth/ @dondon3109
+
+# Agent instructions. The bugfix automation may not change them, and PR Review loads them.
+AGENTS.md @dondon3109
+CLAUDE.md @dondon3109
