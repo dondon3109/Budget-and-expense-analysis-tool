@@ -202,23 +202,22 @@ function runSql(target, sql) {
   }
 }
 
+// --command rather than --file: for a remote database, --file reports the import ("Total queries
+// executed") instead of the query's rows, so the seeded count read back as 1.
 function queryScalar(target, sql) {
-  const dir = mkdtempSync(join(tmpdir(), "zoption-seed-"));
-  const file = join(dir, "q.sql");
-  writeFileSync(file, sql, "utf8");
-  try {
-    const out = execFileSync(
-      "npx",
-      ["wrangler", "d1", "execute", ...target, `--file=${file}`, "--json"],
-      { cwd: API_DIR, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-    const start = out.indexOf("[");
-    const parsed = JSON.parse(out.slice(start));
-    const rows = parsed[0]?.results ?? [];
-    return rows[0] ? Object.values(rows[0])[0] : 0;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+  const out = execFileSync(
+    "npx",
+    ["wrangler", "d1", "execute", ...target, `--command=${sql}`, "--json"],
+    {
+      cwd: API_DIR,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  const start = out.indexOf("[");
+  const parsed = JSON.parse(out.slice(start));
+  const rows = parsed[0]?.results ?? [];
+  return rows[0] ? Object.values(rows[0])[0] : 0;
 }
 
 const SEED_SUBSCRIPTIONS = [
