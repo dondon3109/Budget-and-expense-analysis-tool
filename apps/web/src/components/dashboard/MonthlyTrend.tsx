@@ -248,7 +248,9 @@ export function MonthlyTrend({
                       strokeDasharray: "3 4",
                     }}
                     labelFormatter={(label) =>
-                      formatTrendTooltipDate(String(label), data.granularity)
+                      typeof label === "string"
+                        ? formatTrendTooltipDate(label, data.granularity)
+                        : label
                     }
                     formatter={(value, name) => `${name}: ${formatMoney(Number(value))}`}
                     contentStyle={{
