@@ -766,4 +766,109 @@ describe("ops bug report egress endpoint (/api/ops/bug-reports)", () => {
     expect(body.counts).toEqual({ clean: 0, blocked: 1 });
     expect(rawBody).not.toContain(canaryBlockedRaw);
   });
+
+  describe("what the list offers", () => {
+    const poll = async (env: Bindings) => {
+      const app = createApp({
+        bugReports: bugReportRepository,
+        bugReportEgressAudit: bugReportEgressAuditRepository,
+      });
+      const response = await app.request(
+        "/api/ops/bug-reports",
+        { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+        env,
+      );
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { reports: Array<{ id: string }> };
+      return body.reports.map((report) => report.id);
+    };
+    const fields = {
+      actualBehavior: "Saving a budget does nothing",
+      expectedBehavior: "The budget is saved",
+      stepsToReproduce: "Open Budgets and tap Save",
+    };
+    const setStatus = (database: TestDatabase, id: string, status: string) =>
+      database.prepare("UPDATE bug_reports SET status = ? WHERE id = ?").run(status, id);
+
+    it("14. never offers a report an admin already resolved, closed, or marked duplicate", async () => {
+      const { env, database } = setupTestEnvironment();
+      const open = seedBugReport(database, { title: "Open", ...fields }).id;
+      const triaged = seedBugReport(database, { title: "Triaged", ...fields }).id;
+      setStatus(database, triaged, "triaged");
+      for (const status of ["resolved", "closed", "duplicate"]) {
+        const { id } = seedBugReport(database, { title: `Done ${status}`, ...fields });
+        setStatus(database, id, status);
+      }
+
+      expect((await poll(env)).sort()).toEqual([open, triaged].sort());
+    });
+
+    it("15. offers only the earliest of identical submissions from one tenant", async () => {
+      const { env, database } = setupTestEnvironment();
+      database
+        .prepare("INSERT INTO tenants (id, kind, name) VALUES (?, ?, ?)")
+        .run("tenant-other", "user", "Other");
+      const first = seedBugReport(database, { title: "Same bug", ...fields }).id;
+      const second = seedBugReport(database, { title: "Same bug", ...fields }).id;
+      const otherTenant = seedBugReport(database, {
+        title: "Same bug",
+        tenantId: "tenant-other",
+        ...fields,
+      }).id;
+      const otherTitle = seedBugReport(database, { title: "Different bug", ...fields }).id;
+      database
+        .prepare("UPDATE bug_reports SET created_at = ? WHERE id = ?")
+        .run("2026-09-25 03:10:03", first);
+      database
+        .prepare("UPDATE bug_reports SET created_at = ? WHERE id = ?")
+        .run("2026-09-25 03:10:11", second);
+
+      const offered = await poll(env);
+      expect(offered).not.toContain(second);
+      expect(offered.sort()).toEqual([first, otherTenant, otherTitle].sort());
+    });
+
+    it("16. keeps suppressing a repeat after the earlier report is claimed", async () => {
+      const { env, database } = setupTestEnvironment();
+      const first = seedBugReport(database, { title: "Same bug", ...fields }).id;
+      const second = seedBugReport(database, { title: "Same bug", ...fields }).id;
+      database
+        .prepare("UPDATE bug_reports SET created_at = ? WHERE id = ?")
+        .run("2026-09-25 03:10:03", first);
+      database
+        .prepare("UPDATE bug_reports SET created_at = ? WHERE id = ?")
+        .run("2026-09-25 03:10:11", second);
+
+      expect(await poll(env)).toEqual([first]);
+      expect(await poll(env)).toEqual([]);
+    });
+
+    it("17. marks a claimed report in progress without reopening a resolved one read by id", async () => {
+      const { env, database } = setupTestEnvironment();
+      const claimed = seedBugReport(database, { title: "Claimed", ...fields }).id;
+      const resolved = seedBugReport(database, { title: "Resolved", ...fields }).id;
+      const statusOf = (id: string) =>
+        (
+          database.prepare("SELECT status FROM bug_reports WHERE id = ?").get(id) as {
+            status: string;
+          }
+        ).status;
+
+      expect(await poll(env)).toContain(claimed);
+      expect(statusOf(claimed)).toBe("in_progress");
+
+      setStatus(database, resolved, "resolved");
+      const app = createApp({
+        bugReports: bugReportRepository,
+        bugReportEgressAudit: bugReportEgressAuditRepository,
+      });
+      const byId = await app.request(
+        `/api/ops/bug-reports?id=${resolved}`,
+        { headers: { Authorization: `Bearer ${OPS_TOKEN}` } },
+        env,
+      );
+      expect(byId.status).toBe(200);
+      expect(statusOf(resolved)).toBe("resolved");
+    });
+  });
 });

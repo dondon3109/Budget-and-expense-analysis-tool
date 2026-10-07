@@ -93,6 +93,9 @@ export function createBugReportEgressRoutes(
           redactedClasses: outcome.redacted,
           detectorHits: outcome.detectorHits,
         });
+        // The audit row above is the claim. Showing the report as in progress is a courtesy to the
+        // admin list, so a failure here must never turn a clean crossing into a block.
+        await bugReports.markInProgress(env, report.id).catch(() => undefined);
 
         return {
           clean: {

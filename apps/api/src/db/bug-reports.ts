@@ -62,6 +62,7 @@ export interface BugReportRepository {
   listAll(env: Bindings, limit: number): Promise<AdminBugReport[]>;
   listForEgress(env: Bindings, limit: number): Promise<BugReportEgressCandidate[]>;
   findForEgress(env: Bindings, id: string): Promise<BugReportEgressCandidate | null>;
+  markInProgress(env: Bindings, id: string): Promise<void>;
   updateStatus(env: Bindings, id: string, status: BugReportStatus): Promise<AdminBugReport | null>;
   claimNotification(env: Bindings, id: string): Promise<AdminBugReport | null>;
   claimPendingNotifications(env: Bindings, limit: number): Promise<AdminBugReport[]>;
@@ -210,12 +211,26 @@ export const bugReportRepository: BugReportRepository = {
 
   // A report that already crossed has an audit row, so this filter is what makes the list
   // exactly once: the caller holds no record of what it handled and a retry is safe.
+  // A report is offered once: no audit row yet, still open, and not a repeat of an earlier report
+  // from the same tenant with the same title and actual behavior. Without the repeat check a double
+  // submission gets two competing fixes, and without the status check a report an admin already
+  // resolved, closed, or marked duplicate would still be drafted.
   async listForEgress(env, limit) {
     const rows = await env.DB.prepare(
       `SELECT ${egressColumns} FROM bug_reports
-       WHERE NOT EXISTS (
-         SELECT 1 FROM bug_report_egress_audit audit WHERE audit.bug_report_id = bug_reports.id
-       )
+       WHERE status IN ('new', 'triaged')
+         AND NOT EXISTS (
+           SELECT 1 FROM bug_report_egress_audit audit WHERE audit.bug_report_id = bug_reports.id
+         )
+         AND NOT EXISTS (
+           SELECT 1 FROM bug_reports earlier
+           WHERE earlier.id != bug_reports.id
+             AND earlier.tenant_id = bug_reports.tenant_id
+             AND earlier.title = bug_reports.title
+             AND earlier.actual_behavior = bug_reports.actual_behavior
+             AND (earlier.created_at < bug_reports.created_at
+               OR (earlier.created_at = bug_reports.created_at AND earlier.id < bug_reports.id))
+         )
        ORDER BY bug_reports.created_at DESC LIMIT ?`,
     )
       .bind(limit)
@@ -230,6 +245,18 @@ export const bugReportRepository: BugReportRepository = {
       .bind(id)
       .first<BugReportEgressCandidate>();
     return row ?? null;
+  },
+
+  // Only a report nobody has touched moves, so a retry by id never reopens a resolved report. It
+  // does not read the row back: the admin projection parses diagnostics strictly, and egress
+  // must keep working for a report whose diagnostics are malformed.
+  async markInProgress(env, id) {
+    await env.DB.prepare(
+      `UPDATE bug_reports SET status = 'in_progress', updated_at = datetime('now')
+       WHERE id = ? AND status = 'new'`,
+    )
+      .bind(id)
+      .run();
   },
 
   async updateStatus(env, id, status) {
