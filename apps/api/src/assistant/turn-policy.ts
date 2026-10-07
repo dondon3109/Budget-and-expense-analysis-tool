@@ -1,9 +1,10 @@
-import type {
-  AssistantCompliancePosture,
-  AssistantComplianceTopic,
-  AssistantDateRange,
-  AssistantResponseMetadata,
-  AssistantSourceMetadata,
+import {
+  assistantReplyDrafts,
+  type AssistantCompliancePosture,
+  type AssistantComplianceTopic,
+  type AssistantDateRange,
+  type AssistantResponseMetadata,
+  type AssistantSourceMetadata,
 } from "@zoption/shared";
 
 import type { AssistantHistoryMessage } from "../db/assistant";
@@ -142,7 +143,8 @@ function continuesTransactionEntry(
 ): boolean {
   const previous = history.at(-1);
   if (previous?.role !== "assistant" || !previous.metadata?.transactionEntry) return false;
-  if (previous.metadata.transactionDraft?.status === "saved") return false;
+  const drafts = assistantReplyDrafts(previous.metadata) as Array<{ status?: string }>;
+  if (drafts.length > 0 && drafts.every((draft) => draft.status === "saved")) return false;
   if (posture !== "budgeting_allowed" || EDUCATION_PATTERN.test(message)) return false;
   if (ACKNOWLEDGEMENT_PATTERN.test(message)) return false;
   const asksForRecords =

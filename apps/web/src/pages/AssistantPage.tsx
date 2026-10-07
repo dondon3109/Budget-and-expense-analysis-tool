@@ -220,7 +220,8 @@ export function AssistantPage() {
   });
 
   const saveDraftMutation = useMutation({
-    mutationFn: (messageId: string) => confirmAssistantTransactionDraft(workspace, messageId),
+    mutationFn: (draft: { messageId: string; slot: number }) =>
+      confirmAssistantTransactionDraft(workspace, draft.messageId, draft.slot),
     onSuccess: (saved) => {
       queryClient.setQueryData<AssistantMessagePage>(
         queryKeys.assistantMessages(workspace, saved.threadId),
@@ -528,13 +529,19 @@ export function AssistantPage() {
                 feeInsight={feeInsightQuery.data}
                 draftSave={{
                   savingMessageId: saveDraftMutation.isPending
-                    ? saveDraftMutation.variables
+                    ? saveDraftMutation.variables.messageId
+                    : undefined,
+                  savingSlot: saveDraftMutation.isPending
+                    ? saveDraftMutation.variables.slot
                     : undefined,
                   failedMessageId: saveDraftMutation.isError
-                    ? saveDraftMutation.variables
+                    ? saveDraftMutation.variables.messageId
+                    : undefined,
+                  failedSlot: saveDraftMutation.isError
+                    ? saveDraftMutation.variables.slot
                     : undefined,
                   error: saveDraftMutation.error?.message,
-                  onSave: (messageId) => saveDraftMutation.mutate(messageId),
+                  onSave: (messageId, slot = 0) => saveDraftMutation.mutate({ messageId, slot }),
                 }}
                 actionSave={{
                   savingMessageId: confirmActionMutation.isPending

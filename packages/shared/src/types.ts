@@ -588,6 +588,8 @@ export interface AssistantResponseMetadata {
   /** Set on turns that help the user log a transaction, so a short reply continues that flow. */
   transactionEntry?: boolean;
   transactionDraft?: AssistantTransactionDraft;
+  /** Further drafts of the same reply, after `transactionDraft`, when the user listed several purchases. */
+  extraTransactionDrafts?: AssistantTransactionDraft[];
   /** Set while the user is creating or changing a subscription, goal, or debt in chat. */
   assistantActionFlow?: boolean;
   assistantAction?: AssistantAction;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { assistantTransactionDraftSchema } from "@zoption/shared";
+import { assistantReplyDrafts, assistantTransactionDraftSchema } from "@zoption/shared";
 import { confirmAssistantTransactionDraft, type AssistantWireMessage } from "@/api/assistant";
 import { ApiTransportError } from "@/api/authenticated";
 import { useSessionSnapshot } from "@/auth/session-state";
@@ -24,13 +24,15 @@ function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
   return "Grounded in " + first.label + period;
 }
 
-/** Replies whose draft a later correction replaced; those can no longer be saved. */
-export function replacedDraftMessageIds(messages: readonly AssistantWireMessage[]): Set<string> {
+/** Drafts a later correction replaced, as `messageId:slot`; those can no longer be saved. */
+export function replacedDraftKeys(messages: readonly AssistantWireMessage[]): Set<string> {
   const replaced = new Set<string>();
   for (const message of messages) {
-    const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
-    if (parsed.success && parsed.data.replacesMessageId)
-      replaced.add(parsed.data.replacesMessageId);
+    for (const value of assistantReplyDrafts(message.metadata)) {
+      const parsed = assistantTransactionDraftSchema.safeParse(value);
+      if (parsed.success && parsed.data.replacesMessageId)
+        replaced.add(parsed.data.replacesMessageId + ":" + (parsed.data.replacesSlot ?? 0));
+    }
   }
   return replaced;
 }
@@ -38,13 +40,13 @@ export function replacedDraftMessageIds(messages: readonly AssistantWireMessage[
 /** One chat message, plus the review card when an assistant reply drafted a transaction or change. */
 export function AssistantMessageRow({
   message,
-  superseded = false,
+  replacedDrafts,
   latestActionId,
   onDraftSaved,
 }: {
   message: AssistantWireMessage;
-  /** A later correction replaced this draft, so saving it would record the purchase twice. */
-  superseded?: boolean;
+  /** Drafts a later correction replaced (`messageId:slot`), so saving them would record a purchase twice. */
+  replacedDrafts?: ReadonlySet<string>;
   /** The newest proposed subscription, goal, or debt change in the chat; only it can be confirmed. */
   latestActionId?: string;
   onDraftSaved: (saved: AssistantWireMessage) => void;
@@ -60,7 +62,15 @@ export function AssistantMessageRow({
       />
       {message.role === "assistant" ? (
         <>
-          <AssistantDraftCard message={message} superseded={superseded} onSaved={onDraftSaved} />
+          {assistantReplyDrafts(message.metadata).map((_, slot) => (
+            <AssistantDraftCard
+              key={slot}
+              message={message}
+              slot={slot}
+              superseded={replacedDrafts?.has(message.id + ":" + slot) ?? false}
+              onSaved={onDraftSaved}
+            />
+          ))}
           <AssistantActionCard
             message={message}
             superseded={latestActionId !== message.id}
@@ -74,10 +84,13 @@ export function AssistantMessageRow({
 
 function AssistantDraftCard({
   message,
+  slot,
   superseded,
   onSaved,
 }: {
   message: AssistantWireMessage;
+  /** Which of the reply's drafts this card shows. */
+  slot: number;
   superseded: boolean;
   onSaved: (saved: AssistantWireMessage) => void;
 }) {
@@ -86,7 +99,9 @@ function AssistantDraftCard({
   const sync = useSyncState();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+  const parsed = assistantTransactionDraftSchema.safeParse(
+    assistantReplyDrafts(message.metadata)[slot],
+  );
   if (!parsed.success) return null;
   const draft = parsed.data;
   // A stored "saving" state still offers Save: the server refuses a live claim and takes over
@@ -101,6 +116,7 @@ function AssistantDraftCard({
         confirmAssistantTransactionDraft(
           { accessToken: await session.getAccessToken(refresh) },
           message.id,
+          slot,
         );
       const result = await confirm(false).catch((cause: unknown) => {
         if (cause instanceof ApiTransportError && cause.code === "session_expired") {

@@ -8,6 +8,7 @@ import {
   assistantPreferenceUpdateSchema,
   assistantThreadIdSchema,
   assistantThreadListQuerySchema,
+  assistantTransactionDraftConfirmSchema,
 } from "@zoption/shared";
 import { Hono, type Context } from "hono";
 
@@ -165,17 +166,24 @@ export function createAssistantRoutes(service: AssistantService) {
     );
   });
 
-  // Saves the transaction an assistant reply drafted. The body is empty on purpose: the
-  // server writes its own stored draft, never client-supplied transaction fields.
-  routes.post("/messages/:id/transaction", async (context) =>
-    context.json(
+  // Saves one transaction an assistant reply drafted. The body only picks which of the reply's
+  // drafts (the first when empty): the server writes its own stored draft, never
+  // client-supplied transaction fields.
+  routes.post("/messages/:id/transaction", async (context) => {
+    const { slot } = parseInput(
+      assistantTransactionDraftConfirmSchema,
+      await readJson(context),
+      "Choose a valid draft to save.",
+    );
+    return context.json(
       await service.confirmTransactionDraft(
         context.env,
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id"), assistantMessageIdSchema),
+        slot,
       ),
-    ),
-  );
+    );
+  });
 
   // Applies the subscription, goal, or debt change an assistant reply proposed. Empty body for
   // the same reason: the server applies its own stored proposal.

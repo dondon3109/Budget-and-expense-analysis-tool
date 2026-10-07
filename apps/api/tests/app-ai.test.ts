@@ -541,7 +541,7 @@ describe("API assistant, voice, and entry routes", () => {
 
       expect(response.status).toBe(200);
       await expect(response.json()).resolves.toEqual(saved);
-      expect(confirmTransactionDraft).toHaveBeenCalledWith(assistantEnv, TENANT_ID, messageId);
+      expect(confirmTransactionDraft).toHaveBeenCalledWith(assistantEnv, TENANT_ID, messageId, 0);
     });
 
     it("rejects a malformed id and an unauthenticated request before the service", async () => {

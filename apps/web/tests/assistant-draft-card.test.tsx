@@ -52,7 +52,7 @@ describe("assistant transaction draft card", () => {
     expect(within(draft).getByText("GCash")).toBeInTheDocument();
     expect(within(draft).getByText(/Not saved yet/)).toBeInTheDocument();
     fireEvent.click(within(draft).getByRole("button", { name: "Save transaction" }));
-    expect(onSave).toHaveBeenCalledWith("assistant-draft");
+    expect(onSave).toHaveBeenCalledWith("assistant-draft", 0);
 
     rerender(
       <AssistantConversation
@@ -141,6 +141,55 @@ describe("assistant transaction draft card", () => {
       within(original!).queryByRole("button", { name: "Save transaction" }),
     ).not.toBeInTheDocument();
     fireEvent.click(within(correction!).getByRole("button", { name: "Save transaction" }));
-    expect(onSave).toHaveBeenCalledWith("33333333-3333-4333-8333-333333333333");
+    expect(onSave).toHaveBeenCalledWith("33333333-3333-4333-8333-333333333333", 0);
+  });
+
+  it("shows a card for every draft in a reply and saves the one that was tapped", () => {
+    const onSave = vi.fn();
+    const draft = {
+      status: "pending" as const,
+      kind: "expense" as const,
+      date: "2026-08-02",
+      description: "Gas",
+      amountMinor: 5_000,
+      currency: "PHP" as const,
+      categoryId: "category-transport",
+      categoryName: "Transport",
+      accountId: "account-cash",
+      accountName: "Cash",
+    };
+    render(
+      <AssistantConversation
+        assistantName="Aster"
+        messages={[
+          {
+            id: "assistant-two",
+            threadId: "thread-1",
+            role: "assistant" as const,
+            content: "Two drafts are ready.",
+            status: "completed" as const,
+            metadata: {
+              promptVersion: "expert-v3",
+              compliance: { posture: "budgeting_allowed" as const, topics: [] },
+              sources: [],
+              transactionEntry: true,
+              transactionDraft: draft,
+              extraTransactionDrafts: [
+                { ...draft, description: "Gym session", amountMinor: 4_000 },
+              ],
+            },
+            createdAt: "2026-08-02T10:00:00.000Z",
+          },
+        ]}
+        loading={false}
+        onPrompt={() => undefined}
+        draftSave={{ onSave }}
+      />,
+    );
+
+    const cards = screen.getAllByRole("region", { name: "Transaction draft" });
+    expect(cards).toHaveLength(2);
+    fireEvent.click(within(cards[1]!).getByRole("button", { name: "Save transaction" }));
+    expect(onSave).toHaveBeenCalledWith("assistant-two", 1);
   });
 });

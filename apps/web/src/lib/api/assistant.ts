@@ -280,17 +280,18 @@ export function sendAssistantMessage(
 }
 
 /**
- * Saves the transaction an assistant reply drafted. The server writes its own stored draft
- * at most once and answers with the reply, now marked saved.
+ * Saves one transaction an assistant reply drafted (`slot` picks it among the reply's drafts).
+ * The server writes its own stored draft at most once and answers with the reply, now marked saved.
  */
 export async function confirmAssistantTransactionDraft(
   workspace: AuthenticatedWorkspace,
   messageId: string,
+  slot = 0,
 ): Promise<AssistantMessage> {
   const value = await requestJson<unknown>(
     workspace,
     `/api/app/assistant/messages/${encodeURIComponent(messageId)}/transaction`,
-    { method: "POST", body: "{}" },
+    { method: "POST", body: JSON.stringify({ slot }) },
   );
   // Metadata stays a loose record in the shared schema; the draft card parses its draft.
   return assistantMessageSchema.parse(value) as AssistantMessage;

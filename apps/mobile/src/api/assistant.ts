@@ -329,18 +329,20 @@ export async function sendAssistantTurn(
 }
 
 /**
- * Saves the transaction an assistant reply drafted. The server writes its own stored draft at
- * most once, so the new row reaches the local workspace through the next sync pull.
+ * Saves one transaction an assistant reply drafted (`slot` picks it among the reply's drafts).
+ * The server writes its own stored draft at most once, so the new row reaches the local
+ * workspace through the next sync pull.
  */
 export async function confirmAssistantTransactionDraft(
   api: AssistantApi,
   messageId: string,
+  slot = 0,
 ): Promise<AssistantWireMessage> {
   return apiRequest({
     ...api,
     path: "/api/app/assistant/messages/" + encodeURIComponent(messageId) + "/transaction",
     method: "POST",
-    body: {},
+    body: { slot },
     fallback: "The transaction could not be saved. Try again.",
     decode: (value) => assistantMessageSchema.parse(value),
   });

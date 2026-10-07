@@ -1,4 +1,5 @@
 import {
+  assistantReplyDrafts,
   assistantTransactionDraftSchema,
   CURRENT_ASSISTANT_CONSENT_VERSION,
 } from "@zoption/shared";
@@ -119,6 +120,7 @@ export interface AssistantService {
     env: Bindings,
     tenantId: string,
     messageId: string,
+    slot?: number,
   ): Promise<AssistantMessage>;
   confirmAction(env: Bindings, tenantId: string, messageId: string): Promise<AssistantMessage>;
 }
@@ -171,13 +173,17 @@ async function refuseIfReplacedDraftSaved(
   env: Bindings,
   tenantId: string,
   replacedMessageId: string | undefined,
+  replacedSlot: number,
 ): Promise<void> {
   if (!replacedMessageId) return;
-  const replaced = (await drafts.findMessage(env, tenantId, replacedMessageId))?.metadata
-    ?.transactionDraft;
+  const replaced = assistantTransactionDraftSchema.safeParse(
+    assistantReplyDrafts((await drafts.findMessage(env, tenantId, replacedMessageId))?.metadata)[
+      replacedSlot
+    ],
+  ).data;
   if (
     replaced?.status === "saved" ||
-    (await drafts.transactionExists(env, tenantId, replacedMessageId))
+    (await drafts.transactionExists(env, tenantId, replaced?.transactionId ?? replacedMessageId))
   ) {
     throw new HttpError(
       409,
@@ -615,12 +621,14 @@ export function createAssistantService(
       return confirmAssistantAction(actionDependencies, env, tenantId, messageId);
     },
 
-    async confirmTransactionDraft(env, tenantId, messageId) {
+    async confirmTransactionDraft(env, tenantId, messageId, slot = 0) {
       // Saving is part of the assistant surface, so it needs the same current consent as a turn.
       await requireReadyPreferences(env, tenantId);
       const { drafts, transactions } = transactionDrafts;
       const message = await drafts.findMessage(env, tenantId, messageId);
-      const parsed = assistantTransactionDraftSchema.safeParse(message?.metadata?.transactionDraft);
+      const parsed = assistantTransactionDraftSchema.safeParse(
+        assistantReplyDrafts(message?.metadata)[slot],
+      );
       if (!message || !parsed.success) {
         throw new HttpError(
           404,
@@ -630,26 +638,29 @@ export function createAssistantService(
       }
       // Saving again returns the saved reply, so a retried tap never creates a second row.
       if (parsed.data.status === "saved") return message;
-      if (await drafts.isReplaced(env, tenantId, message)) {
-        throw new HttpError(
+      const superseded = () =>
+        new HttpError(
           409,
           "assistant_draft_superseded",
           "A newer draft replaced this one. Save the latest draft instead.",
         );
-      }
-      await refuseIfReplacedDraftSaved(drafts, env, tenantId, parsed.data.replacesMessageId);
-      const claimedAt = await drafts.claim(env, tenantId, messageId);
-      if (!claimedAt && (await drafts.isReplaced(env, tenantId, message))) {
-        throw new HttpError(
-          409,
-          "assistant_draft_superseded",
-          "A newer draft replaced this one. Save the latest draft instead.",
-        );
-      }
+      if (await drafts.isReplaced(env, tenantId, message, slot)) throw superseded();
+      await refuseIfReplacedDraftSaved(
+        drafts,
+        env,
+        tenantId,
+        parsed.data.replacesMessageId,
+        parsed.data.replacesSlot ?? 0,
+      );
+      const claimedAt = await drafts.claim(env, tenantId, messageId, slot);
+      if (!claimedAt && (await drafts.isReplaced(env, tenantId, message, slot))) throw superseded();
       if (!claimedAt) {
         // A second tab or a retried request may have finished the save since the read above.
         const current = await drafts.findMessage(env, tenantId, messageId);
-        if (current?.metadata?.transactionDraft?.status === "saved") return current;
+        const now = assistantTransactionDraftSchema.safeParse(
+          assistantReplyDrafts(current?.metadata)[slot],
+        ).data;
+        if (current && now?.status === "saved") return current;
         throw new HttpError(
           409,
           "assistant_draft_in_progress",
@@ -657,9 +668,10 @@ export function createAssistantService(
         );
       }
       const draft = parsed.data;
-      // The row is keyed on this reply's id. A claim taken over from a request that died after
-      // its create finds that row here instead of creating a second one.
-      const transactionId = messageId;
+      // The first draft's row is keyed on the reply's id; later ones carry their own id. A claim
+      // taken over from a request that died after its create finds that row here instead of
+      // creating a second one.
+      const transactionId = draft.transactionId ?? messageId;
       if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
         try {
           // The create path re-validates the category, account, and plan access as of now.
@@ -681,21 +693,35 @@ export function createAssistantService(
           // A request whose stale claim was taken over may have inserted the row meanwhile;
           // then this create hit its id, and the save has happened.
           if (!(await drafts.transactionExists(env, tenantId, transactionId))) {
-            await drafts.release(env, tenantId, messageId, claimedAt);
+            await drafts.release(env, tenantId, messageId, slot, claimedAt);
             throw error;
           }
         }
       }
-      const saved = await drafts.markSaved(env, tenantId, messageId, transactionId, claimedAt);
-      if (saved?.metadata?.transactionDraft?.status !== "saved") {
+      const saved = await drafts.markSaved(
+        env,
+        tenantId,
+        messageId,
+        slot,
+        transactionId,
+        claimedAt,
+      );
+      const savedDraft = assistantTransactionDraftSchema.safeParse(
+        assistantReplyDrafts(saved?.metadata)[slot],
+      ).data;
+      if (savedDraft?.status !== "saved") {
         // Another request took the claim over meanwhile and will mark it saved. The row this
         // request wrote exists either way, so report the save rather than an error.
         if (saved && (await drafts.transactionExists(env, tenantId, transactionId))) {
+          const savedDrafts = assistantReplyDrafts(saved.metadata);
+          savedDrafts[slot] = { ...draft, status: "saved", transactionId };
+          const [first, ...extras] = savedDrafts;
           return {
             ...saved,
             metadata: {
               ...saved.metadata!,
-              transactionDraft: { ...draft, status: "saved", transactionId },
+              transactionDraft: first as typeof draft,
+              ...(extras.length > 0 ? { extraTransactionDrafts: extras as (typeof draft)[] } : {}),
             },
           };
         }
@@ -705,7 +731,7 @@ export function createAssistantService(
           "This transaction is already being saved.",
         );
       }
-      return saved;
+      return saved!;
     },
   };
 }

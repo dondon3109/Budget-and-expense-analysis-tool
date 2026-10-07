@@ -1,5 +1,6 @@
 import {
   assistantActionSchema,
+  assistantReplyDrafts,
   assistantTransactionDraftSchema,
   goalConfigFor,
   otherCurrenciesWithAmounts,
@@ -104,8 +105,11 @@ interface AssistantConversationProps {
 export interface AssistantDraftSave {
   savingMessageId?: string;
   failedMessageId?: string;
+  /** Which of the reply's drafts is saving or failed; the first when absent. Drafts only. */
+  savingSlot?: number;
+  failedSlot?: number;
   error?: string;
-  onSave: (messageId: string) => void;
+  onSave: (messageId: string, slot?: number) => void;
 }
 
 export interface AssistantMessageVoiceReply {
@@ -226,22 +230,30 @@ function AssistantMessageEvidence({ message }: { message: AssistantMessage }) {
 
 function AssistantTransactionDraftCard({
   message,
+  slot,
   draftSave,
   superseded,
 }: {
   message: AssistantMessage;
+  /** Which of the reply's drafts this card shows. */
+  slot: number;
   draftSave?: AssistantDraftSave;
   /** A later reply drafted again, so saving this one would record the purchase twice. */
   superseded: boolean;
 }) {
-  const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
+  const parsed = assistantTransactionDraftSchema.safeParse(
+    assistantReplyDrafts(message.metadata)[slot],
+  );
   if (!parsed.success) return null;
   const draft = parsed.data;
   // A stored "saving" state is not trusted here: the server refuses a live claim and takes
   // over one a failed request left behind, so the button stays usable.
-  const saving = draftSave?.savingMessageId === message.id;
+  const saving = draftSave?.savingMessageId === message.id && (draftSave.savingSlot ?? 0) === slot;
   const saved = draft.status === "saved";
-  const error = draftSave?.failedMessageId === message.id ? draftSave.error : undefined;
+  const error =
+    draftSave?.failedMessageId === message.id && (draftSave.failedSlot ?? 0) === slot
+      ? draftSave.error
+      : undefined;
 
   return (
     <section className={`assistant-draft ${draft.kind}`} aria-label="Transaction draft">
@@ -278,7 +290,7 @@ function AssistantTransactionDraftCard({
           type="button"
           className="assistant-draft-save"
           disabled={saving || !draftSave}
-          onClick={() => draftSave?.onSave(message.id)}
+          onClick={() => draftSave?.onSave(message.id, slot)}
         >
           {saving ? "Saving…" : "Save transaction"}
         </button>
@@ -377,11 +389,13 @@ export function AssistantConversation({
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
   // Replies whose draft a later correction replaced; saving one would record a purchase twice.
-  const replacedDraftIds = new Set<string>();
+  const replacedDraftKeys = new Set<string>();
   for (const message of messages) {
-    const parsed = assistantTransactionDraftSchema.safeParse(message.metadata?.transactionDraft);
-    if (parsed.success && parsed.data.replacesMessageId) {
-      replacedDraftIds.add(parsed.data.replacesMessageId);
+    for (const value of assistantReplyDrafts(message.metadata)) {
+      const parsed = assistantTransactionDraftSchema.safeParse(value);
+      if (parsed.success && parsed.data.replacesMessageId) {
+        replacedDraftKeys.add(`${parsed.data.replacesMessageId}:${parsed.data.replacesSlot ?? 0}`);
+      }
     }
   }
 
@@ -475,13 +489,16 @@ export function AssistantConversation({
                   )}
                 </div>
               )}
-              {message.role === "assistant" && (
-                <AssistantTransactionDraftCard
-                  message={message}
-                  draftSave={draftSave}
-                  superseded={replacedDraftIds.has(message.id)}
-                />
-              )}
+              {message.role === "assistant" &&
+                assistantReplyDrafts(message.metadata).map((_, slot) => (
+                  <AssistantTransactionDraftCard
+                    key={slot}
+                    message={message}
+                    slot={slot}
+                    draftSave={draftSave}
+                    superseded={replacedDraftKeys.has(`${message.id}:${slot}`)}
+                  />
+                ))}
               {message.role === "assistant" && (
                 <AssistantActionCard
                   message={message}
