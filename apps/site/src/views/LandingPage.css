@@ -291,9 +291,10 @@
 
 .hero h1 {
   max-width: 660px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   font-size: clamp(44px, 4.9vw, 70px);
-  line-height: 1.02;
+  line-height: 1.04;
+  text-wrap: balance;
   letter-spacing: -0.045em;
 }
 
@@ -309,25 +310,27 @@
 }
 
 .hero-lead {
-  max-width: 520px;
-  margin-top: 24px;
-  font-size: 17px;
-  line-height: 1.65;
+  max-width: 540px;
+  margin-top: 0;
+  font-size: 18px;
+  line-height: 1.6;
   color: var(--lp-muted);
+  text-wrap: pretty;
 }
 
 .hero-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  margin-top: 36px;
+  gap: 12px 16px;
+  margin-top: 32px;
 }
 
 .hero-actions .button {
-  min-height: 48px;
-  padding: 0 22px;
+  min-height: 52px;
+  padding: 0 26px;
   border-radius: 13px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 620;
   transition:
     transform 0.18s ease,
@@ -366,25 +369,27 @@
 
 .hero-cta-note {
   max-width: 540px;
-  margin-top: 24px;
+  margin-top: 16px;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
   color: var(--lp-muted);
-  font-size: 13.5px;
+  font-size: 14px;
   line-height: 1.55;
 }
 
 .hero-cta-note svg {
   flex: none;
+  margin-top: 3px;
   color: var(--lp-accent-strong);
 }
 
 .hero-proof {
-  margin: 36px 0 0;
-  padding: 26px 0 0;
+  margin: 40px 0 0;
+  padding: 24px 0 0;
   display: flex;
-  gap: 36px;
+  flex-wrap: wrap;
+  gap: 20px 36px;
   max-width: 600px;
   border-top: 1px solid var(--lp-border);
   list-style: none;
@@ -410,39 +415,12 @@
    Hero Visual Dashboard Mockup
    ============================================================ */
 .hero-visual {
-  --hero-rotation: 0.5deg;
   position: relative;
   padding: 24px;
   border: 1px solid var(--lp-border);
   border-radius: 28px;
   background: var(--lp-surface);
   box-shadow: var(--lp-shadow-lg);
-  transform: rotate(var(--hero-rotation));
-  transition:
-    transform 0.3s ease,
-    box-shadow 0.3s ease;
-}
-
-.hero-visual:hover {
-  transform: rotate(0deg) translateY(-4px);
-  box-shadow:
-    0 12px 28px rgba(25, 53, 47, 0.08),
-    0 36px 90px rgba(25, 53, 47, 0.16);
-}
-
-.hero-visual::before {
-  content: "";
-  position: absolute;
-  inset: 20px -20px -28px 28px;
-  z-index: -1;
-  border-radius: 32px;
-  background: var(--lp-accent-soft);
-  transform: rotate(-3.5deg);
-  transition: transform 0.3s ease;
-}
-
-.hero-visual:hover::before {
-  transform: rotate(-2deg);
 }
 
 .preview-top {
