@@ -316,6 +316,8 @@ The only routine human checkpoint is approving the `production` environment of a
 - the bugfix bot's pull requests (`github-actions[bot]`, branch `bugfix/*`), only on `ready_for_review` and only when the maintainer is the actor. Those pull requests open as drafts and a draft cannot be armed, so the maintainer's "Ready for review" click is the human review of bot-written code;
 - Dependabot pull requests whose every updated dependency (read from the whole `updated-dependencies-json` list, not a single summary value) is a patch or minor update. A major update is never armed.
 
+It arms with the `AUTO_MERGE_TOKEN` secret, a fine-grained personal access token of the maintainer with contents and pull requests write access to this repository, stored both as an Actions secret and as a Dependabot secret (Dependabot-triggered runs read only Dependabot secrets). The workflow's own `github.token` cannot do this job: GitHub starts no workflow for a push made with it, so a pull request merged that way never ran CI on `main` and never reached `Production Release`. Check both copies with `gh secret list` and `gh secret list --app dependabot`; when the token expires, arming fails in the `arm` job and nothing merges until it is replaced with `gh secret set AUTO_MERGE_TOKEN` and `gh secret set AUTO_MERGE_TOKEN --app dependabot`.
+
 Arming only queues the merge. GitHub completes it when every required check has passed and, for a pull request that touches a code-owned path, the owner has approved. Dependabot action updates always touch `.github/`, so they wait for the maintainer. Dependabot opens one grouped pull request a week for `github-actions` and one for npm minor and patch updates; each major npm update is its own pull request.
 
 Merges are squash-only. The squash commit is created and signed by GitHub, so unsigned commits on a branch such as the bugfix bot's should not block a signed-commits rule. Verify that on the first bugfix pull request after enabling it; if it blocks, have the bugfix job create its commit through the GraphQL `createCommitOnBranch` mutation, which GitHub signs.
@@ -630,7 +632,7 @@ The `claude-review` status is not a required check, and the workflow never appro
 
 The gate protects against the model and the diff it reads, not against a branch that edits the workflow: under `pull_request` a pull request runs its own copy of `pr-review.yml`. Only the maintainer and the bugfix bot can push branches here, and the bugfix bot's patches may not touch `.github/`, `.claude/`, `.mcp.json`, or any `CLAUDE.md` or `AGENTS.md`.
 
-No workflow reads the `AUTO_MERGE_PRS` repository variable or the `AUTO_MERGE_TOKEN` repository secret; check for leftovers with `gh variable list` and `gh secret list`.
+No workflow reads the `AUTO_MERGE_PRS` repository variable; check for leftovers with `gh variable list`.
 
 ## Claude Code cloud environment
 

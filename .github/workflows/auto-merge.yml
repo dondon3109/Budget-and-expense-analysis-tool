@@ -26,7 +26,12 @@ jobs:
       contents: write
       pull-requests: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      # Not github.token: GitHub starts no workflow for a push made with it, so a pull request it
+      # merged never ran CI on main and never reached Production Release. AUTO_MERGE_TOKEN is the
+      # maintainer's fine-grained token (contents and pull requests: write on this repository), so
+      # GitHub completes the merge as the maintainer and the push runs CI. Dependabot-triggered runs
+      # read Dependabot secrets, not Actions secrets, so the same value is stored in both.
+      GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
       GH_REPO: ${{ github.repository }}
       PR_URL: ${{ github.event.pull_request.html_url }}
     steps:
