@@ -576,8 +576,9 @@ export function FastEntrySpotlight() {
               <p>
                 The Zoption AI Assistant provides conversational intelligence grounded strictly in
                 your verified transactions and budgets. It answers complex multi-month queries with
-                exact evidence and explanations, offering spoken replies without ever modifying your
-                data.
+                exact evidence and explanations, offering spoken replies. It can also log
+                transactions and prepare edits to your budget records, and nothing changes until you
+                confirm it.
               </p>
               <ul className="spotlight-benefits">
                 <li>
@@ -585,8 +586,9 @@ export function FastEntrySpotlight() {
                   Calculations are computed mathematically from your ledger facts.
                 </li>
                 <li>
-                  <Check size={16} aria-hidden="true" /> <strong>You approve every save:</strong>{" "}
-                  Drafts transactions for your review; never edits existing records.
+                  <Check size={16} aria-hidden="true" /> <strong>You approve every change:</strong>{" "}
+                  Drafts transactions and proposes edits to subscriptions, goals, debts, accounts,
+                  categories, budgets, and transactions; you tap Save or Confirm.
                 </li>
                 <li>
                   <Check size={16} aria-hidden="true" /> <strong>Spoken voice replies:</strong>{" "}
