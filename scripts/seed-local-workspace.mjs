@@ -7,6 +7,7 @@
  *   pnpm seed:local --user <supabase-user-uuid>
  *   pnpm seed:local --user <uuid> --months 6
  *   pnpm seed:local --user <uuid> --reset
+ *   pnpm seed:local --user <uuid> --preview   # the remote preview D1, for the release e2e account
  *
  * It imports the shared money rules straight from TypeScript source, so it needs Node
  * 22.18+ when run as plain `node`; `pnpm seed:local` adds --experimental-strip-types so
@@ -141,13 +142,20 @@ const STARTER_CATEGORIES = [
 ];
 
 function parseArgs(argv) {
-  const args = { user: undefined, months: 3, reset: false, db: "budget-expense-local" };
+  const args = {
+    user: undefined,
+    months: 3,
+    reset: false,
+    db: "budget-expense-local",
+    preview: false,
+  };
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === "--user") args.user = argv[++i];
     else if (arg === "--months") args.months = Number(argv[++i]);
     else if (arg === "--db") args.db = argv[++i];
     else if (arg === "--reset") args.reset = true;
+    else if (arg === "--preview") args.preview = true;
   }
   if (!args.user) {
     console.error(
@@ -166,14 +174,26 @@ function parseArgs(argv) {
   return args;
 }
 
+/**
+ * The wrangler d1 execute arguments that name the database. Preview is addressed by binding
+ * through the deploy config, exactly as the release applies its migrations; it holds only test
+ * accounts, which is why it is the one remote target this script accepts.
+ */
+function d1Target(args) {
+  if (args.preview) {
+    return ["DB", "--remote", "--config", "wrangler.deploy.jsonc", "--env", "preview"];
+  }
+  return [args.db, "--local"];
+}
+
 const sqlString = (value) => (value === null ? "NULL" : `'${String(value).replace(/'/g, "''")}'`);
 
-function runSql(db, sql) {
+function runSql(target, sql) {
   const dir = mkdtempSync(join(tmpdir(), "zoption-seed-"));
   const file = join(dir, "seed.sql");
   writeFileSync(file, sql, "utf8");
   try {
-    execFileSync("npx", ["wrangler", "d1", "execute", db, "--local", `--file=${file}`, "--yes"], {
+    execFileSync("npx", ["wrangler", "d1", "execute", ...target, `--file=${file}`, "--yes"], {
       cwd: API_DIR,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -182,23 +202,22 @@ function runSql(db, sql) {
   }
 }
 
-function queryScalar(db, sql) {
-  const dir = mkdtempSync(join(tmpdir(), "zoption-seed-"));
-  const file = join(dir, "q.sql");
-  writeFileSync(file, sql, "utf8");
-  try {
-    const out = execFileSync(
-      "npx",
-      ["wrangler", "d1", "execute", db, "--local", `--file=${file}`, "--json"],
-      { cwd: API_DIR, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
-    );
-    const start = out.indexOf("[");
-    const parsed = JSON.parse(out.slice(start));
-    const rows = parsed[0]?.results ?? [];
-    return rows[0] ? Object.values(rows[0])[0] : 0;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
+// --command rather than --file: for a remote database, --file reports the import ("Total queries
+// executed") instead of the query's rows, so the seeded count read back as 1.
+function queryScalar(target, sql) {
+  const out = execFileSync(
+    "npx",
+    ["wrangler", "d1", "execute", ...target, `--command=${sql}`, "--json"],
+    {
+      cwd: API_DIR,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+  const start = out.indexOf("[");
+  const parsed = JSON.parse(out.slice(start));
+  const rows = parsed[0]?.results ?? [];
+  return rows[0] ? Object.values(rows[0])[0] : 0;
 }
 
 const SEED_SUBSCRIPTIONS = [
@@ -504,25 +523,28 @@ export function buildResetSql(userId) {
 function main() {
   const args = parseArgs(process.argv.slice(2));
   const tenantId = `user:${args.user}`;
+  const target = d1Target(args);
+  const label = args.preview ? "the preview D1" : args.db;
+  const undo = `pnpm seed:local --user ${args.user}${args.preview ? " --preview" : ""} --reset`;
 
   if (args.reset) {
-    runSql(args.db, buildResetSql(args.user));
-    console.log(`Removed every 'seed:' row for ${tenantId} from ${args.db}.`);
+    runSql(target, buildResetSql(args.user));
+    console.log(`Removed every 'seed:' row for ${tenantId} from ${label}.`);
     console.log("The workspace itself (tenant, accounts, categories) was left in place.");
     return;
   }
 
-  runSql(args.db, buildSql(args.user, args.months));
+  runSql(target, buildSql(args.user, args.months));
   const count = queryScalar(
-    args.db,
+    target,
     `SELECT COUNT(*) FROM transactions WHERE tenant_id = ${sqlString(tenantId)} AND id LIKE '${SEED_PREFIX}%'`,
   );
-  console.log(`Seeded ${args.db} for ${tenantId}.`);
+  console.log(`Seeded ${label} for ${tenantId}.`);
   console.log(
     `  ${count} seeded transactions across the last ${args.months} month(s), plus budgets, ${SEED_SUBSCRIPTIONS.length} subscriptions, 1 goal, 1 debt and 2 calendar events.`,
   );
   console.log("  Re-running is safe: every insert is INSERT OR IGNORE on a deterministic id.");
-  console.log("  Undo with: pnpm seed:local --user " + args.user + " --reset");
+  console.log(`  Undo with: ${undo}`);
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
