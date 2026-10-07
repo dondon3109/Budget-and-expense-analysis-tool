@@ -100,8 +100,7 @@ export function TransactionForm({
   const [kind, setKind] = useState<TransactionKind>(initialDraft?.kind ?? item?.kind ?? "expense");
   const [date, setDate] = useState(initialDraft?.date ?? item?.date ?? initialDate ?? localIsoDate);
   const [description, setDescription] = useState(
-    () =>
-      initialDraft?.description ?? (item ? initialEditDescription(item, categoriesProp) : ""),
+    () => initialDraft?.description ?? (item ? initialEditDescription(item, categoriesProp) : ""),
   );
   const [amount, setAmount] = useState(initialDraft?.amount ?? toAmountText(item));
   const [categoryId, setCategoryId] = useState(initialDraft?.categoryId ?? item?.categoryId ?? "");
