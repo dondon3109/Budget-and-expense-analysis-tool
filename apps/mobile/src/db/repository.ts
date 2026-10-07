@@ -584,11 +584,14 @@ LIMIT ?`;
         currency,
         monthStart,
       ),
+      // Every active expense category can hold a budget, as on the web and the Worker. A plan
+      // lock only blocks new entries, and custom categories made during the Pro trial lock when
+      // it ends, so filtering on it left little more than the system Debt payment category.
       this.database.getAllAsync(
         `SELECT id, name, kind, color, icon_emoji AS iconEmoji,
           CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
          FROM categories
-         WHERE deleted_at IS NULL AND archived = 0 AND locked = 0 AND kind = 'expense'
+         WHERE deleted_at IS NULL AND archived = 0 AND kind = 'expense'
          ORDER BY name COLLATE NOCASE, id`,
       ),
     ]);
