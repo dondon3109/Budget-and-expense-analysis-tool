@@ -76,8 +76,8 @@
 }
 
 .transactions-panel-heading span {
-  color: var(--subtle);
-  font-size: 11px;
+  color: var(--muted);
+  font-size: 12px;
   line-height: 1.45;
 }
 
@@ -113,8 +113,8 @@
 .transaction-description span {
   max-width: 270px;
   overflow: hidden;
-  color: var(--subtle);
-  font-size: 11px;
+  color: var(--muted);
+  font-size: 12px;
   line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -151,19 +151,19 @@
 
 /* The debt a payment row paid off, read after the category chip. */
 .category-debt {
-  color: var(--subtle);
-  font-size: 11px;
+  color: var(--muted);
+  font-size: 12px;
   white-space: nowrap;
 }
 
 .kind-badge {
   min-height: 26px;
-  padding: 0 8px;
+  padding: 0 10px;
   display: inline-flex;
   align-items: center;
   border: 1px solid transparent;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
 }
@@ -224,8 +224,8 @@
 .table-status span,
 .empty-transactions p {
   max-width: 44ch;
-  margin: 0;
-  font-size: 12px;
+  margin: 0 auto;
+  font-size: 13px;
   line-height: 1.55;
 }
 
@@ -366,6 +366,16 @@
   .modal-backdrop {
     padding: 0;
     place-items: end center;
+  }
+
+  .modal-header h2 {
+    font-size: 24px;
+  }
+
+  .table-status,
+  .empty-transactions {
+    min-height: 220px;
+    padding: 28px 16px;
   }
 
   .form-modal {
