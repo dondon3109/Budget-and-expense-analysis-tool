@@ -10,25 +10,25 @@
     "test": "vitest run --root ../.. --project web"
   },
   "dependencies": {
-    "@paypal/react-paypal-js": "^10.3.0",
-    "@supabase/supabase-js": "^2.110.7",
-    "@tanstack/react-query": "^5.101.2",
+    "@paypal/react-paypal-js": "^10.5.2",
+    "@supabase/supabase-js": "^2.117.2",
+    "@tanstack/react-query": "^5.104.1",
     "@zoption/shared": "workspace:*",
     "@zoption/web-common": "workspace:*",
-    "lucide-react": "^1.24.0",
-    "posthog-js": "^1.418.10",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-router-dom": "^7.18.2",
-    "recharts": "^3.9.2",
+    "lucide-react": "^1.52.0",
+    "posthog-js": "^1.435.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "recharts": "^3.10.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.3.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
     "tailwindcss": "^4.3.2",
-    "vite": "^8.1.4"
+    "vite": "^8.3.2"
   }
 }
