@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
 
 import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalWorkspace } from "@/db/workspace";
@@ -16,6 +16,16 @@ jest.mock("@react-native-community/netinfo", () => ({
   fetch: jest.fn(async () => ({ isInternetReachable: true, isConnected: true })),
   useNetInfo: () => ({ isInternetReachable: true, isConnected: true }),
 }));
+
+// The test tree holds host views only, so expose the keyboard avoider and its behavior.
+jest.mock("react-native/Libraries/Components/Keyboard/KeyboardAvoidingView", () => {
+  const { createElement } = jest.requireActual("react");
+  const { View } = jest.requireActual("react-native");
+  return {
+    __esModule: true,
+    default: (props: object) => createElement(View, { ...props, testID: "keyboard-avoiding-view" }),
+  };
+});
 
 jest.mock("@/db/local-workspace-state", () => ({
   useLocalWorkspace: jest.fn(),
@@ -207,6 +217,34 @@ describe("BudgetsScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Save new budget" }));
 
     expect(setBudgetLimit).toHaveBeenCalledWith(expect.any(String), "food", 10_000);
+  });
+
+  it("keeps the amount field and save button above the keyboard in the add sheet", async () => {
+    jest.mocked(useBudgetMonth).mockReturnValue({
+      data: {
+        budgets: [],
+        categories: [
+          {
+            id: "food",
+            name: "Food & dining",
+            kind: "expense",
+            color: "#e87ba4",
+            iconEmoji: "🍔",
+            pending: false,
+          },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<BudgetsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Add budget" }));
+
+    const keyboardAvoider = screen.getByTestId("keyboard-avoiding-view");
+    expect(keyboardAvoider.props.behavior).toBe("padding");
+    expect(within(keyboardAvoider).getByLabelText("Monthly spending limit")).toBeTruthy();
+    expect(within(keyboardAvoider).getByRole("button", { name: "Save new budget" })).toBeTruthy();
   });
 
   it("offers a category again after its budget was removed to a zero limit", async () => {

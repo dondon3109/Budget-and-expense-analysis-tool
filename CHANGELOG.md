@@ -20,6 +20,7 @@ All notable product changes are documented here.
 ### Fixed
 
 - Web and mobile: a new account with no balance or budget no longer shows "You've used up what's safe to spend" on the Safe to spend card; it asks you to add a balance or first transaction instead.
+- Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
 
 ## 3.4.0 — 2026-10-04
 
