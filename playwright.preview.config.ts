@@ -34,7 +34,12 @@ export default defineConfig({
   workers: 1,
   // One retry absorbs a network hiccup against the deployed stack; a real break fails twice.
   retries: 1,
-  reporter: [["line"], ["html", { open: "never" }]],
+  // results.json feeds scripts/preview-failures.mjs when the audit fails (preview-fix.yml).
+  reporter: [
+    ["line"],
+    ["html", { open: "never" }],
+    ["json", { outputFile: "playwright-report/results.json" }],
+  ],
   use: {
     baseURL: process.env.APP_URL,
     trace: "retain-on-failure",

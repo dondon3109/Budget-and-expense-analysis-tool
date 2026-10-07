@@ -40,14 +40,15 @@ jobs:
         if: github.event.pull_request.user.login == 'dondon3109'
         run: gh pr merge --auto --squash "$PR_URL"
 
-      # The bugfix bot's pull requests open as drafts and are armed only when the maintainer marks
-      # one ready for review. That click is the human review of bot-written code, so "opened" and
-      # "reopened" never arm one.
-      - name: Arm a bugfix pull request the maintainer marked ready
+      # The bugfix and preview fix bots' pull requests open as drafts and are armed only when the
+      # maintainer marks one ready for review. That click is the human review of bot-written code,
+      # so "opened" and "reopened" never arm one.
+      - name: Arm a bot fix pull request the maintainer marked ready
         if: >-
           github.event.action == 'ready_for_review'
           && github.event.pull_request.user.login == 'github-actions[bot]'
-          && startsWith(github.event.pull_request.head.ref, 'bugfix/')
+          && (startsWith(github.event.pull_request.head.ref, 'bugfix/')
+            || startsWith(github.event.pull_request.head.ref, 'preview-fix/'))
           && github.actor == 'dondon3109'
         run: gh pr merge --auto --squash "$PR_URL"
 
