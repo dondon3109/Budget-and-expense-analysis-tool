@@ -65,10 +65,10 @@ describe("SafeToSpendHero (mobile)", () => {
 
     expect(screen.getByText("Safe to spend this week")).toBeTruthy();
     expect(
-      screen.getByText(
+      screen.queryByText(
         "Keep spending minimal until your next planned deposit or balance adjustment.",
       ),
-    ).toBeTruthy();
+    ).toBeNull();
   });
   it("shows a getting-started line, not an alert, for an empty account", async () => {
     await render(<SafeToSpendHero startingBalanceMinor={0} subscriptions={[]} />);
@@ -111,6 +111,7 @@ describe("SafeToSpendHero (mobile)", () => {
 
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByText("Deficit risk ahead")).toBeTruthy();
+    expect(screen.queryByText(/projected to fall below zero/)).toBeNull();
     expect(useOverspendingNotification).toHaveBeenLastCalledWith({
       kind: "deficit_risk",
       deficitDate: localDateInDays(3),

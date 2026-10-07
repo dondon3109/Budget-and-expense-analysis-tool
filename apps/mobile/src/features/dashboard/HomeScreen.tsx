@@ -85,14 +85,14 @@ export function HomeScreen() {
       showHeading={false}
       title="Home"
     >
-      <View
-        style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between" }}
-      >
-        <HomeViewMenu selected={menuView} onSelect={setMenuView} />
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
+        <View style={{ flex: 1, alignItems: "flex-start" }}>
+          <HomeViewMenu selected={menuView} onSelect={setMenuView} />
+        </View>
         {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
-      </View>
-      <View style={{ alignItems: "flex-end" }}>
-        <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
+        <View style={{ flex: 1, alignItems: "flex-end" }}>
+          <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
+        </View>
       </View>
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
