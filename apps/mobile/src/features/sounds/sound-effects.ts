@@ -1,4 +1,4 @@
-import { createAudioPlayer, type AudioPlayer } from "expo-audio";
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
 
 import errorSource from "../../../assets/sounds/error.wav";
 import successSource from "../../../assets/sounds/success.wav";
@@ -10,6 +10,17 @@ const sources = { tap: tapSource, success: successSource, error: errorSource } a
 export type SoundEffect = keyof typeof sources;
 
 const players: Partial<Record<SoundEffect, AudioPlayer>> = {};
+let audioModeSet = false;
+
+// Set the mode explicitly instead of relying on the library default, so a muted
+// or vibrate ringer does not silence the clips. Mixing keeps music playing.
+function ensureAudioMode(): void {
+  if (audioModeSet) return;
+  audioModeSet = true;
+  setAudioModeAsync({ playsInSilentMode: true, interruptionMode: "mixWithOthers" }).catch(() => {
+    audioModeSet = false;
+  });
+}
 
 /**
  * Plays a short UI sound. Fire and forget: a missing audio module or a failed
@@ -19,6 +30,7 @@ const players: Partial<Record<SoundEffect, AudioPlayer>> = {};
 export function playSound(effect: SoundEffect): void {
   if (!useSoundEffectsStore.getState().enabled) return;
   try {
+    ensureAudioMode();
     const player = (players[effect] ??= createAudioPlayer(sources[effect]));
     void player.seekTo(0);
     player.play();

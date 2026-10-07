@@ -8,8 +8,11 @@ const mockCreateAudioPlayer = jest.fn((_source: unknown) => ({
   seekTo: mockSeekTo,
 }));
 
+const mockSetAudioMode = jest.fn(async (_mode: unknown) => undefined);
+
 jest.mock("expo-audio", () => ({
   createAudioPlayer: (source: unknown) => mockCreateAudioPlayer(source),
+  setAudioModeAsync: (mode: unknown) => mockSetAudioMode(mode),
 }));
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => null),
@@ -30,6 +33,16 @@ describe("playSound", () => {
     expect(mockCreateAudioPlayer).toHaveBeenCalledTimes(1);
     expect(mockSeekTo).toHaveBeenCalledWith(0);
     expect(mockPlay).toHaveBeenCalledTimes(2);
+  });
+
+  it("plays in silent mode, set once", () => {
+    playSound("tap");
+    playSound("success");
+    expect(mockSetAudioMode).toHaveBeenCalledTimes(1);
+    expect(mockSetAudioMode).toHaveBeenCalledWith({
+      playsInSilentMode: true,
+      interruptionMode: "mixWithOthers",
+    });
   });
 
   it("stays silent when sounds are off", () => {
