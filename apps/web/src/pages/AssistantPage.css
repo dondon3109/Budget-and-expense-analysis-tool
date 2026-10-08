@@ -1638,20 +1638,70 @@ main:has(.assistant-page) > .legal-footer,
   gap: 8px;
 }
 
+/* Call-out bubble above the mic; the tail points down at the button. */
 .assistant-voice-status {
   position: absolute;
-  right: -46px;
-  bottom: calc(100% + 8px);
+  right: -20px;
+  bottom: calc(100% + 12px);
   width: max-content;
-  max-width: min(360px, calc(100vw - 32px));
-  padding: 7px 10px;
-  color: var(--muted);
+  max-width: min(320px, calc(100vw - 32px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  padding: 9px 13px;
+  color: var(--ink);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 14px;
   background: var(--surface);
-  box-shadow: 0 8px 20px -16px var(--shadow);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  box-shadow: 0 10px 24px -14px var(--shadow);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.assistant-voice-status::after {
+  content: "";
+  position: absolute;
+  right: 36px;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  transform: rotate(45deg);
+}
+
+.assistant-voice-status small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.assistant-voice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--action);
+  animation: assistant-voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes assistant-voice-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-voice-dot {
+    animation: none;
+  }
+}
+
+/* Live speech sits in the box as ghost text until the final transcript replaces it. */
+.assistant-composer textarea[data-live] {
+  color: var(--subtle);
+  font-style: italic;
 }
 
 .assistant-composer-note {
@@ -2826,6 +2876,10 @@ main:has(.assistant-page) > .legal-footer,
     left: 12px;
     width: auto;
     max-width: none;
+  }
+
+  .assistant-voice-status::after {
+    right: 54px;
   }
 
   .assistant-composer-note {

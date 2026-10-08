@@ -7,6 +7,8 @@ interface AssistantComposerProps {
   value: string;
   busy: boolean;
   error?: string;
+  /** Live speech shown as ghost text after the draft until the final transcript lands. */
+  liveText?: string;
   onChange: (value: string) => void;
   onSend: () => void;
   voiceControl?: ReactNode;
@@ -16,6 +18,7 @@ export function AssistantComposer({
   value,
   busy,
   error,
+  liveText,
   onChange,
   onSend,
   voiceControl,
@@ -38,6 +41,8 @@ export function AssistantComposer({
     }
   }
 
+  const shown = liveText ? [value, liveText].filter(Boolean).join(" ") : value;
+
   return (
     <form className="assistant-composer" onSubmit={submit}>
       <span className="assistant-composer-ai" aria-hidden="true">
@@ -48,7 +53,9 @@ export function AssistantComposer({
       </label>
       <textarea
         id="assistant-message"
-        value={value}
+        value={shown}
+        readOnly={Boolean(liveText)}
+        data-live={liveText ? "true" : undefined}
         maxLength={2_000}
         rows={2}
         placeholder="Ask about spending, budgets, recurring charges, goals, or debt…"
@@ -74,7 +81,7 @@ export function AssistantComposer({
           <span className="assistant-composer-shortcut" aria-hidden="true">
             <kbd>↵</kbd> send <kbd>⇧↵</kbd> line
           </span>
-          <small>{value.length}/2,000</small>
+          <small>{shown.length}/2,000</small>
         </div>
       </div>
       {error && (

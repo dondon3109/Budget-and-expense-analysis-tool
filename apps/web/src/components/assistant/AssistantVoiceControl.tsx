@@ -107,8 +107,10 @@ export function AssistantVoiceControl({
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
   const [showNotice, setShowNotice] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
-  const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [message, setMessage] = useState<string>();
+
+  // The live transcript lives in the composer as ghost text; "" clears it.
+  const setLiveTranscript = (text: string) => onPartialTranscript?.(text);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function clearTimersAndAudioContext() {
@@ -423,7 +425,6 @@ export function AssistantVoiceControl({
           if (!mountedRef.current) return;
           browserTranscriptRef.current = trimmed;
           setLiveTranscript(trimmed);
-          onPartialTranscript?.(trimmed);
         },
         onSpeechEnd: () => {
           window.setTimeout(() => {
@@ -450,7 +451,6 @@ export function AssistantVoiceControl({
             if (text) {
               liveTranscriptRef.current = text;
               setLiveTranscript(text);
-              onPartialTranscript?.(text);
             }
           },
           onFinal: (final) => {
@@ -459,7 +459,6 @@ export function AssistantVoiceControl({
             if (text) {
               liveTranscriptRef.current = text;
               setLiveTranscript(text);
-              onPartialTranscript?.(text);
             }
           },
           onLatency: (metrics) => {
@@ -743,14 +742,23 @@ export function AssistantVoiceControl({
         </div>
       )}
       {!disabled && !showNotice && (message || status !== "idle") && (
-        <span className="assistant-voice-status" role="status" aria-live="polite">
-          {status === "recording"
-            ? liveTranscript
-              ? `“${liveTranscript}”`
-              : `Listening · ${formatElapsed(elapsedSeconds)} — I’ll stop after you finish speaking.`
-            : status === "transcribing"
-              ? "Transcribing…"
-              : message}
+        <span
+          className="assistant-voice-status"
+          data-status={status === "idle" ? "message" : status}
+          role="status"
+          aria-live="polite"
+        >
+          {status === "recording" ? (
+            <>
+              <span className="assistant-voice-dot" aria-hidden="true" />
+              Listening · {formatElapsed(elapsedSeconds)}
+              <small>I’ll stop after you finish speaking.</small>
+            </>
+          ) : status === "transcribing" ? (
+            "Transcribing…"
+          ) : (
+            message
+          )}
         </span>
       )}
     </div>
