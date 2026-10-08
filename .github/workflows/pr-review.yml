@@ -1,7 +1,8 @@
 name: PR Review
 
-# Claude reviews only the draft fixes the Bugfix Draft workflow opens on bugfix/<report id>
-# branches, once the maintainer marks one ready for review. Other pull requests get no review. The
+# Claude reviews only the draft fixes the Bugfix Draft and Preview Failure Fix workflows open on
+# bugfix/ and preview-fix/ branches, once the maintainer marks one ready for review. Other pull
+# requests get no review. The
 # review job reads the untrusted diff and holds the model key, so it runs on a read only token and
 # writes only an artifact. The report job holds the write token, runs no model, and trusts nothing
 # from the pull request except the artifact it schema-checks.
@@ -25,12 +26,13 @@ concurrency:
 jobs:
   review:
     name: Review with Claude
-    # Only the bugfix bot's pull requests, which it opens as drafts; the review waits until they
-    # are marked ready. Fork pull requests get no secrets and never match.
+    # Only the fix bots' pull requests, which open as drafts; the review waits until they are
+    # marked ready. Fork pull requests get no secrets and never match.
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository
       && github.event.pull_request.user.login == 'github-actions[bot]'
-      && startsWith(github.event.pull_request.head.ref, 'bugfix/')
+      && (startsWith(github.event.pull_request.head.ref, 'bugfix/')
+        || startsWith(github.event.pull_request.head.ref, 'preview-fix/'))
       && !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 30
