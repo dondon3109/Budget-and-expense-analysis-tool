@@ -1433,7 +1433,7 @@ main:has(.assistant-page) > .legal-footer,
   width: 100%;
   min-height: 40px;
   max-height: 150px;
-  resize: vertical;
+  resize: none;
   color: var(--ink);
   border: 0;
   outline: 0;
