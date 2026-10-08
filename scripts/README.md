@@ -11,6 +11,7 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 | `check-structure`        | `pnpm verify`, CI `static`      | Enforces the 1000 line file limit (with shrink-only ceilings) and one-line app routes |
 | `verify-changed`         | `pnpm verify:changed`           | Runs only the scoped `verify:<scope>` commands the current diff needs                 |
 | `bugfix-scrub`           | Bugfix Draft workflow           | Fails a bugfix draft that carries user identifiers                                    |
+| `preview-failures`       | Preview Failure Fix workflow    | Summarizes the preview audit's failed Playwright tests for the triage and fix models  |
 
 ## Release and deployment (run by workflows)
 
