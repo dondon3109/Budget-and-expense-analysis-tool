@@ -2,12 +2,11 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
-import { Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import type { DashboardSummary } from "@zoption/shared";
 
-import { homeCardStyles, SectionLabel } from "./HomeCardParts";
+import { FlatSection, homeCardStyles, SectionLabel } from "./HomeCardParts";
 
 export function BudgetCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
@@ -28,7 +27,7 @@ export function BudgetCard({ summary }: { summary: DashboardSummary }) {
     );
   }
   return (
-    <Card accessibilityLabel="Budgets overview">
+    <FlatSection accessibilityLabel="Budgets overview">
       <View style={styles.cardHeaderRow}>
         <SectionLabel>Budgets</SectionLabel>
         <Pressable
@@ -103,7 +102,7 @@ export function BudgetCard({ summary }: { summary: DashboardSummary }) {
           );
         })}
       </View>
-    </Card>
+    </FlatSection>
   );
 }
 

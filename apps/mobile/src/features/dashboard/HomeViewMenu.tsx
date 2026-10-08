@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { StatusBar } from "expo-status-bar";
 import { useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -67,6 +68,9 @@ export function HomeViewMenu({
         visible={visible}
       >
         <View style={StyleSheet.absoluteFill}>
+          {/* A Modal is its own Android window and does not inherit the root StatusBar
+              style, so its icons would turn white over a light page. */}
+          <StatusBar style={theme.dark ? "light" : "dark"} />
           <Pressable
             accessibilityLabel="Close menu"
             onPress={close}

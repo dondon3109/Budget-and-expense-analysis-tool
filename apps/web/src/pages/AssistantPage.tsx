@@ -60,6 +60,7 @@ export function AssistantPage() {
   const navigate = useNavigate();
   const billingQuery = useBillingSummary(workspace);
   const goal = useGoalProfile(workspace).data?.goal ?? null;
+  const [liveText, setLiveText] = useState("");
   const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
     useAssistantSession();
   const limitTriggerRef = useRef<HTMLElement | null>(null);
@@ -525,6 +526,7 @@ export function AssistantPage() {
               error={
                 sendError && !isBillingEnforcementError(sendError) ? sendError.message : undefined
               }
+              liveText={liveText}
               onChange={(value) => {
                 setDraft(value);
                 if (sendError) setSendError(undefined);
@@ -536,12 +538,9 @@ export function AssistantPage() {
                     workspace={workspace}
                     disabled={sendMutation.isPending}
                     reviewRequired={__ASSISTANT_VOICE_REVIEW_REQUIRED__}
-                    onPartialTranscript={(partial) => {
-                      setDraft(partial);
-                      setSendError(undefined);
-                    }}
+                    onPartialTranscript={setLiveText}
                     onTranscript={(transcript) => {
-                      setDraft(transcript);
+                      setDraft([draft.trim(), transcript].filter(Boolean).join(" "));
                       setSendError(undefined);
                     }}
                   />

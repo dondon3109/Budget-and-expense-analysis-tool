@@ -90,13 +90,12 @@ export function CashflowCard({
           Month and 6-month cash flow are Pro features.
         </Text>
       ) : null}
+      <CashflowChart cashflow={cashflow} />
       {!cashflow.points.some((point) => point.incomeMinor !== 0 || point.expenseMinor !== 0) ? (
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           Nothing recorded in this period.
         </Text>
-      ) : (
-        <CashflowChart cashflow={cashflow} />
-      )}
+      ) : null}
     </ChartCard>
   );
 }

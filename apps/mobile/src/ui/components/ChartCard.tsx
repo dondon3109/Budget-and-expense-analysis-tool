@@ -1,9 +1,8 @@
 import type { PropsWithChildren, ReactNode } from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-import { typography } from "@/ui/tokens";
+import { spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { Card } from "./Card";
 
 interface ChartCardProps extends PropsWithChildren {
   title: string;
@@ -13,14 +12,21 @@ interface ChartCardProps extends PropsWithChildren {
 }
 
 /**
- * Foundation shell for charts: a compact heading, the chart itself, a visible
+ * Flat shell for charts (a hairline above, no card): a compact heading, the chart itself, a visible
  * caption, and room for an alternative (empty or error) state. Chart children
  * keep their own accessible labels so screen readers hear per-point values.
  */
 export function ChartCard({ title, accessibleSummary, alternative, children }: ChartCardProps) {
   const theme = useZoptionTheme();
   return (
-    <Card>
+    <View
+      style={{
+        gap: spacing.sm,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: theme.colors.border,
+        paddingTop: spacing.md,
+      }}
+    >
       <Text accessibilityRole="header" style={[typography.headline, { color: theme.colors.text }]}>
         {title}
       </Text>
@@ -29,6 +35,6 @@ export function ChartCard({ title, accessibleSummary, alternative, children }: C
         {accessibleSummary}
       </Text>
       {alternative}
-    </Card>
+    </View>
   );
 }

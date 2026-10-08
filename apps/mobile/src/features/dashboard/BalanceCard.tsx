@@ -3,12 +3,12 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
-import { Card, MoneyValue } from "@/ui/components";
+import { MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 import { otherCurrenciesWithAmounts, type DashboardSummary } from "@zoption/shared";
 
-import { homeCardStyles, SectionLabel } from "./HomeCardParts";
+import { homeCardStyles } from "./HomeCardParts";
 
 export function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
@@ -23,9 +23,9 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
       accessibilityLabel="Total balance. Opens account management."
       onPress={() => router.push("/(app)/money-setup")}
     >
-      <Card accessibilityLabel="Total balance">
+      <View accessibilityLabel="Total balance" style={styles.plain}>
         <View style={styles.cardHeaderRow}>
-          <SectionLabel>Total Balance</SectionLabel>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Total Balance</Text>
           <MaterialCommunityIcons
             accessibilityElementsHidden
             color={theme.colors.textMuted}
@@ -52,13 +52,14 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
             );
           })}
         </View>
-      </Card>
+      </View>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   ...homeCardStyles,
+  plain: { gap: spacing.xs },
   heroMoney: {
     fontSize: 34,
     lineHeight: 40,
