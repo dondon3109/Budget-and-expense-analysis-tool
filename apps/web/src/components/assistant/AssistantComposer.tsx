@@ -2,6 +2,7 @@ import { Bot, Send, ShieldCheck } from "lucide-react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 
 import { captureFunnelEvent } from "../../analytics/funnel";
+import "./AssistantComposer.css";
 
 interface AssistantComposerProps {
   value: string;

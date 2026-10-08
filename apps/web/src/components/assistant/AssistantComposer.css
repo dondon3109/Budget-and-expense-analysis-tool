@@ -1,0 +1,44 @@
+/* Composer extras: live ghost text, the listening dot, and the narrow-width note. */
+.assistant-voice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--action);
+  animation: assistant-voice-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes assistant-voice-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-voice-dot {
+    animation: none;
+  }
+}
+
+/* Live speech sits in the box as ghost text until the final transcript replaces it. */
+.assistant-composer textarea[data-live] {
+  color: var(--subtle);
+  font-style: italic;
+}
+
+/* The note shares one line with the counter, so drop its extras as the composer narrows
+   (the page sits beside a sidebar and history column, and dev tools can squeeze it further). */
+@container (max-width: 640px) {
+  .assistant-composer .assistant-composer-shortcut {
+    display: none;
+  }
+}
+
+@container (max-width: 460px) {
+  .assistant-composer .assistant-composer-privacy {
+    display: none;
+  }
+
+  .assistant-composer .assistant-composer-note {
+    justify-content: flex-end;
+  }
+}

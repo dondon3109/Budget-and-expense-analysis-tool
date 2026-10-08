@@ -89,6 +89,9 @@ export function AssistantVoiceControl({
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveSessionPromiseRef = useRef<Promise<LiveTranscriptionSession> | null>(null);
   const liveTranscriptRef = useRef<string>("");
+  // Last time speech was heard, by mic level or by a transcript arriving. Firefox applies its own
+  // gain, so a quiet level alone must not end the recording while the transcript is still growing.
+  const lastSpeechAtRef = useRef<number | null>(null);
   // The browser engine and the server engine both transcribe, so they are kept
   // apart: a browser hypothesis must never outrank a server transcript.
   const browserTranscriptRef = useRef<string>("");
@@ -110,7 +113,10 @@ export function AssistantVoiceControl({
   const [message, setMessage] = useState<string>();
 
   // The live transcript lives in the composer as ghost text; "" clears it.
-  const setLiveTranscript = (text: string) => onPartialTranscript?.(text);
+  const setLiveTranscript = (text: string) => {
+    if (text) lastSpeechAtRef.current = Date.now();
+    onPartialTranscript?.(text);
+  };
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function clearTimersAndAudioContext() {
@@ -239,8 +245,6 @@ export function AssistantVoiceControl({
 
     const samples = new Uint8Array(analyser.fftSize);
     const startedAt = Date.now();
-    let heardSpeech = false;
-    let lastSpeechAt = startedAt;
 
     activityTimerRef.current = window.setInterval(() => {
       const recorder = recorderRef.current;
@@ -254,14 +258,11 @@ export function AssistantVoiceControl({
       }
       const rms = Math.sqrt(sumSquares / samples.length);
       const now = Date.now();
-      if (rms >= SPEECH_RMS_THRESHOLD) {
-        heardSpeech = true;
-        lastSpeechAt = now;
-        return;
-      }
-      if (heardSpeech && now - lastSpeechAt >= ENDING_SILENCE_MS) {
-        stopRecording("silence");
-      } else if (!heardSpeech && now - startedAt >= NO_SPEECH_TIMEOUT_MS) {
+      if (rms >= SPEECH_RMS_THRESHOLD) lastSpeechAtRef.current = now;
+      const lastSpeechAt = lastSpeechAtRef.current;
+      if (lastSpeechAt !== null) {
+        if (now - lastSpeechAt >= ENDING_SILENCE_MS) stopRecording("silence");
+      } else if (now - startedAt >= NO_SPEECH_TIMEOUT_MS) {
         stopRecording("no-speech");
       }
     }, VOICE_SAMPLE_INTERVAL_MS);
@@ -414,6 +415,7 @@ export function AssistantVoiceControl({
       setElapsedSeconds(0);
       liveTranscriptRef.current = "";
       browserTranscriptRef.current = "";
+      lastSpeechAtRef.current = null;
       liveErrorRef.current = null;
       setLiveTranscript("");
       liveShouldStopRef.current = false;
