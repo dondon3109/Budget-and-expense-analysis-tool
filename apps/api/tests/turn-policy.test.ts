@@ -65,6 +65,13 @@ describe("assistant date resolution", () => {
     ["Hulyo 1 hanggang Agosto 2, 2026", { from: "2026-07-01", to: "2026-08-02" }],
     ["Hulyo hanggang Agosto 2026", { from: "2026-07-01", to: "2026-08-31" }],
     ["nakalipas na 90 araw", { from: "2026-05-05", to: "2026-08-02" }],
+    // 2026-08-02 is a Sunday, so a Monday-start week reaches back six days.
+    ["this week", { from: "2026-07-27", to: "2026-08-02" }],
+    ["last week", { from: "2026-07-20", to: "2026-07-26" }],
+    ["past 2 weeks", { from: "2026-07-20", to: "2026-08-02" }],
+    ["ngayong linggo", { from: "2026-07-27", to: "2026-08-02" }],
+    ["nakaraang linggo", { from: "2026-07-20", to: "2026-07-26" }],
+    ["nakalipas na 2 linggo", { from: "2026-07-20", to: "2026-08-02" }],
   ] as const)("resolves %s deterministically", (phrase, period) => {
     const result = resolveAssistantPeriod(
       [],
