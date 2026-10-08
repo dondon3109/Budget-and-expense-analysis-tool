@@ -606,7 +606,10 @@ export function EditConfigDialog({
   const isCloudflare = config.provider === "cloudflare_workers_ai";
   const [displayName, setDisplayName] = useState(config.displayName);
   const [model, setModel] = useState(config.model);
-  const [credentialId, setCredentialId] = useState(config.credentialId ?? "");
+  // The select shows its first option when nothing is linked, so state must match it.
+  const [credentialId, setCredentialId] = useState(
+    config.credentialId ?? (isGoogle ? "" : (creds[0]?.id ?? "")),
+  );
   const [credMode, setCredMode] = useState<CredentialMode>(
     config.credentialId ? "existing" : isGoogle ? "none" : creds.length > 0 ? "existing" : "new",
   );
