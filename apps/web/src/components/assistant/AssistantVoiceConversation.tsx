@@ -124,6 +124,9 @@ export function AssistantVoiceConversation({
   const audioUrlRef = useRef<string | undefined>(undefined);
   const threadIdRef = useRef<string | null>(null);
   const statusRef = useRef<VoiceStatus>("idle");
+  // The recording path sets "thinking" before it hands over the transcript, so the status
+  // cannot tell a duplicate submit from that hand-off; this flag covers only the turn itself.
+  const turnPendingRef = useRef(false);
   const captionsEndRef = useRef<HTMLDivElement | null>(null);
 
   const [preferences, setPreferences] = useState<AssistantVoicePreferences>();
@@ -311,7 +314,8 @@ export function AssistantVoiceConversation({
 
   async function handleFinalTranscript(text: string) {
     const finalText = text.trim();
-    if (!finalText || statusRef.current === "thinking" || statusRef.current === "speaking") return;
+    if (!finalText || turnPendingRef.current || statusRef.current === "speaking") return;
+    turnPendingRef.current = true;
     captureFunnelEvent("assistant_first_question", { surface: "voice" });
     setLivePartial("");
     setNotice(undefined);
@@ -415,6 +419,8 @@ export function AssistantVoiceConversation({
       if (!mountedRef.current) return;
       setNotice(errorMessage(error));
       setVoiceStatus("idle");
+    } finally {
+      turnPendingRef.current = false;
     }
   }
 
