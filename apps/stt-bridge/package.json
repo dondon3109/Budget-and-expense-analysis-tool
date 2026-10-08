@@ -13,6 +13,6 @@
   },
   "dependencies": {
     "ws": "^8.22.0",
-    "@google-cloud/speech": "^7.1.0"
+    "@google-cloud/speech": "^8.1.1"
   }
 }
