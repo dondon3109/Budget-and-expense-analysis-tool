@@ -928,13 +928,16 @@ main:has(.assistant-page) > .legal-footer,
   padding: 26px clamp(16px, 4vw, 48px) 8vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 26px;
   overflow-y: auto;
 }
 
+/* Rows size to their text up to a readable measure; assistant rows hug the left edge and
+   user rows the right, so a short reply is a short bubble. */
 .assistant-message {
-  width: 100%;
+  width: fit-content;
+  max-width: min(100%, 720px);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: flex-start;

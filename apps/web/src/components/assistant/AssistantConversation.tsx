@@ -184,7 +184,8 @@ function sourceFilters(source: AssistantSourceMetadata): string[] {
 
 function AssistantMessageEvidence({ message }: { message: AssistantMessage }) {
   const metadata = message.metadata;
-  if (!metadata) return null;
+  // A reply with no sources or disclaimer has no evidence to show, so no empty rule under it.
+  if (!metadata || (metadata.sources.length === 0 && !metadata.disclaimer)) return null;
   const primarySource = metadata.sources[0];
 
   return (
