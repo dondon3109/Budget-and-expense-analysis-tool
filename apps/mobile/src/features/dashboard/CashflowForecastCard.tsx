@@ -9,10 +9,11 @@ import {
   type ForecastSubscriptionSource,
   type ForecastRecurringIncome,
 } from "@zoption/shared";
-import { Card, MoneyValue } from "@/ui/components";
+import { MoneyValue } from "@/ui/components";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { FlatSection } from "./HomeCardParts";
 
 type HorizonDays = 30 | 60 | 90;
 
@@ -130,7 +131,7 @@ export function CashflowForecastCard({
         : theme.colors.income;
 
   return (
-    <Card accessibilityLabel="Cash flow forecast">
+    <FlatSection accessibilityLabel="Cash flow forecast">
       <View style={styles.headerRow}>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[typography.headline, { color: theme.colors.text }]}>
@@ -322,7 +323,7 @@ export function CashflowForecastCard({
           ) : null}
         </View>
       )}
-    </Card>
+    </FlatSection>
   );
 }
 

@@ -18,7 +18,7 @@ All notable product changes are documented here.
 
 ### Changed
 
-- Mobile: a calmer Home. Total balance is now a plain headline, and Subscriptions and Recent activity are simple lists instead of separate cards, so Safe to spend stands out.
+- Mobile: a calmer Home. Total balance is now a plain headline, Subscriptions and Recent activity are simple lists, and the Analytics sections sit on the page with hairline dividers instead of each in its own card, so Safe to spend stands out.
 - Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
 
 ### Fixed

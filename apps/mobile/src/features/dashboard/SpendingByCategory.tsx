@@ -1,12 +1,12 @@
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
 
-import { Card, CategoryBadge, MoneyValue } from "@/ui/components";
+import { CategoryBadge, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 import type { DashboardSummary } from "@zoption/shared";
 
-import { homeCardStyles, SectionLabel } from "./HomeCardParts";
+import { FlatSection, homeCardStyles, SectionLabel } from "./HomeCardParts";
 
 export function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
@@ -14,7 +14,7 @@ export function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
   const max = categories.reduce((largest, item) => Math.max(largest, item.amountMinor), 0);
   if (categories.length === 0) return null;
   return (
-    <Card accessibilityLabel="Spending by category">
+    <FlatSection accessibilityLabel="Spending by category">
       <View style={styles.cardHeaderRow}>
         <SectionLabel>Spending by category</SectionLabel>
         <Pressable
@@ -78,7 +78,7 @@ export function SpendingByCategory({ summary }: { summary: DashboardSummary }) {
           );
         })}
       </View>
-    </Card>
+    </FlatSection>
   );
 }
 

@@ -1,4 +1,5 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { PropsWithChildren } from "react";
+import { Pressable, StyleSheet, Text, View, type ViewProps } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -73,5 +74,32 @@ export function RowDivider() {
   const theme = useZoptionTheme();
   return (
     <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border }} />
+  );
+}
+
+// A Home section with no card around it. `divided` draws a hairline above it,
+// which is how consecutive Analytics sections are told apart.
+export function FlatSection({
+  divided = true,
+  children,
+  style,
+  ...props
+}: PropsWithChildren<ViewProps & { divided?: boolean }>) {
+  const theme = useZoptionTheme();
+  return (
+    <View
+      style={[
+        { gap: spacing.sm },
+        divided && {
+          borderTopWidth: StyleSheet.hairlineWidth,
+          borderTopColor: theme.colors.border,
+          paddingTop: spacing.md,
+        },
+        style,
+      ]}
+      {...props}
+    >
+      {children}
+    </View>
   );
 }
