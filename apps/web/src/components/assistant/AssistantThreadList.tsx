@@ -24,16 +24,6 @@ function relativeDate(value: string): string {
   return new Intl.DateTimeFormat("en-PH", { month: "short", day: "numeric" }).format(date);
 }
 
-function threadGroup(value: string): string {
-  const date = new Date(value);
-  const now = new Date();
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  const diffDays = Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000);
-  if (diffDays <= 0) return "Today";
-  if (diffDays <= 7) return "Previous 7 days";
-  return "Older";
-}
-
 export function AssistantThreadList({
   threads,
   activeThreadId,
@@ -82,11 +72,11 @@ export function AssistantThreadList({
     });
   }
 
-  const groups = new Map<string, AssistantThread[]>();
-  for (const thread of threads) {
-    const group = threadGroup(thread.lastMessageAt);
-    groups.set(group, [...(groups.get(group) ?? []), thread]);
-  }
+  // Text and voice chats are separate sections; the list is already newest first.
+  const sections = [
+    { label: "Text chats", threads: threads.filter((thread) => thread.kind !== "voice") },
+    { label: "Voice chats", threads: threads.filter((thread) => thread.kind === "voice") },
+  ].filter((section) => section.threads.length > 0);
 
   return (
     <aside
@@ -157,10 +147,10 @@ export function AssistantThreadList({
         {threads.length === 0 && (
           <p className="assistant-history-empty">Your recent questions will appear here.</p>
         )}
-        {Array.from(groups.entries()).map(([group, groupThreads]) => (
-          <section className="assistant-thread-group" key={group} aria-label={group}>
-            <h3 className="assistant-thread-group-label">{group}</h3>
-            {groupThreads.map((thread) => {
+        {sections.map(({ label, threads: sectionThreads }) => (
+          <section className="assistant-thread-group" key={label} aria-label={label}>
+            <h3 className="assistant-thread-group-label">{label}</h3>
+            {sectionThreads.map((thread) => {
               const isSelected = selected.has(thread.id);
               return (
                 <div
@@ -196,11 +186,6 @@ export function AssistantThreadList({
                     <span className="assistant-thread-details">
                       <span className="assistant-thread-title-line">
                         <strong>{thread.title}</strong>
-                        {thread.kind === "voice" && (
-                          <span className="assistant-thread-kind-badge" aria-hidden="true">
-                            Voice
-                          </span>
-                        )}
                       </span>
                       <small>{relativeDate(thread.lastMessageAt)}</small>
                     </span>
