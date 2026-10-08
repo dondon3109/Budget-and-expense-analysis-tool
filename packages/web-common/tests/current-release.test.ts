@@ -25,17 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "A more compact mobile app",
-      "The Overview / Analytics switch moved into the Home header",
-      "Three new guides",
-      "Android Beta 0.2.47",
+      "Several purchases in one message",
+      "Updated assistant consent",
+      "Fixes",
+      "Android Beta 0.2.48",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/compact/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.47/);
+    expect(copy).toMatch(/several purchases/i);
+    expect(copy).toMatch(/Android Beta 0\.2\.48/);
+  });
+
+  it("keeps the compact layout and guides notes as 3.7.0", () => {
+    expect(titles("3.7.0")).toContain("A more compact mobile app");
+    expect(notes("3.7.0")).toMatch(/Android Beta 0\.2\.47/);
   });
 
   it("keeps the assistant, calendar, and goals notes as 3.6.0", () => {
@@ -210,6 +215,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "3.7.0",
       "3.6.0",
       "3.4.0",
       "3.3.0",
