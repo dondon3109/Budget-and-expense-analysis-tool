@@ -112,6 +112,13 @@ updates:
         update-types:
           - version-update:semver-major
           - version-update:semver-minor
+      # release-notes-generator 14 loads conventional-changelog-writer 8, which cannot render
+      # preset 10.4+ (it needs writer 9). Pinned at 10.3.0 until release-notes-generator 15.
+      - dependency-name: "conventional-changelog-conventionalcommits"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
       # Mobile's Jest transform runs on Babel 7 through babel-preset-expo; Babel 8 plugins need
       # @babel/core 8.
       - dependency-name: "@babel/*"
