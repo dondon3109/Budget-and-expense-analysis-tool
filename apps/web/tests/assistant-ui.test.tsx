@@ -98,9 +98,11 @@ function renderRouteHarness() {
   const queryClient = createQueryClient();
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <AssistantSessionProvider>
-        <AssistantRouteHarness />
-      </AssistantSessionProvider>
+      <MemoryRouter>
+        <AssistantSessionProvider>
+          <AssistantRouteHarness />
+        </AssistantSessionProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return { ...result, queryClient };

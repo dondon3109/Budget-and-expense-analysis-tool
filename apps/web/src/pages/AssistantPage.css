@@ -16,15 +16,10 @@
 }
 
 /* Fill the whole main column (footer hidden) so the chat takes all the space. */
-.assistant-page:not(.consent-view) {
+.assistant-page {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
-}
-
-.assistant-page.consent-view {
-  min-height: 100vh;
-  justify-content: center;
 }
 
 /* Remove the app footer on the assistant page so the chat fills the height.
@@ -788,9 +783,9 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-empty > span,
 .assistant-empty-core-beacon,
 .assistant-consent-mark {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 20px;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
   display: grid;
   place-items: center;
   color: var(--contrast-text);
@@ -1730,22 +1725,28 @@ main:has(.assistant-page) > .legal-footer,
    CONSENT VIEW
    ============================================================ */
 .assistant-consent {
-  width: min(680px, 100%);
-  margin: auto;
-  padding: clamp(28px, 5vw, 48px);
+  width: min(560px, 100%);
+  padding: clamp(20px, 4vw, 28px);
   text-align: center;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--paper);
-  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.assistant-consent-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.assistant-consent-actions .button {
+  width: auto;
+  margin-top: 0;
 }
 
 .assistant-consent h1 {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(30px, 5vw, 43px);
-  line-height: 1.08;
+  font-size: clamp(24px, 4vw, 30px);
+  line-height: 1.12;
 }
 
 .assistant-consent-intro {
@@ -1757,7 +1758,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-consent-points {
-  margin-top: 24px;
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -1765,7 +1766,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-consent-points article {
-  padding: 15px;
+  padding: 12px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
@@ -2522,11 +2523,6 @@ main:has(.assistant-page) > .legal-footer,
     min-height: 0;
   }
 
-  /* The chat fits the clipped column; the taller consent copy must scroll inside it. */
-  .app-shell:has(.assistant-page.consent-view) .app-main {
-    overflow-y: auto;
-  }
-
   .assistant-page {
     width: 100%;
     min-height: calc(
@@ -2536,14 +2532,10 @@ main:has(.assistant-page) > .legal-footer,
     padding: 0;
   }
 
-  .assistant-page:not(.consent-view) {
+  .assistant-page {
     height: 100%;
     min-height: 0;
     box-sizing: border-box;
-  }
-
-  .assistant-page.consent-view {
-    padding: 0 14px;
   }
 
   .assistant-history-toggle {

@@ -7,6 +7,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Brain, Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
@@ -57,6 +58,7 @@ export function AssistantPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const billingQuery = useBillingSummary(workspace);
   const goal = useGoalProfile(workspace).data?.goal ?? null;
   const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
@@ -374,24 +376,12 @@ export function AssistantPage() {
       </AppShell>
     );
   }
-  if (
+  // Consent is a blocking modal over the chat, so the page behind it is the real assistant.
+  const needsConsent =
     !preferences.data?.consentedAt ||
-    preferences.data.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION
-  ) {
-    return (
-      <AppShell>
-        <div className="assistant-page consent-view">
-          <AssistantConsent
-            accepting={consentMutation.isPending}
-            error={consentMutation.error?.message}
-            onAccept={() => consentMutation.mutateAsync()}
-          />
-        </div>
-      </AppShell>
-    );
-  }
-
-  const identityRequired = !preferences.data?.assistantName || !preferences.data?.userPreferredName;
+    preferences.data.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION;
+  const identityRequired =
+    !needsConsent && (!preferences.data?.assistantName || !preferences.data?.userPreferredName);
   const assistantName = preferences.data?.assistantName ?? "Your assistant";
   const profileDisplayName =
     typeof user?.user_metadata?.display_name === "string"
@@ -609,6 +599,14 @@ export function AssistantPage() {
       )}
       {memoryOpen && (
         <AssistantMemoryPanel workspace={workspace} open onClose={() => setMemoryOpen(false)} />
+      )}
+      {needsConsent && (
+        <AssistantConsent
+          accepting={consentMutation.isPending}
+          error={consentMutation.error?.message}
+          onAccept={() => consentMutation.mutateAsync()}
+          onDecline={() => navigate("/app")}
+        />
       )}
     </AppShell>
   );
