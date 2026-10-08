@@ -2522,6 +2522,11 @@ main:has(.assistant-page) > .legal-footer,
     min-height: 0;
   }
 
+  /* The chat fits the clipped column; the taller consent copy must scroll inside it. */
+  .app-shell:has(.assistant-page.consent-view) .app-main {
+    overflow-y: auto;
+  }
+
   .assistant-page {
     width: 100%;
     min-height: calc(
