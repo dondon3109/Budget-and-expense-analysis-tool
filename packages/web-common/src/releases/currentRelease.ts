@@ -11,27 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 6, 2026",
+  releasedOn: "October 8, 2026",
   changes: [
     {
-      title: "A more compact mobile app",
+      title: "Several purchases in one message",
       description:
-        "Android and iOS use smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen.",
+        'Tell the AI Assistant about several purchases at once, like "50 for gas and 40 for gym", and it prepares a draft for each one with its own Save button.',
     },
     {
-      title: "The Overview / Analytics switch moved into the Home header",
+      title: "Updated assistant consent",
       description:
-        "On mobile, the switch sits centered at the top of Home, next to the view dropdown, so it stays in reach while you scroll.",
+        "The consent screen now says the assistant can propose changes to your records and that only your Save or Confirm tap applies them. Everyone is asked to accept it once.",
     },
     {
-      title: "Three new guides",
+      title: "Fixes",
       description:
-        "zoption.site has new guides on budgeting remittances as an OFW family, debt snowball vs avalanche, and budgeting irregular income as a freelancer.",
+        "The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, and adding notes to a transaction titled by its category now updates its title.",
     },
     {
-      title: "Android Beta 0.2.47",
+      title: "Android Beta 0.2.48",
       description:
-        "The official Android Beta carries the compact layout and the Home header switch.",
+        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, and these fixes.",
     },
   ],
 };
@@ -46,6 +46,32 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "3.7.0",
+    releasedOn: "October 8, 2026",
+    changes: [
+      {
+        title: "A more compact mobile app",
+        description:
+          "Android and iOS use smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen.",
+      },
+      {
+        title: "The Overview / Analytics switch moved into the Home header",
+        description:
+          "On mobile, the switch sits centered at the top of Home, next to the view dropdown, so it stays in reach while you scroll.",
+      },
+      {
+        title: "Three new guides",
+        description:
+          "zoption.site has new guides on budgeting remittances as an OFW family, debt snowball vs avalanche, and budgeting irregular income as a freelancer.",
+      },
+      {
+        title: "Android Beta 0.2.47",
+        description:
+          "The official Android Beta carries the compact layout and the Home header switch.",
+      },
+    ],
+  },
   {
     version: "3.6.0",
     releasedOn: "October 5, 2026",
