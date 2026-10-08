@@ -1774,13 +1774,6 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--surface-soft);
 }
 
-.assistant-consent-points .memory-point {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-width: 580px;
-  justify-self: center;
-}
-
 .assistant-consent-points svg {
   color: var(--action);
 }
@@ -1793,12 +1786,19 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-consent-points p,
 .assistant-consent-retention {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .assistant-consent-points p {
   margin: 4px 0 0;
+}
+
+.assistant-consent-retention a {
+  color: var(--action);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .assistant-consent-retention {

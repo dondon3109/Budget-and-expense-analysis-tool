@@ -179,10 +179,10 @@ describe("assistant UI", () => {
     render(<AssistantConsent accepting={false} onAccept={accept} />);
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
     expect(screen.getByText(/PostHog receives operational metadata only/i)).toBeInTheDocument();
-    expect(screen.getByText(/PostHog receives model, latency, token-count/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/payoff preference are kept until you delete them/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/privacy-policy"),
+    );
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
