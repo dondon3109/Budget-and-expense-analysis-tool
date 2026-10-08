@@ -107,10 +107,10 @@ describe("AssistantMemoryPanel", () => {
 
     expect(await screen.findByText("Memory & Preferences")).toBeInTheDocument();
     expect(screen.getByText("Private to this workspace")).toBeInTheDocument();
-    expect(screen.getByText("Debt payoff preference")).toBeInTheDocument();
+    expect(await screen.findByText("Debt payoff")).toBeInTheDocument();
     expect(await screen.findByRole("radio", { name: /Avalanche/ })).toBeInTheDocument();
     expect(screen.getByRole("radio", { name: /Snowball/ })).toBeInTheDocument();
-    expect(screen.getByRole("radio", { name: /No preference/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Auto/ })).toBeInTheDocument();
 
     expect(await screen.findByText(/Concise/)).toBeInTheDocument();
     expect(screen.getByText(/Gentle/)).toBeInTheDocument();
@@ -186,14 +186,12 @@ describe("AssistantMemoryPanel", () => {
     expect(screen.getByText("Learned from context")).toBeInTheDocument();
   });
 
-  it("shows rich empty state with example prompts when no facts are remembered", async () => {
+  it("shows an empty state when no facts are remembered", async () => {
     apiMocks.getAssistantMemory.mockResolvedValueOnce([]);
 
     renderPanel();
 
     expect(await screen.findByText("No remembered facts yet")).toBeInTheDocument();
-    expect(screen.getByText(/Examples you can share in chat/)).toBeInTheDocument();
-    expect(screen.getByText(/My emergency fund goal is ₱100,000/)).toBeInTheDocument();
   });
 
   it("confines Tab to the panel and starts on its first control", async () => {
@@ -256,7 +254,7 @@ describe("AssistantMemoryPanel", () => {
     // The server drops the stored preference with the facts, so the control must not
     // keep showing the strategy it had (the preferences query never goes stale).
     await waitFor(() => {
-      expect(screen.getByRole("radio", { name: /No preference/ })).toBeChecked();
+      expect(screen.getByRole("radio", { name: /Auto/ })).toBeChecked();
     });
   });
 
