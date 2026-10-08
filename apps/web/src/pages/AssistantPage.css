@@ -1401,10 +1401,11 @@ main:has(.assistant-page) > .legal-footer,
   position: relative;
   container-type: inline-size;
   margin: 0 clamp(16px, 4vw, 48px) 20px;
-  padding: 12px 130px 38px 14px;
+  padding: 10px 10px 8px 12px;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: 12px;
+  gap: 4px 10px;
   border: 1px solid var(--line-strong);
   border-radius: 20px;
   background: var(--surface);
@@ -1420,6 +1421,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-composer-ai {
+  margin-bottom: 3px;
   width: 34px;
   height: 34px;
   flex: 0 0 auto;
@@ -1430,11 +1432,16 @@ main:has(.assistant-page) > .legal-footer,
   background: var(--action);
 }
 
+/* One line is as tall as the 38px buttons beside it, so its text sits on their centerline;
+   the box grows with its content (AssistantComposer sets the height). */
 .assistant-composer textarea {
-  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
   min-height: 40px;
   max-height: 150px;
-  resize: none; /* the grip would sit under the mic and send buttons */
+  padding: 9px 0;
+  resize: none;
   color: var(--ink);
   border: 0;
   outline: 0;
@@ -1449,9 +1456,8 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-send {
-  position: absolute;
-  right: 12px;
-  bottom: 34px;
+  flex: none;
+  margin-bottom: 1px;
   width: 38px;
   height: 38px;
   display: grid;
@@ -1483,38 +1489,12 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-voice-control {
-  position: absolute;
-  right: 56px;
-  bottom: 34px;
+  position: relative;
+  flex: none;
+  margin-bottom: 1px;
   display: flex;
   align-items: center;
   gap: 4px;
-}
-
-.assistant-voice-lang-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 22px;
-  padding: 0 6px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: var(--surface);
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 620;
-  letter-spacing: 0.04em;
-  cursor: pointer;
-  transition:
-    border-color 150ms ease,
-    color 150ms ease,
-    background 150ms ease;
-}
-
-.assistant-voice-lang-badge:hover {
-  color: var(--ink);
-  border-color: var(--action);
-  background: color-mix(in srgb, var(--action) 6%, var(--surface));
 }
 
 .assistant-voice-button {
@@ -1682,10 +1662,8 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-composer-note {
-  position: absolute;
-  right: 130px;
-  bottom: 9px;
-  left: 14px;
+  flex: 1 0 100%;
+  padding: 0 2px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2819,7 +2797,7 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-composer {
     margin: 0 8px 6px;
-    padding: 8px 128px 28px 12px;
+    padding: 8px 8px 6px 12px;
     border-radius: 16px;
   }
 
@@ -2833,15 +2811,8 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-send {
-    right: 8px;
-    bottom: 26px;
     width: 44px;
     height: 44px;
-  }
-
-  .assistant-voice-control {
-    right: 58px;
-    bottom: 28px;
   }
 
   .assistant-voice-button {
@@ -2868,9 +2839,6 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-composer-note {
-    right: 132px;
-    bottom: 7px;
-    left: 12px;
     gap: 8px;
     font-size: 11px;
   }

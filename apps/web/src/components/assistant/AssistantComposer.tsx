@@ -1,4 +1,5 @@
 import { Bot, Send, ShieldCheck } from "lucide-react";
+import { useLayoutEffect, useRef } from "react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 
 import { captureFunnelEvent } from "../../analytics/funnel";
@@ -42,7 +43,18 @@ export function AssistantComposer({
     }
   }
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const shown = liveText ? [value, liveText].filter(Boolean).join(" ") : value;
+
+  // Size the box to its content; field-sizing is not available in Firefox yet.
+  useLayoutEffect(() => {
+    const box = textareaRef.current;
+    if (!box) return;
+    box.style.height = "auto";
+    box.style.height = `${box.scrollHeight}px`;
+    // Past the CSS max-height the box scrolls; below it a stray scrollbar is just rounding noise.
+    box.style.overflowY = box.scrollHeight > box.clientHeight + 1 ? "auto" : "hidden";
+  }, [shown]);
 
   return (
     <form className="assistant-composer" onSubmit={submit}>
@@ -53,12 +65,13 @@ export function AssistantComposer({
         Ask about your finances
       </label>
       <textarea
+        ref={textareaRef}
         id="assistant-message"
         value={shown}
         readOnly={Boolean(liveText)}
         data-live={liveText ? "true" : undefined}
         maxLength={2_000}
-        rows={2}
+        rows={1}
         placeholder="Ask about spending, budgets, recurring charges, goals, or debt…"
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={handleKeyDown}

@@ -21,7 +21,6 @@ import {
 import {
   type VoiceLanguage,
   getStoredVoiceLanguage,
-  setStoredVoiceLanguage,
   speechRecognitionLang,
 } from "../../lib/voiceLanguage";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
@@ -673,34 +672,6 @@ export function AssistantVoiceControl({
         ) : (
           <Mic size={18} aria-hidden="true" />
         )}
-      </button>
-      <button
-        type="button"
-        className="assistant-voice-lang-badge"
-        disabled={disabled || enabling}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const next: VoiceLanguage =
-            voiceLanguage === "auto" ? "en" : voiceLanguage === "en" ? "fil" : "auto";
-          setVoiceLanguage(next);
-          setStoredVoiceLanguage(next);
-          if (speechRecognitionRef.current) {
-            speechRecognitionRef.current.lang = speechRecognitionLang(next);
-          }
-        }}
-        title={`Voice language: ${
-          voiceLanguage === "auto"
-            ? "Auto (click to switch to English)"
-            : voiceLanguage === "en"
-              ? "English (click to switch to Tagalog)"
-              : "Tagalog (click to switch to Auto)"
-        }`}
-        aria-label={`Switch voice language from ${
-          voiceLanguage === "auto" ? "Auto" : voiceLanguage === "en" ? "English" : "Tagalog"
-        }`}
-      >
-        {voiceLanguage === "auto" ? "AUTO" : voiceLanguage === "fil" ? "TL" : "EN"}
       </button>
       {showNotice && (
         <div
