@@ -361,15 +361,12 @@ export function createVoiceStreamRoutes(assistantVoiceService: AssistantVoiceSer
             const finalText = finalInputText || modelText;
             if (finalText || interimInputText) {
               if (finalText) {
-                finalizedTranscript = [finalizedTranscript, finalText]
-                  .filter(Boolean)
-                  .join(" ")
-                  .trim();
+                // Gemini sends incremental fragments carrying their own spacing, so append
+                // them verbatim. The session is one recording, and the client replaces its
+                // transcript on every frame, so each frame must carry the whole text so far.
+                finalizedTranscript += finalText;
               }
-              const transcript = [finalizedTranscript, interimInputText]
-                .filter(Boolean)
-                .join(" ")
-                .trim();
+              const transcript = `${finalizedTranscript}${interimInputText}`.trim();
               const isFinal = Boolean(finalText || msg.serverContent?.turnComplete);
               if (tFirstPartial === null) {
                 tFirstPartial = Date.now();
@@ -392,22 +389,18 @@ export function createVoiceStreamRoutes(assistantVoiceService: AssistantVoiceSer
                   latency_worker_to_first_partial: tFirstPartial - tWorkerOpen,
                 }),
               );
-              if (isFinal) {
-                finalizedTranscript = "";
-              }
             } else if (msg.serverContent?.turnComplete && finalizedTranscript) {
               if (tFirstPartial === null) tFirstPartial = Date.now();
               trySend(
                 server,
                 JSON.stringify({
                   type: "final",
-                  transcript: finalizedTranscript,
+                  transcript: finalizedTranscript.trim(),
                   isFinal: true,
                   t_worker_first_partial: tFirstPartial,
                   latency_worker_to_first_partial: tFirstPartial - tWorkerOpen,
                 }),
               );
-              finalizedTranscript = "";
             }
           } catch (_e) {
             void _e;
