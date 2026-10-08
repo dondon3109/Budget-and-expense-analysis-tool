@@ -1,6 +1,6 @@
 {
   "name": "@zoption/mobile",
-  "version": "0.2.47-beta",
+  "version": "0.2.49-beta",
   "private": true,
   "main": "index.ts",
   "scripts": {
@@ -47,7 +47,7 @@
     "expo-status-bar": "57.0.1",
     "expo-task-manager": "57.0.21",
     "expo-web-browser": "57.0.3",
-    "nativewind": "4.2.7",
+    "nativewind": "4.2.6",
     "posthog-react-native": "4.79.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",

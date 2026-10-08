@@ -105,9 +105,13 @@ updates:
       - dependency-name: "tailwindcss"
         update-types:
           - version-update:semver-major
+      # nativewind 4.2.7 (react-native-css-interop 0.2.7) renders a blank screen on Android; stay
+      # on 4.2.6 until a release is checked on a device.
       - dependency-name: "nativewind"
         update-types:
           - version-update:semver-major
+          - version-update:semver-minor
+          - version-update:semver-patch
       - dependency-name: "prettier-plugin-tailwindcss"
         update-types:
           - version-update:semver-major
