@@ -525,16 +525,14 @@ describe("assistant UI", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("gives the assistant route a visible page heading in the chat topbar", async () => {
+  it("keeps a screen-reader page heading while the topbar shows no title or disclaimer", async () => {
     renderPage();
 
     const heading = await screen.findByRole("heading", {
       level: 1,
       name: "AI Financial Assistant",
     });
-    // Regression: this was the only authenticated route whose <h1> was sr-only.
-    expect(heading).not.toHaveClass("sr-only");
-    expect(heading).toHaveClass("assistant-chat-title");
+    expect(heading).toHaveClass("sr-only");
     expect(heading.closest(".assistant-chat-status")).not.toBeNull();
     expect(
       screen.queryByRole("heading", { name: "Your MONEY, explained." }),
@@ -544,7 +542,7 @@ describe("assistant UI", () => {
         "Ask about your records, budgets, goals, and debt. Zoption verifies the numbers.",
       ),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/educational budgeting information only/i)).not.toBeInTheDocument();
     expect(screen.queryByRole("progressbar", { name: "AI actions" })).not.toBeInTheDocument();
     await openOptions();
     const usage = await screen.findByRole("progressbar", {
@@ -559,7 +557,6 @@ describe("assistant UI", () => {
     expect(topline!.children[0]).toHaveClass("assistant-history-toggle");
     expect(topline!.children[0]).toHaveAttribute("aria-controls", "assistant-chat-history");
     expect(topline!.children[1]).toHaveClass("assistant-chat-status");
-    expect(within(topline!.children[1] as HTMLElement).getByText("Aster")).toBeInTheDocument();
     expect(topline!.children[2]).toHaveClass("assistant-options");
     expect(
       within(usage.closest(".assistant-options") as HTMLElement).getByRole("button", {

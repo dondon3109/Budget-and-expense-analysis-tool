@@ -465,10 +465,7 @@ export function AssistantPage() {
                 <span className="assistant-history-label">History</span>
               </button>
               <div className="assistant-chat-status">
-                <div className="assistant-chat-identity">
-                  <h1 className="assistant-chat-title">AI Financial Assistant</h1>
-                  <p className="assistant-chat-meta">{assistantName}</p>
-                </div>
+                <h1 className="sr-only">AI Financial Assistant</h1>
               </div>
               <AssistantOptionsMenu
                 usage={aiUsage}
@@ -476,10 +473,6 @@ export function AssistantPage() {
                 onOpenMemory={() => setMemoryOpen(true)}
               />
             </div>
-            <p className="assistant-education-notice">
-              Educational budgeting information only. Zoption does not provide personalized
-              financial, investment, tax, legal, or insurance advice.
-            </p>
             {messages.isError ? (
               <div className="assistant-chat-error" role="alert">
                 <strong>This chat could not be loaded.</strong>
