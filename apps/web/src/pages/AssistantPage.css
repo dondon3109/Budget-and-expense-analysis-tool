@@ -1434,7 +1434,7 @@ main:has(.assistant-page) > .legal-footer,
   width: 100%;
   min-height: 40px;
   max-height: 150px;
-  resize: vertical;
+  resize: none; /* the grip would sit under the mic and send buttons */
   color: var(--ink);
   border: 0;
   outline: 0;
@@ -1642,8 +1642,10 @@ main:has(.assistant-page) > .legal-footer,
 /* Call-out bubble above the mic; the tail points down at the button. */
 .assistant-voice-status {
   position: absolute;
-  right: -20px;
+  /* Anchored on the mic (the control's first child, 38px wide), not on the language badge. */
+  left: 43px;
   bottom: calc(100% + 12px);
+  transform: translateX(-100%);
   width: max-content;
   max-width: min(320px, calc(100vw - 32px));
   display: flex;
@@ -1663,7 +1665,7 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-voice-status::after {
   content: "";
   position: absolute;
-  right: 36px;
+  right: 18px;
   bottom: -6px;
   width: 10px;
   height: 10px;
@@ -2857,8 +2859,12 @@ main:has(.assistant-page) > .legal-footer,
     max-width: none;
   }
 
+  .assistant-voice-status {
+    transform: none;
+  }
+
   .assistant-voice-status::after {
-    right: 54px;
+    display: none;
   }
 
   .assistant-composer-note {
