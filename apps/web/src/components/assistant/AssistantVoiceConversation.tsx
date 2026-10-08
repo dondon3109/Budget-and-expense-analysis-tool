@@ -905,16 +905,18 @@ export function AssistantVoiceConversation({
                   role="group"
                   aria-label="Suggested questions"
                 >
-                  {voiceSuggestedPrompts(voiceLanguage, goal).map((prompt) => (
-                    <button
-                      key={prompt}
-                      type="button"
-                      className="assistant-voice-prompt-chip"
-                      onClick={() => void handleFinalTranscript(prompt)}
-                    >
-                      <span>“{prompt}”</span>
-                    </button>
-                  ))}
+                  {voiceSuggestedPrompts(voiceLanguage, goal)
+                    .slice(0, 4)
+                    .map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        className="assistant-voice-prompt-chip"
+                        onClick={() => void handleFinalTranscript(prompt)}
+                      >
+                        <span>“{prompt}”</span>
+                      </button>
+                    ))}
                 </div>
               </div>
             )}
