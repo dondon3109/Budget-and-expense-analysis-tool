@@ -99,6 +99,9 @@ export async function openVoiceStreamWebSocket(
 ): Promise<WebSocket> {
   const payload = await requestJson<unknown>(workspace, "/api/app/assistant/voice/ticket", {
     method: "POST",
+    // Every POST under /api/app must declare a JSON body; requestJson only sets the content type
+    // when there is one, and a bodyless request is rejected with 415.
+    body: "{}",
   });
   const ticket = isRecord(payload) ? payload.ticket : undefined;
   if (typeof ticket !== "string" || !ticket) {
