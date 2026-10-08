@@ -27,15 +27,16 @@ describe("current release notes", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
       "Several purchases in one message",
       "Updated assistant consent",
+      "A calmer Home and Analytics",
       "Fixes",
-      "Android Beta 0.2.48",
+      "Android Beta 0.2.49",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/several purchases/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.48/);
+    expect(copy).toMatch(/Android Beta 0\.2\.49/);
   });
 
   it("keeps the compact layout and guides notes as 3.7.0", () => {
