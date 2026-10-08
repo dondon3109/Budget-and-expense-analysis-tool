@@ -72,6 +72,23 @@ describe("AppShell", () => {
 
   afterEach(cleanup);
 
+  it("starts the sidebar collapsed on the assistant page without saving that as the preference", () => {
+    window.localStorage.removeItem("zoption:nav-collapsed");
+    const { container } = renderShell("/app/assistant");
+    const shell = container.querySelector(".app-shell")!;
+    expect(shell).toHaveClass("nav-collapsed");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
+    expect(shell).not.toHaveClass("nav-collapsed");
+    expect(window.localStorage.getItem("zoption:nav-collapsed")).toBeNull();
+  });
+
+  it("keeps the saved sidebar preference on other pages", () => {
+    window.localStorage.removeItem("zoption:nav-collapsed");
+    const { container } = renderShell("/app");
+    expect(container.querySelector(".app-shell")).not.toHaveClass("nav-collapsed");
+  });
+
   it("places the profile above navigation and Subscriptions below Budgets", () => {
     render(
       <ThemeProvider>

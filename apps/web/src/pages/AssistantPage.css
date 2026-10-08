@@ -512,15 +512,14 @@ main:has(.assistant-page) > .legal-footer,
 
 /* --- Topbar --- */
 .assistant-chat-topline {
-  min-height: 64px;
-  padding: 12px 20px;
+  min-height: 0;
+  padding: 12px 20px 0;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: "status options";
   align-items: center;
   gap: 16px;
   color: var(--muted);
-  border-bottom: 1px solid var(--line);
   background: var(--paper);
   font-size: 12px;
   font-weight: 650;
@@ -925,7 +924,8 @@ main:has(.assistant-page) > .legal-footer,
    MESSAGE THREAD
    ============================================================ */
 .assistant-messages {
-  padding: 26px clamp(20px, 5vw, 64px) 8vh;
+  /* Same side inset as the composer so the messages and the box share one edge. */
+  padding: 26px clamp(16px, 4vw, 48px) 8vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -935,7 +935,6 @@ main:has(.assistant-page) > .legal-footer,
 
 .assistant-message {
   width: 100%;
-  max-width: min(100%, 820px);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: flex-start;
@@ -1369,10 +1368,15 @@ main:has(.assistant-page) > .legal-footer,
 /* ============================================================
    COMPOSER — ChatGPT/Claude-style
    ============================================================ */
+/* The hint row and character count sit under the box, so the box holds only the controls and
+   its text and icons stay centered. The area is the container the narrow-width rule queries. */
+.assistant-composer-area {
+  container-type: inline-size;
+  margin: 0 clamp(16px, 4vw, 48px) 12px;
+}
+
 .assistant-composer {
   position: relative;
-  container-type: inline-size;
-  margin: 0 clamp(16px, 4vw, 48px) 20px;
   padding: 10px 10px 8px 12px;
   display: flex;
   flex-wrap: wrap;
@@ -1634,8 +1638,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-composer-note {
-  flex: 1 0 100%;
-  padding: 0 2px;
+  padding: 6px 14px 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -2551,8 +2554,11 @@ main:has(.assistant-page) > .legal-footer,
     max-width: 94%;
   }
 
-  .assistant-composer {
+  .assistant-composer-area {
     margin: 0 8px 6px;
+  }
+
+  .assistant-composer {
     padding: 8px 8px 6px 12px;
     border-radius: 16px;
   }
