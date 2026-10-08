@@ -244,7 +244,7 @@ describe("OnboardingPage", () => {
       vi.mocked(getGoalProfile).mockResolvedValue(unset);
     });
 
-    it("shows the goal first, records it once, and saves the picks before thanking the user", async () => {
+    it("shows the goal first, records it once, and saves the picks before moving on", async () => {
       renderPage();
 
       expect(await screen.findByRole("group", { name: "Your goals" })).toBeInTheDocument();
@@ -301,7 +301,7 @@ describe("OnboardingPage", () => {
       expect(await screen.findByRole("radiogroup", { name: "Base currency" })).toBeInTheDocument();
     });
 
-    it("continues without thanking when saving the goals fails", async () => {
+    it("continues when saving the goals fails", async () => {
       vi.mocked(saveGoals).mockRejectedValue(new Error("offline"));
       renderPage();
 
