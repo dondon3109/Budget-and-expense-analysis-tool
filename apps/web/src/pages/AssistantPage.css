@@ -523,8 +523,8 @@ main:has(.assistant-page) > .legal-footer,
   min-height: 64px;
   padding: 12px 20px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  grid-template-areas: "status usage retention";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "status options";
   align-items: center;
   gap: 16px;
   color: var(--muted);
@@ -576,16 +576,13 @@ main:has(.assistant-page) > .legal-footer,
   white-space: nowrap;
 }
 
-/* plan usage meter sits in the topbar centre — slim label + track + % row,
-   matching the Open Design mockup. */
+/* Plan usage meter inside the options popover — slim label + track + % row. */
 .assistant-chat-usage {
-  grid-area: usage;
   min-width: 0;
-  justify-self: center;
 }
 
 .assistant-chat-usage .plan-usage-indicator.meter {
-  width: clamp(240px, 27vw, 320px);
+  width: 100%;
   min-width: 0;
   display: grid;
   gap: 6px;
@@ -691,35 +688,71 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--success);
 }
 
-.assistant-chat-corner {
-  grid-area: retention;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+.assistant-options {
+  grid-area: options;
+  position: relative;
 }
 
-.assistant-memory-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 12px;
-  color: var(--action-strong);
+.assistant-options-trigger {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--surface);
-  font-size: 11px;
-  font-weight: 700;
   cursor: pointer;
-  transition:
-    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.assistant-memory-trigger:hover {
+.assistant-options-trigger:hover,
+.assistant-options-trigger[aria-expanded="true"] {
+  color: var(--action-strong);
+  border-color: var(--action);
+}
+
+.assistant-options-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(300px, calc(100vw - 24px));
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 12px 32px var(--shadow);
+}
+
+.assistant-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.assistant-options-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--action-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.assistant-options-item:hover {
   border-color: var(--action);
 }
 
@@ -2445,7 +2478,6 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-new-chat,
   .assistant-new-voice-chat,
   .assistant-history-edit,
-  .assistant-memory-trigger,
   .assistant-memory-clear-btn,
   .assistant-memory-panel .style-choice,
   .assistant-memory-panel .icon-button.compact {
@@ -2496,11 +2528,8 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-chat-topline {
     padding: 10px 18px 14px;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "status retention"
-      "usage usage";
-    row-gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "status options";
   }
 }
 
@@ -2633,77 +2662,15 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-chat-topline {
     min-height: 0;
     padding: 8px 10px;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: "history status retention corner";
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "history status options";
     align-items: center;
     column-gap: 10px;
   }
 
-  /* Memory stays reachable on phones as an icon button; the retention note and theme
-     switch give up their room (the shell already offers the theme switch). */
-  .assistant-chat-corner {
-    grid-area: corner;
-  }
-
-  .assistant-chat-corner .theme-sw,
-  .assistant-memory-label {
-    display: none;
-  }
-
-  .assistant-memory-trigger {
+  .assistant-options-trigger {
     width: 44px;
-    min-height: 44px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .assistant-memory-trigger svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  /* On mobile, replace the Memory button with a compact plan-limit usage
-     pill so we keep the same single-row topline and preserve chat space. */
-  .assistant-chat-usage {
-    grid-area: retention;
-    display: block;
-    justify-self: end;
-    min-width: 0;
-  }
-
-  .assistant-chat-usage .plan-usage-indicator.meter {
-    width: auto;
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 11px;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-
-  .assistant-chat-usage .plan-usage-summary {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
-  }
-
-  .assistant-chat-usage .plan-usage-label {
-    font-size: 11px;
-  }
-
-  .assistant-chat-usage .plan-usage-track {
-    width: 34px;
-    height: 5px;
-  }
-
-  .assistant-chat-usage .plan-usage-value {
-    font-size: 11px;
-  }
-
-  .assistant-chat-usage .plan-usage-meta {
-    display: none;
+    height: 44px;
   }
 
   .assistant-education-notice {

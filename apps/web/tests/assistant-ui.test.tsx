@@ -110,6 +110,11 @@ function renderRouteHarness() {
 
 afterEach(cleanup);
 
+/** The usage meter, theme, and Memory live in the header's "More options" popover. */
+async function openOptions() {
+  fireEvent.click(await screen.findByRole("button", { name: "More options" }));
+}
+
 describe("assistant UI", () => {
   beforeEach(() => {
     apiMocks.createAssistantThread.mockReset();
@@ -540,26 +545,26 @@ describe("assistant UI", () => {
       ),
     ).not.toBeInTheDocument();
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "AI actions" })).not.toBeInTheDocument();
+    await openOptions();
     const usage = await screen.findByRole("progressbar", {
       name: "AI actions",
     });
     expect(usage).toHaveAttribute("aria-valuenow", "1");
     expect(usage).toHaveAttribute("aria-valuemax", "500");
 
-    const topline = usage.closest(".assistant-chat-topline");
+    const topline = heading.closest(".assistant-chat-topline");
     expect(topline).not.toBeNull();
-    expect(Array.from(topline!.children)).toHaveLength(4);
+    expect(Array.from(topline!.children)).toHaveLength(3);
     expect(topline!.children[0]).toHaveClass("assistant-history-toggle");
     expect(topline!.children[0]).toHaveAttribute("aria-controls", "assistant-chat-history");
     expect(topline!.children[1]).toHaveClass("assistant-chat-status");
     expect(within(topline!.children[1] as HTMLElement).getByText("Aster")).toBeInTheDocument();
-    expect(topline!.children[2]).toHaveClass("assistant-chat-usage");
-    const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");
-    expect(usageContainer).not.toBeNull();
-    expect(within(usageContainer!).getByRole("progressbar")).toBe(usage);
-    expect(topline!.children[3]).toHaveClass("assistant-chat-corner");
+    expect(topline!.children[2]).toHaveClass("assistant-options");
     expect(
-      within(topline!.children[3] as HTMLElement).getByRole("button", { name: "Memory" }),
+      within(usage.closest(".assistant-options") as HTMLElement).getByRole("button", {
+        name: "Memory",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -587,6 +592,7 @@ describe("assistant UI", () => {
     });
     renderPage();
 
+    await openOptions();
     const usage = await screen.findByRole("progressbar", {
       name: "AI actions",
     });
@@ -617,6 +623,7 @@ describe("assistant UI", () => {
     });
     renderPage();
 
+    await openOptions();
     const usage = await screen.findByRole("progressbar", {
       name: "AI actions",
     });

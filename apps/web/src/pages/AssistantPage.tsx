@@ -5,12 +5,13 @@ import {
   type AssistantTurnResult,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
+import { AssistantOptionsMenu } from "../components/assistant/AssistantOptionsMenu";
 import { AssistantComposer } from "../components/assistant/AssistantComposer";
 import { AssistantConsent } from "../components/assistant/AssistantConsent";
 import { AssistantConversation } from "../components/assistant/AssistantConversation";
@@ -20,11 +21,9 @@ import { AssistantThreadList } from "../components/assistant/AssistantThreadList
 import { AssistantVoiceControl } from "../components/assistant/AssistantVoiceControl";
 import { AssistantVoiceConversation } from "../components/assistant/AssistantVoiceConversation";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
-import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
-import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   confirmAssistantAction,
@@ -471,29 +470,11 @@ export function AssistantPage() {
                   <p className="assistant-chat-meta">{assistantName}</p>
                 </div>
               </div>
-              {aiUsage && (
-                <div className="assistant-chat-usage">
-                  <PlanUsageIndicator
-                    meter
-                    label="AI actions"
-                    used={aiUsage.used}
-                    limit={aiUsage.limit}
-                    showUpgrade={isFreePlan}
-                  />
-                </div>
-              )}
-              <div className="assistant-chat-corner">
-                <ThemeToggle variant="segmented" />
-                <button
-                  type="button"
-                  className="assistant-memory-trigger"
-                  aria-label="Memory"
-                  onClick={() => setMemoryOpen(true)}
-                >
-                  <Brain size={12} aria-hidden="true" />{" "}
-                  <span className="assistant-memory-label">Memory</span>
-                </button>
-              </div>
+              <AssistantOptionsMenu
+                usage={aiUsage}
+                showUpgrade={isFreePlan}
+                onOpenMemory={() => setMemoryOpen(true)}
+              />
             </div>
             <p className="assistant-education-notice">
               Educational budgeting information only. Zoption does not provide personalized
