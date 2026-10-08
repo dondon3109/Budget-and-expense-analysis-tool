@@ -282,16 +282,13 @@ describe("GET /api/app/assistant/voice/stream", () => {
         transcript: "buy groceries",
       });
 
-      // Gemini Live frames can arrive as Blob after websocket_standard_binary_type.
-      // Dropping them silently produced no transcript even after the socket opened.
-      upstreamHandlers.get("message")({
-        data: new Blob([
-          JSON.stringify({
-            serverContent: { inputTranscription: { text: "buy groceries today" } },
-          }),
-        ]),
-      });
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      // Frames can arrive as Blob, and fragments accumulate: each frame carries the whole
+      // transcript so far, not just its own piece.
+      for (const text of ["buy groceries", " today"]) {
+        const frame = JSON.stringify({ serverContent: { inputTranscription: { text } } });
+        upstreamHandlers.get("message")({ data: new Blob([frame]) });
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      }
       expect(JSON.parse(serverWs.send.mock.calls.at(-1)[0])).toMatchObject({
         type: "final",
         transcript: "buy groceries today",
