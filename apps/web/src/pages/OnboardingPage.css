@@ -12,8 +12,10 @@
 
 .onboarding-step {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  text-align: center;
   color: var(--muted);
   font-size: 12px;
   font-weight: 500;
@@ -118,6 +120,11 @@
 
 @media (max-width: 520px) {
   /* Four labels crowd a phone row; the others stay readable to screen readers. */
+  .onboarding-stepper {
+    grid-template-columns: repeat(4, auto);
+    justify-content: space-between;
+  }
+
   .onboarding-step:not(.current) .onboarding-step-label {
     position: absolute;
     width: 1px;
