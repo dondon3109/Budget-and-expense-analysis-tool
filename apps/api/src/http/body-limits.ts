@@ -100,6 +100,8 @@ export function jsonBodyLimitFor(method: string, path: string): number | undefin
   const isDeleteWithBody =
     method === "DELETE" && (path === "/api/app/account" || path === "/api/app/profile/avatar");
   if (!JSON_METHODS.has(method) && !isDeleteWithBody) return undefined;
+  // The browser mints the voice ticket with a bodyless POST, which has no Content-Type to check.
+  if (method === "POST" && path === "/api/app/assistant/voice/ticket") return undefined;
   if (method === "POST" && path === "/api/app/imports/preview") return IMPORT_PREVIEW_BODY_LIMIT;
   return DEFAULT_JSON_BODY_LIMIT;
 }

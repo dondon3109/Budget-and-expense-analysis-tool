@@ -181,6 +181,7 @@ const APP_BODY_RULES: [string, string, string | undefined, BodyRule][] = [
   ["POST", "/api/app/entry/voice", "Application/JSON; charset=utf-8", defaultJson],
   ["POST", "/api/app/entry/voice", "application/vnd.zoption+json", defaultJson],
   ["GET", "/api/app/entry/voice", undefined, noBody],
+  ["POST", "/api/app/assistant/voice/ticket", undefined, noBody],
   ["POST", "/api/app/entry/pdf-preview", MULTIPART, statementUpload],
   ["POST", "/api/app/profile/avatar", MULTIPART, avatarUpload],
   ["PATCH", "/api/app/profile/avatar", "application/json", defaultJson],
