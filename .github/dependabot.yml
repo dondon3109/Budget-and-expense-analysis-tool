@@ -119,6 +119,11 @@ updates:
           - version-update:semver-major
           - version-update:semver-minor
           - version-update:semver-patch
+      # jest-expo 57 is built for Jest 29; Jest 30 breaks the mobile suites.
+      - dependency-name: "jest"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/jest"
+        update-types: ["version-update:semver-major"]
       # Mobile's Jest transform runs on Babel 7 through babel-preset-expo; Babel 8 plugins need
       # @babel/core 8.
       - dependency-name: "@babel/*"
