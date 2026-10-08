@@ -1673,16 +1673,6 @@ main:has(.assistant-page) > .legal-footer,
   white-space: nowrap;
 }
 
-.assistant-composer-privacy {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--subtle);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
 .assistant-composer-meta {
   display: inline-flex;
   align-items: center;

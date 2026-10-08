@@ -1,4 +1,4 @@
-import { Bot, Send, ShieldCheck } from "lucide-react";
+import { Bot, Send } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import type { FormEvent, KeyboardEvent, ReactNode } from "react";
 
@@ -87,10 +87,6 @@ export function AssistantComposer({
         <Send size={18} />
       </button>
       <div className="assistant-composer-note">
-        <span className="assistant-composer-privacy">
-          <ShieldCheck size={13} aria-hidden="true" /> You approve every change · Server-verified
-          calculations
-        </span>
         <div className="assistant-composer-meta">
           <span className="assistant-composer-shortcut" aria-hidden="true">
             <kbd>↵</kbd> send <kbd>⇧↵</kbd> line

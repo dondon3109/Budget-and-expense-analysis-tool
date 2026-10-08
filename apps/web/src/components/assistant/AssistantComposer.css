@@ -25,20 +25,10 @@
   font-style: italic;
 }
 
-/* The note shares one line with the counter, so drop its extras as the composer narrows
-   (the page sits beside a sidebar and history column, and dev tools can squeeze it further). */
+/* Drop the keyboard hints as the composer narrows (the page sits beside a sidebar and
+   history column, and dev tools can squeeze it further). */
 @container (max-width: 640px) {
   .assistant-composer .assistant-composer-shortcut {
     display: none;
-  }
-}
-
-@container (max-width: 460px) {
-  .assistant-composer .assistant-composer-privacy {
-    display: none;
-  }
-
-  .assistant-composer .assistant-composer-note {
-    justify-content: flex-end;
   }
 }
