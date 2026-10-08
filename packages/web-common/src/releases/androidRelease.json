@@ -1,21 +1,22 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.47-beta",
-  "versionCode": 20347,
-  "filename": "zoption-beta-0.2.47.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.47.apk",
-  "sha256": "8aecf4a37d4cec56963583e7eb2ce53e1509df767ec7590ff2d1799f03e92b8d",
-  "sizeBytes": 139472665,
-  "sizeLabel": "139,472,665 bytes (133.01 MiB)",
-  "releaseDate": "2026-10-07",
-  "releaseDateLabel": "October 7, 2026",
+  "versionName": "0.2.49-beta",
+  "versionCode": 20349,
+  "filename": "zoption-beta-0.2.49.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.49.apk",
+  "sha256": "9ef9dd4b71dae9381f0c4599f7634442eec8da6d82d70c1b711e95e5b01f55cd",
+  "sizeBytes": 139799347,
+  "sizeLabel": "139,799,347 bytes (133.32 MiB)",
+  "releaseDate": "2026-10-08",
+  "releaseDateLabel": "October 8, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "A more compact layout with smaller text and tighter spacing, so more fits on each screen",
-    "The Overview / Analytics switch now sits in the Home header",
-    "Calendar tab, refreshed Goals page, and AI assistant changes from 0.2.46"
+    "Fixes a blank screen on launch in 0.2.48. If you see it, install this update over it.",
+    "Home lists your upcoming subscriptions and is calmer, with fewer cards.",
+    "The Analytics cash flow chart now shows even for a period with no records.",
+    "The status bar stays readable while the Home dropdown is open."
   ]
 }
