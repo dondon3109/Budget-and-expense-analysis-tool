@@ -156,6 +156,7 @@ jobs:
           echo "category=$(jq -r .structured_output.category preview-fix/verdict.json)" >> "${GITHUB_OUTPUT}"
           # One line, so it fits a step output and a Telegram message.
           echo "reason=$(jq -r .structured_output.reason preview-fix/verdict.json | tr '\n' ' ' | cut -c1-500)" >> "${GITHUB_OUTPUT}"
+          echo "::notice::Sorted as $(jq -r .structured_output.category preview-fix/verdict.json): $(jq -r .structured_output.reason preview-fix/verdict.json | tr '\n' ' ' | cut -c1-500)"
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

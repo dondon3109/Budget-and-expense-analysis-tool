@@ -113,6 +113,8 @@
   --amber-soft: #fcefd9;
   --plum: #7b5bd6;
   --plum-soft: #eee8fb;
+  /* --plum on --plum-soft is 4.08:1 at 12px; badge text needs 4.5:1. */
+  --plum-text: #6a46c4;
   --contrast-bg: #0c1512;
   --contrast-text: #f4f7f5;
   --contrast-muted: #a9c9bc;

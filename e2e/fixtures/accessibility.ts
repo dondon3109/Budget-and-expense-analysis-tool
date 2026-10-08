@@ -279,6 +279,15 @@ export async function auditAppRouteApiState(
   state: "pending" | "failed",
 ): Promise<Finding[]> {
   await page.route("**/api/**", (request) => {
+    // The private app sends a failed onboarding or settings load to /onboarding, so the route
+    // under test never shows. Let those answer and fail only the data behind the page.
+    if (
+      state === "failed" &&
+      /\/api\/app\/(identity|onboarding|settings)$/.test(request.request().url())
+    ) {
+      void request.continue();
+      return;
+    }
     if (state === "failed") void request.abort();
     // "pending": never fulfil, so the request hangs and the placeholders persist.
   });

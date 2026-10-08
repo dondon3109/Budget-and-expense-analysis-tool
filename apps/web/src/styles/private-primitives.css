@@ -181,7 +181,7 @@
 }
 
 .kind-badge.transfer {
-  color: var(--plum);
+  color: var(--plum-text, var(--plum));
   border-color: color-mix(in srgb, var(--plum) 18%, transparent);
   background: var(--plum-soft);
 }
