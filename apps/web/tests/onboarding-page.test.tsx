@@ -94,14 +94,15 @@ describe("OnboardingPage", () => {
   it("walks the three steps and lands on the dashboard", async () => {
     renderPage();
 
-    const select = await screen.findByRole("combobox", { name: "Base currency" });
-    expect(select).toHaveValue("PHP");
-    expect(screen.getByRole("option", { name: "PHP - Philippine Peso" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "USD - US Dollar" })).toBeInTheDocument();
+    const trigger = await screen.findByRole("button", { name: /Base currency/ });
+    expect(trigger).toHaveTextContent("PHP Philippine Peso");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("radio", { name: /PHP.*Philippine Peso/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /USD.*US Dollar/ })).not.toBeChecked();
     expect(screen.getByText(/change it later in Account Settings/)).toBeInTheDocument();
     expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Base currency");
 
-    fireEvent.change(select, { target: { value: "USD" } });
+    fireEvent.click(screen.getByRole("radio", { name: /USD.*US Dollar/ }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm currency" }));
     await waitFor(() =>
       expect(saveOnboardingCurrency).toHaveBeenCalledWith(expect.anything(), { currency: "USD" }),
@@ -150,10 +151,11 @@ describe("OnboardingPage", () => {
     expect(await screen.findByLabelText("USD")).toHaveTextContent("$");
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
 
-    const select = await screen.findByRole("combobox", { name: "Base currency" });
-    expect(select).toHaveValue("USD");
+    const trigger = await screen.findByRole("button", { name: /Base currency/ });
+    expect(trigger).toHaveTextContent("USD US Dollar");
+    fireEvent.click(trigger);
 
-    fireEvent.change(select, { target: { value: "PHP" } });
+    fireEvent.click(screen.getByRole("radio", { name: /PHP.*Philippine Peso/ }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm currency" }));
     await waitFor(() => expect(screen.getByLabelText("PHP")).toHaveTextContent("₱"));
   });
@@ -223,7 +225,7 @@ describe("OnboardingPage", () => {
     );
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "currency", currency: "PHP" });
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
   });
 
   it("resumes on the saved step after a refresh", async () => {
@@ -245,7 +247,7 @@ describe("OnboardingPage", () => {
       vi.mocked(getGoalProfile).mockResolvedValue(unset);
     });
 
-    it("shows the goal first, records it once, and saves the picks before thanking the user", async () => {
+    it("shows the goal first, records it once, and saves the picks before moving on", async () => {
       renderPage();
 
       expect(await screen.findByRole("group", { name: "Your goals" })).toBeInTheDocument();
@@ -266,14 +268,7 @@ describe("OnboardingPage", () => {
           otherText: "",
         }),
       );
-      expect(await screen.findByRole("heading", { name: "Thank you!" })).toBeInTheDocument();
-      expect(screen.getByRole("status")).toHaveTextContent(
-        "Thanks for taking a moment to tell us.",
-      );
-      expect(screen.queryByRole("combobox", { name: "Base currency" })).not.toBeInTheDocument();
-
-      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
 
     it("needs at least one goal before Continue", async () => {
@@ -291,7 +286,7 @@ describe("OnboardingPage", () => {
 
       fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
       await waitFor(() => expect(skipGoal).toHaveBeenCalledTimes(1));
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
 
     it("continues even when the skip request fails", async () => {
@@ -299,24 +294,23 @@ describe("OnboardingPage", () => {
       renderPage();
 
       fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
 
-    it("skips without thanking, since nothing was answered", async () => {
+    it("skips straight to the currency step", async () => {
       renderPage();
 
       fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
-      expect(screen.queryByText("Thank you!")).not.toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
 
-    it("continues without thanking when saving the goals fails", async () => {
+    it("continues when saving the goals fails", async () => {
       vi.mocked(saveGoals).mockRejectedValue(new Error("offline"));
       renderPage();
 
       fireEvent.click(await screen.findByRole("checkbox", { name: "Just looking around" }));
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-      expect(await screen.findByRole("combobox", { name: "Base currency" })).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
 
     it("saves the optional note with Other", async () => {
@@ -335,7 +329,7 @@ describe("OnboardingPage", () => {
           otherText: "Plan a wedding",
         }),
       );
-      expect(await screen.findByRole("heading", { name: "Thank you!" })).toBeInTheDocument();
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
 
     it("never shows a finished workspace the goal", async () => {
@@ -351,7 +345,7 @@ describe("OnboardingPage", () => {
       renderPage();
 
       expect(
-        await screen.findByRole("combobox", { name: "Base currency" }, { timeout: 4000 }),
+        await screen.findByRole("button", { name: /Base currency/ }, { timeout: 4000 }),
       ).toBeInTheDocument();
       expect(markGoalShown).not.toHaveBeenCalled();
     });

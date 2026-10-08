@@ -5,11 +5,13 @@ import {
   type AssistantTurnResult,
 } from "@zoption/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Brain, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { useAssistantSession } from "../assistant/AssistantSessionProvider";
 import { useAuth } from "../auth/AuthProvider";
+import { AssistantOptionsMenu } from "../components/assistant/AssistantOptionsMenu";
 import { AssistantComposer } from "../components/assistant/AssistantComposer";
 import { AssistantConsent } from "../components/assistant/AssistantConsent";
 import { AssistantConversation } from "../components/assistant/AssistantConversation";
@@ -19,11 +21,9 @@ import { AssistantThreadList } from "../components/assistant/AssistantThreadList
 import { AssistantVoiceControl } from "../components/assistant/AssistantVoiceControl";
 import { AssistantVoiceConversation } from "../components/assistant/AssistantVoiceConversation";
 import { BillingLimitDialog } from "../components/billing/BillingLimitDialog";
-import { PlanUsageIndicator } from "../components/billing/PlanUsageIndicator";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
-import { ThemeToggle } from "../components/theme/ThemeToggle";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   confirmAssistantAction,
@@ -57,6 +57,7 @@ export function AssistantPage() {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const billingQuery = useBillingSummary(workspace);
   const goal = useGoalProfile(workspace).data?.goal ?? null;
   const [liveText, setLiveText] = useState("");
@@ -375,24 +376,12 @@ export function AssistantPage() {
       </AppShell>
     );
   }
-  if (
+  // Consent is a blocking modal over the chat, so the page behind it is the real assistant.
+  const needsConsent =
     !preferences.data?.consentedAt ||
-    preferences.data.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION
-  ) {
-    return (
-      <AppShell>
-        <div className="assistant-page consent-view">
-          <AssistantConsent
-            accepting={consentMutation.isPending}
-            error={consentMutation.error?.message}
-            onAccept={() => consentMutation.mutateAsync()}
-          />
-        </div>
-      </AppShell>
-    );
-  }
-
-  const identityRequired = !preferences.data?.assistantName || !preferences.data?.userPreferredName;
+    preferences.data.consentVersion !== CURRENT_ASSISTANT_CONSENT_VERSION;
+  const identityRequired =
+    !needsConsent && (!preferences.data?.assistantName || !preferences.data?.userPreferredName);
   const assistantName = preferences.data?.assistantName ?? "Your assistant";
   const profileDisplayName =
     typeof user?.user_metadata?.display_name === "string"
@@ -434,7 +423,6 @@ export function AssistantPage() {
       <div className="assistant-page">
         <div className={`assistant-workspace ${historyOpen ? "history-open" : ""}`}>
           <AssistantThreadList
-            assistantName={assistantName}
             threads={threads.data?.items ?? []}
             activeThreadId={activeThreadId}
             busy={busy}
@@ -446,7 +434,6 @@ export function AssistantPage() {
             }}
             onNew={startNew}
             onVoice={startVoice}
-            onEditIdentity={() => setEditingIdentity(true)}
             onDelete={(threadIds) => deleteMutation.mutateAsync(threadIds)}
             onDeleteAll={() => deleteAllMutation.mutateAsync()}
           />
@@ -477,39 +464,15 @@ export function AssistantPage() {
                 <span className="assistant-history-label">History</span>
               </button>
               <div className="assistant-chat-status">
-                <div className="assistant-chat-identity">
-                  <h1 className="assistant-chat-title">AI Financial Assistant</h1>
-                  <p className="assistant-chat-meta">{assistantName}</p>
-                </div>
+                <h1 className="sr-only">AI Financial Assistant</h1>
               </div>
-              {aiUsage && (
-                <div className="assistant-chat-usage">
-                  <PlanUsageIndicator
-                    meter
-                    label="AI actions"
-                    used={aiUsage.used}
-                    limit={aiUsage.limit}
-                    showUpgrade={isFreePlan}
-                  />
-                </div>
-              )}
-              <div className="assistant-chat-corner">
-                <ThemeToggle variant="segmented" />
-                <button
-                  type="button"
-                  className="assistant-memory-trigger"
-                  aria-label="Memory"
-                  onClick={() => setMemoryOpen(true)}
-                >
-                  <Brain size={12} aria-hidden="true" />{" "}
-                  <span className="assistant-memory-label">Memory</span>
-                </button>
-              </div>
+              <AssistantOptionsMenu
+                usage={aiUsage}
+                showUpgrade={isFreePlan}
+                onOpenMemory={() => setMemoryOpen(true)}
+                onEditIdentity={() => setEditingIdentity(true)}
+              />
             </div>
-            <p className="assistant-education-notice">
-              Educational budgeting information only. Zoption does not provide personalized
-              financial, investment, tax, legal, or insurance advice.
-            </p>
             {messages.isError ? (
               <div className="assistant-chat-error" role="alert">
                 <strong>This chat could not be loaded.</strong>
@@ -608,6 +571,14 @@ export function AssistantPage() {
       )}
       {memoryOpen && (
         <AssistantMemoryPanel workspace={workspace} open onClose={() => setMemoryOpen(false)} />
+      )}
+      {needsConsent && (
+        <AssistantConsent
+          accepting={consentMutation.isPending}
+          error={consentMutation.error?.message}
+          onAccept={() => consentMutation.mutateAsync()}
+          onDecline={() => navigate("/app")}
+        />
       )}
     </AppShell>
   );

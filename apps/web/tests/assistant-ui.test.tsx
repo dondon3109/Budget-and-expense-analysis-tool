@@ -98,15 +98,22 @@ function renderRouteHarness() {
   const queryClient = createQueryClient();
   const result = render(
     <QueryClientProvider client={queryClient}>
-      <AssistantSessionProvider>
-        <AssistantRouteHarness />
-      </AssistantSessionProvider>
+      <MemoryRouter>
+        <AssistantSessionProvider>
+          <AssistantRouteHarness />
+        </AssistantSessionProvider>
+      </MemoryRouter>
     </QueryClientProvider>,
   );
   return { ...result, queryClient };
 }
 
 afterEach(cleanup);
+
+/** The usage meter, theme, and Memory live in the header's "More options" popover. */
+async function openOptions() {
+  fireEvent.click(await screen.findByRole("button", { name: "More options" }));
+}
 
 describe("assistant UI", () => {
   beforeEach(() => {
@@ -179,10 +186,10 @@ describe("assistant UI", () => {
     render(<AssistantConsent accepting={false} onAccept={accept} />);
     expect(screen.getByText(/only the financial data needed/i)).toBeInTheDocument();
     expect(screen.getByText(/PostHog receives operational metadata only/i)).toBeInTheDocument();
-    expect(screen.getByText(/PostHog receives model, latency, token-count/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/payoff preference are kept until you delete them/i),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/privacy-policy"),
+    );
     expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Accept and continue" }));
     expect(accept).toHaveBeenCalledOnce();
@@ -518,16 +525,14 @@ describe("assistant UI", () => {
     expect(send).toHaveBeenCalledOnce();
   });
 
-  it("gives the assistant route a visible page heading in the chat topbar", async () => {
+  it("keeps a screen-reader page heading while the topbar shows no title or disclaimer", async () => {
     renderPage();
 
     const heading = await screen.findByRole("heading", {
       level: 1,
       name: "AI Financial Assistant",
     });
-    // Regression: this was the only authenticated route whose <h1> was sr-only.
-    expect(heading).not.toHaveClass("sr-only");
-    expect(heading).toHaveClass("assistant-chat-title");
+    expect(heading).toHaveClass("sr-only");
     expect(heading.closest(".assistant-chat-status")).not.toBeNull();
     expect(
       screen.queryByRole("heading", { name: "Your MONEY, explained." }),
@@ -537,27 +542,26 @@ describe("assistant UI", () => {
         "Ask about your records, budgets, goals, and debt. Zoption verifies the numbers.",
       ),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/educational budgeting information only/i)).toBeInTheDocument();
+    expect(screen.queryByText(/educational budgeting information only/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("progressbar", { name: "AI actions" })).not.toBeInTheDocument();
+    await openOptions();
     const usage = await screen.findByRole("progressbar", {
       name: "AI actions",
     });
     expect(usage).toHaveAttribute("aria-valuenow", "1");
     expect(usage).toHaveAttribute("aria-valuemax", "500");
 
-    const topline = usage.closest(".assistant-chat-topline");
+    const topline = heading.closest(".assistant-chat-topline");
     expect(topline).not.toBeNull();
-    expect(Array.from(topline!.children)).toHaveLength(4);
+    expect(Array.from(topline!.children)).toHaveLength(3);
     expect(topline!.children[0]).toHaveClass("assistant-history-toggle");
     expect(topline!.children[0]).toHaveAttribute("aria-controls", "assistant-chat-history");
     expect(topline!.children[1]).toHaveClass("assistant-chat-status");
-    expect(within(topline!.children[1] as HTMLElement).getByText("Aster")).toBeInTheDocument();
-    expect(topline!.children[2]).toHaveClass("assistant-chat-usage");
-    const usageContainer = topline!.querySelector<HTMLElement>(":scope > .assistant-chat-usage");
-    expect(usageContainer).not.toBeNull();
-    expect(within(usageContainer!).getByRole("progressbar")).toBe(usage);
-    expect(topline!.children[3]).toHaveClass("assistant-chat-corner");
+    expect(topline!.children[2]).toHaveClass("assistant-options");
     expect(
-      within(topline!.children[3] as HTMLElement).getByRole("button", { name: "Memory" }),
+      within(usage.closest(".assistant-options") as HTMLElement).getByRole("button", {
+        name: "Memory",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -585,6 +589,7 @@ describe("assistant UI", () => {
     });
     renderPage();
 
+    await openOptions();
     const usage = await screen.findByRole("progressbar", {
       name: "AI actions",
     });
@@ -615,6 +620,7 @@ describe("assistant UI", () => {
     });
     renderPage();
 
+    await openOptions();
     const usage = await screen.findByRole("progressbar", {
       name: "AI actions",
     });
@@ -700,7 +706,8 @@ describe("assistant UI", () => {
         userPreferredName: "Sam",
       }),
     );
-    expect(await screen.findByRole("heading", { name: "Chats with Aster" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Zoption" })).toBeInTheDocument();
+    await openOptions();
     fireEvent.click(screen.getByRole("button", { name: "Edit assistant names" }));
     expect(await screen.findByRole("dialog", { name: "Edit assistant names" })).toBeInTheDocument();
   });
@@ -717,9 +724,7 @@ describe("assistant UI", () => {
     expect(historyToggle).toHaveAttribute("aria-controls", "assistant-chat-history");
     expect(historyToggle).toHaveAttribute("aria-expanded", "false");
     expect(newChat).toHaveTextContent("New chat");
-    expect(
-      within(history).getByRole("button", { name: "Edit assistant names" }),
-    ).toBeInTheDocument();
+    expect(within(history).getByRole("heading", { name: "Zoption" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(thread.title).closest("button")!);
     const composer = await screen.findByRole("textbox", { name: "Ask about your finances" });

@@ -28,7 +28,7 @@
 /* Drop the keyboard hints as the composer narrows (the page sits beside a sidebar and
    history column, and dev tools can squeeze it further). */
 @container (max-width: 640px) {
-  .assistant-composer .assistant-composer-shortcut {
+  .assistant-composer-area .assistant-composer-shortcut {
     display: none;
   }
 }

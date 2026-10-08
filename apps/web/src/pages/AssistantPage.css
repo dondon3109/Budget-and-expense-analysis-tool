@@ -16,15 +16,10 @@
 }
 
 /* Fill the whole main column (footer hidden) so the chat takes all the space. */
-.assistant-page:not(.consent-view) {
+.assistant-page {
   flex: 1 1 auto;
   min-height: 0;
   height: 100%;
-}
-
-.assistant-page.consent-view {
-  min-height: 100vh;
-  justify-content: center;
 }
 
 /* Remove the app footer on the assistant page so the chat fills the height.
@@ -86,6 +81,9 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-history-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
@@ -93,6 +91,12 @@ main:has(.assistant-page) > .legal-footer,
   font-weight: 600;
   line-height: 1.1;
   text-wrap: balance;
+}
+
+.assistant-history-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
 }
 
 .assistant-history-actions {
@@ -184,23 +188,6 @@ main:has(.assistant-page) > .legal-footer,
   border-color: var(--action);
   background: color-mix(in srgb, var(--action) 6%, var(--surface));
   transform: translateY(-1px);
-}
-
-.assistant-thread-kind-badge {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--action) 10%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--action) 25%, transparent);
-  color: var(--action-strong);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 620;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  vertical-align: middle;
 }
 
 .assistant-thread-list {
@@ -519,21 +506,20 @@ main:has(.assistant-page) > .legal-footer,
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   background: var(--paper);
 }
 
 /* --- Topbar --- */
 .assistant-chat-topline {
-  min-height: 64px;
-  padding: 12px 20px;
+  min-height: 0;
+  padding: 12px 20px 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  grid-template-areas: "status usage retention";
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "status options";
   align-items: center;
   gap: 16px;
   color: var(--muted);
-  border-bottom: 1px solid var(--line);
   background: var(--paper);
   font-size: 12px;
   font-weight: 650;
@@ -550,47 +536,13 @@ main:has(.assistant-page) > .legal-footer,
 
 /* Route heading: compact enough for the topbar, but a real visible <h1> so the
    assistant route is not the only authenticated page without one. */
-.assistant-chat-identity {
-  min-width: 0;
-  display: grid;
-  gap: 1px;
-}
-
-.assistant-chat-title {
-  margin: 0;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--ink);
-  font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.assistant-chat-meta {
-  margin: 0;
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-weight: 580;
-  line-height: 1.3;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* plan usage meter sits in the topbar centre — slim label + track + % row,
-   matching the Open Design mockup. */
+/* Plan usage meter inside the options popover — slim label + track + % row. */
 .assistant-chat-usage {
-  grid-area: usage;
   min-width: 0;
-  justify-self: center;
 }
 
 .assistant-chat-usage .plan-usage-indicator.meter {
-  width: clamp(240px, 27vw, 320px);
+  width: 100%;
   min-width: 0;
   display: grid;
   gap: 6px;
@@ -696,53 +648,72 @@ main:has(.assistant-page) > .legal-footer,
   color: var(--success);
 }
 
-.assistant-chat-corner {
-  grid-area: retention;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
+.assistant-options {
+  grid-area: options;
+  position: relative;
 }
 
-.assistant-memory-trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  padding: 0 12px;
-  color: var(--action-strong);
+.assistant-options-trigger {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
   border: 1px solid var(--line-strong);
   border-radius: 999px;
   background: var(--surface);
-  font-size: 11px;
-  font-weight: 700;
   cursor: pointer;
-  transition:
-    border-color 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.assistant-memory-trigger:hover {
+.assistant-options-trigger:hover,
+.assistant-options-trigger[aria-expanded="true"] {
+  color: var(--action-strong);
   border-color: var(--action);
 }
 
-/* --- Education disclaimer strip --- */
-.assistant-education-notice {
-  margin: 0;
-  padding: 8px 20px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-  font-size: 11px;
-  line-height: 1.45;
-  text-align: center;
+.assistant-options-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  width: min(300px, calc(100vw - 24px));
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 12px 32px var(--shadow);
 }
 
-.assistant-education-notice strong {
+.assistant-options-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   color: var(--ink);
-  font-weight: 580;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.assistant-options-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--action-strong);
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.assistant-options-item:hover {
+  border-color: var(--action);
 }
 
 /* --- Error states --- */
@@ -788,9 +759,9 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-empty > span,
 .assistant-empty-core-beacon,
 .assistant-consent-mark {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 20px;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 12px;
   display: grid;
   place-items: center;
   color: var(--contrast-text);
@@ -953,17 +924,20 @@ main:has(.assistant-page) > .legal-footer,
    MESSAGE THREAD
    ============================================================ */
 .assistant-messages {
-  padding: 26px clamp(20px, 5vw, 64px) 8vh;
+  /* Same side inset as the composer so the messages and the box share one edge. */
+  padding: 26px clamp(16px, 4vw, 48px) 8vh;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   gap: 26px;
   overflow-y: auto;
 }
 
+/* Rows size to their text up to a readable measure; assistant rows hug the left edge and
+   user rows the right, so a short reply is a short bubble. */
 .assistant-message {
-  width: 100%;
-  max-width: min(100%, 820px);
+  width: fit-content;
+  max-width: min(100%, 720px);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: flex-start;
@@ -1397,10 +1371,15 @@ main:has(.assistant-page) > .legal-footer,
 /* ============================================================
    COMPOSER — ChatGPT/Claude-style
    ============================================================ */
+/* The hint row and character count sit under the box, so the box holds only the controls and
+   its text and icons stay centered. The area is the container the narrow-width rule queries. */
+.assistant-composer-area {
+  container-type: inline-size;
+  margin: 0 clamp(16px, 4vw, 48px) 12px;
+}
+
 .assistant-composer {
   position: relative;
-  container-type: inline-size;
-  margin: 0 clamp(16px, 4vw, 48px) 20px;
   padding: 10px 10px 8px 12px;
   display: flex;
   flex-wrap: wrap;
@@ -1662,8 +1641,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-composer-note {
-  flex: 1 0 100%;
-  padding: 0 2px;
+  padding: 6px 14px 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -1729,22 +1707,28 @@ main:has(.assistant-page) > .legal-footer,
    CONSENT VIEW
    ============================================================ */
 .assistant-consent {
-  width: min(680px, 100%);
-  margin: auto;
-  padding: clamp(28px, 5vw, 48px);
+  width: min(560px, 100%);
+  padding: clamp(20px, 4vw, 28px);
   text-align: center;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--paper);
-  box-shadow: 0 18px 48px var(--shadow);
+}
+
+.assistant-consent-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.assistant-consent-actions .button {
+  width: auto;
+  margin-top: 0;
 }
 
 .assistant-consent h1 {
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: clamp(30px, 5vw, 43px);
-  line-height: 1.08;
+  font-size: clamp(24px, 4vw, 30px);
+  line-height: 1.12;
 }
 
 .assistant-consent-intro {
@@ -1756,7 +1740,7 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-consent-points {
-  margin-top: 24px;
+  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
@@ -1764,20 +1748,13 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-consent-points article {
-  padding: 15px;
+  padding: 12px;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--surface-soft);
-}
-
-.assistant-consent-points .memory-point {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-width: 580px;
-  justify-self: center;
 }
 
 .assistant-consent-points svg {
@@ -1792,12 +1769,19 @@ main:has(.assistant-page) > .legal-footer,
 .assistant-consent-points p,
 .assistant-consent-retention {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.55;
 }
 
 .assistant-consent-points p {
   margin: 4px 0 0;
+}
+
+.assistant-consent-retention a {
+  color: var(--action);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .assistant-consent-retention {
@@ -2320,7 +2304,6 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-new-chat,
   .assistant-new-voice-chat,
   .assistant-history-edit,
-  .assistant-memory-trigger,
   .assistant-memory-clear-btn,
   .assistant-memory-panel .style-choice,
   .assistant-memory-panel .icon-button.compact {
@@ -2363,11 +2346,8 @@ main:has(.assistant-page) > .legal-footer,
 
   .assistant-chat-topline {
     padding: 10px 18px 14px;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-template-areas:
-      "status retention"
-      "usage usage";
-    row-gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "status options";
   }
 }
 
@@ -2390,11 +2370,6 @@ main:has(.assistant-page) > .legal-footer,
     min-height: 0;
   }
 
-  /* The chat fits the clipped column; the taller consent copy must scroll inside it. */
-  .app-shell:has(.assistant-page.consent-view) .app-main {
-    overflow-y: auto;
-  }
-
   .assistant-page {
     width: 100%;
     min-height: calc(
@@ -2404,14 +2379,10 @@ main:has(.assistant-page) > .legal-footer,
     padding: 0;
   }
 
-  .assistant-page:not(.consent-view) {
+  .assistant-page {
     height: 100%;
     min-height: 0;
     box-sizing: border-box;
-  }
-
-  .assistant-page.consent-view {
-    padding: 0 14px;
   }
 
   .assistant-history-toggle {
@@ -2509,83 +2480,15 @@ main:has(.assistant-page) > .legal-footer,
   .assistant-chat-topline {
     min-height: 0;
     padding: 8px 10px;
-    grid-template-columns: auto minmax(0, 1fr) auto auto;
-    grid-template-areas: "history status retention corner";
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "history status options";
     align-items: center;
     column-gap: 10px;
   }
 
-  /* Memory stays reachable on phones as an icon button; the retention note and theme
-     switch give up their room (the shell already offers the theme switch). */
-  .assistant-chat-corner {
-    grid-area: corner;
-  }
-
-  .assistant-chat-corner .theme-sw,
-  .assistant-memory-label {
-    display: none;
-  }
-
-  .assistant-memory-trigger {
+  .assistant-options-trigger {
     width: 44px;
-    min-height: 44px;
-    padding: 0;
-    justify-content: center;
-  }
-
-  .assistant-memory-trigger svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  /* On mobile, replace the Memory button with a compact plan-limit usage
-     pill so we keep the same single-row topline and preserve chat space. */
-  .assistant-chat-usage {
-    grid-area: retention;
-    display: block;
-    justify-self: end;
-    min-width: 0;
-  }
-
-  .assistant-chat-usage .plan-usage-indicator.meter {
-    width: auto;
-    min-width: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 11px;
-    border-radius: 999px;
-    white-space: nowrap;
-  }
-
-  .assistant-chat-usage .plan-usage-summary {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-width: 0;
-  }
-
-  .assistant-chat-usage .plan-usage-label {
-    font-size: 11px;
-  }
-
-  .assistant-chat-usage .plan-usage-track {
-    width: 34px;
-    height: 5px;
-  }
-
-  .assistant-chat-usage .plan-usage-value {
-    font-size: 11px;
-  }
-
-  .assistant-chat-usage .plan-usage-meta {
-    display: none;
-  }
-
-  .assistant-education-notice {
-    padding: 5px 12px;
-    font-size: 11px;
-    line-height: 1.35;
+    height: 44px;
   }
 
   .assistant-empty {
@@ -2654,8 +2557,11 @@ main:has(.assistant-page) > .legal-footer,
     max-width: 94%;
   }
 
-  .assistant-composer {
+  .assistant-composer-area {
     margin: 0 8px 6px;
+  }
+
+  .assistant-composer {
     padding: 8px 8px 6px 12px;
     border-radius: 16px;
   }

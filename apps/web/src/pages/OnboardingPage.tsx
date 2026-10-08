@@ -1,5 +1,4 @@
 import {
-  currencies,
   currencyMetadata,
   onboardingCashSchema,
   parseAmountToMinor,
@@ -11,6 +10,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatus";
+import { CurrencyPicker } from "../components/onboarding/CurrencyPicker";
 import { GoalPicker } from "../components/onboarding/GoalPicker";
 import { isApiRequestError } from "../lib/api";
 import { userWorkspace, type AuthenticatedWorkspace } from "../lib/workspace";
@@ -54,16 +54,13 @@ function checkAmount(value: string): { error: string } | { amountMinor: number }
 }
 
 /**
- * Never blocks: a failed save or skip still lets the user continue to the next step. A saved
- * answer goes to `onSaved` so the page can thank the user before moving on.
+ * Never blocks: a saved answer, a failed save, and a skip all move on to the next step.
  */
 function GoalStep({
   workspace,
-  onSaved,
   onDone,
 }: {
   workspace: AuthenticatedWorkspace;
-  onSaved: () => void;
   onDone: () => void;
 }) {
   const saveGoal = useSaveGoals(workspace);
@@ -81,7 +78,7 @@ function GoalStep({
         otherText={null}
         disabled={saveGoal.isPending || skipGoal.isPending}
         confirmLabel="Continue"
-        onChoose={(choice) => saveGoal.mutateAsync(choice).then(onSaved, onDone)}
+        onChoose={(choice) => saveGoal.mutateAsync(choice).then(onDone, onDone)}
       />
       <button
         className="button secondary"
@@ -149,7 +146,6 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const [steppedBack, setSteppedBack] = useState(false);
   const [finished, setFinished] = useState(false);
   const [goalDismissed, setGoalDismissed] = useState(false);
-  const [goalThanked, setGoalThanked] = useState(false);
   const [openingBalanceSkipped, setOpeningBalanceSkipped] = useState(false);
 
   if (stateQuery.isPending || (stateQuery.data?.step === "currency" && goalQuery.isPending))
@@ -187,23 +183,15 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   if (state.step === "complete" && !finished && !finishing) return <Navigate to="/app" replace />;
 
   // Only a new workspace that has neither chosen nor skipped sees the goal, and only until it
-  // answers once here. A saved answer is thanked first, so the step outlives the saved goal. If
-  // the goal profile fails to load, setup carries on without it.
+  // answers once here. If the goal profile fails to load, setup carries on without it.
   const goalProfile = goalQuery.data;
   const askGoal =
     state.step === "currency" &&
     !finished &&
     !goalDismissed &&
-    (goalThanked || (goalProfile?.goal === null && !goalProfile.skipped));
-  const view = finished
-    ? "complete"
-    : askGoal
-      ? goalThanked
-        ? "thanks"
-        : "goal"
-      : steppedBack
-        ? "currency"
-        : state.step;
+    goalProfile?.goal === null &&
+    !goalProfile.skipped;
+  const view = finished ? "complete" : askGoal ? "goal" : steppedBack ? "currency" : state.step;
   const selected = pickedCurrency ?? state.currency;
   const { symbol } = currencyMetadata[state.currency];
   const amountCheck = checkAmount(amount);
@@ -242,13 +230,11 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
       title={
         view === "goal"
           ? "What brings you to Zoption?"
-          : view === "thanks"
-            ? "Thank you!"
-            : view === "currency"
-              ? "Choose your base currency"
-              : view === "cash"
-                ? "How much cash do you have?"
-                : "Your first account is ready"
+          : view === "currency"
+            ? "Choose your base currency"
+            : view === "cash"
+              ? "How much cash do you have?"
+              : "Your first account is ready"
       }
       description={
         view === "complete"
@@ -256,55 +242,18 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
           : "A few quick questions, then you can start tracking."
       }
     >
-      <Stepper
-        current={
-          view === "goal" || view === "thanks"
-            ? 0
-            : view === "currency"
-              ? 1
-              : view === "cash"
-                ? 2
-                : 4
-        }
-      />
+      <Stepper current={view === "goal" ? 0 : view === "currency" ? 1 : view === "cash" ? 2 : 4} />
 
-      {view === "goal" && (
-        <GoalStep
-          workspace={workspace}
-          onSaved={() => setGoalThanked(true)}
-          onDone={() => setGoalDismissed(true)}
-        />
-      )}
-
-      {view === "thanks" && (
-        <div className="auth-form">
-          <p className="onboarding-help" role="status">
-            Thanks for taking a moment to tell us. We've set Zoption up around what matters to you.
-          </p>
-          <button className="button primary" type="button" onClick={() => setGoalDismissed(true)}>
-            Continue
-          </button>
-        </div>
-      )}
+      {view === "goal" && <GoalStep workspace={workspace} onDone={() => setGoalDismissed(true)} />}
 
       {view === "currency" && (
         <form className="auth-form" onSubmit={(event) => void confirmCurrency(event)}>
-          <label htmlFor={currencyId} className="onboarding-field">
-            <span>Base currency</span>
-            <select
-              id={currencyId}
-              value={selected}
-              disabled={saveCurrency.isPending}
-              aria-describedby={`${currencyId}-help`}
-              onChange={(event) => setPickedCurrency(event.target.value as Currency)}
-            >
-              {currencies.map((code) => (
-                <option key={code} value={code}>
-                  {code} - {currencyMetadata[code].name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <CurrencyPicker
+            value={selected}
+            disabled={saveCurrency.isPending}
+            describedBy={`${currencyId}-help`}
+            onChange={setPickedCurrency}
+          />
           <p id={`${currencyId}-help`} className="onboarding-help">
             Pick the currency you use most. Amounts in other currencies are calculated relative to
             it. You can change it later in Account Settings.

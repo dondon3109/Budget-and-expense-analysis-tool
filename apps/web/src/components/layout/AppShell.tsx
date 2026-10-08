@@ -134,6 +134,11 @@ export function AppShell({ children }: AppShellProps) {
       ? window.localStorage.getItem("zoption:nav-collapsed") === "1"
       : false,
   );
+  // The assistant page has its own history rail, so the sidebar starts collapsed there; opening
+  // it is per visit and never overwrites the saved preference.
+  const onAssistantRoute = location.pathname.startsWith("/app/assistant");
+  const [assistantNavOpen, setAssistantNavOpen] = useState(false);
+  const navIsCollapsed = onAssistantRoute ? !assistantNavOpen : navCollapsed;
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
   const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation>();
@@ -155,6 +160,7 @@ export function AppShell({ children }: AppShellProps) {
 
   useEffect(() => {
     setMenuOpen(false);
+    setAssistantNavOpen(false);
   }, [location.pathname]);
 
   // useFocusTrap hands focus back when it unmounts, but React re-applies the pre-commit
@@ -212,7 +218,7 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className={`app-shell ${navCollapsed ? "nav-collapsed" : ""}`}>
+    <div className={`app-shell ${navIsCollapsed ? "nav-collapsed" : ""}`}>
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -264,16 +270,20 @@ export function AppShell({ children }: AppShellProps) {
           <button
             className="icon-button nav-collapse-toggle"
             type="button"
-            onClick={() =>
+            onClick={() => {
+              if (onAssistantRoute) {
+                setAssistantNavOpen((open) => !open);
+                return;
+              }
               setNavCollapsed((collapsed) => {
                 const next = !collapsed;
                 window.localStorage.setItem("zoption:nav-collapsed", next ? "1" : "0");
                 return next;
-              })
-            }
-            aria-pressed={navCollapsed}
+              });
+            }}
+            aria-pressed={navIsCollapsed}
             aria-controls="primary-navigation"
-            aria-label={navCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={navIsCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <Menu size={20} />
           </button>

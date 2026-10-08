@@ -85,6 +85,11 @@ function shiftDays(value: string, amount: number): string {
   return formatIsoDate(date);
 }
 
+/** The Monday on or before the date: weeks run Monday to Sunday. */
+function weekStart(value: string): string {
+  return shiftDays(value, -((dateFromIso(value).getUTCDay() + 6) % 7));
+}
+
 function monthStart(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, "0")}-01`;
 }
@@ -220,6 +225,13 @@ function relativePeriod(
     const day = shiftDays(currentDate, -1);
     return { period: { from: day, to: day, label: "yesterday" } };
   }
+  if (/\b(?:this week|current week|ngayong linggo|sa linggong ito)\b/i.test(message)) {
+    return { period: { from: weekStart(currentDate), to: currentDate, label: "this week" } };
+  }
+  if (/\b(?:(?:last|previous) week|(?:nakaraang|noong nakaraang|huling) linggo)\b/i.test(message)) {
+    const from = shiftDays(weekStart(currentDate), -7);
+    return { period: { from, to: shiftDays(from, 6), label: "last week" } };
+  }
   if (
     /\b(?:this month|current month|month[ -]to[ -]date|mtd|ngayong buwan|kasalukuyang buwan|sa buwang ito)\b/i.test(
       message,
@@ -290,6 +302,27 @@ function relativePeriod(
         from: shiftDays(currentDate, -(count - 1)),
         to: currentDate,
         label: `past ${count} days`,
+      },
+    };
+  }
+
+  const weeks =
+    /\b(?:past|last)\s+(\d{1,3})\s+weeks?\b/i.exec(message) ??
+    /\b(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+(\d{1,3})\s+linggo\b/i.exec(message);
+  if (weeks) {
+    const count = Number(weeks[1]);
+    if (count < 1 || count > 104) {
+      return {
+        clarification: isTagalogMessage(message)
+          ? "Pumili ng panahon sa pagitan ng 1 at 104 linggo."
+          : "Choose a period between 1 and 104 weeks.",
+      };
+    }
+    return {
+      period: {
+        from: shiftDays(currentDate, -(count * 7 - 1)),
+        to: currentDate,
+        label: `past ${count} weeks`,
       },
     };
   }

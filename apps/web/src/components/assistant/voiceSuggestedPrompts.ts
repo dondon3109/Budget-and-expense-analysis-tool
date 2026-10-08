@@ -19,10 +19,14 @@ export function voiceSuggestedPrompts(
   voiceLanguage: string,
   goal: PrimaryGoal | null | undefined,
 ): readonly string[] {
+  // Auto and Tagalog interleave both languages so a short list still shows each.
   const defaults =
     voiceLanguage === "en"
       ? VOICE_SUGGESTED_PROMPTS
-      : [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS];
+      : VOICE_SUGGESTED_PROMPTS_TAGALOG.flatMap((tagalog, index) => [
+          VOICE_SUGGESTED_PROMPTS[index]!,
+          tagalog,
+        ]);
   const starter = goalConfigFor(goal).starterPrompt;
   return starter ? [starter, ...defaults.filter((prompt) => prompt !== starter)] : defaults;
 }

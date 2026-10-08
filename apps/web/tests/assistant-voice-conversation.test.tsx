@@ -772,5 +772,13 @@ describe("AssistantVoiceConversation", () => {
         "auto",
       ),
     );
+    // Regression: the recording path is already "thinking" when it hands over the transcript,
+    // and that used to drop the turn so the screen sat on "Checking your records".
+    await waitFor(() =>
+      expect(apiMocks.createAssistantThread).toHaveBeenCalledWith(
+        workspace,
+        expect.objectContaining({ message: "How much did I spend this month?", kind: "voice" }),
+      ),
+    );
   });
 });

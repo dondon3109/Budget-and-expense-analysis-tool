@@ -7,7 +7,7 @@ const AGGREGATE_REQUEST_PATTERN =
 const MONTH_PATTERN =
   /\b(?:jan(?:uary)?|enero|feb(?:ruary)?|pebrero|mar(?:ch)?|marso|apr(?:il)?|abril|mayo?|jun(?:e)?|hunyo|jul(?:y)?|hulyo|aug(?:ust)?|agosto|sep(?:t(?:ember)?)?|set(?:y|i)embre|oct(?:ober)?|oktubre|nov(?:ember)?|nob(?:y|i)embre|dec(?:ember)?|dis(?:y|i)embre)\b/i;
 const RELATIVE_PERIOD_PATTERN =
-  /\b(?:(?:this|last|previous|current|next)\s+(?:day|week|month|quarter|year)|today|yesterday|month[ -]to[ -]date|year[ -]to[ -]date|mtd|ytd|all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|past\s+\d+\s+(?:days?|weeks?|months?|years?)|ngayon|ngayong araw|kahapon|ngayong buwan|nakaraang buwan|noong nakaraang buwan|ngayong taon|nakaraang taon|(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+\d+\s+(?:araw|buwan|taon)|lahat ng transaksyon)\b/i;
+  /\b(?:(?:this|last|previous|current|next)\s+(?:day|week|month|quarter|year)|today|yesterday|month[ -]to[ -]date|year[ -]to[ -]date|mtd|ytd|all[ -]time|all\s+(?:recorded\s+)?history|since\s+(?:i\s+)?started|past\s+\d+\s+(?:days?|weeks?|months?|years?)|ngayon|ngayong araw|kahapon|ngayong buwan|nakaraang buwan|noong nakaraang buwan|ngayong linggo|nakaraang linggo|noong nakaraang linggo|ngayong taon|nakaraang taon|(?:nakalipas|nakaraang|huling)(?:\s+na)?\s+\d+\s+(?:araw|linggo|buwan|taon)|lahat ng transaksyon)\b/i;
 const ISO_DATE_PATTERN = /\b(?:19|20)\d{2}-\d{2}-\d{2}\b/;
 const NUMERIC_DATE_PATTERN = /\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b/;
 const YEAR_PATTERN = /\b(?:19|20)\d{2}\b/;

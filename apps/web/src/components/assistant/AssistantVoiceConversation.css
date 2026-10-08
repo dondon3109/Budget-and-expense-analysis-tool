@@ -1,8 +1,11 @@
 /* Voice conversation surface. Owned by AssistantVoiceConversation: solid
    fills, opacity, and scale only — no gradient washes on this page. */
 
+/* Fixed to the viewport so only the captions scroll and the mic stage is always fully visible. */
 .assistant-voice-conversation {
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--paper);
@@ -234,7 +237,8 @@
 }
 
 .assistant-voice-conversation-captions {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   max-width: 720px;
   width: 100%;
@@ -556,8 +560,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 18px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+  gap: 6px;
+  padding: 12px 20px calc(16px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line);
   background: var(--paper);
 }
@@ -568,7 +572,7 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  height: 32px;
+  height: 22px;
 }
 
 .assistant-voice-wave-bar {
@@ -657,8 +661,8 @@
 /* --- Orb --- */
 .assistant-voice-orb {
   position: relative;
-  width: 104px;
-  height: 104px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   border: 3px solid var(--action);
   background: var(--action);
@@ -931,8 +935,16 @@
   }
 
   .assistant-voice-orb {
-    width: 92px;
-    height: 92px;
+    width: 68px;
+    height: 68px;
+  }
+
+  /* The app header and tab bar sit above and below the voice surface on phones. */
+  .assistant-voice-conversation {
+    height: calc(
+      100dvh - var(--mobile-header-height) - var(--mobile-tab-bar-height) -
+        env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
   }
 
   .assistant-voice-caption-user,
@@ -950,7 +962,7 @@
   }
 
   .assistant-voice-conversation-stage {
-    padding: 14px 14px calc(20px + env(safe-area-inset-bottom, 0px));
-    gap: 10px;
+    padding: 10px 14px 12px;
+    gap: 6px;
   }
 }
