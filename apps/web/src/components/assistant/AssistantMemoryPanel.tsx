@@ -97,8 +97,20 @@ const COACHING_STYLE_OPTIONS: StyleOption<AssistantCoachingStyle>[] = [
   { value: "direct", label: "Direct", hint: "straightforward", icon: Target },
 ];
 
+type DebtStrategy = "avalanche" | "snowball" | null;
+
+const DEBT_STRATEGY_OPTIONS: { value: DebtStrategy; label: string; hint?: string }[] = [
+  { value: "avalanche", label: "Avalanche", hint: "saves interest" },
+  { value: "snowball", label: "Snowball", hint: "quick wins" },
+  { value: null, label: "Auto" },
+];
+
 interface ResponseStyleSectionProps {
   preferences: AssistantMemoryPreferences;
+  /** The debt payoff strategy shown as selected, already resolved against any save in flight. */
+  debtStrategy: DebtStrategy;
+  onDebtStrategyChange: (strategy: DebtStrategy) => void;
+  debtDisabled: boolean;
   /** The save in flight, so the chips answer the click before the request lands. */
   pending?: { responseDetail: AssistantResponseDetail; coachingStyle: AssistantCoachingStyle };
   disabled: boolean;
@@ -109,11 +121,15 @@ interface ResponseStyleSectionProps {
 }
 
 /**
- * Detail level and coaching tone, which the planning page also edits through the same endpoint.
+ * Debt payoff, detail level, and coaching tone. The last two are also edited on the planning
+ * page through the same endpoint.
  * Rendered only once the preferences have loaded, so both values are defined here.
  */
 function ResponseStyleSection({
   preferences,
+  debtStrategy,
+  onDebtStrategyChange,
+  debtDisabled,
   pending,
   disabled,
   onChange,
@@ -124,11 +140,40 @@ function ResponseStyleSection({
   return (
     <section className="assistant-memory-section" aria-labelledby="assistant-memory-style-title">
       <div className="section-title-row">
-        <strong id="assistant-memory-style-title">Response style</strong>
-        <span className="section-help-text">Applies to every answer</span>
+        <strong id="assistant-memory-style-title">Preferences</strong>
       </div>
 
       <div className="assistant-memory-style-card">
+        <div className="style-choice-row">
+          <span className="style-choice-label" id="assistant-memory-debt-label">
+            Debt payoff
+          </span>
+          <div
+            className="style-choice-group"
+            role="radiogroup"
+            aria-labelledby="assistant-memory-debt-label"
+          >
+            {DEBT_STRATEGY_OPTIONS.map((option) => {
+              const selected = debtStrategy === option.value;
+              return (
+                <button
+                  key={option.label}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  className={`style-choice ${selected ? "current" : ""}`}
+                  disabled={debtDisabled}
+                  onClick={() => onDebtStrategyChange(option.value)}
+                >
+                  {selected && <Check size={13} aria-hidden="true" />}
+                  <span>{option.label}</span>
+                  {option.hint && <small>{option.hint}</small>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="style-choice-row">
           <span className="style-choice-label" id="assistant-memory-detail-label">
             Detail level
@@ -375,9 +420,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
             <div className="trust-text-wrap">
               <strong>Private to this workspace</strong>
               <p>
-                Your assistant remembers key facts across conversations so you don't have to repeat
-                yourself. Data is private to this workspace, kept until you delete it, and never
-                alters your transactions or accounts. You can edit or remove what it remembers
+                Your assistant remembers key facts so you don't repeat yourself. Edit or remove them
                 below.
               </p>
             </div>
@@ -399,88 +442,12 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
             </div>
           )}
 
-          <section
-            className="assistant-memory-section"
-            aria-labelledby="assistant-memory-preferences-title"
-          >
-            <div className="section-title-row">
-              <strong id="assistant-memory-preferences-title">Debt payoff preference</strong>
-              <span className="section-help-text">Guides debt reduction recommendations</span>
-            </div>
-
-            {preferences.data ? (
-              <div
-                className="assistant-memory-strategy-grid"
-                role="radiogroup"
-                aria-label="Debt payoff preference"
-              >
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={currentStrategy === "avalanche"}
-                  className={`strategy-card ${currentStrategy === "avalanche" ? "current" : ""}`}
-                  disabled={preferenceMutation.isPending}
-                  onClick={() => preferenceMutation.mutate("avalanche")}
-                >
-                  <span className="strategy-card-header">
-                    <span className="strategy-title">Avalanche</span>
-                    {currentStrategy === "avalanche" && <Check size={15} aria-hidden="true" />}
-                  </span>
-                  <span className="strategy-pill">Saves interest</span>
-                  <span className="strategy-desc">
-                    Prioritizes debts with the highest interest rate first to minimize total
-                    interest paid.
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={currentStrategy === "snowball"}
-                  className={`strategy-card ${currentStrategy === "snowball" ? "current" : ""}`}
-                  disabled={preferenceMutation.isPending}
-                  onClick={() => preferenceMutation.mutate("snowball")}
-                >
-                  <span className="strategy-card-header">
-                    <span className="strategy-title">Snowball</span>
-                    {currentStrategy === "snowball" && <Check size={15} aria-hidden="true" />}
-                  </span>
-                  <span className="strategy-pill">Fastest wins</span>
-                  <span className="strategy-desc">
-                    Prioritizes debts with the smallest balance first to build momentum through
-                    quick payoffs.
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={currentStrategy === null}
-                  className={`strategy-card ${currentStrategy === null ? "current" : ""}`}
-                  disabled={preferenceMutation.isPending}
-                  onClick={() => preferenceMutation.mutate(null)}
-                >
-                  <span className="strategy-card-header">
-                    <span className="strategy-title">No preference</span>
-                    {currentStrategy === null && <Check size={15} aria-hidden="true" />}
-                  </span>
-                  <span className="strategy-pill neutral">Automatic</span>
-                  <span className="strategy-desc">
-                    Let the assistant evaluate context dynamically based on your question and cash
-                    flow.
-                  </span>
-                </button>
-              </div>
-            ) : (
-              <p className="assistant-memory-pending" role="status">
-                Loading your preference…
-              </p>
-            )}
-          </section>
-
           {preferences.data && (
             <ResponseStyleSection
               preferences={preferences.data}
+              debtStrategy={currentStrategy}
+              onDebtStrategyChange={(strategy) => preferenceMutation.mutate(strategy)}
+              debtDisabled={preferenceMutation.isPending}
               pending={
                 responseStyleMutation.isPending ? responseStyleMutation.variables : undefined
               }
@@ -508,18 +475,7 @@ export function AssistantMemoryPanel({ workspace, open, onClose }: AssistantMemo
                   <Sparkles size={20} aria-hidden="true" />
                 </div>
                 <h4>No remembered facts yet</h4>
-                <p>
-                  When you share ongoing financial goals or preferences in chat, your assistant
-                  saves them here to personalize future answers.
-                </p>
-                <div className="empty-examples">
-                  <span className="examples-header">Examples you can share in chat:</span>
-                  <ul>
-                    <li>“My emergency fund goal is ₱100,000”</li>
-                    <li>“I prefer keeping 1 month of expenses in my checking account”</li>
-                    <li>“Remind me about quarterly insurance dues”</li>
-                  </ul>
-                </div>
+                <p>Ongoing goals and preferences you share in chat are saved here.</p>
               </div>
             ) : (
               <ul className="assistant-memory-facts-list">

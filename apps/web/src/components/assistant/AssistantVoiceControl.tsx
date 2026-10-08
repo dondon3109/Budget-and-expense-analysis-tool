@@ -21,7 +21,6 @@ import {
 import {
   type VoiceLanguage,
   getStoredVoiceLanguage,
-  setStoredVoiceLanguage,
   speechRecognitionLang,
 } from "../../lib/voiceLanguage";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
@@ -89,6 +88,9 @@ export function AssistantVoiceControl({
   const liveSessionRef = useRef<LiveTranscriptionSession | null>(null);
   const liveSessionPromiseRef = useRef<Promise<LiveTranscriptionSession> | null>(null);
   const liveTranscriptRef = useRef<string>("");
+  // Last time speech was heard, by mic level or by a transcript arriving. Firefox applies its own
+  // gain, so a quiet level alone must not end the recording while the transcript is still growing.
+  const lastSpeechAtRef = useRef<number | null>(null);
   // The browser engine and the server engine both transcribe, so they are kept
   // apart: a browser hypothesis must never outrank a server transcript.
   const browserTranscriptRef = useRef<string>("");
@@ -107,8 +109,13 @@ export function AssistantVoiceControl({
   const [voiceLanguage, setVoiceLanguage] = useState<VoiceLanguage>(() => getStoredVoiceLanguage());
   const [showNotice, setShowNotice] = useState(false);
   const [status, setStatus] = useState<"idle" | "recording" | "transcribing">("idle");
-  const [liveTranscript, setLiveTranscript] = useState<string>("");
   const [message, setMessage] = useState<string>();
+
+  // The live transcript lives in the composer as ghost text; "" clears it.
+  const setLiveTranscript = (text: string) => {
+    if (text) lastSpeechAtRef.current = Date.now();
+    onPartialTranscript?.(text);
+  };
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
   function clearTimersAndAudioContext() {
@@ -237,8 +244,6 @@ export function AssistantVoiceControl({
 
     const samples = new Uint8Array(analyser.fftSize);
     const startedAt = Date.now();
-    let heardSpeech = false;
-    let lastSpeechAt = startedAt;
 
     activityTimerRef.current = window.setInterval(() => {
       const recorder = recorderRef.current;
@@ -252,14 +257,11 @@ export function AssistantVoiceControl({
       }
       const rms = Math.sqrt(sumSquares / samples.length);
       const now = Date.now();
-      if (rms >= SPEECH_RMS_THRESHOLD) {
-        heardSpeech = true;
-        lastSpeechAt = now;
-        return;
-      }
-      if (heardSpeech && now - lastSpeechAt >= ENDING_SILENCE_MS) {
-        stopRecording("silence");
-      } else if (!heardSpeech && now - startedAt >= NO_SPEECH_TIMEOUT_MS) {
+      if (rms >= SPEECH_RMS_THRESHOLD) lastSpeechAtRef.current = now;
+      const lastSpeechAt = lastSpeechAtRef.current;
+      if (lastSpeechAt !== null) {
+        if (now - lastSpeechAt >= ENDING_SILENCE_MS) stopRecording("silence");
+      } else if (now - startedAt >= NO_SPEECH_TIMEOUT_MS) {
         stopRecording("no-speech");
       }
     }, VOICE_SAMPLE_INTERVAL_MS);
@@ -412,6 +414,7 @@ export function AssistantVoiceControl({
       setElapsedSeconds(0);
       liveTranscriptRef.current = "";
       browserTranscriptRef.current = "";
+      lastSpeechAtRef.current = null;
       liveErrorRef.current = null;
       setLiveTranscript("");
       liveShouldStopRef.current = false;
@@ -423,7 +426,6 @@ export function AssistantVoiceControl({
           if (!mountedRef.current) return;
           browserTranscriptRef.current = trimmed;
           setLiveTranscript(trimmed);
-          onPartialTranscript?.(trimmed);
         },
         onSpeechEnd: () => {
           window.setTimeout(() => {
@@ -450,7 +452,6 @@ export function AssistantVoiceControl({
             if (text) {
               liveTranscriptRef.current = text;
               setLiveTranscript(text);
-              onPartialTranscript?.(text);
             }
           },
           onFinal: (final) => {
@@ -459,7 +460,6 @@ export function AssistantVoiceControl({
             if (text) {
               liveTranscriptRef.current = text;
               setLiveTranscript(text);
-              onPartialTranscript?.(text);
             }
           },
           onLatency: (metrics) => {
@@ -673,34 +673,6 @@ export function AssistantVoiceControl({
           <Mic size={18} aria-hidden="true" />
         )}
       </button>
-      <button
-        type="button"
-        className="assistant-voice-lang-badge"
-        disabled={disabled || enabling}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          const next: VoiceLanguage =
-            voiceLanguage === "auto" ? "en" : voiceLanguage === "en" ? "fil" : "auto";
-          setVoiceLanguage(next);
-          setStoredVoiceLanguage(next);
-          if (speechRecognitionRef.current) {
-            speechRecognitionRef.current.lang = speechRecognitionLang(next);
-          }
-        }}
-        title={`Voice language: ${
-          voiceLanguage === "auto"
-            ? "Auto (click to switch to English)"
-            : voiceLanguage === "en"
-              ? "English (click to switch to Tagalog)"
-              : "Tagalog (click to switch to Auto)"
-        }`}
-        aria-label={`Switch voice language from ${
-          voiceLanguage === "auto" ? "Auto" : voiceLanguage === "en" ? "English" : "Tagalog"
-        }`}
-      >
-        {voiceLanguage === "auto" ? "AUTO" : voiceLanguage === "fil" ? "TL" : "EN"}
-      </button>
       {showNotice && (
         <div
           ref={noticeRef}
@@ -743,14 +715,23 @@ export function AssistantVoiceControl({
         </div>
       )}
       {!disabled && !showNotice && (message || status !== "idle") && (
-        <span className="assistant-voice-status" role="status" aria-live="polite">
-          {status === "recording"
-            ? liveTranscript
-              ? `“${liveTranscript}”`
-              : `Listening · ${formatElapsed(elapsedSeconds)} — I’ll stop after you finish speaking.`
-            : status === "transcribing"
-              ? "Transcribing…"
-              : message}
+        <span
+          className="assistant-voice-status"
+          data-status={status === "idle" ? "message" : status}
+          role="status"
+          aria-live="polite"
+        >
+          {status === "recording" ? (
+            <>
+              <span className="assistant-voice-dot" aria-hidden="true" />
+              Listening · {formatElapsed(elapsedSeconds)}
+              <small>I’ll stop after you finish speaking.</small>
+            </>
+          ) : status === "transcribing" ? (
+            "Transcribing…"
+          ) : (
+            message
+          )}
         </span>
       )}
     </div>

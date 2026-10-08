@@ -120,9 +120,17 @@ function installRecordingMocks() {
   vi.stubGlobal("MediaRecorder", FakeMediaRecorder);
 }
 
-function renderAssistant(onTranscript: (text: string) => void) {
+function renderAssistant(
+  onTranscript: (text: string) => void,
+  onPartialTranscript?: (text: string) => void,
+) {
   render(
-    <AssistantVoiceControl workspace={workspace} disabled={false} onTranscript={onTranscript} />,
+    <AssistantVoiceControl
+      workspace={workspace}
+      disabled={false}
+      onTranscript={onTranscript}
+      onPartialTranscript={onPartialTranscript}
+    />,
   );
 }
 
@@ -239,8 +247,9 @@ describe("browser speech recognition", () => {
       },
     );
     const onTranscript = vi.fn();
+    const onPartialTranscript = vi.fn();
 
-    renderAssistant(onTranscript);
+    renderAssistant(onTranscript, onPartialTranscript);
     await startAssistantRecording();
 
     act(() => {
@@ -248,8 +257,8 @@ describe("browser speech recognition", () => {
         results: [[{ transcript: "spent 250 pieces of lunch today" }]],
       });
     });
-    // The browser hypothesis reached the component before the server text won.
-    expect(screen.getByRole("status").textContent).toContain("spent 250 pieces of lunch today");
+    // The browser hypothesis reached the composer before the server text won.
+    expect(onPartialTranscript).toHaveBeenLastCalledWith("spent 250 pieces of lunch today");
 
     fireEvent.click(screen.getByRole("button", { name: "Stop voice recording" }));
 
