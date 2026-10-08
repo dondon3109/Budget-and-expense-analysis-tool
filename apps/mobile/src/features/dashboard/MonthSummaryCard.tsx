@@ -1,12 +1,12 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { Card, MoneyValue } from "@/ui/components";
+import { MoneyValue } from "@/ui/components";
 import { fullDateLabel } from "@/ui/components/cashflow-chart-geometry";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 import type { DashboardSummary } from "@zoption/shared";
 
-import { homeCardStyles, SectionLabel } from "./HomeCardParts";
+import { FlatSection, homeCardStyles, SectionLabel } from "./HomeCardParts";
 
 function Stat({
   label,
@@ -30,7 +30,7 @@ export function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const { metrics } = summary;
   return (
-    <Card accessibilityLabel="This month summary">
+    <FlatSection divided={false} accessibilityLabel="This month summary">
       <View style={styles.cardHeaderRow}>
         <SectionLabel>This month</SectionLabel>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -47,7 +47,7 @@ export function MonthSummaryCard({ summary }: { summary: DashboardSummary }) {
           tone={metrics.netMinor >= 0 ? "income" : "expense"}
         />
       </View>
-    </Card>
+    </FlatSection>
   );
 }
 

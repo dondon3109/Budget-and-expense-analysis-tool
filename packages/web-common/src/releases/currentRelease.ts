@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 8, 2026",
+  releasedOn: "October 9, 2026",
   changes: [
     {
       title: "Several purchases in one message",
@@ -24,14 +24,19 @@ export const currentRelease: ProductRelease = {
         "The consent screen now says the assistant can propose changes to your records and that only your Save or Confirm tap applies them. Everyone is asked to accept it once.",
     },
     {
-      title: "Fixes",
+      title: "A calmer Home and Analytics",
       description:
-        "The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, and adding notes to a transaction titled by its category now updates its title.",
+        "On mobile, Home lists your upcoming subscriptions below Safe to spend, and Home and Analytics now sit on the page with simple dividers instead of a card around everything.",
     },
     {
-      title: "Android Beta 0.2.48",
+      title: "Fixes",
       description:
-        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, and these fixes.",
+        "Android Beta 0.2.48 could open to a blank screen; that is fixed. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
+    },
+    {
+      title: "Android Beta 0.2.49",
+      description:
+        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, the calmer Home and Analytics, and these fixes. If 0.2.48 opens to a blank screen, install 0.2.49 over it.",
     },
   ],
 };

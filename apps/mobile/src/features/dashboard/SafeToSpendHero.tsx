@@ -147,7 +147,8 @@ export function SafeToSpendHero({
 
 const styles = StyleSheet.create({
   card: {
-    gap: spacing.sm,
+    gap: spacing.xs,
+    padding: spacing.sm,
   },
   headerRow: {
     flexDirection: "row",
@@ -173,9 +174,9 @@ const styles = StyleSheet.create({
   },
   alertTitle: { flex: 1 },
   heroAmount: {
-    fontSize: 44,
-    lineHeight: 50,
+    fontSize: 32,
+    lineHeight: 38,
     fontWeight: "700",
-    letterSpacing: -1,
+    letterSpacing: -0.8,
   },
 });
