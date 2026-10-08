@@ -14,6 +14,35 @@ export interface LiveTranscriptionCallbacks {
 
 export const LIVE_FINALIZATION_TIMEOUT_MS = 3000;
 
+// The worker labels every chunk as 16 kHz PCM, so audio from a context running
+// at the device rate (Firefox, some Safari builds) is averaged down to match.
+const TARGET_SAMPLE_RATE = 16000;
+
+export function toPcm16(input: Float32Array, inputRate: number): Int16Array<ArrayBuffer> {
+  const ratio = inputRate / TARGET_SAMPLE_RATE;
+  const out: number[] = [];
+  let sum = 0;
+  let count = 0;
+  let phase = 0;
+  for (const sample of input) {
+    sum += sample;
+    count += 1;
+    phase += 1;
+    if (phase >= ratio) {
+      phase -= ratio;
+      out.push(sum / count);
+      sum = 0;
+      count = 0;
+    }
+  }
+  const pcm16 = new Int16Array(out.length);
+  for (let i = 0; i < out.length; i++) {
+    const s = Math.max(-1, Math.min(1, out[i]!));
+    pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return pcm16;
+}
+
 export interface LiveTranscriptionSession {
   stop: () => Promise<void>;
 }
@@ -47,12 +76,16 @@ export async function startLiveTranscriptionSession(
     throw new Error("Web Audio API is not supported in this browser.");
   }
 
-  // Try 16kHz (optimal for Gemini Live), fall back to device default if not supported.
+  // Try 16kHz (optimal for Gemini Live). Firefox throws when the microphone runs at a
+  // different rate than the context, so fall back to the device rate and downsample.
   let audioContext: AudioContext;
+  let source: MediaStreamAudioSourceNode;
   try {
-    audioContext = new AudioContextClass({ sampleRate: 16000 });
+    audioContext = new AudioContextClass({ sampleRate: TARGET_SAMPLE_RATE });
+    source = audioContext.createMediaStreamSource(mediaStream);
   } catch {
     audioContext = new AudioContextClass();
+    source = audioContext.createMediaStreamSource(mediaStream);
   }
   // Resume if suspended (autoplay policy)
   if (audioContext.state === "suspended") {
@@ -60,8 +93,7 @@ export async function startLiveTranscriptionSession(
       await audioContext.resume();
     } catch {}
   }
-
-  const source = audioContext.createMediaStreamSource(mediaStream);
+  const inputRate = audioContext.sampleRate || TARGET_SAMPLE_RATE;
 
   let isStopped = false;
   let isStopping = false;
@@ -277,11 +309,7 @@ export async function startLiveTranscriptionSession(
       if (isStopped || isStopping || ws.readyState !== WebSocket.OPEN) return;
       const input = event.inputBuffer.getChannelData(0);
       if (!input || input.length === 0) return;
-      const pcm16 = new Int16Array(input.length);
-      for (let i = 0; i < input.length; i++) {
-        const s = Math.max(-1, Math.min(1, input[i]!));
-        pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-      }
+      const pcm16 = toPcm16(input, inputRate);
       try {
         ws.send(pcm16.buffer);
       } catch {}
