@@ -81,6 +81,9 @@ main:has(.assistant-page) > .legal-footer,
 }
 
 .assistant-history-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
@@ -88,6 +91,12 @@ main:has(.assistant-page) > .legal-footer,
   font-weight: 600;
   line-height: 1.1;
   text-wrap: balance;
+}
+
+.assistant-history-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
 }
 
 .assistant-history-actions {

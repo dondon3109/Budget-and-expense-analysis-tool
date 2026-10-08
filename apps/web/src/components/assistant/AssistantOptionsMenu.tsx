@@ -1,4 +1,4 @@
-import { Brain, MoreHorizontal } from "lucide-react";
+import { Brain, MoreHorizontal, Pencil } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
@@ -8,13 +8,15 @@ interface AssistantOptionsMenuProps {
   usage?: { used: number; limit: number | null };
   showUpgrade: boolean;
   onOpenMemory: () => void;
+  onEditIdentity: () => void;
 }
 
-/** The chat header's "More options" popover: AI usage, theme, and the Memory panel. */
+/** The chat header's "More options" popover: AI usage, theme, Memory, and assistant names. */
 export function AssistantOptionsMenu({
   usage,
   showUpgrade,
   onOpenMemory,
+  onEditIdentity,
 }: AssistantOptionsMenuProps) {
   const [open, setOpen] = useState(false);
   const panelId = useId();
@@ -79,6 +81,17 @@ export function AssistantOptionsMenu({
           >
             <Brain size={16} aria-hidden="true" />
             Memory
+          </button>
+          <button
+            type="button"
+            className="assistant-options-item"
+            onClick={() => {
+              setOpen(false);
+              onEditIdentity();
+            }}
+          >
+            <Pencil size={16} aria-hidden="true" />
+            Edit assistant names
           </button>
         </div>
       )}

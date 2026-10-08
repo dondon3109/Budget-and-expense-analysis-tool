@@ -706,7 +706,8 @@ describe("assistant UI", () => {
         userPreferredName: "Sam",
       }),
     );
-    expect(await screen.findByRole("heading", { name: "Chats with Aster" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Zoption" })).toBeInTheDocument();
+    await openOptions();
     fireEvent.click(screen.getByRole("button", { name: "Edit assistant names" }));
     expect(await screen.findByRole("dialog", { name: "Edit assistant names" })).toBeInTheDocument();
   });
@@ -723,9 +724,7 @@ describe("assistant UI", () => {
     expect(historyToggle).toHaveAttribute("aria-controls", "assistant-chat-history");
     expect(historyToggle).toHaveAttribute("aria-expanded", "false");
     expect(newChat).toHaveTextContent("New chat");
-    expect(
-      within(history).getByRole("button", { name: "Edit assistant names" }),
-    ).toBeInTheDocument();
+    expect(within(history).getByRole("heading", { name: "Zoption" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(thread.title).closest("button")!);
     const composer = await screen.findByRole("textbox", { name: "Ask about your finances" });

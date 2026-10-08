@@ -422,7 +422,6 @@ export function AssistantPage() {
       <div className="assistant-page">
         <div className={`assistant-workspace ${historyOpen ? "history-open" : ""}`}>
           <AssistantThreadList
-            assistantName={assistantName}
             threads={threads.data?.items ?? []}
             activeThreadId={activeThreadId}
             busy={busy}
@@ -434,7 +433,6 @@ export function AssistantPage() {
             }}
             onNew={startNew}
             onVoice={startVoice}
-            onEditIdentity={() => setEditingIdentity(true)}
             onDelete={(threadIds) => deleteMutation.mutateAsync(threadIds)}
             onDeleteAll={() => deleteAllMutation.mutateAsync()}
           />
@@ -471,6 +469,7 @@ export function AssistantPage() {
                 usage={aiUsage}
                 showUpgrade={isFreePlan}
                 onOpenMemory={() => setMemoryOpen(true)}
+                onEditIdentity={() => setEditingIdentity(true)}
               />
             </div>
             {messages.isError ? (

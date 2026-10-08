@@ -1,9 +1,10 @@
 import type { AssistantThread } from "@zoption/shared";
-import { Check, MessageSquareText, Mic, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Check, MessageSquareText, Mic, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState, type Ref } from "react";
 
+import { BrandMark } from "../brand/BrandMark";
+
 interface AssistantThreadListProps {
-  assistantName: string;
   threads: AssistantThread[];
   activeThreadId: string | null;
   busy: boolean;
@@ -12,7 +13,6 @@ interface AssistantThreadListProps {
   onSelect: (threadId: string) => void;
   onNew: () => void;
   onVoice: () => void;
-  onEditIdentity: () => void;
   onDelete: (threadIds: string[]) => Promise<void>;
   onDeleteAll: () => Promise<void>;
 }
@@ -35,7 +35,6 @@ function threadGroup(value: string): string {
 }
 
 export function AssistantThreadList({
-  assistantName,
   threads,
   activeThreadId,
   busy,
@@ -44,7 +43,6 @@ export function AssistantThreadList({
   onSelect,
   onNew,
   onVoice,
-  onEditIdentity,
   onDelete,
   onDeleteAll,
 }: AssistantThreadListProps) {
@@ -98,7 +96,10 @@ export function AssistantThreadList({
     >
       <div className="assistant-history-heading">
         <div className="assistant-history-title-row">
-          <h2 title={`Chats with ${assistantName}`}>Chats with {assistantName}</h2>
+          <h2 className="assistant-history-brand">
+            <BrandMark className="brand-mark assistant-history-logo" />
+            Zoption
+          </h2>
           <div className="assistant-history-actions">
             {threads.length > 0 ? (
               <button
@@ -118,14 +119,6 @@ export function AssistantThreadList({
                 {managing ? "Done" : "Select"}
               </button>
             ) : null}
-            <button
-              className="assistant-history-edit"
-              type="button"
-              onClick={onEditIdentity}
-              aria-label="Edit assistant names"
-            >
-              <Pencil size={13} aria-hidden="true" /> Edit
-            </button>
             <button
               ref={closeButtonRef}
               className="assistant-history-close"
