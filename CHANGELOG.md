@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Mobile: Home now lists your upcoming subscriptions below Safe to spend, soonest renewal first.
 - Web and mobile: when you tell the AI Assistant about several purchases in one message ("50 for gas and 40 for gym"), it now prepares a draft for each one right away, with its own Save button, instead of only the first.
 - Web and mobile: the AI Assistant's consent screen now says it can propose changes to your records and that only your Save or Confirm tap applies them, so everyone is asked to accept the updated consent once. The Terms of Service and Privacy Policy say the same.
 - Three new guides on zoption.site: how to budget remittances as an OFW family, debt snowball vs avalanche, and how to budget irregular income as a freelancer.
@@ -17,10 +18,14 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: a calmer Home. Total balance is now a plain headline, and Subscriptions and Recent activity are simple lists instead of separate cards, so Safe to spend stands out.
 - Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
 
 ### Fixed
 
+- Mobile: fixed a blank screen on launch in 0.2.48-beta, caused by a styling library update.
+- Mobile: the Analytics cash flow chart now shows even for a period with no records.
+- Mobile: the status bar icons no longer turn white while the Home dropdown is open.
 - Web and mobile: a new account with no balance or budget no longer shows "You've used up what's safe to spend" on the Safe to spend card; it asks you to add a balance or first transaction instead.
 - Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
 - Mobile: Budgets now offers every active expense category, including custom ones that locked when your Pro plan or free trial ended, so "Debt payment" is no longer the only choice.

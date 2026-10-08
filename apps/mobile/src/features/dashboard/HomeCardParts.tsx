@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -38,3 +38,40 @@ export const homeCardStyles = StyleSheet.create({
     borderRadius: radii.round,
   },
 });
+
+// Header for a flat Home section: a title and a "View all" link, with no card
+// around the content below it.
+export function SectionHeader({
+  title,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <View style={homeCardStyles.cardHeaderRow}>
+      <SectionLabel>{title}</SectionLabel>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={actionLabel}
+        onPress={onAction}
+        hitSlop={8}
+      >
+        <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
+          View all
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// Hairline between rows of a flat section.
+export function RowDivider() {
+  const theme = useZoptionTheme();
+  return (
+    <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.border }} />
+  );
+}

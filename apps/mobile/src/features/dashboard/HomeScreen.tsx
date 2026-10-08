@@ -27,8 +27,8 @@ import { HomeViewSwitch, type HomeViewName } from "./HomeViewSwitch";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
 import { QuickStartGuideCard } from "./QuickStartGuideCard";
-import { RecentActivityCard } from "./RecentActivityCard";
-import { SubscriptionsCard } from "./SubscriptionsCard";
+import { RecentActivitySection } from "./RecentActivitySection";
+import { SubscriptionsSection } from "./SubscriptionsSection";
 import { SafeToSpendHero } from "./SafeToSpendHero";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { SpendingByCategory } from "./SpendingByCategory";
@@ -139,8 +139,8 @@ export function HomeScreen() {
                     }
                     onViewRenewals={() => router.push("/(app)/subscriptions")}
                   />
-                  <SubscriptionsCard subscriptions={subscriptions.subscriptions} />
-                  <RecentActivityCard recent={dashboard.data?.recentTransactions ?? []} />
+                  <SubscriptionsSection subscriptions={subscriptions.subscriptions} />
+                  <RecentActivitySection recent={dashboard.data?.recentTransactions ?? []} />
                 </>
               ) : (
                 <>
