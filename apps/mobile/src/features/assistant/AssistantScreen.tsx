@@ -84,7 +84,6 @@ import { latestActionMessageId } from "./AssistantActionCard";
 import { AssistantMessageRow, replacedDraftKeys } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
-import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
 
 type AssistantView = "threads" | "chat" | "voice";
 
@@ -1109,9 +1108,6 @@ export function AssistantScreen() {
                     else if (recorder.phase === "idle") void recorder.startRecording();
                   }}
                 />
-                <View style={styles.languageSlot}>
-                  <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
-                </View>
               </>
             ) : null}
             <Pressable
@@ -1385,8 +1381,6 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 10 : 8,
     paddingHorizontal: 4,
   },
-  // Centers the 32 point language pill against the 44 point mic and send buttons.
-  languageSlot: { height: touchTarget, justifyContent: "center" },
   sendButton: {
     width: touchTarget,
     height: touchTarget,

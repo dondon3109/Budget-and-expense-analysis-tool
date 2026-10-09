@@ -24,6 +24,7 @@ import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks"
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { renderMobileVoiceCaption } from "./render-voice-caption";
 import { RadarWaveRings, ThinkingSphereCore } from "./ThinkingSphereIndicator";
+import { VoiceEqualizer, VoiceOrbMotion } from "./VoiceOrbAnimation";
 
 /**
  * The only voice used by the voice conversation: Bright Female.
@@ -91,6 +92,16 @@ export const VOICE_SUGGESTED_PROMPTS_TAGALOG = [
 ] as const;
 
 export const VOICE_SUGGESTED_PROMPTS_ENGLISH = VOICE_SUGGESTED_PROMPTS;
+
+/** Four starter questions; Auto mixes both languages so a short list still shows each. */
+function suggestedPrompts(voiceLanguage: string): readonly string[] {
+  if (voiceLanguage === "fil") return VOICE_SUGGESTED_PROMPTS_TAGALOG.slice(0, 4);
+  if (voiceLanguage === "en") return VOICE_SUGGESTED_PROMPTS_ENGLISH.slice(0, 4);
+  return VOICE_SUGGESTED_PROMPTS_TAGALOG.slice(0, 2).flatMap((tagalog, index) => [
+    VOICE_SUGGESTED_PROMPTS_ENGLISH[index]!,
+    tagalog,
+  ]);
+}
 
 function newCaptionId(): string {
   return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
@@ -589,10 +600,6 @@ export function AssistantVoiceConversation({
     );
   }
 
-  const orbScale =
-    status === "idle" ? 1 : status === "listening" ? 1.08 : status === "speaking" ? 1.12 : 1.04;
-  const orbOpacity = 1;
-
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.canvas }]}>
       <View style={[styles.topbar, { borderBottomColor: theme.colors.border }]}>
@@ -802,12 +809,7 @@ export function AssistantVoiceConversation({
               Speak now, or tap a question below:
             </Text>
             <View style={styles.promptChipsContainer}>
-              {(voiceLanguage === "fil"
-                ? VOICE_SUGGESTED_PROMPTS_TAGALOG
-                : voiceLanguage === "en"
-                  ? VOICE_SUGGESTED_PROMPTS_ENGLISH
-                  : [...VOICE_SUGGESTED_PROMPTS_TAGALOG, ...VOICE_SUGGESTED_PROMPTS_ENGLISH]
-              ).map((prompt) => (
+              {suggestedPrompts(voiceLanguage).map((prompt) => (
                 <Pressable
                   key={prompt}
                   accessibilityRole="button"
@@ -895,111 +897,20 @@ export function AssistantVoiceConversation({
       )}
 
       <View style={[styles.stage, { borderTopColor: theme.colors.border }]}>
-        {/* Equalizer waveform visualizer */}
-        <View
-          style={styles.waveformContainer}
-          accessibilityElementsHidden={true}
-          aria-hidden={true}
-        >
-          <View
-            style={[
-              styles.waveBar,
-              {
-                backgroundColor:
-                  status === "listening" || status === "speaking" || status === "thinking"
-                    ? theme.colors.brand
-                    : theme.colors.border,
-                height:
-                  status === "listening"
-                    ? 14
-                    : status === "speaking"
-                      ? 12
-                      : status === "thinking"
-                        ? 10
-                        : 5,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.waveBar,
-              {
-                backgroundColor:
-                  status === "listening" || status === "speaking" || status === "thinking"
-                    ? theme.colors.brand
-                    : theme.colors.border,
-                height:
-                  status === "listening"
-                    ? 24
-                    : status === "speaking"
-                      ? 18
-                      : status === "thinking"
-                        ? 18
-                        : 5,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.waveBar,
-              {
-                backgroundColor:
-                  status === "listening" || status === "speaking" || status === "thinking"
-                    ? theme.colors.brand
-                    : theme.colors.border,
-                height:
-                  status === "listening"
-                    ? 32
-                    : status === "speaking"
-                      ? 24
-                      : status === "thinking"
-                        ? 26
-                        : 5,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.waveBar,
-              {
-                backgroundColor:
-                  status === "listening" || status === "speaking" || status === "thinking"
-                    ? theme.colors.brand
-                    : theme.colors.border,
-                height:
-                  status === "listening"
-                    ? 24
-                    : status === "speaking"
-                      ? 18
-                      : status === "thinking"
-                        ? 18
-                        : 5,
-              },
-            ]}
-          />
-          <View
-            style={[
-              styles.waveBar,
-              {
-                backgroundColor:
-                  status === "listening" || status === "speaking" || status === "thinking"
-                    ? theme.colors.brand
-                    : theme.colors.border,
-                height:
-                  status === "listening"
-                    ? 14
-                    : status === "speaking"
-                      ? 12
-                      : status === "thinking"
-                        ? 10
-                        : 5,
-              },
-            ]}
-          />
-        </View>
+        <VoiceEqualizer
+          status={status}
+          activeColor={theme.colors.brand}
+          restColor={theme.colors.border}
+        />
 
-        <View style={styles.orbWrapper}>
-          {status === "thinking" ? <RadarWaveRings color={theme.colors.brand} size={104} /> : null}
+        <VoiceOrbMotion
+          status={status}
+          size={76}
+          color={theme.colors.brand}
+          behind={
+            status === "thinking" ? <RadarWaveRings color={theme.colors.brand} size={76} /> : null
+          }
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
@@ -1027,8 +938,6 @@ export function AssistantVoiceConversation({
               {
                 backgroundColor: theme.colors.brand,
                 borderColor: theme.colors.brand,
-                opacity: orbOpacity,
-                transform: [{ scale: orbScale }],
               },
             ]}
           >
@@ -1048,7 +957,7 @@ export function AssistantVoiceConversation({
               />
             )}
           </Pressable>
-        </View>
+        </VoiceOrbMotion>
         <Text style={[typography.label, { color: theme.colors.text }]}>{STATUS_LABEL[status]}</Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
           {status === "idle" &&
@@ -1320,33 +1229,14 @@ const styles = StyleSheet.create({
   stage: {
     alignItems: "center",
     gap: spacing.xs,
-    padding: spacing.md,
-    paddingBottom: spacing.lg,
+    padding: spacing.sm,
+    paddingBottom: spacing.md,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  waveformContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    height: 36,
-    marginBottom: spacing.xs,
-  },
-  waveBar: {
-    width: 4,
-    borderRadius: 2,
-  },
-  orbWrapper: {
-    width: 104,
-    height: 104,
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
   orb: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
