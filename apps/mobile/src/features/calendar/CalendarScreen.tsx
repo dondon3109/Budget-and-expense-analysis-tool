@@ -20,6 +20,7 @@ import { buildBudgetMonthView } from "../budgets/budget-month-view";
 import { monthTotals } from "./calendar-day-summary";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { monthLabel, todayIso } from "./event-form";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -134,12 +135,12 @@ function DayAgenda({
             accessibilityLabel={`Occasion budget ${occasion.title}`}
             accessibilityRole="button"
             android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-            onPress={() =>
+            onPress={withTapSound(() =>
               router.push({
                 pathname: "/(app)/(tabs)/budgets",
                 params: { occasion: occasion.eventId },
               })
-            }
+            )}
             style={[styles.agendaRow, rule]}
           >
             <MaterialCommunityIcons
@@ -169,7 +170,7 @@ function DayAgenda({
           accessibilityRole="button"
           accessibilityLabel={"Event " + event.title}
           android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-          onPress={() => router.push({ pathname: "/(app)/event", params: { id: event.id } })}
+          onPress={withTapSound(() => router.push({ pathname: "/(app)/event", params: { id: event.id } }))}
           style={[styles.agendaRow, rule]}
         >
           <MaterialCommunityIcons
@@ -286,7 +287,7 @@ export function CalendarScreen() {
           accessibilityLabel="Previous month"
           accessibilityRole="button"
           android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: true }}
-          onPress={() => changeMonth(-1)}
+          onPress={withTapSound(() => changeMonth(-1))}
           style={styles.monthButton}
         >
           <MaterialCommunityIcons
@@ -303,7 +304,7 @@ export function CalendarScreen() {
           accessibilityLabel="Next month"
           accessibilityRole="button"
           android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: true }}
-          onPress={() => changeMonth(1)}
+          onPress={withTapSound(() => changeMonth(1))}
           style={styles.monthButton}
         >
           <MaterialCommunityIcons
@@ -319,7 +320,7 @@ export function CalendarScreen() {
               accessibilityLabel="Go to today"
               accessibilityRole="button"
               hitSlop={8}
-              onPress={goToToday}
+              onPress={withTapSound(goToToday)}
               style={[styles.todayPill, { backgroundColor: theme.colors.brandSoft }]}
             >
               <Text style={[typography.caption, { color: theme.colors.brand }]}>Today</Text>
@@ -359,7 +360,7 @@ export function CalendarScreen() {
           accessibilityHint="Opens the event editor"
           accessibilityLabel="Add event"
           accessibilityRole="button"
-          onPress={() => router.push({ pathname: "/(app)/event", params: { date: selectedDate } })}
+          onPress={withTapSound(() => router.push({ pathname: "/(app)/event", params: { date: selectedDate } }))}
           style={[styles.fab, elevation.dialog, { backgroundColor: theme.colors.solid }]}
         >
           <MaterialCommunityIcons color={theme.colors.onSolid} name="plus" size={28} />

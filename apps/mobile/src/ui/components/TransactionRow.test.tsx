@@ -1,7 +1,12 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import type { TransactionListItem } from "@zoption/shared";
 import { TransactionRow } from "./TransactionRow";
+
+const mockPlaySound = jest.fn();
+jest.mock("@/features/sounds/sound-effects", () => ({
+  playSound: (effect: string) => mockPlaySound(effect),
+}));
 
 const transaction: TransactionListItem = {
   id: "transaction-1",
@@ -26,6 +31,14 @@ const transaction: TransactionListItem = {
 };
 
 describe("TransactionRow", () => {
+  it("plays the tap sound and opens the row", async () => {
+    const onPress = jest.fn();
+    await render(<TransactionRow transaction={transaction} onPress={onPress} />);
+    await fireEvent.press(screen.getByRole("button", { name: /^Lunch,/ }));
+    expect(mockPlaySound).toHaveBeenCalledWith("tap");
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
   it("announces the financial amount when the row becomes an action", async () => {
     await render(<TransactionRow transaction={transaction} pending onPress={jest.fn()} />);
     expect(

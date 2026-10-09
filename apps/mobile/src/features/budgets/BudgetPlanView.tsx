@@ -10,6 +10,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { occasionDateLabel } from "./budget-form";
 import type { BudgetMonthRow } from "./budget-month-view";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const SMALL_MONEY = { fontSize: 12, lineHeight: 16, fontWeight: "600" as const };
 
@@ -162,7 +163,7 @@ export function BudgetRow({
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
         disabled={blocked}
-        onPress={onPress}
+        onPress={withTapSound(onPress)}
         style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       >
         <View style={styles.rowTop}>
@@ -206,9 +207,9 @@ export function BudgetRow({
         <Pressable
           accessibilityLabel={`Review conflict for ${row.categoryName}`}
           accessibilityRole="button"
-          onPress={() =>
+          onPress={withTapSound(() =>
             router.push({ pathname: "/(app)/budget-conflict", params: { id: row.id } })
-          }
+          )}
           style={styles.statusLine}
         >
           <MaterialCommunityIcons
@@ -266,7 +267,7 @@ export function OccasionRow({
         accessibilityLabel={`${occasion.title}, ${occasionDateLabel(occasion.date)}`}
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-        onPress={onPress}
+        onPress={withTapSound(onPress)}
         style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
       >
         <View style={styles.rowTop}>

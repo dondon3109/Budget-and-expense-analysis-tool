@@ -38,3 +38,13 @@ export function playSound(effect: SoundEffect): void {
     // Sound is decoration; ignore.
   }
 }
+
+/** Wraps a press handler so the tap sound plays first, for a raw `Pressable` that is not a `Button`. */
+export function withTapSound<Args extends unknown[]>(
+  handler: (...args: Args) => void,
+): (...args: Args) => void {
+  return (...args) => {
+    playSound("tap");
+    handler(...args);
+  };
+}

@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { resolveCategoryEmoji, type TransactionListItem } from "@zoption/shared";
+import { playSound } from "@/features/sounds/sound-effects";
 import { CategoryBadge } from "./CategoryBadge";
 import { MoneyValue, moneyAccessibilityLabel } from "./MoneyValue";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -53,7 +54,10 @@ export function TransactionRow({
           : undefined
       }
       disabled={!onPress}
-      onPress={onPress}
+      onPress={() => {
+        playSound("tap");
+        onPress?.();
+      }}
       className="w-full flex-row items-center gap-3"
       style={({ pressed }) => [
         styles.row,

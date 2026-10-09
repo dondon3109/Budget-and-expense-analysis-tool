@@ -32,6 +32,7 @@ import {
 } from "./BudgetEditorSheet";
 import { BudgetRow, DefaultsHero, OccasionRow, PlanHero, SectionHeader } from "./BudgetPlanView";
 import { ShareBudgetSheet } from "./ShareBudgetSheet";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type Tab = "month" | "every-month" | "occasions";
 
@@ -61,7 +62,6 @@ function emptyOccasion(month: string): OccasionEditorValue {
 export function BudgetsScreen() {
   const local = useLocalWorkspace();
   const sync = useSyncState();
-  const theme = useZoptionTheme();
   // The calendar opens an occasion by id; the screen stays mounted in its tab, so follow the param.
   const params = useLocalSearchParams<{ occasion?: string | string[] }>();
   const requestedOccasion = Array.isArray(params.occasion) ? params.occasion[0] : params.occasion;
@@ -462,7 +462,7 @@ function ScopeTabs({ value, onChange }: { value: Tab; onChange: (tab: Tab) => vo
             accessibilityLabel={item.label}
             accessibilityRole="tab"
             accessibilityState={{ selected }}
-            onPress={() => onChange(item.id)}
+            onPress={withTapSound(() => onChange(item.id))}
             style={[
               styles.tab,
               { borderBottomColor: selected ? theme.colors.brand : "transparent" },
@@ -507,7 +507,7 @@ function MonthNavigator({
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
         hitSlop={4}
-        onPress={() => onChange(shiftMonth(month, -1))}
+        onPress={withTapSound(() => onChange(shiftMonth(month, -1)))}
         style={styles.iconButton}
       >
         <MaterialCommunityIcons
@@ -530,7 +530,7 @@ function MonthNavigator({
             accessibilityLabel="Go to this month"
             accessibilityRole="button"
             hitSlop={6}
-            onPress={onResetToCurrentMonth}
+            onPress={withTapSound(onResetToCurrentMonth)}
             style={[styles.thisMonth, { backgroundColor: theme.colors.brandSoft }]}
           >
             <Text style={[styles.thisMonthText, { color: theme.colors.brand }]}>This month</Text>
@@ -542,7 +542,7 @@ function MonthNavigator({
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
         hitSlop={4}
-        onPress={() => onChange(shiftMonth(month, 1))}
+        onPress={withTapSound(() => onChange(shiftMonth(month, 1)))}
         style={styles.iconButton}
       >
         <MaterialCommunityIcons
@@ -575,7 +575,7 @@ function OccasionHeader({
         accessibilityLabel="Back to occasions"
         accessibilityRole="button"
         hitSlop={8}
-        onPress={onBack}
+        onPress={withTapSound(onBack)}
         style={styles.backLink}
       >
         <MaterialCommunityIcons color={theme.colors.brand} name="chevron-left" size={20} />

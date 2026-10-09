@@ -8,6 +8,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { compactAmountLabel } from "../transactions/transaction-list-view";
 import { dayTotals } from "./calendar-day-summary";
 import { calendarMonthWeeks, calendarWeekdays } from "./calendar-month-grid";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface CalendarMonthGridProps {
   month: string;
@@ -144,7 +145,7 @@ export function CalendarMonthGrid({
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                onPress={() => onSelectDate(date)}
+                onPress={withTapSound(() => onSelectDate(date))}
                 style={[styles.cell, rule, selected && { backgroundColor: theme.colors.brandSoft }]}
               >
                 <View

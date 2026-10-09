@@ -13,8 +13,9 @@ import {
   MoneyValue,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 import type { BudgetFormErrors, OccasionFormErrors } from "./budget-form";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export interface CategoryOption {
   id: string;
@@ -66,7 +67,7 @@ function CategoryPicker({
                 accessibilityLabel={option.label}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
-                onPress={() => onChange(option.id)}
+                onPress={withTapSound(() => onChange(option.id))}
                 style={[
                   styles.chip,
                   {
@@ -123,7 +124,7 @@ function AppliesToToggle({
               accessibilityLabel={option.label}
               accessibilityRole="radio"
               accessibilityState={{ checked: selected }}
-              onPress={() => onChange(option.value)}
+              onPress={withTapSound(() => onChange(option.value))}
               style={[
                 styles.toggleOption,
                 { backgroundColor: selected ? theme.colors.solid : "transparent" },

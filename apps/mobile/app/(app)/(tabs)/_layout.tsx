@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { Platform, StyleSheet, View, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { playSound } from "@/features/sounds/sound-effects";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, typography } from "@/ui/tokens";
 
@@ -55,6 +56,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      screenListeners={{ tabPress: () => playSound("tap") }}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.text,
