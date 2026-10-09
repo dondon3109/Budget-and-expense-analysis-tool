@@ -56,43 +56,30 @@ function CategoryPicker({
       {options.length === 0 ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{emptyText}</Text>
       ) : (
-        options.map((option) => {
-          const selected = option.id === selectedId;
-          return (
-            <Pressable
-              key={option.id}
-              accessibilityHint={option.detail}
-              accessibilityLabel={option.label}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: selected }}
-              onPress={() => onChange(option.id)}
-              style={[
-                styles.option,
-                {
-                  backgroundColor: selected ? theme.colors.brandSoft : "transparent",
-                  borderColor: selected ? theme.colors.brand : theme.colors.border,
-                },
-              ]}
-            >
-              <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
-                {option.label}
-              </Text>
-              {option.detail ? (
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  {option.detail}
-                </Text>
-              ) : null}
-              {selected ? (
-                <MaterialCommunityIcons
-                  accessibilityElementsHidden
-                  color={theme.colors.brand}
-                  name="check"
-                  size={20}
-                />
-              ) : null}
-            </Pressable>
-          );
-        })
+        <View style={styles.chips}>
+          {options.map((option) => {
+            const selected = option.id === selectedId;
+            return (
+              <Pressable
+                key={option.id}
+                accessibilityHint={option.detail}
+                accessibilityLabel={option.label}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                onPress={() => onChange(option.id)}
+                style={[
+                  styles.chip,
+                  {
+                    backgroundColor: selected ? theme.colors.brandSoft : "transparent",
+                    borderColor: selected ? theme.colors.brand : theme.colors.border,
+                  },
+                ]}
+              >
+                <Text style={[typography.body, { color: theme.colors.text }]}>{option.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       )}
       {error ? (
         <Text
@@ -215,89 +202,91 @@ export function BudgetEditorSheet({
       title={isEditing ? "Edit budget" : "Add budget"}
       visible={visible}
     >
-      <View style={styles.scopeTag}>
-        <MaterialCommunityIcons
-          accessibilityElementsHidden
-          color={theme.colors.textMuted}
-          name="calendar-month-outline"
-          size={14}
-        />
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{scopeLabel}</Text>
-      </View>
-
-      {isEditing && editingBudget ? (
-        <View style={styles.editing}>
-          <CategoryBadge color={editingBudget.categoryColor} emoji={emoji ?? null} size={42} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[typography.headline, { color: theme.colors.text }]}>
-              {editingBudget.categoryName}
-            </Text>
-            {editingBudget.source !== "every-month" || value.appliesTo === "month" ? (
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Spent so far:{" "}
-                <MoneyValue
-                  amountMinor={editingBudget.spentMinor}
-                  tone="expense"
-                  style={{ fontSize: 12, lineHeight: 16 }}
-                />
-              </Text>
-            ) : null}
-          </View>
+      <View style={styles.body}>
+        <View style={styles.scopeTag}>
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.textMuted}
+            name="calendar-month-outline"
+            size={14}
+          />
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{scopeLabel}</Text>
         </View>
-      ) : (
-        <CategoryPicker
-          emptyText="Every expense category already has a budget here."
-          error={errors.categoryId}
-          onChange={(categoryId) => onChange({ categoryId })}
-          options={addOptions}
-          selectedId={value.categoryId}
-        />
-      )}
 
-      {chooseScope ? (
-        <AppliesToToggle
-          monthLabel={monthLabel}
-          onChange={(appliesTo) => onChange({ appliesTo })}
-          value={value.appliesTo}
-        />
-      ) : null}
+        {isEditing && editingBudget ? (
+          <View style={styles.editing}>
+            <CategoryBadge color={editingBudget.categoryColor} emoji={emoji ?? null} size={42} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                {editingBudget.categoryName}
+              </Text>
+              {editingBudget.source !== "every-month" || value.appliesTo === "month" ? (
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  Spent so far:{" "}
+                  <MoneyValue
+                    amountMinor={editingBudget.spentMinor}
+                    tone="expense"
+                    style={{ fontSize: 12, lineHeight: 16 }}
+                  />
+                </Text>
+              ) : null}
+            </View>
+          </View>
+        ) : (
+          <CategoryPicker
+            emptyText="Every expense category already has a budget here."
+            error={errors.categoryId}
+            onChange={(categoryId) => onChange({ categoryId })}
+            options={addOptions}
+            selectedId={value.categoryId}
+          />
+        )}
 
-      <FormField
-        editable={!saving}
-        error={errors.amount}
-        keyboardType="decimal-pad"
-        label={amountLabel}
-        maxLength={18}
-        onChangeText={(amount) => onChange({ amount })}
-        placeholder="0.00"
-        trailing={<CurrencyCode />}
-        value={value.amount}
-      />
-
-      {message ? (
-        <Text
-          accessibilityRole="alert"
-          style={[typography.callout, { color: theme.colors.danger }]}
-        >
-          {message}
-        </Text>
-      ) : null}
-
-      <View style={styles.actions}>
-        <Button
-          accessibilityLabel={isEditing ? "Save budget changes" : "Save new budget"}
-          disabled={!value.categoryId && !isEditing}
-          loading={saving}
-          onPress={onSave}
-          variant="primary"
-        >
-          {isEditing ? "Save changes" : "Save budget"}
-        </Button>
-        {isEditing ? (
-          <Button disabled={saving} onPress={onRemove} variant="quiet">
-            {removeLabel}
-          </Button>
+        {chooseScope ? (
+          <AppliesToToggle
+            monthLabel={monthLabel}
+            onChange={(appliesTo) => onChange({ appliesTo })}
+            value={value.appliesTo}
+          />
         ) : null}
+
+        <FormField
+          editable={!saving}
+          error={errors.amount}
+          keyboardType="decimal-pad"
+          label={amountLabel}
+          maxLength={18}
+          onChangeText={(amount) => onChange({ amount })}
+          placeholder="0.00"
+          trailing={<CurrencyCode />}
+          value={value.amount}
+        />
+
+        {message ? (
+          <Text
+            accessibilityRole="alert"
+            style={[typography.callout, { color: theme.colors.danger }]}
+          >
+            {message}
+          </Text>
+        ) : null}
+
+        <View style={styles.actions}>
+          <Button
+            accessibilityLabel={isEditing ? "Save budget changes" : "Save new budget"}
+            disabled={!value.categoryId && !isEditing}
+            loading={saving}
+            onPress={onSave}
+            variant="primary"
+          >
+            {isEditing ? "Save changes" : "Save budget"}
+          </Button>
+          {isEditing ? (
+            <Button disabled={saving} onPress={onRemove} variant="quiet">
+              {removeLabel}
+            </Button>
+          ) : null}
+        </View>
       </View>
     </BottomSheet>
   );
@@ -338,76 +327,78 @@ export function OccasionSheet({
   const theme = useZoptionTheme();
   return (
     <BottomSheet onDismiss={onDismiss} title="New occasion" visible={visible}>
-      <FormField
-        autoCapitalize="sentences"
-        editable={!saving}
-        error={errors.title}
-        label="Occasion"
-        maxLength={120}
-        onChangeText={(title) => onChange({ title })}
-        placeholder="Mia's birthday party"
-        value={value.title}
-      />
-      <FormField
-        editable={!saving}
-        error={errors.date}
-        keyboardType="numbers-and-punctuation"
-        label="Date"
-        maxLength={10}
-        onChangeText={(date) => onChange({ date: formatDateInput(date) })}
-        placeholder="YYYY-MM-DD"
-        value={value.date}
-      />
-      <CategoryPicker
-        emptyText="Add an expense category first."
-        error={errors.categoryId}
-        onChange={(categoryId) => onChange({ categoryId })}
-        options={options}
-        selectedId={value.categoryId}
-      />
-      <FormField
-        editable={!saving}
-        error={errors.amount}
-        keyboardType="decimal-pad"
-        label="Limit for this category"
-        maxLength={18}
-        onChangeText={(amount) => onChange({ amount })}
-        placeholder="0.00"
-        trailing={<CurrencyCode />}
-        value={value.amount}
-      />
-      {message ? (
-        <Text
-          accessibilityRole="alert"
-          style={[typography.callout, { color: theme.colors.danger }]}
-        >
-          {message}
-        </Text>
-      ) : null}
-      <View style={styles.actions}>
-        <Button
-          accessibilityLabel="Create occasion"
-          loading={saving}
-          onPress={onSave}
-          variant="primary"
-        >
-          Create occasion
-        </Button>
+      <View style={styles.body}>
+        <FormField
+          autoCapitalize="sentences"
+          editable={!saving}
+          error={errors.title}
+          label="Occasion"
+          maxLength={120}
+          onChangeText={(title) => onChange({ title })}
+          placeholder="Mia's birthday party"
+          value={value.title}
+        />
+        <FormField
+          editable={!saving}
+          error={errors.date}
+          keyboardType="numbers-and-punctuation"
+          label="Date"
+          maxLength={10}
+          onChangeText={(date) => onChange({ date: formatDateInput(date) })}
+          placeholder="YYYY-MM-DD"
+          value={value.date}
+        />
+        <CategoryPicker
+          emptyText="Add an expense category first."
+          error={errors.categoryId}
+          onChange={(categoryId) => onChange({ categoryId })}
+          options={options}
+          selectedId={value.categoryId}
+        />
+        <FormField
+          editable={!saving}
+          error={errors.amount}
+          keyboardType="decimal-pad"
+          label="Limit for this category"
+          maxLength={18}
+          onChangeText={(amount) => onChange({ amount })}
+          placeholder="0.00"
+          trailing={<CurrencyCode />}
+          value={value.amount}
+        />
+        {message ? (
+          <Text
+            accessibilityRole="alert"
+            style={[typography.callout, { color: theme.colors.danger }]}
+          >
+            {message}
+          </Text>
+        ) : null}
+        <View style={styles.actions}>
+          <Button
+            accessibilityLabel="Create occasion"
+            loading={saving}
+            onPress={onSave}
+            variant="primary"
+          >
+            Create occasion
+          </Button>
+        </View>
       </View>
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
+  body: { gap: spacing.lg },
   pickerGroup: { gap: spacing.xs },
-  option: {
-    minHeight: touchTarget,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  chip: {
+    minHeight: 40,
+    justifyContent: "center",
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderRadius: radii.md,
+    borderRadius: radii.round,
   },
   toggle: {
     flexDirection: "row",
