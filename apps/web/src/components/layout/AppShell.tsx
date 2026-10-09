@@ -139,6 +139,9 @@ export function AppShell({ children }: AppShellProps) {
   const onAssistantRoute = location.pathname.startsWith("/app/assistant");
   const [assistantNavOpen, setAssistantNavOpen] = useState(false);
   const navIsCollapsed = onAssistantRoute ? !assistantNavOpen : navCollapsed;
+  // The collapsed rail hides every label with CSS, which leaves the icon-only links unnamed.
+  const collapsedName = (label: string) =>
+    navIsCollapsed ? { "aria-label": label, title: label } : {};
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string>();
   const [pendingNavigation, setPendingNavigation] = useState<PendingNavigation>();
@@ -347,6 +350,7 @@ export function AppShell({ children }: AppShellProps) {
                   end={item.to === "/app"}
                   className={({ isActive }) => (isActive ? "nav-item current" : "nav-item")}
                   onClick={(event) => handleShellLinkClick(event, item.to)}
+                  {...collapsedName(item.label)}
                 >
                   <Icon size={19} aria-hidden="true" />
                   <span>{item.label}</span>
@@ -362,6 +366,7 @@ export function AppShell({ children }: AppShellProps) {
                 isActive ? "sidebar-account-action current" : "sidebar-account-action"
               }
               onClick={(event) => handleShellLinkClick(event, "/app/tutorials")}
+              {...collapsedName("Tutorials & guide")}
             >
               <BookOpen size={15} aria-hidden="true" /> <span>Tutorials & guide</span>
             </NavLink>
@@ -371,6 +376,7 @@ export function AppShell({ children }: AppShellProps) {
                 isActive ? "sidebar-account-action current" : "sidebar-account-action"
               }
               onClick={(event) => handleShellLinkClick(event, "/app/settings")}
+              {...collapsedName("Account settings")}
             >
               <Settings size={15} aria-hidden="true" /> <span>Account settings</span>
             </NavLink>
@@ -382,6 +388,7 @@ export function AppShell({ children }: AppShellProps) {
                 void handleSignOut();
               }}
               disabled={signingOut}
+              {...collapsedName("Sign out")}
             >
               <LogOut size={15} aria-hidden="true" />{" "}
               <span>{signingOut ? "Signing out…" : "Sign out"}</span>
