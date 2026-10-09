@@ -3,7 +3,7 @@ import type {
   AccountInterestUpdate,
   AccountRecord,
   AccountUpdateWithInterest,
-  BudgetMonthPlan,
+  BudgetPlan,
   CalendarEventMonth,
   CalendarEventRecord,
   CategoryRecord,
@@ -180,8 +180,12 @@ export const accountItem: AccountRecord = {
   archived: false,
 };
 
-export const budgetPlan: BudgetMonthPlan = {
+export const budgetPlan: BudgetPlan = {
+  scope: "month",
   month: "2026-07-01",
+  eventId: null,
+  title: null,
+  date: null,
   currency: "PHP",
   totalLimitMinor: 850_000,
   totalSpentMinor: 535_400,
@@ -196,6 +200,7 @@ export const budgetPlan: BudgetMonthPlan = {
       spentMinor: 535_400,
       remainingMinor: 314_600,
       usedPercent: 63,
+      source: "month",
     },
   ],
 };
@@ -288,7 +293,8 @@ export function createAccountStore(): AccountRepository {
 
 export function createBudgetStore(): BudgetRepository {
   return {
-    list: vi.fn(async () => budgetPlan),
+    get: vi.fn(async () => budgetPlan),
+    listOccasions: vi.fn(async () => []),
     upsert: vi.fn(async () => budgetPlan),
   };
 }

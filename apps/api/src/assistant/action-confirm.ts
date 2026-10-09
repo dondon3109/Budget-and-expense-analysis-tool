@@ -146,6 +146,7 @@ async function apply(
       return;
     case "set_budget":
       await deps.budgets.upsert(env, tenantId, {
+        scope: "month",
         month: action.input.month,
         items: [{ categoryId: action.targetId, limitMinor: action.input.limitMinor }],
       });

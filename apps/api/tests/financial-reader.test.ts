@@ -1,7 +1,7 @@
 import {
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   type AccountRecord,
-  type BudgetMonthPlan,
+  type BudgetPlan,
   type CategoryRecord,
   type Currency,
   type DashboardSummary,
@@ -77,8 +77,12 @@ const transactionCalendar: TransactionCalendarMonth = {
   items: [transaction],
   hasAnyTransactions: true,
 };
-const budgetPlan: BudgetMonthPlan = {
+const budgetPlan: BudgetPlan = {
+  scope: "month",
   month: "2026-07-01",
+  eventId: null,
+  title: null,
+  date: null,
   currency: "PHP",
   totalLimitMinor: 100_000,
   totalSpentMinor: 69_600,
@@ -93,6 +97,7 @@ const budgetPlan: BudgetMonthPlan = {
       spentMinor: 69_600,
       remainingMinor: 30_400,
       usedPercent: 69.6,
+      source: "month",
     },
   ],
 };
@@ -170,7 +175,7 @@ function createReader(
   options: {
     accountItems?: AccountRecord[];
     summary?: DashboardSummary;
-    plan?: BudgetMonthPlan;
+    plan?: BudgetPlan;
     transactionItems?: TransactionListItem[];
     analysisRows?: AnalysisRow[];
     workspaceCurrency?: Currency;
@@ -181,7 +186,8 @@ function createReader(
     setBalance: vi.fn(async () => savingsAccount),
   };
   const budgets: BudgetRepository = {
-    list: vi.fn(async () => options.plan ?? budgetPlan),
+    get: vi.fn(async () => options.plan ?? budgetPlan),
+    listOccasions: vi.fn(async () => []),
     upsert: vi.fn(async () => options.plan ?? budgetPlan),
   };
   const categories: CategoryRepository = {
