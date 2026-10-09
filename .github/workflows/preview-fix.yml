@@ -272,10 +272,12 @@ jobs:
     needs: draft
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Repository setting "Allow GitHub Actions to create pull requests" is off, and a push or pull
+    # request made with the run token starts no workflow, so this job pushes and opens the pull
+    # request with the maintainer's AUTO_MERGE_TOKEN (see docs/deployment.md), and needs no write
+    # permission of its own.
     permissions:
-      contents: write
-      pull-requests: write
-      actions: write
+      contents: read
     outputs:
       url: ${{ steps.open.outputs.url }}
     steps:
@@ -311,7 +313,7 @@ jobs:
       - name: Open the draft pull request
         id: open
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN }}
           RUN_ID: ${{ github.event.workflow_run.id }}
           RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
         run: |
@@ -332,8 +334,6 @@ jobs:
             --title "fix: repair signed-in pages that failed the preview audit" \
             --body-file preview-fix-artifact/pr-body.md --head "${branch}")"
           echo "url=${url}" >> "${GITHUB_OUTPUT}"
-          # A pull request opened with the run token starts no pull_request workflow.
-          gh workflow run ci.yml --ref "${branch}"
 
   notify:
     name: Notify on Telegram
