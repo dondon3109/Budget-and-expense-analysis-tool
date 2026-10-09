@@ -18,11 +18,13 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: the assistant's consent is a compact screen over your conversations with a Privacy Policy link and a Not now button, history is split into Text chats and Voice chats, the voice screen's orb and bars move while it listens and speaks, and the message box no longer has a language pill.
 - Mobile: a calmer Home. Total balance is now a plain headline, Subscriptions and Recent activity are simple lists, and the Analytics sections sit on the page with hairline dividers instead of each in its own card, so Safe to spend stands out.
 - Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
 
 ### Fixed
 
+- Web: the collapsed sidebar on the assistant page now gives its links and the Sign out button names that screen readers can read.
 - Mobile: fixed a blank screen on launch in 0.2.48-beta, caused by a styling library update.
 - Mobile: the Analytics cash flow chart now shows even for a period with no records.
 - Mobile: the status bar icons no longer turn white while the Home dropdown is open.
