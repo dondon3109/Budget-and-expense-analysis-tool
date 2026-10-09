@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { currencies } from "@zoption/shared";
-import { calendarMonthCells, calendarWeekdays } from "@/features/calendar/calendar-month-grid";
+import { calendarMonthWeeks, calendarWeekdays } from "@/features/calendar/calendar-month-grid";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
@@ -37,7 +37,14 @@ export function TransactionCalendarGrid({
   onSelectDate,
 }: TransactionCalendarGridProps) {
   const theme = useZoptionTheme();
-  const cells = useMemo(() => calendarMonthCells(month), [month]);
+  // Days of the neighbouring months only complete the weeks; they stay empty cells here.
+  const cells = useMemo(
+    () =>
+      calendarMonthWeeks(month)
+        .flat()
+        .map((date) => (date.slice(0, 7) === month.slice(0, 7) ? date : null)),
+    [month],
+  );
   const byDate = useMemo(() => new Map(groups.map((group) => [group.date, group])), [groups]);
 
   return (

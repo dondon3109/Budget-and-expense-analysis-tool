@@ -25,6 +25,32 @@ const activeDay: LocalCalendarDay = {
 };
 
 describe("CalendarMonthGrid", () => {
+  it("marks an occasion budget on its day", async () => {
+    await render(
+      <CalendarMonthGrid
+        days={new Map()}
+        month="2026-08-01"
+        occasions={[
+          {
+            eventId: "party",
+            title: "Mia birthday",
+            date: "2026-08-15",
+            totalLimitMinor: 80_000,
+            totalSpentMinor: 50_000,
+          },
+        ]}
+        selectedDate="2026-08-01"
+        today="2026-08-01"
+        onSelectDate={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /August 15, 2026, occasion budget Mia birthday/ }),
+    ).toBeTruthy();
+    expect(screen.getByText("Mia birthday", { includeHiddenElements: true })).toBeTruthy();
+  });
+
   it("renders and selects every date even when most days have no activity", async () => {
     const onSelectDate = jest.fn();
     await render(
@@ -32,6 +58,7 @@ describe("CalendarMonthGrid", () => {
         days={new Map([[activeDay.date, activeDay]])}
         month="2026-08-01"
         selectedDate="2026-08-24"
+        occasions={[]}
         today="2026-08-24"
         onSelectDate={onSelectDate}
       />,

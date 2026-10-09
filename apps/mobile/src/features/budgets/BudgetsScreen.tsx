@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { router } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { BudgetQuery } from "@zoption/shared";
@@ -62,9 +62,17 @@ export function BudgetsScreen() {
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const theme = useZoptionTheme();
-  const [tab, setTab] = useState<Tab>("month");
+  // The calendar opens an occasion by id; the screen stays mounted in its tab, so follow the param.
+  const params = useLocalSearchParams<{ occasion?: string | string[] }>();
+  const requestedOccasion = Array.isArray(params.occasion) ? params.occasion[0] : params.occasion;
+  const [tab, setTab] = useState<Tab>(requestedOccasion ? "occasions" : "month");
   const [month, setMonth] = useState(() => currentMonthStart());
-  const [occasionId, setOccasionId] = useState<string | null>(null);
+  const [occasionId, setOccasionId] = useState<string | null>(requestedOccasion ?? null);
+  useEffect(() => {
+    if (!requestedOccasion) return;
+    setTab("occasions");
+    setOccasionId(requestedOccasion);
+  }, [requestedOccasion]);
 
   const period: BudgetQuery = occasionId
     ? { scope: "occasion", eventId: occasionId }

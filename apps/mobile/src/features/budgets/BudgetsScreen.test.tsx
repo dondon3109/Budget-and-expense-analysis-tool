@@ -9,6 +9,7 @@ jest.mock("expo-router", () => ({
   router: {
     push: jest.fn(),
   },
+  useLocalSearchParams: () => ({}),
 }));
 
 jest.mock("@react-native-community/netinfo", () => ({
