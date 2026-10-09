@@ -41,7 +41,8 @@ import {
   summarizeTransactions,
 } from "./transaction-list-view";
 import { CategorySummaryRow, DateHeader, TotalsValue, TransactionItemRow } from "./TransactionRows";
-import { TransactionCalendarGrid } from "./TransactionCalendarGrid";
+import { CalendarMonthGrid } from "@/features/calendar/CalendarMonthGrid";
+import { calendarCellsFromTransactions } from "./transaction-calendar-cells";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
@@ -133,6 +134,7 @@ export function TransactionsScreen() {
   const items = useMemo(() => local.items ?? [], [local.items]);
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
+  const calendarCells = useMemo(() => calendarCellsFromTransactions(dateGroups), [dateGroups]);
   // Derived so changing month never leaves a selection outside the visible month.
   const activeDate = selectedDate.startsWith(month.slice(0, 7)) ? selectedDate : month;
   const activeDayItems = useMemo(
@@ -495,8 +497,8 @@ export function TransactionsScreen() {
           extraData={selectedIds}
           keyExtractor={(item) => item.transaction.id}
           ListHeaderComponent={
-            <TransactionCalendarGrid
-              groups={dateGroups}
+            <CalendarMonthGrid
+              cells={calendarCells}
               month={month}
               onSelectDate={setSelectedDate}
               selectedDate={activeDate}

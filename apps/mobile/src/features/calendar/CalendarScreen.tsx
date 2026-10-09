@@ -17,7 +17,7 @@ import { ErrorState, MoneyValue, Skeleton, SyncStatus } from "@/ui/components";
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { buildBudgetMonthView } from "../budgets/budget-month-view";
-import { monthTotals } from "./calendar-day-summary";
+import { calendarCellsFromDays, monthTotals } from "./calendar-day-summary";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { monthLabel, todayIso } from "./event-form";
 import { withTapSound } from "@/features/sounds/sound-effects";
@@ -256,6 +256,10 @@ export function CalendarScreen() {
     () => new Map((state.month?.days ?? []).map((day) => [day.date, day])),
     [state.month],
   );
+  const cells = useMemo(
+    () => calendarCellsFromDays(state.month?.days ?? [], occasions.occasions),
+    [state.month, occasions.occasions],
+  );
   const totals = useMemo(() => monthTotals(state.month?.days ?? []), [state.month]);
   const budgetView = useMemo(
     () => (budgetPlan.data ? buildBudgetMonthView(budgetPlan.data) : null),
@@ -347,9 +351,8 @@ export function CalendarScreen() {
             incomeMinor={totals.incomeMinor}
           />
           <CalendarMonthGrid
-            days={days}
+            cells={cells}
             month={month}
-            occasions={occasions.occasions}
             selectedDate={selectedDate}
             today={todayIso()}
             onSelectDate={setSelectedDate}

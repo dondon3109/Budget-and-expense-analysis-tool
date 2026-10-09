@@ -1,3 +1,17 @@
+/** What one day shows in the grid. The Calendar and Transactions screens each build theirs. */
+export interface CalendarCell {
+  incomeMinor: number;
+  expenseMinor: number;
+  /** Several currencies the cell cannot add up: shows a marker instead of totals. */
+  mixedCurrency?: boolean;
+  /** An occasion budget on this day. */
+  tag?: string;
+  hasEvent?: boolean;
+  hasBill?: boolean;
+  /** Spoken after the date: "1 event", "2 transactions". */
+  summary: readonly string[];
+}
+
 export const calendarWeekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 
 /**

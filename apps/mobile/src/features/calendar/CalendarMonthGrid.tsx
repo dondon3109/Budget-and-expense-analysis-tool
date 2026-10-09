@@ -1,22 +1,18 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { LocalBudgetOccasion, LocalCalendarDay } from "@/db/view-models";
+import { withTapSound } from "@/features/sounds/sound-effects";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 import { compactAmountLabel } from "../transactions/transaction-list-view";
-import { dayTotals } from "./calendar-day-summary";
-import { calendarMonthWeeks, calendarWeekdays } from "./calendar-month-grid";
-import { withTapSound } from "@/features/sounds/sound-effects";
+import { calendarMonthWeeks, calendarWeekdays, type CalendarCell } from "./calendar-month-grid";
 
 interface CalendarMonthGridProps {
   month: string;
   selectedDate: string;
   today: string;
-  days: ReadonlyMap<string, LocalCalendarDay>;
-  /** Occasion budgets in the month, marked on their day. */
-  occasions: readonly LocalBudgetOccasion[];
+  cells: ReadonlyMap<string, CalendarCell>;
   onSelectDate: (date: string) => void;
 }
 
@@ -32,28 +28,14 @@ function calendarDateLabel(date: string): string {
 
 function dayAccessibilityLabel(
   date: string,
-  day: LocalCalendarDay | undefined,
-  occasions: readonly LocalBudgetOccasion[],
+  cell: CalendarCell | undefined,
   selected: boolean,
   today: boolean,
 ): string {
   const parts = [calendarDateLabel(date)];
   if (today) parts.push("today");
   if (selected) parts.push("selected");
-  if (occasions.length) {
-    parts.push(`occasion budget ${occasions.map((occasion) => occasion.title).join(", ")}`);
-  }
-  if (day?.events.length) {
-    parts.push(`${day.events.length} event${day.events.length === 1 ? "" : "s"}`);
-  }
-  if (day?.subscriptionBills.length) {
-    parts.push(
-      `${day.subscriptionBills.length} bill${day.subscriptionBills.length === 1 ? "" : "s"}`,
-    );
-  }
-  if (day?.transactions.length) {
-    parts.push(`${day.transactions.length} transaction${day.transactions.length === 1 ? "" : "s"}`);
-  }
+  parts.push(...(cell?.summary ?? []));
   return parts.join(", ");
 }
 
@@ -66,19 +48,11 @@ export function CalendarMonthGrid({
   month,
   selectedDate,
   today,
-  days,
-  occasions,
+  cells,
   onSelectDate,
 }: CalendarMonthGridProps) {
   const theme = useZoptionTheme();
   const weeks = useMemo(() => calendarMonthWeeks(month), [month]);
-  const occasionsByDate = useMemo(() => {
-    const byDate = new Map<string, LocalBudgetOccasion[]>();
-    for (const occasion of occasions) {
-      byDate.set(occasion.date, [...(byDate.get(occasion.date) ?? []), occasion]);
-    }
-    return byDate;
-  }, [occasions]);
   const rule = { borderColor: theme.colors.border };
 
   return (
@@ -126,22 +100,14 @@ export function CalendarMonthGrid({
               );
             }
 
-            const day = days.get(date);
-            const dayOccasions = occasionsByDate.get(date) ?? [];
-            const totals = dayTotals(day);
+            const cell = cells.get(date);
             const selected = date === selectedDate;
             const isToday = date === today;
             return (
               <Pressable
                 key={date}
                 accessibilityHint="Shows this day's agenda below the calendar"
-                accessibilityLabel={dayAccessibilityLabel(
-                  date,
-                  day,
-                  dayOccasions,
-                  selected,
-                  isToday,
-                )}
+                accessibilityLabel={dayAccessibilityLabel(date, cell, selected, isToday)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
@@ -162,35 +128,44 @@ export function CalendarMonthGrid({
                   </Text>
                 </View>
                 <View accessibilityElementsHidden style={styles.cellBody}>
-                  {dayOccasions[0] ? (
+                  {cell?.tag ? (
                     <View style={[styles.tag, { backgroundColor: theme.colors.brandSoft }]}>
                       <Text
                         numberOfLines={1}
                         style={[styles.tagText, { color: theme.colors.brand }]}
                       >
-                        {dayOccasions[0].title}
+                        {cell.tag}
                       </Text>
                     </View>
                   ) : null}
-                  {totals.incomeMinor > 0 ? (
-                    <Text numberOfLines={1} style={[styles.amount, { color: theme.colors.info }]}>
-                      {compactAmountLabel(totals.incomeMinor)}
-                    </Text>
-                  ) : null}
-                  {totals.expenseMinor > 0 ? (
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.amount, { color: theme.colors.expense }]}
-                    >
-                      {compactAmountLabel(totals.expenseMinor)}
-                    </Text>
-                  ) : null}
-                  {day?.events.length || day?.subscriptionBills.length ? (
+                  {cell?.mixedCurrency ? (
+                    <Text style={[styles.amount, { color: theme.colors.textMuted }]}>•••</Text>
+                  ) : (
+                    <>
+                      {cell && cell.incomeMinor > 0 ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.amount, { color: theme.colors.info }]}
+                        >
+                          {compactAmountLabel(cell.incomeMinor)}
+                        </Text>
+                      ) : null}
+                      {cell && cell.expenseMinor > 0 ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.amount, { color: theme.colors.expense }]}
+                        >
+                          {compactAmountLabel(cell.expenseMinor)}
+                        </Text>
+                      ) : null}
+                    </>
+                  )}
+                  {cell?.hasEvent || cell?.hasBill ? (
                     <View style={styles.dots}>
-                      {day?.events.length ? (
+                      {cell.hasEvent ? (
                         <View style={[styles.dot, { backgroundColor: theme.colors.brand }]} />
                       ) : null}
-                      {day?.subscriptionBills.length ? (
+                      {cell.hasBill ? (
                         <View style={[styles.dot, { backgroundColor: theme.colors.warning }]} />
                       ) : null}
                     </View>

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import type { LocalCalendarDay } from "@/db/view-models";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
+import { calendarCellsFromDays } from "./calendar-day-summary";
 
 const activeDay: LocalCalendarDay = {
   date: "2026-08-24",
@@ -28,17 +29,19 @@ describe("CalendarMonthGrid", () => {
   it("marks an occasion budget on its day", async () => {
     await render(
       <CalendarMonthGrid
-        days={new Map()}
+        cells={calendarCellsFromDays(
+          [],
+          [
+            {
+              eventId: "party",
+              title: "Mia birthday",
+              date: "2026-08-15",
+              totalLimitMinor: 80_000,
+              totalSpentMinor: 50_000,
+            },
+          ],
+        )}
         month="2026-08-01"
-        occasions={[
-          {
-            eventId: "party",
-            title: "Mia birthday",
-            date: "2026-08-15",
-            totalLimitMinor: 80_000,
-            totalSpentMinor: 50_000,
-          },
-        ]}
         selectedDate="2026-08-01"
         today="2026-08-01"
         onSelectDate={jest.fn()}
@@ -55,10 +58,9 @@ describe("CalendarMonthGrid", () => {
     const onSelectDate = jest.fn();
     await render(
       <CalendarMonthGrid
-        days={new Map([[activeDay.date, activeDay]])}
+        cells={calendarCellsFromDays([activeDay], [])}
         month="2026-08-01"
         selectedDate="2026-08-24"
-        occasions={[]}
         today="2026-08-24"
         onSelectDate={onSelectDate}
       />,
