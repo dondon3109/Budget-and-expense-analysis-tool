@@ -34,6 +34,7 @@ import { Screen } from "@/ui/screen";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type SubscriptionFilter = "all" | "active" | "canceled";
 
@@ -104,7 +105,7 @@ export function SubscriptionsScreen() {
           accessibilityLabel="Add subscription"
           accessibilityRole="button"
           android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 28 }}
-          onPress={addSubscription}
+          onPress={withTapSound(addSubscription)}
           style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
         >
           <MaterialCommunityIcons
@@ -185,7 +186,7 @@ export function SubscriptionsScreen() {
                   key={key}
                   accessibilityRole="tab"
                   accessibilityState={{ selected }}
-                  onPress={() => setFilter(key)}
+                  onPress={withTapSound(() => setFilter(key))}
                   style={[
                     styles.filterChip,
                     {
@@ -378,7 +379,7 @@ function SubscriptionRow({
       accessibilityRole="button"
       accessibilityLabel={`${subscription.name}, ${moneyAccessibilityLabel(subscription.amountMinor, currency)}, ${subscription.status}`}
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
     >
       <Card
         style={[

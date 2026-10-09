@@ -25,6 +25,7 @@ import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 import { debtTypeLabels, parseExtraPaymentMinor, todayIso } from "./debt-form";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const strategyOptions: Array<{ id: DebtPayoffStrategy; label: string; detail: string }> = [
   {
@@ -197,7 +198,7 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
     <Pressable
       accessibilityRole="button"
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
     >
       <Card
         accessibilityLabel={`${debt.name}, balance ${moneyAccessibilityLabel(debt.balanceMinor, workspaceCurrency)}`}

@@ -11,6 +11,7 @@ import {
   type TransactionDateGroup,
   type TransactionTotals,
 } from "./transaction-list-view";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface TransactionCalendarGridProps {
   month: string;
@@ -78,7 +79,7 @@ export function TransactionCalendarGrid({
               accessibilityLabel={`${label}${totals ? ", has transactions" : ""}`}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              onPress={() => onSelectDate(date)}
+              onPress={withTapSound(() => onSelectDate(date))}
               style={[
                 ...frame,
                 {

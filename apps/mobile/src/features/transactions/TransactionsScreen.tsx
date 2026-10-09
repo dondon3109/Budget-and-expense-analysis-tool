@@ -43,6 +43,7 @@ import {
 import { CategorySummaryRow, DateHeader, TotalsValue, TransactionItemRow } from "./TransactionRows";
 import { TransactionCalendarGrid } from "./TransactionCalendarGrid";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type ViewMode = "daily" | "calendar" | "monthly" | "summary";
 
@@ -72,7 +73,7 @@ function HeaderIcon({
       accessibilityState={{ selected: Boolean(selected) }}
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
       hitSlop={4}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
       style={styles.iconButton}
     >
       <MaterialCommunityIcons
@@ -217,7 +218,7 @@ export function TransactionsScreen() {
               key={filter}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              onPress={() => setKind(filter)}
+              onPress={withTapSound(() => setKind(filter))}
               style={[
                 styles.chip,
                 {
@@ -349,7 +350,7 @@ export function TransactionsScreen() {
                 accessibilityLabel="Clear search"
                 accessibilityRole="button"
                 hitSlop={8}
-                onPress={() => setSearch("")}
+                onPress={withTapSound(() => setSearch(""))}
               >
                 <MaterialCommunityIcons
                   accessibilityElementsHidden
@@ -391,7 +392,7 @@ export function TransactionsScreen() {
               key={tab.key}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              onPress={() => setView(tab.key)}
+              onPress={withTapSound(() => setView(tab.key))}
               style={[styles.viewTab, selected && { borderBottomColor: theme.colors.brand }]}
             >
               <Text
@@ -432,7 +433,7 @@ export function TransactionsScreen() {
               accessibilityLabel="What is Net?"
               accessibilityRole="button"
               hitSlop={12}
-              onPress={() => setNetInfoVisible(true)}
+              onPress={withTapSound(() => setNetInfoVisible(true))}
               style={styles.netInfoButton}
             >
               <MaterialCommunityIcons
@@ -558,7 +559,7 @@ export function TransactionsScreen() {
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
             android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
-            onPress={() => router.push("/(app)/transaction")}
+            onPress={withTapSound(() => router.push("/(app)/transaction"))}
             style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
           >
             <MaterialCommunityIcons

@@ -139,7 +139,7 @@ function DayAgenda({
               router.push({
                 pathname: "/(app)/(tabs)/budgets",
                 params: { occasion: occasion.eventId },
-              })
+              }),
             )}
             style={[styles.agendaRow, rule]}
           >
@@ -170,7 +170,9 @@ function DayAgenda({
           accessibilityRole="button"
           accessibilityLabel={"Event " + event.title}
           android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-          onPress={withTapSound(() => router.push({ pathname: "/(app)/event", params: { id: event.id } }))}
+          onPress={withTapSound(() =>
+            router.push({ pathname: "/(app)/event", params: { id: event.id } }),
+          )}
           style={[styles.agendaRow, rule]}
         >
           <MaterialCommunityIcons
@@ -360,7 +362,9 @@ export function CalendarScreen() {
           accessibilityHint="Opens the event editor"
           accessibilityLabel="Add event"
           accessibilityRole="button"
-          onPress={withTapSound(() => router.push({ pathname: "/(app)/event", params: { date: selectedDate } }))}
+          onPress={withTapSound(() =>
+            router.push({ pathname: "/(app)/event", params: { date: selectedDate } }),
+          )}
           style={[styles.fab, elevation.dialog, { backgroundColor: theme.colors.solid }]}
         >
           <MaterialCommunityIcons color={theme.colors.onSolid} name="plus" size={28} />

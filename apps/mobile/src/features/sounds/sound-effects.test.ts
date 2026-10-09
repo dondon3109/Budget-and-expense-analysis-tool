@@ -1,4 +1,4 @@
-import { playSound } from "./sound-effects";
+import { playSound, warmUpSounds, withTapSound } from "./sound-effects";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 
 const mockPlay = jest.fn();
@@ -56,5 +56,22 @@ describe("playSound", () => {
       throw new Error("no audio");
     });
     expect(() => playSound("error")).not.toThrow();
+  });
+
+  it("builds every player at warm-up so the first tap only plays", () => {
+    warmUpSounds();
+    expect(mockCreateAudioPlayer).toHaveBeenCalledTimes(3);
+    mockPlay.mockClear();
+    playSound("success");
+    expect(mockCreateAudioPlayer).toHaveBeenCalledTimes(3);
+    expect(mockPlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("plays the tap before the wrapped handler, and wraps nothing for a missing one", () => {
+    const order: string[] = [];
+    mockPlay.mockImplementationOnce(() => order.push("sound"));
+    withTapSound(() => order.push("handler"))?.();
+    expect(order).toEqual(["sound", "handler"]);
+    expect(withTapSound(undefined)).toBeUndefined();
   });
 });

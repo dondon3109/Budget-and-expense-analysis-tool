@@ -9,6 +9,7 @@ import { Button, CategoryBadge, Card, EmptyState, ErrorState, Skeleton } from "@
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 function statusText(state: LocalCategoryItem["syncState"]): string | null {
   switch (state) {
@@ -46,7 +47,7 @@ function CategoryRow({ category, onPress }: { category: LocalCategoryItem; onPre
       }
       className="w-full"
       disabled={disabled}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
       style={({ pressed }) => ({
         backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
         opacity: disabled ? 0.62 : 1,

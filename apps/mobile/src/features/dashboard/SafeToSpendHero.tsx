@@ -19,6 +19,7 @@ import { Card, MoneyValue } from "@/ui/components";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export interface SafeToSpendHeroProps {
   startingBalanceMinor: number;
@@ -105,7 +106,7 @@ export function SafeToSpendHero({
             accessibilityRole="button"
             accessibilityLabel="View renewal calendar"
             accessibilityHint="Opens upcoming renewals and subscriptions"
-            onPress={onViewRenewals}
+            onPress={withTapSound(onViewRenewals)}
             hitSlop={8}
             style={[styles.renewalsButton, { backgroundColor: theme.colors.surfaceRaised }]}
           >

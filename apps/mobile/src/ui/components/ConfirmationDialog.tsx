@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { Button } from "./Button";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface ConfirmationDialogProps {
   visible: boolean;
@@ -19,7 +20,7 @@ export function ConfirmationDialog(props: ConfirmationDialogProps) {
   return (
     <Modal animationType="fade" transparent visible={props.visible} onRequestClose={props.onCancel}>
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={props.onCancel} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={withTapSound(props.onCancel)} />
         <View
           accessibilityRole="alert"
           style={[

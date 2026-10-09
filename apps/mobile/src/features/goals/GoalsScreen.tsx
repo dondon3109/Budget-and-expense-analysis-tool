@@ -11,6 +11,7 @@ import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { goalStatusLabel } from "./goal-form";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function GoalsScreen() {
   const local = useLocalWorkspace();
@@ -109,7 +110,7 @@ function GoalRow({ goal, onPress }: { goal: LocalGoalItem; onPress: () => void }
     <Pressable
       accessibilityRole="button"
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
     >
       <Card
         accessibilityLabel={`Goal ${goal.name}, ${percent}% funded`}

@@ -24,6 +24,7 @@ import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks"
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { renderMobileVoiceCaption } from "./render-voice-caption";
 import { RadarWaveRings, ThinkingSphereCore } from "./ThinkingSphereIndicator";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 /**
  * The only voice used by the voice conversation: Bright Female.
@@ -564,7 +565,7 @@ export function AssistantVoiceConversation({
           <View style={styles.consentActions}>
             <Pressable
               accessibilityRole="button"
-              onPress={onClose}
+              onPress={withTapSound(onClose)}
               style={[styles.consentSecondaryButton, { borderColor: theme.colors.border }]}
             >
               <Text style={[typography.label, { color: theme.colors.textMuted }]}>Not now</Text>
@@ -572,7 +573,7 @@ export function AssistantVoiceConversation({
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ disabled: enabling }}
-              onPress={() => void enableVoice()}
+              onPress={withTapSound(() => void enableVoice())}
               style={[
                 styles.consentPrimaryButton,
                 { backgroundColor: theme.colors.brand },
@@ -600,7 +601,7 @@ export function AssistantVoiceConversation({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Back to text chat"
-            onPress={handleClose}
+            onPress={withTapSound(handleClose)}
             style={[
               styles.iconButton,
               { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
@@ -641,7 +642,7 @@ export function AssistantVoiceConversation({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Reset conversation"
-              onPress={handleResetSession}
+              onPress={withTapSound(handleResetSession)}
               style={[
                 styles.iconButton,
                 { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
@@ -814,7 +815,7 @@ export function AssistantVoiceConversation({
                   accessibilityLabel={prompt}
                   accessibilityState={{ disabled: historyLoading }}
                   disabled={historyLoading}
-                  onPress={() => handlePromptChip(prompt)}
+                  onPress={withTapSound(() => handlePromptChip(prompt))}
                   style={[
                     styles.promptChip,
                     {
@@ -1021,7 +1022,7 @@ export function AssistantVoiceConversation({
                   : undefined
             }
             disabled={status === "thinking" || historyLoading}
-            onPress={handleOrbPress}
+            onPress={withTapSound(handleOrbPress)}
             style={[
               styles.orb,
               {

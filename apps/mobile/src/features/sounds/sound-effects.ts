@@ -23,6 +23,21 @@ function ensureAudioMode(): void {
 }
 
 /**
+ * Sets the audio mode and builds every player once at launch, so the first tap does not wait on
+ * audio setup and the sounds play with the same latency from the start.
+ */
+export function warmUpSounds(): void {
+  try {
+    ensureAudioMode();
+    for (const effect of Object.keys(sources) as SoundEffect[]) {
+      players[effect] ??= createAudioPlayer(sources[effect]);
+    }
+  } catch {
+    // Sound is decoration; ignore.
+  }
+}
+
+/**
  * Plays a short UI sound. Fire and forget: a missing audio module or a failed
  * play must never break the action that triggered it. Players are created on
  * first use and reused, so a rapid second tap restarts the clip.
@@ -39,10 +54,14 @@ export function playSound(effect: SoundEffect): void {
   }
 }
 
-/** Wraps a press handler so the tap sound plays first, for a raw `Pressable` that is not a `Button`. */
+/**
+ * Wraps a press handler so the tap sound plays first, for a raw `Pressable` or `Switch` that is
+ * not a `Button`. A missing handler stays missing, so a disabled control remains silent.
+ */
 export function withTapSound<Args extends unknown[]>(
-  handler: (...args: Args) => void,
-): (...args: Args) => void {
+  handler: ((...args: Args) => void) | null | undefined,
+): ((...args: Args) => void) | undefined {
+  if (!handler) return undefined;
   return (...args) => {
     playSound("tap");
     handler(...args);

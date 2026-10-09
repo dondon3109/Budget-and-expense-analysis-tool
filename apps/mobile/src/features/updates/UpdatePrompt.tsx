@@ -21,6 +21,7 @@ import {
   updateAvailableMessage,
 } from "./update-copy";
 import { useOptionalAndroidUpdates, type AndroidUpdateController } from "./use-android-updates";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function AndroidUpdateOverlay() {
   const updates = useOptionalAndroidUpdates();
@@ -52,7 +53,7 @@ export function AndroidUpdateOverlayView({ updates }: { updates: AndroidUpdateCo
           <Pressable
             accessibilityLabel="Dismiss update dialog"
             style={StyleSheet.absoluteFill}
-            onPress={() => void updates.later()}
+            onPress={withTapSound(() => void updates.later())}
           />
         ) : null}
         <View

@@ -7,6 +7,7 @@ import { usePetStore } from "@/stores/pet-store";
 import { CollapsibleCard } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 /** Turns the pet companion on or off. Hidden until the Worker has answered, as for guests. */
 export function PetSettingsCard() {
@@ -44,7 +45,7 @@ export function PetSettingsCard() {
           accessibilityLabel="Show my pet"
           disabled={pending}
           value={pet.enabled}
-          onValueChange={(next) => void toggle(next)}
+          onValueChange={withTapSound((next) => void toggle(next))}
           trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
         />
       </View>

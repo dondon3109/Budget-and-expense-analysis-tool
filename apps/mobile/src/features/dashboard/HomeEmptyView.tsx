@@ -7,6 +7,7 @@ import { useGoalCta } from "@/features/primary-goal/goal-personalization";
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function HomeEmptyView({ syncing }: { syncing: boolean }) {
   const theme = useZoptionTheme();
@@ -125,7 +126,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Step 1: Set up accounts and categories"
-          onPress={() => router.push("/(app)/money-setup")}
+          onPress={withTapSound(() => router.push("/(app)/money-setup"))}
           style={[
             styles.stepCard,
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
@@ -153,7 +154,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Step 2: Add your first transaction"
-          onPress={() => router.push("/(app)/transaction")}
+          onPress={withTapSound(() => router.push("/(app)/transaction"))}
           style={[
             styles.stepCard,
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
@@ -181,7 +182,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Step 3: Set category budgets"
-          onPress={() => router.push("/(app)/(tabs)/budgets")}
+          onPress={withTapSound(() => router.push("/(app)/(tabs)/budgets"))}
           style={[
             styles.stepCard,
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },

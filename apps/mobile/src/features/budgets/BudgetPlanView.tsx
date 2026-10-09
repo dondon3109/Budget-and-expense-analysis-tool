@@ -208,7 +208,7 @@ export function BudgetRow({
           accessibilityLabel={`Review conflict for ${row.categoryName}`}
           accessibilityRole="button"
           onPress={withTapSound(() =>
-            router.push({ pathname: "/(app)/budget-conflict", params: { id: row.id } })
+            router.push({ pathname: "/(app)/budget-conflict", params: { id: row.id } }),
           )}
           style={styles.statusLine}
         >
