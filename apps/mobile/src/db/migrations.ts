@@ -15,7 +15,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 16;
+export const LOCAL_SCHEMA_VERSION = 17;
 
 export const migrations: readonly Migration[] = [
   {
@@ -834,6 +834,19 @@ export const migrations: readonly Migration[] = [
     // the Worker re-sends them.
     name: "category_system_key",
     sql: `ALTER TABLE categories ADD COLUMN system_key TEXT;`,
+  },
+  {
+    version: 17,
+    // A budget row now belongs to a month, to every month (month 0001-01-01), or to one
+    // occasion: a calendar event named by occasion_id. An occasion row keeps month 0001-01-01,
+    // so the unique key gains occasion_id to hold one limit per category per occasion.
+    name: "budget_scopes",
+    sql: `
+      ALTER TABLE budgets ADD COLUMN occasion_id TEXT;
+      DROP INDEX budgets_month_category_unique;
+      CREATE UNIQUE INDEX budgets_period_category_unique
+        ON budgets(month, COALESCE(occasion_id, ''), category_id);
+    `,
   },
 ] as const;
 

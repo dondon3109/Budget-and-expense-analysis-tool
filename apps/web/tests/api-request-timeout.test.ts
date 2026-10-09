@@ -94,7 +94,7 @@ describe("API request timeouts", () => {
       .mockImplementationOnce((_input, init) => abortableNever(init?.signal))
       .mockImplementationOnce(() => Promise.resolve(jsonResponse(plan)));
 
-    const pending = getBudgets(userWorkspace, "2026-07");
+    const pending = getBudgets(userWorkspace, { scope: "month", month: "2026-07-01" });
     await vi.advanceTimersByTimeAsync(21_000);
     await expect(pending).resolves.toEqual(plan);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
@@ -117,7 +117,9 @@ describe("API request timeouts", () => {
       .spyOn(globalThis, "fetch")
       .mockImplementation(() => Promise.reject(new TypeError("Failed to fetch")));
 
-    await expect(getBudgets(userWorkspace, "2026-07")).rejects.toThrow("Failed to fetch");
+    await expect(
+      getBudgets(userWorkspace, { scope: "month", month: "2026-07-01" }),
+    ).rejects.toThrow("Failed to fetch");
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 

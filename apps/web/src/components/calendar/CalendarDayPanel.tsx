@@ -1,14 +1,21 @@
-import type { CalendarEventRecord, TransactionListItem } from "@zoption/shared";
-import { CalendarPlus, Pencil, Plus, Trash2 } from "lucide-react";
+import type {
+  BudgetOccasionSummary,
+  CalendarEventRecord,
+  TransactionListItem,
+} from "@zoption/shared";
+import { CalendarPlus, Pencil, PartyPopper, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { calendarEventTimeLabel, formatCalendarDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
+import "./CalendarOccasions.css";
 
 interface CalendarDayPanelProps {
   date: string;
   items: TransactionListItem[];
   events: CalendarEventRecord[];
+  occasions?: BudgetOccasionSummary[];
   deletingEventId?: string;
   deleteError?: string;
   onAddTransaction: () => void;
@@ -21,6 +28,7 @@ export function CalendarDayPanel({
   date,
   items,
   events,
+  occasions = [],
   deletingEventId,
   deleteError,
   onAddTransaction,
@@ -48,6 +56,31 @@ export function CalendarDayPanel({
           <Plus size={15} aria-hidden="true" /> Transaction
         </button>
       </header>
+
+      {occasions.length > 0 && (
+        <section className="calendar-occasion-section" aria-label="Occasion budgets">
+          {occasions.map((occasion) => {
+            const remaining = occasion.totalLimitMinor - occasion.totalSpentMinor;
+            return (
+              <Link
+                className="calendar-occasion-item"
+                key={occasion.eventId}
+                to={`/app/budgets?scope=occasions&occasion=${occasion.eventId}&month=${occasion.date.slice(0, 7)}`}
+              >
+                <PartyPopper size={16} aria-hidden="true" />
+                <span>
+                  <strong>{occasion.title}</strong>
+                  <small>Occasion budget</small>
+                </span>
+                <span className={remaining < 0 ? "over" : undefined}>
+                  <strong>{formatMoney(Math.abs(remaining))}</strong>
+                  <small>{remaining < 0 ? "over" : "left"}</small>
+                </span>
+              </Link>
+            );
+          })}
+        </section>
+      )}
 
       {events.length > 0 && (
         <section className="calendar-event-section" aria-labelledby="calendar-events-title">

@@ -7,6 +7,7 @@ import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import type { DashboardSummary } from "@zoption/shared";
 
 import { FlatSection, homeCardStyles, SectionLabel } from "./HomeCardParts";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function BudgetCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
@@ -16,7 +17,7 @@ export function BudgetCard({ summary }: { summary: DashboardSummary }) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Set up budgets"
-        onPress={() => router.push("/(app)/(tabs)/budgets")}
+        onPress={withTapSound(() => router.push("/(app)/(tabs)/budgets"))}
         style={[styles.slimRow, { borderColor: theme.colors.border }]}
       >
         <Text style={[typography.label, { color: theme.colors.text, flex: 1 }]}>
@@ -33,7 +34,7 @@ export function BudgetCard({ summary }: { summary: DashboardSummary }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="View all budgets"
-          onPress={() => router.push("/(app)/(tabs)/budgets")}
+          onPress={withTapSound(() => router.push("/(app)/(tabs)/budgets"))}
           hitSlop={8}
         >
           <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>

@@ -84,10 +84,11 @@ unknown names ignored; the list is `mobileSyncFeatures` in `packages/shared/src/
 the Worker sends version 1 payloads as first shipped. Shaping happens at read time in
 `apps/api/src/db/mobile-sync/features.ts`, so the change log and its triggers stay unchanged.
 
-| Feature            | Adds                                                             | Without it                       |
-| ------------------ | ---------------------------------------------------------------- | -------------------------------- |
-| `debt-links`       | `debtId` on transaction and transfer payloads, read from the row | No `debtId` key                  |
-| `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`   | Those accounts arrive as `other` |
+| Feature            | Adds                                                               | Without it                                              |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------- |
+| `debt-links`       | `debtId` on transaction and transfer payloads, read from the row   | No `debtId` key                                         |
+| `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`     | Those accounts arrive as `other`                        |
+| `budget-scopes`    | `occasionId` on budget payloads: a budget row for a calendar event | No `occasionId` key; occasion rows arrive as tombstones |
 
 ## Released app contracts
 

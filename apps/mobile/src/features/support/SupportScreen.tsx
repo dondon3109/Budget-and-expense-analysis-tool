@@ -44,6 +44,7 @@ import {
   validateBugDraft,
   validateSupportMessage,
 } from "./support-forms";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type Section = "ask" | "reports";
 
@@ -222,7 +223,7 @@ export function SupportScreen() {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={item.reference + ", " + item.title}
-        onPress={() => void toggleReport(item)}
+        onPress={withTapSound(() => void toggleReport(item))}
         style={[
           styles.reportRow,
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
@@ -337,7 +338,7 @@ export function SupportScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Dismiss"
-                onPress={() => setSubmittedReference(null)}
+                onPress={withTapSound(() => setSubmittedReference(null))}
                 hitSlop={8}
               >
                 <MaterialCommunityIcons name="close" size={16} color={theme.colors.textMuted} />
@@ -379,7 +380,7 @@ export function SupportScreen() {
                 accessibilityLabel="Send support message"
                 accessibilityState={{ disabled: !canSend }}
                 disabled={!canSend}
-                onPress={() => void sendChat()}
+                onPress={withTapSound(() => void sendChat())}
                 style={[
                   styles.sendButton,
                   { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
@@ -552,7 +553,7 @@ function SegmentButton({
     <Pressable
       accessibilityRole="tab"
       accessibilityState={{ selected: active }}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
       style={[
         styles.segment,
         {

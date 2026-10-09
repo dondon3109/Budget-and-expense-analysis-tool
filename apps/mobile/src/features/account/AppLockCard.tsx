@@ -18,6 +18,7 @@ import { PinPadScreen, PinSetupScreen } from "@/features/app-lock/PinPad";
 import { Button, Card, SkeletonLines } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 /** Which full-screen PIN step is open. Changing and turning off check the current PIN first. */
 type PinStep = "create" | "verify-to-change" | "verify-to-turn-off";
@@ -160,7 +161,7 @@ export function AppLockCard({ subject }: { subject: string }) {
                 <Switch
                   accessibilityLabel="Unlock with biometrics"
                   value={biometricEnabled}
-                  onValueChange={(next) => void toggleBiometrics(next)}
+                  onValueChange={withTapSound((next) => void toggleBiometrics(next))}
                   trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
                 />
               </View>

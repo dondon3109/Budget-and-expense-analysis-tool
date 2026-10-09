@@ -55,6 +55,10 @@ function shapePayload(
   features: MobileSyncFeatures,
   debtLinks: Map<string, string | null>,
 ): Payload {
+  if (entityType === "budget" && !features.has("budget-scopes")) {
+    const { occasionId: _occasionId, ...rest } = payload;
+    return rest;
+  }
   if (entityType === "account" && !features.has("account-types-v2")) {
     const type = payload.type as AccountType;
     return PROTOCOL_V1_ACCOUNT_TYPES.includes(type) ? payload : { ...payload, type: "other" };
@@ -89,19 +93,31 @@ export async function shapeChangesForClient(
         changes.flatMap((change) => debtLinkIds(change.entityType, change.payload)),
       )
     : new Map<string, string | null>();
-  return changes.map((change) =>
-    change.payload
-      ? {
-          ...change,
-          payload: shapePayload(
-            change.entityType,
-            change.payload,
-            features,
-            debtLinks,
-          ) as MobileSyncChange["payload"],
-        }
-      : change,
-  );
+  return changes.map((change) => {
+    if (!change.payload) return change;
+    // An occasion budget has no place in a client that predates budget scopes: its month and
+    // category would collide with a real plan. It gets a tombstone, which the client ignores.
+    if (isOccasionBudget(change.entityType, change.payload, features)) {
+      return { ...change, operation: "delete" as const, payload: null };
+    }
+    return {
+      ...change,
+      payload: shapePayload(
+        change.entityType,
+        change.payload,
+        features,
+        debtLinks,
+      ) as MobileSyncChange["payload"],
+    };
+  });
+}
+
+function isOccasionBudget(
+  entityType: string,
+  payload: Payload,
+  features: MobileSyncFeatures,
+): boolean {
+  return entityType === "budget" && !features.has("budget-scopes") && Boolean(payload.occasionId);
 }
 
 /** Conflict results carry a server row, which reaches the client like a pulled change. */

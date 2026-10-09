@@ -69,13 +69,15 @@ export class LocalMutationStore {
     return decoded.data;
   }
 
-  async currentBudget(month: string, categoryId: string) {
+  async currentBudget(month: string, occasionId: string | null, categoryId: string) {
     const decoded = budgetRowSchema.safeParse(
       await this.database.getFirstAsync(
-        `SELECT id, category_id, month, limit_minor, server_revision, server_updated_at,
-          deleted_at, sync_state
-         FROM budgets WHERE month = ? AND category_id = ? AND deleted_at IS NULL`,
+        `SELECT id, category_id, month, occasion_id, limit_minor, server_revision,
+          server_updated_at, deleted_at, sync_state
+         FROM budgets
+         WHERE month = ? AND occasion_id IS ? AND category_id = ? AND deleted_at IS NULL`,
         month,
+        occasionId,
         categoryId,
       ),
     );
@@ -86,8 +88,8 @@ export class LocalMutationStore {
   async currentBudgetById(id: string) {
     const decoded = budgetRowSchema.safeParse(
       await this.database.getFirstAsync(
-        `SELECT id, category_id, month, limit_minor, server_revision, server_updated_at,
-          deleted_at, sync_state
+        `SELECT id, category_id, month, occasion_id, limit_minor, server_revision,
+          server_updated_at, deleted_at, sync_state
          FROM budgets WHERE id = ?`,
         id,
       ),

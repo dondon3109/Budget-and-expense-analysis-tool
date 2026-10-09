@@ -1,5 +1,7 @@
 import {
   BUDGET_AND_SUBSCRIPTION_MAX_MINOR,
+  calendarEventInputSchema,
+  type CalendarEventInput,
   MoneyParseError,
   parseAmountToMinor,
 } from "@zoption/shared";
@@ -66,4 +68,40 @@ export function shiftMonth(month: string, delta: number): string {
 
 export function currentMonthStart(now = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export interface OccasionFormValues {
+  title: string;
+  date: string;
+}
+
+export type OccasionFormErrors = Partial<Record<"title" | "date", string>>;
+
+/** The name and day of an occasion, which becomes a calendar event the budget hangs on. */
+export function parseOccasionForm(
+  values: OccasionFormValues,
+): { success: true; input: CalendarEventInput } | { success: false; errors: OccasionFormErrors } {
+  const parsed = calendarEventInputSchema.safeParse({
+    title: values.title,
+    date: values.date.trim(),
+  });
+  if (parsed.success) return { success: true, input: parsed.data };
+  const errors: OccasionFormErrors = {};
+  for (const issue of parsed.error.issues) {
+    const field = issue.path[0];
+    if (field === "title" || field === "date") errors[field] ??= issue.message;
+  }
+  return { success: false, errors };
+}
+
+/** "Sat, Aug 15" for an ISO date. */
+export function occasionDateLabel(date: string): string {
+  const [year, month, day] = date.split("-").map(Number);
+  if (!year || !month || !day) return date;
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
 }

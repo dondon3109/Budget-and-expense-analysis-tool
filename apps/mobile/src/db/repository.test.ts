@@ -516,11 +516,12 @@ describe("encrypted local workspace repository", () => {
             category_id: "category-1",
             category_name: "Dining",
             category_color: "#123456",
+            month: "2026-08-01",
             limit_minor: 50_000,
-            spent_minor: 25_000,
             sync_state: "synced",
           },
         ])
+        .mockResolvedValueOnce([{ category_id: "category-1", spent_minor: 25_000 }])
         .mockResolvedValueOnce([
           {
             id: "category-1",
@@ -539,9 +540,10 @@ describe("encrypted local workspace repository", () => {
         ]),
     };
 
-    const result = await new LocalWorkspaceRepository(database as never).getBudgetMonth(
-      "2026-08-01",
-    );
+    const result = await new LocalWorkspaceRepository(database as never).getBudgetPlan({
+      scope: "month",
+      month: "2026-08-01",
+    });
     expect(result.budgets).toEqual([
       {
         id: "budget-1",
@@ -550,6 +552,7 @@ describe("encrypted local workspace repository", () => {
         categoryColor: "#123456",
         limitMinor: 50_000,
         spentMinor: 25_000,
+        source: "month",
         syncState: "synced",
       },
     ]);
@@ -573,6 +576,58 @@ describe("encrypted local workspace repository", () => {
     ]);
   });
 
+  it("reads a month over its every-month defaults, and an occasion on its own day", async () => {
+    const native = new DatabaseSync(":memory:");
+    for (const migration of migrations) native.exec(migration.sql);
+    native.exec(`
+      INSERT INTO categories (
+        id, name, kind, color, archived, system, origin, required_plan, locked,
+        server_revision, sync_state
+      ) VALUES
+        ('food', 'Food', 'expense', '#e87ba4', 0, 0, 'custom', 'free', 0, 1, 'synced'),
+        ('fun', 'Fun', 'expense', '#123456', 0, 0, 'custom', 'free', 0, 1, 'synced');
+      INSERT INTO calendar_events (id, title, date) VALUES ('party', 'Mia birthday', '2026-08-15');
+      INSERT INTO budgets (id, category_id, month, occasion_id, limit_minor, server_revision, sync_state)
+      VALUES
+        ('every-food', 'food', '0001-01-01', NULL, 100000, 1, 'synced'),
+        ('every-fun', 'fun', '0001-01-01', NULL, 30000, 1, 'synced'),
+        ('aug-food', 'food', '2026-08-01', NULL, 60000, 1, 'synced'),
+        ('party-food', 'food', '0001-01-01', 'party', 80000, 1, 'synced');
+      INSERT INTO transactions (id, category_id, date, description, amount_minor, currency, kind)
+      VALUES
+        ('cake', 'food', '2026-08-15', 'Cake', -50000, 'PHP', 'expense'),
+        ('lunch', 'food', '2026-08-16', 'Lunch', -20000, 'PHP', 'expense');
+    `);
+    const database = {
+      getAllAsync: async (source: string, ...params: unknown[]) =>
+        native.prepare(source).all(...(params as SQLInputValue[])),
+      getFirstAsync: async (source: string, ...params: unknown[]) =>
+        native.prepare(source).get(...(params as SQLInputValue[])) ?? null,
+    };
+    const repository = new LocalWorkspaceRepository(database as never);
+
+    const month = await repository.getBudgetPlan({ scope: "month", month: "2026-08-01" });
+    const occasion = await repository.getBudgetPlan({ scope: "occasion", eventId: "party" });
+    const occasions = await repository.getBudgetOccasions("2026-08-01");
+
+    // August's own food limit wins; fun falls back to the every-month default.
+    expect(month.budgets.map((b) => [b.categoryId, b.limitMinor, b.spentMinor, b.source])).toEqual([
+      ["food", 60_000, 70_000, "month"],
+      ["fun", 30_000, 0, "every-month"],
+    ]);
+    expect(occasion.event).toEqual({ id: "party", title: "Mia birthday", date: "2026-08-15" });
+    expect(occasion.budgets.map((b) => [b.limitMinor, b.spentMinor])).toEqual([[80_000, 50_000]]);
+    expect(occasions).toEqual([
+      {
+        eventId: "party",
+        title: "Mia birthday",
+        date: "2026-08-15",
+        totalLimitMinor: 80_000,
+        totalSpentMinor: 50_000,
+      },
+    ]);
+  });
+
   it("offers plan-locked expense categories for a budget, as the web and Worker do", async () => {
     const native = new DatabaseSync(":memory:");
     for (const migration of migrations) native.exec(migration.sql);
@@ -591,9 +646,10 @@ describe("encrypted local workspace repository", () => {
         native.prepare(source).all(...(params as SQLInputValue[])),
     };
 
-    const result = await new LocalWorkspaceRepository(database as never).getBudgetMonth(
-      "2026-08-01",
-    );
+    const result = await new LocalWorkspaceRepository(database as never).getBudgetPlan({
+      scope: "month",
+      month: "2026-08-01",
+    });
 
     expect(result.categories.map((category) => category.id)).toEqual(["debt", "food"]);
   });

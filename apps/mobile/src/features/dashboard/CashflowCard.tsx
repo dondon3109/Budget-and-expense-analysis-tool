@@ -6,6 +6,7 @@ import { fullDateLabel } from "@/ui/components/cashflow-chart-geometry";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import type { CashflowTrend } from "@zoption/shared";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const CASHFLOW_VIEWS: {
   value: CashflowTrend["view"];
@@ -49,7 +50,7 @@ export function CashflowCard({
               accessibilityState={{ selected, disabled: locked }}
               accessibilityLabel={option.label + (locked ? ", requires Pro" : "")}
               disabled={locked}
-              onPress={() => onSelectView(option.value)}
+              onPress={withTapSound(() => onSelectView(option.value))}
               style={[
                 styles.segment,
                 {

@@ -12,9 +12,9 @@ import {
 import {
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   type AccountRecord,
-  type BudgetRecord,
   type TransactionRecord,
 } from "../src/types";
+import type { BudgetRecord } from "../src/budgetPlan";
 
 const baseTransaction: Omit<TransactionRecord, "id" | "kind" | "amountMinor"> = {
   date: "2026-07-10",

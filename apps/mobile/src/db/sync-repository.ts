@@ -223,11 +223,13 @@ async function applyBudget(database: SQLiteDatabase, change: MobileSyncChange): 
   const budget = mobileSyncBudgetSnapshotSchema.parse(change.payload);
   await database.runAsync(
     `INSERT INTO budgets (
-      id, category_id, month, limit_minor, server_revision, server_updated_at, deleted_at, sync_state
-    ) VALUES (?, ?, ?, ?, ?, ?, NULL, 'synced')
+      id, category_id, month, occasion_id, limit_minor, server_revision, server_updated_at,
+      deleted_at, sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
     ON CONFLICT(id) DO UPDATE SET
       category_id = excluded.category_id,
       month = excluded.month,
+      occasion_id = excluded.occasion_id,
       limit_minor = excluded.limit_minor,
       server_revision = excluded.server_revision,
       server_updated_at = excluded.server_updated_at,
@@ -236,6 +238,7 @@ async function applyBudget(database: SQLiteDatabase, change: MobileSyncChange): 
     budget.id,
     budget.categoryId,
     budget.month,
+    budget.occasionId ?? null,
     budget.limitMinor,
     change.revision,
     change.serverUpdatedAt,

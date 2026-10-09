@@ -23,6 +23,7 @@ describe("buildBudgetMonthView", () => {
   it("computes per-category and total budget progress", () => {
     const view = buildBudgetMonthView({
       categories,
+      event: null,
       budgets: [
         {
           id: "budget-1",
@@ -31,6 +32,7 @@ describe("buildBudgetMonthView", () => {
           categoryColor: "#123456",
           limitMinor: 50_000,
           spentMinor: 25_000,
+          source: "month" as const,
           syncState: "synced" as const,
         },
         {
@@ -40,6 +42,7 @@ describe("buildBudgetMonthView", () => {
           categoryColor: "#0F766E",
           limitMinor: 20_000,
           spentMinor: 20_000,
+          source: "month" as const,
           syncState: "synced" as const,
         },
       ],
@@ -57,6 +60,7 @@ describe("buildBudgetMonthView", () => {
         remainingMinor: 25_000,
         usedPercent: 50,
         overBudget: false,
+        source: "month" as const,
         syncState: "synced",
       },
       {
@@ -70,6 +74,7 @@ describe("buildBudgetMonthView", () => {
         remainingMinor: 0,
         usedPercent: 100,
         overBudget: false,
+        source: "month" as const,
         syncState: "synced",
       },
     ]);
@@ -82,6 +87,7 @@ describe("buildBudgetMonthView", () => {
   it("flags over-budget categories and excludes zero-limit rows", () => {
     const view = buildBudgetMonthView({
       categories,
+      event: null,
       budgets: [
         {
           id: "budget-1",
@@ -90,6 +96,7 @@ describe("buildBudgetMonthView", () => {
           categoryColor: "#123456",
           limitMinor: 10_000,
           spentMinor: 15_000,
+          source: "month" as const,
           syncState: "conflicted" as const,
         },
         {
@@ -99,6 +106,7 @@ describe("buildBudgetMonthView", () => {
           categoryColor: "#0F766E",
           limitMinor: 0,
           spentMinor: 0,
+          source: "month" as const,
           syncState: "synced" as const,
         },
       ],
@@ -111,6 +119,7 @@ describe("buildBudgetMonthView", () => {
       usedPercent: 150,
       remainingMinor: -5_000,
       overBudget: true,
+      source: "month" as const,
       syncState: "conflicted",
     });
     expect(view.totalLimitMinor).toBe(10_000);

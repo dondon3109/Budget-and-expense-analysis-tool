@@ -31,7 +31,10 @@ describe("budgetRepository", () => {
                ('other-expense', 'tenant-1', 'unbudgeted', '2026-08-06', 'Other', -246500, 'expense');
     `);
 
-    const plan = await budgetRepository.list(env, "tenant-1", "2026-08-01");
+    const plan = await budgetRepository.get(env, "tenant-1", {
+      scope: "month",
+      month: "2026-08-01",
+    });
 
     expect(plan).toMatchObject({
       totalLimitMinor: 300_000,
@@ -64,12 +67,112 @@ describe("budgetRepository", () => {
                ('yen-ramen', 'tenant-1', 'food', '2026-08-06', 'Ramen', -120000, 'JPY', 'expense');
     `);
 
-    const plan = await budgetRepository.list(env, "tenant-1", "2026-08-01");
+    const plan = await budgetRepository.get(env, "tenant-1", {
+      scope: "month",
+      month: "2026-08-01",
+    });
 
     expect(plan).toMatchObject({
       currency: "EUR",
       totalLimitMinor: 40_000,
       totalSpentMinor: 1_500,
+    });
+  });
+
+  describe("scopes", () => {
+    function seed() {
+      const { binding, database } = createD1TestDatabase();
+      databases.push(database);
+      database.exec(`
+        INSERT INTO tenants (id, kind, name) VALUES ('tenant-1', 'user', 'Test');
+        INSERT INTO categories (id, tenant_id, name, kind, color)
+          VALUES ('food', 'tenant-1', 'Food', 'expense', '#111111'),
+                 ('fun', 'tenant-1', 'Fun', 'expense', '#222222');
+        INSERT INTO calendar_events (id, tenant_id, title, date)
+          VALUES ('party', 'tenant-1', 'Mia birthday', '2026-08-15');
+        INSERT INTO transactions
+          (id, tenant_id, category_id, date, description, amount_minor, kind)
+          VALUES ('cake', 'tenant-1', 'food', '2026-08-15', 'Cake', -50000, 'expense'),
+                 ('lunch', 'tenant-1', 'food', '2026-08-16', 'Lunch', -20000, 'expense');
+      `);
+      return { env: { DB: binding } satisfies Bindings };
+    }
+
+    it("lets a month override the every-month default, even down to zero", async () => {
+      const { env } = seed();
+      await budgetRepository.upsert(env, "tenant-1", {
+        scope: "every-month",
+        items: [
+          { categoryId: "food", limitMinor: 100_000 },
+          { categoryId: "fun", limitMinor: 30_000 },
+        ],
+      });
+      await budgetRepository.upsert(env, "tenant-1", {
+        scope: "month",
+        month: "2026-08-01",
+        items: [{ categoryId: "fun", limitMinor: 0 }],
+      });
+
+      const august = await budgetRepository.get(env, "tenant-1", {
+        scope: "month",
+        month: "2026-08-01",
+      });
+      const september = await budgetRepository.get(env, "tenant-1", {
+        scope: "month",
+        month: "2026-09-01",
+      });
+
+      expect(august.items.map((item) => [item.categoryId, item.limitMinor, item.source])).toEqual([
+        ["food", 100_000, "every-month"],
+        ["fun", 0, "month"],
+      ]);
+      expect(september.totalLimitMinor).toBe(130_000);
+    });
+
+    it("counts only the occasion's day against its own budget", async () => {
+      const { env } = seed();
+      await budgetRepository.upsert(env, "tenant-1", {
+        scope: "occasion",
+        eventId: "party",
+        items: [{ categoryId: "food", limitMinor: 80_000 }],
+      });
+
+      const occasion = await budgetRepository.get(env, "tenant-1", {
+        scope: "occasion",
+        eventId: "party",
+      });
+      const occasions = await budgetRepository.listOccasions(env, "tenant-1", "2026-08-01");
+      const month = await budgetRepository.get(env, "tenant-1", {
+        scope: "month",
+        month: "2026-08-01",
+      });
+
+      expect(occasion).toMatchObject({
+        title: "Mia birthday",
+        totalLimitMinor: 80_000,
+        totalSpentMinor: 50_000,
+      });
+      expect(occasions).toEqual([
+        {
+          eventId: "party",
+          title: "Mia birthday",
+          date: "2026-08-15",
+          totalLimitMinor: 80_000,
+          totalSpentMinor: 50_000,
+        },
+      ]);
+      expect(month.totalLimitMinor).toBe(0);
+    });
+
+    it("rejects an occasion whose event does not exist", async () => {
+      const { env } = seed();
+      await expect(
+        budgetRepository.upsert(env, "tenant-1", {
+          scope: "occasion",
+          eventId: "missing",
+          items: [{ categoryId: "food", limitMinor: 1_000 }],
+        }),
+      ).rejects.toMatchObject({ code: "event_not_found" });
     });
   });
 });

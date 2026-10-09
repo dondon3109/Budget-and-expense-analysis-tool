@@ -70,7 +70,7 @@ import {
   validateSubscriptionReferences,
 } from "./mobile-sync/push/rules";
 import {
-  readBudgetByMonthCategory,
+  readBudgetByPeriodCategory,
   readEntitySnapshot,
   withCategoryLock,
   type EntitySnapshot,
@@ -288,10 +288,10 @@ export function createMobileSyncRepository(
           );
           continue;
         }
-        const existing = await readBudgetByMonthCategory(
+        const existing = await readBudgetByPeriodCategory(
           env,
           tenantId,
-          payload.month,
+          { month: payload.month, occasionId: payload.occasionId ?? null },
           payload.categoryId,
         );
         if (existing && existing.id !== operation.entityId) {
@@ -482,10 +482,13 @@ export function createMobileSyncRepository(
         operation.operationType === "create" &&
         !concurrentCode
       ) {
-        const raced = await readBudgetByMonthCategory(
+        const raced = await readBudgetByPeriodCategory(
           env,
           tenantId,
-          operation.payload.month,
+          {
+            month: operation.payload.month,
+            occasionId: operation.payload.occasionId ?? null,
+          },
           operation.payload.categoryId,
         );
         if (raced) {

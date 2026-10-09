@@ -41,8 +41,10 @@ import {
   summarizeTransactions,
 } from "./transaction-list-view";
 import { CategorySummaryRow, DateHeader, TotalsValue, TransactionItemRow } from "./TransactionRows";
-import { TransactionCalendarGrid } from "./TransactionCalendarGrid";
+import { CalendarMonthGrid } from "@/features/calendar/CalendarMonthGrid";
+import { calendarCellsFromTransactions } from "./transaction-calendar-cells";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type ViewMode = "daily" | "calendar" | "monthly" | "summary";
 
@@ -72,7 +74,7 @@ function HeaderIcon({
       accessibilityState={{ selected: Boolean(selected) }}
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: true }}
       hitSlop={4}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
       style={styles.iconButton}
     >
       <MaterialCommunityIcons
@@ -132,6 +134,7 @@ export function TransactionsScreen() {
   const items = useMemo(() => local.items ?? [], [local.items]);
   const totals = useMemo(() => summarizeTransactions(items), [items]);
   const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
+  const calendarCells = useMemo(() => calendarCellsFromTransactions(dateGroups), [dateGroups]);
   // Derived so changing month never leaves a selection outside the visible month.
   const activeDate = selectedDate.startsWith(month.slice(0, 7)) ? selectedDate : month;
   const activeDayItems = useMemo(
@@ -217,7 +220,7 @@ export function TransactionsScreen() {
               key={filter}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              onPress={() => setKind(filter)}
+              onPress={withTapSound(() => setKind(filter))}
               style={[
                 styles.chip,
                 {
@@ -349,7 +352,7 @@ export function TransactionsScreen() {
                 accessibilityLabel="Clear search"
                 accessibilityRole="button"
                 hitSlop={8}
-                onPress={() => setSearch("")}
+                onPress={withTapSound(() => setSearch(""))}
               >
                 <MaterialCommunityIcons
                   accessibilityElementsHidden
@@ -391,7 +394,7 @@ export function TransactionsScreen() {
               key={tab.key}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              onPress={() => setView(tab.key)}
+              onPress={withTapSound(() => setView(tab.key))}
               style={[styles.viewTab, selected && { borderBottomColor: theme.colors.brand }]}
             >
               <Text
@@ -432,7 +435,7 @@ export function TransactionsScreen() {
               accessibilityLabel="What is Net?"
               accessibilityRole="button"
               hitSlop={12}
-              onPress={() => setNetInfoVisible(true)}
+              onPress={withTapSound(() => setNetInfoVisible(true))}
               style={styles.netInfoButton}
             >
               <MaterialCommunityIcons
@@ -494,8 +497,8 @@ export function TransactionsScreen() {
           extraData={selectedIds}
           keyExtractor={(item) => item.transaction.id}
           ListHeaderComponent={
-            <TransactionCalendarGrid
-              groups={dateGroups}
+            <CalendarMonthGrid
+              cells={calendarCells}
               month={month}
               onSelectDate={setSelectedDate}
               selectedDate={activeDate}
@@ -558,7 +561,7 @@ export function TransactionsScreen() {
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
             android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
-            onPress={() => router.push("/(app)/transaction")}
+            onPress={withTapSound(() => router.push("/(app)/transaction"))}
             style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
           >
             <MaterialCommunityIcons

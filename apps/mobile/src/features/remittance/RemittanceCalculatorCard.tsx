@@ -17,6 +17,7 @@ import { formatMoneyMinor } from "@/ui/components/MoneyValue";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const COMMERCIAL_PROVIDERS: readonly RemittanceProvider[] = [
   "wise",
@@ -174,7 +175,7 @@ export function RemittanceCalculatorCard({
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               accessibilityLabel={`${currency}, ${CURRENCY_NAMES[currency]}`}
-              onPress={() => setForeignCurrency(currency)}
+              onPress={withTapSound(() => setForeignCurrency(currency))}
               style={[
                 styles.chip,
                 {
@@ -245,7 +246,7 @@ export function RemittanceCalculatorCard({
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
                 accessibilityLabel={PROVIDER_LABELS[option]}
-                onPress={() => setProvider(option)}
+                onPress={withTapSound(() => setProvider(option))}
                 style={[
                   styles.providerTile,
                   {
@@ -333,7 +334,7 @@ export function RemittanceCalculatorCard({
               key={option}
               accessibilityRole="button"
               accessibilityLabel={`${PROVIDER_LABELS[option]}: net ${formatRemittanceMinor(entry.netReceivedMinor, receiveCurrency)}${isBest ? ", best value" : ""}`}
-              onPress={() => setProvider(option)}
+              onPress={withTapSound(() => setProvider(option))}
               style={[
                 styles.comparisonRow,
                 {

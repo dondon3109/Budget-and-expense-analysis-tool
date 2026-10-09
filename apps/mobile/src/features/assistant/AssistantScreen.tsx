@@ -84,6 +84,7 @@ import { latestActionMessageId } from "./AssistantActionCard";
 import { AssistantMessageRow, replacedDraftKeys } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type AssistantView = "threads" | "chat" | "voice";
 
@@ -778,7 +779,7 @@ export function AssistantScreen() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Assistant settings"
-      onPress={openSettings}
+      onPress={withTapSound(openSettings)}
       style={styles.iconButton}
     >
       <MaterialCommunityIcons name="cog-outline" size={22} color={theme.colors.text} />
@@ -789,13 +790,13 @@ export function AssistantScreen() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Back"
-      onPress={() => {
+      onPress={withTapSound(() => {
         if (router.canGoBack?.()) {
           router.back();
         } else {
           router.replace("/(app)/(tabs)");
         }
-      }}
+      })}
       hitSlop={8}
       style={styles.iconButton}
     >
@@ -854,11 +855,11 @@ export function AssistantScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Back to conversations"
-                  onPress={() => {
+                  onPress={withTapSound(() => {
                     setView("threads");
                     setActiveThreadId(null);
                     setMessages([]);
-                  }}
+                  })}
                   hitSlop={8}
                 >
                   <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
@@ -867,13 +868,13 @@ export function AssistantScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Back"
-                  onPress={() => {
+                  onPress={withTapSound(() => {
                     if (router.canGoBack?.()) {
                       router.back();
                     } else {
                       router.replace("/(app)/(tabs)");
                     }
-                  }}
+                  })}
                   hitSlop={8}
                 >
                   <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
@@ -889,7 +890,7 @@ export function AssistantScreen() {
                 accessibilityLabel={
                   managingThreads ? "Done selecting conversations" : "Select conversations"
                 }
-                onPress={() => setManagingThreads((current) => !current)}
+                onPress={withTapSound(() => setManagingThreads((current) => !current))}
                 style={styles.iconButton}
               >
                 <Text style={[typography.label, { color: theme.colors.brand }]}>
@@ -1115,7 +1116,7 @@ export function AssistantScreen() {
               accessibilityLabel="Send message"
               accessibilityState={{ disabled: !draftValid || sending }}
               disabled={!draftValid || sending}
-              onPress={() => void handleSend()}
+              onPress={withTapSound(() => void handleSend())}
               style={[
                 styles.sendButton,
                 {

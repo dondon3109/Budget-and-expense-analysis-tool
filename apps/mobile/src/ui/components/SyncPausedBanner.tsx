@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } fro
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { Button } from "./Button";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function SyncPausedBanner({
   message,
@@ -55,7 +56,7 @@ export function SyncPausedBanner({
         accessibilityLabel="Dismiss sync delayed notice"
         accessibilityRole="button"
         hitSlop={8}
-        onPress={() => setDismissedMessage(message)}
+        onPress={withTapSound(() => setDismissedMessage(message))}
         style={styles.dismiss}
       >
         <MaterialCommunityIcons color={theme.colors.textMuted} name="close" size={20} />

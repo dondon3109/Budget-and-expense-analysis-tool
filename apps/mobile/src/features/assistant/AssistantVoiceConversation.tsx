@@ -11,7 +11,6 @@ import {
   createAssistantThreadTurn,
   listAssistantMessages,
   sendAssistantTurn,
-  type AssistantWireMessage,
 } from "@/api/assistant";
 import { getAssistantVoicePreferences, grantAssistantVoiceConsent } from "@/api/assistant-voice";
 import { ApiTransportError } from "@/api/authenticated";
@@ -22,8 +21,13 @@ import { VoiceLanguageToggleGroup } from "@/ui/voice-language-picker";
 import { newClientRequestId } from "./assistant-forms";
 import { useAssistantRecorder, useSpokenReplies } from "./assistant-voice-hooks";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
-import { renderMobileVoiceCaption } from "./render-voice-caption";
+import {
+  mapAssistantMessagesToVoiceCaptions,
+  renderMobileVoiceCaption,
+  type AssistantVoiceCaption,
+} from "./render-voice-caption";
 import { RadarWaveRings, ThinkingSphereCore } from "./ThinkingSphereIndicator";
+import { withTapSound } from "@/features/sounds/sound-effects";
 import { VoiceEqualizer, VoiceOrbMotion } from "./VoiceOrbAnimation";
 
 /**
@@ -33,25 +37,6 @@ import { VoiceEqualizer, VoiceOrbMotion } from "./VoiceOrbAnimation";
 export const VOICE_CONVERSATION_SPEECH_VOICE = "bright" as const;
 
 type VoiceStatus = "idle" | "preparing" | "listening" | "thinking" | "speaking";
-
-export interface AssistantVoiceCaption {
-  id: string;
-  role: "user" | "assistant";
-  text: string;
-}
-
-/**
- * Maps stored thread messages to voice captions, preserving order and
- * dropping empty content so a resumed voice session re-enters with prior
- * context instead of a blank conversation.
- */
-export function mapAssistantMessagesToVoiceCaptions(
-  messages: ReadonlyArray<Pick<AssistantWireMessage, "id" | "role" | "content">>,
-): AssistantVoiceCaption[] {
-  return messages
-    .filter((message) => message.content.trim().length > 0)
-    .map((message) => ({ id: message.id, role: message.role, text: message.content }));
-}
 
 interface AssistantVoiceConversationProps {
   getAccessToken: (refresh: boolean) => Promise<string>;
@@ -575,7 +560,7 @@ export function AssistantVoiceConversation({
           <View style={styles.consentActions}>
             <Pressable
               accessibilityRole="button"
-              onPress={onClose}
+              onPress={withTapSound(onClose)}
               style={[styles.consentSecondaryButton, { borderColor: theme.colors.border }]}
             >
               <Text style={[typography.label, { color: theme.colors.textMuted }]}>Not now</Text>
@@ -583,7 +568,7 @@ export function AssistantVoiceConversation({
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ disabled: enabling }}
-              onPress={() => void enableVoice()}
+              onPress={withTapSound(() => void enableVoice())}
               style={[
                 styles.consentPrimaryButton,
                 { backgroundColor: theme.colors.brand },
@@ -607,7 +592,7 @@ export function AssistantVoiceConversation({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Back to text chat"
-            onPress={handleClose}
+            onPress={withTapSound(handleClose)}
             style={[
               styles.iconButton,
               { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
@@ -648,7 +633,7 @@ export function AssistantVoiceConversation({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Reset conversation"
-              onPress={handleResetSession}
+              onPress={withTapSound(handleResetSession)}
               style={[
                 styles.iconButton,
                 { borderColor: theme.colors.border, backgroundColor: theme.colors.surface },
@@ -816,7 +801,7 @@ export function AssistantVoiceConversation({
                   accessibilityLabel={prompt}
                   accessibilityState={{ disabled: historyLoading }}
                   disabled={historyLoading}
-                  onPress={() => handlePromptChip(prompt)}
+                  onPress={withTapSound(() => handlePromptChip(prompt))}
                   style={[
                     styles.promptChip,
                     {
@@ -932,7 +917,7 @@ export function AssistantVoiceConversation({
                   : undefined
             }
             disabled={status === "thinking" || historyLoading}
-            onPress={handleOrbPress}
+            onPress={withTapSound(handleOrbPress)}
             style={[
               styles.orb,
               {

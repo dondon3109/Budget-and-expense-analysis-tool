@@ -14,6 +14,7 @@ import { SessionProvider, useSessionSnapshot } from "@/auth/session-state";
 import { WorkerIdentityProvider } from "@/auth/worker-identity-state";
 import { configureConnectivity } from "@/config/connectivity";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
+import { warmUpSounds } from "@/features/sounds/sound-effects";
 import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
@@ -95,6 +96,7 @@ export default function RootLayout() {
     // Inert unless the build embeds EXPO_PUBLIC_POSTHOG_KEY; init resolves
     // even when the telemetry backend fails, so startup is never affected.
     void telemetry.init();
+    warmUpSounds();
     void registerBackgroundSyncTask().catch(() => {
       // Background sync is a best-effort convenience; registration failure must
       // never affect foreground behavior.

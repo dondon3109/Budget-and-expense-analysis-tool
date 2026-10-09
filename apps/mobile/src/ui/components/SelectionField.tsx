@@ -2,6 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useCallback, useState } from "react";
 import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { playSound } from "@/features/sounds/sound-effects";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { BottomSheet, useIsInBottomSheet } from "./BottomSheet";
@@ -57,6 +58,7 @@ export function SelectionField({
             borderless: false,
           }}
           onPress={() => {
+            playSound("tap");
             onSelect(item.id);
             setOpen(false);
           }}
@@ -107,7 +109,10 @@ export function SelectionField({
         accessibilityHint={error ?? hint ?? `Opens ${sheetTitle.toLowerCase()}`}
         accessibilityState={{ disabled: Boolean(disabled), expanded: open }}
         disabled={disabled}
-        onPress={() => setOpen((current) => !current)}
+        onPress={() => {
+          playSound("tap");
+          setOpen((current) => !current);
+        }}
         style={[
           styles.field,
           {
@@ -186,6 +191,7 @@ export function SelectionField({
                   borderless: false,
                 }}
                 onPress={() => {
+                  playSound("tap");
                   onSelect(option.id);
                   setOpen(false);
                 }}

@@ -16,6 +16,7 @@ import {
   type TransactionTotals,
   type TransactionTotalsByCurrency,
 } from "./transaction-list-view";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function TotalsValue({
   totals,
@@ -101,11 +102,11 @@ export function TransactionItemRow({
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       delayLongPress={450}
       onLongPress={selecting ? undefined : () => onToggleSelect?.(transaction.id)}
-      onPress={() =>
+      onPress={withTapSound(() =>
         selecting
           ? onToggleSelect?.(transaction.id)
-          : router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } })
-      }
+          : router.push({ pathname: "/(app)/transaction", params: { id: transaction.id } }),
+      )}
       style={[
         styles.transactionRow,
         { backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface },

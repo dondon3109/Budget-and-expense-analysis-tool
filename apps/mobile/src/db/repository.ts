@@ -5,6 +5,7 @@ import {
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
+  type BudgetQuery,
   type Currency,
   type CurrencyTotals,
   type InterestSettings,
@@ -18,7 +19,8 @@ import type {
   LocalWorkspaceStats,
   LocalTransactionItem,
   TransactionFormData,
-  LocalBudgetMonthData,
+  LocalBudgetOccasion,
+  LocalBudgetPlanData,
   LocalGoalItem,
   LocalSubscriptionItem,
   LocalEventItem,
@@ -30,7 +32,8 @@ import type {
   LocalDashboardData,
   TransactionQuery,
 } from "./view-models";
-import { localCategoryOptionSchema, readTransactionFormData } from "./transaction-form-data";
+import { nextMonthStart, readBudgetOccasions, readBudgetPlan } from "./budget-queries";
+import { readTransactionFormData } from "./transaction-form-data";
 
 const workspaceStatsRowSchema = z.object({
   account_count: z.number().int().nonnegative(),
@@ -59,16 +62,6 @@ const localTransactionRowSchema = z.object({
   transfer_fee_minor: z.number().int().safe().nullable(),
   to_account_id: z.string().nullable(),
   to_account_name: z.string().nullable(),
-  sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
-});
-
-const budgetMonthItemSchema = z.object({
-  id: z.string(),
-  category_id: z.string(),
-  category_name: z.string(),
-  category_color: z.string(),
-  limit_minor: z.number().int().safe(),
-  spent_minor: z.number().int().safe(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
@@ -559,57 +552,18 @@ LIMIT ?`;
     };
   }
 
-  /** Limits are in the workspace `currency`, so only spending in it counts against them. */
-  async getBudgetMonth(month: string, currency: Currency = "PHP"): Promise<LocalBudgetMonthData> {
-    const monthStart = monthStartSchema.parse(month);
-    const [budgetRows, categoryRows] = await Promise.all([
-      this.database.getAllAsync(
-        `SELECT
-          b.id,
-          b.category_id,
-          c.name AS category_name,
-          c.color AS category_color,
-          b.limit_minor,
-          b.sync_state,
-          COALESCE(SUM(CASE WHEN t.kind = 'expense' THEN ABS(t.amount_minor) ELSE 0 END), 0)
-            AS spent_minor
-         FROM budgets b
-         INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
-         LEFT JOIN transactions t ON t.category_id = b.category_id AND t.deleted_at IS NULL
-           AND substr(t.date, 1, 7) = substr(?, 1, 7) AND t.currency = ?
-         WHERE b.month = ? AND b.deleted_at IS NULL
-         GROUP BY b.category_id
-         ORDER BY c.name COLLATE NOCASE`,
-        monthStart,
-        currency,
-        monthStart,
-      ),
-      // Every active expense category can hold a budget, as on the web and the Worker. A plan
-      // lock only blocks new entries, and custom categories made during the Pro trial lock when
-      // it ends, so filtering on it left little more than the system Debt payment category.
-      this.database.getAllAsync(
-        `SELECT id, name, kind, color, icon_emoji AS iconEmoji,
-          CASE WHEN server_revision = 0 THEN 1 ELSE 0 END AS pending
-         FROM categories
-         WHERE deleted_at IS NULL AND archived = 0 AND kind = 'expense'
-         ORDER BY name COLLATE NOCASE, id`,
-      ),
-    ]);
-    return {
-      budgets: z
-        .array(budgetMonthItemSchema)
-        .parse(budgetRows)
-        .map((row) => ({
-          id: row.id,
-          categoryId: row.category_id,
-          categoryName: row.category_name,
-          categoryColor: row.category_color,
-          limitMinor: row.limit_minor,
-          spentMinor: row.spent_minor,
-          syncState: row.sync_state,
-        })),
-      categories: z.array(localCategoryOptionSchema).parse(categoryRows),
-    };
+  /** One budget plan; see `readBudgetPlan`. */
+  async getBudgetPlan(
+    period: BudgetQuery,
+    currency: Currency = "PHP",
+  ): Promise<LocalBudgetPlanData> {
+    const event = period.scope === "occasion" ? await this.getCalendarEvent(period.eventId) : null;
+    return readBudgetPlan(this.database, period, currency, event);
+  }
+
+  /** Occasions on the calendar in `month`; see `readBudgetOccasions`. */
+  getBudgetOccasions(month: string, currency: Currency = "PHP"): Promise<LocalBudgetOccasion[]> {
+    return readBudgetOccasions(this.database, month, currency);
   }
 
   async getGoals(): Promise<LocalGoalItem[]> {
@@ -791,9 +745,7 @@ LIMIT ?`;
   }
 
   private nextMonthStart(month: string): string {
-    const date = new Date(`${month}T00:00:00Z`);
-    date.setUTCMonth(date.getUTCMonth() + 1);
-    return date.toISOString().slice(0, 10);
+    return nextMonthStart(month);
   }
 
   async getDebts(): Promise<LocalDebtItem[]> {

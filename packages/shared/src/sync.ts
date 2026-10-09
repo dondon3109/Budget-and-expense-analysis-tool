@@ -48,6 +48,8 @@ export const mobileSyncFeatures = [
   "debt-links",
   // Accounts may use the account types added after the first protocol release.
   "account-types-v2",
+  // Budget rows may belong to an occasion (`occasionId`, a calendar event) instead of a month.
+  "budget-scopes",
 ] as const;
 export type MobileSyncFeature = (typeof mobileSyncFeatures)[number];
 
@@ -219,6 +221,8 @@ export const mobileSyncBudgetSnapshotSchema = z
     id: resourceIdSchema,
     categoryId: resourceIdSchema,
     month: monthStartSchema,
+    // Absent on rows written before budget scopes and for every client without the feature.
+    occasionId: resourceIdSchema.nullable().optional(),
     limitMinor: budgetLimitMinorSchema,
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
@@ -493,6 +497,7 @@ const mobileSyncBudgetInputSchema = z
   .object({
     categoryId: resourceIdSchema,
     month: monthStartSchema,
+    occasionId: resourceIdSchema.nullable().optional(),
     limitMinor: budgetLimitMinorSchema,
   })
   .strict();

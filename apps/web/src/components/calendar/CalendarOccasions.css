@@ -1,0 +1,45 @@
+/* Occasion budgets on the calendar: the day marker, the month note, and the day panel rows. */
+
+.calendar-indicator.occasion {
+  color: var(--action);
+  font-weight: 640;
+}
+
+.calendar-budget-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.calendar-occasion-section {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+
+.calendar-occasion-item {
+  padding: 12px 4px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.calendar-occasion-item > span {
+  display: grid;
+  gap: 2px;
+}
+
+.calendar-occasion-item > span:last-child {
+  text-align: right;
+}
+
+.calendar-occasion-item small {
+  color: var(--muted);
+}
+
+.calendar-occasion-item .over strong {
+  color: var(--danger);
+}

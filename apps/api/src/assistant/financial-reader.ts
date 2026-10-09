@@ -560,11 +560,16 @@ export function createFinancialReader(
       const months = budgetMonths(input.from, input.to);
       const [{ currency, rows: analysis, excludedCount }, plans] = await Promise.all([
         loadWorkspaceAnalysis(context, input.from, input.to),
-        Promise.all(months.map((month) => budgets.list(context.env, context.tenantId, month))),
+        Promise.all(
+          months.map(async (month) => ({
+            month,
+            plan: await budgets.get(context.env, context.tenantId, { scope: "month", month }),
+          })),
+        ),
       ]);
       let totalBudgetedSpentMinor = 0;
-      const resultMonths = plans.map((plan) => {
-        const monthKey = plan.month.slice(0, 7);
+      const resultMonths = plans.map(({ month, plan }) => {
+        const monthKey = month.slice(0, 7);
         const monthExpenses = analysis.filter(
           (item) => item.kind === "expense" && item.date.slice(0, 7) === monthKey,
         );
@@ -596,10 +601,10 @@ export function createFinancialReader(
             };
           });
         const spentMinor = monthExpenses.reduce((sum, item) => sum + Math.abs(item.amountMinor), 0);
-        const fullMonth = input.from <= plan.month && input.to >= monthEnd(plan.month);
+        const fullMonth = input.from <= month && input.to >= monthEnd(month);
         totalBudgetedSpentMinor += budgetedSpentMinor;
         return {
-          month: plan.month,
+          month: month,
           coverage: fullMonth ? "full_month" : "partial_month",
           limit: formatMoney(limitMinor, currency),
           spent: formatMoney(spentMinor, currency),
@@ -611,7 +616,8 @@ export function createFinancialReader(
         };
       });
       const totalLimitMinor = plans.reduce(
-        (sum, plan) => sum + plan.items.reduce((monthSum, item) => monthSum + item.limitMinor, 0),
+        (sum, { plan }) =>
+          sum + plan.items.reduce((monthSum, item) => monthSum + item.limitMinor, 0),
         0,
       );
       const totalSpentMinor = analysis

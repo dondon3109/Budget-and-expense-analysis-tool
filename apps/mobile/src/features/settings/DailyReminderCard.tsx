@@ -9,6 +9,7 @@ import {
 import { Button, CollapsibleCard } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type Notice = "blocked" | "failed";
 
@@ -53,7 +54,7 @@ export function DailyReminderCard() {
           accessibilityLabel="Remind me daily"
           disabled={busy}
           value={enabled}
-          onValueChange={(next) => void toggle(next)}
+          onValueChange={withTapSound((next) => void toggle(next))}
           trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
         />
       </View>

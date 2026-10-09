@@ -6,9 +6,26 @@ import { BUDGET_AND_SUBSCRIPTION_MAX_MINOR, GOAL_AND_DEBT_MAX_MINOR } from "../l
 import { debtStatuses, debtTypes, financialGoalStatuses } from "../types";
 import { isoDateSchema, monthStartSchema, resourceIdSchema } from "./common";
 
-export const budgetQuerySchema = z.object({ month: monthStartSchema }).strict();
+/**
+ * "Every month" limits live in budget rows under this month key. It is a valid month start no
+ * real plan uses, so installed apps that predate budget scopes treat those rows as a far-off month.
+ */
+export const EVERY_MONTH_KEY = "0001-01-01";
 
-/** A monthly budget limit. Zero means the category is not budgeted. */
+export const budgetScopes = ["month", "every-month", "occasion"] as const;
+export type BudgetScope = (typeof budgetScopes)[number];
+
+/** Reads one plan: a month (with every-month defaults filled in), the defaults, or one occasion. */
+export const budgetQuerySchema = z.discriminatedUnion("scope", [
+  z.object({ scope: z.literal("month"), month: monthStartSchema }).strict(),
+  z.object({ scope: z.literal("every-month") }).strict(),
+  z.object({ scope: z.literal("occasion"), eventId: resourceIdSchema }).strict(),
+]);
+export type BudgetQuery = z.infer<typeof budgetQuerySchema>;
+
+export const budgetOccasionsQuerySchema = z.object({ month: monthStartSchema }).strict();
+
+/** A budget limit. Zero means the category is not budgeted. */
 export const budgetLimitMinorSchema = z
   .number()
   .int()
@@ -16,26 +33,31 @@ export const budgetLimitMinorSchema = z
   .min(0)
   .max(BUDGET_AND_SUBSCRIPTION_MAX_MINOR);
 
-export const budgetUpsertSchema = z
-  .object({
-    month: monthStartSchema,
-    items: z
-      .array(
-        z
-          .object({
-            categoryId: resourceIdSchema,
-            limitMinor: budgetLimitMinorSchema,
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(100)
-      .refine(
-        (items) => new Set(items.map((item) => item.categoryId)).size === items.length,
-        "Budget categories must be unique.",
-      ),
-  })
-  .strict();
+const budgetItemsSchema = z
+  .array(
+    z
+      .object({
+        categoryId: resourceIdSchema,
+        limitMinor: budgetLimitMinorSchema,
+      })
+      .strict(),
+  )
+  .min(1)
+  .max(100)
+  .refine(
+    (items) => new Set(items.map((item) => item.categoryId)).size === items.length,
+    "Budget categories must be unique.",
+  );
+
+export const budgetUpsertSchema = z.discriminatedUnion("scope", [
+  z
+    .object({ scope: z.literal("month"), month: monthStartSchema, items: budgetItemsSchema })
+    .strict(),
+  z.object({ scope: z.literal("every-month"), items: budgetItemsSchema }).strict(),
+  z
+    .object({ scope: z.literal("occasion"), eventId: resourceIdSchema, items: budgetItemsSchema })
+    .strict(),
+]);
 
 export type BudgetUpsert = z.infer<typeof budgetUpsertSchema>;
 

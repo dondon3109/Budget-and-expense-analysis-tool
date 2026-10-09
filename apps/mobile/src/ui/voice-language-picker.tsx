@@ -8,6 +8,7 @@ import {
 } from "@/stores/voice-language-store";
 import { radii, spacing, touchTarget, typography } from "./tokens";
 import { useZoptionTheme } from "./theme-provider";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function VoiceLanguagePicker({
   selectedLanguage,
@@ -53,7 +54,7 @@ export function VoiceLanguagePicker({
               color: selected ? "rgba(10, 117, 86, 0.16)" : "rgba(0, 0, 0, 0.06)",
               borderless: false,
             }}
-            onPress={() => handleSelect(option.code)}
+            onPress={withTapSound(() => handleSelect(option.code))}
             className="w-full flex-row items-center justify-between"
             style={[
               styles.option,
@@ -160,7 +161,7 @@ export function VoiceLanguageToggleGroup({
             accessibilityLabel={`${opt.label} voice language`}
             accessibilityState={{ selected: isSelected, disabled: Boolean(disabled) }}
             disabled={disabled}
-            onPress={() => select(opt.code)}
+            onPress={withTapSound(() => select(opt.code))}
             style={[
               styles.toggleButton,
               isSelected && [
@@ -219,7 +220,7 @@ export function VoiceLanguageBadgeButton({
       accessibilityLabel={`Voice language: ${opt.label}. Tap to switch language`}
       accessibilityState={{ disabled: Boolean(disabled) }}
       disabled={disabled}
-      onPress={handlePress}
+      onPress={withTapSound(handlePress)}
       style={({ pressed }) => ({
         backgroundColor: pressed ? theme.colors.canvasMuted : theme.colors.brandSoft,
         opacity: disabled ? 0.6 : 1,

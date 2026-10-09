@@ -7,6 +7,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
 import { RowDivider, SectionHeader } from "./HomeCardParts";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const VISIBLE_ROWS = 4;
 
@@ -37,9 +38,9 @@ export function SubscriptionsSection({
             {index > 0 ? <RowDivider /> : null}
             <Pressable
               accessibilityRole="button"
-              onPress={() =>
-                router.push({ pathname: "/(app)/subscription", params: { id: subscription.id } })
-              }
+              onPress={withTapSound(() =>
+                router.push({ pathname: "/(app)/subscription", params: { id: subscription.id } }),
+              )}
               style={{
                 flexDirection: "row",
                 alignItems: "center",

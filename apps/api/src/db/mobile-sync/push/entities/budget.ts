@@ -15,9 +15,15 @@ export function budgetMutation(
   const extraStatements: D1PreparedStatement[] = [];
   if (operation.operationType === "create") {
     const payload = operation.payload;
+    // An occasion's rows are stored under its own period key, so the month and every-month
+    // unique index also keeps one limit per category per occasion.
+    const occasionId = payload.occasionId ?? null;
+    const period = occasionId ? `occasion:${occasionId}` : payload.month;
     mutation = env.DB.prepare(
-      `INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor, revision, updated_at)
-       SELECT ?, ?, ?, ?, ?, 1, ?
+      `INSERT INTO budgets (
+         id, tenant_id, category_id, month, occasion_id, limit_minor, revision, updated_at
+       )
+       SELECT ?, ?, ?, ?, ?, ?, 1, ?
        WHERE NOT EXISTS (
          SELECT 1 FROM budgets WHERE tenant_id = ? AND month = ? AND category_id = ?
        )`,
@@ -25,11 +31,12 @@ export function budgetMutation(
       operation.entityId,
       tenantId,
       payload.categoryId,
-      payload.month,
+      period,
+      occasionId,
       payload.limitMinor,
       timestamp,
       tenantId,
-      payload.month,
+      period,
       payload.categoryId,
     );
   } else {

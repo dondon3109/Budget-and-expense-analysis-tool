@@ -13,6 +13,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
 import type { GoalChoice } from "./use-goal-actions";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface GoalChoicesProps {
   /** The saved goals, lead goal first. */
@@ -61,7 +62,7 @@ export function GoalChoices({
             accessibilityLabel={primaryGoalLabels[option]}
             accessibilityState={{ checked: active, disabled }}
             disabled={disabled}
-            onPress={() => toggle(option)}
+            onPress={withTapSound(() => toggle(option))}
             style={[
               styles.card,
               {

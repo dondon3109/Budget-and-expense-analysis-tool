@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export const BottomSheetContext = createContext<boolean>(false);
 export const useIsInBottomSheet = (): boolean => useContext(BottomSheetContext);
@@ -43,7 +44,7 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
           accessibilityLabel="Close sheet"
           accessibilityRole="button"
           style={StyleSheet.absoluteFill}
-          onPress={onDismiss}
+          onPress={withTapSound(onDismiss)}
         />
         <SafeAreaView
           edges={["bottom"]}
@@ -62,7 +63,7 @@ export function BottomSheet({ visible, title, onDismiss, children }: BottomSheet
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Close"
-              onPress={onDismiss}
+              onPress={withTapSound(onDismiss)}
               style={styles.close}
             >
               <Text style={[typography.label, { color: theme.colors.brand }]}>Done</Text>

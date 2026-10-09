@@ -1,5 +1,5 @@
 import { resolveCategoryEmoji } from "@zoption/shared";
-import type { LocalBudgetMonthData } from "@/db/view-models";
+import type { LocalBudgetPlanData } from "@/db/view-models";
 
 export interface BudgetMonthRow {
   id: string;
@@ -12,6 +12,7 @@ export interface BudgetMonthRow {
   remainingMinor: number;
   usedPercent: number;
   overBudget: boolean;
+  source: "month" | "every-month" | "occasion";
   syncState: "synced" | "pending" | "failed" | "conflicted";
 }
 
@@ -27,7 +28,8 @@ function roundPercent(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-export function buildBudgetMonthView(data: LocalBudgetMonthData): BudgetMonthView {
+/** Rows and totals for one plan: a month, the every-month defaults, or an occasion. */
+export function buildBudgetMonthView(data: LocalBudgetPlanData): BudgetMonthView {
   const categoryMap = new Map((data.categories ?? []).map((cat) => [cat.id, cat]));
   const rows: BudgetMonthRow[] = data.budgets
     .filter((budget) => budget.limitMinor > 0)
@@ -48,6 +50,7 @@ export function buildBudgetMonthView(data: LocalBudgetMonthData): BudgetMonthVie
         usedPercent:
           budget.limitMinor === 0 ? 0 : roundPercent((budget.spentMinor / budget.limitMinor) * 100),
         overBudget: budget.spentMinor > budget.limitMinor,
+        source: budget.source,
         syncState: budget.syncState,
       };
     });

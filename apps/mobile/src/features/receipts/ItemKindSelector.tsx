@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export type ReceiptKind = "expense" | "income";
 
@@ -31,7 +32,7 @@ export function ItemKindSelector({
               accessibilityRole="radio"
               accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
               disabled={disabled}
-              onPress={() => onChange(option)}
+              onPress={withTapSound(() => onChange(option))}
               style={[
                 styles.kindOption,
                 {
