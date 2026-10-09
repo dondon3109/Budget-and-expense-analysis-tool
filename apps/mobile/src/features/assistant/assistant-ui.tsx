@@ -1,6 +1,15 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import {
   assistantPayoffPreferenceKeys,
@@ -149,59 +158,89 @@ export function AssistantUnavailableView({
   );
 }
 
-export function AssistantConsentCard({
+const PRIVACY_POLICY_URL = "https://zoption.site/privacy-policy";
+
+/** Blocking consent shown as a compact modal over the conversations; "Not now" leaves the assistant. */
+export function AssistantConsentModal({
+  visible,
   retentionDays,
   accepting,
   onAccept,
+  onDecline,
 }: {
+  visible: boolean;
   retentionDays: number;
   accepting: boolean;
   onAccept: () => void;
+  onDecline: () => void;
 }) {
   const theme = useZoptionTheme();
   const points = [
-    "Nothing changes without you. The assistant can draft a transaction or propose a change to your subscriptions, goals, debts, accounts, categories, budgets, or transactions, and only your Save or Confirm tap applies it.",
-    "Your credentials stay private. Only your question and the data needed to answer it go to the AI provider.",
-    "Audit snapshots of what the assistant read are sanitized and kept only for review.",
-    "Operational monitoring is metadata-only — never your transaction descriptions.",
-    "Assistant memory is kept until you delete it, and can be cleared anytime.",
+    "Nothing saves without you. Only your Save or Confirm tap applies a change.",
+    "Credentials stay private. Only your question and the data needed to answer it go to the AI provider.",
+    "Monitoring is metadata-only, never your questions, answers, or financial data.",
+    "Memory is kept until you delete it, and you can clear it anytime.",
   ];
   return (
-    <Card>
-      <View className="gap-4">
-        <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
-          Your data, your boundaries.
-        </Text>
-        <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-          The AI Financial Assistant answers questions using your own records. Before it can help,
-          confirm how your data is handled.
-        </Text>
-        <View className="gap-3">
-          {points.map((point) => (
-            <View key={point} className="flex-row gap-2">
-              <MaterialCommunityIcons
-                name="shield-check-outline"
-                size={18}
-                color={theme.colors.brand}
-                style={{ marginTop: 1 }}
-              />
-              <Text style={[typography.callout, { color: theme.colors.text, flex: 1 }]}>
-                {point}
-              </Text>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDecline}>
+      <View style={[styles.consentBackdrop, { backgroundColor: theme.colors.overlay }]}>
+        <ScrollView
+          style={[
+            styles.consentSheet,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+          contentContainerStyle={styles.consentContent}
+        >
+          <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
+            Your data, your boundaries.
+          </Text>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+            Zoption sends your question and only the financial data needed to your AI provider.
+            Every personalized amount is calculated on Zoption&apos;s own servers.
+          </Text>
+          <View className="gap-3">
+            {points.map((point) => (
+              <View key={point} className="flex-row gap-2">
+                <MaterialCommunityIcons
+                  name="shield-check-outline"
+                  size={18}
+                  color={theme.colors.brand}
+                  style={{ marginTop: 1 }}
+                />
+                <Text style={[typography.callout, { color: theme.colors.text, flex: 1 }]}>
+                  {point}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Chats and their audit snapshots expire after {retentionDays} days. Full details are in
+            our{" "}
+            <Text
+              accessibilityRole="link"
+              onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
+              style={{ color: theme.colors.brand, textDecorationLine: "underline" }}
+            >
+              Privacy Policy
+            </Text>
+            . Educational budgeting information only, not personalized financial, investment, tax,
+            legal, or insurance advice.
+          </Text>
+          <View className="flex-row gap-3">
+            <View style={styles.consentAction}>
+              <Button variant="secondary" disabled={accepting} onPress={onDecline}>
+                Not now
+              </Button>
             </View>
-          ))}
-        </View>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Assistant conversations and audit snapshots are retained for up to {retentionDays} days.
-          Remembered facts and your debt payoff preference are kept until you delete them or your
-          account. Educational budgeting information only — not personalized investment, tax or
-          insurance advice.
-        </Text>
-        <Button loading={accepting} onPress={onAccept}>
-          Accept and continue
-        </Button>
+            <View style={styles.consentAction}>
+              <Button loading={accepting} onPress={onAccept}>
+                Accept and continue
+              </Button>
+            </View>
+          </View>
+        </ScrollView>
       </View>
-    </Card>
+    </Modal>
   );
 }
 
@@ -700,6 +739,15 @@ export function MemoryPreferencesBlock({
 }
 
 const styles = StyleSheet.create({
+  consentBackdrop: { flex: 1, justifyContent: "center", padding: spacing.md },
+  consentSheet: {
+    maxHeight: "90%",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.xl,
+    flexGrow: 0,
+  },
+  consentContent: { padding: spacing.lg, gap: spacing.md },
+  consentAction: { flex: 1 },
   bubble: {
     maxWidth: "88%",
     borderRadius: radii.xl,

@@ -2,7 +2,7 @@ import type { AssistantMemory } from "@zoption/shared";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 import {
-  AssistantConsentCard,
+  AssistantConsentModal,
   AssistantIdentityCard,
   AssistantMessageBubble,
   AssistantStatusBadge,
@@ -58,13 +58,25 @@ function renderMemoryBlock(
 }
 
 describe("assistant accessibility-critical interactions", () => {
-  it("exposes the consent heading and a working accept button", async () => {
+  it("exposes the consent heading, a working accept button, and a way out", async () => {
     const onAccept = jest.fn();
-    await render(<AssistantConsentCard retentionDays={90} accepting={false} onAccept={onAccept} />);
+    const onDecline = jest.fn();
+    await render(
+      <AssistantConsentModal
+        visible
+        retentionDays={90}
+        accepting={false}
+        onAccept={onAccept}
+        onDecline={onDecline}
+      />,
+    );
     expect(screen.getByRole("header", { name: "Your data, your boundaries." })).toBeTruthy();
     const accept = screen.getByRole("button", { name: "Accept and continue" });
     await fireEvent.press(accept);
     expect(onAccept).toHaveBeenCalledTimes(1);
+    await fireEvent.press(screen.getByRole("button", { name: "Not now" }));
+    expect(onDecline).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("link", { name: "Privacy Policy" })).toBeTruthy();
   });
 
   it("blocks the identity save until both names are valid", async () => {

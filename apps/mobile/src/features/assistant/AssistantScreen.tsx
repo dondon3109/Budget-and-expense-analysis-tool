@@ -18,6 +18,7 @@ import {
   Platform,
   Pressable,
   RefreshControl,
+  SectionList,
   StyleSheet,
   Text,
   TextInput,
@@ -55,6 +56,7 @@ import {
   SelectionField,
   SkeletonLines,
 } from "@/ui/components";
+import { BrandMark } from "@/ui/brand-mark";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -68,9 +70,8 @@ import {
   validateAssistantMessage,
 } from "./assistant-forms";
 import {
-  AssistantConsentCard,
+  AssistantConsentModal,
   AssistantIdentityCard,
-  AssistantStatusBadge,
   AssistantThreadRow,
   AssistantUnavailableView,
   AssistantUpgradeBanner,
@@ -83,7 +84,6 @@ import { latestActionMessageId } from "./AssistantActionCard";
 import { AssistantMessageRow, replacedDraftKeys } from "./AssistantMessageRow";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
-import { VoiceLanguageBadgeButton } from "@/ui/voice-language-picker";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 type AssistantView = "threads" | "chat" | "voice";
@@ -704,6 +704,27 @@ export function AssistantScreen() {
     selectedThreadIds.includes(thread.id),
   ).length;
 
+  // Text and voice chats are separate sections, newest first within each.
+  const threadSections = useMemo(
+    () =>
+      [
+        { title: "Text chats", data: threads.filter((thread) => thread.kind !== "voice") },
+        { title: "Voice chats", data: threads.filter((thread) => thread.kind === "voice") },
+      ].filter((section) => section.data.length > 0),
+    [threads],
+  );
+  const renderThreadSectionHeader = useCallback(
+    ({ section }: { section: { title: string } }) => (
+      <Text
+        accessibilityRole="header"
+        style={[typography.label, styles.sectionLabel, { color: theme.colors.textMuted }]}
+      >
+        {section.title}
+      </Text>
+    ),
+    [theme.colors.textMuted],
+  );
+
   // Stable renderItem identities keep the FlatLists from re-rendering every
   // row on unrelated state changes such as composer keystrokes.
   // Voice-kind history re-enters the voice session UI with prior context;
@@ -805,23 +826,15 @@ export function AssistantScreen() {
     );
   }
 
-  if (showConsent || showIdentity) {
+  if (showIdentity) {
     return (
       <Screen title="AI Assistant" scroll leadingAction={backAction}>
-        {showConsent ? (
-          <AssistantConsentCard
-            retentionDays={preferences?.retentionDays ?? 90}
-            accepting={busyAction === "consent"}
-            onAccept={() => void acceptConsent()}
-          />
-        ) : (
-          <AssistantIdentityCard
-            assistantName={preferences?.assistantName ?? ""}
-            userPreferredName={preferences?.userPreferredName ?? ""}
-            saving={busyAction === "identity"}
-            onSave={(assistant, preferred) => void saveIdentity(assistant, preferred)}
-          />
-        )}
+        <AssistantIdentityCard
+          assistantName={preferences?.assistantName ?? ""}
+          userPreferredName={preferences?.userPreferredName ?? ""}
+          saving={busyAction === "identity"}
+          onSave={(assistant, preferred) => void saveIdentity(assistant, preferred)}
+        />
         {inlineError ? (
           <Text style={[typography.caption, { color: theme.colors.danger }]}>{inlineError}</Text>
         ) : null}
@@ -867,33 +880,8 @@ export function AssistantScreen() {
                   <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
                 </Pressable>
               )}
-              <Text
-                accessibilityRole="header"
-                numberOfLines={1}
-                style={[typography.title, styles.headerTitle, { color: theme.colors.text }]}
-              >
-                {view === "chat"
-                  ? activeThreadId
-                    ? "Conversation"
-                    : preferences?.assistantName
-                      ? `Chat with ${preferences.assistantName}`
-                      : "New chat"
-                  : "AI Assistant"}
-              </Text>
-              {view === "threads" ? (
-                <AssistantStatusBadge label="Online" status="available" />
-              ) : null}
+              {view === "threads" ? <BrandMark /> : null}
             </View>
-            {view === "chat" ? (
-              <View style={styles.chatStatusRow}>
-                <View style={[styles.chatStatusDot, { backgroundColor: theme.colors.income }]} />
-                <Text
-                  style={[typography.caption, { color: theme.colors.income, fontWeight: "600" }]}
-                >
-                  Online · You approve changes
-                </Text>
-              </View>
-            ) : null}
           </View>
           <View style={styles.headerActions}>
             {view === "threads" && threads.length > 0 ? (
@@ -948,11 +936,13 @@ export function AssistantScreen() {
         />
       ) : view === "threads" ? (
         <View style={styles.threadsPane}>
-          <FlatList
-            data={threads}
+          <SectionList
+            sections={threadSections}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.listContent}
             renderItem={renderThread}
+            renderSectionHeader={renderThreadSectionHeader}
+            stickySectionHeadersEnabled={false}
             ItemSeparatorComponent={ThreadListSeparator}
             removeClippedSubviews={false}
             refreshControl={
@@ -1119,9 +1109,6 @@ export function AssistantScreen() {
                     else if (recorder.phase === "idle") void recorder.startRecording();
                   }}
                 />
-                <View style={styles.languageSlot}>
-                  <VoiceLanguageBadgeButton disabled={recorder.phase !== "idle"} />
-                </View>
               </>
             ) : null}
             <Pressable
@@ -1302,6 +1289,16 @@ export function AssistantScreen() {
         onCancel={() => setConfirmClearChats(false)}
         onConfirm={() => void confirmClearAllChats()}
       />
+      <AssistantConsentModal
+        visible={showConsent}
+        retentionDays={preferences?.retentionDays ?? 90}
+        accepting={busyAction === "consent"}
+        onAccept={() => void acceptConsent()}
+        onDecline={() => {
+          if (router.canGoBack?.()) router.back();
+          else router.replace("/(app)/(tabs)");
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -1354,6 +1351,7 @@ const styles = StyleSheet.create({
   headerTitle: { flexShrink: 1 },
   listContent: { padding: spacing.md, paddingBottom: spacing.xl },
   threadsPane: { flex: 1 },
+  sectionLabel: { paddingTop: spacing.sm, paddingBottom: spacing.xs },
   selectionBar: {
     borderTopWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.md,
@@ -1384,8 +1382,6 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === "ios" ? 10 : 8,
     paddingHorizontal: 4,
   },
-  // Centers the 32 point language pill against the 44 point mic and send buttons.
-  languageSlot: { height: touchTarget, justifyContent: "center" },
   sendButton: {
     width: touchTarget,
     height: touchTarget,
