@@ -7,6 +7,7 @@ import type {
   AccountInput,
   AccountInterestUpdate,
   AccountUpdateWithInterest,
+  BudgetQuery,
   CalendarEventInput,
   CategoryInput,
   CategoryUpdate,
@@ -164,8 +165,8 @@ export class LocalTransactionMutationRepository {
     return archiveReferenceEntity(this.commands, "category", id);
   }
 
-  setBudgetLimit(month: string, categoryId: string, limitMinor: number): Promise<void> {
-    return setBudgetLimit(this.commands, month, categoryId, limitMinor);
+  setBudgetLimit(period: BudgetQuery, categoryId: string, limitMinor: number): Promise<void> {
+    return setBudgetLimit(this.commands, period, categoryId, limitMinor);
   }
 
   createGoal(value: FinancialGoalInput): Promise<string> {

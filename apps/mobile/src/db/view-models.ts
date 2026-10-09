@@ -75,12 +75,25 @@ export interface BudgetMonthItem {
   categoryColor: string;
   limitMinor: number;
   spentMinor: number;
+  /** Where the limit comes from: a month shows its own limit over the every-month default. */
+  source: "month" | "every-month" | "occasion";
   syncState: LocalSyncState;
 }
 
-export interface LocalBudgetMonthData {
+export interface LocalBudgetPlanData {
   budgets: BudgetMonthItem[];
   categories: LocalCategoryOption[];
+  /** The calendar event of an occasion plan; null for a month or the every-month plan. */
+  event: { id: string; title: string; date: string } | null;
+}
+
+/** An occasion budget in a month, as the budgets list and the calendar show it. */
+export interface LocalBudgetOccasion {
+  eventId: string;
+  title: string;
+  date: string;
+  totalLimitMinor: number;
+  totalSpentMinor: number;
 }
 
 export interface LocalGoalItem {

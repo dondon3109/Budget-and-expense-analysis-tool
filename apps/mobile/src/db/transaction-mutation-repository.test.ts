@@ -199,7 +199,7 @@ describe("durable local transaction mutations", () => {
   it("queues an offline budget create and update with the correct payloads", async () => {
     const mutations = repository(database);
 
-    await mutations.setBudgetLimit("2026-08-01", "category-1", 50_000);
+    await mutations.setBudgetLimit({ scope: "month", month: "2026-08-01" }, "category-1", 50_000);
     expect(
       database.native
         .prepare("SELECT category_id, month, limit_minor, server_revision, sync_state FROM budgets")
@@ -218,7 +218,12 @@ describe("durable local transaction mutations", () => {
       entityType: "budget",
       operationType: "create",
       baseRevision: 0,
-      payload: { categoryId: "category-1", month: "2026-08-01", limitMinor: 50_000 },
+      payload: {
+        categoryId: "category-1",
+        month: "2026-08-01",
+        occasionId: null,
+        limitMinor: 50_000,
+      },
     });
 
     if (!batch) throw new Error("Expected a push batch.");
@@ -238,7 +243,7 @@ describe("durable local transaction mutations", () => {
         .get("category-1"),
     ).toEqual({ server_revision: 1, sync_state: "synced" });
 
-    await mutations.setBudgetLimit("2026-08-01", "category-1", 80_000);
+    await mutations.setBudgetLimit({ scope: "month", month: "2026-08-01" }, "category-1", 80_000);
     batch = await mutations.getPushBatch();
     expect(batch?.operations).toHaveLength(1);
     expect(batch?.operations[0]).toMatchObject({
@@ -253,10 +258,14 @@ describe("durable local transaction mutations", () => {
     const mutations = repository(database);
 
     await expect(
-      mutations.setBudgetLimit("2026-08-01", "category-transfer", 50_000),
+      mutations.setBudgetLimit(
+        { scope: "month", month: "2026-08-01" },
+        "category-transfer",
+        50_000,
+      ),
     ).rejects.toMatchObject({ code: "invalid_reference" });
 
-    await mutations.setBudgetLimit("2026-08-01", "category-1", 0);
+    await mutations.setBudgetLimit({ scope: "month", month: "2026-08-01" }, "category-1", 0);
     expect(database.native.prepare("SELECT count(*) AS count FROM budgets").get()).toEqual({
       count: 0,
     });
@@ -267,7 +276,7 @@ describe("durable local transaction mutations", () => {
 
   it("replaces a conflicting budget create with the preserved server budget", async () => {
     const mutations = repository(database);
-    await mutations.setBudgetLimit("2026-08-01", "category-1", 50_000);
+    await mutations.setBudgetLimit({ scope: "month", month: "2026-08-01" }, "category-1", 50_000);
     const request = (await mutations.getPushBatch())!;
     const localBudgetId = request.operations[0]!.entityId;
     await mutations.applyPushResponse(request, {
@@ -326,7 +335,7 @@ describe("durable local transaction mutations", () => {
         id, category_id, month, limit_minor, server_revision, server_updated_at, sync_state
       ) VALUES ('budget-1', 'category-1', '2026-08-01', 50_000, 3, '2026-08-13 15:00:00', 'synced')`,
     );
-    await mutations.setBudgetLimit("2026-08-01", "category-1", 80_000);
+    await mutations.setBudgetLimit({ scope: "month", month: "2026-08-01" }, "category-1", 80_000);
     const request = (await mutations.getPushBatch())!;
     await mutations.applyPushResponse(request, {
       protocolVersion: 1,

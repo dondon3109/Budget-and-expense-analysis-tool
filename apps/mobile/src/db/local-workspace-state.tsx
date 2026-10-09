@@ -9,6 +9,8 @@ import {
   type PropsWithChildren,
 } from "react";
 
+import type { BudgetQuery } from "@zoption/shared";
+
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 
@@ -21,7 +23,8 @@ import {
 } from "./workspace";
 import type {
   LocalWorkspaceStats,
-  LocalBudgetMonthData,
+  LocalBudgetOccasion,
+  LocalBudgetPlanData,
   LocalDashboardData,
   LocalAccountModeling,
   LocalCalendarMonth,
@@ -163,24 +166,57 @@ export function useDashboardData(anchorDate: string): {
   return { data, error, retry };
 }
 
-export function useBudgetMonth(month: string): {
-  data: LocalBudgetMonthData | null;
+export function useBudgetPlan(period: BudgetQuery): {
+  data: LocalBudgetPlanData | null;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const currency = useWorkspaceCurrency();
+  // Key the reader on the period's fields: a new object each render would re-run the query.
+  const { scope } = period;
+  const month = period.scope === "month" ? period.month : null;
+  const eventId = period.scope === "occasion" ? period.eventId : null;
+  const read = useCallback(
+    (current: LocalWorkspace) =>
+      current.repository.getBudgetPlan(
+        scope === "month" && month
+          ? { scope, month }
+          : scope === "occasion" && eventId
+            ? { scope, eventId }
+            : { scope: "every-month" },
+        currency,
+      ),
+    [scope, month, eventId, currency],
+  );
+  const { data, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["budgets", "categories", "transactions", "calendar_events"],
+    empty: null,
+    errorMessage: "Budgets could not be read from encrypted local storage.",
+  });
+  return { data, error, retry };
+}
+
+/** Occasion budgets dated in `month`. */
+export function useBudgetOccasions(month: string): {
+  occasions: LocalBudgetOccasion[];
   error: string | null;
   retry: () => void;
 } {
   const { workspace } = useLocalWorkspace();
   const currency = useWorkspaceCurrency();
   const read = useCallback(
-    (current: LocalWorkspace) => current.repository.getBudgetMonth(month, currency),
+    (current: LocalWorkspace) => current.repository.getBudgetOccasions(month, currency),
     [month, currency],
   );
-  const { data, error, retry } = useLocalQuery(workspace, {
+  const { data, error, retry } = useLocalQuery<LocalBudgetOccasion[]>(workspace, {
     read,
-    tables: ["budgets", "categories", "transactions"],
-    empty: null,
-    errorMessage: "Budgets could not be read from encrypted local storage.",
+    tables: ["budgets", "calendar_events", "transactions"],
+    empty: NO_ROWS,
+    errorMessage: "Occasion budgets could not be read from encrypted local storage.",
   });
-  return { data, error, retry };
+  return { occasions: data, error, retry };
 }
 
 const readGoals = (workspace: LocalWorkspace) => workspace.repository.getGoals();

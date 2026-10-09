@@ -1,10 +1,12 @@
 import {
   accountTypes,
   currencies,
+  EVERY_MONTH_KEY,
   cashflowWindowStart,
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
+  type BudgetQuery,
   type Currency,
   type CurrencyTotals,
   type InterestSettings,
@@ -18,7 +20,9 @@ import type {
   LocalWorkspaceStats,
   LocalTransactionItem,
   TransactionFormData,
-  LocalBudgetMonthData,
+  BudgetMonthItem,
+  LocalBudgetOccasion,
+  LocalBudgetPlanData,
   LocalGoalItem,
   LocalSubscriptionItem,
   LocalEventItem,
@@ -62,14 +66,27 @@ const localTransactionRowSchema = z.object({
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
 });
 
-const budgetMonthItemSchema = z.object({
+const budgetLimitRowSchema = z.object({
   id: z.string(),
   category_id: z.string(),
+  month: z.string(),
   category_name: z.string(),
   category_color: z.string(),
   limit_minor: z.number().int().safe(),
-  spent_minor: z.number().int().safe(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+});
+
+const budgetSpendingRowSchema = z.object({
+  category_id: z.string(),
+  spent_minor: z.number().int().safe(),
+});
+
+const budgetOccasionRowSchema = z.object({
+  event_id: z.string(),
+  title: z.string(),
+  date: z.string(),
+  total_limit_minor: z.number().int().safe(),
+  total_spent_minor: z.number().int().safe(),
 });
 
 const goalItemSchema = z.object({
@@ -559,31 +576,52 @@ LIMIT ?`;
     };
   }
 
-  /** Limits are in the workspace `currency`, so only spending in it counts against them. */
-  async getBudgetMonth(month: string, currency: Currency = "PHP"): Promise<LocalBudgetMonthData> {
-    const monthStart = monthStartSchema.parse(month);
-    const [budgetRows, categoryRows] = await Promise.all([
+  /**
+   * One budget plan: a month (its own limits over the every-month defaults), the every-month
+   * defaults, or an occasion. Limits are in the workspace `currency`, so only spending in it
+   * counts against them. A month counts the whole month's spending; an occasion counts its date.
+   */
+  async getBudgetPlan(
+    period: BudgetQuery,
+    currency: Currency = "PHP",
+  ): Promise<LocalBudgetPlanData> {
+    const event = period.scope === "occasion" ? await this.getCalendarEvent(period.eventId) : null;
+    const window =
+      period.scope === "month"
+        ? { start: period.month, end: this.nextMonthStart(period.month) }
+        : event
+          ? { start: event.date, end: nextDate(event.date) }
+          : null;
+    const limitFilter =
+      period.scope === "month"
+        ? {
+            sql: "b.occasion_id IS NULL AND b.month IN (?, ?)",
+            args: [period.month, EVERY_MONTH_KEY],
+          }
+        : period.scope === "every-month"
+          ? { sql: "b.occasion_id IS NULL AND b.month = ?", args: [EVERY_MONTH_KEY] }
+          : { sql: "b.occasion_id = ?", args: [period.eventId] };
+    const [limitRows, spendingRows, categoryRows] = await Promise.all([
       this.database.getAllAsync(
-        `SELECT
-          b.id,
-          b.category_id,
-          c.name AS category_name,
-          c.color AS category_color,
-          b.limit_minor,
-          b.sync_state,
-          COALESCE(SUM(CASE WHEN t.kind = 'expense' THEN ABS(t.amount_minor) ELSE 0 END), 0)
-            AS spent_minor
+        `SELECT b.id, b.category_id, b.month, c.name AS category_name, c.color AS category_color,
+          b.limit_minor, b.sync_state
          FROM budgets b
          INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
-         LEFT JOIN transactions t ON t.category_id = b.category_id AND t.deleted_at IS NULL
-           AND substr(t.date, 1, 7) = substr(?, 1, 7) AND t.currency = ?
-         WHERE b.month = ? AND b.deleted_at IS NULL
-         GROUP BY b.category_id
+         WHERE b.deleted_at IS NULL AND ${limitFilter.sql}
          ORDER BY c.name COLLATE NOCASE`,
-        monthStart,
-        currency,
-        monthStart,
+        ...limitFilter.args,
       ),
+      window
+        ? this.database.getAllAsync(
+            `SELECT category_id, SUM(ABS(amount_minor)) AS spent_minor FROM transactions
+             WHERE deleted_at IS NULL AND kind = 'expense' AND currency = ?
+               AND date >= ? AND date < ?
+             GROUP BY category_id`,
+            currency,
+            window.start,
+            window.end,
+          )
+        : Promise.resolve([]),
       // Every active expense category can hold a budget, as on the web and the Worker. A plan
       // lock only blocks new entries, and custom categories made during the Pro trial lock when
       // it ends, so filtering on it left little more than the system Debt payment category.
@@ -595,21 +633,81 @@ LIMIT ?`;
          ORDER BY name COLLATE NOCASE, id`,
       ),
     ]);
+    const spending = new Map(
+      z
+        .array(budgetSpendingRowSchema)
+        .parse(spendingRows)
+        .map((row) => [row.category_id, row.spent_minor]),
+    );
+    // A month's own row wins over the every-month default, so the default is read first.
+    const byCategory = new Map<string, BudgetMonthItem>();
+    for (const row of z
+      .array(budgetLimitRowSchema)
+      .parse(limitRows)
+      .sort(
+        (left, right) =>
+          Number(left.month !== EVERY_MONTH_KEY) - Number(right.month !== EVERY_MONTH_KEY),
+      )) {
+      byCategory.set(row.category_id, {
+        id: row.id,
+        categoryId: row.category_id,
+        categoryName: row.category_name,
+        categoryColor: row.category_color,
+        limitMinor: row.limit_minor,
+        spentMinor: spending.get(row.category_id) ?? 0,
+        source:
+          period.scope === "occasion"
+            ? "occasion"
+            : row.month === EVERY_MONTH_KEY
+              ? "every-month"
+              : "month",
+        syncState: row.sync_state,
+      });
+    }
     return {
-      budgets: z
-        .array(budgetMonthItemSchema)
-        .parse(budgetRows)
-        .map((row) => ({
-          id: row.id,
-          categoryId: row.category_id,
-          categoryName: row.category_name,
-          categoryColor: row.category_color,
-          limitMinor: row.limit_minor,
-          spentMinor: row.spent_minor,
-          syncState: row.sync_state,
-        })),
+      budgets: [...byCategory.values()].sort((left, right) =>
+        left.categoryName.localeCompare(right.categoryName),
+      ),
       categories: z.array(localCategoryOptionSchema).parse(categoryRows),
+      event: event ? { id: event.id, title: event.title, date: event.date } : null,
     };
+  }
+
+  /** Occasions on the calendar in `month`, each with its total limit and what its day spent. */
+  async getBudgetOccasions(
+    month: string,
+    currency: Currency = "PHP",
+  ): Promise<LocalBudgetOccasion[]> {
+    const rows = await this.database.getAllAsync(
+      `SELECT e.id AS event_id, e.title, e.date, SUM(b.limit_minor) AS total_limit_minor,
+        COALESCE((
+          SELECT SUM(ABS(t.amount_minor)) FROM transactions t
+          WHERE t.deleted_at IS NULL AND t.kind = 'expense' AND t.currency = ? AND t.date = e.date
+            AND t.category_id IN (
+              SELECT category_id FROM budgets
+              WHERE occasion_id = e.id AND deleted_at IS NULL AND limit_minor > 0
+            )
+        ), 0) AS total_spent_minor
+       FROM calendar_events e
+       INNER JOIN budgets b
+         ON b.occasion_id = e.id AND b.deleted_at IS NULL AND b.limit_minor > 0
+       WHERE e.deleted_at IS NULL AND e.date >= ? AND e.date < ?
+       GROUP BY e.id
+       ORDER BY e.date, e.title COLLATE NOCASE`,
+      currency,
+      month,
+      this.nextMonthStart(month),
+    );
+    return z
+      .array(budgetOccasionRowSchema)
+      .parse(rows)
+      .map((row) => ({
+        eventId: row.event_id,
+        title: row.title,
+        date: row.date,
+        totalLimitMinor: row.total_limit_minor,
+        totalSpentMinor: row.total_spent_minor,
+      }));
   }
 
   async getGoals(): Promise<LocalGoalItem[]> {
@@ -895,4 +993,10 @@ LIMIT ?`;
       syncState: decoded.sync_state,
     };
   }
+}
+
+function nextDate(date: string): string {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10);
 }

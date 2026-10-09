@@ -1,107 +1,136 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { resolveCategoryEmoji } from "@zoption/shared";
-import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
-import type { BudgetMonthItem, LocalCategoryOption } from "@/db/view-models";
+import type { BudgetQuery } from "@zoption/shared";
+import { useBudgetOccasions, useBudgetPlan, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
-import {
-  BottomSheet,
-  Button,
-  Card,
-  CategoryBadge,
-  CurrencyCode,
-  ErrorState,
-  FormField,
-  moneyAccessibilityLabel,
-  MoneyValue,
-  Skeleton,
-} from "@/ui/components";
-import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
+import { Button, ErrorState, Skeleton } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import {
   currentMonthStart,
   formatMinorForInput,
   monthLabel,
+  occasionDateLabel,
   parseBudgetForm,
+  parseOccasionForm,
   shiftMonth,
   type BudgetFormErrors,
-  type BudgetFormValues,
+  type OccasionFormErrors,
 } from "./budget-form";
-import { buildBudgetMonthView, type BudgetMonthRow } from "./budget-month-view";
+import { buildBudgetMonthView } from "./budget-month-view";
+import {
+  BudgetEditorSheet,
+  OccasionSheet,
+  toCategoryOptions,
+  type BudgetEditorValue,
+  type OccasionEditorValue,
+} from "./BudgetEditorSheet";
+import { BudgetRow, DefaultsHero, OccasionRow, PlanHero, SectionHeader } from "./BudgetPlanView";
 import { ShareBudgetSheet } from "./ShareBudgetSheet";
 
-interface EditorState {
-  open: boolean;
-  mode: "add" | "edit";
-  categoryId: string | null;
-  amount: string;
+type Tab = "month" | "every-month" | "occasions";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "month", label: "Month" },
+  { id: "every-month", label: "Every month" },
+  { id: "occasions", label: "Occasions" },
+];
+
+const EMPTY_EDITOR: BudgetEditorValue = { categoryId: null, amount: "", appliesTo: "month" };
+
+function emptyOccasion(month: string): OccasionEditorValue {
+  const today = new Date();
+  const todayMonth = currentMonthStart(today);
+  // Open on today when viewing this month, else on the first day of the month being viewed.
+  const date =
+    month === todayMonth
+      ? `${todayMonth.slice(0, 8)}${String(today.getDate()).padStart(2, "0")}`
+      : month;
+  return { title: "", date, categoryId: null, amount: "" };
 }
 
+/**
+ * Budgets for a month, for every month, or for an occasion such as a birthday party. Flat rows
+ * and dividers carry the plan; the only raised surface is the sheet used to edit a limit.
+ */
 export function BudgetsScreen() {
   const local = useLocalWorkspace();
   const sync = useSyncState();
+  const theme = useZoptionTheme();
+  const [tab, setTab] = useState<Tab>("month");
   const [month, setMonth] = useState(() => currentMonthStart());
-  const budgetMonth = useBudgetMonth(month);
-  const isCurrentMonth = month === currentMonthStart();
+  const [occasionId, setOccasionId] = useState<string | null>(null);
 
-  const [editor, setEditor] = useState<EditorState>({
+  const period: BudgetQuery = occasionId
+    ? { scope: "occasion", eventId: occasionId }
+    : tab === "every-month"
+      ? { scope: "every-month" }
+      : { scope: "month", month };
+  const plan = useBudgetPlan(period);
+  const occasions = useBudgetOccasions(month);
+  const view = useMemo(() => (plan.data ? buildBudgetMonthView(plan.data) : null), [plan.data]);
+
+  const [editor, setEditor] = useState<{ open: boolean; isEditing: boolean } & BudgetEditorValue>({
     open: false,
-    mode: "add",
-    categoryId: null,
-    amount: "",
+    isEditing: false,
+    ...EMPTY_EDITOR,
   });
-  const [errors, setErrors] = useState<BudgetFormErrors>({});
+  const [errors, setErrors] = useState<BudgetFormErrors & OccasionFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [occasionDraft, setOccasionDraft] = useState<{ open: boolean } & OccasionEditorValue>({
+    open: false,
+    ...emptyOccasion(month),
+  });
 
-  const view = useMemo(
-    () => (budgetMonth.data ? buildBudgetMonthView(budgetMonth.data) : null),
-    [budgetMonth.data],
-  );
-
-  // Read from the view, not raw budgets: a removed budget stays as a zero-limit row,
-  // and counting it here hid that category from both the list and the add sheet.
-  const availableCategories = useMemo(() => {
-    const budgetedCategoryIds = new Set((view?.rows ?? []).map((row) => row.categoryId));
-    return (budgetMonth.data?.categories ?? []).filter(
-      (category) => !budgetedCategoryIds.has(category.id),
+  const isCurrentMonth = month === currentMonthStart();
+  const inOccasion = occasionId !== null;
+  const showsMonthPlan = !inOccasion && tab === "month";
+  // Read from the view, not raw budgets: a removed budget stays as a zero-limit row, and
+  // counting it here hid that category from both the list and the add sheet.
+  const addOptions = useMemo(() => {
+    const budgeted = new Set((view?.rows ?? []).map((row) => row.categoryId));
+    return toCategoryOptions(
+      (plan.data?.categories ?? []).filter((category) => !budgeted.has(category.id)),
     );
-  }, [budgetMonth.data, view]);
-
-  const addOptions = useMemo(
-    () =>
-      availableCategories.map((category) => {
-        const emoji = resolveCategoryEmoji(category);
-        return {
-          id: category.id,
-          label: emoji ? `${emoji} ${category.name}` : category.name,
-          detail: category.pending ? "Pending setup" : undefined,
-        };
-      }),
-    [availableCategories],
+  }, [plan.data, view]);
+  const allOptions = useMemo(
+    () => toCategoryOptions(plan.data?.categories ?? []),
+    [plan.data?.categories],
   );
 
-  const openAdd = (presetCategoryId?: string): void => {
+  const targetPeriod = (appliesTo: BudgetEditorValue["appliesTo"]): BudgetQuery =>
+    showsMonthPlan && appliesTo === "every-month" ? { scope: "every-month" } : period;
+
+  const scopeLabel = inOccasion
+    ? (plan.data?.event?.title ?? "Occasion")
+    : tab === "every-month"
+      ? "Every month"
+      : monthLabel(month);
+
+  const openAdd = (): void => {
     // No silent default: the first category alphabetically is "Debt payment", and a
     // preselected choice sent budgets there when people only typed an amount.
-    setEditor({ open: true, mode: "add", categoryId: presetCategoryId ?? null, amount: "" });
+    setEditor({ open: true, isEditing: false, ...EMPTY_EDITOR });
     setErrors({});
     setMessage(null);
   };
 
-  const openEdit = (categoryId: string, limitMinor: number): void => {
+  const openEdit = (categoryId: string): void => {
+    const row = view?.rows.find((candidate) => candidate.categoryId === categoryId);
+    if (!row) return;
     setEditor({
       open: true,
-      mode: "edit",
+      isEditing: true,
       categoryId,
-      amount: formatMinorForInput(limitMinor),
+      amount: formatMinorForInput(row.limitMinor),
+      appliesTo: row.source === "every-month" ? "every-month" : "month",
     });
     setErrors({});
     setMessage(null);
@@ -114,210 +143,336 @@ export function BudgetsScreen() {
     setMessage(null);
   };
 
+  const changeEditor = (patch: Partial<BudgetEditorValue>): void => {
+    setEditor((current) => ({ ...current, ...patch }));
+    setErrors({});
+    setMessage(null);
+  };
+
+  const run = async (task: () => Promise<void>, failure: string): Promise<boolean> => {
+    if (!local.workspace || saving) return false;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await task();
+      sync.retry();
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : failure);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const save = async (): Promise<void> => {
-    if (!local.workspace || saving) return;
-    const values: BudgetFormValues = {
-      categoryId: editor.categoryId ?? "",
-      amount: editor.amount,
-    };
-    const parsed = parseBudgetForm(values);
+    const parsed = parseBudgetForm({ categoryId: editor.categoryId ?? "", amount: editor.amount });
     if (!parsed.success) {
       setErrors(parsed.errors);
       setMessage("Check the highlighted details.");
       return;
     }
-    setSaving(true);
-    setMessage(null);
-    try {
-      await local.workspace.transactionMutations.setBudgetLimit(
-        month,
-        values.categoryId,
-        parsed.limitMinor,
-      );
-      void telemetry.capture("budget_limit_set", { action: isEditing ? "updated" : "created" });
-      setEditor((current) => ({ ...current, open: false }));
-      sync.retry();
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The budget could not be saved to encrypted local storage.",
-      );
-    } finally {
-      setSaving(false);
-    }
+    const categoryId = editor.categoryId ?? "";
+    const saved = await run(
+      () =>
+        local.workspace!.transactionMutations.setBudgetLimit(
+          targetPeriod(editor.appliesTo),
+          categoryId,
+          parsed.limitMinor,
+        ),
+      "The budget could not be saved to encrypted local storage.",
+    );
+    if (!saved) return;
+    void telemetry.capture("budget_limit_set", {
+      action: editor.isEditing ? "updated" : "created",
+    });
+    setEditor((current) => ({ ...current, open: false }));
   };
 
   const remove = async (): Promise<void> => {
-    if (!local.workspace || saving || !editor.categoryId) return;
-    setSaving(true);
-    setMessage(null);
-    try {
-      await local.workspace.transactionMutations.setBudgetLimit(month, editor.categoryId, 0);
-      void telemetry.capture("budget_removed");
-      setEditor((current) => ({ ...current, open: false }));
-      sync.retry();
-    } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "The budget could not be removed from encrypted local storage.",
-      );
-    } finally {
-      setSaving(false);
-    }
+    if (!editor.categoryId) return;
+    const categoryId = editor.categoryId;
+    const removed = await run(
+      () =>
+        local.workspace!.transactionMutations.setBudgetLimit(
+          targetPeriod(editor.appliesTo),
+          categoryId,
+          0,
+        ),
+      "The budget could not be removed from encrypted local storage.",
+    );
+    if (!removed) return;
+    void telemetry.capture("budget_removed");
+    setEditor((current) => ({ ...current, open: false }));
   };
 
-  const editingBudget =
-    editor.mode === "edit"
-      ? budgetMonth.data?.budgets.find((budget) => budget.categoryId === editor.categoryId)
-      : undefined;
-  const editingCategoryOption = budgetMonth.data?.categories.find(
-    (cat) => cat.id === editor.categoryId,
-  );
-  const isEditing = editor.mode === "edit";
-
-  const theme = useZoptionTheme();
+  const createOccasion = async (): Promise<void> => {
+    const event = parseOccasionForm(occasionDraft);
+    const limit = parseBudgetForm({
+      categoryId: occasionDraft.categoryId ?? "",
+      amount: occasionDraft.amount,
+    });
+    if (!event.success || !limit.success) {
+      setErrors({
+        ...(event.success ? {} : event.errors),
+        ...(limit.success ? {} : limit.errors),
+      });
+      setMessage("Check the highlighted details.");
+      return;
+    }
+    const categoryId = occasionDraft.categoryId ?? "";
+    let eventId = "";
+    const created = await run(async () => {
+      const mutations = local.workspace!.transactionMutations;
+      eventId = await mutations.createEvent(event.input);
+      await mutations.setBudgetLimit({ scope: "occasion", eventId }, categoryId, limit.limitMinor);
+    }, "The occasion could not be saved to encrypted local storage.");
+    if (!created) return;
+    void telemetry.capture("budget_occasion_created");
+    setOccasionDraft((current) => ({ ...current, open: false }));
+    setMonth(`${event.input.date.slice(0, 7)}-01`);
+    setOccasionId(eventId);
+  };
 
   const handleRefresh = useCallback(async () => {
     sync.retry();
-    budgetMonth.retry();
+    plan.retry();
+    occasions.retry();
     await new Promise((resolve) => setTimeout(resolve, 650));
-  }, [budgetMonth, sync]);
+  }, [occasions, plan, sync]);
+
+  const openAction = (): void => {
+    if (tab === "occasions" && !inOccasion) {
+      setOccasionDraft({ open: true, ...emptyOccasion(month) });
+      setErrors({});
+      setMessage(null);
+      return;
+    }
+    openAdd();
+  };
+  const editingBudget = editor.isEditing
+    ? plan.data?.budgets.find((budget) => budget.categoryId === editor.categoryId)
+    : undefined;
+  const hasDefault = editingBudget?.source === "every-month";
+  const removeLabel = inOccasion
+    ? "Remove budget"
+    : tab === "every-month" || editor.appliesTo === "every-month"
+      ? "Remove from every month"
+      : hasDefault || editingBudget?.source === "month"
+        ? "Remove for this month"
+        : "Remove budget";
 
   return (
     <Screen
       action={
         <View style={styles.headerActions}>
+          {showsMonthPlan ? (
+            <Button
+              accessibilityLabel="Share envelopes"
+              disabled={!local.workspace || (view?.rows.length ?? 0) === 0}
+              icon="share-variant-outline"
+              onPress={() => setShareOpen(true)}
+              size="compact"
+              variant="secondary"
+            />
+          ) : null}
           <Button
-            accessibilityLabel="Share envelopes"
-            disabled={!local.workspace || (view?.rows.length ?? 0) === 0}
-            icon="share-variant-outline"
-            onPress={() => setShareOpen(true)}
-            size="compact"
-            variant="secondary"
-          />
-          <Button
-            accessibilityLabel="Add budget"
+            accessibilityLabel={tab === "occasions" && !inOccasion ? "New occasion" : "Add budget"}
             disabled={!local.workspace}
             icon="plus"
-            onPress={() => openAdd()}
+            onPress={openAction}
             size="compact"
             variant="primary"
-          >
-            Add budget
-          </Button>
+          />
         </View>
       }
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
       title="Budgets"
     >
-      <MonthNavigator
-        isCurrentMonth={isCurrentMonth}
-        month={month}
-        onChange={setMonth}
-        onResetToCurrentMonth={() => setMonth(currentMonthStart())}
-      />
-
-      {budgetMonth.error ? (
-        <ErrorState
-          message={budgetMonth.error}
-          onRetry={budgetMonth.retry}
-          title="Budgets unavailable"
+      {inOccasion ? (
+        <OccasionHeader
+          date={plan.data?.event?.date}
+          onBack={() => setOccasionId(null)}
+          onEdit={() => router.push({ pathname: "/(app)/event", params: { id: occasionId } })}
+          title={plan.data?.event?.title}
         />
+      ) : (
+        <>
+          <ScopeTabs onChange={setTab} value={tab} />
+          {tab !== "every-month" ? (
+            <MonthNavigator
+              isCurrentMonth={isCurrentMonth}
+              month={month}
+              onChange={setMonth}
+              onResetToCurrentMonth={() => setMonth(currentMonthStart())}
+            />
+          ) : null}
+        </>
+      )}
+
+      {plan.error ? (
+        <ErrorState message={plan.error} onRetry={plan.retry} title="Budgets unavailable" />
       ) : !view ? (
         <View accessibilityLabel="Loading budgets" style={{ gap: spacing.md }}>
-          <Skeleton height={140} />
-          <Skeleton height={80} />
-          <Skeleton height={80} />
+          <Skeleton height={110} />
+          <Skeleton height={56} />
+          <Skeleton height={56} />
         </View>
-      ) : view.rows.length === 0 ? (
-        <ZeroBudgetsView
-          categories={availableCategories}
+      ) : tab === "occasions" && !inOccasion ? (
+        <OccasionsList
           disabled={!local.workspace}
-          isCurrentMonth={isCurrentMonth}
           monthLabel={monthLabel(month)}
-          onAddCategory={() => router.push("/(app)/categories")}
-          onCreateBudget={() => openAdd()}
-          onResetToCurrentMonth={() => setMonth(currentMonthStart())}
-          onSelectCategory={(categoryId) => openAdd(categoryId)}
+          occasions={occasions.occasions}
+          onCreate={openAction}
+          onOpen={setOccasionId}
         />
       ) : (
         <View style={{ gap: spacing.lg }}>
-          <SummaryCard
-            limitMinor={view.totalLimitMinor}
-            monthLabel={monthLabel(month)}
-            remainingMinor={view.totalRemainingMinor}
-            spentMinor={view.totalSpentMinor}
-            usedPercent={view.totalUsedPercent}
-          />
-
-          <View style={{ gap: spacing.sm }}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={[typography.headline, { color: theme.colors.text }]}>
-                Category limits
-              </Text>
-              <View
-                style={[
-                  styles.countPill,
-                  {
-                    backgroundColor: theme.colors.surfaceRaised,
-                    borderColor: theme.colors.border,
-                  },
-                ]}
-              >
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  {view.rows.length} {view.rows.length === 1 ? "category" : "categories"}
-                </Text>
+          {inOccasion && !plan.data?.event ? (
+            <EmptyHint
+              actionLabel="Back to occasions"
+              icon="calendar-remove-outline"
+              onAction={() => setOccasionId(null)}
+              text="This occasion is no longer on your calendar."
+              title="Occasion not found"
+            />
+          ) : view.rows.length === 0 ? (
+            <EmptyHint
+              actionLabel="Add a budget"
+              icon="chart-arc"
+              onAction={openAdd}
+              text={
+                tab === "every-month"
+                  ? "Set limits once and every month starts from them."
+                  : inOccasion
+                    ? "Add a category limit to start planning this occasion."
+                    : `Set spending limits for ${monthLabel(month)}, or for every month at once.`
+              }
+              title={
+                tab === "every-month"
+                  ? "No every-month budget yet"
+                  : inOccasion
+                    ? "No limits yet"
+                    : `No budget for ${monthLabel(month)}`
+              }
+            />
+          ) : (
+            <>
+              {tab === "every-month" && !inOccasion ? (
+                <DefaultsHero limitMinor={view.totalLimitMinor} />
+              ) : (
+                <PlanHero
+                  label={inOccasion ? "Left for this occasion" : "Left to spend"}
+                  limitMinor={view.totalLimitMinor}
+                  remainingMinor={view.totalRemainingMinor}
+                  spentMinor={view.totalSpentMinor}
+                  usedPercent={view.totalUsedPercent}
+                />
+              )}
+              <View>
+                <SectionHeader
+                  title="Categories"
+                  trailing={`${view.rows.length} ${view.rows.length === 1 ? "limit" : "limits"}`}
+                />
+                {view.rows.map((row) => (
+                  <BudgetRow
+                    key={row.categoryId}
+                    onPress={() => openEdit(row.categoryId)}
+                    row={row}
+                    showSpend={tab !== "every-month" || inOccasion}
+                    tagDefaults={showsMonthPlan}
+                  />
+                ))}
               </View>
-            </View>
-
-            {view.rows.map((row) => (
-              <BudgetRowCard
-                key={row.categoryId}
-                onPress={() => openEdit(row.categoryId, row.limitMinor)}
-                row={row}
-              />
-            ))}
-          </View>
+            </>
+          )}
         </View>
       )}
 
       <BudgetEditorSheet
         addOptions={addOptions}
+        chooseScope={showsMonthPlan}
         editingBudget={editingBudget}
-        editingCategoryOption={editingCategoryOption}
         errors={errors}
-        isEditing={isEditing}
+        isEditing={editor.isEditing}
         message={message}
         monthLabel={monthLabel(month)}
-        onAmountChange={(amount) => {
-          setEditor((current) => ({ ...current, amount }));
-          setErrors((current) => ({ ...current, amount: undefined }));
-          setMessage(null);
-        }}
-        onCategoryChange={(categoryId) => {
-          setEditor((current) => ({ ...current, categoryId }));
-          setErrors((current) => ({ ...current, categoryId: undefined }));
-          setMessage(null);
-        }}
+        onChange={changeEditor}
         onDismiss={closeEditor}
         onRemove={() => void remove()}
         onSave={() => void save()}
+        removeLabel={removeLabel}
         saving={saving}
+        scopeLabel={scopeLabel}
         value={editor}
         visible={editor.open}
+      />
+
+      <OccasionSheet
+        errors={errors}
+        message={message}
+        onChange={(patch) => {
+          setOccasionDraft((current) => ({ ...current, ...patch }));
+          setErrors({});
+          setMessage(null);
+        }}
+        onDismiss={() => {
+          if (!saving) setOccasionDraft((current) => ({ ...current, open: false }));
+        }}
+        onSave={() => void createOccasion()}
+        options={allOptions}
+        saving={saving}
+        value={occasionDraft}
+        visible={occasionDraft.open}
       />
 
       <ShareBudgetSheet
         month={month}
         monthLabel={monthLabel(month)}
         onDismiss={() => setShareOpen(false)}
-        rows={view?.rows ?? []}
+        rows={showsMonthPlan ? (view?.rows ?? []) : []}
         visible={shareOpen}
       />
     </Screen>
+  );
+}
+
+/** Month, Every month, Occasions: underlined text tabs, not a pill or a card. */
+function ScopeTabs({ value, onChange }: { value: Tab; onChange: (tab: Tab) => void }) {
+  const theme = useZoptionTheme();
+  return (
+    <View
+      accessibilityRole="tablist"
+      style={[styles.tabs, { borderBottomColor: theme.colors.border }]}
+    >
+      {TABS.map((item) => {
+        const selected = item.id === value;
+        return (
+          <Pressable
+            key={item.id}
+            accessibilityLabel={item.label}
+            accessibilityRole="tab"
+            accessibilityState={{ selected }}
+            onPress={() => onChange(item.id)}
+            style={[
+              styles.tab,
+              { borderBottomColor: selected ? theme.colors.brand : "transparent" },
+            ]}
+          >
+            <Text
+              numberOfLines={1}
+              style={[
+                typography.label,
+                { color: selected ? theme.colors.text : theme.colors.textMuted },
+              ]}
+            >
+              {item.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -354,9 +509,11 @@ function MonthNavigator({
           size={26}
         />
       </Pressable>
-
-      <View style={styles.monthCenterBlock}>
-        <Text accessibilityRole="header" style={[styles.monthTitle, { color: theme.colors.text }]}>
+      <View style={styles.monthCenter}>
+        <Text
+          accessibilityRole="header"
+          style={[typography.headline, { color: theme.colors.text }]}
+        >
           {monthLabel(month)}
         </Text>
         {!isCurrentMonth ? (
@@ -366,13 +523,12 @@ function MonthNavigator({
             accessibilityRole="button"
             hitSlop={6}
             onPress={onResetToCurrentMonth}
-            style={[styles.currentMonthPill, { backgroundColor: theme.colors.brandSoft }]}
+            style={[styles.thisMonth, { backgroundColor: theme.colors.brandSoft }]}
           >
-            <Text style={[styles.currentMonthText, { color: theme.colors.brand }]}>This month</Text>
+            <Text style={[styles.thisMonthText, { color: theme.colors.brand }]}>This month</Text>
           </Pressable>
         ) : null}
       </View>
-
       <Pressable
         accessibilityLabel="Next month"
         accessibilityRole="button"
@@ -392,651 +548,161 @@ function MonthNavigator({
   );
 }
 
-function ZeroBudgetsView({
-  categories,
-  disabled,
-  isCurrentMonth,
-  monthLabel: label,
-  onAddCategory,
-  onCreateBudget,
-  onResetToCurrentMonth,
-  onSelectCategory,
+/** Back link, name, and day of the open occasion. */
+function OccasionHeader({
+  title,
+  date,
+  onBack,
+  onEdit,
 }: {
-  categories: LocalCategoryOption[];
-  disabled?: boolean;
-  isCurrentMonth: boolean;
-  monthLabel: string;
-  onAddCategory: () => void;
-  onCreateBudget: () => void;
-  onResetToCurrentMonth: () => void;
-  onSelectCategory: (categoryId: string) => void;
+  title: string | undefined;
+  date: string | undefined;
+  onBack: () => void;
+  onEdit: () => void;
 }) {
   const theme = useZoptionTheme();
-  const suggestedCategories = categories.slice(0, 5);
-
   return (
-    <View style={styles.zeroStateContainer}>
-      <Card accessibilityLabel="No budgets setup" style={styles.zeroHeroCard}>
-        <View
-          accessibilityElementsHidden
-          style={[
-            styles.zeroIconWrap,
-            {
-              backgroundColor: theme.colors.brandSoft,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <MaterialCommunityIcons name="chart-arc" size={28} color={theme.colors.brand} />
-        </View>
-
-        <View style={styles.zeroTextWrap}>
-          <Text
-            accessibilityRole="header"
-            style={[typography.title, { color: theme.colors.text, textAlign: "center" }]}
-          >
-            No budgets for {label}
-          </Text>
-          <Text
-            style={[
-              typography.body,
-              { color: theme.colors.textMuted, textAlign: "center", maxWidth: 320 },
-            ]}
-          >
-            Set spending targets per category to monitor expenses in real time and prevent
-            overspending.
-          </Text>
-        </View>
-
-        <View style={styles.zeroActionsWrap}>
-          <Button disabled={disabled} onPress={onCreateBudget} variant="primary">
-            Add a category budget
-          </Button>
-
-          {!isCurrentMonth ? (
-            <Button onPress={onResetToCurrentMonth} variant="quiet">
-              Return to current month
-            </Button>
-          ) : null}
-        </View>
-      </Card>
-
-      {suggestedCategories.length > 0 ? (
-        <View style={styles.suggestedSection}>
-          <View style={styles.suggestedHeader}>
-            <Text style={[typography.headline, { color: theme.colors.text }]}>
-              Quick start with your categories
-            </Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Tap any category to set its limit for {label}
-            </Text>
-          </View>
-
-          <View style={styles.suggestedList}>
-            {suggestedCategories.map((category) => {
-              const emoji = resolveCategoryEmoji(category);
-              return (
-                <Pressable
-                  key={category.id}
-                  accessibilityHint={`Sets a monthly budget limit for ${category.name}`}
-                  accessibilityLabel={`Set budget for ${category.name}`}
-                  accessibilityRole="button"
-                  android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                  disabled={disabled}
-                  onPress={() => onSelectCategory(category.id)}
-                  // Android's NativeWind interop drops layout from a callback style, so the
-                  // card's look lives on the static inner View; the callback only dims it.
-                  className="w-full"
-                  style={({ pressed }) => ({ opacity: pressed ? 0.75 : 1 })}
-                >
-                  <View
-                    style={[
-                      styles.suggestedCard,
-                      elevation.card,
-                      {
-                        backgroundColor: theme.colors.surfaceRaised,
-                        borderColor: theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <CategoryBadge emoji={emoji ?? null} color={category.color} size={40} />
-
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        typography.headline,
-                        { color: theme.colors.text, fontSize: 15, flex: 1 },
-                      ]}
-                    >
-                      {category.name}
-                    </Text>
-
-                    <View
-                      style={[styles.quickAddPill, { backgroundColor: theme.colors.brandSoft }]}
-                    >
-                      <Text style={[styles.quickAddPillText, { color: theme.colors.brand }]}>
-                        + Set limit
-                      </Text>
-                    </View>
-                  </View>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-      ) : (
-        <Card style={styles.noCategoriesCard}>
-          <Text style={[typography.body, { color: theme.colors.textMuted, textAlign: "center" }]}>
-            No expense categories found yet.
-          </Text>
-          <Button onPress={onAddCategory} variant="secondary">
-            Manage expense categories
-          </Button>
-        </Card>
-      )}
-
-      <View
-        style={[
-          styles.benefitsCard,
-          elevation.card,
-          {
-            backgroundColor: theme.colors.surfaceRaised,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        <View style={styles.benefitRow}>
-          <View style={[styles.benefitIconWrap, { backgroundColor: theme.colors.brandSoft }]}>
-            <MaterialCommunityIcons color={theme.colors.income} name="target" size={18} />
-          </View>
-          <View style={styles.benefitTextWrap}>
-            <Text style={[typography.label, { color: theme.colors.text }]}>
-              Stay within spending targets
-            </Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              See at a glance how much money is remaining before the month ends.
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.benefitRow}>
-          <View style={[styles.benefitIconWrap, { backgroundColor: theme.colors.warningSoft }]}>
-            <MaterialCommunityIcons color={theme.colors.warning} name="alert-outline" size={18} />
-          </View>
-          <View style={styles.benefitTextWrap}>
-            <Text style={[typography.label, { color: theme.colors.text }]}>
-              Early warning indicators
-            </Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Color-coded progress tracks highlight categories nearing their limits.
-            </Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function SummaryCard({
-  limitMinor,
-  spentMinor,
-  remainingMinor,
-  usedPercent,
-}: {
-  limitMinor: number;
-  spentMinor: number;
-  remainingMinor: number;
-  usedPercent: number;
-  monthLabel: string;
-}) {
-  const theme = useZoptionTheme();
-  const overBudget = remainingMinor < 0;
-  const nearingLimit = !overBudget && usedPercent >= 85;
-
-  const statusBadge = overBudget ? (
-    <View style={[styles.statusBadge, { backgroundColor: theme.colors.canvasMuted }]}>
-      <MaterialCommunityIcons
-        accessibilityElementsHidden
-        color={theme.colors.textMuted}
-        name="information-outline"
-        size={14}
-      />
-      <Text style={[styles.statusBadgeText, { color: theme.colors.textMuted }]}>
-        Above plan ({usedPercent}%)
-      </Text>
-    </View>
-  ) : nearingLimit ? (
-    <View style={[styles.statusBadge, { backgroundColor: theme.colors.canvasMuted }]}>
-      <MaterialCommunityIcons
-        accessibilityElementsHidden
-        color={theme.colors.textMuted}
-        name="information-outline"
-        size={14}
-      />
-      <Text style={[styles.statusBadgeText, { color: theme.colors.textMuted }]}>
-        Approaching plan ({usedPercent}%)
-      </Text>
-    </View>
-  ) : (
-    <View style={[styles.statusBadge, { backgroundColor: theme.colors.brandSoft }]}>
-      <MaterialCommunityIcons
-        accessibilityElementsHidden
-        color={theme.colors.income}
-        name="check-circle-outline"
-        size={14}
-      />
-      <Text style={[styles.statusBadgeText, { color: theme.colors.income }]}>On track</Text>
-    </View>
-  );
-
-  const fillColor = overBudget
-    ? theme.colors.danger
-    : nearingLimit
-      ? theme.colors.warning
-      : theme.colors.brand;
-
-  return (
-    <Card accessibilityLabel="Monthly budget summary" style={styles.summaryCard}>
-      <View style={styles.summaryHeaderRow}>
-        <Text style={[typography.headline, { color: theme.colors.text, fontWeight: "700" }]}>
-          Monthly Budget
-        </Text>
-        {statusBadge}
-      </View>
-
-      <View style={styles.summaryHeroSection}>
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {overBudget ? "Total over budget" : "Remaining to spend"}
-        </Text>
-        <MoneyValue
-          amountMinor={Math.abs(remainingMinor)}
-          maxFontSizeMultiplier={1.2}
-          style={styles.summaryHeroAmount}
-          tone={remainingMinor >= 0 ? "income" : "expense"}
-        />
-      </View>
-
-      <View style={[styles.summaryTrack, { backgroundColor: theme.colors.border }]}>
-        <View
-          style={[
-            styles.summaryFill,
-            {
-              width: `${Math.min(100, Math.max(0, usedPercent))}%` as DimensionValue,
-              backgroundColor: fillColor,
-            },
-          ]}
-        />
-      </View>
-
-      <View style={[styles.statsGrid, { borderTopColor: theme.colors.border }]}>
-        <View style={styles.statColumn}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Budgeted</Text>
-          <MoneyValue
-            amountMinor={limitMinor}
-            maxFontSizeMultiplier={1.2}
-            numberOfLines={1}
-            style={styles.statValue}
-          />
-        </View>
-        <View style={styles.statColumn}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Spent</Text>
-          <MoneyValue
-            amountMinor={spentMinor}
-            maxFontSizeMultiplier={1.2}
-            numberOfLines={1}
-            style={styles.statValue}
-            tone="expense"
-          />
-        </View>
-        <View style={styles.statColumn}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Used</Text>
-          <Text
-            maxFontSizeMultiplier={1.2}
-            style={[
-              styles.statValue,
-              { color: overBudget ? theme.colors.danger : theme.colors.text },
-            ]}
-          >
-            {usedPercent}%
-          </Text>
-        </View>
-      </View>
-    </Card>
-  );
-}
-
-function BudgetRowCard({ row, onPress }: { row: BudgetMonthRow; onPress: () => void }) {
-  const theme = useZoptionTheme();
-  const workspaceCurrency = useWorkspaceCurrency();
-  const emoji =
-    row.categoryIconEmoji ?? resolveCategoryEmoji({ name: row.categoryName, kind: "expense" });
-
-  return (
-    <View
-      accessibilityHint={
-        row.syncState === "conflicted"
-          ? "Review this budget conflict"
-          : `Edit ${row.categoryName} budget`
-      }
-      accessibilityLabel={`${row.categoryName} budget: spent ${moneyAccessibilityLabel(row.spentMinor, workspaceCurrency)} of ${moneyAccessibilityLabel(row.limitMinor, workspaceCurrency)}, ${row.remainingMinor >= 0 ? `${moneyAccessibilityLabel(row.remainingMinor, workspaceCurrency)} remaining` : `${moneyAccessibilityLabel(Math.abs(row.remainingMinor), workspaceCurrency)} over budget`}`}
-      accessible
-      style={[
-        styles.budgetCard,
-        elevation.card,
-        {
-          backgroundColor: theme.colors.surfaceRaised,
-          borderColor: row.syncState === "conflicted" ? theme.colors.warning : theme.colors.border,
-        },
-      ]}
-    >
+    <View style={styles.occasionHeader}>
       <Pressable
+        accessibilityLabel="Back to occasions"
         accessibilityRole="button"
-        android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-        disabled={row.syncState === "conflicted" || row.syncState === "failed"}
-        onPress={onPress}
-        style={({ pressed }) => [{ opacity: pressed ? 0.75 : 1 }]}
+        hitSlop={8}
+        onPress={onBack}
+        style={styles.backLink}
       >
-        <View style={styles.budgetCardTopRow}>
-          <CategoryBadge emoji={emoji ?? null} color={row.categoryColor} size={42} />
-
-          <View style={styles.categoryInfo}>
-            <Text
-              numberOfLines={1}
-              style={[typography.headline, { color: theme.colors.text, fontSize: 16 }]}
-            >
-              {row.categoryName}
-            </Text>
-            <Text numberOfLines={1} style={[typography.caption, { color: theme.colors.textMuted }]}>
-              <MoneyValue amountMinor={row.spentMinor} tone="expense" /> of{" "}
-              <MoneyValue amountMinor={row.limitMinor} />
-            </Text>
-          </View>
-
-          <View style={styles.budgetCardRight}>
-            <MoneyValue
-              amountMinor={row.remainingMinor}
-              maxFontSizeMultiplier={1.2}
-              style={styles.remainingAmount}
-              tone={row.overBudget ? "expense" : "income"}
-            />
-            {row.overBudget ? (
-              <View style={[styles.miniDangerPill, { backgroundColor: theme.colors.dangerSoft }]}>
-                <Text style={[styles.miniDangerText, { color: theme.colors.danger }]}>
-                  {row.usedPercent}% (over)
-                </Text>
-              </View>
-            ) : (
-              <Text
-                style={[typography.caption, { color: theme.colors.textMuted, textAlign: "right" }]}
-              >
-                {row.usedPercent}% used
-              </Text>
-            )}
-          </View>
-        </View>
-
-        <View style={[styles.rowTrack, { backgroundColor: theme.colors.border }]}>
-          <View
-            style={[
-              styles.rowFill,
-              {
-                width: `${Math.min(100, Math.max(0, row.usedPercent))}%` as DimensionValue,
-                backgroundColor: row.overBudget ? theme.colors.danger : row.categoryColor,
-              },
-            ]}
-          />
-        </View>
+        <MaterialCommunityIcons color={theme.colors.brand} name="chevron-left" size={20} />
+        <Text style={[typography.label, { color: theme.colors.brand }]}>Occasions</Text>
       </Pressable>
-
-      {row.syncState === "conflicted" ? (
-        <View
-          style={[
-            styles.syncBanner,
-            { backgroundColor: theme.colors.warningSoft, borderColor: theme.colors.warning },
-          ]}
-        >
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={theme.colors.warning}
-            name="alert-circle-outline"
-            size={16}
-          />
-          <Text style={[typography.caption, { color: theme.colors.warning, flex: 1 }]}>
-            Conflict preserved
+      <View style={styles.occasionTitleRow}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text numberOfLines={2} style={[typography.title, { color: theme.colors.text }]}>
+            {title ?? "Occasion"}
           </Text>
-          <Button
-            accessibilityLabel={`Review conflict for ${row.categoryName}`}
-            onPress={() =>
-              router.push({ pathname: "/(app)/budget-conflict", params: { id: row.id } })
-            }
-            variant="secondary"
-          >
-            Review
-          </Button>
-        </View>
-      ) : row.syncState === "failed" ? (
-        <View
-          style={[
-            styles.syncBanner,
-            { backgroundColor: theme.colors.dangerSoft, borderColor: theme.colors.danger },
-          ]}
-        >
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={theme.colors.danger}
-            name="cloud-alert-outline"
-            size={16}
-          />
-          <Text style={[typography.caption, { color: theme.colors.danger }]}>
-            Sync needs repair
-          </Text>
-        </View>
-      ) : row.syncState === "pending" ? (
-        <View style={styles.syncStatusRow}>
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={theme.colors.warning}
-            name="cloud-upload-outline"
-            size={14}
-          />
-          <Text style={[typography.caption, { color: theme.colors.warning }]}>Pending sync</Text>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function BudgetEditorSheet({
-  addOptions,
-  editingBudget,
-  editingCategoryOption,
-  errors,
-  isEditing,
-  message,
-  monthLabel: label,
-  onCategoryChange,
-  onDismiss,
-  onRemove,
-  onSave,
-  onAmountChange,
-  saving,
-  value,
-  visible,
-}: {
-  addOptions: { id: string; label: string; detail?: string }[];
-  editingBudget: BudgetMonthItem | undefined;
-  editingCategoryOption:
-    { id: string; name: string; color: string; iconEmoji?: string | null } | undefined;
-  errors: BudgetFormErrors;
-  isEditing: boolean;
-  message: string | null;
-  monthLabel: string;
-  onCategoryChange: (categoryId: string) => void;
-  onDismiss: () => void;
-  onRemove: () => void;
-  onSave: () => void;
-  onAmountChange: (amount: string) => void;
-  saving: boolean;
-  value: EditorState;
-  visible: boolean;
-}) {
-  const theme = useZoptionTheme();
-  const emoji = editingCategoryOption
-    ? resolveCategoryEmoji(editingCategoryOption)
-    : editingBudget
-      ? resolveCategoryEmoji({ name: editingBudget.categoryName, kind: "expense" })
-      : null;
-
-  return (
-    <BottomSheet
-      onDismiss={onDismiss}
-      title={isEditing ? "Edit budget" : "Add budget"}
-      visible={visible}
-    >
-      <View style={styles.sheetMonthTag}>
-        <MaterialCommunityIcons
-          accessibilityElementsHidden
-          color={theme.colors.textMuted}
-          name="calendar-month-outline"
-          size={14}
-        />
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{label}</Text>
-      </View>
-
-      {isEditing && editingBudget ? (
-        <View
-          style={[
-            styles.editingCategoryBanner,
-            {
-              backgroundColor: theme.colors.surfaceRaised,
-              borderColor: theme.colors.border,
-            },
-          ]}
-        >
-          <CategoryBadge emoji={emoji ?? null} color={editingBudget.categoryColor} size={42} />
-
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[typography.headline, { color: theme.colors.text, fontSize: 16 }]}>
-              {editingBudget.categoryName}
-            </Text>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Spent so far this month:{" "}
-              <MoneyValue amountMinor={editingBudget.spentMinor} tone="expense" />
-            </Text>
-          </View>
-        </View>
-      ) : (
-        // Every option stays visible so the chosen category is never hidden behind a
-        // collapsed menu inside the sheet.
-        <View accessibilityRole="radiogroup" style={{ gap: spacing.xs }}>
-          <Text style={[typography.label, { color: theme.colors.text }]}>Expense category</Text>
-          {addOptions.length === 0 ? (
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Every expense category already has a budget this month.
-            </Text>
-          ) : (
-            addOptions.map((option) => {
-              const selected = option.id === value.categoryId;
-              return (
-                <Pressable
-                  key={option.id}
-                  accessibilityHint={option.detail}
-                  accessibilityLabel={option.label}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  onPress={() => onCategoryChange(option.id)}
-                  style={[
-                    styles.categoryOption,
-                    {
-                      backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
-                      borderColor: selected ? theme.colors.brand : theme.colors.border,
-                    },
-                  ]}
-                >
-                  <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>
-                    {option.label}
-                  </Text>
-                  {option.detail ? (
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      {option.detail}
-                    </Text>
-                  ) : null}
-                  {selected ? (
-                    <MaterialCommunityIcons
-                      accessibilityElementsHidden
-                      color={theme.colors.brand}
-                      name="check"
-                      size={20}
-                    />
-                  ) : null}
-                </Pressable>
-              );
-            })
-          )}
-          {errors.categoryId ? (
-            <Text
-              accessibilityRole="alert"
-              style={[typography.caption, { color: theme.colors.danger }]}
-            >
-              {errors.categoryId}
+          {date ? (
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              {occasionDateLabel(date)}
             </Text>
           ) : null}
         </View>
-      )}
-
-      <FormField
-        editable={!saving}
-        error={errors.amount}
-        keyboardType="decimal-pad"
-        label="Monthly spending limit"
-        maxLength={18}
-        onChangeText={onAmountChange}
-        placeholder="0.00"
-        trailing={<CurrencyCode />}
-        value={value.amount}
-      />
-
-      {message ? (
-        <Text
-          accessibilityRole="alert"
-          style={[typography.callout, { color: theme.colors.danger }]}
-        >
-          {message}
-        </Text>
-      ) : null}
-
-      <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-        <Button
-          accessibilityLabel={isEditing ? "Save budget changes" : "Save new budget"}
-          disabled={!value.categoryId && !isEditing}
-          loading={saving}
-          onPress={onSave}
-          variant="primary"
-        >
-          {isEditing ? "Save changes" : "Save budget"}
-        </Button>
-
-        {isEditing ? (
+        {title ? (
           <Button
-            accessibilityLabel="Remove this budget"
-            disabled={saving}
-            onPress={onRemove}
+            accessibilityLabel="Edit occasion name or date"
+            icon="pencil-outline"
+            onPress={onEdit}
+            size="compact"
             variant="quiet"
-          >
-            Remove budget
-          </Button>
+          />
         ) : null}
       </View>
-    </BottomSheet>
+    </View>
+  );
+}
+
+function OccasionsList({
+  occasions,
+  monthLabel: label,
+  disabled,
+  onOpen,
+  onCreate,
+}: {
+  occasions: {
+    eventId: string;
+    title: string;
+    date: string;
+    totalLimitMinor: number;
+    totalSpentMinor: number;
+  }[];
+  monthLabel: string;
+  disabled: boolean;
+  onOpen: (eventId: string) => void;
+  onCreate: () => void;
+}) {
+  if (occasions.length === 0) {
+    return (
+      <EmptyHint
+        actionLabel="New occasion"
+        disabled={disabled}
+        icon="party-popper"
+        onAction={onCreate}
+        text="Plan a birthday, trip, or holiday with its own limits, apart from your monthly budget."
+        title={`No occasions in ${label}`}
+      />
+    );
+  }
+  return (
+    <View>
+      <SectionHeader title={`Occasions in ${label}`} trailing={`${occasions.length}`} />
+      {occasions.map((occasion) => (
+        <OccasionRow
+          key={occasion.eventId}
+          occasion={occasion}
+          onPress={() => onOpen(occasion.eventId)}
+        />
+      ))}
+    </View>
+  );
+}
+
+function EmptyHint({
+  icon,
+  title,
+  text,
+  actionLabel,
+  disabled,
+  onAction,
+}: {
+  icon: React.ComponentProps<typeof MaterialCommunityIcons>["name"];
+  title: string;
+  text: string;
+  actionLabel: string;
+  disabled?: boolean;
+  onAction: () => void;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <View style={styles.empty}>
+      <MaterialCommunityIcons
+        accessibilityElementsHidden
+        color={theme.colors.brand}
+        name={icon}
+        size={32}
+      />
+      <Text
+        accessibilityRole="header"
+        style={[typography.title, { color: theme.colors.text, textAlign: "center" }]}
+      >
+        {title}
+      </Text>
+      <Text
+        style={[
+          typography.body,
+          { color: theme.colors.textMuted, textAlign: "center", maxWidth: 320 },
+        ]}
+      >
+        {text}
+      </Text>
+      <Button disabled={disabled} onPress={onAction} variant="primary">
+        {actionLabel}
+      </Button>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerActions: {
+  headerActions: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexShrink: 0 },
+  tabs: { flexDirection: "row", borderBottomWidth: StyleSheet.hairlineWidth },
+  tab: {
+    flex: 1,
+    minHeight: touchTarget,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomWidth: 2,
+  },
+  monthNav: {
+    minHeight: 48,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    flexShrink: 0,
+    justifyContent: "space-between",
   },
   iconButton: {
     width: touchTarget,
@@ -1045,261 +711,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radii.round,
   },
-  monthNav: {
-    minHeight: 52,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.xs,
-  },
-  monthTitle: {
-    ...typography.headline,
-    textAlign: "center",
-  },
-  monthCenterBlock: {
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-  },
-  currentMonthPill: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 2,
-    borderRadius: radii.round,
-  },
-  currentMonthText: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: "700",
-  },
-  sectionHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.xxs,
-    marginBottom: spacing.xxs,
-  },
-  countPill: {
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xxs,
-    borderRadius: radii.round,
-    borderWidth: 1,
-  },
-  summaryCard: {
-    gap: spacing.md,
-  },
-  summaryHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xxs,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 3,
-    borderRadius: radii.round,
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-  },
-  summaryHeroSection: {
-    gap: 2,
-  },
-  summaryHeroAmount: {
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: "700",
-  },
-  summaryTrack: {
-    height: 8,
-    borderRadius: radii.round,
-    overflow: "hidden",
-  },
-  summaryFill: {
-    height: 8,
-    borderRadius: radii.round,
-  },
-  statsGrid: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingTop: spacing.sm,
-  },
-  statColumn: {
-    flex: 1,
-    alignItems: "center",
-    gap: 2,
-  },
-  statValue: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
-  },
-  budgetCard: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    padding: spacing.md,
-    gap: spacing.xs,
-  },
-  budgetCardTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  categoryInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  budgetCardRight: {
-    alignItems: "flex-end",
-    gap: 2,
-  },
-  remainingAmount: {
-    fontSize: 15,
-    lineHeight: 20,
-    fontWeight: "700",
-  },
-  miniDangerPill: {
-    paddingHorizontal: spacing.xxs,
-    paddingVertical: 1,
-    borderRadius: radii.sm,
-  },
-  miniDangerText: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: "700",
-  },
-  rowTrack: {
-    height: 6,
-    borderRadius: radii.round,
-    overflow: "hidden",
-    marginTop: spacing.sm,
-  },
-  rowFill: {
-    height: 6,
-    borderRadius: radii.round,
-  },
-  syncBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    padding: spacing.xs,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    marginTop: spacing.xs,
-  },
-  syncStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xxs,
-    marginTop: spacing.xs,
-  },
-  sheetMonthTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xxs,
-  },
-  categoryOption: {
-    minHeight: touchTarget,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    borderWidth: 1,
-  },
-  editingCategoryBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: radii.md,
-    borderWidth: 1,
-  },
-  zeroStateContainer: {
-    gap: spacing.lg,
-  },
-  zeroHeroCard: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    gap: spacing.md,
-  },
-  zeroIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  zeroTextWrap: {
-    alignItems: "center",
-    gap: spacing.xxs,
-  },
-  zeroActionsWrap: {
-    width: "100%",
-    maxWidth: 280,
-    gap: spacing.xs,
-    marginTop: spacing.xxs,
-  },
-  suggestedSection: {
-    gap: spacing.xs,
-  },
-  suggestedHeader: {
-    gap: 2,
-    paddingHorizontal: spacing.xxs,
-  },
-  suggestedList: {
-    gap: spacing.xs,
-  },
-  suggestedCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    padding: spacing.sm,
-    gap: spacing.sm,
-  },
-  quickAddPill: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xxs + 2,
-    borderRadius: radii.round,
-  },
-  quickAddPillText: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "700",
-  },
-  noCategoriesCard: {
-    alignItems: "center",
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  benefitsCard: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  benefitRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: spacing.sm,
-  },
-  benefitIconWrap: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  benefitTextWrap: {
-    flex: 1,
-    gap: 2,
-  },
+  monthCenter: { alignItems: "center", gap: 2 },
+  thisMonth: { paddingHorizontal: spacing.xs, paddingVertical: 2, borderRadius: radii.round },
+  thisMonthText: { fontSize: 11, lineHeight: 14, fontWeight: "700" },
+  occasionHeader: { gap: spacing.sm },
+  backLink: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start" },
+  occasionTitleRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  empty: { alignItems: "center", gap: spacing.md, paddingVertical: spacing.xxl },
 });

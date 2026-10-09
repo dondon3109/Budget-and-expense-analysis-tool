@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
 
 import { decodeSharedBudgetToken } from "@zoption/shared";
-import { useBudgetMonth, useLocalWorkspace } from "@/db/local-workspace-state";
+import { useBudgetPlan, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalWorkspace } from "@/db/workspace";
 import { useSyncState } from "@/sync/sync-state";
 import { BudgetsScreen } from "./BudgetsScreen";
@@ -23,7 +23,8 @@ jest.mock("@react-native-community/netinfo", () => ({
 
 jest.mock("@/db/local-workspace-state", () => ({
   useLocalWorkspace: jest.fn(),
-  useBudgetMonth: jest.fn(),
+  useBudgetPlan: jest.fn(),
+  useBudgetOccasions: jest.fn(() => ({ occasions: [], error: null, retry: jest.fn() })),
 }));
 
 jest.mock("@/sync/sync-state", () => ({
@@ -42,6 +43,7 @@ const ROWS: BudgetMonthRow[] = [
     remainingMinor: 30_000,
     usedPercent: 40,
     overBudget: false,
+    source: "month",
     syncState: "synced",
   },
   {
@@ -55,6 +57,7 @@ const ROWS: BudgetMonthRow[] = [
     remainingMinor: 70_000,
     usedPercent: 12.5,
     overBudget: false,
+    source: "month",
     syncState: "synced",
   },
 ];
@@ -193,7 +196,7 @@ describe("ShareBudgetSheet", () => {
       retry: jest.fn(),
       reopen: jest.fn(),
     });
-    jest.mocked(useBudgetMonth).mockReturnValue({
+    jest.mocked(useBudgetPlan).mockReturnValue({
       data: {
         budgets: [
           {
@@ -203,9 +206,11 @@ describe("ShareBudgetSheet", () => {
             categoryColor: "#FF5722",
             limitMinor: 50_000,
             spentMinor: 20_000,
+            source: "month",
             syncState: "synced",
           },
         ],
+        event: null,
         categories: [
           {
             id: "cat-1",
