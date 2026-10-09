@@ -78,6 +78,13 @@ describe("AppShell", () => {
     const shell = container.querySelector(".app-shell")!;
     expect(shell).toHaveClass("nav-collapsed");
 
+    // Collapsed CSS hides the label spans, so the names must not depend on them.
+    for (const link of screen.getByRole("navigation", { name: "Main navigation" }).querySelectorAll("a")) {
+      expect(link).toHaveAttribute("aria-label", link.textContent);
+    }
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Tutorials & guide" })).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(shell).not.toHaveClass("nav-collapsed");
     expect(window.localStorage.getItem("zoption:nav-collapsed")).toBeNull();

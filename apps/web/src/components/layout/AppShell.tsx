@@ -346,6 +346,7 @@ export function AppShell({ children }: AppShellProps) {
                   to={item.to}
                   end={item.to === "/app"}
                   className={({ isActive }) => (isActive ? "nav-item current" : "nav-item")}
+                  aria-label={item.label}
                   onClick={(event) => handleShellLinkClick(event, item.to)}
                 >
                   <Icon size={19} aria-hidden="true" />
@@ -361,6 +362,7 @@ export function AppShell({ children }: AppShellProps) {
               className={({ isActive }) =>
                 isActive ? "sidebar-account-action current" : "sidebar-account-action"
               }
+              aria-label="Tutorials & guide"
               onClick={(event) => handleShellLinkClick(event, "/app/tutorials")}
             >
               <BookOpen size={15} aria-hidden="true" /> <span>Tutorials & guide</span>
@@ -370,6 +372,7 @@ export function AppShell({ children }: AppShellProps) {
               className={({ isActive }) =>
                 isActive ? "sidebar-account-action current" : "sidebar-account-action"
               }
+              aria-label="Account settings"
               onClick={(event) => handleShellLinkClick(event, "/app/settings")}
             >
               <Settings size={15} aria-hidden="true" /> <span>Account settings</span>
@@ -377,6 +380,7 @@ export function AppShell({ children }: AppShellProps) {
             <button
               className="sidebar-account-action"
               type="button"
+              aria-label={signingOut ? "Signing out" : "Sign out"}
               onClick={(event) => {
                 if (interceptNavigation(event, { kind: "sign-out" })) return;
                 void handleSignOut();
