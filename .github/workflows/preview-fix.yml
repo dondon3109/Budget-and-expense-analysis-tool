@@ -133,7 +133,10 @@ jobs:
           - flaky: a timeout or network error on a few tests while others on the same pages passed,
             with no assertion about the page itself.
           - setup: sign-in, test accounts, secrets, or the preview deployment itself (DNS, 5xx from
-            every route, Supabase unreachable). No app code change fixes it.
+            every route, Supabase unreachable). Also the test account's stored state: a first-run
+            dialog (consent, onboarding, review prompt) covering the page, or a "dialog is holding
+            the app root inert" error on a route the account has not set up. No app code change
+            fixes it.
           Give a one or two sentence reason that names the failing pages.
 
           $(cat preview-fix/failures.md)
@@ -218,6 +221,10 @@ jobs:
           - Never change e2e/, playwright.config.ts, playwright.preview.config.ts, .github/, or
             scripts/, and never weaken, skip, or delete a test to make it pass. A draft that
             touches those paths is rejected.
+          - A modal dialog must keep making the page behind it inert and keep aria-modal and its
+            focus trap. Never relax accessibility behavior so the audit can see past a dialog; if a
+            dialog only appears because of the test account's stored state, change nothing and
+            say so in the pull request body file.
           - The audit itself needs the deployed preview and cannot run here. Add or update a
             focused unit test where one fits, run it with pnpm vitest run <paths>, and make it pass.
           - Write the pull request body to .preview-fix-pr-body.md in the repository root: which
@@ -237,11 +244,13 @@ jobs:
             echo "::error::The agent did not write .preview-fix-pr-body.md"
             exit 1
           fi
-          mkdir -p preview-fix-artifact
-          mv .preview-fix-pr-body.md preview-fix-artifact/pr-body.md
           rm -rf .preview-fix
-
+          # Take the body out of the tree before staging, so the patch holds only the agent's code
+          # change and never the pull request body (which the PR step could not apply over itself).
+          mv .preview-fix-pr-body.md "${RUNNER_TEMP}/pr-body.md"
           git add --all
+          mkdir -p preview-fix-artifact
+          mv "${RUNNER_TEMP}/pr-body.md" preview-fix-artifact/pr-body.md
           git diff --cached --binary > preview-fix-artifact/fix.patch
           if [ ! -s preview-fix-artifact/fix.patch ]; then
             echo "::error::The agent found no app code change to make:"
