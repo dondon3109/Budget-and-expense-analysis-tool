@@ -149,6 +149,38 @@ export async function dismissOverlays(page: Page) {
     await closeReviewPrompt.click({ timeout: 5_000 }).catch(() => undefined);
     await page.waitForTimeout(250);
   }
+
+  await completeAssistantSetup(page);
+}
+
+/**
+ * A new account meets two blocking gates on the assistant page: consent, then the names dialog.
+ * Both hold #root inert, and neither can be dismissed, so a scan can only reach the real page by
+ * completing them. Only /app/assistant shows them, and only once its preferences request has
+ * resolved, so the wait is bounded and skipped everywhere else. A finished account sees neither.
+ */
+async function completeAssistantSetup(page: Page) {
+  if (!new URL(page.url()).pathname.startsWith("/app/assistant")) return;
+  const accept = page.getByRole("button", { name: /accept and continue/i });
+  const names = page.getByLabel(/your assistant's name/i);
+
+  for (let step = 0; step < 2; step += 1) {
+    await accept
+      .or(names)
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .catch(() => undefined);
+    if (await accept.isVisible().catch(() => false)) {
+      await accept.click({ timeout: 5_000 }).catch(() => undefined);
+      await accept.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => undefined);
+    } else if (await names.isVisible().catch(() => false)) {
+      await names.fill("Aster");
+      await page.getByLabel(/what should your assistant call you/i).fill("Sam");
+      await page.getByRole("button", { name: /^continue$/i }).click({ timeout: 5_000 });
+      await names.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => undefined);
+    } else {
+      return;
+    }
+  }
 }
 
 /**
