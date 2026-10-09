@@ -29,14 +29,24 @@ export const currentRelease: ProductRelease = {
         "On mobile, Home lists your upcoming subscriptions below Safe to spend, and Home and Analytics now sit on the page with simple dividers instead of a card around everything.",
     },
     {
-      title: "Fixes",
+      title: "Budgets for a month, every month, or an occasion",
       description:
-        "Android Beta 0.2.48 could open to a blank screen; that is fixed. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
+        "Set a budget for one month, for every month, or for an occasion such as a birthday party. A month uses your every-month limit for any category it does not set itself, an occasion counts only spending on its day, and occasions show on the calendar. On mobile, the calendar is now a full-width month grid with the month's income, expenses, and budget left above it.",
     },
     {
-      title: "Android Beta 0.2.49",
+      title: "A tidier assistant on Android and iOS",
       description:
-        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, the calmer Home and Analytics, and these fixes. If 0.2.48 opens to a blank screen, install 0.2.49 over it.",
+        "The consent screen is a compact one over your conversations, with a Privacy Policy link and a Not now button. History is split into Text chats and Voice chats, the voice screen's orb and bars now move while it listens and speaks, and the message box no longer has a language pill.",
+    },
+    {
+      title: "Fixes",
+      description:
+        "Android Beta 0.2.48 could open to a blank screen; that is fixed. The collapsed sidebar on the web assistant page now has readable link names for screen readers. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
+    },
+    {
+      title: "Android Beta 0.2.50",
+      description:
+        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, the tidier assistant, the calmer Home and Analytics, and these fixes. If 0.2.48 opens to a blank screen, install 0.2.50 over it.",
     },
   ],
 };
