@@ -29,6 +29,11 @@ export const currentRelease: ProductRelease = {
         "On mobile, Home lists your upcoming subscriptions below Safe to spend, and Home and Analytics now sit on the page with simple dividers instead of a card around everything.",
     },
     {
+      title: "Budgets for a month, every month, or an occasion",
+      description:
+        "Set a budget for one month, for every month, or for an occasion such as a birthday party. A month uses your every-month limit for any category it does not set itself, an occasion counts only spending on its day, and occasions show on the calendar. On mobile, the calendar is now a full-width month grid with the month's income, expenses, and budget left above it.",
+    },
+    {
       title: "A tidier assistant on Android and iOS",
       description:
         "The consent screen is a compact one over your conversations, with a Privacy Policy link and a Not now button. History is split into Text chats and Voice chats, the voice screen's orb and bars now move while it listens and speaks, and the message box no longer has a language pill.",

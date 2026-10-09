@@ -28,6 +28,7 @@ describe("current release notes", () => {
       "Several purchases in one message",
       "Updated assistant consent",
       "A calmer Home and Analytics",
+      "Budgets for a month, every month, or an occasion",
       "A tidier assistant on Android and iOS",
       "Fixes",
       "Android Beta 0.2.50",

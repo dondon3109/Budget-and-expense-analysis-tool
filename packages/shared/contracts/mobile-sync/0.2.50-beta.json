@@ -1,7 +1,7 @@
 {
   "versionName": "0.2.50-beta",
-  "source": "c79ab5965f66438708f49092c247e459ee09213e",
-  "features": ["debt-links", "account-types-v2"],
+  "source": "d6c56d4b65230c2a9df719948f62b4982489ba24",
+  "features": ["debt-links", "account-types-v2", "budget-scopes"],
   "samplePushRequest": {
     "protocolVersion": 1,
     "clientId": "c0000000-0000-4000-8000-000000000001",
@@ -676,6 +676,19 @@
                           "month": {
                             "type": "string",
                             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "occasionId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "limitMinor": {
                             "type": "integer",
@@ -1712,6 +1725,19 @@
                           "month": {
                             "type": "string",
                             "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "occasionId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           },
                           "limitMinor": {
                             "type": "integer",
@@ -2828,6 +2854,19 @@
                               "month": {
                                 "type": "string",
                                 "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "occasionId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
                               },
                               "limitMinor": {
                                 "type": "integer",
