@@ -1,13 +1,21 @@
 import {
   currencies,
   currencyMetadata,
+  type BudgetOccasionSummary,
   type CalendarEventRecord,
   type Currency,
   type CurrencyTotals,
   type SubscriptionMonthItem,
   type TransactionListItem,
 } from "@zoption/shared";
-import { ArrowDownRight, ArrowUpRight, CalendarClock, CalendarDays, Repeat2 } from "lucide-react";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  CalendarClock,
+  CalendarDays,
+  PartyPopper,
+  Repeat2,
+} from "lucide-react";
 import type { KeyboardEvent } from "react";
 
 import { calendarWeeks, firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
@@ -16,6 +24,8 @@ export interface CalendarDayData {
   items: TransactionListItem[];
   subscriptions: SubscriptionMonthItem[];
   events: CalendarEventRecord[];
+  /** Occasion budgets dated on this day. */
+  occasions?: BudgetOccasionSummary[];
   incomeByCurrency: CurrencyTotals;
   expenseByCurrency: CurrencyTotals;
   incomeCount: number;
@@ -87,6 +97,9 @@ function dayLabel(
     parts.push(
       `${data.subscriptions.length} subscription${data.subscriptions.length === 1 ? "" : "s"}: ${data.subscriptions.map((subscription) => subscription.name).join(", ")}`,
     );
+  }
+  if (data?.occasions?.length) {
+    parts.push(`occasion budget: ${data.occasions.map((occasion) => occasion.title).join(", ")}`);
   }
   if (data?.events.length) {
     parts.push(
@@ -178,6 +191,15 @@ export function CalendarMonthGrid({
                 <Repeat2 size={11} aria-hidden="true" /> {data.transferCount}
               </span>
             ) : null}
+            {data?.occasions?.map((occasion) => (
+              <span
+                className="calendar-indicator occasion"
+                key={occasion.eventId}
+                title={occasion.title}
+              >
+                <PartyPopper size={11} aria-hidden="true" /> {occasion.title}
+              </span>
+            ))}
             {data?.events.slice(0, 2).map((calendarEvent) => (
               <span
                 className="calendar-indicator event"
@@ -205,6 +227,7 @@ export function CalendarMonthGrid({
               data.expenseCount > 0 ||
               data.transferCount > 0 ||
               data.events.length > 0 ||
+              (data.occasions?.length ?? 0) > 0 ||
               data.subscriptions.length > 0) && (
               <span className="calendar-mobile-signals" aria-hidden="true">
                 {data.incomeCount > 0 && (
@@ -220,6 +243,11 @@ export function CalendarMonthGrid({
                 {data.transferCount > 0 && (
                   <span className="calendar-mobile-signal transfer">
                     <Repeat2 size={9} aria-hidden="true" /> {data.transferCount}
+                  </span>
+                )}
+                {(data.occasions?.length ?? 0) > 0 && (
+                  <span className="calendar-mobile-signal event">
+                    <PartyPopper size={9} aria-hidden="true" /> {data.occasions?.length}
                   </span>
                 )}
                 {data.events.length > 0 && (

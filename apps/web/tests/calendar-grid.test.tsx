@@ -10,6 +10,47 @@ import { CalendarMonthGrid } from "../src/components/calendar/CalendarMonthGrid"
 afterEach(cleanup);
 
 describe("CalendarMonthGrid", () => {
+  it("marks an occasion budget on its day", () => {
+    render(
+      <CalendarMonthGrid
+        month="2026-07"
+        selectedDate="2026-07-01"
+        today="2026-07-18"
+        days={
+          new Map([
+            [
+              "2026-07-15",
+              {
+                items: [],
+                subscriptions: [],
+                events: [],
+                occasions: [
+                  {
+                    eventId: "party",
+                    title: "Mia birthday",
+                    date: "2026-07-15",
+                    totalLimitMinor: 80_000,
+                    totalSpentMinor: 50_000,
+                  },
+                ],
+                incomeByCurrency: {},
+                expenseByCurrency: {},
+                incomeCount: 0,
+                expenseCount: 0,
+                transferCount: 0,
+              },
+            ],
+          ])
+        }
+        onSelectDate={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /July 15, 2026, occasion budget: Mia birthday/ }),
+    ).toBeInTheDocument();
+  });
+
   it("renders daily money indicators and selects a day", () => {
     const onSelectDate = vi.fn();
     render(

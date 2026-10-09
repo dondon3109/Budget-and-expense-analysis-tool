@@ -3,6 +3,7 @@ import {
   countsAsIncome,
   type CalendarEventInput,
   type CalendarEventMonth,
+  type BudgetOccasionSummary,
   type CalendarEventRecord,
   type SubscriptionMonthItem,
   type TransactionCalendarMonth,
@@ -38,7 +39,7 @@ import {
   upcomingCalendarEvents,
   upcomingCalendarSubscriptions,
 } from "../lib/calendar";
-import { formatFullMonth } from "../lib/formatters";
+import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { optimisticTransaction } from "../lib/optimisticTransactions";
 import { queryKeys } from "../lib/queryKeys";
@@ -46,6 +47,7 @@ import { userWorkspace } from "../lib/workspace";
 import { useAccounts } from "../queries/accounts";
 import { useCategories } from "../queries/categories";
 import { useDebts } from "../queries/debts";
+import { useBudgetOccasions, useBudgets } from "../queries/budgets";
 import { useSubscriptions } from "../queries/subscriptions";
 import {
   invalidateAfterTransactionWrite,
@@ -70,6 +72,7 @@ export function buildCalendarDays(
   items: readonly TransactionListItem[],
   subscriptions: readonly SubscriptionMonthItem[],
   events: readonly CalendarEventRecord[],
+  occasions: readonly BudgetOccasionSummary[] = [],
 ): Map<string, CalendarDayData> {
   const lookup = new Map<string, CalendarDayData>();
   for (const item of items) {
@@ -101,6 +104,12 @@ export function buildCalendarDays(
     const day = lookup.get(event.date) ?? emptyCalendarDay();
     day.events.push(event);
     lookup.set(event.date, day);
+  }
+
+  for (const occasion of occasions) {
+    const day = lookup.get(occasion.date) ?? emptyCalendarDay();
+    day.occasions = [...(day.occasions ?? []), occasion];
+    lookup.set(occasion.date, day);
   }
 
   return lookup;
@@ -150,6 +159,9 @@ export function CalendarPage() {
     queryKey: queryKeys.events(workspace, monthStart(nextMonth)),
     queryFn: () => getCalendarEvents(workspace, monthStart(nextMonth)),
   });
+  const occasionsQuery = useBudgetOccasions(workspace, monthStart(visibleMonth));
+  const nextOccasionsQuery = useBudgetOccasions(workspace, monthStart(nextMonth));
+  const budgetQuery = useBudgets(workspace, { scope: "month", month: monthStart(visibleMonth) });
   const categoriesQuery = useCategories(workspace, true);
   const accountsQuery = useAccounts(workspace);
   const debtsQuery = useDebts(workspace);
@@ -278,8 +290,14 @@ export function CalendarPage() {
         calendarQuery.data?.items ?? [],
         subscriptionsQuery.data?.items ?? [],
         eventsQuery.data?.items ?? [],
+        occasionsQuery.data ?? [],
       ),
-    [calendarQuery.data?.items, eventsQuery.data?.items, subscriptionsQuery.data?.items],
+    [
+      calendarQuery.data?.items,
+      eventsQuery.data?.items,
+      occasionsQuery.data,
+      subscriptionsQuery.data?.items,
+    ],
   );
   const nextMonthDays = useMemo(
     () =>
@@ -287,10 +305,12 @@ export function CalendarPage() {
         nextCalendarQuery.data?.items ?? [],
         nextSubscriptionsQuery.data?.items ?? [],
         nextEventsQuery.data?.items ?? [],
+        nextOccasionsQuery.data ?? [],
       ),
     [
       nextCalendarQuery.data?.items,
       nextEventsQuery.data?.items,
+      nextOccasionsQuery.data,
       nextSubscriptionsQuery.data?.items,
     ],
   );
@@ -300,6 +320,7 @@ export function CalendarPage() {
   );
   const selectedItems = selectedDay?.items ?? [];
   const selectedEvents = selectedDay?.events ?? [];
+  const selectedOccasions = selectedDay?.occasions ?? [];
   const upcomingEvents = useMemo(
     () =>
       upcomingCalendarEvents(
@@ -396,6 +417,13 @@ export function CalendarPage() {
               <div>
                 <p className="eyebrow">Month view</p>
                 <h2 id="calendar-month-title">{formatFullMonth(visibleMonth)}</h2>
+                {budgetQuery.data && budgetQuery.data.totalLimitMinor > 0 && (
+                  <p className="calendar-budget-note">
+                    Budget {budgetQuery.data.remainingMinor < 0 ? "over by" : "left"}{" "}
+                    <strong>{formatMoney(Math.abs(budgetQuery.data.remainingMinor))}</strong> of{" "}
+                    {formatMoney(budgetQuery.data.totalLimitMinor)}
+                  </p>
+                )}
               </div>
               {(calendarQuery.isFetching ||
                 subscriptionsQuery.isFetching ||
@@ -541,6 +569,7 @@ export function CalendarPage() {
               date={selectedDate}
               items={selectedItems}
               events={selectedEvents}
+              occasions={selectedOccasions}
               deletingEventId={
                 deleteEventMutation.isPending ? deleteEventMutation.variables : undefined
               }
