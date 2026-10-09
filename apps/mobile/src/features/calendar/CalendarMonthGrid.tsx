@@ -1,17 +1,18 @@
 import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import type { LocalCalendarDay } from "@/db/view-models";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
+import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
-import { calendarMonthCells, calendarWeekdays } from "./calendar-month-grid";
+import { compactAmountLabel } from "../transactions/transaction-list-view";
+import { calendarMonthWeeks, calendarWeekdays, type CalendarCell } from "./calendar-month-grid";
 
 interface CalendarMonthGridProps {
   month: string;
   selectedDate: string;
   today: string;
-  days: ReadonlyMap<string, LocalCalendarDay>;
+  cells: ReadonlyMap<string, CalendarCell>;
   onSelectDate: (date: string) => void;
 }
 
@@ -27,112 +28,188 @@ function calendarDateLabel(date: string): string {
 
 function dayAccessibilityLabel(
   date: string,
-  day: LocalCalendarDay | undefined,
+  cell: CalendarCell | undefined,
   selected: boolean,
   today: boolean,
 ): string {
   const parts = [calendarDateLabel(date)];
   if (today) parts.push("today");
   if (selected) parts.push("selected");
-  if (day?.events.length) {
-    parts.push(`${day.events.length} event${day.events.length === 1 ? "" : "s"}`);
-  }
-  if (day?.subscriptionBills.length) {
-    parts.push(
-      `${day.subscriptionBills.length} bill${day.subscriptionBills.length === 1 ? "" : "s"}`,
-    );
-  }
-  if (day?.transactions.length) {
-    parts.push(`${day.transactions.length} transaction${day.transactions.length === 1 ? "" : "s"}`);
-  }
+  parts.push(...(cell?.summary ?? []));
   return parts.join(", ");
 }
 
-/** Renders every day in a month and keeps activity details in the agenda below. */
+/**
+ * The month as a full-width ruled grid, like a paper calendar. Each cell shows its date, an
+ * occasion budget as a tag, and the day's income and spending; the agenda below has the detail.
+ * Days from the neighbouring months only complete the first and last week.
+ */
 export function CalendarMonthGrid({
   month,
   selectedDate,
   today,
-  days,
+  cells,
   onSelectDate,
 }: CalendarMonthGridProps) {
   const theme = useZoptionTheme();
-  const cells = useMemo(() => calendarMonthCells(month), [month]);
+  const weeks = useMemo(() => calendarMonthWeeks(month), [month]);
+  const rule = { borderColor: theme.colors.border };
 
   return (
-    <View accessibilityLabel={`Calendar for ${month}`} style={styles.container}>
-      <View accessibilityElementsHidden style={styles.weekdays}>
-        {calendarWeekdays.map((weekday) => (
+    <View accessibilityLabel={`Calendar for ${month}`}>
+      <View accessibilityElementsHidden style={[styles.weekdays, rule]}>
+        {calendarWeekdays.map((weekday, index) => (
           <Text
             key={weekday}
-            style={[typography.caption, styles.weekday, { color: theme.colors.textMuted }]}
+            style={[
+              typography.label,
+              styles.weekday,
+              {
+                color:
+                  index === 0
+                    ? theme.colors.expense
+                    : index === 6
+                      ? theme.colors.info
+                      : theme.colors.textMuted,
+              },
+            ]}
           >
             {weekday}
           </Text>
         ))}
       </View>
-      <View style={styles.days}>
-        {cells.map((date, index) => {
-          if (date === null) return <View key={`empty-${index}`} style={styles.dayCell} />;
+      {weeks.map((week) => (
+        <View key={week[0]} style={styles.week}>
+          {week.map((date, index) => {
+            const inMonth = date.slice(0, 7) === month.slice(0, 7);
+            const dayNumber = Number(date.slice(-2));
+            const numberColor = !inMonth
+              ? theme.colors.textMuted
+              : index === 0
+                ? theme.colors.expense
+                : index === 6
+                  ? theme.colors.info
+                  : theme.colors.text;
+            if (!inMonth) {
+              return (
+                <View key={date} style={[styles.cell, rule, { opacity: 0.45 }]}>
+                  <Text style={[typography.callout, styles.number, { color: numberColor }]}>
+                    {dayNumber}
+                  </Text>
+                </View>
+              );
+            }
 
-          const day = days.get(date);
-          const selected = date === selectedDate;
-          const isToday = date === today;
-          return (
-            <View key={date} style={styles.dayCell}>
+            const cell = cells.get(date);
+            const selected = date === selectedDate;
+            const isToday = date === today;
+            return (
               <Pressable
+                key={date}
                 accessibilityHint="Shows this day's agenda below the calendar"
-                accessibilityLabel={dayAccessibilityLabel(date, day, selected, isToday)}
+                accessibilityLabel={dayAccessibilityLabel(date, cell, selected, isToday)}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                onPress={() => onSelectDate(date)}
-                style={({ pressed }) => [
-                  styles.dayButton,
-                  {
-                    backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surfaceRaised,
-                    borderColor: selected || isToday ? theme.colors.brand : theme.colors.border,
-                    opacity: pressed ? 0.72 : 1,
-                  },
-                ]}
+                onPress={withTapSound(() => onSelectDate(date))}
+                style={[styles.cell, rule, selected && { backgroundColor: theme.colors.brandSoft }]}
               >
-                <Text style={[typography.callout, { color: theme.colors.text }]}>
-                  {Number(date.slice(-2))}
-                </Text>
-                <View accessibilityElementsHidden style={styles.indicators}>
-                  {day?.events.length ? (
-                    <View style={[styles.indicator, { backgroundColor: theme.colors.brand }]} />
+                <View
+                  style={[styles.numberWrap, isToday && { backgroundColor: theme.colors.solid }]}
+                >
+                  <Text
+                    style={[
+                      typography.callout,
+                      styles.number,
+                      { color: isToday ? theme.colors.onSolid : numberColor },
+                    ]}
+                  >
+                    {dayNumber}
+                  </Text>
+                </View>
+                <View accessibilityElementsHidden style={styles.cellBody}>
+                  {cell?.tag ? (
+                    <View style={[styles.tag, { backgroundColor: theme.colors.brandSoft }]}>
+                      <Text
+                        numberOfLines={1}
+                        style={[styles.tagText, { color: theme.colors.brand }]}
+                      >
+                        {cell.tag}
+                      </Text>
+                    </View>
                   ) : null}
-                  {day?.subscriptionBills.length ? (
-                    <View style={[styles.indicator, { backgroundColor: theme.colors.warning }]} />
-                  ) : null}
-                  {day?.transactions.length ? (
-                    <View style={[styles.indicator, { backgroundColor: theme.colors.info }]} />
+                  {cell?.mixedCurrency ? (
+                    <Text style={[styles.amount, { color: theme.colors.textMuted }]}>•••</Text>
+                  ) : (
+                    <>
+                      {cell && cell.incomeMinor > 0 ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.amount, { color: theme.colors.info }]}
+                        >
+                          {compactAmountLabel(cell.incomeMinor)}
+                        </Text>
+                      ) : null}
+                      {cell && cell.expenseMinor > 0 ? (
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.amount, { color: theme.colors.expense }]}
+                        >
+                          {compactAmountLabel(cell.expenseMinor)}
+                        </Text>
+                      ) : null}
+                    </>
+                  )}
+                  {cell?.hasEvent || cell?.hasBill ? (
+                    <View style={styles.dots}>
+                      {cell.hasEvent ? (
+                        <View style={[styles.dot, { backgroundColor: theme.colors.brand }]} />
+                      ) : null}
+                      {cell.hasBill ? (
+                        <View style={[styles.dot, { backgroundColor: theme.colors.warning }]} />
+                      ) : null}
+                    </View>
                   ) : null}
                 </View>
               </Pressable>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { gap: spacing.xs },
-  weekdays: { flexDirection: "row" },
-  weekday: { width: "14.285714%", textAlign: "center" },
-  days: { flexDirection: "row", flexWrap: "wrap" },
-  dayCell: { width: "14.285714%", padding: 2 },
-  dayButton: {
-    minHeight: touchTarget,
-    borderRadius: radii.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.xxs,
+  weekdays: {
+    flexDirection: "row",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingVertical: spacing.xs,
   },
-  indicators: { minHeight: 6, flexDirection: "row", alignItems: "center", gap: 3 },
-  indicator: { width: 6, height: 6, borderRadius: radii.round },
+  weekday: { width: "14.285714%", textAlign: "center" },
+  week: { flexDirection: "row" },
+  cell: {
+    width: "14.285714%",
+    minHeight: 76,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 2,
+    paddingTop: 3,
+    gap: 2,
+  },
+  numberWrap: {
+    alignSelf: "flex-start",
+    minWidth: 22,
+    paddingHorizontal: 4,
+    borderRadius: radii.sm,
+    alignItems: "center",
+  },
+  number: { fontWeight: "500" },
+  cellBody: { gap: 1 },
+  tag: { borderRadius: 3, paddingHorizontal: 2, alignSelf: "stretch" },
+  tagText: { fontSize: 9, lineHeight: 12, fontWeight: "700" },
+  amount: { fontSize: 10, lineHeight: 13, fontWeight: "600", fontVariant: ["tabular-nums"] },
+  dots: { flexDirection: "row", gap: 3, marginTop: 1 },
+  dot: { width: 5, height: 5, borderRadius: radii.round },
 });

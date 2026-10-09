@@ -53,6 +53,7 @@ import {
   FIRST_RUN_IMPORT_STEPS,
   firstRunStepIndex,
 } from "./first-run-import";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type Step = "choose" | "configure" | "preview" | "done";
 
@@ -453,7 +454,7 @@ export function ImportScreen() {
         <Pressable
           accessibilityLabel={"Import row " + item.rowNumber + ": " + (item.description ?? "")}
           accessibilityHint="Opens category and type corrections"
-          onPress={() => setEditingRow(item)}
+          onPress={withTapSound(() => setEditingRow(item))}
           style={({ pressed }) => ({
             opacity: pressed ? 0.7 : 1,
             backgroundColor: theme.colors.surface,

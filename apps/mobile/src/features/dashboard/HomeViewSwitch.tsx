@@ -2,6 +2,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export type HomeViewName = "overview" | "analytics";
 
@@ -33,7 +34,7 @@ export function HomeViewSwitch({
             key={option.value}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            onPress={() => onSelect(option.value)}
+            onPress={withTapSound(() => onSelect(option.value))}
             style={[
               styles.segment,
               { backgroundColor: active ? theme.colors.brand : "transparent" },

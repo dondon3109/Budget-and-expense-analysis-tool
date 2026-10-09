@@ -27,6 +27,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import type { RecordingPhase } from "./assistant-voice-hooks";
 
 import { formatThreadTime, validateIdentityName } from "./assistant-forms";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 /** Width of the assistant avatar, shared so a draft card can indent to the bubble. */
 export const ASSISTANT_AVATAR_SIZE = 28;
@@ -358,7 +359,7 @@ export function AssistantMessageBubble({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={listening ? "Stop spoken reply" : "Play spoken reply"}
-          onPress={onListen}
+          onPress={withTapSound(onListen)}
           style={styles.listen}
         >
           <MaterialCommunityIcons
@@ -457,7 +458,7 @@ export function AssistantThreadRow({
         onAccessibilityAction={(event) => {
           if (event.nativeEvent.actionName === "select") onSelect();
         }}
-        onPress={managing ? selection.onToggle : onOpen}
+        onPress={withTapSound(managing ? selection.onToggle : onOpen)}
         onLongPress={managing ? undefined : onSelect}
         delayLongPress={450}
         className="w-full"
@@ -915,7 +916,7 @@ export function VoiceRecordButton({ phase, onPress }: VoiceRecordButtonProps) {
       accessibilityLabel={label}
       accessibilityState={{ disabled: loading, busy: loading }}
       disabled={loading}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
       style={[
         styles.recordButton,
         { backgroundColor: recording ? theme.colors.danger : theme.colors.brandSoft },

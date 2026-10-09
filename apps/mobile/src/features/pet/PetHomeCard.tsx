@@ -10,6 +10,7 @@ import { spacing, typography } from "@/ui/tokens";
 import { petArt } from "./art";
 import { petMood, petSpeciesLabels, petStageLabels, petStatusLine } from "./pet-labels";
 import { PetSprite } from "./PetSprite";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 /** The pet on Home. Hidden for guests, offline launches, a pet turned off, and before an egg is picked. */
 export function PetHomeCard() {
@@ -25,7 +26,7 @@ export function PetHomeCard() {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${petStatusLine(pet)}`}
-      onPress={() => router.push("/(app)/pet")}
+      onPress={withTapSound(() => router.push("/(app)/pet"))}
     >
       <Card style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
         {pet.species ? (

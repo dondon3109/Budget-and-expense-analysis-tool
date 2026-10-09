@@ -14,6 +14,7 @@ import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { FlatSection } from "./HomeCardParts";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 type HorizonDays = 30 | 60 | 90;
 
@@ -145,7 +146,7 @@ export function CashflowForecastCard({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="View subscriptions"
-            onPress={onViewSubscriptions}
+            onPress={withTapSound(onViewSubscriptions)}
             hitSlop={8}
           >
             <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
@@ -175,7 +176,7 @@ export function CashflowForecastCard({
               accessibilityRole="tab"
               accessibilityState={{ selected: isSelected }}
               accessibilityLabel={`${days}-day forecast`}
-              onPress={() => setHorizon(days)}
+              onPress={withTapSound(() => setHorizon(days))}
               style={[
                 styles.segment,
                 {
@@ -209,7 +210,7 @@ export function CashflowForecastCard({
               key={days}
               accessibilityRole="button"
               accessibilityLabel={`Show ${days}-day projection`}
-              onPress={() => setHorizon(days)}
+              onPress={withTapSound(() => setHorizon(days))}
               style={[
                 styles.projectionTile,
                 {

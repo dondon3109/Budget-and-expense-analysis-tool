@@ -9,6 +9,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 import { eggArt } from "./art";
 import { petSpeciesLabels } from "./pet-labels";
 import { PetSprite } from "./PetSprite";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface EggPickerProps {
   busy: boolean;
@@ -31,7 +32,7 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               accessibilityLabel={`${petSpeciesLabels[species]} egg`}
-              onPress={() => setPicked(species)}
+              onPress={withTapSound(() => setPicked(species))}
               style={[
                 styles.option,
                 {

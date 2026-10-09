@@ -10,6 +10,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
 import { kindLabels, monthStartForDate } from "./transaction-list-view";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function TransactionsEmptyView({
   filtering,
@@ -107,7 +108,7 @@ export function TransactionsEmptyView({
           accessibilityRole="button"
           accessibilityLabel={`Jump to ${monthLabel(monthStartForDate(new Date()))}`}
           hitSlop={8}
-          onPress={onGoToCurrentMonth}
+          onPress={withTapSound(onGoToCurrentMonth)}
           style={styles.currentMonthLink}
         >
           <MaterialCommunityIcons name="calendar-today" size={16} color={theme.colors.brand} />

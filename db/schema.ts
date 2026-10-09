@@ -469,7 +469,10 @@ export const budgets = sqliteTable(
     categoryId: text("category_id")
       .notNull()
       .references(() => categories.id),
+    // The budget period: `YYYY-MM-01`, `0001-01-01` (every month), or `occasion:<id>`.
     month: text("month").notNull(),
+    // The calendar event an occasion budget belongs to; null for month and every-month rows.
+    occasionId: text("occasion_id"),
     limitMinor: integer("limit_minor").notNull(),
     ...timestamps,
   },

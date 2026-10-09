@@ -7,6 +7,7 @@ import { BottomSheet, Button, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import type { BudgetMonthRow } from "./budget-month-view";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export type ShareExpiry = "7" | "30" | "permanent";
 
@@ -133,7 +134,7 @@ export function ShareBudgetSheet({
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked }}
                   android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                  onPress={() => toggleCategory(row.categoryId)}
+                  onPress={withTapSound(() => toggleCategory(row.categoryId))}
                   style={[
                     styles.envelopeRow,
                     {
@@ -193,7 +194,7 @@ export function ShareBudgetSheet({
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
-                onPress={() => changeExpiry(option.value)}
+                onPress={withTapSound(() => changeExpiry(option.value))}
                 style={[
                   styles.expiryPill,
                   {

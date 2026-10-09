@@ -5,6 +5,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export type HomeMenuView = "home" | "remittance";
 
@@ -52,7 +53,7 @@ export function HomeViewMenu({
         accessibilityRole="button"
         accessibilityState={{ expanded: visible }}
         collapsable={false}
-        onPress={open}
+        onPress={withTapSound(open)}
         style={[
           styles.button,
           { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
@@ -73,7 +74,7 @@ export function HomeViewMenu({
           <StatusBar style={theme.dark ? "light" : "dark"} />
           <Pressable
             accessibilityLabel="Close menu"
-            onPress={close}
+            onPress={withTapSound(close)}
             style={StyleSheet.absoluteFill}
           />
           <View
@@ -96,10 +97,10 @@ export function HomeViewMenu({
                   accessibilityLabel={option.label}
                   accessibilityRole="menuitem"
                   accessibilityState={{ selected: active }}
-                  onPress={() => {
+                  onPress={withTapSound(() => {
                     onSelect(option.value);
                     close();
-                  }}
+                  })}
                   style={styles.item}
                 >
                   <MaterialCommunityIcons color={String(color)} name={option.icon} size={20} />

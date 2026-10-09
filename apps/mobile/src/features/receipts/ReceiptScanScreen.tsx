@@ -41,6 +41,7 @@ import {
   type ReceiptReviewCategory,
   type ReceiptReviewItem,
 } from "./receipt-review";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const MIME_BY_EXTENSION: Record<string, "image/jpeg" | "image/png" | "image/webp"> = {
   jpg: "image/jpeg",
@@ -486,7 +487,7 @@ export function ReceiptScanScreen() {
                 accessibilityLabel="Dismiss one receipt per photo notice"
                 accessibilityRole="button"
                 hitSlop={8}
-                onPress={() => setSingleReceiptNoticeOpen(false)}
+                onPress={withTapSound(() => setSingleReceiptNoticeOpen(false))}
               >
                 <MaterialCommunityIcons color={theme.colors.textMuted} name="close" size={20} />
               </Pressable>
@@ -624,11 +625,11 @@ export function ReceiptScanScreen() {
                         accessibilityLabel={`Remove item ${index + 1}`}
                         accessibilityState={{ disabled: items.length === 1 || saving }}
                         disabled={items.length === 1 || saving}
-                        onPress={() =>
+                        onPress={withTapSound(() =>
                           setItems((current) =>
                             current.filter((candidate) => candidate.id !== item.id),
-                          )
-                        }
+                          ),
+                        )}
                         style={({ pressed }) => [
                           styles.removeItem,
                           {
@@ -677,7 +678,7 @@ export function ReceiptScanScreen() {
                   accessibilityLabel="Add receipt item"
                   accessibilityState={{ disabled: items.length >= 30 || saving }}
                   disabled={items.length >= 30 || saving}
-                  onPress={addItem}
+                  onPress={withTapSound(addItem)}
                   style={({ pressed }) => [
                     styles.addItem,
                     {
@@ -707,7 +708,7 @@ export function ReceiptScanScreen() {
                         : "Show text read from the photo"
                     }
                     accessibilityState={{ expanded: showRawText }}
-                    onPress={() => setShowRawText((current) => !current)}
+                    onPress={withTapSound(() => setShowRawText((current) => !current))}
                     style={({ pressed }) => [
                       styles.rawToggle,
                       { backgroundColor: pressed ? theme.colors.canvasMuted : "transparent" },

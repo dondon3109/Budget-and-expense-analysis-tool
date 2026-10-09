@@ -7,6 +7,7 @@ import { Button, Card } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface TutorialTopic {
   id: string;
@@ -183,7 +184,7 @@ export function TutorialsScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${topic.title}, ${isExpanded ? "collapse" : "expand"}`}
-                onPress={() => setExpandedTopicId(isExpanded ? null : topic.id)}
+                onPress={withTapSound(() => setExpandedTopicId(isExpanded ? null : topic.id))}
                 style={styles.topicHeader}
               >
                 <View

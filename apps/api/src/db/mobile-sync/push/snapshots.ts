@@ -119,20 +119,22 @@ export async function readEntitySnapshot(
   }
 }
 
-export async function readBudgetByMonthCategory(
+/** Finds the budget of one category in one period: a month, every month, or an occasion. */
+export async function readBudgetByPeriodCategory(
   env: Bindings,
   tenantId: string,
-  month: string,
+  period: { month: string; occasionId: string | null },
   categoryId: string,
 ): Promise<BudgetSnapshot | null> {
   const row = await env.DB.prepare(
     `SELECT payload_json AS payloadJson
      FROM mobile_sync_budget_rows
      WHERE tenant_id = ? AND json_extract(payload_json, '$.month') = ?
+       AND json_extract(payload_json, '$.occasionId') IS ?
        AND json_extract(payload_json, '$.categoryId') = ?
      LIMIT 1`,
   )
-    .bind(tenantId, month, categoryId)
+    .bind(tenantId, period.month, period.occasionId, categoryId)
     .first<EntitySyncRow>();
   if (!row) return null;
   try {

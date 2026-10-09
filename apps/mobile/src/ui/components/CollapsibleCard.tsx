@@ -2,6 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useState, type PropsWithChildren } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { playSound } from "@/features/sounds/sound-effects";
 import { spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { MenuIcon, menuRowStyles } from "./MenuGroup";
@@ -27,7 +28,10 @@ export function CollapsibleCard({ title, summary, icon, children }: CollapsibleC
         accessibilityLabel={`${title}, ${summary}`}
         accessibilityState={{ expanded }}
         className="w-full"
-        onPress={() => setExpanded((current) => !current)}
+        onPress={() => {
+          playSound("tap");
+          setExpanded((current) => !current);
+        }}
       >
         <View style={menuRowStyles.row}>
           <MenuIcon icon={icon} />

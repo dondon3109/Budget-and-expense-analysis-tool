@@ -268,34 +268,6 @@ export interface ImportCommitResult {
   rejectedCount: number;
 }
 
-export interface BudgetRecord {
-  categoryId: string;
-  categoryName: string;
-  categoryColor: string;
-  month: string;
-  limitMinor: number;
-}
-
-export interface BudgetPlanItem {
-  categoryId: string;
-  categoryName: string;
-  categoryColor: string;
-  limitMinor: number;
-  spentMinor: number;
-  remainingMinor: number;
-  usedPercent: number;
-}
-
-export interface BudgetMonthPlan {
-  month: string;
-  currency: Currency;
-  totalLimitMinor: number;
-  totalSpentMinor: number;
-  remainingMinor: number;
-  usedPercent: number;
-  items: BudgetPlanItem[];
-}
-
 export const financialGoalStatuses = ["active", "paused", "completed"] as const;
 export type FinancialGoalStatus = (typeof financialGoalStatuses)[number];
 

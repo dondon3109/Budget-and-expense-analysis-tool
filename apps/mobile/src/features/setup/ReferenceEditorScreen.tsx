@@ -55,6 +55,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { accountTypeOptions } from "./account-types";
 import { categoryColorOptions, isPresetCategoryColor } from "./category-colors";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const currencyOptions: Array<{ id: Currency; label: string }> = currencies.map((code) => ({
   id: code,
@@ -677,11 +678,11 @@ export function ReferenceEditorScreen() {
                             selected,
                           }}
                           disabled={saving || blocked || permanent}
-                          onPress={() => {
+                          onPress={withTapSound(() => {
                             setColor(option.value);
                             setCustomColorOpen(false);
                             setMessage(null);
-                          }}
+                          })}
                           style={({ pressed }) => [
                             styles.colorOption,
                             {
@@ -718,7 +719,7 @@ export function ReferenceEditorScreen() {
                       expanded: customColorOpen,
                     }}
                     disabled={saving || blocked || permanent}
-                    onPress={() => setCustomColorOpen((open) => !open)}
+                    onPress={withTapSound(() => setCustomColorOpen((open) => !open))}
                     style={({ pressed }) => [
                       styles.customColorToggle,
                       {
@@ -776,7 +777,7 @@ export function ReferenceEditorScreen() {
                           accessibilityLabel="Clear category emoji icon"
                           accessibilityRole="button"
                           hitSlop={8}
-                          onPress={() => setIconEmoji("")}
+                          onPress={withTapSound(() => setIconEmoji(""))}
                           style={styles.clearEmoji}
                         >
                           <Text style={[typography.caption, { color: theme.colors.brand }]}>
@@ -799,10 +800,10 @@ export function ReferenceEditorScreen() {
                             selected,
                           }}
                           disabled={saving || blocked || permanent}
-                          onPress={() => {
+                          onPress={withTapSound(() => {
                             setIconEmoji(emoji);
                             setMessage(null);
-                          }}
+                          })}
                           style={({ pressed }) => [
                             styles.emojiOption,
                             {

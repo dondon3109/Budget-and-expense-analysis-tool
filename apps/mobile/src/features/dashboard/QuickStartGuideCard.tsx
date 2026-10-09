@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const QUICK_START_GUIDE_DISMISSED_KEY = "zoption_quick_start_guide_dismissed";
 
@@ -62,7 +63,7 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
             accessibilityRole="button"
             accessibilityLabel={collapsed ? "Expand guide" : "Collapse guide"}
             hitSlop={8}
-            onPress={() => setCollapsed((prev) => !prev)}
+            onPress={withTapSound(() => setCollapsed((prev) => !prev))}
             style={styles.iconBtn}
           >
             <MaterialCommunityIcons
@@ -75,7 +76,7 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
             accessibilityRole="button"
             accessibilityLabel="Dismiss guide"
             hitSlop={8}
-            onPress={handleDismiss}
+            onPress={withTapSound(handleDismiss)}
             style={styles.iconBtn}
           >
             <MaterialCommunityIcons name="close" size={20} color={theme.colors.textMuted} />

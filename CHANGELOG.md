@@ -6,6 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
+- Web and mobile: budgets for a specific month, for every month, or for an occasion such as a birthday party. A month falls back to your every-month limit for any category it does not set itself, and an occasion counts only spending on its day. Occasions show on the calendar.
+- Mobile: the calendar is a full-width ruled month grid with the month's income, expenses, and budget left above it, on both the Calendar and the Transactions tab.
 - Mobile: Home now lists your upcoming subscriptions below Safe to spend, soonest renewal first.
 - Web and mobile: when you tell the AI Assistant about several purchases in one message ("50 for gas and 40 for gym"), it now prepares a draft for each one right away, with its own Save button, instead of only the first.
 - Web and mobile: the AI Assistant's consent screen now says it can propose changes to your records and that only your Save or Confirm tap applies them, so everyone is asked to accept the updated consent once. The Terms of Service and Privacy Policy say the same.
@@ -19,12 +21,14 @@ All notable product changes are documented here.
 ### Changed
 
 - Mobile: the assistant's consent is a compact screen over your conversations with a Privacy Policy link and a Not now button, history is split into Text chats and Voice chats, the voice screen's orb and bars move while it listens and speaks, and the message box no longer has a language pill.
+- Mobile: a flat Budgets screen with Month, Every month, and Occasions tabs, and rows and dividers instead of cards.
 - Mobile: a calmer Home. Total balance is now a plain headline, Subscriptions and Recent activity are simple lists, and the Analytics sections sit on the page with hairline dividers instead of each in its own card, so Safe to spend stands out.
 - Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
 
 ### Fixed
 
 - Web: the collapsed sidebar on the assistant page now gives its links and the Sign out button names that screen readers can read.
+- Mobile: the tap sound now plays on every tap. A finished sound clip was not rewound in time, so only the first tap in a while made a sound, and most controls never asked for one.
 - Mobile: fixed a blank screen on launch in 0.2.48-beta, caused by a styling library update.
 - Mobile: the Analytics cash flow chart now shows even for a period with no records.
 - Mobile: the status bar icons no longer turn white while the Home dropdown is open.

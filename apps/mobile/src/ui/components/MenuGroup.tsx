@@ -2,6 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Children, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { playSound } from "@/features/sounds/sound-effects";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { Card } from "./Card";
@@ -81,7 +82,10 @@ export function MenuRow({
       accessibilityState={{ disabled: Boolean(disabled) }}
       className="w-full"
       disabled={disabled}
-      onPress={onPress}
+      onPress={() => {
+        playSound("tap");
+        onPress();
+      }}
       style={({ pressed }) => ({
         backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
         opacity: disabled ? 0.5 : 1,

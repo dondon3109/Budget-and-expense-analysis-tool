@@ -6,6 +6,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { PIN_LENGTH } from "@/auth/app-lock";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const KEY_ROWS = [
   ["1", "2", "3"],
@@ -119,7 +120,7 @@ export function PinPadScreen({
                   accessibilityElementsHidden={hidden}
                   importantForAccessibility={hidden ? "no-hide-descendants" : "auto"}
                   disabled={disabled || hidden}
-                  onPress={() => press(key)}
+                  onPress={withTapSound(() => press(key))}
                   onLongPress={key === "delete" ? () => change("") : undefined}
                   onPressIn={() => setPressedKey(key)}
                   onPressOut={() => setPressedKey(null)}

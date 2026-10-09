@@ -10,6 +10,7 @@ import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { accountTypeIcon, accountTypeLabel } from "./account-types";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 function statusText(state: LocalAccountItem["syncState"]): string | null {
   switch (state) {
@@ -64,7 +65,7 @@ function SetupRow({
       }
       className="w-full"
       disabled={disabled}
-      onPress={onPress}
+      onPress={withTapSound(onPress)}
       style={({ pressed }) => ({
         backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
         opacity: disabled ? 0.62 : 1,

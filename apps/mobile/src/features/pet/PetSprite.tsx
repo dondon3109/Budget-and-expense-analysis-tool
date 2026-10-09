@@ -11,6 +11,7 @@ import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from "react-native-svg"
 
 import type { PetLayer, PetPart, PetShape } from "./art";
 import type { PetMood } from "./pet-labels";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const CANVAS = 200;
 
@@ -233,7 +234,7 @@ export function PetSprite({
       accessibilityRole={still ? "image" : "imagebutton"}
       accessibilityLabel={accessibilityLabel}
       disabled={still}
-      onPress={react}
+      onPress={withTapSound(react)}
       style={{ width: size, height: size }}
     >
       {picture}

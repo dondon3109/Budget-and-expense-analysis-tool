@@ -7,8 +7,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import {
   VOICE_CONVERSATION_SPEECH_VOICE,
   AssistantVoiceConversation,
-  mapAssistantMessagesToVoiceCaptions,
 } from "./AssistantVoiceConversation";
+import { mapAssistantMessagesToVoiceCaptions } from "./render-voice-caption";
 import { CURRENT_ASSISTANT_VOICE_CONSENT_VERSION } from "@zoption/shared";
 
 import { ApiTransportError } from "@/api/authenticated";

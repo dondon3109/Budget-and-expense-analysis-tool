@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function QuickActionBar() {
   const theme = useZoptionTheme();
@@ -16,7 +17,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens the new transaction form"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={() => router.push("/(app)/transaction")}
+        onPress={withTapSound(() => router.push("/(app)/transaction"))}
         style={[
           styles.quickActionTile,
           styles.primaryTile,
@@ -32,7 +33,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens camera to scan a receipt"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={() => openFeature("receipt-scan", "/(app)/receipt-scan")}
+        onPress={withTapSound(() => openFeature("receipt-scan", "/(app)/receipt-scan"))}
         style={[
           styles.quickActionTile,
           { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
@@ -54,7 +55,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens financial AI assistant"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={() => openFeature("assistant", "/(app)/assistant")}
+        onPress={withTapSound(() => openFeature("assistant", "/(app)/assistant"))}
         style={[
           styles.quickActionTile,
           { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },

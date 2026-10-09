@@ -5,6 +5,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
 import type { TransactionFormKind } from "./transaction-form";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function KindSelector({
   value,
@@ -36,7 +37,7 @@ export function KindSelector({
               accessibilityLabel={label}
               accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
               disabled={disabled}
-              onPress={() => onChange(kind)}
+              onPress={withTapSound(() => onChange(kind))}
               style={[
                 styles.segment,
                 {

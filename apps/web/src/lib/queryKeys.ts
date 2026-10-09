@@ -71,8 +71,14 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "onboarding"] as const,
   goalProfile: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "goal-profile"] as const,
-  budgets: (workspace: AuthenticatedWorkspace, month: string) =>
-    [...queryKeys.workspace(workspace), "budgets", month] as const,
+  /** Every plan, for invalidating after a write. */
+  allBudgets: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "budgets"] as const,
+  /** `plan` is a month start, "every-month", or `occasion:<id>`. */
+  budgets: (workspace: AuthenticatedWorkspace, plan: string) =>
+    [...queryKeys.allBudgets(workspace), plan] as const,
+  budgetOccasions: (workspace: AuthenticatedWorkspace, month: string) =>
+    [...queryKeys.allBudgets(workspace), "occasions", month] as const,
   financialGoals: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "financial-goals"] as const,
   debts: (workspace: AuthenticatedWorkspace) =>

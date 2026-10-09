@@ -8,6 +8,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 
 import { formatRecordingElapsed } from "./assistant-ui";
 import type { RecordingPhase } from "./assistant-voice-hooks";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const SUGGESTED_QUESTIONS = [
   "Where did my money go this month?",
@@ -32,7 +33,7 @@ export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => v
           key={question}
           accessibilityRole="button"
           accessibilityLabel={question}
-          onPress={() => onPick(question)}
+          onPress={withTapSound(() => onPick(question))}
           style={[
             styles.suggestion,
             { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
@@ -73,7 +74,7 @@ export function VoiceStatusBanner(props: VoiceStatusBannerProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Dismiss"
-          onPress={props.onDismiss}
+          onPress={withTapSound(props.onDismiss)}
           hitSlop={12}
         >
           <MaterialCommunityIcons name="close" size={18} color={theme.colors.textMuted} />

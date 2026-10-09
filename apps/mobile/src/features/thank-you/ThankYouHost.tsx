@@ -5,6 +5,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 /** One message per finished task. Keep in step with apps/web/src/lib/thankYou.ts. */
 const thankYouCopy = {
@@ -64,7 +65,7 @@ export function ThankYouHost() {
   return (
     <Modal animationType="fade" transparent visible={copy !== null} onRequestClose={close}>
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={withTapSound(close)} />
         {copy && (
           <View
             accessibilityRole="alert"

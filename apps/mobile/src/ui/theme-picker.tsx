@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useThemeStore } from "@/stores/theme-store";
 import { radii, spacing, touchTarget, typography, type ThemePreference } from "./tokens";
 import { useZoptionTheme } from "./theme-provider";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 const options: Array<{
   value: ThemePreference;
@@ -39,7 +40,7 @@ export function ThemePicker() {
               color: selected ? "rgba(10, 117, 86, 0.16)" : "rgba(0, 0, 0, 0.06)",
               borderless: false,
             }}
-            onPress={() => setPreference(option.value)}
+            onPress={withTapSound(() => setPreference(option.value))}
             className="w-full flex-row items-center justify-between"
             style={[
               styles.option,

@@ -29,7 +29,6 @@ export const OVERSIZE_CEILINGS = {
   "apps/mobile/src/db/transaction-mutation-repository.test.ts": 2068,
   "apps/mobile/src/features/assistant/AssistantScreen.tsx": 1500,
   "apps/mobile/src/features/assistant/AssistantVoiceConversation.tsx": 1357,
-  "apps/mobile/src/features/budgets/BudgetsScreen.tsx": 1374,
   "apps/site/src/views/LandingPage.css": 3568,
   "apps/web/src/components/assistant/AssistantVoiceConversation.tsx": 1119,
   "apps/web/src/pages/AdminProviderConfigsPage.tsx": 1015,

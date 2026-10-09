@@ -9,6 +9,7 @@ import { spacing, typography } from "@/ui/tokens";
 import { otherCurrenciesWithAmounts, type DashboardSummary } from "@zoption/shared";
 
 import { homeCardStyles } from "./HomeCardParts";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
@@ -21,7 +22,7 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel="Total balance. Opens account management."
-      onPress={() => router.push("/(app)/money-setup")}
+      onPress={withTapSound(() => router.push("/(app)/money-setup"))}
     >
       <View accessibilityLabel="Total balance" style={styles.plain}>
         <View style={styles.cardHeaderRow}>

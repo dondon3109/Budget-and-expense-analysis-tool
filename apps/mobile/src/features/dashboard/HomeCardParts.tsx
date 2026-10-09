@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View, type ViewProps } from "react-native"
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function SectionLabel({ children }: { children: string }) {
   const theme = useZoptionTheme();
@@ -58,7 +59,7 @@ export function SectionHeader({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={actionLabel}
-        onPress={onAction}
+        onPress={withTapSound(onAction)}
         hitSlop={8}
       >
         <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
