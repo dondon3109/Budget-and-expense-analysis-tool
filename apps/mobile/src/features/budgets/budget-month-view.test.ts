@@ -23,6 +23,7 @@ describe("buildBudgetMonthView", () => {
   it("computes per-category and total budget progress", () => {
     const view = buildBudgetMonthView({
       categories,
+      event: null,
       budgets: [
         {
           id: "budget-1",
@@ -86,6 +87,7 @@ describe("buildBudgetMonthView", () => {
   it("flags over-budget categories and excludes zero-limit rows", () => {
     const view = buildBudgetMonthView({
       categories,
+      event: null,
       budgets: [
         {
           id: "budget-1",
