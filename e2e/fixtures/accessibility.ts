@@ -169,6 +169,12 @@ async function completeAssistantSetup(page: Page) {
       .or(names)
       .waitFor({ state: "visible", timeout: 5_000 })
       .catch(() => undefined);
+    // The review prompt can open over these dialogs and swallow their clicks.
+    const remindLater = page.getByRole("button", { name: /remind me about reviewing/i });
+    if (await remindLater.isVisible().catch(() => false)) {
+      await remindLater.click({ timeout: 5_000 }).catch(() => undefined);
+      await page.waitForTimeout(250);
+    }
     if (await accept.isVisible().catch(() => false)) {
       await accept.click({ timeout: 5_000 }).catch(() => undefined);
       await accept.waitFor({ state: "hidden", timeout: 10_000 }).catch(() => undefined);
