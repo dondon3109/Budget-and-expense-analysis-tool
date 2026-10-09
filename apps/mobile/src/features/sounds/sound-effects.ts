@@ -39,16 +39,21 @@ export function warmUpSounds(): void {
 
 /**
  * Plays a short UI sound. Fire and forget: a missing audio module or a failed
- * play must never break the action that triggered it. Players are created on
- * first use and reused, so a rapid second tap restarts the clip.
+ * play must never break the action that triggered it. Players are created once and
+ * reused; each play rewinds first, so a rapid second tap restarts the clip.
  */
 export function playSound(effect: SoundEffect): void {
   if (!useSoundEffectsStore.getState().enabled) return;
   try {
     ensureAudioMode();
     const player = (players[effect] ??= createAudioPlayer(sources[effect]));
-    void player.seekTo(0);
-    player.play();
+    // A finished clip ignores play() until it is rewound, and seekTo is asynchronous: playing
+    // straight after it left every tap after the first silent, because the clips are ~50 ms.
+    void Promise.resolve(player.seekTo(0))
+      .then(() => player.play())
+      .catch(() => {
+        // Sound is decoration; ignore.
+      });
   } catch {
     // Sound is decoration; ignore.
   }
