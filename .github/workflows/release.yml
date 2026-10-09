@@ -501,10 +501,17 @@ jobs:
           CANARY_MIN_REQUESTS: ${{ vars.CANARY_MIN_REQUESTS }}
         run: |
           set -euo pipefail
+          # Cloudflare can answer "version not found" (code 100146) for a version it accepted
+          # seconds earlier, so a deploy that fails is retried before the release rolls back.
           deploy() {
-            ./node_modules/.bin/wrangler versions deploy "$@" --yes \
-              --config wrangler.deploy.jsonc --env production \
-              --message "Canary v${{ needs.preflight.outputs.version }}"
+            for attempt in 1 2 3 4; do
+              ./node_modules/.bin/wrangler versions deploy "$@" --yes \
+                --config wrangler.deploy.jsonc --env production \
+                --message "Canary v${{ needs.preflight.outputs.version }}" && return 0
+              [[ "$attempt" == 4 ]] && return 1
+              echo "::warning::wrangler versions deploy failed (attempt $attempt of 4); retrying in 15s."
+              sleep 15
+            done
           }
           deploy "$NEW_VERSION@0" "$PREVIOUS_VERSION@100"
           node ../../scripts/worker-canary.mjs probe
