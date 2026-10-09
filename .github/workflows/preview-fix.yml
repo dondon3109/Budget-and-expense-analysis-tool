@@ -133,10 +133,7 @@ jobs:
           - flaky: a timeout or network error on a few tests while others on the same pages passed,
             with no assertion about the page itself.
           - setup: sign-in, test accounts, secrets, or the preview deployment itself (DNS, 5xx from
-            every route, Supabase unreachable). Also the test account's stored state: a first-run
-            dialog (consent, onboarding, review prompt) covering the page, or a "dialog is holding
-            the app root inert" error on a route the account has not set up. No app code change
-            fixes it.
+            every route, Supabase unreachable). No app code change fixes it.
           Give a one or two sentence reason that names the failing pages.
 
           $(cat preview-fix/failures.md)
