@@ -1,22 +1,22 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.49-beta",
-  "versionCode": 20349,
-  "filename": "zoption-beta-0.2.49.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.49.apk",
-  "sha256": "9ef9dd4b71dae9381f0c4599f7634442eec8da6d82d70c1b711e95e5b01f55cd",
-  "sizeBytes": 139799347,
-  "sizeLabel": "139,799,347 bytes (133.32 MiB)",
-  "releaseDate": "2026-10-08",
-  "releaseDateLabel": "October 8, 2026",
+  "versionName": "0.2.50-beta",
+  "versionCode": 20350,
+  "filename": "zoption-beta-0.2.50.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.50.apk",
+  "sha256": "b560285dc40f49d58c5a466dc56f04be29764010027f132d6a15637ace40dbe9",
+  "sizeBytes": 139821199,
+  "sizeLabel": "139,821,199 bytes (133.34 MiB)",
+  "releaseDate": "2026-10-09",
+  "releaseDateLabel": "October 9, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Fixes a blank screen on launch in 0.2.48. If you see it, install this update over it.",
-    "Home lists your upcoming subscriptions and is calmer, with fewer cards.",
-    "The Analytics cash flow chart now shows even for a period with no records.",
-    "The status bar stays readable while the Home dropdown is open."
+    "Tell the AI Assistant about several purchases at once and it drafts each one with its own Save button.",
+    "Set budgets for a month, every month, or an occasion, with occasions shown on the calendar.",
+    "The mobile calendar is now a full-width month grid with income, expenses, and budget left above it.",
+    "The assistant consent, history, and voice screens are tidier, and the voice orb now moves while it listens and speaks."
   ]
 }
