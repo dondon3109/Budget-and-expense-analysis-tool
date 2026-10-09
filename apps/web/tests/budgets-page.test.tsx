@@ -2,14 +2,14 @@
 
 import "@testing-library/jest-dom/vitest";
 
-import type { BudgetMonthPlan, BudgetUpsert } from "@zoption/shared";
+import type { BudgetPlan, BudgetUpsert } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getBudgets, saveBudgets } from "../src/lib/api";
+import { createCalendarEvent, getBudgetOccasions, getBudgets, saveBudgets } from "../src/lib/api";
 import { BudgetsPage } from "../src/pages/BudgetsPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -24,13 +24,19 @@ vi.mock("../src/auth/AuthProvider", () => ({
 
 vi.mock("../src/lib/api", () => ({
   getBudgets: vi.fn(),
+  getBudgetOccasions: vi.fn(),
+  createCalendarEvent: vi.fn(),
   getCustomerReviewState: vi.fn().mockResolvedValue({ review: {}, promptEligible: false }),
   saveBudgets: vi.fn(),
   saveCustomerReview: vi.fn(),
 }));
 
-const budgetPlan: BudgetMonthPlan = {
+const budgetPlan: BudgetPlan = {
+  scope: "month",
   month: "2026-07-01",
+  eventId: null,
+  title: null,
+  date: null,
   currency: "PHP",
   totalLimitMinor: 850_000,
   totalSpentMinor: 535_400,
@@ -45,6 +51,7 @@ const budgetPlan: BudgetMonthPlan = {
       spentMinor: 535_400,
       remainingMinor: 314_600,
       usedPercent: 63,
+      source: "month",
     },
   ],
 };
@@ -115,6 +122,7 @@ describe("BudgetsPage", () => {
     expect(vi.mocked(saveBudgets)).toHaveBeenCalledWith(
       { key: "user:test-user", userId: "test-user" },
       {
+        scope: "month",
         month: "2026-07-01",
         items: [{ categoryId: "food", limitMinor: 900_000 }],
       },
@@ -248,7 +256,7 @@ describe("BudgetsPage", () => {
     // A faithful fake server: the saved limits come back from the save AND from the
     // refetch that follows it. With a stale read mock the page would still be dirty after
     // saving and would rightly keep holding the draft, which is not what this test is about.
-    let plan: BudgetMonthPlan = budgetPlan;
+    let plan: BudgetPlan = budgetPlan;
     vi.mocked(getBudgets).mockImplementation(async () => plan);
     vi.mocked(saveBudgets).mockImplementation(async (_workspace, input: BudgetUpsert) => {
       const saved = input.items;
@@ -375,8 +383,8 @@ describe("BudgetsPage", () => {
   it("confirms before a month change discards a dirty budget plan", async () => {
     const user = userEvent.setup();
     // The real API answers for the requested month, which is what re-seeds the drafts.
-    vi.mocked(getBudgets).mockImplementation((_workspace, monthStart) =>
-      Promise.resolve({ ...budgetPlan, month: monthStart }),
+    vi.mocked(getBudgets).mockImplementation((_workspace, query) =>
+      Promise.resolve({ ...budgetPlan, month: query.scope === "month" ? query.month : null }),
     );
     renderBudgetRoute();
     await makeFoodBudgetDirty(user);
@@ -435,5 +443,138 @@ describe("BudgetsPage", () => {
       await screen.findByRole("button", { name: "Budget month: August 2026" }),
     ).toBeInTheDocument();
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  describe("scopes", () => {
+    function renderAt(path: string) {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      return render(
+        <ThemeProvider>
+          <MemoryRouter initialEntries={[path]}>
+            <QueryClientProvider client={queryClient}>
+              <BudgetsPage />
+            </QueryClientProvider>
+          </MemoryRouter>
+        </ThemeProvider>,
+      );
+    }
+
+    it("saves only the limits that changed, so a month keeps inheriting the rest", async () => {
+      const user = userEvent.setup();
+      vi.mocked(getBudgets).mockResolvedValue({
+        ...budgetPlan,
+        totalLimitMinor: 850_000 + 30_000,
+        items: [
+          ...budgetPlan.items,
+          {
+            ...budgetPlan.items[0]!,
+            categoryId: "fun",
+            categoryName: "Fun",
+            limitMinor: 30_000,
+            spentMinor: 0,
+            remainingMinor: 30_000,
+            usedPercent: 0,
+            source: "every-month",
+          },
+        ],
+      });
+      renderAt("/app/budgets?month=2026-07");
+
+      const food = await screen.findByLabelText("Food & dining monthly budget");
+      expect(screen.getByText(/· Every month/)).toBeInTheDocument();
+      await user.clear(food);
+      await user.type(food, "9000");
+      await user.click(screen.getByRole("button", { name: "Save monthly plan" }));
+
+      await waitFor(() => expect(saveBudgets).toHaveBeenCalledOnce());
+      expect(vi.mocked(saveBudgets).mock.calls[0]![1]).toEqual({
+        scope: "month",
+        month: "2026-07-01",
+        items: [{ categoryId: "food", limitMinor: 900_000 }],
+      });
+    });
+
+    it("edits the every-month defaults on their own tab", async () => {
+      const user = userEvent.setup();
+      vi.mocked(getBudgets).mockResolvedValue({
+        ...budgetPlan,
+        scope: "every-month",
+        month: null,
+        items: [{ ...budgetPlan.items[0]!, source: "every-month" }],
+      });
+      renderAt("/app/budgets?month=2026-07&scope=every-month");
+
+      const food = await screen.findByLabelText("Food & dining every-month budget");
+      expect(vi.mocked(getBudgets).mock.calls[0]![1]).toEqual({ scope: "every-month" });
+      await user.clear(food);
+      await user.type(food, "7000");
+      await user.click(screen.getByRole("button", { name: "Save every-month plan" }));
+
+      await waitFor(() => expect(saveBudgets).toHaveBeenCalledOnce());
+      expect(vi.mocked(saveBudgets).mock.calls[0]![1]).toEqual({
+        scope: "every-month",
+        items: [{ categoryId: "food", limitMinor: 700_000 }],
+      });
+    });
+
+    it("lists a month's occasions and opens one to edit its limits", async () => {
+      const user = userEvent.setup();
+      vi.mocked(getBudgetOccasions).mockResolvedValue({
+        occasions: [
+          {
+            eventId: "party",
+            title: "Mia birthday",
+            date: "2026-07-15",
+            totalLimitMinor: 80_000,
+            totalSpentMinor: 50_000,
+          },
+        ],
+      });
+      vi.mocked(getBudgets).mockResolvedValue({
+        ...budgetPlan,
+        scope: "occasion",
+        month: null,
+        eventId: "party",
+        title: "Mia birthday",
+        date: "2026-07-15",
+        items: [{ ...budgetPlan.items[0]!, source: "occasion" }],
+      });
+      renderAt("/app/budgets?month=2026-07&scope=occasions");
+
+      await user.click(await screen.findByRole("button", { name: /Mia birthday/ }));
+
+      expect(await screen.findByLabelText("Food & dining occasion budget")).toBeInTheDocument();
+      expect(vi.mocked(getBudgets).mock.calls.at(-1)![1]).toEqual({
+        scope: "occasion",
+        eventId: "party",
+      });
+      expect(screen.getByRole("button", { name: "Save occasion budget" })).toBeInTheDocument();
+    });
+
+    it("starts an occasion as a calendar event", async () => {
+      const user = userEvent.setup();
+      vi.mocked(getBudgetOccasions).mockResolvedValue({ occasions: [] });
+      vi.mocked(createCalendarEvent).mockResolvedValue({ id: "party" } as never);
+      vi.mocked(getBudgets).mockResolvedValue({
+        ...budgetPlan,
+        scope: "occasion",
+        month: null,
+        eventId: "party",
+        title: "Mia's party",
+      });
+      renderAt("/app/budgets?month=2026-07&scope=occasions");
+
+      await user.type(await screen.findByLabelText("Occasion"), "Mia's party");
+      await user.click(screen.getByRole("button", { name: "New occasion" }));
+
+      await waitFor(() => expect(createCalendarEvent).toHaveBeenCalledOnce());
+      expect(vi.mocked(createCalendarEvent).mock.calls[0]![1]).toEqual({
+        title: "Mia's party",
+        date: "2026-07-01",
+      });
+      expect(
+        await screen.findByRole("button", { name: "Save occasion budget" }),
+      ).toBeInTheDocument();
+    });
   });
 });

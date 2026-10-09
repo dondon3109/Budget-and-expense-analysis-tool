@@ -1,0 +1,104 @@
+.budget-scope-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.budget-scope-tabs button {
+  padding: 10px 16px;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 560;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+.budget-scope-tabs button.active {
+  color: var(--ink);
+  border-bottom-color: var(--action);
+}
+
+.budget-occasions {
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.budget-occasion-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.budget-occasion-form label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.budget-occasion-form input {
+  min-height: var(--control-height);
+  padding: 0 12px;
+  color: var(--ink);
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+}
+
+.budget-occasions-empty {
+  color: var(--muted);
+}
+
+.budget-occasion-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+
+.budget-occasion-list li {
+  border-bottom: 1px solid var(--line);
+}
+
+.budget-occasion-list button {
+  width: 100%;
+  padding: 14px 4px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.budget-occasion-list button > span {
+  display: grid;
+  gap: 2px;
+}
+
+.budget-occasion-list button > span:last-child {
+  text-align: right;
+}
+
+.budget-occasion-list small {
+  color: var(--muted);
+}
+
+.budget-occasion-list .over strong {
+  color: var(--danger);
+}
+
+.budget-source-note {
+  color: var(--muted);
+  font-size: 11px;
+}
