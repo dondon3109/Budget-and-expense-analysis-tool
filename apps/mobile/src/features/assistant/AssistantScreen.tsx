@@ -72,7 +72,6 @@ import {
 import {
   AssistantConsentModal,
   AssistantIdentityCard,
-  AssistantStatusBadge,
   AssistantThreadRow,
   AssistantUnavailableView,
   AssistantUpgradeBanner,
