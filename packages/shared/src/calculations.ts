@@ -1,7 +1,7 @@
+import type { BudgetRecord } from "./budgetPlan";
 import type {
   AccountBalanceSummary,
   AccountRecord,
-  BudgetRecord,
   CashflowTrend,
   Currency,
   DashboardSummary,

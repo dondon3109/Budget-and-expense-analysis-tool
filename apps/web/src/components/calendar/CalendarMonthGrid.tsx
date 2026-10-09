@@ -19,6 +19,7 @@ import {
 import type { KeyboardEvent } from "react";
 
 import { calendarWeeks, firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
+import "./CalendarOccasions.css";
 
 export interface CalendarDayData {
   items: TransactionListItem[];

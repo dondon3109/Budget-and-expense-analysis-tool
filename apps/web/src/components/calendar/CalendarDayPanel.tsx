@@ -9,6 +9,7 @@ import { Link } from "react-router-dom";
 
 import { calendarEventTimeLabel, formatCalendarDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
+import "./CalendarOccasions.css";
 
 interface CalendarDayPanelProps {
   date: string;
