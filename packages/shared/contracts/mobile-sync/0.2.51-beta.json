@@ -1,0 +1,3323 @@
+{
+  "versionName": "0.2.51-beta",
+  "source": "20e6cf345d78b606da8cbf7e8f937efe0030752c",
+  "features": ["debt-links", "account-types-v2", "budget-scopes"],
+  "samplePushRequest": {
+    "protocolVersion": 1,
+    "clientId": "c0000000-0000-4000-8000-000000000001",
+    "operations": [
+      {
+        "operationId": "c0000000-0000-4000-8000-000000000002",
+        "idempotencyKey": "c0000000-0000-4000-8000-000000000003",
+        "entityType": "transaction",
+        "entityId": "c0000000-0000-4000-8000-000000000004",
+        "operationType": "create",
+        "baseRevision": 0,
+        "dependencyIds": [],
+        "payload": {
+          "kind": "expense",
+          "date": "2026-08-22",
+          "description": "Contract lunch",
+          "amountMinor": 2500,
+          "currency": "PHP",
+          "categoryId": "category-1",
+          "accountId": "account-1"
+        }
+      }
+    ]
+  },
+  "responses": {
+    "pull": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "changes": {
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entityType": {
+                "type": "string",
+                "enum": [
+                  "account",
+                  "category",
+                  "transaction",
+                  "budget",
+                  "goal",
+                  "debt",
+                  "subscription",
+                  "event"
+                ]
+              },
+              "entityId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "operation": {
+                "type": "string",
+                "enum": ["upsert", "delete"]
+              },
+              "serverUpdatedAt": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+              },
+              "payload": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "cash",
+                              "checking",
+                              "savings",
+                              "credit",
+                              "other",
+                              "virtual",
+                              "investment",
+                              "receivable",
+                              "payable"
+                            ]
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          },
+                          "system": {
+                            "type": "boolean"
+                          },
+                          "interest": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "annualRateBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "frequency": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": ["daily", "monthly", "yearly"]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "payDay": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 31
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["enabled", "annualRateBasisPoints", "frequency", "payDay"],
+                            "additionalProperties": false
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "currency",
+                          "archived",
+                          "system",
+                          "interest",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": ["income", "expense", "transfer"]
+                          },
+                          "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$"
+                          },
+                          "iconEmoji": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 32
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          },
+                          "system": {
+                            "type": "boolean"
+                          },
+                          "systemKey": {
+                            "type": ["string", "null"]
+                          },
+                          "origin": {
+                            "type": "string",
+                            "enum": ["starter", "custom", "system"]
+                          },
+                          "requiredPlan": {
+                            "type": "string",
+                            "enum": ["free", "zoption_pro"]
+                          },
+                          "locked": {
+                            "type": "boolean"
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "color",
+                          "iconEmoji",
+                          "archived",
+                          "system",
+                          "origin",
+                          "requiredPlan",
+                          "locked",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "accountId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "date": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 240
+                          },
+                          "amountMinor": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": ["income", "expense", "transfer"]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transferGroupId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transferFeeMinor": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "importFingerprint": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "debtId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "accountId",
+                          "categoryId",
+                          "date",
+                          "description",
+                          "amountMinor",
+                          "currency",
+                          "kind",
+                          "notes",
+                          "transferGroupId",
+                          "transferFeeMinor",
+                          "importFingerprint",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "fromTransactionId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "toTransactionId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "fromAccountId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "toAccountId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "date": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 240
+                          },
+                          "amountMinor": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transferFeeMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "debtId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromTransactionId",
+                          "toTransactionId",
+                          "fromAccountId",
+                          "toAccountId",
+                          "categoryId",
+                          "date",
+                          "description",
+                          "amountMinor",
+                          "currency",
+                          "notes",
+                          "transferFeeMinor",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "month": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "occasionId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "limitMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000000000
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "categoryId",
+                          "month",
+                          "limitMinor",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "targetAmountMinor": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 900000000000000
+                          },
+                          "currentAmountMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 900000000000000
+                          },
+                          "targetDate": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "paused", "completed"]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "targetAmountMinor",
+                          "currentAmountMinor",
+                          "targetDate",
+                          "status",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "credit_card",
+                              "personal_loan",
+                              "auto_loan",
+                              "mortgage",
+                              "other"
+                            ]
+                          },
+                          "balanceMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 900000000000000
+                          },
+                          "aprBasisPoints": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 10000
+                          },
+                          "minimumPaymentMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 900000000000000
+                          },
+                          "balanceAsOf": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "paid"]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "balanceMinor",
+                          "aprBasisPoints",
+                          "minimumPaymentMinor",
+                          "balanceAsOf",
+                          "status",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "amountMinor": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100000000000
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "billingCycle": {
+                            "type": "string",
+                            "enum": ["monthly", "yearly"]
+                          },
+                          "nextBillingDate": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "canceled"]
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "accountId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "amountMinor",
+                          "currency",
+                          "billingCycle",
+                          "nextBillingDate",
+                          "status",
+                          "categoryId",
+                          "accountId",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "date": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "startTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "endTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "date",
+                          "startTime",
+                          "endTime",
+                          "notes",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "entityType",
+              "entityId",
+              "revision",
+              "operation",
+              "serverUpdatedAt",
+              "payload"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "nextCursor": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^v1\\.[0-9a-z]+$"
+        },
+        "hasMore": {
+          "type": "boolean"
+        }
+      },
+      "required": ["protocolVersion", "changes", "nextCursor", "hasMore"],
+      "additionalProperties": false
+    },
+    "snapshot": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "snapshotCursor": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^s1\\.[0-9a-z]+$"
+        },
+        "changes": {
+          "maxItems": 200,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entityType": {
+                "type": "string",
+                "enum": [
+                  "account",
+                  "category",
+                  "transaction",
+                  "budget",
+                  "goal",
+                  "debt",
+                  "subscription",
+                  "event"
+                ]
+              },
+              "entityId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 180,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "operation": {
+                "type": "string",
+                "enum": ["upsert", "delete"]
+              },
+              "serverUpdatedAt": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+              },
+              "payload": {
+                "anyOf": [
+                  {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "cash",
+                              "checking",
+                              "savings",
+                              "credit",
+                              "other",
+                              "virtual",
+                              "investment",
+                              "receivable",
+                              "payable"
+                            ]
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          },
+                          "system": {
+                            "type": "boolean"
+                          },
+                          "interest": {
+                            "type": "object",
+                            "properties": {
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "annualRateBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 1000000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "frequency": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": ["daily", "monthly", "yearly"]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "payDay": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 31
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": ["enabled", "annualRateBasisPoints", "frequency", "payDay"],
+                            "additionalProperties": false
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "currency",
+                          "archived",
+                          "system",
+                          "interest",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": ["income", "expense", "transfer"]
+                          },
+                          "color": {
+                            "type": "string",
+                            "pattern": "^#[0-9a-fA-F]{6}$"
+                          },
+                          "iconEmoji": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 32
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "archived": {
+                            "type": "boolean"
+                          },
+                          "system": {
+                            "type": "boolean"
+                          },
+                          "systemKey": {
+                            "type": ["string", "null"]
+                          },
+                          "origin": {
+                            "type": "string",
+                            "enum": ["starter", "custom", "system"]
+                          },
+                          "requiredPlan": {
+                            "type": "string",
+                            "enum": ["free", "zoption_pro"]
+                          },
+                          "locked": {
+                            "type": "boolean"
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "color",
+                          "iconEmoji",
+                          "archived",
+                          "system",
+                          "origin",
+                          "requiredPlan",
+                          "locked",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "accountId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "date": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 240
+                          },
+                          "amountMinor": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": ["income", "expense", "transfer"]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transferGroupId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transferFeeMinor": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "importFingerprint": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "debtId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "accountId",
+                          "categoryId",
+                          "date",
+                          "description",
+                          "amountMinor",
+                          "currency",
+                          "kind",
+                          "notes",
+                          "transferGroupId",
+                          "transferFeeMinor",
+                          "importFingerprint",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "fromTransactionId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "toTransactionId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "fromAccountId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "toAccountId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "date": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 240
+                          },
+                          "amountMinor": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "transferFeeMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "debtId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "fromTransactionId",
+                          "toTransactionId",
+                          "fromAccountId",
+                          "toAccountId",
+                          "categoryId",
+                          "date",
+                          "description",
+                          "amountMinor",
+                          "currency",
+                          "notes",
+                          "transferFeeMinor",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "month": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "occasionId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "limitMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 100000000000
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "categoryId",
+                          "month",
+                          "limitMinor",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "targetAmountMinor": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 900000000000000
+                          },
+                          "currentAmountMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 900000000000000
+                          },
+                          "targetDate": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "paused", "completed"]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "targetAmountMinor",
+                          "currentAmountMinor",
+                          "targetDate",
+                          "status",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "credit_card",
+                              "personal_loan",
+                              "auto_loan",
+                              "mortgage",
+                              "other"
+                            ]
+                          },
+                          "balanceMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 900000000000000
+                          },
+                          "aprBasisPoints": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 10000
+                          },
+                          "minimumPaymentMinor": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 900000000000000
+                          },
+                          "balanceAsOf": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "paid"]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "balanceMinor",
+                          "aprBasisPoints",
+                          "minimumPaymentMinor",
+                          "balanceAsOf",
+                          "status",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "amountMinor": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100000000000
+                          },
+                          "currency": {
+                            "type": "string",
+                            "enum": [
+                              "PHP",
+                              "USD",
+                              "EUR",
+                              "GBP",
+                              "JPY",
+                              "CNY",
+                              "HKD",
+                              "TWD",
+                              "KRW",
+                              "SGD",
+                              "MYR",
+                              "THB",
+                              "IDR",
+                              "VND",
+                              "INR",
+                              "PKR",
+                              "BDT",
+                              "LKR",
+                              "NPR",
+                              "AUD",
+                              "NZD",
+                              "CAD",
+                              "MXN",
+                              "BRL",
+                              "ARS",
+                              "CLP",
+                              "COP",
+                              "PEN",
+                              "CHF",
+                              "SEK",
+                              "NOK",
+                              "DKK",
+                              "PLN",
+                              "CZK",
+                              "HUF",
+                              "TRY",
+                              "ILS",
+                              "AED",
+                              "SAR",
+                              "QAR",
+                              "KWD",
+                              "BHD",
+                              "OMR",
+                              "EGP",
+                              "ZAR",
+                              "NGN",
+                              "KES"
+                            ]
+                          },
+                          "billingCycle": {
+                            "type": "string",
+                            "enum": ["monthly", "yearly"]
+                          },
+                          "nextBillingDate": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "canceled"]
+                          },
+                          "categoryId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "accountId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "amountMinor",
+                          "currency",
+                          "billingCycle",
+                          "nextBillingDate",
+                          "status",
+                          "categoryId",
+                          "accountId",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 180,
+                            "pattern": "^[A-Za-z0-9:_-]+$"
+                          },
+                          "title": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "date": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          "startTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "endTime": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "notes": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 500
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "date",
+                          "startTime",
+                          "endTime",
+                          "notes",
+                          "revision",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "entityType",
+              "entityId",
+              "revision",
+              "operation",
+              "serverUpdatedAt",
+              "payload"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "nextOffset": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "hasMore": {
+          "type": "boolean"
+        },
+        "resumeCursor": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^v1\\.[0-9a-z]+$"
+        }
+      },
+      "required": [
+        "protocolVersion",
+        "snapshotCursor",
+        "changes",
+        "nextOffset",
+        "hasMore",
+        "resumeCursor"
+      ],
+      "additionalProperties": false
+    },
+    "push": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "results": {
+          "minItems": 1,
+          "maxItems": 50,
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "entityType": {
+                    "type": "string",
+                    "enum": [
+                      "account",
+                      "category",
+                      "transaction",
+                      "transfer",
+                      "budget",
+                      "goal",
+                      "debt",
+                      "subscription",
+                      "event"
+                    ]
+                  },
+                  "entityId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 180,
+                    "pattern": "^[A-Za-z0-9:_-]+$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "acknowledged"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["operationId", "entityType", "entityId", "status", "revision"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "entityType": {
+                    "type": "string",
+                    "enum": [
+                      "account",
+                      "category",
+                      "transaction",
+                      "transfer",
+                      "budget",
+                      "goal",
+                      "debt",
+                      "subscription",
+                      "event"
+                    ]
+                  },
+                  "entityId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 180,
+                    "pattern": "^[A-Za-z0-9:_-]+$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "conflict"
+                  },
+                  "code": {
+                    "type": "string",
+                    "enum": ["stale_revision", "entity_exists", "entity_missing"]
+                  },
+                  "serverRevision": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "serverUpdatedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "serverPayload": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "checking",
+                                  "savings",
+                                  "credit",
+                                  "other",
+                                  "virtual",
+                                  "investment",
+                                  "receivable",
+                                  "payable"
+                                ]
+                              },
+                              "currency": {
+                                "type": "string",
+                                "enum": [
+                                  "PHP",
+                                  "USD",
+                                  "EUR",
+                                  "GBP",
+                                  "JPY",
+                                  "CNY",
+                                  "HKD",
+                                  "TWD",
+                                  "KRW",
+                                  "SGD",
+                                  "MYR",
+                                  "THB",
+                                  "IDR",
+                                  "VND",
+                                  "INR",
+                                  "PKR",
+                                  "BDT",
+                                  "LKR",
+                                  "NPR",
+                                  "AUD",
+                                  "NZD",
+                                  "CAD",
+                                  "MXN",
+                                  "BRL",
+                                  "ARS",
+                                  "CLP",
+                                  "COP",
+                                  "PEN",
+                                  "CHF",
+                                  "SEK",
+                                  "NOK",
+                                  "DKK",
+                                  "PLN",
+                                  "CZK",
+                                  "HUF",
+                                  "TRY",
+                                  "ILS",
+                                  "AED",
+                                  "SAR",
+                                  "QAR",
+                                  "KWD",
+                                  "BHD",
+                                  "OMR",
+                                  "EGP",
+                                  "ZAR",
+                                  "NGN",
+                                  "KES"
+                                ]
+                              },
+                              "archived": {
+                                "type": "boolean"
+                              },
+                              "system": {
+                                "type": "boolean"
+                              },
+                              "interest": {
+                                "type": "object",
+                                "properties": {
+                                  "enabled": {
+                                    "type": "boolean"
+                                  },
+                                  "annualRateBasisPoints": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1000000
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "frequency": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": ["daily", "monthly", "yearly"]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "payDay": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 31
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "enabled",
+                                  "annualRateBasisPoints",
+                                  "frequency",
+                                  "payDay"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "type",
+                              "currency",
+                              "archived",
+                              "system",
+                              "interest",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": ["income", "expense", "transfer"]
+                              },
+                              "color": {
+                                "type": "string",
+                                "pattern": "^#[0-9a-fA-F]{6}$"
+                              },
+                              "iconEmoji": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 32
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "archived": {
+                                "type": "boolean"
+                              },
+                              "system": {
+                                "type": "boolean"
+                              },
+                              "systemKey": {
+                                "type": ["string", "null"]
+                              },
+                              "origin": {
+                                "type": "string",
+                                "enum": ["starter", "custom", "system"]
+                              },
+                              "requiredPlan": {
+                                "type": "string",
+                                "enum": ["free", "zoption_pro"]
+                              },
+                              "locked": {
+                                "type": "boolean"
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "kind",
+                              "color",
+                              "iconEmoji",
+                              "archived",
+                              "system",
+                              "origin",
+                              "requiredPlan",
+                              "locked",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "accountId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "categoryId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "date": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "description": {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              "amountMinor": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "currency": {
+                                "type": "string",
+                                "enum": [
+                                  "PHP",
+                                  "USD",
+                                  "EUR",
+                                  "GBP",
+                                  "JPY",
+                                  "CNY",
+                                  "HKD",
+                                  "TWD",
+                                  "KRW",
+                                  "SGD",
+                                  "MYR",
+                                  "THB",
+                                  "IDR",
+                                  "VND",
+                                  "INR",
+                                  "PKR",
+                                  "BDT",
+                                  "LKR",
+                                  "NPR",
+                                  "AUD",
+                                  "NZD",
+                                  "CAD",
+                                  "MXN",
+                                  "BRL",
+                                  "ARS",
+                                  "CLP",
+                                  "COP",
+                                  "PEN",
+                                  "CHF",
+                                  "SEK",
+                                  "NOK",
+                                  "DKK",
+                                  "PLN",
+                                  "CZK",
+                                  "HUF",
+                                  "TRY",
+                                  "ILS",
+                                  "AED",
+                                  "SAR",
+                                  "QAR",
+                                  "KWD",
+                                  "BHD",
+                                  "OMR",
+                                  "EGP",
+                                  "ZAR",
+                                  "NGN",
+                                  "KES"
+                                ]
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": ["income", "expense", "transfer"]
+                              },
+                              "notes": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "transferGroupId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "transferFeeMinor": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "importFingerprint": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "debtId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "accountId",
+                              "categoryId",
+                              "date",
+                              "description",
+                              "amountMinor",
+                              "currency",
+                              "kind",
+                              "notes",
+                              "transferGroupId",
+                              "transferFeeMinor",
+                              "importFingerprint",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "fromTransactionId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "toTransactionId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "fromAccountId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "toAccountId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "categoryId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "date": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "description": {
+                                "type": "string",
+                                "maxLength": 240
+                              },
+                              "amountMinor": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "currency": {
+                                "type": "string",
+                                "enum": [
+                                  "PHP",
+                                  "USD",
+                                  "EUR",
+                                  "GBP",
+                                  "JPY",
+                                  "CNY",
+                                  "HKD",
+                                  "TWD",
+                                  "KRW",
+                                  "SGD",
+                                  "MYR",
+                                  "THB",
+                                  "IDR",
+                                  "VND",
+                                  "INR",
+                                  "PKR",
+                                  "BDT",
+                                  "LKR",
+                                  "NPR",
+                                  "AUD",
+                                  "NZD",
+                                  "CAD",
+                                  "MXN",
+                                  "BRL",
+                                  "ARS",
+                                  "CLP",
+                                  "COP",
+                                  "PEN",
+                                  "CHF",
+                                  "SEK",
+                                  "NOK",
+                                  "DKK",
+                                  "PLN",
+                                  "CZK",
+                                  "HUF",
+                                  "TRY",
+                                  "ILS",
+                                  "AED",
+                                  "SAR",
+                                  "QAR",
+                                  "KWD",
+                                  "BHD",
+                                  "OMR",
+                                  "EGP",
+                                  "ZAR",
+                                  "NGN",
+                                  "KES"
+                                ]
+                              },
+                              "notes": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "transferFeeMinor": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "debtId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "fromTransactionId",
+                              "toTransactionId",
+                              "fromAccountId",
+                              "toAccountId",
+                              "categoryId",
+                              "date",
+                              "description",
+                              "amountMinor",
+                              "currency",
+                              "notes",
+                              "transferFeeMinor",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "categoryId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "month": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "occasionId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "limitMinor": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100000000000
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "categoryId",
+                              "month",
+                              "limitMinor",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "targetAmountMinor": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 900000000000000
+                              },
+                              "currentAmountMinor": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 900000000000000
+                              },
+                              "targetDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "paused", "completed"]
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "targetAmountMinor",
+                              "currentAmountMinor",
+                              "targetDate",
+                              "status",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 80
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "credit_card",
+                                  "personal_loan",
+                                  "auto_loan",
+                                  "mortgage",
+                                  "other"
+                                ]
+                              },
+                              "balanceMinor": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 900000000000000
+                              },
+                              "aprBasisPoints": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 10000
+                              },
+                              "minimumPaymentMinor": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 900000000000000
+                              },
+                              "balanceAsOf": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "paid"]
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "type",
+                              "balanceMinor",
+                              "aprBasisPoints",
+                              "minimumPaymentMinor",
+                              "balanceAsOf",
+                              "status",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "amountMinor": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 100000000000
+                              },
+                              "currency": {
+                                "type": "string",
+                                "enum": [
+                                  "PHP",
+                                  "USD",
+                                  "EUR",
+                                  "GBP",
+                                  "JPY",
+                                  "CNY",
+                                  "HKD",
+                                  "TWD",
+                                  "KRW",
+                                  "SGD",
+                                  "MYR",
+                                  "THB",
+                                  "IDR",
+                                  "VND",
+                                  "INR",
+                                  "PKR",
+                                  "BDT",
+                                  "LKR",
+                                  "NPR",
+                                  "AUD",
+                                  "NZD",
+                                  "CAD",
+                                  "MXN",
+                                  "BRL",
+                                  "ARS",
+                                  "CLP",
+                                  "COP",
+                                  "PEN",
+                                  "CHF",
+                                  "SEK",
+                                  "NOK",
+                                  "DKK",
+                                  "PLN",
+                                  "CZK",
+                                  "HUF",
+                                  "TRY",
+                                  "ILS",
+                                  "AED",
+                                  "SAR",
+                                  "QAR",
+                                  "KWD",
+                                  "BHD",
+                                  "OMR",
+                                  "EGP",
+                                  "ZAR",
+                                  "NGN",
+                                  "KES"
+                                ]
+                              },
+                              "billingCycle": {
+                                "type": "string",
+                                "enum": ["monthly", "yearly"]
+                              },
+                              "nextBillingDate": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "canceled"]
+                              },
+                              "categoryId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "accountId": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 180,
+                                    "pattern": "^[A-Za-z0-9:_-]+$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "amountMinor",
+                              "currency",
+                              "billingCycle",
+                              "nextBillingDate",
+                              "status",
+                              "categoryId",
+                              "accountId",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 180,
+                                "pattern": "^[A-Za-z0-9:_-]+$"
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "date": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                              },
+                              "startTime": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "endTime": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "notes": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "maxLength": 500
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "revision": {
+                                "type": "integer",
+                                "exclusiveMinimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "pattern": "^\\d{4}-\\d{2}-\\d{2}[T ]\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{1,6})?Z?$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "date",
+                              "startTime",
+                              "endTime",
+                              "notes",
+                              "revision",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "operationId",
+                  "entityType",
+                  "entityId",
+                  "status",
+                  "code",
+                  "serverRevision",
+                  "serverUpdatedAt",
+                  "serverPayload"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "operationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "entityType": {
+                    "type": "string",
+                    "enum": [
+                      "account",
+                      "category",
+                      "transaction",
+                      "transfer",
+                      "budget",
+                      "goal",
+                      "debt",
+                      "subscription",
+                      "event"
+                    ]
+                  },
+                  "entityId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 180,
+                    "pattern": "^[A-Za-z0-9:_-]+$"
+                  },
+                  "status": {
+                    "type": "string",
+                    "const": "rejected"
+                  },
+                  "code": {
+                    "type": "string",
+                    "enum": [
+                      "invalid_category",
+                      "invalid_account",
+                      "plan_limit",
+                      "dependency_failed",
+                      "invalid_operation",
+                      "unsupported_operation"
+                    ]
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 240
+                  }
+                },
+                "required": ["operationId", "entityType", "entityId", "status", "code", "message"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      },
+      "required": ["protocolVersion", "results"],
+      "additionalProperties": false
+    },
+    "acknowledge": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "protocolVersion": {
+          "type": "number",
+          "const": 1
+        },
+        "acknowledgedCursor": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^v1\\.[0-9a-z]+$"
+        },
+        "retentionFloorCursor": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^v1\\.[0-9a-z]+$"
+        }
+      },
+      "required": ["protocolVersion", "acknowledgedCursor", "retentionFloorCursor"],
+      "additionalProperties": false
+    }
+  }
+}
