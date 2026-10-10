@@ -14,9 +14,9 @@
     "@astrojs/react": "^7.0.1",
     "@zoption/shared": "workspace:*",
     "@zoption/web-common": "workspace:*",
-    "astro": "^7.3.6",
-    "lucide-react": "^1.52.0",
-    "posthog-js": "^1.438.1",
+    "astro": "^7.3.8",
+    "lucide-react": "^1.53.0",
+    "posthog-js": "^1.438.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
