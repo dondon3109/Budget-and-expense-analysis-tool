@@ -44,9 +44,9 @@ export const currentRelease: ProductRelease = {
         "Android Beta 0.2.48 could open to a blank screen; that is fixed. The collapsed sidebar on the web assistant page now has readable link names for screen readers. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
     },
     {
-      title: "Android Beta 0.2.50",
+      title: "Android Beta 0.2.51",
       description:
-        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, the tidier assistant, the calmer Home and Analytics, and these fixes. If 0.2.48 opens to a blank screen, install 0.2.50 over it.",
+        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, the tidier assistant, the calmer Home and Analytics, the 3x1 mic widget with press feedback, and these fixes. If 0.2.48 opens to a blank screen, install 0.2.51 over it.",
     },
   ],
 };
