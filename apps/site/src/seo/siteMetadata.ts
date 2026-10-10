@@ -296,7 +296,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-10-07";
+const LANDING_LAST_MODIFIED = "2026-10-10";
 const PRICING_LAST_MODIFIED = "2026-10-07";
 const GUIDES_LAST_MODIFIED = "2026-10-01";
 
