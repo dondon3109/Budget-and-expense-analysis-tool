@@ -1,0 +1,143 @@
+/* Comparison table on the landing page; stacks into cards on phones. */
+.comparison-table-wrap {
+  margin-top: 36px;
+  overflow-x: auto;
+  border: 1px solid var(--lp-border);
+  border-radius: 22px;
+  background: var(--lp-surface);
+  box-shadow: var(--lp-shadow-md);
+}
+
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.comparison-table th,
+.comparison-table td {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--lp-border);
+  vertical-align: middle;
+}
+
+.comparison-table th {
+  background: var(--lp-surface-soft);
+  font-family: var(--lp-font-mono);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--lp-muted);
+}
+
+.comparison-table th.zoption-col {
+  color: var(--lp-accent-strong);
+  background: var(--lp-accent-soft);
+}
+
+.comparison-table td strong {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--lp-fg);
+}
+
+.comparison-table td small {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--lp-muted);
+}
+
+.comparison-cell-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.comparison-cell-value.risk {
+  color: var(--lp-muted);
+}
+
+.comparison-cell-value.risk svg {
+  color: var(--lp-expense);
+  flex: 0 0 auto;
+}
+
+.comparison-cell-value.advantage {
+  color: var(--lp-fg);
+  font-weight: 580;
+}
+
+.comparison-cell-value.advantage svg {
+  color: var(--lp-accent-strong);
+  flex: 0 0 auto;
+}
+
+.comparison-table td.zoption-col {
+  background: color-mix(in srgb, var(--lp-accent-soft) 40%, var(--lp-surface));
+}
+
+.comparison-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+@media (max-width: 560px) {
+  /* Stack each row as a card: three columns do not fit a phone without sideways scrolling. */
+  .comparison-table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .comparison-table,
+  .comparison-table tbody,
+  .comparison-table tr,
+  .comparison-table td {
+    display: block;
+    width: 100%;
+  }
+  .comparison-table colgroup,
+  .comparison-table thead {
+    display: none;
+  }
+  .comparison-table tbody tr {
+    margin-bottom: 14px;
+    border: 1px solid var(--lp-border);
+    border-radius: 18px;
+    background: var(--lp-surface);
+    box-shadow: var(--lp-shadow-md);
+    overflow: hidden;
+  }
+  .comparison-table td {
+    padding: 14px 16px;
+    border-bottom: 0;
+  }
+  .comparison-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+  .comparison-table td:first-child {
+    border-bottom: 1px solid var(--lp-border);
+  }
+  .comparison-table td + td::before {
+    display: block;
+    margin-bottom: 6px;
+    font-family: var(--lp-font-mono);
+    font-size: 10.5px;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lp-muted);
+  }
+  .comparison-table td:nth-child(2)::before {
+    content: "Typical finance apps";
+  }
+  .comparison-table td.zoption-col::before {
+    content: "Zoption private workspace";
+    color: var(--lp-accent-strong);
+  }
+}

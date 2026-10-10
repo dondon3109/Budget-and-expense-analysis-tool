@@ -3,6 +3,7 @@ import type { PublicCustomerReview } from "@zoption/shared";
 import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import type { ReactNode } from "react";
 import "./LandingPage.css";
+import "./LandingComparison.css";
 
 import { BrandMark } from "../components/brand/BrandMark";
 import { CustomerReviews } from "../components/landing/CustomerReviews";
