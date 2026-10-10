@@ -74,6 +74,31 @@ describe("startLiveTranscriptionSession", () => {
     vi.clearAllMocks();
   });
 
+  it("captures audio while the socket connects and flushes it once open", async () => {
+    const workspace = { key: "user:user-1", userId: "user-1" } as any;
+    let openSocket!: (ws: unknown) => void;
+    apiMocks.openVoiceStreamWebSocket.mockReturnValue(
+      new Promise((resolve) => {
+        openSocket = resolve;
+      }),
+    );
+
+    const sessionPromise = startLiveTranscriptionSession(workspace, mockMediaStream, {
+      onPartial: vi.fn(),
+      onFinal: vi.fn(),
+    });
+    await vi.waitFor(() => expect(mockProcessor.onaudioprocess).toBeTypeOf("function"));
+
+    mockProcessor.onaudioprocess({
+      inputBuffer: { getChannelData: () => new Float32Array([0.5, -0.5]) },
+    });
+    expect(mockWs.send).not.toHaveBeenCalled();
+
+    openSocket(mockWs);
+    await sessionPromise;
+    expect(mockWs.send).toHaveBeenCalledTimes(1);
+  });
+
   it("connects audio processor and streams PCM chunks to WebSocket", async () => {
     const workspace = { key: "user:user-1", userId: "user-1" } as any;
     const onPartial = vi.fn();
