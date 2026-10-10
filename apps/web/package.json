@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@paypal/react-paypal-js": "^10.6.0",
-    "@supabase/supabase-js": "^2.117.2",
+    "@supabase/supabase-js": "^2.117.3",
     "@tanstack/react-query": "^5.104.1",
     "@zoption/shared": "workspace:*",
     "@zoption/web-common": "workspace:*",
-    "lucide-react": "^1.52.0",
-    "posthog-js": "^1.438.1",
+    "lucide-react": "^1.53.0",
+    "posthog-js": "^1.438.3",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
@@ -29,6 +29,6 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "tailwindcss": "^4.3.3",
-    "vite": "^8.3.3"
+    "vite": "^8.3.4"
   }
 }
