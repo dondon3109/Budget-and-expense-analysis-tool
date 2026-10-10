@@ -88,10 +88,11 @@ test("generated widget logs in the background and never opens the app", () => {
   const files = widgetFileContents();
   expect(Object.keys(files)).toHaveLength(11);
   expect(files["app/src/main/res/values/zoption_mic_widget_strings.xml"]).toContain(
-    '<string name="zoption_mic_widget_hint">Tap and say what you spent</string>',
+    '<string name="zoption_mic_widget_hint">Tap and say what you spent or earned</string>',
   );
   const infoXml = files["app/src/main/res/xml/zoption_mic_widget_info.xml"];
   expect(infoXml).toContain('android:resizeMode="horizontal|vertical"');
+  expect(infoXml).toContain('android:targetCellWidth="3"');
   expect(infoXml).toContain('android:minResizeWidth="48dp"');
   expect(infoXml).toContain('android:minResizeHeight="48dp"');
   expect(infoXml).toContain('android:previewLayout="@layout/zoption_mic_widget"');
@@ -133,6 +134,8 @@ test("widget UI uses a solid background, never a gradient", () => {
   const files = widgetFileContents();
   const background = files["app/src/main/res/drawable/zoption_mic_widget_background.xml"];
   expect(background).toContain("<solid");
+  // Pressing the card shows a ripple.
+  expect(background).toContain("<ripple");
   for (const contents of Object.values(files)) {
     expect(contents.toLowerCase()).not.toContain("gradient");
   }
