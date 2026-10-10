@@ -13,6 +13,7 @@
  * from R2 and compares bytes. --delete-source then removes only the verified source objects.
  * Re-running is safe: an upload overwrites the same key with the same bytes.
  */
+import { Buffer } from "node:buffer";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
