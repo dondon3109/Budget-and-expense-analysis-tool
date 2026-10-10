@@ -20,6 +20,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: the Android mic widget now drops onto the home screen as the full 3x1 pill with its title visible, shows a ripple when pressed, and its hint reads "Tap and say what you spent or earned".
 - Mobile: the assistant's consent is a compact screen over your conversations with a Privacy Policy link and a Not now button, history is split into Text chats and Voice chats, the voice screen's orb and bars move while it listens and speaks, and the message box no longer has a language pill.
 - Mobile: a flat Budgets screen with Month, Every month, and Occasions tabs, and rows and dividers instead of cards.
 - Mobile: a calmer Home. Total balance is now a plain headline, Subscriptions and Recent activity are simple lists, and the Analytics sections sit on the page with hairline dividers instead of each in its own card, so Safe to spend stands out.

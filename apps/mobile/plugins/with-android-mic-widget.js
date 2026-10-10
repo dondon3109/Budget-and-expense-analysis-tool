@@ -151,9 +151,11 @@ function widgetInfoXml() {
   return [
     '<?xml version="1.0" encoding="utf-8"?>',
     `<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"`,
-    '  android:minWidth="48dp"',
+    // Drops onto the home screen as the full 3x1 pill (title and hint visible);
+    // it still shrinks to a bare mic circle at 1x1.
+    '  android:minWidth="180dp"',
     '  android:minHeight="48dp"',
-    '  android:targetCellWidth="1"',
+    '  android:targetCellWidth="3"',
     '  android:targetCellHeight="1"',
     '  android:resizeMode="horizontal|vertical"',
     '  android:minResizeWidth="48dp"',
@@ -271,12 +273,17 @@ function widgetLayoutXml() {
 function widgetBackgroundXml() {
   return [
     '<?xml version="1.0" encoding="utf-8"?>',
-    "<!-- Solid surface card with a hairline border. -->",
-    '<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">',
-    '  <corners android:radius="28dp" />',
-    '  <solid android:color="@color/zoption_mic_widget_surface" />',
-    '  <stroke android:width="1dp" android:color="@color/zoption_mic_widget_border" />',
-    "</shape>",
+    "<!-- Solid surface card with a hairline border; the ripple is the press feedback. -->",
+    '<ripple xmlns:android="http://schemas.android.com/apk/res/android"',
+    '  android:color="@color/zoption_mic_widget_border">',
+    "  <item>",
+    '    <shape android:shape="rectangle">',
+    '      <corners android:radius="28dp" />',
+    '      <solid android:color="@color/zoption_mic_widget_surface" />',
+    '      <stroke android:width="1dp" android:color="@color/zoption_mic_widget_border" />',
+    "    </shape>",
+    "  </item>",
+    "</ripple>",
     "",
   ].join("\n");
 }
@@ -300,7 +307,7 @@ function widgetStringsXml() {
     '  <string name="zoption_mic_widget_description">Tap and say what you spent or earned. Zoption AI logs it without opening the app.</string>',
     '  <string name="zoption_mic_widget_tap_hint">Record a voice note for Zoption</string>',
     '  <string name="zoption_mic_widget_title">Zoption</string>',
-    '  <string name="zoption_mic_widget_hint">Tap and say what you spent</string>',
+    '  <string name="zoption_mic_widget_hint">Tap and say what you spent or earned</string>',
     "</resources>",
     "",
   ].join("\n");
