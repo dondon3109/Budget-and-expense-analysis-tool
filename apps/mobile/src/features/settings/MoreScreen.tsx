@@ -72,7 +72,12 @@ export function MoreScreen() {
   }, [sync]);
 
   return (
-    <Screen onRefresh={handleRefresh} refreshing={sync.status === "syncing"} title="More">
+    <Screen
+      onRefresh={handleRefresh}
+      refreshing={sync.status === "syncing"}
+      showHeading={false}
+      title="More"
+    >
       <GuestAccountCard />
       <MenuGroup title="Tools">
         <MenuRow
