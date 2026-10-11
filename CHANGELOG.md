@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Changed
+
+- Mobile: the More tab no longer shows a large "More" title, so the list starts higher.
+
 ## 3.10.0 — 2026-10-10
 
 ### Changed
