@@ -1,14 +1,14 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.50-beta",
-  "versionCode": 20350,
-  "filename": "zoption-beta-0.2.50.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.50.apk",
-  "sha256": "b560285dc40f49d58c5a466dc56f04be29764010027f132d6a15637ace40dbe9",
-  "sizeBytes": 139821199,
-  "sizeLabel": "139,821,199 bytes (133.34 MiB)",
-  "releaseDate": "2026-10-09",
-  "releaseDateLabel": "October 9, 2026",
+  "versionName": "0.2.51-beta",
+  "versionCode": 20351,
+  "filename": "zoption-beta-0.2.51.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.51.apk",
+  "sha256": "1c3f22aad21d089ed3fed8d991372240470f45a4a7f9a34aca66f921096e6ec4",
+  "sizeBytes": 139824025,
+  "sizeLabel": "139,824,025 bytes (133.35 MiB)",
+  "releaseDate": "2026-10-10",
+  "releaseDateLabel": "October 10, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
@@ -17,6 +17,7 @@
     "Tell the AI Assistant about several purchases at once and it drafts each one with its own Save button.",
     "Set budgets for a month, every month, or an occasion, with occasions shown on the calendar.",
     "The mobile calendar is now a full-width month grid with income, expenses, and budget left above it.",
-    "The assistant consent, history, and voice screens are tidier, and the voice orb now moves while it listens and speaks."
+    "The assistant consent, history, and voice screens are tidier, and the voice orb now moves while it listens and speaks.",
+    "The Android mic widget sits on the home screen as a full 3x1 pill with press feedback."
   ]
 }
