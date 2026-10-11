@@ -46,7 +46,7 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 
 ## Stack
 
-- TypeScript, Node 22+, pnpm 11 workspaces (`apps/*`, `packages/*`; `apps/stt-bridge` is a standalone Cloud Run service outside the workspace).
+- TypeScript, Node 22+, pnpm 11 workspaces (`apps/*`, `packages/*`).
 - Web: React 19 + Vite, TanStack Query. API: Hono on Cloudflare Workers, D1, Supabase Auth. Mobile: Expo + expo-router, encrypted SQLite. Shared: `@zoption/shared` zod schemas and domain rules.
 
 ## Where things live

@@ -1,6 +1,5 @@
 packages:
   - apps/*
-  - "!apps/stt-bridge"
   - packages/*
 
 allowBuilds:

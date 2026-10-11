@@ -99,7 +99,6 @@ pnpm lighthouse
 apps/web/          React/Vite frontend and authenticated UI
 apps/api/          Hono Cloudflare Worker and tenant-scoped API
 apps/mobile/       Expo (React Native) Android client with local workspace and sync outbox
-apps/stt-bridge/   Cloud Run Chirp 3 streaming bridge (not deployed)
 packages/shared/   Shared schemas, calculations, CSV, and domain types
 db/                Drizzle schema and forward-only migrations
 docs/              Architecture, testing, deployment, and product evidence

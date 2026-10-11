@@ -9,8 +9,6 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const PROJECT_PARENTS = ["apps", "packages"];
-// pnpm-workspace.yaml excludes apps/stt-bridge from the workspace.
-const EXCLUDED_PROJECTS = new Set([join(REPO_ROOT, "apps", "stt-bridge")]);
 const DEPENDENCY_FIELDS = [
   "dependencies",
   "devDependencies",
@@ -25,7 +23,7 @@ const projectDirs = [REPO_ROOT];
 for (const parent of PROJECT_PARENTS) {
   for (const entry of readdirSync(join(REPO_ROOT, parent), { withFileTypes: true })) {
     const projectDir = join(REPO_ROOT, parent, entry.name);
-    if (!entry.isDirectory() || EXCLUDED_PROJECTS.has(projectDir)) continue;
+    if (!entry.isDirectory()) continue;
     if (existsSync(join(projectDir, "package.json"))) projectDirs.push(projectDir);
   }
 }

@@ -54,7 +54,7 @@ const CREDENTIAL_EXPECTATION: Record<ProviderService, Record<string, boolean>> =
     meta: true,
     muse_spark: true,
   },
-  // google via Cloud Run bridge uses ADC (attached SA) — no admin credential forwarded at runtime; REST health check can use admin credential optionally
+  // google reads only a credential linked in the admin UI; there is no legacy Worker secret fallback
   stt: { cloudflare_workers_ai: false, google: false },
   tts: { fish_audio: true },
 };
@@ -327,18 +327,9 @@ export function createProviderRegistry(
           hasCredential = cred.source === "binding";
           details = hasCredential ? "Workers AI binding available" : "Workers AI binding missing";
         } else if (cfg.provider === "google") {
-          // Google can use an encrypted DB credential (API key / token) and/or Cloud Run bridge ADC
-          const bridgeUrl =
-            (env as unknown as Record<string, string | undefined>).STT_BRIDGE_URL?.trim() ??
-            (env as Bindings & { STT_BRIDGE_URL?: string }).STT_BRIDGE_URL?.trim();
           if (cred.source === "db") {
             hasCredential = true;
-            details = bridgeUrl
-              ? `Credential ••••${cred.last4} (encrypted) · Bridge connected`
-              : `Credential ••••${cred.last4} (encrypted)`;
-          } else if (bridgeUrl) {
-            hasCredential = true;
-            details = "Bridge configured (ADC in Cloud Run)";
+            details = `Credential ••••${cred.last4} (encrypted)`;
           } else {
             hasCredential = false;
             details =

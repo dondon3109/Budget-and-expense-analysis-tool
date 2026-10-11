@@ -29,7 +29,6 @@ export default tseslint.config(
       "**/.astro/**",
       ".lighthouseci/**",
       "tmp/**",
-      "apps/stt-bridge/**",
     ],
   },
   eslint.configs.recommended,

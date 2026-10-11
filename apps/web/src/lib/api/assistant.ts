@@ -142,7 +142,6 @@ export async function describeVoiceStreamFailure(
       payload.error === "gemini_missing_key" ||
       payload.error === "stt_not_streaming" ||
       payload.error === "stt_not_configured" ||
-      payload.error === "bridge_not_configured" ||
       payload.error === "rate_limit_exceeded"
     ) {
       return payload.message || "Live transcription is not available.";

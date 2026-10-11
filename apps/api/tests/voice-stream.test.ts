@@ -8,11 +8,7 @@ import { createTestApp } from "./helpers/test-app";
 
 beforeEach(() => vi.restoreAllMocks());
 
-function makeApp(
-  sttCfg: ProviderConfig,
-  bridgeUrl = "wss://bridge.example.com/stream",
-  envOverrides: Partial<Bindings> = {},
-) {
+function makeApp(sttCfg: ProviderConfig, envOverrides: Partial<Bindings> = {}) {
   // These tests exercise the transport, so the consent gate the route runs before the upgrade is
   // stubbed as satisfied and the env answers the Pro entitlement query. Both gates and the
   // free-tenant refusal are covered in voice-ticket.test.ts.
@@ -27,7 +23,6 @@ function makeApp(
       DB: {
         prepare: () => ({ bind: () => ({ first: async () => ({ source: "paypal" }) }) }),
       } as unknown as D1Database,
-      STT_BRIDGE_URL: bridgeUrl,
       ...envOverrides,
     },
   });
@@ -67,9 +62,9 @@ describe("GET /api/app/assistant/voice/stream", () => {
       id: "cfg-1",
       service: "stt",
       provider: "google",
-      model: "chirp_3",
-      displayName: "Google Chirp",
-      credentialId: null,
+      model: "gemini-3.5-transcribe-live",
+      displayName: "Gemini Live",
+      credentialId: "cred-google-key",
       enabled: true,
       isActive: true,
       priority: 1,
@@ -78,6 +73,11 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedBy: null,
     };
     const app = makeApp(sttCfg);
+    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
+      secret: "AIzaSyFakeGoogleApiKey1234567890",
+      last4: "7890",
+      source: "db",
+    });
     const res = await app.request("/stream", { method: "GET" });
     expect(res.status).toBe(426);
     const body = (await res.json()) as { error: string };
@@ -105,7 +105,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       headers: { Upgrade: "websocket", Connection: "Upgrade" },
     });
     // Note: without real WebSocketPair, Hono will return 426? But our mock getActive returns cloudflare, so we expect 400 stt_not_streaming
-    // In test env, WebSocketPair not fully mocked, but route checks provider first before bridgeUrl, so 400
+    // In test env, WebSocketPair not fully mocked, but route checks provider first, so 400
     expect([400, 426, 101].includes(res.status)).toBe(true);
     if (res.status === 400) {
       const body = (await res.json()) as { error: string };
@@ -113,7 +113,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
     }
   });
 
-  it("returns bridge_not_configured when STT_BRIDGE_URL missing for google", async () => {
+  it("rejects chirp_3 on the streaming endpoint (use POST)", async () => {
     const sttCfg: ProviderConfig = {
       id: "cfg-3",
       service: "stt",
@@ -128,34 +128,17 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     const res = await app.request("/stream", {
       method: "GET",
       headers: { Upgrade: "websocket", Connection: "Upgrade" },
     });
-    // Should be 503 bridge_not_configured before attempting WS upgrade
-    expect([503, 426].includes(res.status)).toBe(true);
-    if (res.status === 503) {
-      const body = (await res.json()) as { error: string };
-      expect(body.error).toBe("bridge_not_configured");
-    }
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toBe("stt_not_streaming");
   });
 
-  it("latency instrumentation fields are documented (t_mic_start → t_first_partial)", () => {
-    // Bridge mock emits t_mic_start, t_stream_open, t_first_partial, t_final
-    // Worker forwards with latency_* derived
-    const expectedFields = [
-      "t_mic_start",
-      "t_stream_open",
-      "t_first_partial",
-      "t_final",
-      "latency_mic_to_first_partial",
-      "latency_mic_to_final",
-    ];
-    expectedFields.forEach((f) => expect(typeof f).toBe("string"));
-  });
-
-  it("routes to Gemini Live WebSocket when Google API key is configured (no bridge required)", async () => {
+  it("routes to Gemini Live WebSocket when Google API key is configured", async () => {
     const sttCfg: ProviderConfig = {
       id: "cfg-gemini-live",
       service: "stt",
@@ -170,7 +153,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, ""); // Empty bridgeUrl!
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AIzaSyFakeGoogleApiKey1234567890",
       last4: "7890",
@@ -314,7 +297,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "", { ASSISTANT_VOICE_STREAM_TIMEOUT_MS: "500" });
+    const app = makeApp(sttCfg, { ASSISTANT_VOICE_STREAM_TIMEOUT_MS: "500" });
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AIzaSyFakeGoogleApiKey1234567890",
       last4: "7890",
@@ -380,7 +363,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AIzaSyFakeGoogleApiKey1234567890",
       last4: "7890",
@@ -452,7 +435,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AIzaSyFakeGoogleApiKey1234567890",
       last4: "7890",
@@ -482,7 +465,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: null,
       last4: null,
@@ -512,7 +495,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AQ.AbFakeAuthKeyThatIsLongEnough1234567890r2PQ",
       last4: "r2PQ",
@@ -558,7 +541,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AIzaSyFakeGoogleApiKey1234567890",
       last4: "7890",
@@ -609,7 +592,7 @@ describe("GET /api/app/assistant/voice/stream", () => {
       updatedAt: "2026-08-01T00:00:00.000Z",
       updatedBy: null,
     };
-    const app = makeApp(sttCfg, "");
+    const app = makeApp(sttCfg);
     vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
       secret: "AIzaSyFakeGoogleApiKey1234567890",
       last4: "7890",
@@ -650,361 +633,6 @@ describe("GET /api/app/assistant/voice/stream", () => {
       expect(serverWs.close).toHaveBeenCalledWith(1011, "gemini_connect_failed");
     } finally {
       vi.useRealTimers();
-      globalThis.fetch = originalFetch;
-      delete (globalThis as any).WebSocketPair;
-    }
-  });
-
-  it("routes to Cloud Run bridge with 'x-language': 'auto' unless a known language is asked for", async () => {
-    const sttCfg: ProviderConfig = {
-      id: "cfg-bridge",
-      service: "stt",
-      provider: "google",
-      model: "chirp_3",
-      displayName: "Google Chirp",
-      credentialId: null,
-      enabled: true,
-      isActive: true,
-      priority: 1,
-      createdAt: "2026-08-01T00:00:00.000Z",
-      updatedAt: "2026-08-01T00:00:00.000Z",
-      updatedBy: null,
-    };
-    const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
-    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
-      secret: null,
-      last4: null,
-      source: "none",
-    });
-
-    let interceptedHeaders: Headers | undefined;
-    let interceptedUrl = "";
-    const mockBridgeWs = {
-      readyState: 1,
-      binaryType: "blob",
-      send: vi.fn(),
-      addEventListener: vi.fn(),
-      close: vi.fn(),
-      accept: vi.fn(),
-    };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn<typeof fetch>(async (url, init) => {
-      interceptedUrl = String(url);
-      interceptedHeaders = new Headers(init?.headers);
-      return {
-        status: 101,
-        webSocket: mockBridgeWs,
-        headers: new Headers(),
-      } as unknown as Response;
-    });
-
-    (globalThis as any).WebSocketPair = class {
-      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
-      1 = {
-        binaryType: "blob",
-        accept: vi.fn(),
-        addEventListener: vi.fn(),
-        close: vi.fn(),
-        send: vi.fn(),
-        readyState: 1,
-      };
-    };
-
-    try {
-      // Auto is the default choice for every client, so it must reach the bridge
-      // as auto rather than being collapsed into English.
-      for (const [query, expected] of [
-        ["", "auto"],
-        ["?lang=auto", "auto"],
-        ["?lang=es", "auto"],
-      ] as const) {
-        const res = await app.request(`/stream${query}`, {
-          method: "GET",
-          headers: { Upgrade: "websocket", Connection: "Upgrade" },
-        });
-        expect(res.status).toBe(101);
-        expect(interceptedHeaders?.get("x-language")).toBe(expected);
-      }
-      expect(interceptedUrl).toBe("https://bridge.example.com/stream");
-      expect(interceptedHeaders?.get("Upgrade")).toBe("websocket");
-      expect(mockBridgeWs.accept).toHaveBeenCalled();
-    } finally {
-      globalThis.fetch = originalFetch;
-      delete (globalThis as any).WebSocketPair;
-    }
-  });
-
-  it("passes 'x-language': 'fil' to Cloud Run bridge when ?lang=fil is requested", async () => {
-    const sttCfg: ProviderConfig = {
-      id: "cfg-bridge-fil",
-      service: "stt",
-      provider: "google",
-      model: "chirp_3",
-      displayName: "Google Chirp",
-      credentialId: null,
-      enabled: true,
-      isActive: true,
-      priority: 1,
-      createdAt: "2026-08-01T00:00:00.000Z",
-      updatedAt: "2026-08-01T00:00:00.000Z",
-      updatedBy: null,
-    };
-    const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
-    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
-      secret: null,
-      last4: null,
-      source: "none",
-    });
-
-    let interceptedHeaders: Headers | undefined;
-    const mockBridgeWs = {
-      readyState: 1,
-      binaryType: "blob",
-      send: vi.fn(),
-      addEventListener: vi.fn(),
-      close: vi.fn(),
-      accept: vi.fn(),
-    };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
-      interceptedHeaders = new Headers(init?.headers);
-      return {
-        status: 101,
-        webSocket: mockBridgeWs,
-        headers: new Headers(),
-      } as unknown as Response;
-    });
-
-    (globalThis as any).WebSocketPair = class {
-      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
-      1 = {
-        binaryType: "blob",
-        accept: vi.fn(),
-        addEventListener: vi.fn(),
-        close: vi.fn(),
-        send: vi.fn(),
-        readyState: 1,
-      };
-    };
-
-    try {
-      const res = await app.request("/stream?lang=fil", {
-        method: "GET",
-        headers: { Upgrade: "websocket", Connection: "Upgrade" },
-      });
-      expect(res.status).toBe(101);
-      expect(interceptedHeaders?.get("x-language")).toBe("fil");
-    } finally {
-      globalThis.fetch = originalFetch;
-      delete (globalThis as any).WebSocketPair;
-    }
-  });
-
-  it("passes 'x-language': 'fil' to Cloud Run bridge when ?lang=tl is requested", async () => {
-    const sttCfg: ProviderConfig = {
-      id: "cfg-bridge-tl",
-      service: "stt",
-      provider: "google",
-      model: "chirp_3",
-      displayName: "Google Chirp",
-      credentialId: null,
-      enabled: true,
-      isActive: true,
-      priority: 1,
-      createdAt: "2026-08-01T00:00:00.000Z",
-      updatedAt: "2026-08-01T00:00:00.000Z",
-      updatedBy: null,
-    };
-    const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
-    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
-      secret: null,
-      last4: null,
-      source: "none",
-    });
-
-    let interceptedHeaders: Headers | undefined;
-    const mockBridgeWs = {
-      readyState: 1,
-      binaryType: "blob",
-      send: vi.fn(),
-      addEventListener: vi.fn(),
-      close: vi.fn(),
-      accept: vi.fn(),
-    };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn<typeof fetch>(async (_url, init) => {
-      interceptedHeaders = new Headers(init?.headers);
-      return {
-        status: 101,
-        webSocket: mockBridgeWs,
-        headers: new Headers(),
-      } as unknown as Response;
-    });
-
-    (globalThis as any).WebSocketPair = class {
-      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
-      1 = {
-        binaryType: "blob",
-        accept: vi.fn(),
-        addEventListener: vi.fn(),
-        close: vi.fn(),
-        send: vi.fn(),
-        readyState: 1,
-      };
-    };
-
-    try {
-      const res = await app.request("/stream?lang=tl", {
-        method: "GET",
-        headers: { Upgrade: "websocket", Connection: "Upgrade" },
-      });
-      expect(res.status).toBe(101);
-      expect(interceptedHeaders?.get("x-language")).toBe("fil");
-    } finally {
-      globalThis.fetch = originalFetch;
-      delete (globalThis as any).WebSocketPair;
-    }
-  });
-
-  it("proxies messages between client and Cloud Run bridge", async () => {
-    const sttCfg: ProviderConfig = {
-      id: "cfg-bridge-proxy",
-      service: "stt",
-      provider: "google",
-      model: "chirp_3",
-      displayName: "Google Chirp",
-      credentialId: null,
-      enabled: true,
-      isActive: true,
-      priority: 1,
-      createdAt: "2026-08-01T00:00:00.000Z",
-      updatedAt: "2026-08-01T00:00:00.000Z",
-      updatedBy: null,
-    };
-    const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
-    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
-      secret: null,
-      last4: null,
-      source: "none",
-    });
-
-    const bridgeHandlers = new Map();
-    const serverHandlers = new Map();
-    const mockBridgeWs = {
-      readyState: 1,
-      binaryType: "blob",
-      send: vi.fn(),
-      addEventListener: vi.fn((event, listener) => bridgeHandlers.set(event, listener)),
-      close: vi.fn(),
-      accept: vi.fn(),
-    };
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn<typeof fetch>(
-      async () =>
-        ({
-          status: 101,
-          webSocket: mockBridgeWs,
-          headers: new Headers(),
-        }) as unknown as Response,
-    );
-
-    const serverWs: any = {
-      binaryType: "blob",
-      accept: vi.fn(),
-      addEventListener: vi.fn((event, listener) => serverHandlers.set(event, listener)),
-      close: vi.fn(),
-      send: vi.fn(),
-      readyState: 1,
-    };
-    (globalThis as any).WebSocketPair = class {
-      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
-      1 = serverWs;
-    };
-
-    try {
-      const res = await app.request("/stream", {
-        method: "GET",
-        headers: { Upgrade: "websocket", Connection: "Upgrade" },
-      });
-      expect(res.status).toBe(101);
-
-      // Client -> Bridge message forwarding
-      serverHandlers.get("message")({ data: "pcm_audio_chunk" });
-      expect(mockBridgeWs.send).toHaveBeenCalledWith("pcm_audio_chunk");
-
-      // Bridge -> Client partial transcript with latency tracking
-      bridgeHandlers.get("message")({
-        data: JSON.stringify({ type: "partial", transcript: "bayad sa kuryente" }),
-      });
-      expect(JSON.parse(serverWs.send.mock.calls[0][0])).toMatchObject({
-        type: "partial",
-        transcript: "bayad sa kuryente",
-        t_worker_first_partial: expect.any(Number),
-        latency_worker_to_first_partial: expect.any(Number),
-      });
-
-      // Bridge -> Client close forwarding
-      bridgeHandlers.get("close")();
-      expect(serverWs.close).toHaveBeenCalledWith(1000);
-    } finally {
-      globalThis.fetch = originalFetch;
-      delete (globalThis as any).WebSocketPair;
-    }
-  });
-
-  it("handles Cloud Run bridge connection failure gracefully", async () => {
-    const sttCfg: ProviderConfig = {
-      id: "cfg-bridge-fail",
-      service: "stt",
-      provider: "google",
-      model: "chirp_3",
-      displayName: "Google Chirp",
-      credentialId: null,
-      enabled: true,
-      isActive: true,
-      priority: 1,
-      createdAt: "2026-08-01T00:00:00.000Z",
-      updatedAt: "2026-08-01T00:00:00.000Z",
-      updatedBy: null,
-    };
-    const app = makeApp(sttCfg, "wss://bridge.example.com/stream");
-    vi.spyOn(providerRegistry, "getDecryptedSecret").mockResolvedValue({
-      secret: null,
-      last4: null,
-      source: "none",
-    });
-
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = vi.fn<typeof fetch>(
-      async () =>
-        ({
-          status: 502,
-          webSocket: null,
-          headers: new Headers(),
-        }) as unknown as Response,
-    );
-
-    const serverWs: any = {
-      binaryType: "blob",
-      accept: vi.fn(),
-      addEventListener: vi.fn(),
-      close: vi.fn(),
-      send: vi.fn(),
-      readyState: 1,
-    };
-    (globalThis as any).WebSocketPair = class {
-      0 = { accept: vi.fn(), addEventListener: vi.fn(), close: vi.fn() };
-      1 = serverWs;
-    };
-
-    try {
-      const res = await app.request("/stream", {
-        method: "GET",
-        headers: { Upgrade: "websocket", Connection: "Upgrade" },
-      });
-      expect(res.status).toBe(101);
-      expect(serverWs.send).toHaveBeenCalledWith(expect.stringContaining("bridge_connect_failed"));
-    } finally {
       globalThis.fetch = originalFetch;
       delete (globalThis as any).WebSocketPair;
     }

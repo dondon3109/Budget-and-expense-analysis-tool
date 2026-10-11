@@ -19,10 +19,10 @@ Last reviewed: 2026-09-23.
 
 ## Freeze
 
-| System                       | Flag             | Reconsider when                                                                                                                                                                                                                                                                                                     |
-| ---------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Expo OTA publishing          | Removed          | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                                                                                                                                                                               |
-| Cloud Run Chirp 3 STT bridge | Freeze unshipped | Not deployed: the tracked `wrangler.deploy.jsonc` sets no `STT_BRIDGE_URL`. Realtime transcription does not need it, because Gemini Live connects from the Worker directly (`docs/voice-live.md`). Deploy the bridge only if measured `chirp_3` usage beats Gemini Live and Workers AI Whisper on latency and cost. |
+| System                       | Flag    | Reconsider when                                                                                                                                                                                  |
+| ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Expo OTA publishing          | Removed | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                                                            |
+| Cloud Run Chirp 3 STT bridge | Removed | Never deployed and removed with `apps/stt-bridge`. Realtime transcription runs on Gemini Live from the Worker (`docs/voice-live.md`); `chirp_3` stays a batch-only `POST /transcriptions` model. |
 
 ## Review before further investment
 
