@@ -4,39 +4,86 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+## 3.10.0 — 2026-10-10
+
+### Changed
+
+- Mobile: the Android mic widget now drops onto the home screen as the full 3x1 pill with its title visible, shows a ripple when pressed, and its hint reads "Tap and say what you spent or earned".
+
+## 3.9.0 — 2026-10-09
+
 ### Added
 
 - Web and mobile: budgets for a specific month, for every month, or for an occasion such as a birthday party. A month falls back to your every-month limit for any category it does not set itself, and an occasion counts only spending on its day. Occasions show on the calendar.
 - Mobile: the calendar is a full-width ruled month grid with the month's income, expenses, and budget left above it, on both the Calendar and the Transactions tab.
-- Mobile: Home now lists your upcoming subscriptions below Safe to spend, soonest renewal first.
+
+### Changed
+
+- Mobile: a flat Budgets screen with Month, Every month, and Occasions tabs, and rows and dividers instead of cards.
+
+### Fixed
+
+- Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
+- Mobile: Budgets now offers every active expense category, including custom ones that locked when your Pro plan or free trial ended, so "Debt payment" is no longer the only choice.
+
+## 3.8.0 — 2026-10-09
+
+### Changed
+
+- Mobile: the assistant's consent is a compact screen over your conversations with a Privacy Policy link and a Not now button, history is split into Text chats and Voice chats, the voice screen's orb and bars move while it listens and speaks, and the message box no longer has a language pill.
+
+### Fixed
+
+- Web: the collapsed sidebar on the assistant page now gives its links and the Sign out button names that screen readers can read.
+
+## 3.7.1 — 2026-10-09
+
+### Changed
+
+- Mobile: a calmer Home. Total balance is now a plain headline, Subscriptions and Recent activity are simple lists, and the Analytics sections sit on the page with hairline dividers instead of each in its own card, so Safe to spend stands out.
+
+### Fixed
+
+- Mobile: fixed a blank screen on launch in 0.2.48-beta, caused by a styling library update.
+- Mobile: the Analytics cash flow chart now shows even for a period with no records.
+- Mobile: the status bar icons no longer turn white while the Home dropdown is open.
+
+## 3.7.0 — 2026-10-08
+
+### Added
+
 - Web and mobile: when you tell the AI Assistant about several purchases in one message ("50 for gas and 40 for gym"), it now prepares a draft for each one right away, with its own Save button, instead of only the first.
 - Web and mobile: the AI Assistant's consent screen now says it can propose changes to your records and that only your Save or Confirm tap applies them, so everyone is asked to accept the updated consent once. The Terms of Service and Privacy Policy say the same.
+
+### Changed
+
+- Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
+
+### Fixed
+
+- Mobile: the tap sound now plays on every tap. A finished sound clip was not rewound in time, so only the first tap in a while made a sound, and most controls never asked for one.
+- Web and mobile: adding notes to a transaction that was titled by its category, such as "Uncategorized", now updates its title to the note instead of keeping the category name.
+
+## 3.6.0 — 2026-10-05
+
+### Added
+
 - Three new guides on zoption.site: how to budget remittances as an OFW family, debt snowball vs avalanche, and how to budget irregular income as a freelancer.
+
+## 3.5.0 — 2026-10-05
+
+### Added
+
 - Web and mobile: the AI Assistant can now also add, rename, or archive a category, set a monthly category budget, and edit or delete a transaction you already recorded, when you ask. Each change shows on a card and happens only after you tap Confirm.
 - Web and mobile: ask the AI Assistant how to do something in Zoption, such as importing a statement or setting a budget, and it answers with the page and control to use, the same guidance as Help & contact.
 - Mobile: a Calendar tab on Transactions shows each day's income and expenses in a compact month grid; tap a day to see its transactions below.
 - Mobile: the Home title is now a dropdown. Pick Remittance to open the remittance calculator on its own; the Overview / Analytics switch sits centered at the top of the Home view.
 - Mobile: a cleaner Goals page with a proper title, a single add button, a saved-so-far summary, and the amount left on each goal.
-
-### Changed
-
-- Mobile: the Android mic widget now drops onto the home screen as the full 3x1 pill with its title visible, shows a ripple when pressed, and its hint reads "Tap and say what you spent or earned".
-- Mobile: the assistant's consent is a compact screen over your conversations with a Privacy Policy link and a Not now button, history is split into Text chats and Voice chats, the voice screen's orb and bars move while it listens and speaks, and the message box no longer has a language pill.
-- Mobile: a flat Budgets screen with Month, Every month, and Occasions tabs, and rows and dividers instead of cards.
-- Mobile: a calmer Home. Total balance is now a plain headline, Subscriptions and Recent activity are simple lists, and the Analytics sections sit on the page with hairline dividers instead of each in its own card, so Safe to spend stands out.
-- Mobile: a more compact layout, with smaller text, tighter spacing, rounder-but-smaller cards, and a slimmer tab bar, so more fits on each screen like other budgeting apps.
+- Mobile: Home now lists your upcoming subscriptions below Safe to spend, soonest renewal first.
 
 ### Fixed
 
-- Web: the collapsed sidebar on the assistant page now gives its links and the Sign out button names that screen readers can read.
-- Mobile: the tap sound now plays on every tap. A finished sound clip was not rewound in time, so only the first tap in a while made a sound, and most controls never asked for one.
-- Mobile: fixed a blank screen on launch in 0.2.48-beta, caused by a styling library update.
-- Mobile: the Analytics cash flow chart now shows even for a period with no records.
-- Mobile: the status bar icons no longer turn white while the Home dropdown is open.
 - Web and mobile: a new account with no balance or budget no longer shows "You've used up what's safe to spend" on the Safe to spend card; it asks you to add a balance or first transaction instead.
-- Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
-- Mobile: Budgets now offers every active expense category, including custom ones that locked when your Pro plan or free trial ended, so "Debt payment" is no longer the only choice.
-- Web and mobile: adding notes to a transaction that was titled by its category, such as "Uncategorized", now updates its title to the note instead of keeping the category name.
 
 ## 3.4.0 — 2026-10-04
 
