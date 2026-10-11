@@ -23,8 +23,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
-- Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
-- Mobile: Budgets now offers every active expense category, including custom ones that locked when your Pro plan or free trial ended, so "Debt payment" is no longer the only choice.
+- Mobile: the tap sound now plays on every tap. A finished sound clip was not rewound in time, so only the first tap in a while made a sound, and most controls never asked for one.
 
 ## 3.8.0 — 2026-10-09
 
@@ -37,6 +36,10 @@ All notable product changes are documented here.
 - Web: the collapsed sidebar on the assistant page now gives its links and the Sign out button names that screen readers can read.
 
 ## 3.7.1 — 2026-10-09
+
+### Added
+
+- Mobile: Home now lists your upcoming subscriptions below Safe to spend, soonest renewal first.
 
 ### Changed
 
@@ -61,7 +64,8 @@ All notable product changes are documented here.
 
 ### Fixed
 
-- Mobile: the tap sound now plays on every tap. A finished sound clip was not rewound in time, so only the first tap in a while made a sound, and most controls never asked for one.
+- Mobile: the keyboard no longer covers the amount and Save button in Add budget and the other bottom sheets, so category budgets can be saved again.
+- Mobile: Budgets now offers every active expense category, including custom ones that locked when your Pro plan or free trial ended, so "Debt payment" is no longer the only choice.
 - Web and mobile: adding notes to a transaction that was titled by its category, such as "Uncategorized", now updates its title to the note instead of keeping the category name.
 
 ## 3.6.0 — 2026-10-05
@@ -79,7 +83,6 @@ All notable product changes are documented here.
 - Mobile: a Calendar tab on Transactions shows each day's income and expenses in a compact month grid; tap a day to see its transactions below.
 - Mobile: the Home title is now a dropdown. Pick Remittance to open the remittance calculator on its own; the Overview / Analytics switch sits centered at the top of the Home view.
 - Mobile: a cleaner Goals page with a proper title, a single add button, a saved-so-far summary, and the amount left on each goal.
-- Mobile: Home now lists your upcoming subscriptions below Safe to spend, soonest renewal first.
 
 ### Fixed
 
