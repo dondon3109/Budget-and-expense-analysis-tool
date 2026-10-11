@@ -526,7 +526,7 @@ export function AddConfigDialog({
 
                 {credMode === "none" && isGoogle && (
                   <small className="field-hint">
-                    Uses Google ADC configured in Cloud Run bridge (Option B).
+                    Gemini Live needs a Google AI Studio API key credential linked here.
                   </small>
                 )}
               </div>
@@ -756,7 +756,7 @@ export function EditConfigDialog({
 
             {credMode === "none" && isGoogle && (
               <small className="field-hint">
-                Uses Google ADC configured in Cloud Run bridge (Option B).
+                Gemini Live needs a Google AI Studio API key credential linked here.
               </small>
             )}
           </div>

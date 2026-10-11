@@ -2,7 +2,7 @@
 
 **Status:** Live in production (Phases 1-3). Batch `POST /transcriptions` remains fallback.
 
-This runbook covers the realtime path `Browser/Mobile --WSS--> Worker /api/app/assistant/voice/stream --WSS--> Gemini Live` using `gemini-3.5-transcribe-live`. The older Cloud Run `chirp_3` bridge (`docs/realtime-stt-bridge.md`) is still supported for `chirp_3` but is not required for Gemini Live.
+This runbook covers the realtime path `Browser/Mobile --WSS--> Worker /api/app/assistant/voice/stream --WSS--> Gemini Live` using `gemini-3.5-transcribe-live`. Gemini Live is the only realtime path; every other STT model is batch only.
 
 ## 1. When live is used
 
@@ -11,7 +11,7 @@ This runbook covers the realtime path `Browser/Mobile --WSS--> Worker /api/app/a
 | `@cf/openai/whisper-large-v3-turbo` (`cloudflare_workers_ai`) | `POST /transcriptions`                       | No — `/stream` returns `400 stt_not_streaming`             |
 | `gemini-3.5-transcribe` (`google`)                            | `POST /transcriptions` via `generateContent` | No — `/stream` returns `400 stt_not_streaming` (REST-only) |
 | `gemini-3.5-transcribe-live` (`google`)                       | `WSS /stream` → Gemini Bidi                  | **Yes**                                                    |
-| `chirp_3` (`google`)                                          | `WSS /stream` → `STT_BRIDGE_URL`             | Yes, via bridge (see `realtime-stt-bridge.md`)             |
+| `chirp_3` (`google`)                                          | `POST /transcriptions` via Speech V2 REST    | No — `/stream` returns `400 stt_not_streaming` (REST-only) |
 
 The Web client (`AssistantVoiceControl`) always starts **both** `MediaRecorder` (batch) and `AudioWorklet` (live) concurrently. If `liveTranscript` arrives, it is used directly; otherwise the `Blob` is posted to `/transcriptions`. Mobile (`expo-audio` `AudioStream` 16k Int16) does the same via `startMobileVoiceStream`.
 
@@ -21,9 +21,7 @@ The Web client (`AssistantVoiceControl`) always starts **both** `MediaRecorder` 
 
 2. **Create config** `STT → google / gemini-3.5-transcribe-live` → link the credential → **Activate**. This sets `provider_configs.is_active` and calls `providerRegistry.invalidate('stt')` (30s TTL otherwise).
 
-3. **No `STT_BRIDGE_URL` needed** for Gemini Live. Leave empty. For `chirp_3` set `STT_BRIDGE_URL=wss://stt-bridge-xxx.run.app/stream` (Cloud Run, ADC).
-
-4. **Worker env** `ASSISTANT_VOICE_ENABLED=true` (or `wrangler.jsonc` `vars`). `FISH_AUDIO_API_KEY` controls `speechAvailable` for TTS, not STT.
+3. **Worker env** `ASSISTANT_VOICE_ENABLED=true` (or `wrangler.jsonc` `vars`). `FISH_AUDIO_API_KEY` controls `speechAvailable` for TTS, not STT.
 
 Verify: `GET /api/app/admin/provider-configs/health` → `stt: google / gemini-3.5-transcribe-live ••••7890 (encrypted)` and `GET /api/app/assistant/voice/preferences` → `transcriptionModel: "gemini-3.5-transcribe-live"`.
 
@@ -33,14 +31,13 @@ Verify: `GET /api/app/admin/provider-configs/health` → `stt: google / gemini-3
 Web:  MediaStream 16kHz → AudioWorklet (patches/pcm-worklet.js, Int16) --ArrayBuffer(256ms)--> WSS /stream
 Mobile: AudioStream 16kHz Int16 PCM --base64 JSON {type:"audio",pcm}--> WSS /stream
 Worker:  Hono GET /stream (auth: single-use ?ticket= minted by POST /api/app/assistant/voice/ticket, tenant global)
-         → providerRegistry.getActive('stt') → getDecryptedSecret
-         → if live model + AI Studio key (AIza or AQ.) → wss://generativelanguage.googleapis.com/ws/.../BidiGenerateContent (key in x-goog-api-key)
+         → providerRegistry.getActive('stt'); not google or not the live model → 400 stt_not_streaming
+         → getDecryptedSecret; not an AI Studio key (AIza or AQ.) → 503 gemini_missing_key
+         → wss://generativelanguage.googleapis.com/ws/.../BidiGenerateContent (key in x-goog-api-key)
            setup: {model:"models/gemini-3.5-transcribe-live", generationConfig:{responseModalities:["TEXT"]}, inputAudioTranscription:{}}
            realtime_input: {media_chunks: [{mime_type:"audio/pcm;rate=16000", data:b64}]} (also sent as realtimeInput for compat)
            <- serverContent.inputTranscription.text || modelTurn.parts[].text (accumulated until turnComplete)
            -> browser {type:"partial"|"final", transcript, t_worker_first_partial, latency_worker_to_first_partial}
-         → else if chirp_3 → proxy to STT_BRIDGE_URL (gRPC streamingRecognize)
-         → else 400/503
 ```
 
 Batch fallback: `POST /transcriptions` → `google-stt.ts` REST `generateContent` for `gemini-3.5-transcribe` (blocks `gemini-3.5-transcribe-live` with `400 live_requires_stream`).
@@ -50,7 +47,6 @@ Batch fallback: `POST /transcriptions` → `google-stt.ts` REST `generateContent
 - `ASSISTANT_VOICE_ENABLED` — `true` to expose voice UI. Frontend `__ASSISTANT_VOICE_ENABLED__` (vite `define`) gates `AssistantVoiceControl`. Tests set `false`.
 - `ASSISTANT_VOICE_REVIEW_REQUIRED` — `true` (default) forces `submissionMode="review"`; `Send automatically` was removed. No `STT` impact.
 - `ASSISTANT_VOICE_STREAM_TIMEOUT_MS` — ceiling for one live socket, default `900000` (15 minutes). At the ceiling the Worker closes with code `1000`, so the session ends cleanly instead of showing a failure. Clients do not auto-reconnect; starting a new session mints a fresh single-use ticket.
-- `STT_BRIDGE_URL` — only for `chirp_3`. Empty for Gemini Live.
 - `GOOGLE_STT_API_KEY` / `GOOGLE_CLOUD_PROJECT` — legacy env fallbacks (migrate to DB credential).
 
 ## 5. Testing
@@ -68,9 +64,8 @@ Worker emits `t_worker_first_partial` and `latency_worker_to_first_partial` (`Da
 
 | Symptom                                         | Code                                                                                                                        | Fix                                                                                                                                                                                                                                                       |
 | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `400 stt_not_streaming` on `/stream`            | active provider is `cloudflare` or `gemini-3.5-transcribe`                                                                  | Activate `gemini-3.5-transcribe-live`                                                                                                                                                                                                                     |
+| `400 stt_not_streaming` on `/stream`            | active provider is `cloudflare`, `gemini-3.5-transcribe`, or `chirp_3`                                                      | Activate `gemini-3.5-transcribe-live`                                                                                                                                                                                                                     |
 | `503 gemini_missing_key`                        | live model but credential is empty, OAuth (`ya29`), or not an AI Studio key                                                 | Link a Google AI Studio API key (`AIzaSy...` or `AQ....`)                                                                                                                                                                                                 |
-| `503 bridge_not_configured`                     | `chirp_3` without `STT_BRIDGE_URL`                                                                                          | Set `STT_BRIDGE_URL` or switch to Gemini Live                                                                                                                                                                                                             |
 | `WebSocket connection to voice stream failed.`  | Worker never completed the 101 handshake (auth/origin 4xx, or outbound Gemini `fetch()` used `wss://` which Workers reject) | Confirm the ticket from `POST /api/app/assistant/voice/ticket` (unknown, expired or replayed tickets return `401 invalid_voice_ticket`) and `ALLOWED_ORIGINS`; Worker now upgrades Gemini over `https://`. Check Worker logs for `gemini_connect_failed`. |
 | `1011 gemini_connect_failed`                    | key invalid, quota, or network                                                                                              | Check key, `generativelanguage` status, WAF                                                                                                                                                                                                               |
 | No `partial` but `final` arrives                | `AudioWorklet` fallback to `ScriptProcessor` with 4096 buffer                                                               | Expected 256ms chunks; check `audioContext.sampleRate` is 16000 (iOS may use 48000 — still sent as 16k, accuracy drops)                                                                                                                                   |
@@ -88,6 +83,5 @@ Every recording also captures `MediaRecorder` (web) or `AudioRecorder` file (mob
 
 - `createAuthMiddleware` (`auth.ts`) accepts the Supabase JWT only from the `Authorization` header. The stream uses a single-use 60-second ticket from `POST /api/app/assistant/voice/ticket` instead: redemption deletes the row, and an unknown, expired or replayed ticket returns `401 invalid_voice_ticket`.
 - Both the ticket route and `GET /stream` run `AssistantVoiceService.requireConsent` before any `providerRegistry` lookup, so an unconsented tenant gets `409 assistant_consent_required` or `409 assistant_voice_consent_required` and never reaches a provider. Google API key never touches the browser and reaches Google in the `x-goog-api-key` header, never the query string.
-- `STT_BRIDGE_URL` forwarding adds only `x-zoption-tenant` hash (8 chars), `x-zoption-user` hash (8 chars), `x-t-mic-start`, and `x-language` (`auto` | `en` | `fil`) — no PII, no transcript content to PostHog.
 
-See also: `docs/realtime-stt-bridge.md` (chirp_3 bridge), `docs/assistant.md` (assistant consent), `apps/api/src/assistant/google-stt.ts` (REST path).
+See also: `docs/assistant.md` (assistant consent), `apps/api/src/assistant/google-stt.ts` (REST path).

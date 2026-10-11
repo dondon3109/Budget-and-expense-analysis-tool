@@ -35,7 +35,7 @@ const CREDENTIAL_REQUIRED: Record<ProviderService, Record<string, boolean>> = {
     meta: true,
     muse_spark: true,
   },
-  // google via Cloud Run bridge uses ADC — no credential required at runtime
+  // google may be saved before its API key credential is linked; the voice routes then answer gemini_missing_key
   stt: { cloudflare_workers_ai: false, google: false },
   tts: { fish_audio: true },
 };
@@ -127,7 +127,7 @@ export function createAdminProviderConfigRoutes(
     if (needsCred && !credentialId) {
       throw new HttpError(400, "credential_required", "This provider requires a credential.");
     }
-    // cloudflare binding never uses a credential; google via bridge uses ADC (optional credential for REST health-check only)
+    // cloudflare binding never uses a credential
     if (body.data.provider === "cloudflare_workers_ai" && credentialId) {
       throw new HttpError(
         400,

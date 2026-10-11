@@ -58,7 +58,6 @@ export interface Bindings {
   FISH_AUDIO_API_KEY?: string;
   PROVIDER_CREDENTIAL_ENCRYPTION_KEY?: string;
   FISH_AUDIO_TTS_MODEL?: string;
-  STT_BRIDGE_URL?: string;
   POSTHOG_AI_OBSERVABILITY_ENABLED?: string;
   POSTHOG_HOST?: string;
   POSTHOG_PROJECT_TOKEN?: string;

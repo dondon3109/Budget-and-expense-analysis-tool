@@ -11,8 +11,7 @@ import {
  * Spike conclusion (2026-08-27): StreamingRecognize is gRPC-only and NOT viable
  * directly in Cloudflare Workers (Workers lack Node http2/gRPC). This adapter
  * uses REST `Recognize` (HTTP/JSON) which works in Workers for short utterances.
- * Full realtime streaming will require a proxy (e.g., Cloud Run gRPC bridge) or
- * use of Gemini Live WebSocket as a separate provider. See spike:
+ * Realtime streaming uses Gemini Live instead (routes/voice-stream.ts). See spike:
  * apps/api/tests/spike-google-grpc.test.ts
  *
  * Credential model (encrypted at rest, per spec #13):
