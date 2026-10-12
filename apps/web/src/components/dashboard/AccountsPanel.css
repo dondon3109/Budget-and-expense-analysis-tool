@@ -8,6 +8,8 @@
   margin-top: 28px;
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  /* The card keeps its own height; stretching it to the account list spread its lines apart. */
+  align-items: start;
   gap: 36px;
   padding-bottom: 28px;
   border-bottom: 1px solid var(--line);
@@ -15,10 +17,10 @@
 
 .dashboard-balance-total {
   min-width: 0;
+  min-height: 300px;
   padding: 28px 32px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   gap: 24px;
   border-radius: var(--radius-lg);
   color: var(--vault-text);
@@ -68,7 +70,8 @@
 
 .dashboard-balance-total > strong {
   display: block;
-  margin: 0 0 8px;
+  /* Holds the balance, trend, and other currencies together at the card's foot. */
+  margin: auto 0 8px;
   overflow-wrap: anywhere;
   font-size: clamp(32px, 3.2vw, 46px);
   font-weight: 650;
@@ -470,6 +473,10 @@
 
   .dashboard-balance {
     gap: 24px;
+  }
+
+  .dashboard-balance-total {
+    min-height: 0;
   }
 
   .dashboard-account-breakdown {
