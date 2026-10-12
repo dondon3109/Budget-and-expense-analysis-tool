@@ -89,6 +89,10 @@
   padding: 4px 24px;
 }
 
+.overview-stat:first-child {
+  padding-left: 0;
+}
+
 .overview-stat + .overview-stat::before {
   content: "";
   position: absolute;
@@ -426,6 +430,13 @@
 }
 
 /* Trend Panel */
+/* The chart's screen-reader table keeps its content width even as .sr-only, so clip it
+   horizontally; the margin leaves room for the edge controls' focus rings. */
+.trend-panel {
+  overflow-x: clip;
+  overflow-clip-margin: 8px;
+}
+
 .trend-panel-heading {
   align-items: flex-start;
 }
@@ -831,6 +842,14 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .overview-stat {
+    padding: 16px 24px;
+  }
+
+  .overview-stat:nth-child(odd) {
+    padding-left: 0;
+  }
+
   .overview-stat + .overview-stat::before {
     content: none;
   }
@@ -849,8 +868,8 @@
     content: "";
     position: absolute;
     top: 0;
-    right: 18px;
-    left: 18px;
+    right: 0;
+    left: 0;
     height: 1px;
     background: var(--line);
   }
@@ -936,29 +955,12 @@
 }
 
 @media (max-width: 470px) {
-  .overview-stat-bar {
-    grid-template-columns: 1fr;
-  }
-
   .overview-stat {
-    padding: 18px 20px;
+    padding-right: 12px;
   }
 
-  .overview-stat:nth-child(even)::before,
-  .overview-stat:nth-child(n + 3)::after {
-    content: none;
-  }
-
-  .overview-stat + .overview-stat::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 18px;
-    bottom: auto;
-    left: 18px;
-    width: auto;
-    height: 1px;
-    background: var(--line);
+  .overview-stat:nth-child(even) {
+    padding-left: 16px;
   }
 
   .donut-layout {
