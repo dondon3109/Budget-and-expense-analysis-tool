@@ -4,6 +4,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
 import { migrations } from "./migrations";
+import { LocalWorkspaceRepository } from "./repository";
 import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";
 
 function createRepository() {
@@ -34,7 +35,11 @@ function createRepository() {
     () => new Date("2026-08-13T16:00:00.000Z"),
     () => 0.5,
   );
-  return { native, repository };
+  return {
+    native,
+    repository,
+    reads: new LocalWorkspaceRepository(database as unknown as SQLiteDatabase),
+  };
 }
 
 describe("account currency chosen at creation", () => {
@@ -67,6 +72,38 @@ describe("account currency chosen at creation", () => {
 
     expect(native.prepare("SELECT currency FROM accounts WHERE id = ?").get(id)).toEqual({
       currency: "USD",
+    });
+  });
+});
+
+describe("a bank account holding several currencies", () => {
+  it("reads its balance in every currency it holds", async () => {
+    const { repository, reads } = createRepository();
+    const accountId = await repository.createAccount({ name: "Bank", type: "checking" }, "PHP");
+    const categoryId = await repository.createCategory({
+      name: "Salary",
+      kind: "income",
+      color: "#0F766E",
+    });
+    for (const [currency, amountMinor] of [
+      ["PHP", 50_000],
+      ["USD", 12_000],
+    ] as const) {
+      await repository.createTransaction({
+        kind: "income",
+        date: "2026-08-13",
+        description: "Opening balance",
+        amountMinor,
+        currency,
+        categoryId,
+        accountId,
+      });
+    }
+
+    expect(await reads.getAccountModeling(accountId)).toMatchObject({
+      currency: "PHP",
+      balanceMinor: 50_000,
+      balancesByCurrency: { PHP: 50_000, USD: 12_000 },
     });
   });
 });

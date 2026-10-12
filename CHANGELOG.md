@@ -8,6 +8,7 @@ All notable product changes are documented here.
 
 - New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
 - Bank and savings accounts can hold money in several currencies: pick the currency on each entry. Other accounts record only in their own currency.
+- Adjust balance on a bank or savings account picks the currency, so you can add a second currency (a USD balance in a PHP bank account) without a made-up entry. The mobile account editor lists the balance in every currency the account holds.
 
 ### Changed
 

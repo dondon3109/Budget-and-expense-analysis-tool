@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pinnedEntryCurrency } from "../src/accountTypes";
+import { heldCurrencies, pinnedEntryCurrency } from "../src/accountTypes";
 
 describe("pinnedEntryCurrency", () => {
   it("leaves the currency free when every account is a bank", () => {
@@ -24,5 +24,17 @@ describe("pinnedEntryCurrency", () => {
 
   it("ignores accounts that are not chosen yet", () => {
     expect(pinnedEntryCurrency([undefined, { type: "checking", currency: "PHP" }])).toBeNull();
+  });
+});
+
+describe("heldCurrencies", () => {
+  it("lists the account's own currency first, then others with a balance", () => {
+    expect(
+      heldCurrencies({ currency: "PHP", balancesByCurrency: { USD: 12_000, PHP: 0, EUR: 0 } }),
+    ).toEqual(["PHP", "USD"]);
+  });
+
+  it("holds only its own currency when it has no balances yet", () => {
+    expect(heldCurrencies({ currency: "USD" })).toEqual(["USD"]);
   });
 });

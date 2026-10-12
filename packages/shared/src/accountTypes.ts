@@ -1,4 +1,4 @@
-import type { Currency } from "./currencies";
+import { otherCurrenciesWithAmounts, type Currency, type CurrencyTotals } from "./currencies";
 
 // "other" is the plain default account; "checking" covers bank and debit card accounts.
 export const accountTypes = [
@@ -48,4 +48,18 @@ export function pinnedEntryCurrency(
     if (account && !holdsMultipleCurrencies(account.type)) return account.currency;
   }
   return null;
+}
+
+/**
+ * The currencies an account holds: its own first, then every other currency with a non-zero
+ * balance, which only a bank account can have.
+ */
+export function heldCurrencies(account: {
+  currency: Currency;
+  balancesByCurrency?: CurrencyTotals;
+}): Currency[] {
+  return [
+    account.currency,
+    ...otherCurrenciesWithAmounts(account.balancesByCurrency ?? {}, account.currency),
+  ];
 }

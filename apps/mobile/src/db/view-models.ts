@@ -4,6 +4,7 @@ import type {
   BudgetRecord,
   CategoryRequiredPlan,
   Currency,
+  CurrencyTotals,
   DebtStatus,
   DebtType,
   FinancialGoalStatus,
@@ -132,6 +133,8 @@ export interface LocalEventItem {
 export interface LocalAccountModeling {
   currency: Currency;
   balanceMinor: number;
+  /** Every currency's balance; only a bank account holds more than its own. */
+  balancesByCurrency: CurrencyTotals;
   interest: InterestSettings;
 }
 
