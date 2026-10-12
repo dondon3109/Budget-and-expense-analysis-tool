@@ -176,6 +176,40 @@
   gap: 7px;
 }
 
+/* Grouped fields (account edit, interest settings) stack like the form itself. */
+.transaction-form fieldset,
+.transaction-form .account-interest-settings {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  border: 0;
+}
+
+.transaction-form legend {
+  margin-bottom: 12px;
+  padding: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.transaction-form .checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.transaction-form .checkbox-inline > span {
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
 .transaction-form label > span,
 .new-category-form label > span,
 .new-category-form legend {
@@ -252,6 +286,15 @@
   border-radius: 10px;
   background: var(--surface);
   font-size: 12px;
+}
+
+.transaction-form .checkbox-inline input {
+  width: 18px;
+  min-height: 0;
+  height: 18px;
+  padding: 0;
+  flex: 0 0 auto;
+  accent-color: var(--action);
 }
 
 .transaction-form textarea {
