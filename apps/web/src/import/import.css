@@ -88,24 +88,23 @@
   gap: 18px;
 }
 
-.import-card,
+/* Steps are divided sections on the page; only the success state keeps a surface. */
+.import-card {
+  min-width: 0;
+  padding: 24px 0 8px;
+  border-top: 1px solid var(--line);
+}
+
 .import-success {
   min-width: 0;
   padding: 24px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
-/* Dimming the whole card with opacity blended its text toward the page behind it, which took
-   the step heading to 4.43:1 and the small print to 2.63:1 — both under AA. Muting the surface
-   and the step badge instead keeps the disabled read without touching text contrast. */
-.disabled-card {
-  border-color: var(--line);
   background: var(--surface-soft);
 }
 
+/* Dimming the whole card with opacity blended its text toward the page behind it, which took
+   the step heading to 4.43:1 and the small print to 2.63:1 — both under AA. Muting the step
+   badge and heading color instead keeps the disabled read without touching text contrast. */
 .disabled-card .import-step-heading > span {
   opacity: 0.6;
 }
@@ -865,10 +864,6 @@
 }
 
 @media (max-width: 760px) {
-  .import-card {
-    padding: 18px 14px;
-  }
-
   .mapping-grid,
   .import-source-controls,
   .bulk-category-controls {
