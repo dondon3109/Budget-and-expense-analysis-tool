@@ -30,7 +30,14 @@ vi.mock("../src/components/layout/AppShell", () => ({
 }));
 
 vi.mock("../src/components/calendar/CalendarDayPanel", () => ({
-  CalendarDayPanel: ({ date }: { date: string }) => <aside>Selected date: {date}</aside>,
+  CalendarDayPanel: ({ date, onAddEvent }: { date: string; onAddEvent: () => void }) => (
+    <aside>
+      Selected date: {date}
+      <button type="button" onClick={onAddEvent}>
+        Add event
+      </button>
+    </aside>
+  ),
 }));
 
 vi.mock("../src/components/transactions/TransactionForm", () => ({
@@ -151,7 +158,7 @@ describe("CalendarPage month views", () => {
     fireEvent.click(within(toggle).getByRole("button"));
     expect(screen.getByRole("heading", { name: "August 2026" })).toBeVisible();
     expect(screen.getByRole("grid", { name: "Calendar for 2026-08" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Add Event" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Upcoming" })).toBeVisible();
 
     const surface = container.querySelector(".calendar-surface");
     expect(surface).toContainElement(toggle);
@@ -193,7 +200,6 @@ describe("CalendarPage month views", () => {
     expect(screen.getByRole("grid", { name: "Calendar for 2026-07" })).toBeVisible();
     expect(screen.getByRole("grid", { name: "Calendar for 2026-08" })).toBeVisible();
     expect(screen.queryByRole("grid", { name: "Calendar for 2026-09" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Plan an activity for .*August 5, 2026/i)).toBeVisible();
   });
 
   it("opens the event form for the selected next-month date", async () => {
