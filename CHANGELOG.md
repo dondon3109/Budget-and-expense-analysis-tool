@@ -7,6 +7,12 @@ All notable product changes are documented here.
 ### Changed
 
 - Mobile: the More tab no longer shows a large "More" title, so the list starts higher.
+- Web: pages drop their descriptive subtitles and most card frames in favor of flat sections divided by thin rules, with rounded corners on the surfaces that remain. The calendar has one place to add events.
+
+### Fixed
+
+- Web: the Occasions budget list no longer shows another plan's category editor after switching tabs.
+- Web: focus rings on form fields no longer cover the text beneath them, the edit-account form lays out its grouped fields, and the dashboard no longer scrolls sideways on phones.
 
 ## 3.10.0 — 2026-10-10
 
