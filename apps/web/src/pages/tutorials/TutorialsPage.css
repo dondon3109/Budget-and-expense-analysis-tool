@@ -12,40 +12,15 @@
   align-items: stretch;
 }
 
-.tutorials-hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--brand-strong);
-  background-color: var(--brand-soft);
-  border: 1px solid var(--line);
-  border-radius: 9999px;
-  padding: 0.25rem 0.75rem;
-  margin-bottom: 1rem;
-  align-self: flex-start;
-}
-
 .tutorials-hero h1 {
   font-family: var(--font-display);
   font-size: clamp(34px, 3vw, 46px);
   font-weight: 600;
   letter-spacing: -0.04em;
   color: var(--ink);
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 1.75rem 0;
   line-height: 1.05;
   text-wrap: balance;
-}
-
-.tutorials-hero-sub {
-  font-size: 15px;
-  color: var(--muted);
-  max-width: 640px;
-  margin: 0 0 1.75rem 0;
-  line-height: 1.5;
 }
 
 .tutorials-search-bar {
@@ -72,7 +47,6 @@
   border-radius: 9999px;
   background-color: var(--surface);
   color: var(--ink);
-  box-shadow: var(--shadow-card);
 }
 
 .tutorials-clear-search {
@@ -120,17 +94,9 @@
   border-color: var(--brand);
 }
 
-.tutorials-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
 .tutorial-card {
-  background-color: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 28px 0;
+  border-top: 1px solid var(--line);
 }
 
 .tutorial-card-header {
@@ -231,8 +197,7 @@
 .tutorial-tip {
   margin-top: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background-color: var(--surface-muted);
-  border: 1px solid var(--subtle-border);
+  background-color: var(--surface-soft);
   border-radius: var(--radius-sm);
   font-size: 0.8125rem;
   color: var(--muted);
@@ -241,8 +206,6 @@
 
 .tutorial-card-footer {
   margin-top: 1.5rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--line);
   display: flex;
   justify-content: flex-end;
 }
@@ -256,8 +219,7 @@
 .tutorials-empty {
   text-align: center;
   padding: 3rem 1.5rem;
-  background-color: var(--surface);
-  border: 1px solid var(--line);
+  background-color: var(--surface-soft);
   border-radius: var(--radius-lg);
   color: var(--muted);
   display: flex;
@@ -267,9 +229,8 @@
 }
 
 .tutorials-help-banner {
-  margin-top: 3rem;
-  background-color: var(--surface);
-  border: 1px solid var(--line);
+  margin-top: 1rem;
+  background-color: var(--surface-soft);
   border-radius: var(--radius-lg);
   padding: 1.5rem 2rem;
   display: flex;
@@ -283,12 +244,6 @@
   font-size: 1.25rem;
   font-weight: 620;
   color: var(--ink);
-  margin: 0 0 0.25rem 0;
-}
-
-.tutorials-help-banner p {
-  font-size: 0.875rem;
-  color: var(--muted);
   margin: 0;
 }
 
@@ -302,10 +257,6 @@
   .tutorials-page {
     width: calc(100% - 32px);
     padding: 26px 0 40px;
-  }
-
-  .tutorial-card {
-    padding: 18px 16px;
   }
 
   .tutorials-category-pill {
