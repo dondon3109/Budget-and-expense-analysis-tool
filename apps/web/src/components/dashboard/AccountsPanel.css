@@ -471,17 +471,10 @@
     align-content: start;
     overflow-y: auto;
     /* The gutter is reserved up front so revealing the thumb never shifts the amounts, and the
-       padding keeps the thumb clear of them. The thumb shows only while pointing at or tabbing
-       through the list. */
+       padding keeps the thumb clear of them. */
     padding-right: 12px;
     scrollbar-gutter: stable;
     scrollbar-width: thin;
-    scrollbar-color: transparent transparent;
-  }
-
-  .dashboard-account-breakdown > ul:hover,
-  .dashboard-account-breakdown > ul:focus-within {
-    scrollbar-color: var(--line-strong) transparent;
   }
 
   .dashboard-account-breakdown:has(> .dashboard-account-form) {
