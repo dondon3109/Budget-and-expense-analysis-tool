@@ -59,7 +59,6 @@ export function ImportMappingStep({
         <span>2</span>
         <div>
           <strong>Match your bank export</strong>
-          <small>Choose the header, bank format, amount layout, and columns</small>
         </div>
       </div>
 
