@@ -392,7 +392,6 @@ describe("Profile dashboard account management", () => {
       stats.map((stat) => stat.querySelector(".overview-stat-heading > span")?.textContent),
     ).toEqual(["Income", "Expenses", "Transfer fees (all time)", "Remaining budget"]);
     expect(feeStat).toHaveTextContent("₱15");
-    expect(feeStat).toHaveTextContent("Across 2 fee-charged transfers");
   });
 
   it("keeps four summary sections while transfer fees are loading", async () => {
@@ -411,7 +410,6 @@ describe("Profile dashboard account management", () => {
 
     expect(stats).toHaveLength(4);
     expect(stats[2]).toHaveTextContent("Transfer fees (all time)");
-    expect(stats[2]).toHaveTextContent("Loading transfer fees…");
   });
 
   it("renders a zero state when no transfer fees are recorded", async () => {
@@ -437,7 +435,6 @@ describe("Profile dashboard account management", () => {
     const summary = await screen.findByRole("region", { name: "Monthly summary" });
     const feeStat = within(summary).getAllByRole("article")[2];
 
-    expect(feeStat).toHaveTextContent("No transfer fees recorded yet");
     expect(feeStat).toHaveTextContent("₱0");
   });
 

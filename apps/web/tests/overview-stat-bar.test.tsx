@@ -18,7 +18,6 @@ describe("OverviewStatBar", () => {
           {
             label: "Money in",
             amounts: [{ amountMinor: 1_000_000, currency: "PHP" }],
-            detail: "Income received this month",
             icon: ArrowDownRight,
             tone: "income",
             trend: { percentage: 12.5, comparison: "vs Jun", state: "positive" },
@@ -26,7 +25,6 @@ describe("OverviewStatBar", () => {
           {
             label: "Money out",
             amounts: [{ amountMinor: 250_000, currency: "PHP" }],
-            detail: "25% of monthly income",
             icon: ArrowUpRight,
             tone: "expense",
             trend: { percentage: -7.5, comparison: "vs Jun", state: "positive" },
@@ -34,7 +32,6 @@ describe("OverviewStatBar", () => {
           {
             label: "Net position",
             amounts: [{ amountMinor: -50_000, currency: "PHP" }],
-            detail: "After all recorded spending",
             icon: WalletCards,
             tone: "ink",
             trend: { percentage: 0, comparison: "vs Jun", state: "neutral" },
@@ -78,7 +75,6 @@ describe("OverviewStatBar", () => {
               { amountMinor: 1_000_000, currency: "PHP" },
               { amountMinor: 50_000, currency: "USD" },
             ],
-            detail: "Income received this month",
             icon: ArrowDownRight,
             tone: "income",
           },
