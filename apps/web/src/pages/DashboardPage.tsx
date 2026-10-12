@@ -27,7 +27,6 @@ import { ThankYouDialog } from "../components/common/ThankYouDialog";
 import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
-import { DashboardToolCards } from "../components/dashboard/DashboardToolCards";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalChecklist";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
@@ -410,7 +409,6 @@ export function DashboardPage() {
             <h1 ref={dashboardHeadingRef} tabIndex={-1}>
               Dashboard
             </h1>
-            <p>Income, spending, and what is left this month.</p>
           </div>
           <div className="header-actions dashboard-header-actions">
             <MonthSelector
@@ -550,7 +548,6 @@ export function DashboardPage() {
                 }
               />
             )}
-            <DashboardToolCards />
             {goalConfig.emphasis === "recent_transactions" && transactionHistory}
             <div className="dashboard-grid">
               {sectionOrder.map((name) => (

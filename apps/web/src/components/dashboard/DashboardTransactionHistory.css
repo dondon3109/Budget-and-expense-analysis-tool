@@ -1,12 +1,8 @@
 /* All-time transaction history shown on the Profile dashboard. */
 
 .dashboard-history {
-  margin-top: 20px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  margin-top: 28px;
+  border-top: 1px solid var(--line);
 }
 
 .dashboard-history-heading {

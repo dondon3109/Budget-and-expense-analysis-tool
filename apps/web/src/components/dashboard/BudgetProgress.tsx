@@ -14,7 +14,6 @@ export function BudgetProgress({ data, month, monthLabel }: Props) {
     <section className="panel budget-panel" aria-labelledby="budget-title">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Monthly plan</p>
           <h2 id="budget-title">Budget progress</h2>
         </div>
         <Link to={`/app/budgets?month=${month}`} className="text-button">
