@@ -17,6 +17,14 @@ const PROTOCOL_V1_ACCOUNT_TYPES: readonly AccountType[] = [
   "credit",
   "other",
 ];
+// Added by "account-types-v2"; "account-types-v3" clients also accept "ewallet".
+const ACCOUNT_TYPES_V2: readonly AccountType[] = [
+  ...PROTOCOL_V1_ACCOUNT_TYPES,
+  "virtual",
+  "investment",
+  "receivable",
+  "payable",
+];
 
 // D1 caps bound parameters per statement well above this; a pull page holds at most 200 rows.
 const DEBT_LOOKUP_CHUNK = 90;
@@ -47,7 +55,7 @@ async function readDebtLinks(
 /**
  * Shapes one outgoing row for the client. The change log stores payloads without debt links, so
  * a "debt-links" client gets the current link read from the row; a transfer's sits on its
- * sending leg. Clients without "account-types-v2" see newer account types as "other".
+ * sending leg. Clients without "account-types-v2" (or "-v3" for "ewallet") see newer account types as "other".
  */
 function shapePayload(
   entityType: string,
@@ -59,9 +67,10 @@ function shapePayload(
     const { occasionId: _occasionId, ...rest } = payload;
     return rest;
   }
-  if (entityType === "account" && !features.has("account-types-v2")) {
+  if (entityType === "account" && !features.has("account-types-v3")) {
     const type = payload.type as AccountType;
-    return PROTOCOL_V1_ACCOUNT_TYPES.includes(type) ? payload : { ...payload, type: "other" };
+    const known = features.has("account-types-v2") ? ACCOUNT_TYPES_V2 : PROTOCOL_V1_ACCOUNT_TYPES;
+    return known.includes(type) ? payload : { ...payload, type: "other" };
   }
   if (!features.has("debt-links")) return payload;
   if (entityType === "transaction") {
