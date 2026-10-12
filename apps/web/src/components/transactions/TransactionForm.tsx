@@ -7,6 +7,7 @@ import {
   isLiabilityAccountType,
   matchCategory,
   parseAmountToMinor,
+  pinnedEntryCurrency,
   preferredTransactionAccount,
   sortCategoriesForPicker,
   transactionInputSchema,
@@ -116,8 +117,9 @@ export function TransactionForm({
   const [transferFee, setTransferFee] = useState(
     item?.transferFeeMinor ? formatMinorAmount(item.transferFeeMinor) : "",
   );
-  const [currency, setCurrency] = useState<Currency>(
-    initialDraft?.currency ?? item?.currency ?? workspaceCurrency(),
+  // Null until the user or a draft picks one, so a bank entry starts in the account's currency.
+  const [chosenCurrency, setChosenCurrency] = useState<Currency | null>(
+    initialDraft?.currency ?? item?.currency ?? null,
   );
   const [clientError, setClientError] = useState<string>();
   const [creatingCategory, setCreatingCategory] = useState(false);
@@ -175,6 +177,23 @@ export function TransactionForm({
   }, [debts, debtId]);
   const missingDebtChoice = debtPaymentSelected && selectableDebts.length > 0 && !debtId;
   const toAccount = activeAccounts.find((account) => account.id === toAccountId);
+  const sourceAccount = activeAccounts.find(
+    (account) => account.id === (kind === "transfer" ? fromAccountId : accountId),
+  );
+  // Only a bank account takes any currency; any other pins the entry to its own. An edit keeps
+  // its stored currency until an account changes, so an older entry is not relabeled.
+  const pinnedCurrency = pinnedEntryCurrency(
+    kind === "transfer" ? [sourceAccount, toAccount] : [sourceAccount],
+  );
+  const keepsStoredCurrency =
+    item !== undefined &&
+    (kind === "transfer"
+      ? item.fromAccountId === fromAccountId && item.toAccountId === toAccountId
+      : item.kind !== "transfer" && item.accountId === accountId);
+  const currency =
+    pinnedCurrency !== null && !keepsStoredCurrency
+      ? pinnedCurrency
+      : (chosenCurrency ?? sourceAccount?.currency ?? workspaceCurrency());
   /** A transfer into a credit card or payable account pays it down, so it can settle a debt. */
   const debtPaymentByAccount =
     kind === "transfer" && toAccount !== undefined && isLiabilityAccountType(toAccount.type);
@@ -316,7 +335,7 @@ export function TransactionForm({
     setDescription(draft.description);
     setAmount(formatMinorAmount(draft.amountMinor));
     setTransferFee("");
-    setCurrency(draft.currency);
+    setChosenCurrency(draft.currency);
     if (!activeAccounts.some((account) => account.id === accountId)) {
       setAccountId(fromAccountIdValue);
     }
@@ -413,7 +432,7 @@ export function TransactionForm({
               <option value="transfer">Transfer</option>
             </select>
           </label>
-          <div className="form-row split">
+          <div className={pinnedCurrency === null ? "form-row split" : "form-row"}>
             <label>
               <span>Amount ({currency})</span>
               <div className="money-input">
@@ -429,20 +448,22 @@ export function TransactionForm({
                 />
               </div>
             </label>
-            <label>
-              <span>Currency</span>
-              <select
-                value={currency}
-                onChange={(event) => setCurrency(event.target.value as Currency)}
-                required
-              >
-                {currencies.map((option) => (
-                  <option key={option} value={option}>
-                    {currencyMetadata[option].label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {pinnedCurrency === null && (
+              <label>
+                <span>Currency</span>
+                <select
+                  value={currency}
+                  onChange={(event) => setChosenCurrency(event.target.value as Currency)}
+                  required
+                >
+                  {currencies.map((option) => (
+                    <option key={option} value={option}>
+                      {currencyMetadata[option].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
           {kind === "transfer" ? (
             <div className="form-row split">

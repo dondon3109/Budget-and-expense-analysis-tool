@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
+- Bank and savings accounts can hold money in several currencies: pick the currency on each entry. Other accounts record only in their own currency.
 
 ### Changed
 

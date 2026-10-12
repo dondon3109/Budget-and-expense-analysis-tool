@@ -5,6 +5,7 @@ import {
   initialEditDescription,
   localCalendarDate,
   parseTransactionForm,
+  resolveEntryCurrency,
 } from "./transaction-form";
 
 describe("native transaction form", () => {
@@ -119,5 +120,40 @@ describe("native transaction form", () => {
       success: true,
       input: { debtId: "debt-1" },
     });
+  });
+
+  it("lets only bank accounts take another currency, keeping an edit's stored one", () => {
+    const accounts = [
+      { id: "bank", type: "checking", currency: "PHP" as const },
+      { id: "cash", type: "cash", currency: "PHP" as const },
+    ];
+    const usd = { ...valid, currency: "USD" as const };
+    expect(resolveEntryCurrency({ ...usd, accountId: "bank" }, accounts)).toEqual({
+      currency: "USD",
+      choosable: true,
+    });
+    expect(resolveEntryCurrency({ ...usd, accountId: "cash" }, accounts)).toEqual({
+      currency: "PHP",
+      choosable: false,
+    });
+    expect(
+      resolveEntryCurrency(
+        { ...usd, kind: "transfer", accountId: "bank", toAccountId: "cash" },
+        accounts,
+      ),
+    ).toEqual({ currency: "PHP", choosable: false });
+
+    const stored = {
+      kind: "expense" as const,
+      accountId: "cash",
+      categoryId: "category-1",
+      date: "2026-08-13",
+      description: "Lunch",
+      amountMinor: 100,
+      currency: "USD" as const,
+    };
+    expect(resolveEntryCurrency({ ...valid, accountId: "cash" }, accounts, stored).currency).toBe(
+      "USD",
+    );
   });
 });
