@@ -10,6 +10,7 @@ import {
   type DashboardSummary,
 } from "@zoption/shared";
 import { Pencil, Plus, SlidersHorizontal, Star, Trash2, WalletCards } from "lucide-react";
+import { useRef } from "react";
 
 import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
@@ -84,6 +85,7 @@ export function AccountsPanel({
     updateAccountMutation,
     removeAccountMutation,
   } = accounts;
+  const accountListRef = useRef<HTMLUListElement>(null);
   const defaultSpendingAccountId = useDefaultSpendingAccountId();
   const defaultSpendingAccount = preferredTransactionAccount(
     activeAccounts,
@@ -170,12 +172,23 @@ export function AccountsPanel({
                 className="dashboard-account-form"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  createAccountMutation.mutate({
-                    name: accountName,
-                    type: accountType,
-                    currency: accountCurrency,
-                    ...(startingBalanceMinor ? { startingBalanceMinor } : {}),
-                  });
+                  createAccountMutation.mutate(
+                    {
+                      name: accountName,
+                      type: accountType,
+                      currency: accountCurrency,
+                      ...(startingBalanceMinor ? { startingBalanceMinor } : {}),
+                    },
+                    {
+                      // New accounts sort last; the list scrolls, so bring the new row fully into
+                      // view once the form has closed and the list has its height back.
+                      onSuccess: () =>
+                        requestAnimationFrame(() => {
+                          const list = accountListRef.current;
+                          if (list) list.scrollTop = list.scrollHeight;
+                        }),
+                    },
+                  );
                 }}
               >
                 <label>
@@ -238,7 +251,7 @@ export function AccountsPanel({
                 )}
               </form>
             )}
-            <ul>
+            <ul ref={accountListRef}>
               {activeAccounts.map((account) => {
                 const isDefaultBank = account.name === "Bank";
                 const canEdit = !account.system || isDefaultBank;
