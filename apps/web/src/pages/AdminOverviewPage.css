@@ -33,39 +33,25 @@
   line-height: 1;
 }
 
-.admin-hub-header > div > span {
-  max-width: 68ch;
-  margin-top: 12px;
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .admin-hub-header-actions {
   flex: 0 0 auto;
   padding-top: 4px;
 }
 
-.admin-hub-state,
-.admin-hub-access {
-  margin-top: 28px;
-  padding: 30px;
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
 .admin-hub-state {
+  margin-top: 28px;
   color: var(--muted);
   font-size: 13px;
 }
 
 .admin-hub-access {
-  min-height: 360px;
+  margin-top: 28px;
+  padding: 48px 30px;
   display: grid;
   place-content: center;
   justify-items: center;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
   text-align: center;
 }
 
@@ -107,26 +93,25 @@
   padding: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 1px;
   list-style: none;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--line);
-  overflow: hidden;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .admin-hub-peg {
   min-width: 0;
-  padding: 18px 20px 20px;
+  padding: 22px 24px;
   display: flex;
   flex-direction: column;
   gap: 9px;
-  background: var(--paper);
 }
 
-/* The seats peg is the one whose tool is down on the floor below. */
-.admin-hub-peg.is-held {
-  background: var(--surface-soft);
+.admin-hub-peg + .admin-hub-peg {
+  border-left: 1px solid var(--line);
+}
+
+.admin-hub-peg:first-child {
+  padding-left: 0;
 }
 
 .admin-hub-peg-name {
@@ -210,7 +195,7 @@
   letter-spacing: 0;
 }
 
-.admin-hub-peg-purpose {
+.admin-hub-peg-detail {
   margin: 0;
   flex: 1;
   color: var(--muted);
@@ -219,9 +204,8 @@
 }
 
 .admin-hub-peg-foot {
-  margin-top: 2px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
+  margin-top: auto;
+  padding-top: 6px;
 }
 
 .admin-hub-peg-action {
@@ -247,7 +231,7 @@
 }
 
 .admin-hub-peg-figure,
-.admin-hub-peg-purpose,
+.admin-hub-peg-detail,
 .admin-hub-peg-name {
   overflow-wrap: anywhere;
 }
@@ -255,36 +239,26 @@
 /* The floor is reserved for the one admin tool that has no page of its own. */
 
 .admin-hub-floor {
-  margin-top: 26px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  margin-top: 12px;
 }
 
+/* Settings frames the seats section with side padding; here it aligns with the rail. */
 .admin-hub-floor .sponsored-pro-seats {
-  max-width: 980px;
-  margin: 0 auto;
-}
-
-.admin-hub-floor-title {
-  margin: 0;
-  padding: 12px 22px;
-  color: var(--subtle);
-  border-bottom: 1px solid var(--line);
-  background: var(--surface-soft);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 580;
-  letter-spacing: 0.06em;
-  line-height: 1.6;
-  text-transform: uppercase;
+  padding-inline: 0;
 }
 
 @media (max-width: 1100px) {
   .admin-hub-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-hub-peg:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .admin-hub-peg:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
   }
 }
 
@@ -314,12 +288,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .admin-hub-floor {
-    margin-top: 22px;
-    border-radius: var(--radius-md);
+  .admin-hub-rail .admin-hub-peg {
+    padding: 20px 0;
+    border-left: 0;
   }
 
-  .admin-hub-floor-title {
-    padding: 11px 16px;
+  .admin-hub-peg + .admin-hub-peg {
+    border-top: 1px solid var(--line);
   }
 }

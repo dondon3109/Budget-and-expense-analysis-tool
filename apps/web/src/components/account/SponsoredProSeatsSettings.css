@@ -53,9 +53,8 @@
 .sponsored-pro-seats-add {
   margin-top: 26px;
   padding: 20px;
-  border: 1px solid color-mix(in srgb, var(--action) 24%, var(--line));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--action) 4%, var(--surface));
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
 }
 
 .sponsored-pro-seats-admin-actions {
@@ -67,21 +66,10 @@
 }
 
 .sponsored-pro-seats-add-heading {
-  margin-bottom: 16px;
-}
-
-.sponsored-pro-seats-add-heading h3 {
-  margin: 0;
+  margin: 0 0 16px;
   color: var(--ink);
   font-size: 15px;
   line-height: 1.25;
-}
-
-.sponsored-pro-seats-add-heading p {
-  margin: 5px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.5;
 }
 
 .sponsored-pro-seats-add > label {

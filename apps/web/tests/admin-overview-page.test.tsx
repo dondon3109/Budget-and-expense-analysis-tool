@@ -232,8 +232,6 @@ describe("AdminOverviewPage", () => {
     ]);
 
     await screen.findByText("Needs moderation");
-    expect(pegs[0]).toHaveClass("is-held");
-    expect(pegs[1]).not.toHaveClass("is-held");
     expect(pegs[0]).toHaveTextContent("1 invitation pending");
     expect(pegs[0]).toHaveTextContent("2 seats open");
     expect(pegs[0]).toHaveTextContent("Invitation waiting");
@@ -267,7 +265,6 @@ describe("AdminOverviewPage", () => {
 
     expect(await screen.findByLabelText("Recipient email")).toBeVisible();
     expect(screen.getByRole("button", { name: "Add seat" })).toBeVisible();
-    expect(screen.getByText("Workbench")).toBeVisible();
     expect(screen.getByRole("heading", { level: 2, name: "Sponsored Pro seats" })).toBeVisible();
 
     // All five slots are visible, so the two open seats read as capacity rather than a number.
