@@ -616,10 +616,6 @@ export function ImportPage() {
               Import · 3 steps
             </p>
             <h1>Import transactions</h1>
-            <p>
-              Bring your bank or credit-card statement in as a CSV or Excel file. We'll help you
-              match the columns, review the rows, then save them to your budget.
-            </p>
           </div>
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button

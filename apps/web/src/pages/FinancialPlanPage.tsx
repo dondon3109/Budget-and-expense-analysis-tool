@@ -281,10 +281,6 @@ export function FinancialPlanPage() {
           <div>
             <p className="eyebrow">Goals & debt</p>
             <h1>Your planning ledger</h1>
-            <p>
-              Keep the targets and balances that power Zoption’s deterministic savings and payoff
-              projections.
-            </p>
           </div>
           <div className="header-actions financial-plan-actions">
             <button className="button secondary" type="button" onClick={() => setDebtForm("new")}>

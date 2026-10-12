@@ -383,9 +383,6 @@ export function CalendarPage() {
               <h1>Calendar</h1>
             </div>
           </div>
-          <p className="calendar-header-subtitle">
-            Keep events, recurring costs, and daily transactions in one clear view.
-          </p>
           <div className="calendar-month-controls" aria-label="Calendar month controls">
             <button
               className="calendar-month-nav"
