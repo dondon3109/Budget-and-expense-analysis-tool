@@ -150,7 +150,6 @@ export function ProfileSettings() {
       <div className="settings-section-heading">
         <div>
           <h2 id="profile-settings-title">Profile</h2>
-          <p>Choose the name and picture Zoption uses to identify you.</p>
         </div>
         <span>Picture uses a public link</span>
       </div>

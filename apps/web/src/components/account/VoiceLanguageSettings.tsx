@@ -61,11 +61,7 @@ export function VoiceLanguageSettings() {
       <div className="settings-section-heading">
         <div>
           <h2 id="voice-language-title">Voice language</h2>
-          <p>
-            Choose your default voice language for AI assistant voice chats and transaction voice
-            entry. Auto mode automatically detects English and Tagalog. This browser remembers the
-            choice; another browser or device keeps its own.
-          </p>
+          <p>Auto detects English and Tagalog. This browser remembers the choice.</p>
         </div>
         <span>Speech input</span>
       </div>

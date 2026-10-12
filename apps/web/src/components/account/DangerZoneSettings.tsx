@@ -52,9 +52,6 @@ export function DangerZoneSettings({ hasPasswordIdentity }: { hasPasswordIdentit
         <div className="settings-section-heading">
           <div>
             <h2 id="account-deletion-title">Danger zone</h2>
-            <p>
-              Permanently remove your Zoption account and the information Zoption controls for it.
-            </p>
           </div>
           <span>Cannot be undone</span>
         </div>

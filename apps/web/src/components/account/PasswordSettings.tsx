@@ -94,11 +94,6 @@ export function PasswordSettings({ hasPasswordIdentity }: { hasPasswordIdentity:
       <div className="settings-section-heading">
         <div>
           <h2 id="password-settings-title">Password</h2>
-          <p>
-            {hasPasswordIdentity
-              ? "Verify your current password before replacing it with a new one."
-              : "Create a password to add email sign-in and unlock password-protected account actions."}
-          </p>
         </div>
         <span>{hasPasswordIdentity ? "12+ characters and mixed character types" : "Optional"}</span>
       </div>

@@ -20,12 +20,7 @@ export function CurrencySettings({ workspace }: { workspace: AuthenticatedWorksp
       <div className="settings-section-heading">
         <div>
           <h2 id="workspace-currency-title">Currency</h2>
-          <p>
-            Budgets, goals, debts, plans, and dashboard totals show in this currency, and new
-            accounts start in it. Changing it relabels those amounts; stored amounts are not
-            converted. Accounts keep their own currency. The remittance calculator sends from this
-            currency.
-          </p>
+          <p>Changing it relabels amounts; stored amounts are not converted.</p>
         </div>
         <span>Workspace</span>
       </div>

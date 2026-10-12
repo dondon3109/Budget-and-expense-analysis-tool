@@ -58,7 +58,6 @@ export function EmailSettings() {
       <div className="settings-section-heading">
         <div>
           <h2 id="email-settings-title">Email address</h2>
-          <p>Your confirmed email is used to sign in and receive secure account links.</p>
         </div>
         <span>Confirmation required</span>
       </div>
