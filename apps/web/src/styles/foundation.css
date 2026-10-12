@@ -1,6 +1,41 @@
 @import "tailwindcss";
 @import "@zoption/web-common/tokens.css";
 
+/* Scroll bars stay out of sight until used. A thumb shows while its element is under the pointer
+   or scrolling (`data-scrolling`, set by lib/scrollActivity.ts). The page is always under the
+   pointer, so html and body show theirs only while scrolling. Every element sets the color
+   itself, so a hovered parent never reveals a child's thumb through inheritance. The
+   ::-webkit-scrollbar rules are for Safari; other engines use scrollbar-color. */
+* {
+  scrollbar-color: transparent transparent;
+}
+
+:not(html, body):hover,
+[data-scrolling] {
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 9999px;
+  background-clip: content-box;
+  background-color: transparent;
+}
+
+:not(html, body):hover::-webkit-scrollbar-thumb,
+[data-scrolling]::-webkit-scrollbar-thumb {
+  background-color: var(--line-strong);
+}
+
 /* Pages move focus to their heading so screen readers announce the new view; the heading is
    not an interactive target, so it gets no visible ring. */
 h1[tabindex="-1"]:focus {

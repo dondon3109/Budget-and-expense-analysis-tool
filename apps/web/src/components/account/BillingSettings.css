@@ -108,7 +108,6 @@
   overscroll-behavior-inline: contain;
   border-block: 1px solid var(--line);
   background: transparent;
-  scrollbar-color: var(--line-strong) transparent;
   scrollbar-width: thin;
 }
 

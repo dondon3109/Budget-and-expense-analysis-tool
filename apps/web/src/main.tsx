@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { BrowserApplication } from "./BrowserApplication";
+import { trackScrollActivity } from "./lib/scrollActivity";
 import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
 
 // Keep components out of this entry. A component here makes the React plugin mark the entry as a
@@ -12,3 +13,4 @@ if (!root) throw new Error("Zoption could not find the application root.");
 createRoot(root).render(<BrowserApplication />);
 
 registerZoptionServiceWorker();
+trackScrollActivity();
