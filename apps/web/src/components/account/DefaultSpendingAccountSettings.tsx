@@ -27,10 +27,7 @@ export function DefaultSpendingAccountSettings({
       <div className="settings-section-heading">
         <div>
           <h2 id="default-spending-account-title">Default spending account</h2>
-          <p>
-            New transactions start on this account. Without a choice, Cash is picked first. This
-            browser remembers the choice; another browser or device keeps its own.
-          </p>
+          <p>This browser remembers the choice.</p>
         </div>
         <span>Transactions</span>
       </div>

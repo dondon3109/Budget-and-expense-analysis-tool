@@ -130,7 +130,6 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
       <div className="settings-section-heading">
         <div>
           <h2 id="sponsored-pro-seats-title">Sponsored Pro seats</h2>
-          <p>Manage five complimentary Pro seats without accessing anyone&apos;s financial data.</p>
         </div>
         <div className="sponsored-pro-seats-admin-actions">
           <span>{seats.data ? `${seats.data.activeCount} of 5 active` : "Loading"}</span>

@@ -45,10 +45,6 @@ export function DataPortabilitySettings() {
       <div className="settings-section-heading">
         <div>
           <h2 id="data-portability-title">Data portability & backup</h2>
-          <p>
-            Export a complete, structured JSON archive of all your accounts, transactions,
-            categories, budgets, and subscriptions. Free, private, and always available.
-          </p>
         </div>
       </div>
       <div className="settings-portability-content">
