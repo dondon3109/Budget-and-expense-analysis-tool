@@ -185,7 +185,7 @@ export function AdminCustomerReviewsPage() {
   function renderPage(content: ReactNode) {
     return (
       <AppShell>
-        <div className="admin-reviews-page">{content}</div>
+        <div className="dashboard-page admin-reviews-page">{content}</div>
       </AppShell>
     );
   }
@@ -240,10 +240,6 @@ export function AdminCustomerReviewsPage() {
         <div>
           <p>Platform administration</p>
           <h1>Customer reviews</h1>
-          <span>
-            Review customer submissions, approve public wording, then choose which reviews appear on
-            the landing page. The inbox checks for new submissions every 30 seconds.
-          </span>
         </div>
         <div className="admin-reviews-header-actions">
           <button
@@ -335,10 +331,7 @@ export function AdminCustomerReviewsPage() {
             <div className="admin-review-section-heading">
               <div>
                 <h2 id="landing-lineup-title">Landing lineup</h2>
-                <p>
-                  These reviews appear publicly in this exact order. Move them with the controls,
-                  never by editing their words.
-                </p>
+                <p>Shown publicly in this order. Reorder them; never edit their words.</p>
               </div>
               <span>
                 {dashboard.lineup.length} of {LANDING_REVIEW_LIMIT} selected
@@ -396,14 +389,7 @@ export function AdminCustomerReviewsPage() {
           <div className="admin-review-workspace">
             <section className="admin-review-inbox" aria-labelledby="review-inbox-title">
               <div className="admin-review-section-heading">
-                <div>
-                  <h2 id="review-inbox-title">Review inbox</h2>
-                  <p>
-                    {dashboard.summary.pending > 0
-                      ? `${dashboard.summary.pending} submission${dashboard.summary.pending === 1 ? "" : "s"} awaiting your decision.`
-                      : "No submissions are waiting for a moderation decision."}
-                  </p>
-                </div>
+                <h2 id="review-inbox-title">Review inbox</h2>
                 <span>{dashboard.totalFiltered} matching</span>
               </div>
 

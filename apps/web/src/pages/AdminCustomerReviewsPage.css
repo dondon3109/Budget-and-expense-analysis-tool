@@ -1,6 +1,4 @@
 .admin-reviews-page {
-  width: min(1280px, 100%);
-  margin: 0 auto;
   color: var(--ink);
   font-family: var(--font-ui);
 }
@@ -30,15 +28,6 @@
   line-height: 1;
 }
 
-.admin-reviews-header > div > span {
-  max-width: 68ch;
-  margin-top: 12px;
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .admin-reviews-header-actions {
   flex: 0 0 auto;
   display: flex;
@@ -50,25 +39,20 @@
   cursor: pointer;
 }
 
-.admin-reviews-state,
-.admin-reviews-access {
-  margin-top: 28px;
-  padding: 30px;
-  border-radius: 15px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
 .admin-reviews-state {
+  margin-top: 28px;
   color: var(--muted);
   font-size: 13px;
 }
 
 .admin-reviews-access {
-  min-height: 360px;
+  margin-top: 28px;
+  padding: 48px 30px;
   display: grid;
   place-content: center;
   justify-items: center;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
   text-align: center;
 }
 
@@ -193,11 +177,9 @@
   margin-top: 14px;
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  background: var(--surface-soft);
 }
 
 .admin-review-lineup-card,
@@ -304,7 +286,6 @@
   justify-items: center;
   gap: 9px;
   color: var(--subtle);
-  background: var(--surface-soft);
   text-align: center;
 }
 
@@ -339,24 +320,21 @@
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(310px, 0.75fr);
   align-items: start;
-  gap: 18px;
+  gap: 32px;
 }
 
 .admin-review-inbox,
 .admin-review-detail {
   min-width: 0;
-  border-radius: 15px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
 }
 
 .admin-review-inbox > .admin-review-section-heading {
-  padding: 20px;
-  border-bottom: 1px solid var(--line);
+  padding: 24px 0 16px;
+  border-top: 1px solid var(--line);
 }
 
 .admin-review-filters {
-  padding: 13px 20px;
+  padding: 0 0 16px;
   display: grid;
   grid-template-columns: minmax(190px, 1fr) minmax(130px, 0.45fr) minmax(120px, 0.4fr);
   align-items: end;
@@ -420,7 +398,7 @@
 
 .admin-review-list > li > button {
   width: 100%;
-  padding: 15px 20px;
+  padding: 15px 12px;
   display: grid;
   gap: 7px;
   color: var(--ink);
@@ -534,6 +512,8 @@
   position: sticky;
   top: 18px;
   padding: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
 }
 
 .admin-review-detail > header {
