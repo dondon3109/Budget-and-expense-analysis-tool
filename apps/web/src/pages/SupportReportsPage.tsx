@@ -180,11 +180,11 @@ export function SupportReportsPage() {
           <section className="support-reports-empty">
             <Bug size={25} aria-hidden="true" />
             <h2>{requestedAdmin ? "The inbox is clear" : "No submitted bug reports"}</h2>
-            <p>
-              {requestedAdmin
-                ? "New confirmed reports will appear here."
-                : "Open Zoption Support and choose “Report a problem” when something is not working."}
-            </p>
+            {!requestedAdmin && (
+              <p>
+                Open Zoption Support and choose “Report a problem” when something is not working.
+              </p>
+            )}
           </section>
         )}
 
