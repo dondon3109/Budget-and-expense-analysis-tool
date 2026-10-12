@@ -144,10 +144,7 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
           void add.mutateAsync();
         }}
       >
-        <div className="sponsored-pro-seats-add-heading">
-          <h3>Add a sponsored recipient</h3>
-          <p>Assign one available complimentary Pro seat to a recipient.</p>
-        </div>
+        <h3 className="sponsored-pro-seats-add-heading">Add a sponsored recipient</h3>
         <label htmlFor="sponsored-seat-email">Recipient email</label>
         <div>
           <input

@@ -43,10 +43,9 @@ interface AreaSummary {
   tone: PegTone;
   flag: string;
   figure: ReactNode;
-  purpose: string;
+  detail?: string;
   actionTo: string;
   actionLabel: string;
-  held?: boolean;
 }
 
 function count(value: number, singular: string, plural = `${singular}s`): string {
@@ -71,22 +70,14 @@ function FigureCount({
   );
 }
 
-function unreadArea(
-  purpose: string,
-  query: PegQuery,
-  actionTo: string,
-  actionLabel: string,
-  held = false,
-) {
+function unreadArea(query: PegQuery, actionTo: string, actionLabel: string) {
   if (query.isPending) {
     return {
       tone: "checking",
       flag: "Checking",
       figure: "Reading live state",
-      purpose,
       actionTo,
       actionLabel,
-      held,
     } satisfies AreaSummary;
   }
 
@@ -94,21 +85,17 @@ function unreadArea(
     tone: "unavailable",
     flag: "Unavailable",
     figure: "State could not be read",
-    purpose,
     actionTo,
     actionLabel,
-    held,
   } satisfies AreaSummary;
 }
 
 function seatsArea(summary: SponsoredProSeatSummary | undefined, query: PegQuery): AreaSummary {
-  const purpose =
-    "Five complimentary Pro seats. Assign, replace, revoke, and resend invitations without reading anyone's financial data.";
   const actionTo = "#sponsored-pro-seats";
   const actionLabel = "Manage on this page";
 
   if (query.isPending || query.isError || !summary) {
-    return unreadArea(purpose, query, actionTo, actionLabel, true);
+    return unreadArea(query, actionTo, actionLabel);
   }
 
   const { activeCount, pendingCount, availableCount, capacity } = summary;
@@ -126,10 +113,9 @@ function seatsArea(summary: SponsoredProSeatSummary | undefined, query: PegQuery
           <span className="admin-hub-count">{capacity}</span> seats in use
         </>
       ),
-    purpose: `${count(availableCount, "seat")} open. ${purpose}`,
+    detail: `${count(availableCount, "seat")} open`,
     actionTo,
     actionLabel,
-    held: true,
   };
 }
 
@@ -137,13 +123,11 @@ function reviewsArea(
   dashboard: CustomerReviewAdminDashboard | undefined,
   query: PegQuery,
 ): AreaSummary {
-  const purpose =
-    "Approve public wording, hide what should not ship, and place published reviews on the landing page.";
   const actionTo = "/app/admin/reviews";
   const actionLabel = "Open moderation desk";
 
   if (query.isPending || query.isError || !dashboard) {
-    return unreadArea(purpose, query, actionTo, actionLabel);
+    return unreadArea(query, actionTo, actionLabel);
   }
 
   const { pending, published, total, featured } = dashboard.summary;
@@ -160,20 +144,18 @@ function reviewsArea(
           <span className="admin-hub-count">{published}</span> published
         </>
       ),
-    purpose: `${featured} of ${LANDING_REVIEW_LIMIT} landing slots filled, ${total} collected. ${purpose}`,
+    detail: `${featured} of ${LANDING_REVIEW_LIMIT} landing slots filled, ${total} collected`,
     actionTo,
     actionLabel,
   };
 }
 
 function modelsArea(health: ProviderHealthStatus[] | undefined, query: PegQuery): AreaSummary {
-  const purpose =
-    "Change the assistant, speech-to-text, and text-to-speech models without a redeploy, and test a provider before switching.";
   const actionTo = "/app/admin/provider-configs";
   const actionLabel = "Open model registry";
 
   if (query.isPending || query.isError || !health) {
-    return unreadArea(purpose, query, actionTo, actionLabel);
+    return unreadArea(query, actionTo, actionLabel);
   }
 
   const missing = health.filter((entry) => !entry.hasCredential);
@@ -195,20 +177,18 @@ function modelsArea(health: ProviderHealthStatus[] | undefined, query: PegQuery)
           <FigureCount value={health.length} singular="service" /> ready
         </>
       ),
-    purpose: `Assistant on ${active}. ${purpose}`,
+    detail: `Assistant on ${active}`,
     actionTo,
     actionLabel,
   };
 }
 
 function reportsArea(reports: AdminBugReport[] | undefined, query: PegQuery): AreaSummary {
-  const purpose =
-    "Read what people reported, see the diagnostics they sent, and move each report through triage.";
   const actionTo = "/app/support/reports?view=admin";
   const actionLabel = "Open report triage";
 
   if (query.isPending || query.isError || !reports) {
-    return unreadArea(purpose, query, actionTo, actionLabel);
+    return unreadArea(query, actionTo, actionLabel);
   }
 
   const fresh = reports.filter((report) => report.status === "new").length;
@@ -225,7 +205,7 @@ function reportsArea(reports: AdminBugReport[] | undefined, query: PegQuery): Ar
           <span className="admin-hub-count">{open}</span> still open
         </>
       ),
-    purpose: `${reports.length} received in total. ${purpose}`,
+    detail: `${reports.length} received in total`,
     actionTo,
     actionLabel,
   };
@@ -233,14 +213,14 @@ function reportsArea(reports: AdminBugReport[] | undefined, query: PegQuery): Ar
 
 function AreaPeg({ name, area }: { name: string; area: AreaSummary }) {
   return (
-    <li className={`admin-hub-peg tone-${area.tone}${area.held ? " is-held" : ""}`}>
+    <li className={`admin-hub-peg tone-${area.tone}`}>
       <h3 className="admin-hub-peg-name">{name}</h3>
       <p className="admin-hub-peg-status">
         <span className="admin-hub-peg-light" aria-hidden="true" />
         <span className="admin-hub-peg-flag">{area.flag}</span>
       </p>
       <p className="admin-hub-peg-figure">{area.figure}</p>
-      <p className="admin-hub-peg-purpose">{area.purpose}</p>
+      {area.detail && <p className="admin-hub-peg-detail">{area.detail}</p>}
       <div className="admin-hub-peg-foot">
         {area.actionTo.startsWith("#") ? (
           <a className="admin-hub-peg-action" href={area.actionTo}>
@@ -367,10 +347,6 @@ export function AdminOverviewPage() {
           <div>
             <p>Platform administration</p>
             <h1>Admin console</h1>
-            <span>
-              Every platform-admin area in one place, each showing what it holds right now. Access
-              is enforced on the server; this page only reflects it.
-            </span>
           </div>
           <div className="admin-hub-header-actions">
             <button
@@ -398,7 +374,6 @@ export function AdminOverviewPage() {
         </nav>
 
         <div className="admin-hub-floor">
-          <p className="admin-hub-floor-title">Workbench</p>
           <SponsoredProSeatsSettings workspace={workspace} />
         </div>
       </div>
