@@ -15,7 +15,6 @@ import {
   CheckCircle2,
   Clock,
   Coins,
-  Globe,
   HelpCircle,
   Percent,
   TrendingDown,
@@ -209,18 +208,9 @@ export function RemittanceCalculatorSection() {
     >
       <div className="remittance-header">
         <div className="remittance-title-group">
-          <div className="remittance-badge">
-            <Globe size={16} aria-hidden="true" />
-            <span>OFW & Cross-Border Planning</span>
-          </div>
           <h2 id="remittance-heading" className="remittance-heading">
             Remittance & FX Fee Calculator
           </h2>
-          <p className="remittance-subheading">
-            {direction === "to_php"
-              ? "Simulate international transfers, uncover hidden FX markup spreads, and maximize the PHP arriving home to your family or savings ledger."
-              : "Simulate sending pesos abroad, uncover hidden FX markup spreads, and maximize what arrives on the other side."}
-          </p>
         </div>
 
         <div className="remittance-rate-pill">
