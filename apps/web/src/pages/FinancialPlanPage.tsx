@@ -9,16 +9,7 @@ import type {
   FinancialGoalUpdate,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Landmark,
-  Pencil,
-  Plus,
-  RefreshCw,
-  ShieldCheck,
-  SlidersHorizontal,
-  Target,
-  Trash2,
-} from "lucide-react";
+import { Landmark, Pencil, Plus, RefreshCw, SlidersHorizontal, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -292,17 +283,6 @@ export function FinancialPlanPage() {
           </div>
         </header>
 
-        <section className="planning-trust-strip" aria-label="Planning data notice">
-          <ShieldCheck size={19} aria-hidden="true" />
-          <div>
-            <strong>You stay in control of every record.</strong>
-            <span>
-              The assistant can read saved goals and debts for calculations. It can also propose
-              changes in chat, but nothing is edited or deleted until you tap Confirm.
-            </span>
-          </div>
-        </section>
-
         {loading && <InlineLoader label="Loading your plan" />}
         {loadError && (
           <div className="table-status error" role="alert">
@@ -349,7 +329,6 @@ export function FinancialPlanPage() {
                     <Target size={18} aria-hidden="true" />
                     <div>
                       <h2 id="goals-heading">Savings goals</h2>
-                      <p>Track what you are building toward and the date you want to reach it.</p>
                     </div>
                   </div>
                   <button className="text-button" type="button" onClick={() => setGoalForm("new")}>
@@ -436,7 +415,6 @@ export function FinancialPlanPage() {
                     <Landmark size={18} aria-hidden="true" />
                     <div>
                       <h2 id="debts-heading">Debt balances</h2>
-                      <p>Keep the inputs needed for avalanche and snowball projections current.</p>
                     </div>
                   </div>
                   <button className="text-button" type="button" onClick={() => setDebtForm("new")}>
@@ -506,7 +484,6 @@ export function FinancialPlanPage() {
                 <SlidersHorizontal size={19} aria-hidden="true" />
                 <div>
                   <h2 id="coaching-heading">Assistant coaching style</h2>
-                  <p>Choose how the assistant explains verified budgeting and planning results.</p>
                 </div>
               </div>
               {preferencesQuery.isPending ? (

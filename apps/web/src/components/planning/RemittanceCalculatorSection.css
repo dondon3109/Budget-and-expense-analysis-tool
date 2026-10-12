@@ -16,49 +16,22 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
 }
 
 .remittance-title-group {
   max-width: 680px;
 }
 
-.remittance-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  color: var(--sage);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-}
-
 .remittance-heading {
-  margin: 0 0 6px;
+  margin: 0;
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
-}
-
-.remittance-subheading {
-  margin: 0;
-  color: var(--subtle);
-  font-size: 13px;
-  line-height: 1.55;
 }
 
 .remittance-rate-pill {
@@ -92,15 +65,23 @@
 .remittance-calculator-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 18px;
+  gap: 32px;
 }
 
+/* Inputs and the comparison sit flat on the page; only the result gets a surface. */
 .remittance-card {
+  min-width: 0;
+}
+
+.remittance-results-card {
   padding: 24px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  background: var(--surface-soft);
+}
+
+.remittance-comparison-card {
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
 }
 
 .remittance-card-title {
@@ -266,9 +247,7 @@
 .results-highlight-box {
   padding: 18px 20px;
   border-radius: var(--radius-md);
-  background: var(--surface-soft);
-  border: 1px solid var(--line);
-  box-shadow: inset 3px 0 0 var(--sage);
+  background: var(--paper);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -342,9 +321,8 @@
 
 .breakdown-item {
   padding: 12px 14px;
-  border: 1px solid var(--line);
   border-radius: var(--radius-md);
-  background: var(--surface);
+  background: var(--paper);
   display: flex;
   flex-direction: column;
   gap: 4px;
