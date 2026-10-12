@@ -5,31 +5,33 @@
 }
 
 .budget-summary-grid {
-  margin: 28px 0 20px;
+  margin: 28px 0 8px;
+  padding-bottom: 24px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .budget-summary-grid article {
-  min-height: 124px;
-  padding: 22px;
+  padding: 4px 24px;
   display: grid;
   grid-template-columns: auto 1fr;
   align-content: center;
   align-items: center;
   gap: 8px 12px;
   color: var(--action);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+}
+
+.budget-summary-grid article:first-child {
+  padding-left: 0;
+}
+
+.budget-summary-grid article + article {
+  border-left: 1px solid var(--line);
 }
 
 .budget-summary-grid article.over {
   color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
-  background: var(--danger-soft);
 }
 
 .budget-summary-grid article.over strong {
@@ -56,17 +58,8 @@
   line-height: 1;
 }
 
-.budget-editor-panel {
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
 .budget-editor-heading {
-  min-height: 80px;
-  padding: 18px 22px;
+  padding: 18px 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -102,18 +95,12 @@
 }
 
 .budget-editor-row {
-  min-height: 98px;
-  padding: 18px 22px;
+  padding: 18px 0;
   display: grid;
   grid-template-columns: minmax(160px, 1fr) minmax(180px, 1.3fr) 170px 100px;
   align-items: center;
   gap: 20px;
   border-bottom: 1px solid var(--line);
-  transition: background-color 0.15s ease;
-}
-
-.budget-editor-row:hover {
-  background: var(--surface-soft);
 }
 
 .budget-editor-row:last-child {
@@ -266,11 +253,15 @@
 
 @media (max-width: 760px) {
   .budget-summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr 1fr;
+    row-gap: 16px;
   }
 
-  .budget-summary-grid article {
-    min-height: 100px;
+  .budget-summary-grid article:nth-child(3) {
+    grid-column: 1 / -1;
+    padding: 16px 0 0;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 
   .budget-editor-heading {
