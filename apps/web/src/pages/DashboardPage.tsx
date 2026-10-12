@@ -27,7 +27,6 @@ import { ThankYouDialog } from "../components/common/ThankYouDialog";
 import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
-import { DashboardToolCards } from "../components/dashboard/DashboardToolCards";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalChecklist";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
@@ -274,8 +273,6 @@ export function DashboardPage() {
   const baseCurrency = data.currency;
   const overallBalanceMinor = accountBalances?.balancesByCurrency[baseCurrency] ?? 0;
   const transferFeeInsight = transferFeeInsightQuery.data;
-  const transferNoun =
-    transferFeeInsight?.totalFeeChargedTransfers === 1 ? "transfer" : "transfers";
   const previousMetrics = previousSummaryQuery.data?.metrics;
   const incomeMinor = metrics.incomeByCurrency[baseCurrency] ?? 0;
   const expenseMinor = metrics.expenseByCurrency[baseCurrency] ?? 0;
@@ -291,7 +288,6 @@ export function DashboardPage() {
     {
       label: "Income",
       amounts: amountsLeadingWith(metrics.incomeByCurrency, baseCurrency),
-      detail: `Income received in ${selectedMonthLabel}`,
       icon: ArrowDownRight,
       tone: "income",
       trend: previousMetrics
@@ -305,10 +301,6 @@ export function DashboardPage() {
     {
       label: "Expenses",
       amounts: amountsLeadingWith(metrics.expenseByCurrency, baseCurrency),
-      detail:
-        metrics.moneyInMinor === 0
-          ? `No income recorded in ${selectedMonthLabel}`
-          : `${Math.round((metrics.moneyOutMinor / metrics.moneyInMinor) * 100)}% of ${selectedMonthLabel} income`,
       icon: ArrowUpRight,
       tone: "expense",
       trend: previousMetrics
@@ -322,24 +314,12 @@ export function DashboardPage() {
     {
       label: "Transfer fees (all time)",
       amounts: amountsLeadingWith(transferFeeInsight?.feesByCurrency ?? {}, baseCurrency),
-      detail: transferFeeInsightQuery.isPending
-        ? "Loading transfer fees…"
-        : transferFeeInsightQuery.isError
-          ? "Transfer fees unavailable."
-          : transferFeeInsight?.hasFees
-            ? `Across ${transferFeeInsight.totalFeeChargedTransfers} fee-charged ${transferNoun}${
-                transferFeeInsight.totalTransfers > transferFeeInsight.totalFeeChargedTransfers
-                  ? ` of ${transferFeeInsight.totalTransfers} recorded transfers`
-                  : ""
-              }.`
-            : "No transfer fees recorded yet.",
       icon: Receipt,
       tone: "expense",
     },
     {
       label: "Remaining budget",
       amounts: [{ amountMinor: metrics.remainingBudgetMinor, currency: baseCurrency }],
-      detail: `${metrics.budgetUsedPercent}% of plan used`,
       icon: PiggyBank,
       tone: "plum",
     },
@@ -407,11 +387,9 @@ export function DashboardPage() {
       <div className="dashboard-page">
         <header className="dashboard-header">
           <div className="dashboard-heading">
-            <p className="eyebrow">Profile Overview</p>
             <h1 ref={dashboardHeadingRef} tabIndex={-1}>
-              Your month, at a glance
+              Dashboard
             </h1>
-            <p>See what came in, what went out, and what is still available.</p>
           </div>
           <div className="header-actions dashboard-header-actions">
             <MonthSelector
@@ -551,7 +529,6 @@ export function DashboardPage() {
                 }
               />
             )}
-            <DashboardToolCards />
             {goalConfig.emphasis === "recent_transactions" && transactionHistory}
             <div className="dashboard-grid">
               {sectionOrder.map((name) => (

@@ -26,7 +26,6 @@ export interface OverviewStatTrend {
 export interface OverviewStatItem {
   label: string;
   amounts: OverviewStatAmount[];
-  detail: string;
   icon: LucideIcon;
   tone: "income" | "expense" | "ink" | "plum";
   trend?: OverviewStatTrend;
@@ -89,7 +88,6 @@ export function OverviewStatBar({ items }: OverviewStatBarProps) {
                 <small>{item.trend.comparison}</small>
               </div>
             )}
-            <p>{item.detail}</p>
           </article>
         );
       })}

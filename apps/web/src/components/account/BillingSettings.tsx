@@ -794,7 +794,6 @@ export function BillingSettings({ user }: { user: User }) {
         <div className="settings-section-heading">
           <div>
             <h2 id="billing-settings-title">Plan and billing</h2>
-            <p>Review your limits and upgrade only when Zoption Pro is useful for your workflow.</p>
           </div>
           <span>{presentation.label}</span>
         </div>
@@ -978,10 +977,6 @@ export function BillingSettings({ user }: { user: User }) {
           <div className="settings-section-heading">
             <div>
               <h2 id="admin-console-title">Platform admin</h2>
-              <p>
-                Sponsored Pro seats, customer reviews, AI and voice models, and report triage are
-                managed together in the admin console.
-              </p>
             </div>
             <span>Platform admin</span>
           </div>

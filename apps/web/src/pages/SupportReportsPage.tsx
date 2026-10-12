@@ -141,11 +141,6 @@ export function SupportReportsPage() {
           <div>
             <p className="eyebrow">Help &amp; contact</p>
             <h1>{requestedAdmin ? "Bug report inbox" : "Your bug reports"}</h1>
-            <p>
-              {requestedAdmin
-                ? "Triage confirmed user reports without exposing their financial workspace."
-                : "Track problems you explicitly reviewed and submitted through Zoption Support."}
-            </p>
           </div>
           <Link className="button secondary" to="/app/settings#help-and-contact">
             <ArrowLeft size={16} /> Back to support
@@ -185,11 +180,11 @@ export function SupportReportsPage() {
           <section className="support-reports-empty">
             <Bug size={25} aria-hidden="true" />
             <h2>{requestedAdmin ? "The inbox is clear" : "No submitted bug reports"}</h2>
-            <p>
-              {requestedAdmin
-                ? "New confirmed reports will appear here."
-                : "Open Zoption Support and choose “Report a problem” when something is not working."}
-            </p>
+            {!requestedAdmin && (
+              <p>
+                Open Zoption Support and choose “Report a problem” when something is not working.
+              </p>
+            )}
           </section>
         )}
 

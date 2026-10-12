@@ -19,7 +19,6 @@ export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace 
       <div className="settings-section-heading">
         <div>
           <h2 id="primary-goal-title">Your goals</h2>
-          <p>What you want Zoption for. You can change them any time.</p>
         </div>
         <span>Workspace</span>
       </div>

@@ -71,7 +71,6 @@ export function SettingsPage() {
           <div className="dashboard-heading">
             <p className="eyebrow">Your account</p>
             <h1>Account Settings</h1>
-            <p>Keep your identity and sign-in details accurate and secure.</p>
           </div>
         </header>
 

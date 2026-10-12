@@ -64,7 +64,8 @@ pnpm test:e2e                      # Playwright, from the repo root
 - The service worker caches only static assets. `/api`, `/app`, auth routes, billing, any request with an `Authorization` header, and URLs carrying tokens are always network only.
 - Optimistic transaction rows must mirror the server `ORDER BY` and filters in `src/lib/optimisticTransactions.ts`.
 - There are no inline scripts. The theme is applied by `public/theme-bootstrap.js` because the CSP allows `script-src 'self'`.
-- `src/main.tsx` keeps `<BrowserRouter>` outside the providers that remount when the signed-in user changes (`AssistantSessionProvider` keys its subtree by user id). A router inside them restarts on sign-in and re-reads `window.location`, which is how the sign-in callback used to report a successful sign-in as a failure.
+- `src/BrowserApplication.tsx` keeps `<BrowserRouter>` outside the providers that remount when the signed-in user changes (`AssistantSessionProvider` keys its subtree by user id). A router inside them restarts on sign-in and re-reads `window.location`, which is how the sign-in callback used to report a successful sign-in as a failure.
+- `src/main.tsx` defines no components. One there makes the entry a Fast Refresh boundary, so an edit re-runs `createRoot` on `#root` and the two roots crash the page in dev.
 - Money is integer minor units. Format only through `formatMoney` and never add float math.
 
 ## Related specs

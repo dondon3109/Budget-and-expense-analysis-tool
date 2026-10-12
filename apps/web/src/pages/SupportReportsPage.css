@@ -36,16 +36,8 @@
   box-shadow: 0 2px 7px color-mix(in srgb, var(--shadow) 70%, transparent);
 }
 
-.support-reports-state,
-.support-reports-empty {
-  margin-top: 28px;
-  padding: 28px;
-  border-radius: 16px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
 .support-reports-state {
+  margin-top: 28px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -54,11 +46,14 @@
 }
 
 .support-reports-empty {
-  min-height: 240px;
+  margin-top: 28px;
+  padding: 40px 28px;
   display: grid;
   place-content: center;
   justify-items: center;
   color: var(--muted);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
   text-align: center;
 }
 
@@ -70,7 +65,7 @@
   margin: 14px 0 0;
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 25px;
+  font-size: 22px;
   font-weight: 600;
 }
 
@@ -86,19 +81,17 @@
   display: grid;
   grid-template-columns: minmax(240px, 0.7fr) minmax(0, 1.5fr);
   align-items: start;
-  gap: 18px;
+  gap: 40px;
+  border-top: 1px solid var(--line);
 }
 
 .support-reports-list {
-  overflow: hidden;
-  border-radius: 16px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  padding-top: 12px;
 }
 
 .support-reports-list button {
   width: 100%;
-  padding: 17px 18px;
+  padding: 15px 14px;
   display: grid;
   gap: 5px;
   color: var(--ink);
@@ -116,11 +109,9 @@
 
 .support-reports-list button:hover,
 .support-reports-list button.current {
+  border-bottom-color: transparent;
+  border-radius: var(--radius-md);
   background: var(--surface-hover);
-}
-
-.support-reports-list button.current {
-  box-shadow: inset 3px 0 0 var(--action);
 }
 
 .support-reports-list span {
@@ -169,10 +160,7 @@
 }
 
 .support-report-detail {
-  padding: clamp(22px, 4vw, 34px);
-  border-radius: 16px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  padding-top: 28px;
 }
 
 .support-report-detail > header {
@@ -284,11 +272,13 @@
 
   .support-reports-workspace {
     grid-template-columns: 1fr;
+    gap: 0;
   }
 
   .support-reports-list {
     max-height: 230px;
     overflow-y: auto;
+    border-bottom: 1px solid var(--line);
   }
 
   .support-report-detail > header {

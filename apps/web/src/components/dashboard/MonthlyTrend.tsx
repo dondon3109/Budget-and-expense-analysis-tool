@@ -116,7 +116,6 @@ export function MonthlyTrend({
     <section className="panel trend-panel" aria-labelledby="trend-title" aria-busy={isLoading}>
       <div className="panel-heading trend-panel-heading">
         <div>
-          <p className="eyebrow">{selectedLabel} view</p>
           <h2 id="trend-title">Money in and out</h2>
           {data && (
             <p className="trend-period">

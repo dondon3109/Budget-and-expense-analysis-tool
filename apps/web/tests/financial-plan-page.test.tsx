@@ -117,7 +117,7 @@ describe("FinancialPlanPage", () => {
     });
   });
 
-  it("renders planning totals, records, and assistant trust copy", async () => {
+  it("renders planning totals and records", async () => {
     renderPage();
 
     expect(
@@ -127,9 +127,6 @@ describe("FinancialPlanPage", () => {
     expect(screen.getByText("Main card")).toBeInTheDocument();
     expect(screen.getAllByText("₱30,000")).toHaveLength(2);
     expect(screen.getAllByText("₱45,000")).toHaveLength(2);
-    expect(
-      screen.getByText(/nothing is edited or deleted until you tap Confirm/i),
-    ).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Emergency fund progress" })).toHaveAttribute(
       "aria-valuenow",
       "25",

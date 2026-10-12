@@ -28,16 +28,11 @@
 }
 
 .settings-sections {
-  margin-top: 28px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-xl);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  margin-top: 12px;
 }
 
 .settings-section {
-  padding: clamp(20px, 3vw, 32px);
+  padding: clamp(24px, 3vw, 32px) 0;
   scroll-margin-top: 84px;
 }
 

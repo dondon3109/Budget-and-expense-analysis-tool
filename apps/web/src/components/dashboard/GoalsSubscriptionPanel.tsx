@@ -42,7 +42,6 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
       <div className="panel-heading">
         <div>
           <h2 id="goals-title">Goals and subscriptions</h2>
-          <p>Your active savings goals and the monthly cost of your subscriptions.</p>
         </div>
       </div>
       <div className="goals-layout">

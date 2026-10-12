@@ -185,9 +185,6 @@ describe("SubscriptionsPage", () => {
     expect(
       await screen.findByRole("heading", { name: "Monthly subscriptions" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("Track recurring charges and see what they add up to."),
-    ).toBeInTheDocument();
     expect(await screen.findByText("Total monthly cost")).toBeInTheDocument();
     expect(screen.getAllByText("₱199")).toHaveLength(2);
     expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([

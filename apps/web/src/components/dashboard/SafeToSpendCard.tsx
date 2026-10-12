@@ -88,7 +88,6 @@ export function SafeToSpendCard({
       <div className="panel-heading">
         <div>
           <h2 id="safe-to-spend-title">Safe to spend this week</h2>
-          <p>Accounts for upcoming renewals and the days left in the week.</p>
         </div>
       </div>
       <div className="safe-to-spend-amount-row">

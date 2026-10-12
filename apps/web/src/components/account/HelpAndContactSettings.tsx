@@ -43,7 +43,6 @@ export function HelpAndContactSettings() {
       <div className="settings-section-heading">
         <div>
           <h2 id="help-and-contact-title">Help &amp; contact</h2>
-          <p>Find an answer, ask for product guidance, or contact the Zoption team.</p>
         </div>
         <span>Support options</span>
       </div>

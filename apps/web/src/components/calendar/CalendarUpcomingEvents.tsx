@@ -1,11 +1,8 @@
 import type { CalendarEventRecord, SubscriptionMonthItem } from "@zoption/shared";
-import { CalendarPlus, Plus } from "lucide-react";
-
 import { calendarEventTimeLabel, formatCalendarDate } from "../../lib/calendar";
 import { formatFullMonth, formatMoney } from "../../lib/formatters";
 
 interface CalendarUpcomingEventsProps {
-  selectedDate: string;
   visibleMonth: string;
   nextMonth: string;
   events: CalendarEventRecord[];
@@ -15,7 +12,6 @@ interface CalendarUpcomingEventsProps {
   hasLoadError: boolean;
   subscriptionsLoading: boolean;
   hasSubscriptionsLoadError: boolean;
-  onAddEvent: () => void;
   onSelectDate: (date: string) => void;
 }
 
@@ -30,7 +26,6 @@ function formatCompactEventDate(date: string): string {
 }
 
 export function CalendarUpcomingEvents({
-  selectedDate,
   visibleMonth,
   nextMonth,
   events,
@@ -40,30 +35,15 @@ export function CalendarUpcomingEvents({
   hasLoadError,
   subscriptionsLoading,
   hasSubscriptionsLoadError,
-  onAddEvent,
   onSelectDate,
 }: CalendarUpcomingEventsProps) {
   const rangeLabel = `${formatFullMonth(visibleMonth)}–${formatFullMonth(nextMonth)}`;
 
   return (
-    <section className="calendar-add-event" aria-labelledby="calendar-add-event-title">
-      <div className="calendar-add-event-heading">
-        <span className="calendar-add-event-icon" aria-hidden="true">
-          <CalendarPlus size={19} />
-        </span>
-        <div className="calendar-add-event-copy">
-          <p className="eyebrow">Schedule</p>
-          <h2 id="calendar-add-event-title">Add Event</h2>
-          <p>Plan an activity for {formatCalendarDate(selectedDate)}.</p>
-        </div>
-      </div>
-      <button className="button primary compact" type="button" onClick={onAddEvent}>
-        <Plus size={16} aria-hidden="true" /> Add event
-      </button>
-
+    <section className="calendar-upcoming" aria-labelledby="calendar-upcoming-title">
       <div className="calendar-upcoming-section">
         <div className="calendar-upcoming-heading">
-          <h3>Upcoming</h3>
+          <h2 id="calendar-upcoming-title">Upcoming</h2>
           <span>{rangeLabel}</span>
         </div>
 

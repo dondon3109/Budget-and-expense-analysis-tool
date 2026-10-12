@@ -45,7 +45,6 @@ describe("RemittanceCalculatorSection from a USD workspace", () => {
         name: "Remittance & FX Fee Calculator",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("OFW & Cross-Border Planning")).toBeInTheDocument();
     expect(screen.getByText("Mid-market Benchmark:")).toBeInTheDocument();
     expect(screen.getByText("1 USD = ₱56.50")).toBeInTheDocument();
 

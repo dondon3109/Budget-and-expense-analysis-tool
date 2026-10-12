@@ -79,17 +79,18 @@
   margin-top: 28px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
 }
 
 .overview-stat {
   position: relative;
   min-width: 0;
-  padding: 22px 24px;
+  padding: 4px 24px;
+}
+
+.overview-stat:first-child {
+  padding-left: 0;
 }
 
 .overview-stat + .overview-stat::before {
@@ -143,26 +144,6 @@
   background: var(--budget-soft);
 }
 
-.dashboard-page .overview-stat {
-  box-shadow: inset 0 3px 0 var(--info);
-}
-
-.dashboard-page .overview-stat.tone-income {
-  box-shadow: inset 0 3px 0 var(--income);
-}
-
-.dashboard-page .overview-stat.tone-expense {
-  box-shadow: inset 0 3px 0 var(--expense);
-}
-
-.dashboard-page .overview-stat.tone-ink {
-  box-shadow: inset 0 3px 0 var(--ink);
-}
-
-.dashboard-page .overview-stat.tone-plum {
-  box-shadow: inset 0 3px 0 var(--budget);
-}
-
 .overview-stat > strong {
   display: block;
   margin: 16px 0 8px;
@@ -177,13 +158,6 @@
 
 .overview-stat-currency {
   font-family: var(--font-ui);
-}
-
-.overview-stat > p {
-  margin: 0;
-  color: var(--subtle);
-  font-size: 11px;
-  line-height: 1.45;
 }
 
 .overview-stat-secondary {
@@ -259,17 +233,13 @@
   margin-top: 20px;
   display: grid;
   grid-template-columns: 1fr 1.25fr;
-  gap: 20px;
+  gap: 0 56px;
 }
 
 .panel {
-  padding: 26px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  padding: 28px 0 8px;
+  border-top: 1px solid var(--line);
   position: relative;
-  overflow: hidden;
 }
 
 .panel-heading {
@@ -289,14 +259,12 @@
 }
 
 .panel-empty {
-  min-height: 220px;
   margin-top: 18px;
-  padding: 28px;
+  padding: 22px 24px;
   display: grid;
   place-content: center;
   text-align: center;
-  border: 1px dashed var(--line-strong);
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   background: var(--surface-soft);
 }
 
@@ -304,7 +272,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 19px;
+  font-size: 15px;
 }
 
 .panel-empty p {
@@ -462,6 +430,13 @@
 }
 
 /* Trend Panel */
+/* The chart's screen-reader table keeps its content width even as .sr-only, so clip it
+   horizontally; the margin leaves room for the edge controls' focus rings. */
+.trend-panel {
+  overflow-x: clip;
+  overflow-clip-margin: 8px;
+}
+
 .trend-panel-heading {
   align-items: flex-start;
 }
@@ -643,18 +618,10 @@
    ============================================================ */
 .budget-panel {
   grid-column: 1 / -1;
-  background: var(--paper);
 }
 
 .goals-panel {
   grid-column: 1 / -1;
-  background: var(--paper);
-}
-
-.goals-panel .panel-heading p {
-  margin: 5px 0 0;
-  color: var(--subtle);
-  font-size: 11px;
 }
 
 .goals-layout {
@@ -875,6 +842,14 @@
     grid-template-columns: 1fr 1fr;
   }
 
+  .overview-stat {
+    padding: 16px 24px;
+  }
+
+  .overview-stat:nth-child(odd) {
+    padding-left: 0;
+  }
+
   .overview-stat + .overview-stat::before {
     content: none;
   }
@@ -893,8 +868,8 @@
     content: "";
     position: absolute;
     top: 0;
-    right: 18px;
-    left: 18px;
+    right: 0;
+    left: 0;
     height: 1px;
     background: var(--line);
   }
@@ -921,8 +896,7 @@
   }
 
   .dashboard-page .panel {
-    padding: 20px 18px;
-    border-radius: 16px;
+    padding: 20px 0 4px;
   }
 
   .trend-panel-heading,
@@ -981,29 +955,12 @@
 }
 
 @media (max-width: 470px) {
-  .overview-stat-bar {
-    grid-template-columns: 1fr;
-  }
-
   .overview-stat {
-    padding: 18px 20px;
+    padding-right: 12px;
   }
 
-  .overview-stat:nth-child(even)::before,
-  .overview-stat:nth-child(n + 3)::after {
-    content: none;
-  }
-
-  .overview-stat + .overview-stat::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 18px;
-    bottom: auto;
-    left: 18px;
-    width: auto;
-    height: 1px;
-    background: var(--line);
+  .overview-stat:nth-child(even) {
+    padding-left: 16px;
   }
 
   .donut-layout {

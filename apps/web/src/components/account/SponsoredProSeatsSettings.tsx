@@ -130,7 +130,6 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
       <div className="settings-section-heading">
         <div>
           <h2 id="sponsored-pro-seats-title">Sponsored Pro seats</h2>
-          <p>Manage five complimentary Pro seats without accessing anyone&apos;s financial data.</p>
         </div>
         <div className="sponsored-pro-seats-admin-actions">
           <span>{seats.data ? `${seats.data.activeCount} of 5 active` : "Loading"}</span>
@@ -145,10 +144,7 @@ export function SponsoredProSeatsSettings({ workspace }: { workspace: Authentica
           void add.mutateAsync();
         }}
       >
-        <div className="sponsored-pro-seats-add-heading">
-          <h3>Add a sponsored recipient</h3>
-          <p>Assign one available complimentary Pro seat to a recipient.</p>
-        </div>
+        <h3 className="sponsored-pro-seats-add-heading">Add a sponsored recipient</h3>
         <label htmlFor="sponsored-seat-email">Recipient email</label>
         <div>
           <input

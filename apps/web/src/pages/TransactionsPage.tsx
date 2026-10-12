@@ -382,7 +382,6 @@ export function TransactionsPage() {
           <div>
             <p className="eyebrow">Activity</p>
             <h1>Transactions</h1>
-            <p>Review, organize, and correct the records behind every dashboard total.</p>
           </div>
           <div className="header-actions">
             <button
@@ -449,11 +448,7 @@ export function TransactionsPage() {
                   ? `${total} transaction${total === 1 ? "" : "s"}`
                   : "Loading transactions"}
               </strong>
-              <span>
-                {transactionsQuery.isFetching && feed
-                  ? "Refreshing list…"
-                  : "Personal workspace · Philippine pesos"}
-              </span>
+              {transactionsQuery.isFetching && feed && <span>Refreshing list…</span>}
             </div>
             <div className="transaction-list-actions">
               <button

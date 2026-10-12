@@ -1,95 +1,11 @@
-import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
 
-import { PostHogAnalytics } from "./analytics/PostHogAnalytics";
-import { App } from "./App";
-import { AssistantSessionProvider } from "./assistant/AssistantSessionProvider";
-import { AuthProvider } from "./auth/AuthProvider";
-import { BillingLimitHost } from "./components/billing/BillingLimitHost";
-import { CookieConsentExperience } from "./components/consent/CookieConsentExperience";
-import { InitialDashboardExperienceProvider } from "./components/dashboard/InitialDashboardExperienceProvider";
-import { AppErrorBoundary } from "./components/layout/AppErrorBoundary";
-import { ReleaseNotesExperience } from "./components/releases/ReleaseNotesExperience";
-import { ThemeChoiceDialog } from "./components/theme/ThemeChoiceDialog";
-import { CookieConsentProvider } from "./consent/CookieConsentProvider";
-import { ImportDraftProvider } from "./import/ImportDraftProvider";
-import { isApiRequestError } from "./lib/api";
-import { reportBillingLimit } from "./lib/billingLimitNotice";
-import { InstallationProvider } from "./pwa/installation";
+import { BrowserApplication } from "./BrowserApplication";
 import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
-import "./styles/foundation.css";
-import { ThemeProvider } from "./theme/ThemeProvider";
 
-const queryClient = new QueryClient({
-  // Only user-initiated writes pop the dialog; a read that is Pro-only keeps its inline prompt
-  // so a free user is not interrupted by a card loading.
-  mutationCache: new MutationCache({ onError: reportBillingLimit }),
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      // The API client already repeats a timed-out read once with a pause, so retrying the same
-      // timeout here as well would only double how long the user waits before the error surfaces.
-      retry: (failureCount, error) =>
-        failureCount < 1 && !(isApiRequestError(error) && error.code === "request_timeout"),
-      refetchOnWindowFocus: false,
-    },
-  },
-});
-
-function ClientExperiences() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
-  return (
-    <>
-      <ThemeChoiceDialog />
-      <CookieConsentExperience />
-      <ReleaseNotesExperience />
-      <BillingLimitHost />
-      <PostHogAnalytics />
-    </>
-  );
-}
-
-function BrowserApplication() {
-  return (
-    <StrictMode>
-      <ThemeProvider>
-        <InstallationProvider>
-          <CookieConsentProvider>
-            <QueryClientProvider client={queryClient}>
-              <AuthProvider>
-                {/* The router stays outside the identity-keyed providers below: they reset
-                    themselves by remounting when the signed-in user changes, and restarting
-                    the router would discard the location that a sign-in callback is reading. */}
-                <BrowserRouter>
-                  <AppErrorBoundary>
-                    <InitialDashboardExperienceProvider>
-                      <AssistantSessionProvider>
-                        <ImportDraftProvider>
-                          <App />
-                          <ClientExperiences />
-                        </ImportDraftProvider>
-                      </AssistantSessionProvider>
-                    </InitialDashboardExperienceProvider>
-                  </AppErrorBoundary>
-                </BrowserRouter>
-              </AuthProvider>
-            </QueryClientProvider>
-          </CookieConsentProvider>
-        </InstallationProvider>
-      </ThemeProvider>
-    </StrictMode>
-  );
-}
-
+// Keep components out of this entry. A component here makes the React plugin mark the entry as a
+// Fast Refresh boundary, so a dependency edit re-runs it in place and calls createRoot on #root a
+// second time; two roots then fight over the DOM. Without one, Vite reloads the page instead.
 const root = document.getElementById("root");
 if (!root) throw new Error("Zoption could not find the application root.");
 

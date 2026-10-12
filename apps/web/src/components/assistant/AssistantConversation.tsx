@@ -34,41 +34,35 @@ import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
 import { AssistantActionCard } from "./AssistantActionCard";
 import "./AssistantTransactionDraft.css";
 
-const QUICK_PROMPTS: { prompt: string; title: string; desc: string; icon: typeof Scale }[] = [
+const QUICK_PROMPTS: { prompt: string; title: string; icon: typeof Scale }[] = [
   {
     prompt: "How much did I spend this month?",
     title: "Where did my money go?",
-    desc: "This month's spending by category",
     icon: TrendingUp,
   },
   {
     prompt: "Why did I overspend last month?",
     title: "What pushed me over budget?",
-    desc: "Budget vs. actual, month over month",
     icon: Scale,
   },
   {
     prompt: "Which debt should I pay first?",
     title: "Which debt should I pay first?",
-    desc: "Avalanche vs. snowball guidance",
     icon: PiggyBank,
   },
   {
     prompt: "How much should I save monthly for my goal?",
     title: "How much should I save each month?",
-    desc: "Pace toward your savings goal",
     icon: Sparkles,
   },
   {
     prompt: "Help me log an expense",
     title: "Log what I just spent",
-    desc: "Suggestions from your past entries",
     icon: NotebookPen,
   },
   {
     prompt: "I only know how much is left in my wallet. Help me log my spending.",
     title: "I only know what's left",
-    desc: "Work out the amount from your balance",
     icon: ReceiptText,
   },
 ];
@@ -80,7 +74,6 @@ export function quickPromptsForGoal(goal: PrimaryGoal | null | undefined) {
   const lead = {
     prompt: starter,
     title: starter,
-    desc: "Suggested for your goal",
     icon: Sparkles,
   };
   return [lead, ...QUICK_PROMPTS.filter(({ prompt }) => prompt !== starter)].slice(
@@ -421,20 +414,13 @@ export function AssistantConversation({
         </span>
         <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
-        <p>
-          Ask about balances, cash flow, budgets, recurring charges, goals, or debt payoff planning,
-          or tell me what you spent and I&apos;ll help you log it.
-        </p>
         <div className="assistant-quick-prompts">
-          {quickPromptsForGoal(goal).map(({ prompt, title, desc, icon: Icon }) => (
+          {quickPromptsForGoal(goal).map(({ prompt, title, icon: Icon }) => (
             <button type="button" key={prompt} onClick={() => onPrompt(prompt)}>
               <span className="assistant-quick-prompt-icon" aria-hidden="true">
                 <Icon size={17} />
               </span>
-              <span className="assistant-quick-prompt-copy">
-                <span className="assistant-quick-prompt-title">{title}</span>
-                <span className="assistant-quick-prompt-desc">{desc}</span>
-              </span>
+              <span className="assistant-quick-prompt-title">{title}</span>
               <span className="assistant-quick-prompt-arrow" aria-hidden="true">
                 <ArrowRight size={14} />
               </span>

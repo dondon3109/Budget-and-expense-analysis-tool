@@ -1,6 +1,12 @@
 @import "tailwindcss";
 @import "@zoption/web-common/tokens.css";
 
+/* Pages move focus to their heading so screen readers announce the new view; the heading is
+   not an interactive target, so it gets no visible ring. */
+h1[tabindex="-1"]:focus {
+  outline: none;
+}
+
 .theme-choice-layer {
   position: fixed;
   inset: 0;
@@ -492,8 +498,12 @@
 .full-page-status.error-state .button {
   margin-top: 10px;
 }
+/* Wraps rather than pushing the page wider when a header carries many actions. */
 .header-actions {
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
 }
 .button:disabled,

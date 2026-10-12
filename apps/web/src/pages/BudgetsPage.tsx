@@ -247,13 +247,6 @@ export function BudgetsPage() {
                   : "Monthly plan"}
             </p>
             <h1>Budgets</h1>
-            <p>
-              {tab === "every-month"
-                ? "Limits every month starts from. A month can set its own for any category."
-                : tab === "occasions"
-                  ? "Plan a birthday, trip, or holiday with its own limits, apart from your monthly budget."
-                  : "Set practical limits by category and compare them with actual spending."}
-            </p>
           </div>
           <div className="header-actions budgets-header-actions">
             <button

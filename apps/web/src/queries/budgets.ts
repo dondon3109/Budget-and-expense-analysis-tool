@@ -1,5 +1,5 @@
 import type { BudgetQuery } from "@zoption/shared";
-import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
+import { queryOptions, skipToken, useQuery, type QueryClient } from "@tanstack/react-query";
 
 import { getBudgetOccasions, getBudgets } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
@@ -19,11 +19,15 @@ export function budgetsQueryOptions(workspace: AuthenticatedWorkspace, query: Bu
   });
 }
 
-/** `query` is null while no plan is open, such as the occasion list. */
+/**
+ * `query` is null while no plan is open, such as the occasion list. That case reads a key no
+ * plan is cached under: a disabled query still returns cached data, so borrowing a real plan's
+ * key would show that plan whenever it happened to be cached.
+ */
 export function useBudgets(workspace: AuthenticatedWorkspace, query: BudgetQuery | null) {
   return useQuery({
-    ...budgetsQueryOptions(workspace, query ?? { scope: "every-month" }),
-    enabled: query !== null,
+    queryKey: queryKeys.budgets(workspace, query ? budgetPlanKey(query) : "none"),
+    queryFn: query ? () => getBudgets(workspace, query) : skipToken,
   });
 }
 

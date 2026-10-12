@@ -1,6 +1,5 @@
 import {
   ArrowRight,
-  BookOpen,
   Camera,
   FileSpreadsheet,
   HelpCircle,
@@ -10,6 +9,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -20,7 +20,7 @@ interface TutorialSection {
   id: string;
   category: string;
   title: string;
-  icon: typeof BookOpen;
+  icon: LucideIcon;
   summary: string;
   actionText?: string;
   actionHref?: string;
@@ -237,15 +237,7 @@ export function TutorialsPage() {
   return (
     <div className="tutorials-page">
       <header className="tutorials-hero">
-        <div className="tutorials-hero-badge">
-          <BookOpen size={14} aria-hidden="true" />
-          <span>User Guides & Tutorials</span>
-        </div>
         <h1>How to Use Zoption</h1>
-        <p className="tutorials-hero-sub">
-          Step-by-step walkthroughs to help you master your budget, adjust balances, scan receipts,
-          and reach your financial goals.
-        </p>
 
         <div className="tutorials-search-bar">
           <Search size={18} className="tutorials-search-icon" aria-hidden="true" />
@@ -349,10 +341,7 @@ export function TutorialsPage() {
       </div>
 
       <section className="tutorials-help-banner">
-        <div>
-          <h2>Still need assistance?</h2>
-          <p>Our support team and AI Assistant are available 24/7 to answer your questions.</p>
-        </div>
+        <h2>Still need assistance?</h2>
         <div className="tutorials-help-actions">
           <Link to="/app/assistant" className="button primary">
             Ask AI Assistant

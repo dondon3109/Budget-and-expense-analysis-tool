@@ -18,64 +18,27 @@
   gap: 10px;
 }
 
-.planning-trust-strip {
-  margin: 24px 0 18px;
-  padding: 15px 18px;
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface-soft);
-  box-shadow: var(--shadow-card);
-}
-
-.planning-trust-strip svg {
-  flex: 0 0 auto;
-  color: var(--sage);
-}
-
-.planning-trust-strip div {
-  display: grid;
-  gap: 4px;
-}
-
-.planning-trust-strip strong {
-  color: var(--ink);
-  font-size: 12.5px;
-  font-weight: 650;
-}
-
-.planning-trust-strip span {
-  max-width: 76ch;
-  font-size: 11.5px;
-  line-height: 1.55;
-}
-
 .planning-overview {
-  min-height: 172px;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 1.45fr) repeat(2, minmax(0, 1fr));
-  overflow: hidden;
+  margin-top: 28px;
+  padding-bottom: 28px;
   color: var(--ink);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  border-bottom: 1px solid var(--line);
 }
 
 .planning-overview > div {
   min-width: 0;
-  padding: 26px 25px;
+  padding: 4px 24px;
   display: grid;
   align-content: center;
   gap: 8px;
   transition: background-color 0.16s ease;
 }
 
-.planning-overview > div:hover {
-  background: var(--surface-soft);
+.planning-overview > div:first-child {
+  padding-left: 0;
 }
 
 .planning-overview > div + div {
@@ -111,11 +74,6 @@
   line-height: 1.5;
 }
 
-.planning-overview-lead {
-  background: var(--surface-soft);
-  box-shadow: inset 3px 0 0 var(--sage);
-}
-
 .planning-overview-lead strong {
   color: var(--action-strong);
   font-size: clamp(36px, 4vw, 50px);
@@ -126,29 +84,24 @@
 }
 
 .planning-ledger {
-  margin-top: 18px;
+  margin-top: 8px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  column-gap: 48px;
 }
 
 .planning-column + .planning-column {
+  padding-left: 48px;
   border-left: 1px solid var(--line);
 }
 
 .planning-section-heading {
-  min-height: 112px;
-  padding: 24px;
+  padding: 24px 0 16px;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-soft);
 }
 
 .planning-section-heading > div {
@@ -196,22 +149,16 @@
 }
 
 .planning-record {
-  min-height: 162px;
-  padding: 22px 24px;
+  padding: 22px 0;
   display: grid;
   align-content: center;
   gap: 12px;
   border-bottom: 1px solid var(--line);
-  background: var(--paper);
   transition: background-color 160ms ease;
 }
 
 .planning-record:last-child {
   border-bottom: 0;
-}
-
-.planning-record:hover {
-  background: var(--surface-soft);
 }
 
 /* Settled records step back through muted figures; the status pill names the state, and
@@ -329,14 +276,15 @@
 }
 
 .planning-empty {
-  min-height: 326px;
-  padding: 46px 32px;
+  margin-top: 18px;
+  padding: 28px 24px;
   display: grid;
   place-content: center;
   justify-items: center;
   gap: 10px;
   color: var(--muted);
-  background: var(--paper);
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
   text-align: center;
 }
 
@@ -361,16 +309,13 @@
 }
 
 .planning-preferences {
-  margin-top: 18px;
-  padding: 26px;
+  margin-top: 32px;
+  padding: 28px 0 0;
   display: grid;
   grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
   align-items: center;
   gap: 30px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  border-top: 1px solid var(--line);
 }
 
 .planning-preferences-heading {
@@ -523,6 +468,8 @@
 
   .planning-overview > div:last-child {
     grid-column: 1 / -1;
+    margin-top: 16px;
+    padding: 16px 0 0;
     border-top: 1px solid var(--line);
     border-left: 0;
   }
@@ -532,7 +479,8 @@
   }
 
   .planning-column + .planning-column {
-    border-top: 1px solid var(--line);
+    margin-top: 16px;
+    padding-left: 0;
     border-left: 0;
   }
 
@@ -562,7 +510,7 @@
   }
 
   .planning-overview > div {
-    padding: 21px 18px;
+    padding: 16px 0;
   }
 
   .planning-overview > div + div,
@@ -574,7 +522,7 @@
 
   .planning-section-heading {
     min-height: 0;
-    padding: 19px 18px;
+    padding: 19px 0 12px;
   }
 
   .planning-section-heading > .text-button {
@@ -588,7 +536,7 @@
 
   .planning-record {
     min-height: 0;
-    padding: 20px 18px;
+    padding: 18px 0;
   }
 
   .planning-preference-controls,

@@ -361,3 +361,11 @@ textarea:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
+/* Fields sit tight against their labels and hints, so their ring is drawn over the border
+   instead of outside it, where it would cover the text around the field. */
+input:not([type="checkbox"], [type="radio"]):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline-width: 2px;
+  outline-offset: -1px;
+}
