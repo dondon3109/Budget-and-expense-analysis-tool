@@ -138,6 +138,41 @@ describe("AdjustBalanceModal", () => {
     });
   });
 
+  it("opens a balance in another currency on a bank account", async () => {
+    renderModal({
+      account: {
+        ...mockAccount,
+        id: "acc-bank",
+        name: "Bank",
+        type: "checking",
+        balancesByCurrency: { PHP: 10_000 },
+      },
+    });
+
+    fireEvent.change(screen.getByLabelText(/^Currency/), { target: { value: "USD" } });
+    expect(screen.getByText("Current USD balance")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("0.00"), { target: { value: "200" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save adjustment" }));
+
+    await waitFor(() => {
+      expect(apiMocks.createTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          kind: "income",
+          accountId: "acc-bank",
+          amountMinor: 20_000,
+          currency: "USD",
+        }),
+      );
+    });
+  });
+
+  it("keeps a non-bank account in its own currency", () => {
+    renderModal();
+
+    expect(screen.queryByLabelText(/^Currency/)).not.toBeInTheDocument();
+  });
+
   it("focuses the balance field, traps Tab, and closes on Escape", async () => {
     const onClose = vi.fn();
     renderModal({ onClose });

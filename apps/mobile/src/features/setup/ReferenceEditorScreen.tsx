@@ -827,8 +827,9 @@ export function ReferenceEditorScreen() {
               <BalanceAdjustCard
                 accountId={id}
                 accountName={account.name}
-                currency={modelingState.modeling.currency}
-                currentBalanceMinor={modelingState.modeling.balanceMinor}
+                accountType={account.type}
+                accountCurrency={modelingState.modeling.currency}
+                balancesByCurrency={modelingState.modeling.balancesByCurrency}
                 disabled={blocked || saving}
               />
             ) : null}

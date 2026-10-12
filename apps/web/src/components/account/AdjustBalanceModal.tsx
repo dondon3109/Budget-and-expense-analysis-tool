@@ -2,11 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   buildBalanceAdjustmentInput,
   computeBalanceAdjustment,
+  currencies,
+  currencyMetadata,
   formatAdjustmentPreview,
+  heldCurrencies,
+  holdsMultipleCurrencies,
+  isCurrency,
   parseAmountToMinor,
   resolveAdjustmentCategoryId,
   type AccountBalanceSummaryItem,
   type AccountRecord,
+  type Currency,
 } from "@zoption/shared";
 import { Check, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -40,16 +46,23 @@ export function AdjustBalanceModal({
   const workspace = user ? userWorkspace(user) : undefined;
 
   const [newBalance, setNewBalance] = useState("");
+  // Null follows the account's own currency; only a bank account offers another one.
+  const [chosenCurrency, setChosenCurrency] = useState<Currency | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
   const newBalanceRef = useRef<HTMLInputElement>(null);
   const undoAdjustmentRef = useRef<HTMLButtonElement>(null);
 
-  const currency = account.currency ?? "PHP";
+  const multiCurrency = holdsMultipleCurrencies(account.type);
+  const currency = (multiCurrency ? chosenCurrency : null) ?? account.currency ?? "PHP";
   const currentBalanceMinor =
     account.balancesByCurrency?.[currency] ??
-    (account.balanceMinor != null ? account.balanceMinor : 0);
+    (currency === account.currency && account.balanceMinor != null ? account.balanceMinor : 0);
+  const held = heldCurrencies({
+    currency: account.currency ?? "PHP",
+    balancesByCurrency: account.balancesByCurrency,
+  });
 
   const categoriesQuery = useQuery({
     queryKey: workspace
@@ -190,6 +203,7 @@ export function AdjustBalanceModal({
                   const selected = accounts.find((a) => a.id === e.target.value);
                   if (selected) {
                     onSelectAccount(selected);
+                    setChosenCurrency(null);
                     setNewBalance("");
                     setErrorMessage(null);
                   }
@@ -209,13 +223,42 @@ export function AdjustBalanceModal({
             </label>
           )}
 
+          {multiCurrency && !adjustmentId && (
+            <label className="adjust-balance-field">
+              <span>Currency</span>
+              <select
+                value={currency}
+                onChange={(e) => {
+                  if (!isCurrency(e.target.value)) return;
+                  setChosenCurrency(e.target.value);
+                  setNewBalance("");
+                  setErrorMessage(null);
+                }}
+                disabled={adjustMutation.isPending}
+              >
+                {currencies.map((code) => (
+                  <option key={code} value={code}>
+                    {held.includes(code)
+                      ? `${currencyMetadata[code].label} · ${formatMoney(account.balancesByCurrency?.[code] ?? 0, code)}`
+                      : currencyMetadata[code].label}
+                  </option>
+                ))}
+              </select>
+              <small className="adjust-balance-hint">
+                Bank accounts can hold several currencies. Pick a new one to add its balance.
+              </small>
+            </label>
+          )}
+
           <div className="adjust-balance-current-card">
             <div>
               <span className="adjust-balance-label">Account</span>
               <strong className="adjust-balance-account-name">{account.name}</strong>
             </div>
             <div className="adjust-balance-current-value">
-              <span className="adjust-balance-label">Current Ledger Balance</span>
+              <span className="adjust-balance-label">
+                {multiCurrency ? `Current ${currency} balance` : "Current Ledger Balance"}
+              </span>
               <strong>{formatMoney(currentBalanceMinor, currency)}</strong>
             </div>
           </div>

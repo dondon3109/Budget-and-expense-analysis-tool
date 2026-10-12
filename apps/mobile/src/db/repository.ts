@@ -118,6 +118,10 @@ const calendarSubscriptionItemSchema = subscriptionItemSchema.omit({
 const accountModelingRowSchema = z.object({
   interest_json: z.string().nullable(),
   currency: z.enum(currencies),
+});
+
+const accountCurrencyBalanceRowSchema = z.object({
+  currency: z.enum(currencies),
   balance_minor: z.number().int().safe(),
 });
 
@@ -654,24 +658,28 @@ LIMIT ?`;
 
   async getAccountModeling(id: string): Promise<LocalAccountModeling | null> {
     const row = await this.database.getFirstAsync(
-      `SELECT
-         a.interest_json,
-         a.currency,
-         COALESCE(SUM(CASE
-           WHEN (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL) AND t.currency = a.currency
-           THEN t.amount_minor ELSE 0
-         END), 0) AS balance_minor
-       FROM accounts a
-       LEFT JOIN transactions t ON t.account_id = a.id AND t.deleted_at IS NULL
-       WHERE a.id = ? AND a.deleted_at IS NULL
-       GROUP BY a.id`,
+      `SELECT interest_json, currency FROM accounts WHERE id = ? AND deleted_at IS NULL`,
       id,
     );
     if (!row) return null;
     const decoded = accountModelingRowSchema.parse(row);
+    // A bank account can hold several currencies, so its balance is kept per currency.
+    const balanceRows = await this.database.getAllAsync(
+      `SELECT currency, SUM(amount_minor) AS balance_minor FROM transactions
+       WHERE account_id = ? AND deleted_at IS NULL
+         AND (kind != 'transfer' OR transfer_group_id IS NOT NULL)
+       GROUP BY currency`,
+      id,
+    );
+    const balancesByCurrency: CurrencyTotals = {};
+    for (const balanceRow of balanceRows) {
+      const balance = accountCurrencyBalanceRowSchema.parse(balanceRow);
+      balancesByCurrency[balance.currency] = balance.balance_minor;
+    }
     return {
       currency: decoded.currency,
-      balanceMinor: decoded.balance_minor,
+      balanceMinor: balancesByCurrency[decoded.currency] ?? 0,
+      balancesByCurrency,
       interest: decodeInterest(decoded.interest_json),
     };
   }

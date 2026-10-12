@@ -1,8 +1,14 @@
-import type { Currency } from "@zoption/shared";
+import {
+  heldCurrencies,
+  holdsMultipleCurrencies,
+  type Currency,
+  type CurrencyTotals,
+} from "@zoption/shared";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { useLocalReferenceData, useLocalWorkspace } from "@/db/local-workspace-state";
+import { EntryCurrencyField } from "@/features/transactions/EntryCurrencyField";
 import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, FormField, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -21,19 +27,22 @@ import {
  * One-click "Adjust Current Balance" for the account editor. Shows an
  * Old → New preview, books the delta as an Uncategorized Adjustment
  * transaction through the existing mutation path, and offers Undo scoped to
- * that single adjustment entry.
+ * that single adjustment entry. A bank account picks the currency to adjust, which is how
+ * it opens a balance in another currency (a USD balance in a PHP bank account).
  */
 export function BalanceAdjustCard({
   accountId,
   accountName,
-  currency,
-  currentBalanceMinor,
+  accountType,
+  accountCurrency,
+  balancesByCurrency,
   disabled,
 }: {
   accountId: string;
   accountName: string;
-  currency: Currency;
-  currentBalanceMinor: number;
+  accountType: string;
+  accountCurrency: Currency;
+  balancesByCurrency: CurrencyTotals;
   disabled?: boolean;
 }) {
   const theme = useZoptionTheme();
@@ -44,6 +53,11 @@ export function BalanceAdjustCard({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
+  const [chosenCurrency, setChosenCurrency] = useState<Currency>(accountCurrency);
+  const multiCurrency = holdsMultipleCurrencies(accountType);
+  const currency = multiCurrency ? chosenCurrency : accountCurrency;
+  const currentBalanceMinor = balancesByCurrency[currency] ?? 0;
+  const held = heldCurrencies({ currency: accountCurrency, balancesByCurrency });
 
   const parsedNewBalance = (() => {
     if (!newBalance.trim()) return null;
@@ -127,8 +141,31 @@ export function BalanceAdjustCard({
         <Text style={[typography.headline, { color: theme.colors.text }]}>
           Adjust current balance
         </Text>
+        {held.length > 1 ? (
+          <View className="gap-1" accessibilityLabel="Balances by currency">
+            {held.map((code) => (
+              <View key={code} className="flex-row flex-wrap items-center">
+                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>{code} </Text>
+                <MoneyValue amountMinor={balancesByCurrency[code] ?? 0} currency={code} />
+              </View>
+            ))}
+          </View>
+        ) : null}
+        {multiCurrency && !adjustmentId ? (
+          <EntryCurrencyField
+            value={currency}
+            disabled={busy || Boolean(disabled)}
+            onChange={(code) => {
+              setChosenCurrency(code);
+              setNewBalance("");
+              setMessage(null);
+            }}
+          />
+        ) : null}
         <View className="flex-row flex-wrap items-center">
-          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Current </Text>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+            {multiCurrency ? `Current ${currency} ` : "Current "}
+          </Text>
           <MoneyValue amountMinor={currentBalanceMinor} currency={currency} />
         </View>
         {adjustmentId ? (
