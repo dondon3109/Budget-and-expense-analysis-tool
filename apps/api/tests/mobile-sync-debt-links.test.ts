@@ -11,7 +11,7 @@ import {
 afterEach(closeSyncEnvironments);
 
 const clientId = "40000000-0000-4000-8000-000000000001";
-const debtLinks = new Set(["debt-links", "account-types-v2"] as const);
+const debtLinks = new Set(["debt-links", "account-types-v2", "account-types-v3"] as const);
 
 let sequence = 0;
 function ids() {
@@ -211,6 +211,7 @@ describe("mobile sync debt links", () => {
     const { env, database } = createSyncEnvironment();
     database.exec(`
       INSERT INTO accounts (id, tenant_id, name, type) VALUES ('account-loan', 'tenant-1', 'Loan', 'payable');
+      INSERT INTO accounts (id, tenant_id, name, type) VALUES ('account-gcash', 'tenant-1', 'GCash', 'ewallet');
       UPDATE transactions SET debt_id = 'debt-1' WHERE id = 'transaction-1';
     `);
     const repository = createMobileSyncRepository(vi.fn(async () => true));
@@ -218,6 +219,7 @@ describe("mobile sync debt links", () => {
 
     const current = await repository.pull(env, "tenant-1", request, debtLinks);
     const legacy = await repository.pull(env, "tenant-1", request);
+    const v2 = await repository.pull(env, "tenant-1", request, new Set(["account-types-v2"]));
 
     const latest = (changes: typeof current.changes, entityId: string) =>
       changes.filter((change) => change.entityId === entityId).at(-1)?.payload;
@@ -225,5 +227,8 @@ describe("mobile sync debt links", () => {
     expect(latest(legacy.changes, "transaction-1")).not.toHaveProperty("debtId");
     expect(latest(current.changes, "account-loan")).toMatchObject({ type: "payable" });
     expect(latest(legacy.changes, "account-loan")).toMatchObject({ type: "other" });
+    expect(latest(current.changes, "account-gcash")).toMatchObject({ type: "ewallet" });
+    expect(latest(v2.changes, "account-loan")).toMatchObject({ type: "payable" });
+    expect(latest(v2.changes, "account-gcash")).toMatchObject({ type: "other" });
   });
 });

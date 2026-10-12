@@ -268,7 +268,6 @@ export function SubscriptionRenewalCalendar({
                     >
                       <header className="renewal-day-head">
                         <span className="renewal-day-number">{Number(date.slice(-2))}</span>
-                        {isToday && <span className="renewal-today-badge">Today</span>}
                       </header>
 
                       {hasRenewals && (
