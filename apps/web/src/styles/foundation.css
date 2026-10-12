@@ -498,8 +498,12 @@ h1[tabindex="-1"]:focus {
 .full-page-status.error-state .button {
   margin-top: 10px;
 }
+/* Wraps rather than pushing the page wider when a header carries many actions. */
 .header-actions {
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 10px;
 }
 .button:disabled,
