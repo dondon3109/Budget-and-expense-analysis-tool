@@ -1,6 +1,4 @@
 .admin-provider-page {
-  width: min(1280px, 100%);
-  margin: 0 auto;
   color: var(--ink);
   font-family: var(--font-ui);
 }
@@ -30,15 +28,6 @@
   line-height: 1;
 }
 
-.admin-provider-header > div > span {
-  max-width: 72ch;
-  margin-top: 12px;
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
 .admin-provider-header-actions {
   flex: 0 0 auto;
   display: flex;
@@ -46,25 +35,20 @@
   gap: 10px;
 }
 
-.admin-provider-state,
-.admin-provider-access {
-  margin-top: 28px;
-  padding: 30px;
-  border-radius: 15px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
 .admin-provider-state {
+  margin-top: 28px;
   color: var(--muted);
   font-size: 13px;
 }
 
 .admin-provider-access {
-  min-height: 260px;
+  margin-top: 28px;
+  padding: 48px 30px;
   display: grid;
   place-content: center;
   justify-items: center;
+  border-radius: var(--radius-lg);
+  background: var(--surface-soft);
   text-align: center;
 }
 
@@ -114,8 +98,7 @@
   gap: 8px;
   color: var(--muted);
   background: var(--surface-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   font-size: 11px;
   line-height: 1.5;
 }
@@ -127,10 +110,8 @@
 
 .admin-provider-section {
   margin-top: 28px;
-  padding: 20px;
-  border-radius: 15px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
 }
 
 .admin-provider-section-heading {
@@ -317,17 +298,14 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 8px;
 }
 
 .admin-provider-audits li {
-  padding: 10px 12px;
+  padding: 10px 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
+  border-bottom: 1px solid var(--line);
   font-size: 11px;
 }
 
@@ -693,8 +671,7 @@
   margin-top: 14px;
   padding: 16px 18px;
   background: var(--surface-soft);
-  border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   display: grid;
   gap: 12px;
 }

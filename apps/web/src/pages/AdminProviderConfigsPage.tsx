@@ -49,23 +49,10 @@ import {
 import type { ProviderConfig, ProviderCredentialWithUsage, ProviderService } from "@zoption/shared";
 import "./AdminProviderConfigsPage.css";
 
-const SERVICES: { id: ProviderService; label: string; description: string }[] = [
-  {
-    id: "assistant",
-    label: "AI Assistant",
-    description:
-      "Primary conversational assistant model used for all Zoption AI answers. Add a credential for DeepSeek, OpenAI, Anthropic, Gemini, Meta, or Muse Spark, then activate that configuration to test a new model.",
-  },
-  {
-    id: "stt",
-    label: "Voice Input · STT",
-    description: "Speech-to-text model for voice recordings.",
-  },
-  {
-    id: "tts",
-    label: "Voice Output · TTS",
-    description: "Text-to-speech model for spoken replies and previews.",
-  },
+const SERVICES: { id: ProviderService; label: string }[] = [
+  { id: "assistant", label: "AI Assistant" },
+  { id: "stt", label: "Voice Input · STT" },
+  { id: "tts", label: "Voice Output · TTS" },
 ];
 
 const SERVICE_CREDENTIALS: Record<ProviderService, { label: string; expectsKey: boolean }> = {
@@ -268,7 +255,7 @@ export function AdminProviderConfigsPage() {
 
   return (
     <AppShell>
-      <div className="admin-provider-page">
+      <div className="dashboard-page admin-provider-page">
         {isAdmin && (
           <Breadcrumbs
             items={[
@@ -282,12 +269,6 @@ export function AdminProviderConfigsPage() {
           <div>
             <p>Platform Administration</p>
             <h1>AI & Voice Models</h1>
-            <span>
-              Manage reusable credentials and provider configurations. Credentials are encrypted
-              with AES-256-GCM and never shown in full. Configurations reuse credentials by
-              provider. Active changes affect all users immediately (registry cache invalidated)
-              with ~30s TTL as fallback. Manual switching only — no automatic fallback.
-            </span>
           </div>
           <div className="admin-provider-header-actions">
             <Link to="/app/settings" className="button secondary">
@@ -334,9 +315,8 @@ export function AdminProviderConfigsPage() {
             {errorMsg && <div className="admin-provider-feedback error">{errorMsg}</div>}
 
             <div className="admin-provider-notice">
-              <AlertTriangle size={16} /> Fallback order is displayed for operational visibility
-              only. This release does not auto-retry across providers — switch the active model
-              manually if a provider has an outage.
+              <AlertTriangle size={16} /> Changes apply to every user at once. Providers never fail
+              over automatically; switch the active model by hand during an outage.
             </div>
 
             {/* Navigation Tabs */}
@@ -409,13 +389,7 @@ export function AdminProviderConfigsPage() {
             {(selectedTab === "all" || selectedTab === "credentials") && (
               <section className="admin-provider-section">
                 <div className="admin-provider-section-heading">
-                  <div>
-                    <h2>Credentials</h2>
-                    <p>
-                      Reusable encrypted secrets. Name + ••••last4 shown only. One credential can be
-                      reused by multiple configurations of the same provider.
-                    </p>
-                  </div>
+                  <h2>Credentials</h2>
                   <span>
                     <button
                       type="button"
@@ -526,10 +500,7 @@ export function AdminProviderConfigsPage() {
                 return (
                   <section key={svc.id} className="admin-provider-section">
                     <div className="admin-provider-section-heading">
-                      <div>
-                        <h2>{svc.label}</h2>
-                        <p>{svc.description}</p>
-                      </div>
+                      <h2>{svc.label}</h2>
                     </div>
 
                     {/* Prominent Active Provider Card */}
@@ -828,9 +799,6 @@ export function AdminProviderConfigsPage() {
             <section className="admin-provider-section">
               <div className="admin-provider-section-heading">
                 <h2>Recent changes</h2>
-                <p>
-                  Audit trail: what changed, when, and by which admin. Secrets are never recorded.
-                </p>
               </div>
               {auditsQuery.isPending ? (
                 <div className="admin-provider-state">Loading audits…</div>
