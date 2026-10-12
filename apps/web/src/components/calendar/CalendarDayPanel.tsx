@@ -52,9 +52,14 @@ export function CalendarDayPanel({
             {items.length === 1 ? "" : "s"}
           </span>
         </div>
-        <button className="button secondary compact" type="button" onClick={onAddTransaction}>
-          <Plus size={15} aria-hidden="true" /> Transaction
-        </button>
+        <div className="calendar-day-actions">
+          <button className="button secondary compact" type="button" onClick={onAddEvent}>
+            <CalendarPlus size={15} aria-hidden="true" /> Add event
+          </button>
+          <button className="button secondary compact" type="button" onClick={onAddTransaction}>
+            <Plus size={15} aria-hidden="true" /> Add transaction
+          </button>
+        </div>
       </header>
 
       {occasions.length > 0 && (
@@ -86,9 +91,6 @@ export function CalendarDayPanel({
         <section className="calendar-event-section" aria-labelledby="calendar-events-title">
           <div className="calendar-day-section-heading">
             <h3 id="calendar-events-title">Events</h3>
-            <button className="text-button" type="button" onClick={onAddEvent}>
-              <CalendarPlus size={14} aria-hidden="true" /> Add event
-            </button>
           </div>
           <div className="calendar-event-list">
             {events.map((event) => {
@@ -206,15 +208,6 @@ export function CalendarDayPanel({
       {activityCount === 0 && (
         <div className="calendar-day-empty">
           <strong>Nothing planned for this day.</strong>
-          <p>Add an event or transaction and it will appear here.</p>
-          <div className="calendar-day-empty-actions">
-            <button className="button primary" type="button" onClick={onAddEvent}>
-              <CalendarPlus size={16} aria-hidden="true" /> Add event
-            </button>
-            <button className="button secondary" type="button" onClick={onAddTransaction}>
-              <Plus size={16} aria-hidden="true" /> Add transaction
-            </button>
-          </div>
         </div>
       )}
     </aside>

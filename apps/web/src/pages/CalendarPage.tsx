@@ -583,7 +583,6 @@ export function CalendarPage() {
               }}
             />
             <CalendarUpcomingEvents
-              selectedDate={selectedDate}
               visibleMonth={visibleMonth}
               nextMonth={nextMonth}
               events={upcomingEvents}
@@ -593,7 +592,6 @@ export function CalendarPage() {
               hasLoadError={upcomingEventsLoadError}
               subscriptionsLoading={upcomingSubscriptionsLoading}
               hasSubscriptionsLoadError={upcomingSubscriptionsLoadError}
-              onAddEvent={openNewEvent}
               onSelectDate={setSelectedDate}
             />
           </div>
