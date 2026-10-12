@@ -255,14 +255,12 @@
 }
 
 .panel-empty {
-  min-height: 220px;
   margin-top: 18px;
-  padding: 28px;
+  padding: 22px 24px;
   display: grid;
   place-content: center;
   text-align: center;
-  border: 1px dashed var(--line-strong);
-  border-radius: 15px;
+  border-radius: var(--radius-lg);
   background: var(--surface-soft);
 }
 
@@ -270,7 +268,7 @@
   color: var(--ink);
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 19px;
+  font-size: 15px;
 }
 
 .panel-empty p {
@@ -609,12 +607,10 @@
    ============================================================ */
 .budget-panel {
   grid-column: 1 / -1;
-  background: var(--paper);
 }
 
 .goals-panel {
   grid-column: 1 / -1;
-  background: var(--paper);
 }
 
 .goals-layout {
