@@ -166,10 +166,7 @@ export function CalendarMonthGrid({
           onClick={() => onSelectDate(date)}
           onKeyDown={(event) => handleKeyDown(event, date)}
         >
-          <span className="calendar-day-number">
-            {Number(date.slice(-2))}
-            {isToday && <small>Today</small>}
-          </span>
+          <span className="calendar-day-number">{Number(date.slice(-2))}</span>
           <span className="calendar-day-indicators">
             {data?.incomeCount
               ? positiveCurrencies(data.incomeByCurrency).map((currency) => (
