@@ -297,7 +297,7 @@ describe("TransactionForm", () => {
     );
   });
 
-  it("lets the user record a transaction in USD", async () => {
+  it("lets the user record a bank transaction in USD", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);
     render(
@@ -324,6 +324,32 @@ describe("TransactionForm", () => {
       expect(onSubmit).toHaveBeenCalledWith(
         expect.objectContaining({ currency: "USD", amountMinor: 10_000, categoryId: "food" }),
       ),
+    );
+  });
+
+  it("records a non-bank account's entries only in its own currency", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    const wallet = { ...accounts[0]!, id: "account-wallet", type: "ewallet" as const };
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category]}
+        accounts={[wallet]}
+        initialDraft={{ currency: "USD" }}
+        debts={debts}
+        busy={false}
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Currency")).not.toBeInTheDocument();
+    await user.type(screen.getByLabelText("Amount (PHP)"), "100");
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ currency: "PHP" })),
     );
   });
 

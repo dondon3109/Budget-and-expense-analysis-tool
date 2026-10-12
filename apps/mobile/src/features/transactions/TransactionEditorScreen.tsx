@@ -52,6 +52,7 @@ import {
   initialEditDescription,
   localCalendarDate,
   parseTransactionForm,
+  resolveEntryCurrency,
   type TransactionFormErrors,
   type TransactionFormKind,
   type TransactionFormValues,
@@ -63,6 +64,7 @@ import {
   type VoicePreviewState,
 } from "./voice-preview";
 import { DebtPaymentField } from "./DebtPaymentField";
+import { EntryCurrencyField } from "./EntryCurrencyField";
 import { KindSelector } from "./KindSelector";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
@@ -272,6 +274,16 @@ export function TransactionEditorScreen() {
   const accountType = (accountId: string) =>
     formData.data?.accounts.find((account) => account.id === accountId)?.type;
   const paysDebt = debtPaymentApplies(values, accountType(values.toAccountId));
+  const entryCurrency = (target: TransactionFormValues) =>
+    resolveEntryCurrency(
+      target,
+      formData.data?.accounts ?? [],
+      formData.data?.transaction?.input ?? undefined,
+    );
+  const currency = entryCurrency(values);
+  const currencyTag = (
+    <Text style={[typography.label, { color: theme.colors.textMuted }]}>{currency.currency}</Text>
+  );
   // As on the web: the Debt payment category names its debt whenever there is one to name.
   const debtRequired = values.kind === "expense" && debts.some((debt) => debt.status === "active");
 
@@ -294,6 +306,7 @@ export function TransactionEditorScreen() {
     // (new, or a voice/receipt draft that left it empty) falls back to its notes or category.
     const targetValues: TransactionFormValues = {
       ...baseValues,
+      currency: entryCurrency(baseValues).currency,
       // A link the entry can no longer carry (another category or account) is dropped.
       debtId: debtPaymentApplies(baseValues, accountType(baseValues.toAccountId))
         ? baseValues.debtId
@@ -647,7 +660,7 @@ export function TransactionEditorScreen() {
                 pendingValuesToSaveRef.current = nextValues;
                 setPreviewSummary({
                   amountMinor: draft.amountMinor,
-                  currency: draft.currency,
+                  currency: entryCurrency(nextValues).currency,
                   description: draft.description,
                   categoryName:
                     matchingCategory?.name ?? fallbackCategory?.name ?? draft.categoryName,
@@ -725,28 +738,20 @@ export function TransactionEditorScreen() {
             maxLength={18}
             onChangeText={(value) => updateValue("amount", value)}
             placeholder="0.00"
-            trailing={
-              <Text style={[typography.label, { color: theme.colors.textMuted }]}>
-                {values.currency}
-              </Text>
-            }
+            trailing={currencyTag}
             value={values.amount}
           />
           {transfer ? (
             <FormField
               editable={!saving && !mutationBlocked}
               error={errors.transferFee}
-              hint={netReceived ? `Receiver gets ${netReceived} ${values.currency}.` : undefined}
+              hint={netReceived ? `Receiver gets ${netReceived} ${currency.currency}.` : undefined}
               keyboardType="decimal-pad"
               label="Transfer fee (optional)"
               maxLength={18}
               onChangeText={(value) => updateValue("transferFee", value)}
               placeholder="0.00"
-              trailing={
-                <Text style={[typography.label, { color: theme.colors.textMuted }]}>
-                  {values.currency}
-                </Text>
-              }
+              trailing={currencyTag}
               value={values.transferFee}
             />
           ) : null}
@@ -805,6 +810,13 @@ export function TransactionEditorScreen() {
               placeholder="Choose destination account"
               sheetTitle="Choose destination account"
               value={values.toAccountId}
+            />
+          ) : null}
+          {currency.choosable ? (
+            <EntryCurrencyField
+              disabled={saving || mutationBlocked}
+              onChange={(code) => updateValue("currency", code)}
+              value={currency.currency}
             />
           ) : null}
           <SelectionField

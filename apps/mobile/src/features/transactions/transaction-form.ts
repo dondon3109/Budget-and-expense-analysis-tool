@@ -3,6 +3,7 @@ import {
   isLiabilityAccountType,
   MoneyParseError,
   parseAmountToMinor,
+  pinnedEntryCurrency,
   transactionInputSchema,
   type TransactionInput,
   type Currency,
@@ -71,6 +72,32 @@ export function debtPaymentApplies(
   return values.kind === "transfer" && toAccountType !== undefined
     ? isLiabilityAccountType(toAccountType)
     : false;
+}
+
+/**
+ * The currency an entry saves in, and whether the user may pick it: only when every chosen
+ * account is a bank. An edit keeps its stored currency until an account changes, so an older
+ * entry recorded in another currency is not relabeled.
+ */
+export function resolveEntryCurrency(
+  values: Pick<TransactionFormValues, "kind" | "accountId" | "toAccountId" | "currency">,
+  accounts: ReadonlyArray<{ id: string; type: string; currency: Currency }>,
+  stored?: TransactionInput,
+): { currency: Currency; choosable: boolean } {
+  const transfer = values.kind === "transfer";
+  const find = (id: string) => accounts.find((account) => account.id === id);
+  const pinned = pinnedEntryCurrency(
+    transfer ? [find(values.accountId), find(values.toAccountId)] : [find(values.accountId)],
+  );
+  if (pinned === null) return { currency: values.currency, choosable: true };
+  const keepsStored =
+    stored !== undefined &&
+    (stored.kind === "transfer"
+      ? transfer &&
+        stored.fromAccountId === values.accountId &&
+        stored.toAccountId === values.toAccountId
+      : !transfer && stored.accountId === values.accountId);
+  return { currency: keepsStored ? stored.currency : pinned, choosable: false };
 }
 
 export function formatMinorForInput(amountMinor: number): string {
