@@ -7,8 +7,9 @@
 .dashboard-balance {
   margin-top: 28px;
   display: grid;
-  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.15fr);
-  overflow: hidden;
+  grid-template-columns: minmax(260px, 0.8fr) minmax(0, 1.2fr);
+  gap: 36px;
+  padding-bottom: 28px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -17,7 +18,9 @@
   padding: 28px 32px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-radius: var(--radius-lg);
   color: var(--vault-text);
   background: var(--vault-bg);
 }
@@ -65,7 +68,7 @@
 
 .dashboard-balance-total > strong {
   display: block;
-  margin: 26px 0 8px;
+  margin: 0 0 8px;
   overflow-wrap: anywhere;
   font-size: clamp(32px, 3.2vw, 46px);
   font-weight: 650;
@@ -125,7 +128,7 @@
 
 .dashboard-account-breakdown {
   min-width: 0;
-  padding: 24px 28px;
+  padding: 4px 0;
 }
 
 .dashboard-account-breakdown-heading {

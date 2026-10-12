@@ -156,13 +156,6 @@
   font-family: var(--font-ui);
 }
 
-.overview-stat > p {
-  margin: 0;
-  color: var(--subtle);
-  font-size: 11px;
-  line-height: 1.45;
-}
-
 .overview-stat-secondary {
   display: flex;
   flex-wrap: wrap;
