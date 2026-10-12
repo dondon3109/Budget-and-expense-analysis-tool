@@ -48,6 +48,8 @@ export const mobileSyncFeatures = [
   "debt-links",
   // Accounts may use the account types added after the first protocol release.
   "account-types-v2",
+  // Accounts may be e-wallets (`ewallet`, e.g. GCash or Maya).
+  "account-types-v3",
   // Budget rows may belong to an occasion (`occasionId`, a calendar event) instead of a month.
   "budget-scopes",
 ] as const;

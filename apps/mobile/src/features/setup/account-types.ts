@@ -8,6 +8,7 @@ const accountTypeDetails: Record<
   other: { label: "General", icon: "wallet-outline" },
   cash: { label: "Cash", icon: "cash-multiple" },
   checking: { label: "Bank / debit card", icon: "bank-outline" },
+  ewallet: { label: "E-wallet (GCash, Maya)", icon: "wallet-bifold-outline" },
   savings: { label: "Savings", icon: "piggy-bank-outline" },
   credit: { label: "Credit card", icon: "credit-card-outline" },
   virtual: { label: "Virtual account", icon: "cellphone-text" },

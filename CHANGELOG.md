@@ -4,6 +4,10 @@ All notable product changes are documented here.
 
 ## Unreleased
 
+### Added
+
+- New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
+
 ### Changed
 
 - Mobile: the More tab no longer shows a large "More" title, so the list starts higher.

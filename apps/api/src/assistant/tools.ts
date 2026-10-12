@@ -337,6 +337,7 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
               "investment",
               "receivable",
               "payable",
+              "ewallet",
             ],
             description: "Account type: checking is a bank or debit card account",
           },

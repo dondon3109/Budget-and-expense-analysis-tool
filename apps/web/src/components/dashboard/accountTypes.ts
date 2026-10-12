@@ -8,6 +8,7 @@ export const accountTypes: Array<{ value: AccountInput["type"]; label: string }>
   { value: "other", label: "General" },
   { value: "cash", label: "Cash" },
   { value: "checking", label: "Bank / debit card" },
+  { value: "ewallet", label: "E-wallet (GCash, Maya)" },
   { value: "savings", label: "Savings" },
   { value: "credit", label: "Credit card" },
   { value: "virtual", label: "Virtual account" },

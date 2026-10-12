@@ -88,6 +88,7 @@ the Worker sends version 1 payloads as first shipped. Shaping happens at read ti
 | ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------- |
 | `debt-links`       | `debtId` on transaction and transfer payloads, read from the row   | No `debtId` key                                         |
 | `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`     | Those accounts arrive as `other`                        |
+| `account-types-v3` | Account type `ewallet`                                             | Those accounts arrive as `other`                        |
 | `budget-scopes`    | `occasionId` on budget payloads: a budget row for a calendar event | No `occasionId` key; occasion rows arrive as tombstones |
 
 ## Released app contracts
