@@ -133,7 +133,6 @@ export function AccountsPanel({
                 <small>net cash flow {trendComparison}</small>
               </div>
             )}
-            <span>Calculated from your recorded transactions</span>
             {otherBalanceCurrencies.map((currency) => (
               <p className="dashboard-balance-usd" key={currency}>
                 {formatMoney(accountBalances.balancesByCurrency[currency] ?? 0, currency)} in{" "}

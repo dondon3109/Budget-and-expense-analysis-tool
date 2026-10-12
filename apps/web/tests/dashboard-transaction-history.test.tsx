@@ -78,9 +78,7 @@ describe("DashboardTransactionHistory", () => {
   it("shows all-time records, including prior-month transfers, and links to record management", () => {
     renderHistory();
 
-    expect(
-      screen.getByRole("heading", { name: "Every transaction, in one place" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Transaction history" })).toBeInTheDocument();
     expect(screen.getByText("July salary")).toBeInTheDocument();
     expect(screen.getByText("Bank → Cash")).toBeInTheDocument();
     expect(screen.getByText("10 transactions across your full history")).toBeInTheDocument();

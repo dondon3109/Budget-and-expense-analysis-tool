@@ -79,17 +79,14 @@
   margin-top: 28px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-  overflow: hidden;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--line);
 }
 
 .overview-stat {
   position: relative;
   min-width: 0;
-  padding: 22px 24px;
+  padding: 4px 24px;
 }
 
 .overview-stat + .overview-stat::before {
@@ -141,26 +138,6 @@
 .tone-plum .overview-stat-icon {
   color: var(--budget);
   background: var(--budget-soft);
-}
-
-.dashboard-page .overview-stat {
-  box-shadow: inset 0 3px 0 var(--info);
-}
-
-.dashboard-page .overview-stat.tone-income {
-  box-shadow: inset 0 3px 0 var(--income);
-}
-
-.dashboard-page .overview-stat.tone-expense {
-  box-shadow: inset 0 3px 0 var(--expense);
-}
-
-.dashboard-page .overview-stat.tone-ink {
-  box-shadow: inset 0 3px 0 var(--ink);
-}
-
-.dashboard-page .overview-stat.tone-plum {
-  box-shadow: inset 0 3px 0 var(--budget);
 }
 
 .overview-stat > strong {
@@ -259,17 +236,13 @@
   margin-top: 20px;
   display: grid;
   grid-template-columns: 1fr 1.25fr;
-  gap: 20px;
+  gap: 0 56px;
 }
 
 .panel {
-  padding: 26px;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
+  padding: 28px 0 8px;
+  border-top: 1px solid var(--line);
   position: relative;
-  overflow: hidden;
 }
 
 .panel-heading {
@@ -651,12 +624,6 @@
   background: var(--paper);
 }
 
-.goals-panel .panel-heading p {
-  margin: 5px 0 0;
-  color: var(--subtle);
-  font-size: 11px;
-}
-
 .goals-layout {
   margin-top: 20px;
   display: grid;
@@ -921,8 +888,7 @@
   }
 
   .dashboard-page .panel {
-    padding: 20px 18px;
-    border-radius: 16px;
+    padding: 20px 0 4px;
   }
 
   .trend-panel-heading,

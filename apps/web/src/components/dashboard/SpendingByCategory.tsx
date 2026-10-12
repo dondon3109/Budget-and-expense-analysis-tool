@@ -32,7 +32,6 @@ export function SpendingByCategory({
     <section className="panel category-panel" aria-labelledby="spending-title">
       <div className="panel-heading category-panel-heading">
         <div>
-          <p className="eyebrow">Breakdown</p>
           <h2 id="spending-title">Spending by category</h2>
         </div>
         <div className="category-panel-actions">

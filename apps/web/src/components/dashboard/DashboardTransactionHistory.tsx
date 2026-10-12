@@ -49,12 +49,7 @@ export function DashboardTransactionHistory({
     <section className="dashboard-history" aria-labelledby="dashboard-history-title">
       <header className="dashboard-history-heading">
         <div>
-          <p className="eyebrow">All-time history</p>
-          <h2 id="dashboard-history-title">Every transaction, in one place</h2>
-          <p>
-            Review records from every month here, or open Transactions to search, filter, and manage
-            them.
-          </p>
+          <h2 id="dashboard-history-title">Transaction history</h2>
         </div>
         <Link className="dashboard-history-link" to="/app/transactions">
           Open transactions <ExternalLink size={15} aria-hidden="true" />
