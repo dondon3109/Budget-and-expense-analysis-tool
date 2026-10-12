@@ -9,36 +9,6 @@
 .metric-card {
   position: relative;
   min-width: 0;
-  padding: 21px 21px 20px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
-.metric-card::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--line-strong);
-}
-
-.metric-card.tone-sage::before {
-  background: var(--chart-income);
-}
-
-.metric-card.tone-amber::before {
-  background: var(--amber);
-}
-
-.metric-card.tone-ink::before {
-  background: var(--ink);
-}
-
-.metric-card.tone-plum::before {
-  background: var(--plum);
 }
 
 .metric-heading {
@@ -125,10 +95,6 @@
     gap: 11px;
   }
 
-  .metric-card {
-    padding: 18px;
-  }
-
   .metric-card > strong {
     font-size: 24px;
   }
@@ -138,8 +104,4 @@
   .metric-grid {
     grid-template-columns: 1fr;
   }
-}
-
-:root[data-theme="dark"] .metric-card {
-  box-shadow: var(--shadow-card);
 }

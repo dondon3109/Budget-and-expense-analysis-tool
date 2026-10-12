@@ -319,7 +319,7 @@ export function SubscriptionsPage() {
               <MetricCard
                 label="Total monthly cost"
                 value={formatMoney(data.totalMonthlyCostMinor, data.currency)}
-                detail={`${formatFullMonth(month)} · Active plans only · Yearly plans divided across 12 months${otherCostLines.join("")}`}
+                detail={`${formatFullMonth(month)}${otherCostLines.join("")}`}
                 icon={Repeat2}
                 tone="sage"
               />
@@ -331,7 +331,6 @@ export function SubscriptionsPage() {
                   <strong>
                     {data.items.length} subscription{data.items.length === 1 ? "" : "s"}
                   </strong>
-                  <span>{formatFullMonth(month)} · Each plan in its own currency</span>
                 </div>
                 <div className="subscriptions-panel-actions">
                   <div
