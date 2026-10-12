@@ -407,11 +407,10 @@ export function DashboardPage() {
       <div className="dashboard-page">
         <header className="dashboard-header">
           <div className="dashboard-heading">
-            <p className="eyebrow">Profile Overview</p>
             <h1 ref={dashboardHeadingRef} tabIndex={-1}>
-              Your month, at a glance
+              Dashboard
             </h1>
-            <p>See what came in, what went out, and what is still available.</p>
+            <p>Income, spending, and what is left this month.</p>
           </div>
           <div className="header-actions dashboard-header-actions">
             <MonthSelector

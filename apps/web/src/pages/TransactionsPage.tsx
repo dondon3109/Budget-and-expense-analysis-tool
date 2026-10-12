@@ -382,7 +382,6 @@ export function TransactionsPage() {
           <div>
             <p className="eyebrow">Activity</p>
             <h1>Transactions</h1>
-            <p>Review, organize, and correct the records behind every dashboard total.</p>
           </div>
           <div className="header-actions">
             <button

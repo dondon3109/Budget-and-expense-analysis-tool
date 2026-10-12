@@ -290,7 +290,6 @@ export function SubscriptionsPage() {
           <div>
             <p className="eyebrow">Recurring costs</p>
             <h1>Monthly subscriptions</h1>
-            <p>Track recurring charges and see what they add up to.</p>
           </div>
           <div className="header-actions subscriptions-header-actions">
             <MonthSelector label="Subscription month" value={month} onChange={setMonth} />

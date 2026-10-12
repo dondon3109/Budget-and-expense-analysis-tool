@@ -22,10 +22,6 @@
   margin: 8px 0 0;
 }
 
-.calendar-header-subtitle {
-  max-width: 54ch;
-}
-
 .calendar-month-controls {
   display: inline-flex;
   align-items: center;

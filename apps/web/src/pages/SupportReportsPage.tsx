@@ -141,11 +141,6 @@ export function SupportReportsPage() {
           <div>
             <p className="eyebrow">Help &amp; contact</p>
             <h1>{requestedAdmin ? "Bug report inbox" : "Your bug reports"}</h1>
-            <p>
-              {requestedAdmin
-                ? "Triage confirmed user reports without exposing their financial workspace."
-                : "Track problems you explicitly reviewed and submitted through Zoption Support."}
-            </p>
           </div>
           <Link className="button secondary" to="/app/settings#help-and-contact">
             <ArrowLeft size={16} /> Back to support
