@@ -237,7 +237,7 @@ export function createProviderCredentialRoutes(
     if (!plain.trim()) throw new HttpError(400, "credential_invalid", "Credential is empty.");
 
     // Provider-specific cheap check: for now decrypt success is sufficient.
-    // Future: for google(chirp_3) attempt ListLocations/StreamingRecognize 0-audio probe;
+    // Future: for google attempt a ListLocations 0-audio probe;
     // for deepseek/fish perform cheap model list with short timeout. All must remain $0 / non-billed.
     // We intentionally do not return plaintext, ciphertext, or external response bodies.
     void plain; // prevent unused

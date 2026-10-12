@@ -332,7 +332,7 @@ export async function startLiveTranscriptionSession(
         const errorMessage =
           code === "rate_limit" || code === "429"
             ? "Voice mode is busy. Try again shortly."
-            : code === "bridge_not_configured" || code === "gemini_missing_key"
+            : code === "gemini_missing_key"
               ? message ||
                 "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
               : message || "Live transcription error.";

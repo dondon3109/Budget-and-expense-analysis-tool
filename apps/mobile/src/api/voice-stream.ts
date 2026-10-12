@@ -416,7 +416,7 @@ export async function startMobileVoiceStream(
           const errorMessage =
             msg.code === "rate_limit" || msg.code === "429"
               ? "Voice mode is busy. Try again shortly."
-              : msg.code === "bridge_not_configured" || msg.code === "gemini_missing_key"
+              : msg.code === "gemini_missing_key"
                 ? msg.message ||
                   "Live transcription not configured. Activate gemini-3.5-transcribe-live with an API key."
                 : msg.message || "Live transcription error.";

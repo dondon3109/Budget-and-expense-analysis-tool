@@ -185,7 +185,7 @@
 
 .dashboard-history-kind.income,
 .dashboard-history-amount-income {
-  color: var(--income);
+  color: var(--income-text);
 }
 
 .dashboard-history-kind.expense,

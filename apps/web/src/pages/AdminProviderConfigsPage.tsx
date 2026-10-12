@@ -60,8 +60,7 @@ const SERVICE_CREDENTIALS: Record<ProviderService, { label: string; expectsKey: 
     label: "AI model (DeepSeek, OpenAI, Anthropic, Gemini, Meta, Muse Spark)",
     expectsKey: true,
   },
-  // google STT via Cloud Run bridge uses ADC — no admin credential at runtime; health uses STT_BRIDGE_URL
-  stt: { label: "STT bridge", expectsKey: false },
+  stt: { label: "Speech-to-text", expectsKey: false },
   tts: { label: "Fish Audio", expectsKey: true },
 };
 
@@ -608,8 +607,7 @@ export function AdminProviderConfigsPage() {
                       </button>
                       {svc.id === "stt" ? (
                         <span style={{ fontSize: 12, opacity: 0.7 }}>
-                          Cloudflare uses Workers AI edge binding; Google uses API key credential or
-                          Cloud Run bridge.
+                          Cloudflare uses Workers AI edge binding; Google uses API key credential.
                         </span>
                       ) : cred.expectsKey ? (
                         <span style={{ fontSize: 12, opacity: 0.7 }}>
@@ -687,8 +685,6 @@ export function AdminProviderConfigsPage() {
                                         <KeyRound size={12} /> {linkedCred.name} ••••
                                         {linkedCred.apiKeyLast4}
                                       </span>
-                                    ) : cfg.provider === "google" ? (
-                                      <small>Bridge ADC (no key linked)</small>
                                     ) : (
                                       <span className="provider-status disabled">Missing</span>
                                     )}

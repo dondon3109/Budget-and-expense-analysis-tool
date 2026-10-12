@@ -188,7 +188,7 @@ describe("startLiveTranscriptionSession", () => {
     });
   });
 
-  it("surfaces rate_limit and bridge errors via onError with actionable messages", async () => {
+  it("surfaces rate_limit and missing-key errors via onError with actionable messages", async () => {
     const workspace = { key: "user:user-1", userId: "user-1" } as any;
     const onError = vi.fn();
     await startLiveTranscriptionSession(workspace, mockMediaStream, {

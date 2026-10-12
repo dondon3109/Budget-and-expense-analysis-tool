@@ -73,8 +73,7 @@ client sends (`auto`, `en`, `fil`, or the older `tl`) into those three values, a
 language reaches the transcription provider: Whisper gets a language-appropriate
 `initial_prompt`, Google STT gets explicit `fil-PH` and `en-US` codes per API shape, and Gemini
 Live gets `languageCodes` plus a bilingual system instruction. `auto` asks the provider to detect
-the spoken language instead of defaulting to English, including on the Cloud Run bridge, which
-receives the value in the `x-language` header.
+the spoken language instead of defaulting to English.
 
 On web, Auto leaves transcription to the server. The browser's own `SpeechRecognition` engine has
 no cross-language detection, so it only starts when the user has explicitly picked English or
