@@ -134,6 +134,33 @@
   padding: 4px 0;
 }
 
+/* Side by side, the card sets the row's height and a long account list scrolls inside it, so
+   the list never leaves blank space under the card. Size containment keeps the list's own
+   height out of the row. The add form lifts it, so the form never squeezes the list shut. */
+@media (min-width: 981px) {
+  .dashboard-account-breakdown {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    contain: size;
+  }
+
+  .dashboard-account-breakdown > ul {
+    flex: 1 1 auto;
+    min-height: 0;
+    align-content: start;
+    overflow-y: auto;
+  }
+
+  .dashboard-account-breakdown:has(> .dashboard-account-form) {
+    contain: none;
+  }
+
+  .dashboard-account-breakdown:has(> .dashboard-account-form) > ul {
+    max-height: 300px;
+  }
+}
+
 .dashboard-account-breakdown-heading {
   display: flex;
   align-items: center;
