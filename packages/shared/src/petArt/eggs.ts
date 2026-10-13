@@ -156,8 +156,8 @@ export function eggCracks(days: number, taps = 0): PetShape[] {
 export function eggArt(species: PetSpecies, days = 0, taps = 0): PetArt {
   return [
     groundShadow(56),
-    { part: "body", origin: [100, 186], clip: EGG, shapes: patterns[species] },
-    { part: "body", origin: [100, 186], shapes: [shine, outline, ...eggCracks(days, taps)] },
+    { clip: EGG, shapes: patterns[species] },
+    { shapes: [shine, outline, ...eggCracks(days, taps)] },
   ];
 }
 
@@ -173,8 +173,6 @@ export function hatchShineLayer(): PetLayer {
     return line(`M${point(inner)} L${point(outer)}`, SHINE, 7);
   });
   return {
-    part: "body",
-    origin: [100, 112],
     shapes: [{ kind: "circle", cx: 100, cy: 112, r: 50, fill: SHINE, opacity: 0.85 }, ...rays],
   };
 }

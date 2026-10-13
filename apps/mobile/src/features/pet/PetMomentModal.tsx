@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { petMomentCopy } from "@zoption/shared";
+import { petMomentCopy, petMood } from "@zoption/shared";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { Button } from "@/ui/components";
@@ -19,7 +19,8 @@ export function PetMomentModal() {
 
   const { pet } = shown;
   const copy = petMomentCopy(shown.moment, pet);
-  const unwell = pet.healthState === "sick" || pet.healthState === "fading";
+  const mood = petMood(pet);
+  const look = mood === "sick" || mood === "fading" ? mood : "healthy";
   const open = () => {
     close();
     router.push("/(app)/pet");
@@ -40,23 +41,11 @@ export function PetMomentModal() {
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
           ]}
         >
-          {/* A sick pet is drawn healthy, so it is shown washed out instead. */}
-          <View
-            style={
-              unwell
-                ? {
-                    filter: [{ grayscale: pet.healthState === "fading" ? 0.85 : 0.55 }],
-                    opacity: pet.healthState === "fading" ? 0.7 : 0.9,
-                  }
-                : undefined
-            }
-          >
-            <Image
-              accessibilityIgnoresInvertColors
-              source={petImage(pet.species, pet.stage)}
-              style={styles.picture}
-            />
-          </View>
+          <Image
+            accessibilityIgnoresInvertColors
+            source={petImage(pet.species, pet.stage, look)}
+            style={styles.picture}
+          />
           <Text
             accessibilityRole="header"
             style={[typography.title, styles.center, { color: theme.colors.text }]}

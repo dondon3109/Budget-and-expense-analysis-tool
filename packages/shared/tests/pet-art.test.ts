@@ -2,21 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import { petSpecies } from "../src/pet";
 import { petMood } from "../src/petArt";
+import { eggArt, eggCracks } from "../src/petArt/eggs";
 import type { PetView } from "../src/schemas/pet";
 
-import { adultArt } from "../src/petArt/adults";
-import { babyArt } from "../src/petArt/babies";
-import { eggArt, eggCracks } from "../src/petArt/eggs";
-import { juvenileArt } from "../src/petArt/juveniles";
-import { legendArt } from "../src/petArt/legends";
-
 describe("pet art", () => {
-  it("draws every hatched stage of every species with eyes that can blink", () => {
-    for (const stage of [babyArt, juvenileArt, adultArt, legendArt]) {
-      for (const species of petSpecies) {
-        expect(stage[species].some((layer) => layer.part === "eyes")).toBe(true);
-      }
-    }
+  it("draws an egg for every species", () => {
     for (const species of petSpecies) expect(eggArt(species).length).toBeGreaterThan(0);
   });
 

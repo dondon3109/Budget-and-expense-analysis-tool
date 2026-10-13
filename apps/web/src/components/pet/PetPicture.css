@@ -1,0 +1,72 @@
+.pet-live {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  transform-origin: 50% 95%;
+}
+
+.pet-live img {
+  display: block;
+}
+
+.pet-live-blink {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: pet-live-blink 3.4s steps(1, end) infinite;
+}
+
+.pet-live[data-look="healthy"] {
+  animation: pet-live-breathe 1.3s ease-in-out infinite alternate;
+}
+
+.pet-live[data-look="sick"] {
+  animation: pet-live-shiver 0.18s linear infinite;
+}
+
+.pet-live[data-look="fading"] {
+  animation: pet-live-faint 2.2s ease-in-out infinite alternate;
+}
+
+/* The eyes-closed copy shows for about 130ms of each cycle. */
+@keyframes pet-live-blink {
+  0%,
+  96% {
+    opacity: 0;
+  }
+  96.2% {
+    opacity: 1;
+  }
+}
+
+@keyframes pet-live-breathe {
+  to {
+    transform: translateY(-1.5%) scaleY(1.025);
+  }
+}
+
+@keyframes pet-live-shiver {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(0.6%);
+  }
+  75% {
+    transform: translateX(-0.6%);
+  }
+}
+
+@keyframes pet-live-faint {
+  to {
+    transform: scaleY(1.012);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-live,
+  .pet-live-blink {
+    animation: none;
+  }
+}

@@ -12,7 +12,7 @@ import { Button, FormField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-import { PetSprite } from "./PetSprite";
+import { EggSprite } from "./EggSprite";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface EggPickerProps {
@@ -47,9 +47,8 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
                 },
               ]}
             >
-              <PetSprite
+              <EggSprite
                 art={eggArt(species)}
-                mood="egg"
                 size={84}
                 accessibilityLabel={`${petSpeciesLabels[species]} egg`}
                 still={!selected}

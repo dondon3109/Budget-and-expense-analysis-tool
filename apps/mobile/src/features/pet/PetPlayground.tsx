@@ -13,7 +13,7 @@ import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-nativ
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-import { useReduceMotion } from "./PetSprite";
+import { useReduceMotion } from "./EggSprite";
 
 // The playful pieces of the pet page: the spotlight the pet stands in, the hearts it sends up
 // when petted, its status chips, the growth path, and the earning tiles.

@@ -25,16 +25,3 @@
   gap: 8px;
   width: 100%;
 }
-
-/* A sick pet is drawn healthy, so it is shown washed out instead. */
-.pet-moment-picture[data-health="sick"],
-.pet-picture[data-health="sick"] {
-  filter: grayscale(0.55);
-  opacity: 0.9;
-}
-
-.pet-moment-picture[data-health="fading"],
-.pet-picture[data-health="fading"] {
-  filter: grayscale(0.85);
-  opacity: 0.7;
-}

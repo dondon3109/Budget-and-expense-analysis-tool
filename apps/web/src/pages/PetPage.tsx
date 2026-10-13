@@ -5,9 +5,7 @@ import {
   PET_NAME_MAX_LENGTH,
   PET_STAGE_THRESHOLDS,
   eggArt,
-  petArt,
   petEarningRows,
-  petMood,
   petSpecies,
   petSpeciesLabels,
   petStageEmoji,
@@ -20,6 +18,7 @@ import {
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
+import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
 import { userWorkspace } from "../lib/workspace";
 import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
@@ -107,7 +106,7 @@ function EggPicker({
               checked={picked === species}
               onChange={() => setPicked(species)}
             />
-            <PetSvg art={eggArt(species)} mood="egg" size={96} still />
+            <PetSvg art={eggArt(species)} size={96} still />
             <span>{petSpeciesLabels[species]}</span>
           </label>
         ))}
@@ -347,23 +346,15 @@ export function PetPage() {
               ) : (
                 <span className="pet-pop-wrap">
                   {justHatched ? <HatchShine className="pet-hatch-afterglow" /> : null}
-                  {pet.data.stage === "egg" ? (
-                    <PetSvg
-                      className={justHatched ? "pet-pop" : undefined}
-                      art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
-                      mood={petMood(pet.data)}
-                      size={220}
-                    />
-                  ) : (
-                    <PettablePet name={pet.data.name ?? petSpeciesLabels[pet.data.species]}>
-                      <PetSvg
-                        className={justHatched ? "pet-pop" : undefined}
-                        art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
-                        mood={petMood(pet.data)}
-                        size={220}
-                      />
-                    </PettablePet>
-                  )}
+                  <span className={justHatched ? "pet-pop" : undefined}>
+                    {pet.data.stage === "egg" ? (
+                      <PetSvg art={eggArt(pet.data.species, pet.data.eggStreakDays)} size={220} />
+                    ) : (
+                      <PettablePet name={pet.data.name ?? petSpeciesLabels[pet.data.species]}>
+                        <PetPicture pet={{ ...pet.data, species: pet.data.species }} size={220} />
+                      </PettablePet>
+                    )}
+                  </span>
                 </span>
               )}
               <span className="pet-stage-ground" aria-hidden="true" />

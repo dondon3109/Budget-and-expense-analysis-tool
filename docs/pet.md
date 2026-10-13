@@ -72,20 +72,33 @@ every identity change, and only after first-run setup), the web in local storage
 
 ## Art
 
-The pet pages on mobile and the web draw the same animated SVG layers
-(`packages/shared/src/petArt/`, rendered by mobile `PetSprite.tsx` and web
-`components/pet/PetSvg.tsx`). Each pair of taps on a ready egg spreads one more crack, and every
-tap shakes it harder; the shell bursts only once the Worker accepts the hatch, and a failed hatch
-settles the egg back to zero taps. The pop-up uses 31
-pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species at every stage, plus a
-shared tombstone. A sick pet's picture is shown greyed out rather than drawn separately. They live
-in `apps/mobile/assets/pet/` and `apps/web/public/pet/` as 512px WebP files with the white background flood-filled to
-transparent from the edges.
+Eggs are SVG shape data (`packages/shared/src/petArt/eggs.ts`, drawn by mobile `EggSprite.tsx`
+and web `components/pet/PetSvg.tsx`), so cracks can spread with the streak and with each tap on a
+ready egg. Every pair of taps adds a crack and every tap shakes it harder; the shell bursts in a
+shared light (`hatchShineLayer`) only once the Worker accepts the hatch, and a failed hatch settles
+the egg back to zero taps.
+
+Hatched pets and the pop-up use pictures (mobile `PetPicture.tsx`, web `components/pet/PetPicture.tsx`):
+
+- 31 base pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species' egg and
+  four stages, plus a shared tombstone. The pop-up shows the egg picture; the pet page draws the
+  SVG egg.
+- Three looks of each hatched stage (72), made by editing the base picture so the character and
+  framing carry over: `-blink` (eyes closed, mouth unchanged), `-sick` (droopy eyes, thermometer,
+  sweat drop, paler), and `-fading` (lying flat, eyes nearly closed, washed out). Hedgehog, pig, and
+  hamster used the Grok CLI's `image_edit`; penguin, panda, and hippo used Gemini's image model,
+  through the Antigravity CLI's (`agy -p`) `image-generator` subagent or, for nine hippo looks, the
+  Gemini Mac app, with the same prompts.
+- A healthy pet breathes and blinks: its `-blink` picture flashes on top for about 130ms every
+  3.4s. A blink is cut with its base picture's own mask and crop, so the two line up pixel for
+  pixel. A sick pet shows `-sick` and shivers; a fading pet shows `-fading` and barely breathes.
+- All live in `apps/mobile/assets/pet/` and `apps/web/public/pet/` as 512px WebP with the white
+  background flood-filled to transparent from the edges.
 
 Every prompt ends with the same style: "soft flat vector illustration with clean dark brown outlines
 and subtle cel shading, app mascot sticker look, centered, full body, facing the viewer, plain solid
 white background, no ground, no text, no gradient background, square 1:1". The subject names the
-species with its palette from the SVG art, and the stage reads as follows.
+species with its palette, and the stage reads as follows.
 
 - Egg: the species' egg pattern (see `petArt/eggs.ts`), standing upright with a tiny smiling face.
 - Baby: tiny and extra round, oversized head, big sparkly eyes, sitting, sweet small smile.

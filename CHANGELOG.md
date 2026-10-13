@@ -23,6 +23,7 @@ All notable product changes are documented here.
 - Mobile: the More tab no longer shows a large "More" title, so the list starts higher.
 - Mobile: the pet moved from a Home card to a Pet entry in the Home view menu.
 - The pet's final stage is now called Legend, with a calm face instead of a snarl.
+- Hatched pets are now full pictures on the pet page and in pop-ups, on web and mobile. A healthy pet blinks, and a sick or fading pet has its own picture instead of a grey tint.
 - A hatched pet now gets three warnings before it passes away (at 24, 48, and 66 hours), down from six.
 - Web: pages drop their descriptive subtitles and most card frames in favor of flat sections divided by thin rules, with rounded corners on the surfaces that remain. The calendar has one place to add events.
 

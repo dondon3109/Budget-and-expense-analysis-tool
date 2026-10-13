@@ -1,6 +1,6 @@
 import { useId } from "react";
 
-import type { PetLayer, PetMood, PetShape } from "@zoption/shared";
+import type { PetLayer, PetShape } from "@zoption/shared";
 
 import "./PetSvg.css";
 
@@ -28,18 +28,16 @@ function Shape({ shape }: { shape: PetShape }) {
 }
 
 /**
- * Draws the shared pet art, the same drawing as the phone app. `mood` picks the idle motion in
- * PetSvg.css; `still` draws it without motion, for the egg picker.
+ * Draws the shared egg art, the same drawing as the phone app. It sways gently (PetSvg.css);
+ * `still` draws it without motion, for the egg picker and the hatch shine.
  */
 export function PetSvg({
   art,
-  mood,
   size,
   still = false,
   className,
 }: {
   art: PetLayer[];
-  mood: PetMood;
   size: number;
   still?: boolean;
   className?: string;
@@ -48,7 +46,7 @@ export function PetSvg({
   return (
     <svg
       className={className ? `pet-svg ${className}` : "pet-svg"}
-      data-mood={still ? undefined : mood}
+      data-sway={still ? undefined : true}
       viewBox="0 0 200 200"
       width={size}
       height={size}
@@ -57,11 +55,7 @@ export function PetSvg({
       {art.map((layer, index) => {
         const clipId = `${clipBase}c${index}`;
         return (
-          <g
-            key={index}
-            data-part={layer.part}
-            style={{ transformOrigin: `${layer.origin[0]}px ${layer.origin[1]}px` }}
-          >
+          <g key={index}>
             {layer.clip ? (
               <>
                 <defs>

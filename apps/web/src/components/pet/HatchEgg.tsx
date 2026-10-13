@@ -16,7 +16,7 @@ function hatchHint(left: number): string {
 
 /** Light pouring out of the shell; its class picks the burst or the afterglow animation. */
 export function HatchShine({ className }: { className: string }) {
-  return <PetSvg className={className} art={[hatchShineLayer()]} mood="egg" size={220} still />;
+  return <PetSvg className={className} art={[hatchShineLayer()]} size={220} still />;
 }
 
 /**
@@ -70,7 +70,7 @@ export function HatchEgg({
           data-shaking={taps > 0 || undefined}
           style={{ "--pet-swing": `${3 + taps * 1.4}deg` } as CSSProperties}
         >
-          <PetSvg art={eggArt(species, days, taps)} mood="egg" size={220} />
+          <PetSvg art={eggArt(species, days, taps)} size={220} />
         </span>
         {bursting ? <HatchShine className="pet-hatch-shine" /> : null}
       </button>

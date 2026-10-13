@@ -8,7 +8,7 @@ import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { usePetMoment } from "../../hooks/usePetMoment";
 import { useRootLock } from "../../hooks/useRootLock";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { petImageUrl } from "../../lib/petImages";
+import { petImageUrl, petLook } from "../../lib/petImages";
 import { usePet } from "../../queries/pet";
 import "./PetMomentDialog.css";
 
@@ -57,8 +57,7 @@ function PetMomentContent({
       >
         <img
           className="pet-moment-picture"
-          data-health={pet.healthState ?? undefined}
-          src={petImageUrl(pet.species, pet.stage)}
+          src={petImageUrl(pet.species, pet.stage, petLook(pet))}
           alt=""
           width={200}
           height={200}

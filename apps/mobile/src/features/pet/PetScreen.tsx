@@ -1,8 +1,7 @@
 import {
   PET_DAILY_POINT_CEILING,
   PET_STAGE_THRESHOLDS,
-  petArt,
-  petMood,
+  eggArt,
   petSpeciesLabels,
   petStageLabels,
   type PetView,
@@ -19,6 +18,8 @@ import { radii, spacing, typography } from "@/ui/tokens";
 
 import { EggPicker } from "./EggPicker";
 import { HatchEgg, HatchPop } from "./HatchEgg";
+import { EggSprite } from "./EggSprite";
+import { PetPicture } from "./PetPicture";
 import {
   EarnTiles,
   GrowthPath,
@@ -28,7 +29,6 @@ import {
   healthTone,
   useToneColors,
 } from "./PetPlayground";
-import { PetSprite } from "./PetSprite";
 import { usePetActions } from "./use-pet-actions";
 
 function Meter({
@@ -194,15 +194,22 @@ export function PetScreen() {
   const ready = pet.stage === "egg" && pet.eggStreakDays >= pet.eggHatchDays;
   // Leaves room for the spotlight, name, and meters on a small phone without scrolling.
   const size = Math.round(Math.min(200, window.width * 0.5, window.height * 0.24));
-  const drawn = (
-    <PetSprite
-      art={petArt(pet.species, pet.stage, pet.eggStreakDays)}
-      mood={petMood(pet)}
-      size={size}
-      accessibilityLabel={`${name}, ${kind}`}
-    />
-  );
-  const sprite = pet.stage === "egg" ? drawn : <PettablePet name={name}>{drawn}</PettablePet>;
+  const sprite =
+    pet.stage === "egg" ? (
+      <EggSprite
+        art={eggArt(pet.species, pet.eggStreakDays)}
+        size={size}
+        accessibilityLabel={`${name}, ${kind}`}
+      />
+    ) : (
+      <PettablePet name={name}>
+        <PetPicture
+          pet={{ ...pet, species: pet.species }}
+          size={size}
+          accessibilityLabel={`${name}, ${kind}`}
+        />
+      </PettablePet>
+    );
 
   return (
     <Screen title="Your pet" onRefresh={() => refresh().then(() => undefined)}>

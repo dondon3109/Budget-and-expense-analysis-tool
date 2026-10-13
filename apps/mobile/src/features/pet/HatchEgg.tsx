@@ -5,7 +5,7 @@ import { Animated, Easing, StyleSheet, Text, Vibration, View } from "react-nativ
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
-import { LayerSvg, PetSprite } from "./PetSprite";
+import { EggSprite, LayerSvg } from "./EggSprite";
 
 const shineLayer = hatchShineLayer();
 
@@ -107,9 +107,8 @@ export function HatchEgg({ species, days, size, hatch }: HatchEggProps) {
             ],
           }}
         >
-          <PetSprite
+          <EggSprite
             art={eggArt(species, days, taps)}
-            mood="egg"
             size={size}
             accessibilityLabel={`Ready egg. Tap ${left} more times to hatch it.`}
             onPress={tap}
