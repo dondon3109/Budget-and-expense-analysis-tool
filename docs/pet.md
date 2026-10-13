@@ -1,6 +1,7 @@
 # Pet companion
 
-A streak pet for signed-in users. On mobile it opens from the Pet entry in the Home view menu. The rules live in
+A streak pet for signed-in users. On mobile it opens from the Pet entry in the Home view menu; on
+the web it has its own page (`/app/pet`) in the sidebar. The rules live in
 `packages/shared/src/pet.ts`; the API in `apps/api/src/db/pet.ts` and `src/routes/pet.ts`.
 
 ## Rules
@@ -29,7 +30,8 @@ each read it replays rows created since `pets.processed_through`.
   still count, so deleting never refunds.
 - Subscriptions with a positive amount and a name not used before.
 - Completed assistant replies to a user message of at least 15 characters.
-- `POST /api/app/pet/check-in`, sent by the app when it opens.
+- `POST /api/app/pet/check-in`, sent by the phone app when it opens or returns to the foreground,
+  and by the web app when it loads the pet and on returning to the tab after five minutes.
 
 Activity is credited through the last whole second only, because `datetime('now')` rounds down.
 
@@ -40,18 +42,19 @@ pet is alive), `PUT /api/app/pet/settings` (`{ enabled }`). Every response is a 
 
 ## Pop-up
 
-Home opens a pop-up with the pet's picture when it hatched, grew a stage, got sick, or died since
+Mobile Home and every web workspace page open a pop-up with the pet's picture when it hatched, grew a stage, got sick, or died since
 the device last showed it, or else on the day's first open (Manila date). One open shows at most one.
 The rule is `petMoment` in `packages/shared/src/petMoment.ts` and the wording is `petCopy.ts`; each
-device keeps what it last showed (`zoption-mobile-pet-seen-v1` in SecureStore, cleared on every
-identity change) and waits for first-run setup to finish.
+device keeps what it last showed: mobile in SecureStore (`zoption-mobile-pet-seen-v1`, cleared on
+every identity change, and only after first-run setup), the web in local storage per user
+(`zoption:pet-seen:<userId>`).
 
 ## Art
 
 The pet page draws animated SVG layers (`apps/mobile/src/features/pet/art/`). The pop-up uses 31
 pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species at every stage, plus a
 shared tombstone. A sick pet's picture is shown greyed out rather than drawn separately. They live
-in `apps/mobile/assets/pet/` as 512px WebP files with the white background flood-filled to
+in `apps/mobile/assets/pet/` and `apps/web/public/pet/` as 512px WebP files with the white background flood-filled to
 transparent from the edges.
 
 Every prompt ends with the same style: "soft flat vector illustration with clean dark brown outlines

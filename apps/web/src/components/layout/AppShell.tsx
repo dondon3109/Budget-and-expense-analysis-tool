@@ -7,6 +7,7 @@ import {
   LogOut,
   Menu,
   Milestone,
+  PawPrint,
   PiggyBank,
   Repeat2,
   Settings,
@@ -42,6 +43,7 @@ import {
 import { BrandMark } from "../brand/BrandMark";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { LegalFooter } from "../legal/LegalFooter";
+import { PetMomentDialog } from "../pet/PetMomentDialog";
 import { UserAvatar } from "../profile/UserAvatar";
 import { CustomerReviewPrompt } from "../reviews/CustomerReviewPrompt";
 import { SupportChat } from "../support/SupportChat";
@@ -60,6 +62,7 @@ const navItems = [
   { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },
   { label: "Goals & debt", icon: Milestone, to: "/app/plan" },
   { label: "Subscriptions", icon: Repeat2, to: "/app/subscriptions" },
+  { label: "Pet", icon: PawPrint, to: "/app/pet" },
 ];
 
 const adminNavItem = { label: "Admin", icon: ShieldCheck, to: "/app/admin" };
@@ -463,6 +466,7 @@ export function AppShell({ children }: AppShellProps) {
       {showSupportChat && (
         <SupportChat surface="app" workspace={user ? userWorkspace(user) : undefined} />
       )}
+      {user && <PetMomentDialog workspace={userWorkspace(user)} />}
       {user &&
         location.pathname !== "/app/admin" &&
         !location.pathname.startsWith("/app/admin/") && (

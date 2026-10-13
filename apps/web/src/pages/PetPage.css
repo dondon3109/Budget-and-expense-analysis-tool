@@ -1,0 +1,124 @@
+.pet-page {
+  display: grid;
+  gap: 20px;
+  max-width: 720px;
+}
+
+.pet-panel {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.pet-panel h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+}
+
+.pet-panel p {
+  margin: 0;
+}
+
+.pet-hero {
+  justify-items: center;
+  text-align: center;
+}
+
+.pet-stats {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+
+.pet-note {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.pet-warning {
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.pet-meter {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.pet-meter-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  overflow: hidden;
+}
+
+.pet-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--brand);
+}
+
+.pet-egg-picker {
+  display: grid;
+  gap: 16px;
+}
+
+.pet-egg-picker fieldset {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pet-egg-option {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.pet-egg-option:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.pet-egg-option:has(input:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.pet-egg-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pet-earning {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pet-earning div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pet-earning dd {
+  margin: 0;
+  color: var(--muted);
+}

@@ -22,6 +22,10 @@ vi.mock("../src/components/reviews/CustomerReviewPrompt", () => ({
   CustomerReviewPrompt: () => <div>Review prompt</div>,
 }));
 
+vi.mock("../src/components/pet/PetMomentDialog", () => ({
+  PetMomentDialog: () => null,
+}));
+
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({
     user: {
@@ -131,6 +135,7 @@ describe("AppShell", () => {
       "Budgets",
       "Goals & debt",
       "Subscriptions",
+      "Pet",
     ]);
     expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
     expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
@@ -248,6 +253,7 @@ describe("AppShell", () => {
       "Budgets",
       "Goals & debt",
       "Subscriptions",
+      "Pet",
     ]);
   });
 

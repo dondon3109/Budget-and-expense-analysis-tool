@@ -32,6 +32,7 @@ export * from "./goalProfile";
 export * from "./goals";
 export * from "./imports";
 export * from "./onboarding";
+export * from "./pet";
 export * from "./platform-admin";
 export * from "./receipts";
 export * from "./reviews";
