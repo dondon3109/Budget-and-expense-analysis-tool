@@ -24,6 +24,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: signing in with Google on Android no longer reports "invalid flow state" when the sign-in actually succeeded.
 - Web: the Occasions budget list no longer shows another plan's category editor after switching tabs.
 - Web: focus rings on form fields no longer cover the text beneath them, the edit-account form lays out its grouped fields, and the dashboard no longer scrolls sideways on phones.
 
