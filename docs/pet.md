@@ -11,7 +11,7 @@ A streak pet for signed-in users, shown in the mobile app. The rules live in
 - Points per action and daily counts: check-in 10 ×1, transaction 10 ×3, subscription 15 ×2, debt
   payment 20 ×2, assistant reply 5 ×3, plus a +10 bonus on the third distinct action type. No day
   earns more than 100.
-- Stages by points since hatch: Baby 0, Juvenile 350, Adult 1,000, Monster 5,500.
+- Stages by points since hatch: Baby 0, Juvenile 350, Adult 1,000, Legend 5,500.
 - Health is full for 24 hours after the last activity that earned a row, falls evenly to 0 at 72
   hours, and the pet dies then. The next activity heals it fully by eating one point per missing
   health point, never below the current stage's threshold. After death the user picks a new egg.

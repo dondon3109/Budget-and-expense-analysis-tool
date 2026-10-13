@@ -1,20 +1,20 @@
 import type { PetSpecies } from "@zoption/shared";
 
 import {
-  angryEyes,
+  eyes,
   aura,
   blob,
   line,
   OUTLINE,
   oval,
-  snarl,
+  smile,
   spikes,
   type PetArt,
   type PetLayer,
   type PetShape,
 } from "./shapes";
 
-// Monsters are the only aggressive stage: hulking, armored, glaring, with a colored aura.
+// Legends are the final stage: hulking and armored with a colored aura, but as calm as an adult.
 
 const claws = (x: number, y: number, flip = 1): PetShape[] =>
   [-6, 0, 6].map((dx) => blob(`M${x + dx - 3} ${y} l${3 * flip} 8 l3 -8 Z`, "#FFF4D6"));
@@ -68,10 +68,10 @@ const hedgehog: PetArt = [
       oval(100, 78, 40, 36, "#4A3E42"),
       blob("M84 92 C90 80 110 80 116 92 C112 106 88 106 84 92 Z", "#8C7A6B"),
       oval(100, 90, 7, 5, OUTLINE, { strokeWidth: 0 }),
-      ...snarl(100, 104, 16),
+      smile(100, 104, 7),
     ],
   },
-  angryEyes(84, 116, 74),
+  eyes(84, 116, 74, 0.8),
 ];
 
 const pig: PetArt = [
@@ -98,10 +98,10 @@ const pig: PetArt = [
       oval(108, 98, 3.4, 5, OUTLINE, { strokeWidth: 0 }),
       blob("M74 110 C66 96 62 86 64 72 C72 88 78 96 84 106 Z", "#FFF4D6"),
       blob("M126 110 C134 96 138 86 136 72 C128 88 122 96 116 106 Z", "#FFF4D6"),
-      ...snarl(100, 114, 14),
+      smile(100, 114, 7),
     ],
   },
-  angryEyes(84, 116, 72),
+  eyes(84, 116, 72, 0.8),
 ];
 
 const hamster: PetArt = [
@@ -130,10 +130,10 @@ const hamster: PetArt = [
       oval(74, 96, 18, 13, "#F2C48E", { strokeWidth: 0 }),
       oval(126, 96, 18, 13, "#F2C48E", { strokeWidth: 0 }),
       oval(100, 88, 5, 3.5, "#E77C8C", { strokeWidth: 0 }),
-      ...snarl(100, 102, 18),
+      smile(100, 102, 7),
     ],
   },
-  angryEyes(82, 118, 74, "#3DB8FF"),
+  eyes(82, 118, 74, 0.8),
 ];
 
 const penguin: PetArt = [
@@ -164,10 +164,9 @@ const penguin: PetArt = [
       blob(spikes(100, 60, 30, 52, 7, 200, 340), "#BDEEFC"),
       oval(100, 62, 36, 32, "#1F2530"),
       blob("M84 74 L116 74 L100 90 Z", "#F5A33A"),
-      ...snarl(100, 80, 10).slice(1),
     ],
   },
-  angryEyes(86, 114, 58, "#3DE0FF"),
+  eyes(86, 114, 58, 0.8, true),
 ];
 
 const panda: PetArt = [
@@ -197,10 +196,10 @@ const panda: PetArt = [
       blob("M134 68 C126 58 108 66 106 80 C110 92 130 90 134 68 Z", "#1A1A20"),
       line("M60 86 l12 4 M140 86 l-12 4", "#E53935", 4),
       oval(100, 92, 6, 4.5, OUTLINE, { strokeWidth: 0 }),
-      ...snarl(100, 104, 16),
+      smile(100, 104, 7),
     ],
   },
-  angryEyes(84, 116, 76),
+  eyes(84, 116, 76, 0.8, true),
 ];
 
 const hippo: PetArt = [
@@ -226,13 +225,13 @@ const hippo: PetArt = [
       oval(100, 98, 48, 28, "#8E87A8"),
       oval(84, 88, 5, 4, "#2B2738", { strokeWidth: 0 }),
       oval(116, 88, 5, 4, "#2B2738", { strokeWidth: 0 }),
-      ...snarl(100, 106, 26),
+      smile(100, 106, 7),
     ],
   },
-  angryEyes(84, 116, 62),
+  eyes(84, 116, 62, 0.8),
 ];
 
-export const monsterArt: Record<PetSpecies, PetArt> = {
+export const legendArt: Record<PetSpecies, PetArt> = {
   hedgehog,
   pig,
   hamster,

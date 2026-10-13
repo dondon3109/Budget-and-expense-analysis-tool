@@ -4,11 +4,11 @@ import { adultArt } from "./adults";
 import { babyArt } from "./babies";
 import { eggArt, eggCracks } from "./eggs";
 import { juvenileArt } from "./juveniles";
-import { monsterArt } from "./monsters";
+import { legendArt } from "./legends";
 
 describe("pet art", () => {
   it("draws every hatched stage of every species with eyes that can blink", () => {
-    for (const stage of [babyArt, juvenileArt, adultArt, monsterArt]) {
+    for (const stage of [babyArt, juvenileArt, adultArt, legendArt]) {
       for (const species of petSpecies) {
         expect(stage[species].some((layer) => layer.part === "eyes")).toBe(true);
       }

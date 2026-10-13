@@ -46,7 +46,7 @@ export const petViewSchema = z
     species: z.enum(petSpecies).nullable(),
     stage: z.enum(petStages),
     points: z.number().int().nonnegative(),
-    /** Points at which the next stage starts, or null for a Monster. */
+    /** Points at which the next stage starts, or null for a Legend. */
     nextStagePoints: z.number().int().positive().nullable(),
     pointsToday: z.number().int().nonnegative(),
     eggStreakDays: z.number().int().nonnegative(),

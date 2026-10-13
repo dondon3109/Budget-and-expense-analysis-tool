@@ -180,7 +180,7 @@ function toView(pet: StoredPet, now: Date): PetView {
     };
   }
   const stage = petStageForPoints(state.points);
-  const next = { baby: "juvenile", juvenile: "adult", adult: "monster", monster: null } as const;
+  const next = { baby: "juvenile", juvenile: "adult", adult: "legend", legend: null } as const;
   const nextStage = next[stage];
   // A disabled pet's clock is paused, so it shows the health it had when it was turned off.
   const health = petHealthAt(state.lastActivityAt, pet.enabled ? at : state.lastActivityAt);

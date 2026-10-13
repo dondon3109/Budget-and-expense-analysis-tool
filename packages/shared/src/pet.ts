@@ -8,7 +8,7 @@
 export const petSpecies = ["hedgehog", "pig", "hamster", "penguin", "panda", "hippo"] as const;
 export type PetSpecies = (typeof petSpecies)[number];
 
-export const petStages = ["egg", "baby", "juvenile", "adult", "monster"] as const;
+export const petStages = ["egg", "baby", "juvenile", "adult", "legend"] as const;
 export type PetStage = (typeof petStages)[number];
 
 /** Activities in the points ledger. `variety_bonus` and `heal` are written by the rules, never by a client. */
@@ -54,7 +54,7 @@ export const PET_STAGE_THRESHOLDS: Record<Exclude<PetStage, "egg">, number> = {
   baby: 0,
   juvenile: 350,
   adult: 1_000,
-  monster: 5_500,
+  legend: 5_500,
 };
 
 export const PET_MAX_HEALTH = 100;
@@ -107,7 +107,7 @@ export function petAwardRows(
 
 /** The hatched stage for a points total. Points never fall below the current stage (see heal). */
 export function petStageForPoints(points: number): Exclude<PetStage, "egg"> {
-  if (points >= PET_STAGE_THRESHOLDS.monster) return "monster";
+  if (points >= PET_STAGE_THRESHOLDS.legend) return "legend";
   if (points >= PET_STAGE_THRESHOLDS.adult) return "adult";
   if (points >= PET_STAGE_THRESHOLDS.juvenile) return "juvenile";
   return "baby";

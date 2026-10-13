@@ -14,7 +14,7 @@ export const petStageLabels: Record<PetStage, string> = {
   baby: "Baby",
   juvenile: "Juvenile",
   adult: "Adult",
-  monster: "Monster",
+  legend: "Legend",
 };
 
 /** How each action earns points, in the order the pet screen lists them. */
@@ -26,14 +26,14 @@ export const petEarningRows = [
   { label: "Chat with the AI Assistant", rule: PET_ACTION_RULES.assistant },
 ] as const;
 
-export type PetMood = "egg" | "cute" | "aggressive" | "sick" | "fading";
+export type PetMood = "egg" | "cute" | "sick" | "fading";
 
-/** How the pet moves: only a healthy Monster is aggressive. */
+/** How the pet moves. */
 export function petMood(view: PetView): PetMood {
   if (view.stage === "egg") return "egg";
   if (view.healthState === "fading") return "fading";
   if (view.healthState === "sick") return "sick";
-  return view.stage === "monster" ? "aggressive" : "cute";
+  return "cute";
 }
 
 /** One line about how the pet is doing, for the Home card. */

@@ -78,7 +78,7 @@ describe("petStageForPoints", () => {
     [999, "juvenile"],
     [1_000, "adult"],
     [5_499, "adult"],
-    [5_500, "monster"],
+    [5_500, "legend"],
   ] as const)("puts %i points at %s", (points, stage) => {
     expect(petStageForPoints(points)).toBe(stage);
   });

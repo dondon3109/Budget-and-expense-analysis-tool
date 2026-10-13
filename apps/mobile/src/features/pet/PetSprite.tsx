@@ -100,8 +100,8 @@ export interface PetSpriteProps {
 }
 
 /**
- * Draws a pet and keeps it moving: cute pets bob, blink, and wiggle their ears and tail; a Monster
- * shakes, breathes heavily, and pulses its aura; sick pets shiver and fading pets flicker. Every
+ * Draws a pet and keeps it moving: cute pets bob, blink, and wiggle their ears and tail; sick pets
+ * shiver and fading pets flicker. Every
  * motion runs on the native driver, and Reduce Motion turns the idle motion off.
  */
 export function PetSprite({
@@ -123,7 +123,7 @@ export function PetSprite({
     idle.setValue(0);
     blink.setValue(1);
     if (reduceMotion || still) return;
-    const period = mood === "aggressive" ? 1600 : mood === "egg" ? 1400 : 1200;
+    const period = mood === "egg" ? 1400 : 1200;
     const loops = [
       Animated.loop(Animated.sequence([timing(idle, 1, period), timing(idle, 0, period)])),
     ];
@@ -143,7 +143,7 @@ export function PetSprite({
   const react = () => {
     tap.setValue(0);
     Animated.sequence([
-      timing(tap, 1, mood === "aggressive" ? 120 : 160),
+      timing(tap, 1, 160),
       Animated.spring(tap, { toValue: 0, friction: 4, useNativeDriver: true }),
     ]).start();
     onPress?.();
@@ -173,19 +173,6 @@ export function PetSprite({
         tap.interpolate({ inputRange: [0, 1], outputRange: [0, -0.08] }),
       ),
     });
-  } else if (mood === "aggressive") {
-    whole.push({
-      translateX: Animated.add(
-        range([0, 1.5 * k, 0, -1.5 * k, 0]),
-        tap.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -6 * k, 6 * k] }),
-      ),
-    });
-    whole.push({
-      scale: Animated.add(
-        range([1, 1.04]),
-        tap.interpolate({ inputRange: [0, 1], outputRange: [0, 0.14] }),
-      ),
-    });
   } else if (mood === "sick") {
     whole.push({ translateX: range([0, 1.2 * k, -1.2 * k, 1.2 * k, -1.2 * k, 0]) });
     whole.push({ scaleY: 0.96 });
@@ -197,10 +184,9 @@ export function PetSprite({
   const partTransform = (part: PetPart): Transform[] => {
     if (part === "eyes" && mood === "sick") return [{ scaleY: 0.55 }];
     if (part === "eyes") return [{ scaleY: blink }];
-    if (mood !== "cute" && mood !== "aggressive") return [];
+    if (mood !== "cute") return [];
     if (part === "ears") return [{ rotate: range(["-5deg", "5deg"]) }];
     if (part === "tail") return [{ rotate: range(["-14deg", "14deg"]) }];
-    if (part === "arms" && mood === "aggressive") return [{ rotate: range(["-3deg", "3deg"]) }];
     return [];
   };
 
@@ -217,7 +203,6 @@ export function PetSprite({
           style={[
             StyleSheet.absoluteFill,
             {
-              opacity: layer.part === "shadow" && mood === "aggressive" ? range([0.6, 1]) : 1,
               transform: partTransform(layer.part),
               transformOrigin: [layer.origin[0] * k, layer.origin[1] * k, 0],
             },

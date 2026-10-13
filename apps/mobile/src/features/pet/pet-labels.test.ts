@@ -2,11 +2,10 @@ import { babyPet, noPet } from "./pet-test-fixtures";
 import { petMood, petStatusLine } from "./pet-labels";
 
 describe("pet labels", () => {
-  it("makes only a healthy Monster aggressive", () => {
+  it("moves by health, whatever the stage", () => {
     expect(petMood(babyPet)).toBe("cute");
-    expect(petMood({ ...babyPet, stage: "adult" })).toBe("cute");
-    expect(petMood({ ...babyPet, stage: "monster", nextStagePoints: null })).toBe("aggressive");
-    expect(petMood({ ...babyPet, stage: "monster", healthState: "sick" })).toBe("sick");
+    expect(petMood({ ...babyPet, stage: "legend", nextStagePoints: null })).toBe("cute");
+    expect(petMood({ ...babyPet, stage: "legend", healthState: "sick" })).toBe("sick");
     expect(petMood({ ...babyPet, healthState: "fading" })).toBe("fading");
     expect(petMood({ ...noPet, species: "pig" })).toBe("egg");
   });
