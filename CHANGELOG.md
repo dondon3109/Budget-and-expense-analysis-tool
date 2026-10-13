@@ -9,8 +9,10 @@ All notable product changes are documented here.
 - New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
 - Bank and savings accounts can hold money in several currencies: pick the currency on each entry. Other accounts record only in their own currency.
 - Adjust balance on a bank or savings account picks the currency, so you can add a second currency (a USD balance in a PHP bank account) without a made-up entry. The mobile account editor lists the balance in every currency the account holds.
-- Web: your pet now has its own page in the sidebar, with the egg picker, stats, and the on/off switch. Opening the web app counts toward hatching and daily points.
-- A pop-up shows your pet's picture when it hatches, grows, gets sick, or passes away, and once a day otherwise, on web and mobile.
+- Web: your pet now has its own page in the sidebar, with the egg picker, stats, and the on/off switch. Opening the web app counts toward the egg streak and daily points.
+- A pop-up shows your pet's picture when its egg is ready, it grows, gets sick, or passes away, and once a day otherwise, on web and mobile.
+- After seven days your pet's egg no longer hatches by itself: tap it 10 times on the pet page, on web or mobile, and watch it shake, crack, and burst open. A ready egg waits for you, and a notification tells you when it is ready.
+- Web: the pet page draws the same animated pet as the phone app.
 
 ### Changed
 

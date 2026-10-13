@@ -1,7 +1,7 @@
 import type { PetSpecies, PetView } from "@zoption/shared";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { checkInPet, choosePetEgg, setPetEnabled } from "../lib/api";
+import { checkInPet, choosePetEgg, hatchPet, setPetEnabled } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
@@ -22,7 +22,7 @@ export function usePet(workspace: AuthenticatedWorkspace) {
   return useQuery(petQueryOptions(workspace));
 }
 
-/** Both writes return the new view, which replaces the cached one. */
+/** Every write returns the new view, which replaces the cached one. */
 function usePetWrite<Input>(
   workspace: AuthenticatedWorkspace,
   save: (workspace: AuthenticatedWorkspace, input: Input) => Promise<PetView>,
@@ -40,4 +40,13 @@ export function useChoosePetEgg(workspace: AuthenticatedWorkspace) {
 
 export function useSetPetEnabled(workspace: AuthenticatedWorkspace) {
   return usePetWrite<boolean>(workspace, setPetEnabled);
+}
+
+/** Hatches a ready egg; `beforeShow` runs after the Worker agrees, before the Baby is cached. */
+export function useHatchPet(workspace: AuthenticatedWorkspace) {
+  return usePetWrite<() => Promise<void>>(workspace, async (workspace, beforeShow) => {
+    const pet = await hatchPet(workspace);
+    await beforeShow();
+    return pet;
+  });
 }

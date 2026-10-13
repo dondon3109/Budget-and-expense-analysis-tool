@@ -9,8 +9,7 @@ import {
 } from "react-native";
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from "react-native-svg";
 
-import type { PetLayer, PetPart, PetShape } from "./art";
-import type { PetMood } from "./pet-labels";
+import type { PetLayer, PetMood, PetPart, PetShape } from "@zoption/shared";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 const CANVAS = 200;

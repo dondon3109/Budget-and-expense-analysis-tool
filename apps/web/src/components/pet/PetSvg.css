@@ -1,0 +1,118 @@
+/* Idle motion for the pet art, matching the phone app's PetSprite. Parts turn around their own
+   origin, given inline in canvas units. */
+.pet-svg {
+  overflow: visible;
+  transform-origin: 50% 95%;
+}
+
+.pet-svg g[data-part] {
+  transform-box: view-box;
+}
+
+.pet-svg[data-mood="egg"] {
+  animation: pet-sway 2.8s ease-in-out infinite alternate;
+}
+
+.pet-svg[data-mood="cute"] {
+  animation: pet-bob 2.4s ease-in-out infinite alternate;
+}
+
+.pet-svg[data-mood="cute"] g[data-part="ears"] {
+  animation: pet-wiggle 2.4s ease-in-out infinite alternate;
+}
+
+.pet-svg[data-mood="cute"] g[data-part="tail"] {
+  animation: pet-wag 2.4s ease-in-out infinite alternate;
+}
+
+.pet-svg[data-mood="cute"] g[data-part="eyes"],
+.pet-svg[data-mood="egg"] g[data-part="eyes"] {
+  animation: pet-blink 3.4s infinite;
+}
+
+.pet-svg[data-mood="sick"] {
+  opacity: 0.8;
+  animation: pet-shiver 1.2s linear infinite;
+}
+
+.pet-svg[data-mood="sick"] g[data-part="eyes"] {
+  transform: scaleY(0.55);
+}
+
+.pet-svg[data-mood="fading"] {
+  animation: pet-flicker 2.4s ease-in-out infinite alternate;
+}
+
+@keyframes pet-sway {
+  from {
+    transform: rotate(-3deg);
+  }
+  to {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes pet-bob {
+  to {
+    transform: translateY(-2%) scaleY(1.03);
+  }
+}
+
+@keyframes pet-wiggle {
+  from {
+    transform: rotate(-5deg);
+  }
+  to {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes pet-wag {
+  from {
+    transform: rotate(-14deg);
+  }
+  to {
+    transform: rotate(14deg);
+  }
+}
+
+@keyframes pet-blink {
+  0%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  97% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes pet-shiver {
+  0%,
+  100% {
+    transform: translateX(0) scaleY(0.96);
+  }
+  25%,
+  75% {
+    transform: translateX(0.6%) scaleY(0.96);
+  }
+  50% {
+    transform: translateX(-0.6%) scaleY(0.96);
+  }
+}
+
+@keyframes pet-flicker {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-svg,
+  .pet-svg g[data-part] {
+    animation: none !important;
+  }
+}

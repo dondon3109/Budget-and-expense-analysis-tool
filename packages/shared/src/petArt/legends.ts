@@ -1,4 +1,4 @@
-import type { PetSpecies } from "@zoption/shared";
+import type { PetSpecies } from "../pet";
 
 import {
   eyes,

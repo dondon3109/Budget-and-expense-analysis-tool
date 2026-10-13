@@ -54,3 +54,14 @@ export function setPetEnabled(api: PetApi, enabled: boolean): Promise<PetView> {
     decode,
   });
 }
+
+/** Breaks open a ready egg after its last tap. The Worker answers 409 when the egg is not ready. */
+export function hatchPet(api: PetApi): Promise<PetView> {
+  return apiRequest({
+    ...api,
+    path: `${PATH}/hatch`,
+    method: "POST",
+    fallback: "Couldn't hatch your egg. Try again.",
+    decode,
+  });
+}

@@ -20,11 +20,12 @@ vi.mock("../src/lib/api", async () =>
     "checkInPet",
     "choosePetEgg",
     "setPetEnabled",
+    "hatchPet",
   ]),
 );
 
 import { PetMomentDialog } from "../src/components/pet/PetMomentDialog";
-import { checkInPet, choosePetEgg } from "../src/lib/api";
+import { checkInPet, choosePetEgg, hatchPet } from "../src/lib/api";
 import { PetPage } from "../src/pages/PetPage";
 import { renderWithProviders } from "./helpers/render";
 
@@ -60,6 +61,7 @@ describe("pet on the web", () => {
     window.localStorage.clear();
     vi.mocked(checkInPet).mockReset();
     vi.mocked(choosePetEgg).mockReset();
+    vi.mocked(hatchPet).mockReset();
   });
   afterEach(cleanup);
 
@@ -73,6 +75,33 @@ describe("pet on the web", () => {
 
     expect(await screen.findByRole("heading", { name: "Hippo · Egg" })).toBeInTheDocument();
     expect(vi.mocked(choosePetEgg).mock.calls[0]?.[1]).toBe("hippo");
+  });
+
+  it("hatches a ready egg on the tenth click", async () => {
+    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "panda", eggStreakDays: 7 });
+    vi.mocked(hatchPet).mockResolvedValue(babyPet);
+    renderWithProviders(<PetPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /Ready egg/ }));
+    expect(screen.getByText("9 more clicks…")).toBeInTheDocument();
+    for (let click = 1; click < 10; click += 1) {
+      fireEvent.click(screen.getByRole("button", { name: /Ready egg/ }));
+    }
+
+    expect(await screen.findByRole("heading", { name: "Panda · Baby" })).toBeInTheDocument();
+    expect(hatchPet).toHaveBeenCalledTimes(1);
+  });
+
+  it("settles a ready egg back when the hatch fails", async () => {
+    vi.mocked(checkInPet).mockResolvedValue({ ...noPet, species: "panda", eggStreakDays: 7 });
+    vi.mocked(hatchPet).mockRejectedValue(new Error("offline"));
+    renderWithProviders(<PetPage />);
+
+    const egg = await screen.findByRole("button", { name: /Ready egg/ });
+    for (let click = 0; click < 10; click += 1) fireEvent.click(egg);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Couldn't hatch, try again.");
+    expect(screen.getByRole("button", { name: /Click 10 more times/ })).toBeInTheDocument();
   });
 
   it("shows the pet pop-up once per day", async () => {

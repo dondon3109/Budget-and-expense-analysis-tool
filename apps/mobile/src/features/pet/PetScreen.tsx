@@ -1,13 +1,15 @@
 import {
   PET_DAILY_POINT_CEILING,
   PET_STAGE_THRESHOLDS,
+  petArt,
   petEarningRows,
+  petMood,
   petSpeciesLabels,
   petStageLabels,
   type PetView,
 } from "@zoption/shared";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { usePetStore } from "@/stores/pet-store";
@@ -16,9 +18,8 @@ import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-import { petArt } from "./art";
 import { EggPicker } from "./EggPicker";
-import { petMood } from "./pet-labels";
+import { HatchEgg, HatchPop } from "./HatchEgg";
 import { PetSprite } from "./PetSprite";
 import { usePetActions } from "./use-pet-actions";
 
@@ -100,12 +101,13 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
   );
 }
 
-/** The pet companion: pick an egg, watch it hatch, and see how to keep it growing. */
+/** The pet companion: pick an egg, tap it open, and see how to keep it growing. */
 export function PetScreen() {
   const theme = useZoptionTheme();
   const pet = usePetStore((state) => state.pet);
   const actions = usePetActions();
   const { refresh } = actions;
+  const [justHatched, setJustHatched] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -147,7 +149,7 @@ export function PetScreen() {
         description={
           pet.diedAt
             ? "Your last pet passed away after three days with nothing logged. Every egg starts fresh."
-            : "Pick an egg. Open Zoption seven days in a row and it hatches, then it grows as you log money."
+            : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."
         }
       >
         <EggPicker busy={actions.busy} onChoose={(species) => void choose(species)} />
@@ -177,18 +179,38 @@ export function PetScreen() {
   }
 
   const name = `${petSpeciesLabels[pet.species]} · ${petStageLabels[pet.stage]}`;
+  const ready = pet.stage === "egg" && pet.eggStreakDays >= pet.eggHatchDays;
+  const sprite = (
+    <PetSprite
+      art={petArt(pet.species, pet.stage, pet.eggStreakDays)}
+      mood={petMood(pet)}
+      size={220}
+      accessibilityLabel={name}
+    />
+  );
   return (
     <Screen title="Your pet" onRefresh={() => refresh().then(() => undefined)}>
       <Card style={{ alignItems: "center", gap: spacing.md }}>
-        <PetSprite
-          art={petArt(pet.species, pet.stage, pet.eggStreakDays)}
-          mood={petMood(pet)}
-          size={220}
-          accessibilityLabel={name}
-        />
+        {ready ? (
+          <HatchEgg
+            species={pet.species}
+            days={pet.eggStreakDays}
+            size={220}
+            hatch={(beforeShow) =>
+              actions.hatch(beforeShow).then((hatched) => {
+                if (hatched) setJustHatched(true);
+                return hatched;
+              })
+            }
+          />
+        ) : justHatched ? (
+          <HatchPop>{sprite}</HatchPop>
+        ) : (
+          sprite
+        )}
         <Text style={[typography.title, { color: theme.colors.text }]}>{name}</Text>
         <View style={{ alignSelf: "stretch", gap: spacing.sm }}>
-          {pet.stage === "egg" ? (
+          {ready ? null : pet.stage === "egg" ? (
             <>
               <Meter
                 label={`Day ${pet.eggStreakDays} of ${pet.eggHatchDays}`}
@@ -197,7 +219,8 @@ export function PetScreen() {
                 color={String(theme.colors.brand)}
               />
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Open Zoption every day to hatch it. Missing a day starts the count over.
+                Open Zoption every day until it is ready to hatch. Missing a day starts the count
+                over.
               </Text>
             </>
           ) : (

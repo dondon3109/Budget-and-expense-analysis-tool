@@ -1,0 +1,62 @@
+.pet-hatch-egg {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: none;
+  cursor: pointer;
+}
+
+.pet-hatch-egg:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+.pet-hatch-shake {
+  display: block;
+  transform-origin: 50% 90%;
+}
+
+.pet-hatch-shake[data-shaking] {
+  animation: pet-hatch-shake 360ms ease-out;
+}
+
+.pet-hatch-egg[data-bursting] .pet-hatch-shake {
+  animation: pet-hatch-burst 280ms ease-out forwards;
+}
+
+/* A just-hatched Baby springs out of where the shell burst. */
+.pet-pop {
+  animation: pet-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes pet-hatch-shake {
+  20% {
+    transform: rotate(var(--pet-swing));
+  }
+  45% {
+    transform: rotate(calc(var(--pet-swing) * -1));
+  }
+  70% {
+    transform: rotate(calc(var(--pet-swing) * 0.4));
+  }
+}
+
+@keyframes pet-hatch-burst {
+  to {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes pet-pop {
+  from {
+    transform: scale(0.3);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-hatch-shake[data-shaking],
+  .pet-pop {
+    animation: none;
+  }
+}

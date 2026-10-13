@@ -5,7 +5,7 @@ import { requestJson } from "./transport";
 
 const PATH = "/api/app/pet";
 
-/** Records that the app was opened today (the login that hatches eggs) and returns the pet. */
+/** Records that the app was opened today (the login that readies eggs) and returns the pet. */
 export async function checkInPet(workspace: AuthenticatedWorkspace): Promise<PetView> {
   return petViewSchema.parse(await requestJson(workspace, `${PATH}/check-in`, { method: "POST" }));
 }
@@ -32,4 +32,9 @@ export async function setPetEnabled(
       body: JSON.stringify({ enabled }),
     }),
   );
+}
+
+/** Breaks open a ready egg after its last click. The Worker answers 409 when it is not ready. */
+export async function hatchPet(workspace: AuthenticatedWorkspace): Promise<PetView> {
+  return petViewSchema.parse(await requestJson(workspace, `${PATH}/hatch`, { method: "POST" }));
 }

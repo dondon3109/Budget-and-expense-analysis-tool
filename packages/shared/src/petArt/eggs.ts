@@ -1,4 +1,4 @@
-import type { PetSpecies } from "@zoption/shared";
+import type { PetSpecies } from "../pet";
 
 import {
   blob,
@@ -130,20 +130,32 @@ const CRACK_POINTS = [
 ];
 const SIDE_CRACK = "M44 104 L56 100 L52 112 L66 110 L62 122";
 
-export function eggCracks(days: number): PetShape[] {
+/** Cracks that spread from the main one as a ready egg is tapped, one more every two taps. */
+const TAP_CRACKS = [
+  "M120 84 L132 92 L128 104 L142 110",
+  "M100 118 L90 128 L98 138 L86 148",
+  "M86 40 L94 52 L84 60 L92 70",
+  "M138 130 L150 126 L146 140 L158 144",
+  "M60 140 L72 136 L70 150 L82 154",
+];
+
+/** The cracks for `days` of streak and, once the egg is ready, `taps` toward breaking it open. */
+export function eggCracks(days: number, taps = 0): PetShape[] {
   if (days <= 0) return [];
   const visible = CRACK_POINTS.slice(0, Math.min(days, 7) + 1);
   const d = visible.map(([x, y], index) => `${index === 0 ? "M" : "L"}${x} ${y}`).join(" ");
   const cracks = [line(d, OUTLINE, 3)];
   if (days >= 5) cracks.push(line(SIDE_CRACK, OUTLINE, 3));
+  for (const crack of TAP_CRACKS.slice(0, Math.ceil(taps / 2)))
+    cracks.push(line(crack, OUTLINE, 3));
   return cracks;
 }
 
-/** An egg of each species, with the crack for `days` consecutive login days. */
-export function eggArt(species: PetSpecies, days = 0): PetArt {
+/** An egg of each species, with the crack for `days` consecutive login days and `taps` to hatch. */
+export function eggArt(species: PetSpecies, days = 0, taps = 0): PetArt {
   return [
     groundShadow(56),
     { part: "body", origin: [100, 186], clip: EGG, shapes: patterns[species] },
-    { part: "body", origin: [100, 186], shapes: [shine, outline, ...eggCracks(days)] },
+    { part: "body", origin: [100, 186], shapes: [shine, outline, ...eggCracks(days, taps)] },
   ];
 }

@@ -6,9 +6,12 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
 
 ## Rules
 
-- The user picks one of six eggs (hedgehog, pig, hamster, penguin, panda, hippo). An egg hatches
-  after 7 consecutive Manila days with an app check-in; a missed day resets the count. Eggs never
-  get sick or die.
+- The user picks one of six eggs (hedgehog, pig, hamster, penguin, panda, hippo). An egg is ready
+  after 7 consecutive Manila days with an app check-in; a missed day before then resets the count.
+  A ready egg stays ready however many days pass, until the user taps it 10 times
+  (`PET_HATCH_TAPS`) on the mobile or web pet page. The taps are counted on the device and only
+  the last one calls the Worker, so leaving the page forgets a partial count. The health clock
+  starts at that tap. Eggs never get sick or die.
 - Points per action and daily counts: check-in 10 ×1, transaction 10 ×3, subscription 15 ×2, debt
   payment 20 ×2, assistant reply 5 ×3, plus a +10 bonus on the third distinct action type. No day
   earns more than 100.
@@ -38,11 +41,14 @@ Activity is credited through the last whole second only, because `datetime('now'
 ## API
 
 `GET /api/app/pet`, `POST /api/app/pet/check-in`, `PUT /api/app/pet/egg` (`{ species }`, 409 while a
-pet is alive), `PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`.
+pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg is enabled),
+`PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`. Apps released
+before the hatch endpoint cannot hatch; a ready egg waits for the update.
 
 ## Pop-up
 
-Mobile Home and every web workspace page open a pop-up with the pet's picture when it hatched, grew a stage, got sick, or died since
+Mobile Home and every web workspace page open a pop-up with the pet's picture when its egg became
+ready, it grew a stage, got sick, or died since
 the device last showed it, or else on the day's first open (Manila date). One open shows at most one.
 The rule is `petMoment` in `packages/shared/src/petMoment.ts` and the wording is `petCopy.ts`; each
 device keeps what it last showed: mobile in SecureStore (`zoption-mobile-pet-seen-v1`, cleared on
@@ -51,7 +57,11 @@ every identity change, and only after first-run setup), the web in local storage
 
 ## Art
 
-The pet page draws animated SVG layers (`apps/mobile/src/features/pet/art/`). The pop-up uses 31
+The pet pages on mobile and the web draw the same animated SVG layers
+(`packages/shared/src/petArt/`, rendered by mobile `PetSprite.tsx` and web
+`components/pet/PetSvg.tsx`). Each pair of taps on a ready egg spreads one more crack, and every
+tap shakes it harder; the shell bursts only once the Worker accepts the hatch, and a failed hatch
+settles the egg back to zero taps. The pop-up uses 31
 pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species at every stage, plus a
 shared tombstone. A sick pet's picture is shown greyed out rather than drawn separately. They live
 in `apps/mobile/assets/pet/` and `apps/web/public/pet/` as 512px WebP files with the white background flood-filled to
@@ -62,7 +72,7 @@ and subtle cel shading, app mascot sticker look, centered, full body, facing the
 white background, no ground, no text, no gradient background, square 1:1". The subject names the
 species with its palette from the SVG art, and the stage reads as follows.
 
-- Egg: the species' egg pattern (see `art/eggs.ts`), standing upright with a tiny smiling face.
+- Egg: the species' egg pattern (see `petArt/eggs.ts`), standing upright with a tiny smiling face.
 - Baby: tiny and extra round, oversized head, big sparkly eyes, sitting, sweet small smile.
 - Juvenile: small and playful, standing with a cheerful open smile.
 - Adult: round heavy body, gentle closed-mouth smile, standing.
@@ -78,7 +88,8 @@ device once the app checks in again.
 
 - A hatched pet is warned at 24, 48 and 66 hours after its last activity, and told at 72 hours
   that it passed away. Reschedules also cancel the ids of the older seven-step schedule. An egg with a streak gets a reminder at 20:00 the next day and a
-  note at 07:30 the morning after that, when the streak has already restarted.
+  note at 07:30 the morning after that, when the streak has already restarted. A ready egg instead
+  gets one "ready to hatch" reminder at the next 20:00.
 - Alerts due between 22:00 and 07:00 Manila time wait until 07:30. A warning that would then land
   at or after the pet's death is dropped.
 - They post on the Android channel "Pet alerts", which the user can mute on its own. They never ask

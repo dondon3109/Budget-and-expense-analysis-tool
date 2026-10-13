@@ -3,7 +3,10 @@ import { useState } from "react";
 import {
   PET_DAILY_POINT_CEILING,
   PET_STAGE_THRESHOLDS,
+  eggArt,
+  petArt,
   petEarningRows,
+  petMood,
   petSpecies,
   petSpeciesLabels,
   petStageLabels,
@@ -13,9 +16,10 @@ import {
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
-import { petImageUrl } from "../lib/petImages";
+import { HatchEgg } from "../components/pet/HatchEgg";
+import { PetSvg } from "../components/pet/PetSvg";
 import { userWorkspace } from "../lib/workspace";
-import { useChoosePetEgg, usePet, useSetPetEnabled } from "../queries/pet";
+import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
 import "./PetPage.css";
 
 function Meter({ label, value, max }: { label: string; value: number; max: number }) {
@@ -58,7 +62,7 @@ function EggPicker({ busy, onChoose }: { busy: boolean; onChoose: (species: PetS
               checked={picked === species}
               onChange={() => setPicked(species)}
             />
-            <img src={petImageUrl(species, "egg")} alt="" width={96} height={96} />
+            <PetSvg art={eggArt(species)} mood="egg" size={96} still />
             <span>{petSpeciesLabels[species]}</span>
           </label>
         ))}
@@ -72,6 +76,8 @@ function EggPicker({ busy, onChoose }: { busy: boolean; onChoose: (species: PetS
 
 function PetStats({ pet }: { pet: PetView }) {
   if (pet.stage === "egg") {
+    // A ready egg's hint sits under the egg itself.
+    if (pet.eggStreakDays >= pet.eggHatchDays) return null;
     return (
       <>
         <Meter
@@ -80,7 +86,7 @@ function PetStats({ pet }: { pet: PetView }) {
           max={pet.eggHatchDays}
         />
         <p className="pet-note">
-          Open Zoption every day to hatch it. Missing a day starts the count over.
+          Open Zoption every day until it is ready to hatch. Missing a day starts the count over.
         </p>
       </>
     );
@@ -121,6 +127,9 @@ export function PetPage() {
   const pet = usePet(workspace);
   const chooseEgg = useChoosePetEgg(workspace);
   const setEnabled = useSetPetEnabled(workspace);
+  const hatch = useHatchPet(workspace);
+  // Set once this visit hatches the egg, so the Baby springs out instead of just appearing.
+  const [justHatched, setJustHatched] = useState(false);
   const busy = chooseEgg.isPending || setEnabled.isPending;
   const writeError = chooseEgg.error ?? setEnabled.error;
 
@@ -166,20 +175,29 @@ export function PetPage() {
             <p className="pet-note">
               {pet.data.diedAt
                 ? "Your last pet passed away after three days with nothing logged. Every egg starts fresh."
-                : "Pick an egg. Open Zoption seven days in a row and it hatches, then it grows as you log money."}
+                : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."}
             </p>
             <EggPicker busy={busy} onChoose={(species) => chooseEgg.mutate(species)} />
           </div>
         ) : (
           <div className="pet-panel pet-hero">
-            <img
-              className="pet-picture"
-              data-health={pet.data.healthState ?? undefined}
-              src={petImageUrl(pet.data.species, pet.data.stage)}
-              alt=""
-              width={220}
-              height={220}
-            />
+            {pet.data.stage === "egg" && pet.data.eggStreakDays >= pet.data.eggHatchDays ? (
+              <HatchEgg
+                species={pet.data.species}
+                days={pet.data.eggStreakDays}
+                hatch={async (beforeShow) => {
+                  await hatch.mutateAsync(beforeShow);
+                  setJustHatched(true);
+                }}
+              />
+            ) : (
+              <PetSvg
+                className={justHatched ? "pet-pop" : undefined}
+                art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
+                mood={petMood(pet.data)}
+                size={220}
+              />
+            )}
             <h2>
               {petSpeciesLabels[pet.data.species]} · {petStageLabels[pet.data.stage]}
             </h2>
