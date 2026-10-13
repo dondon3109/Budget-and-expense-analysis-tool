@@ -183,12 +183,10 @@ export function AccountsPanel({
                       // New accounts sort last; the list scrolls, so bring the new row fully into
                       // view once the form has closed and the list has its height back.
                       onSuccess: () =>
-                        requestAnimationFrame(() =>
-                          accountListRef.current?.scrollTo({
-                            top: accountListRef.current.scrollHeight,
-                            behavior: "smooth",
-                          }),
-                        ),
+                        requestAnimationFrame(() => {
+                          const list = accountListRef.current;
+                          if (list) list.scrollTop = list.scrollHeight;
+                        }),
                     },
                   );
                 }}
