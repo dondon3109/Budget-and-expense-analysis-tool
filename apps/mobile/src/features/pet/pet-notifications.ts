@@ -3,11 +3,9 @@ import type { Href } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
-import { PET_DEAD_AFTER_HOURS, type PetView } from "@zoption/shared";
+import { PET_DEAD_AFTER_HOURS, petSpeciesLabels, type PetView } from "@zoption/shared";
 
 import { usePetStore } from "@/stores/pet-store";
-
-import { petSpeciesLabels } from "./pet-labels";
 
 const HOUR_MS = 60 * 60 * 1000;
 // Pet days follow Manila time on the Worker, so the egg reminder and quiet hours do too.

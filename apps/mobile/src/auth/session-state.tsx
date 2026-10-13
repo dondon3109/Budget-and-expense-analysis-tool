@@ -20,6 +20,7 @@ import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { clearPetNotifications } from "@/features/pet/pet-notifications";
+import { clearPetMoment } from "@/features/pet/use-pet-moment";
 import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
 import { isNewAccount, showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -118,6 +119,7 @@ export function clearUserScopedRuntimeState(): void {
   void clearDailyReminder().catch(() => undefined);
   void clearOverspendingNotification().catch(() => undefined);
   void clearPetNotifications();
+  void clearPetMoment().catch(() => undefined);
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {

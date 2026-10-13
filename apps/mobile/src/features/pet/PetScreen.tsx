@@ -1,4 +1,11 @@
-import { PET_DAILY_POINT_CEILING, PET_STAGE_THRESHOLDS, type PetView } from "@zoption/shared";
+import {
+  PET_DAILY_POINT_CEILING,
+  PET_STAGE_THRESHOLDS,
+  petEarningRows,
+  petSpeciesLabels,
+  petStageLabels,
+  type PetView,
+} from "@zoption/shared";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -11,7 +18,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 
 import { petArt } from "./art";
 import { EggPicker } from "./EggPicker";
-import { petEarningRows, petMood, petSpeciesLabels, petStageLabels } from "./pet-labels";
+import { petMood } from "./pet-labels";
 import { PetSprite } from "./PetSprite";
 import { usePetActions } from "./use-pet-actions";
 

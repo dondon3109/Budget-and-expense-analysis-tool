@@ -1,6 +1,6 @@
 # Pet companion
 
-A streak pet for signed-in users, shown in the mobile app. The rules live in
+A streak pet for signed-in users. On mobile it opens from the Pet entry in the Home view menu. The rules live in
 `packages/shared/src/pet.ts`; the API in `apps/api/src/db/pet.ts` and `src/routes/pet.ts`.
 
 ## Rules
@@ -37,6 +37,35 @@ Activity is credited through the last whole second only, because `datetime('now'
 
 `GET /api/app/pet`, `POST /api/app/pet/check-in`, `PUT /api/app/pet/egg` (`{ species }`, 409 while a
 pet is alive), `PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`.
+
+## Pop-up
+
+Home opens a pop-up with the pet's picture when it hatched, grew a stage, got sick, or died since
+the device last showed it, or else on the day's first open (Manila date). One open shows at most one.
+The rule is `petMoment` in `packages/shared/src/petMoment.ts` and the wording is `petCopy.ts`; each
+device keeps what it last showed (`zoption-mobile-pet-seen-v1` in SecureStore, cleared on every
+identity change) and waits for first-run setup to finish.
+
+## Art
+
+The pet page draws animated SVG layers (`apps/mobile/src/features/pet/art/`). The pop-up uses 31
+pictures made with the Grok CLI's `image_gen` tool (`grok -p`): each species at every stage, plus a
+shared tombstone. A sick pet's picture is shown greyed out rather than drawn separately. They live
+in `apps/mobile/assets/pet/` as 512px WebP files with the white background flood-filled to
+transparent from the edges.
+
+Every prompt ends with the same style: "soft flat vector illustration with clean dark brown outlines
+and subtle cel shading, app mascot sticker look, centered, full body, facing the viewer, plain solid
+white background, no ground, no text, no gradient background, square 1:1". The subject names the
+species with its palette from the SVG art, and the stage reads as follows.
+
+- Egg: the species' egg pattern (see `art/eggs.ts`), standing upright with a tiny smiling face.
+- Baby: tiny and extra round, oversized head, big sparkly eyes, sitting, sweet small smile.
+- Juvenile: small and playful, standing with a cheerful open smile.
+- Adult: round heavy body, gentle closed-mouth smile, standing.
+- Legend: fully grown, mature and dignified, larger, upright and proud with a calm smile; noble,
+  not scary, with no accessories, glow, aura, or sparkles.
+- Tombstone: a small rounded light grey stone, blank face, a tiny pink flower and grass tuft.
 
 ## Notifications
 

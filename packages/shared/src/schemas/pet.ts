@@ -58,3 +58,15 @@ export const petViewSchema = z
   })
   .strict();
 export type PetView = z.infer<typeof petViewSchema>;
+
+/** What a device last showed in the pet pop-up (see petMoment.ts), read back from local storage. */
+export const petSeenSchema = z
+  .object({
+    species: z.enum(petSpecies).nullable(),
+    stage: z.enum(petStages),
+    unwell: z.boolean(),
+    diedAt: z.string().datetime().nullable(),
+    date: isoDateSchema,
+  })
+  .strict();
+export type PetSeen = z.infer<typeof petSeenSchema>;

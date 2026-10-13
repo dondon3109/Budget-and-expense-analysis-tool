@@ -1,4 +1,4 @@
-import { petSpecies, type PetSpecies } from "@zoption/shared";
+import { petSpecies, petSpeciesLabels, type PetSpecies } from "@zoption/shared";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -7,7 +7,6 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
 import { eggArt } from "./art";
-import { petSpeciesLabels } from "./pet-labels";
 import { PetSprite } from "./PetSprite";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
