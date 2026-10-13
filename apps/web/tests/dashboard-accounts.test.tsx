@@ -178,10 +178,6 @@ function renderPage(initialEntry = "/app") {
   );
 }
 
-// jsdom has no Element.scrollTo, and adding an account scrolls the list in a later animation
-// frame, which can land after its test has finished.
-Element.prototype.scrollTo = vi.fn();
-
 describe("Dashboard loading", () => {
   beforeEach(() => {
     dashboardExperienceState.hasCompletedInitialDashboardExperience = true;
