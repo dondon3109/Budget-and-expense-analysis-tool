@@ -1,4 +1,5 @@
 .pet-hatch-egg {
+  position: relative;
   padding: 0;
   border: 0;
   border-radius: var(--radius-lg);
@@ -22,6 +23,28 @@
 
 .pet-hatch-egg[data-bursting] .pet-hatch-shake {
   animation: pet-hatch-burst 280ms ease-out forwards;
+}
+
+.pet-svg.pet-hatch-shine,
+.pet-svg.pet-hatch-afterglow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: 50% 56%;
+}
+
+.pet-hatch-shine {
+  animation: pet-shine-in 280ms ease-out forwards;
+}
+
+.pet-hatch-afterglow {
+  animation: pet-shine-out 700ms ease-out forwards;
+}
+
+.pet-pop-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
 }
 
 /* A just-hatched Baby springs out of where the shell burst. */
@@ -48,6 +71,28 @@
   }
 }
 
+@keyframes pet-shine-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes pet-shine-out {
+  from {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.5);
+  }
+}
+
 @keyframes pet-pop {
   from {
     transform: scale(0.3);
@@ -58,5 +103,10 @@
   .pet-hatch-shake[data-shaking],
   .pet-pop {
     animation: none;
+  }
+
+  .pet-hatch-shine,
+  .pet-hatch-afterglow {
+    display: none;
   }
 }

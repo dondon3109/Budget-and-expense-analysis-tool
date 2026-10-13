@@ -9,7 +9,7 @@ import { legendArt } from "./legends";
 import type { PetArt } from "./shapes";
 
 export type { PetArt, PetLayer, PetPart, PetShape } from "./shapes";
-export { eggArt } from "./eggs";
+export { eggArt, hatchShineLayer } from "./eggs";
 
 const hatched = { baby: babyArt, juvenile: juvenileArt, adult: adultArt, legend: legendArt };
 

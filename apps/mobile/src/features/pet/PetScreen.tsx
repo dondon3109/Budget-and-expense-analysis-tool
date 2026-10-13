@@ -209,7 +209,7 @@ export function PetScreen() {
             }
           />
         ) : justHatched ? (
-          <HatchPop>{sprite}</HatchPop>
+          <HatchPop size={size}>{sprite}</HatchPop>
         ) : (
           sprite
         )}

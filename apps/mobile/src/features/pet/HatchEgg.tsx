@@ -1,11 +1,31 @@
-import { eggArt, PET_HATCH_TAPS, type PetSpecies } from "@zoption/shared";
+import { eggArt, hatchShineLayer, PET_HATCH_TAPS, type PetSpecies } from "@zoption/shared";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, Text, Vibration } from "react-native";
+import { Animated, Easing, StyleSheet, Text, Vibration, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
-import { PetSprite } from "./PetSprite";
+import { LayerSvg, PetSprite } from "./PetSprite";
+
+const shineLayer = hatchShineLayer();
+
+/** Light pouring out of the shell, driven by `glow` from 0 (none) to 1 (full). */
+function HatchShine({ size, glow }: { size: number; glow: Animated.Value }) {
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          opacity: glow,
+          transform: [{ scale: glow.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1.3] }) }],
+        },
+      ]}
+    >
+      <LayerSvg layer={shineLayer} size={size} clipId="hatch-shine" />
+    </Animated.View>
+  );
+}
 
 const play = (animation: Animated.CompositeAnimation) =>
   new Promise<void>((resolve) => animation.start(() => resolve()));
@@ -72,28 +92,31 @@ export function HatchEgg({ species, days, size, hatch }: HatchEggProps) {
   const left = PET_HATCH_TAPS - taps;
   return (
     <>
-      <Animated.View
-        style={{
-          opacity: burst.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-          transform: [
-            {
-              rotate: shake.interpolate({
-                inputRange: [-1, 1],
-                outputRange: [`-${swing}deg`, `${swing}deg`],
-              }),
-            },
-            { scale: burst.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
-          ],
-        }}
-      >
-        <PetSprite
-          art={eggArt(species, days, taps)}
-          mood="egg"
-          size={size}
-          accessibilityLabel={`Ready egg. Tap ${left} more times to hatch it.`}
-          onPress={tap}
-        />
-      </Animated.View>
+      <View style={{ width: size, height: size }}>
+        <Animated.View
+          style={{
+            opacity: burst.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+            transform: [
+              {
+                rotate: shake.interpolate({
+                  inputRange: [-1, 1],
+                  outputRange: [`-${swing}deg`, `${swing}deg`],
+                }),
+              },
+              { scale: burst.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] }) },
+            ],
+          }}
+        >
+          <PetSprite
+            art={eggArt(species, days, taps)}
+            mood="egg"
+            size={size}
+            accessibilityLabel={`Ready egg. Tap ${left} more times to hatch it.`}
+            onPress={tap}
+          />
+        </Animated.View>
+        <HatchShine size={size} glow={burst} />
+      </View>
       <Text
         accessibilityRole={failed ? "alert" : undefined}
         style={[
@@ -107,11 +130,20 @@ export function HatchEgg({ species, days, size, hatch }: HatchEggProps) {
   );
 }
 
-/** Springs a just-hatched Baby out of where the egg burst. */
-export function HatchPop({ children }: { children: ReactNode }) {
+/** Springs a just-hatched Baby out of where the egg burst, as the shell's light fades behind it. */
+export function HatchPop({ size, children }: { size: number; children: ReactNode }) {
   const pop = useRef(new Animated.Value(0.3)).current;
+  const glow = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.spring(pop, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }).start();
-  }, [pop]);
-  return <Animated.View style={{ transform: [{ scale: pop }] }}>{children}</Animated.View>;
+    Animated.parallel([
+      Animated.spring(pop, { toValue: 1, friction: 4, tension: 90, useNativeDriver: true }),
+      Animated.timing(glow, { toValue: 0, duration: 700, useNativeDriver: true }),
+    ]).start();
+  }, [glow, pop]);
+  return (
+    <View style={{ width: size, height: size }}>
+      <HatchShine size={size} glow={glow} />
+      <Animated.View style={{ transform: [{ scale: pop }] }}>{children}</Animated.View>
+    </View>
+  );
 }

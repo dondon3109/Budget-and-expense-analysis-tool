@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from "react";
 
-import { eggArt, PET_HATCH_TAPS, type PetSpecies } from "@zoption/shared";
+import { eggArt, hatchShineLayer, PET_HATCH_TAPS, type PetSpecies } from "@zoption/shared";
 
 import { PetSvg } from "./PetSvg";
 import "./HatchEgg.css";
@@ -12,6 +12,11 @@ function hatchHint(left: number): string {
   if (left === PET_HATCH_TAPS) return "Ready to hatch! Click the egg.";
   if (left === 0) return "Cracking…";
   return left === 1 ? "1 more click…" : `${left} more clicks…`;
+}
+
+/** Light pouring out of the shell; its class picks the burst or the afterglow animation. */
+export function HatchShine({ className }: { className: string }) {
+  return <PetSvg className={className} art={[hatchShineLayer()]} mood="egg" size={220} still />;
 }
 
 /**
@@ -67,6 +72,7 @@ export function HatchEgg({
         >
           <PetSvg art={eggArt(species, days, taps)} mood="egg" size={220} />
         </span>
+        {bursting ? <HatchShine className="pet-hatch-shine" /> : null}
       </button>
       {failed ? (
         <p className="pet-warning" role="alert">

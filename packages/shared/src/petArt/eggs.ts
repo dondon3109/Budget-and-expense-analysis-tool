@@ -9,6 +9,7 @@ import {
   OUTLINE,
   oval,
   type PetArt,
+  type PetLayer,
   type PetShape,
 } from "./shapes";
 
@@ -158,4 +159,22 @@ export function eggArt(species: PetSpecies, days = 0, taps = 0): PetArt {
     { part: "body", origin: [100, 186], clip: EGG, shapes: patterns[species] },
     { part: "body", origin: [100, 186], shapes: [shine, outline, ...eggCracks(days, taps)] },
   ];
+}
+
+const SHINE = "#FFF1A8";
+
+/** The light that bursts out of a cracking egg: a warm glow with rays, centered on the shell. */
+export function hatchShineLayer(): PetLayer {
+  const rays = Array.from({ length: 12 }, (_, index): PetShape => {
+    const angle = (index * Math.PI) / 6;
+    const [inner, outer] = index % 2 === 0 ? [52, 96] : [56, 82];
+    const point = (radius: number) =>
+      `${Math.round(100 + Math.cos(angle) * radius)} ${Math.round(112 + Math.sin(angle) * radius)}`;
+    return line(`M${point(inner)} L${point(outer)}`, SHINE, 7);
+  });
+  return {
+    part: "body",
+    origin: [100, 112],
+    shapes: [{ kind: "circle", cx: 100, cy: 112, r: 50, fill: SHINE, opacity: 0.85 }, ...rays],
+  };
 }

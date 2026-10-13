@@ -43,7 +43,16 @@ function Shape({ shape }: { shape: PetShape }) {
   );
 }
 
-function LayerSvg({ layer, size, clipId }: { layer: PetLayer; size: number; clipId: string }) {
+/** One art layer as a plain SVG; also draws the hatch shine. */
+export function LayerSvg({
+  layer,
+  size,
+  clipId,
+}: {
+  layer: PetLayer;
+  size: number;
+  clipId: string;
+}) {
   const shapes = layer.shapes.map((shape, index) => <Shape key={index} shape={shape} />);
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${CANVAS} ${CANVAS}`}>

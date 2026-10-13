@@ -17,7 +17,7 @@ import {
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
-import { HatchEgg } from "../components/pet/HatchEgg";
+import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
 import { PetSvg } from "../components/pet/PetSvg";
 import { userWorkspace } from "../lib/workspace";
 import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
@@ -219,12 +219,15 @@ export function PetPage() {
                 }}
               />
             ) : (
-              <PetSvg
-                className={justHatched ? "pet-pop" : undefined}
-                art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
-                mood={petMood(pet.data)}
-                size={220}
-              />
+              <span className="pet-pop-wrap">
+                {justHatched ? <HatchShine className="pet-hatch-afterglow" /> : null}
+                <PetSvg
+                  className={justHatched ? "pet-pop" : undefined}
+                  art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
+                  mood={petMood(pet.data)}
+                  size={220}
+                />
+              </span>
             )}
             <div className="pet-title">
               <h2>{pet.data.name ?? petSpeciesLabels[pet.data.species]}</h2>
