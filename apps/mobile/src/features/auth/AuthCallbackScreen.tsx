@@ -4,7 +4,6 @@ import { Text, View } from "react-native";
 
 import { authErrorMessage } from "@/auth/auth-validation";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { getSupabaseClient } from "@/auth/supabase-client";
 import { Button, LedgerLoader } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -28,9 +27,9 @@ export function AuthCallbackScreen() {
     handledRef.current = true;
 
     // The in-app Google flow exchanges the code itself when the browser
-    // session resolves; on Android the same deep link also lands here, so a
-    // session can already exist before this route mounts. In that case the
-    // exchange below would race and consume the code twice.
+    // session resolves; on Android the same deep link also lands here. A
+    // session may already exist, and otherwise the exchange below joins the
+    // one in flight for this code.
     if (status === "signed-in") {
       router.replace("/(app)/(tabs)");
       return;
@@ -47,18 +46,7 @@ export function AuthCallbackScreen() {
         router.replace(destination);
       })
       .catch((callbackError: unknown) => {
-        // If a parallel exchange already established the session, the code
-        // is consumed and the server reports an invalid flow state; that is
-        // a success, not an error.
-        void getSupabaseClient()
-          .auth.getSession()
-          .then(({ data }) => {
-            if (data.session) {
-              router.replace("/(app)/(tabs)");
-            } else {
-              setError(authErrorMessage(callbackError, "Zoption could not finish authentication."));
-            }
-          });
+        setError(authErrorMessage(callbackError, "Zoption could not finish authentication."));
       });
   }, [exchangeCodeForSession, params.code, params.next, status]);
 

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import type { ThemePreference } from "@/ui/tokens";
 
-const themePreferenceSchema = z.enum(["system", "light", "dark", "coffee"]);
+const themePreferenceSchema = z.enum(["system", "light", "dark", "coffee", "fun"]);
 const persistedThemeSchema = z
   .object({
     state: z.object({ preference: themePreferenceSchema }).strict(),

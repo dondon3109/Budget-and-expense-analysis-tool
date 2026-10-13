@@ -4,6 +4,7 @@ import type { PetView } from "@zoption/shared";
 export const babyPet: PetView = {
   enabled: true,
   species: "panda",
+  name: "Bao",
   stage: "baby",
   points: 120,
   nextStagePoints: 350,
@@ -19,6 +20,7 @@ export const babyPet: PetView = {
 export const noPet: PetView = {
   ...babyPet,
   species: null,
+  name: null,
   stage: "egg",
   points: 0,
   nextStagePoints: null,

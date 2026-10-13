@@ -1,0 +1,24 @@
+/* The egg sways like the phone app's EggSprite, turning around its base. */
+.pet-svg {
+  overflow: visible;
+  transform-origin: 50% 95%;
+}
+
+.pet-svg[data-sway] {
+  animation: pet-sway 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes pet-sway {
+  from {
+    transform: rotate(-3deg);
+  }
+  to {
+    transform: rotate(3deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-svg {
+    animation: none !important;
+  }
+}

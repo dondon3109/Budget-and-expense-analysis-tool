@@ -5,8 +5,9 @@ import { View } from "react-native";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
-import { PetHomeCard } from "@/features/pet/PetHomeCard";
+import { PetMomentModal } from "@/features/pet/PetMomentModal";
 import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
@@ -55,6 +56,7 @@ export function HomeScreen() {
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
   const [menuView, setMenuView] = useState<HomeMenuView>("home");
+  const { openFeature } = useAccountGate();
   const [homeView, setHomeView] = useState<HomeViewName>("overview");
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
@@ -86,9 +88,14 @@ export function HomeScreen() {
       showHeading={false}
       title="Home"
     >
+      <PetMomentModal />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
         <View style={{ flex: 1, alignItems: "flex-start" }}>
-          <HomeViewMenu selected={menuView} onSelect={setMenuView} />
+          <HomeViewMenu
+            selected={menuView}
+            onSelect={setMenuView}
+            onOpenPet={() => openFeature("pet", "/(app)/pet")}
+          />
         </View>
         {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
         <View style={{ flex: 1, alignItems: "flex-end" }}>
@@ -115,7 +122,6 @@ export function HomeScreen() {
         </View>
       ) : (
         <View style={{ gap: spacing.md }}>
-          <PetHomeCard />
           <QuickActionBar />
           <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           {hasTransactions ? (

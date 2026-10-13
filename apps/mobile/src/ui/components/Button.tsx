@@ -4,7 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, type PressableProps } f
 
 import { playSound } from "@/features/sounds/sound-effects";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { clay, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 
 export type ButtonVariant = "primary" | "secondary" | "danger" | "quiet";
 
@@ -60,6 +60,23 @@ export function Button({
       border: "transparent",
     },
   }[variant];
+  // Fun's clay buttons sit on a darker lip and press down into it.
+  const lip = {
+    primary: theme.colors.brandPressed,
+    secondary: theme.colors.border,
+    danger: theme.colors.text,
+    quiet: null,
+  }[variant];
+  const clayStyle =
+    theme.clay && lip && !isDisabled
+      ? {
+          borderRadius: radii.round,
+          boxShadow: clay.lip(lip, pressed ? 1 : 4),
+          transform: [{ translateY: pressed ? 3 : 0 }],
+        }
+      : theme.clay
+        ? { borderRadius: radii.round }
+        : null;
   const disabledPalette = {
     background: theme.colors.surface,
     text: theme.colors.textMuted,
@@ -107,6 +124,7 @@ export function Button({
               : palette.background,
           borderColor: isDisabled ? disabledPalette.border : palette.border,
         },
+        clayStyle,
       ]}
       {...props}
     >

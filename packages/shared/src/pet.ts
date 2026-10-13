@@ -8,7 +8,7 @@
 export const petSpecies = ["hedgehog", "pig", "hamster", "penguin", "panda", "hippo"] as const;
 export type PetSpecies = (typeof petSpecies)[number];
 
-export const petStages = ["egg", "baby", "juvenile", "adult", "monster"] as const;
+export const petStages = ["egg", "baby", "juvenile", "adult", "legend"] as const;
 export type PetStage = (typeof petStages)[number];
 
 /** Activities in the points ledger. `variety_bonus` and `heal` are written by the rules, never by a client. */
@@ -48,13 +48,17 @@ export const PET_ASSISTANT_MIN_MESSAGE_LENGTH = 15;
 
 /** Consecutive login days an egg needs; a missed day starts the count again. */
 export const PET_EGG_HATCH_DAYS = 7;
+/** Taps a ready egg takes to break open. Counted on the device; only the last one reaches the Worker. */
+export const PET_HATCH_TAPS = 10;
+/** The longest pet name, in characters. */
+export const PET_NAME_MAX_LENGTH = 20;
 
 /** Points since hatch at which each hatched stage begins. */
 export const PET_STAGE_THRESHOLDS: Record<Exclude<PetStage, "egg">, number> = {
   baby: 0,
   juvenile: 350,
   adult: 1_000,
-  monster: 5_500,
+  legend: 5_500,
 };
 
 export const PET_MAX_HEALTH = 100;
@@ -107,7 +111,7 @@ export function petAwardRows(
 
 /** The hatched stage for a points total. Points never fall below the current stage (see heal). */
 export function petStageForPoints(points: number): Exclude<PetStage, "egg"> {
-  if (points >= PET_STAGE_THRESHOLDS.monster) return "monster";
+  if (points >= PET_STAGE_THRESHOLDS.legend) return "legend";
   if (points >= PET_STAGE_THRESHOLDS.adult) return "adult";
   if (points >= PET_STAGE_THRESHOLDS.juvenile) return "juvenile";
   return "baby";
@@ -124,20 +128,25 @@ export interface PetEggStreak {
   lastLoginDate: string | null;
 }
 
-/** The egg streak after a login on `today`. Logging in twice on one day changes nothing. */
+/**
+ * The egg streak after a login on `today`. Logging in twice on one day changes nothing, and a
+ * ready egg keeps its streak: seven days in a row earns the hatch for good.
+ */
 export function petEggStreakAfterLogin(streak: PetEggStreak, today: string): PetEggStreak {
-  if (streak.lastLoginDate === today) return streak;
+  if (streak.lastLoginDate === today || petEggHatches(streak)) return streak;
   const continues =
     streak.lastLoginDate !== null && dayNumber(today) - dayNumber(streak.lastLoginDate) === 1;
   return { streakDays: continues ? streak.streakDays + 1 : 1, lastLoginDate: today };
 }
 
-/** The streak to show on `today`: a whole missed day means it has already reset to 0. */
+/** The streak to show on `today`: a whole missed day means it has already reset to 0, unless the egg is ready. */
 export function petEggStreakOn(streak: PetEggStreak, today: string): number {
   if (streak.lastLoginDate === null) return 0;
+  if (petEggHatches(streak)) return streak.streakDays;
   return dayNumber(today) - dayNumber(streak.lastLoginDate) <= 1 ? streak.streakDays : 0;
 }
 
+/** Whether the egg is ready: the user hatches it by tapping it, never the rules on their own. */
 export function petEggHatches(streak: PetEggStreak): boolean {
   return streak.streakDays >= PET_EGG_HATCH_DAYS;
 }
@@ -182,6 +191,8 @@ export function petLocalDate(at: number): string {
 export interface PetState {
   /** Null before the user picks an egg, and again after the pet dies. */
   species: PetSpecies | null;
+  /** What the user called it. Kept after death for the memorial; null before the first egg. */
+  name: string | null;
   eggStreak: PetEggStreak;
   /** When the egg hatched; null while it is an egg. */
   hatchedAt: number | null;
@@ -202,6 +213,7 @@ export interface PetEvent {
 
 export const emptyPetState: PetState = {
   species: null,
+  name: null,
   eggStreak: { streakDays: 0, lastLoginDate: null },
   hatchedAt: null,
   points: 0,
@@ -210,9 +222,9 @@ export const emptyPetState: PetState = {
   diedAt: null,
 };
 
-/** A fresh egg of the chosen species. */
-export function startPetEgg(species: PetSpecies): PetState {
-  return { ...emptyPetState, species };
+/** A fresh egg of the chosen species, under the name the user gave it. */
+export function startPetEgg(species: PetSpecies, name: string): PetState {
+  return { ...emptyPetState, species, name };
 }
 
 /** The state as of `now`: a hatched pet left alone for 72 hours has died. */
@@ -221,7 +233,29 @@ export function petStateAt(state: PetState, now: number): PetState {
     return state;
   }
   if (petHealthAt(state.lastActivityAt, now).state !== "dead") return state;
-  return { ...emptyPetState, diedAt: state.lastActivityAt + PET_DEAD_AFTER_HOURS * HOUR_MS };
+  return {
+    ...emptyPetState,
+    name: state.name,
+    diedAt: state.lastActivityAt + PET_DEAD_AFTER_HOURS * HOUR_MS,
+  };
+}
+
+/**
+ * Hatches a ready egg at `at`, when the user taps it open. The health clock starts here, so an egg
+ * that waited days still hatches a healthy Baby. Returns null for anything but a ready egg.
+ */
+export function hatchPetEgg(state: PetState, at: number): PetState | null {
+  if (state.species === null || state.hatchedAt !== null || !petEggHatches(state.eggStreak)) {
+    return null;
+  }
+  return {
+    ...state,
+    hatchedAt: at,
+    points: 0,
+    lastActivityAt: at,
+    // The hatch counts as that day's login, so opening the app again the same day adds nothing.
+    day: { date: petLocalDate(at), entries: [{ action: "login", points: 0 }] },
+  };
 }
 
 /**
@@ -235,17 +269,7 @@ export function applyPetEvent(previous: PetState, event: PetEvent): PetState {
   const date = petLocalDate(event.occurredAt);
   if (state.hatchedAt === null) {
     if (event.action !== "login") return state;
-    const eggStreak = petEggStreakAfterLogin(state.eggStreak, date);
-    if (!petEggHatches(eggStreak)) return { ...state, eggStreak };
-    return {
-      ...state,
-      eggStreak,
-      hatchedAt: event.occurredAt,
-      points: 0,
-      lastActivityAt: event.occurredAt,
-      // The hatching login is that day's login.
-      day: { date, entries: [{ action: "login", points: 0 }] },
-    };
+    return { ...state, eggStreak: petEggStreakAfterLogin(state.eggStreak, date) };
   }
 
   const dayEntries = state.day?.date === date ? state.day.entries : [];

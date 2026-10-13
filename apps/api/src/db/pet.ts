@@ -8,13 +8,15 @@ import {
   petEggStreakOn,
   petHealthAt,
   petLocalDate,
+  petSpeciesLabels,
   petStageForPoints,
   petStateAt,
   petStoredStateSchema,
+  hatchPetEgg,
   startPetEgg,
   type PetEarningAction,
+  type PetEggChoice,
   type PetEvent,
-  type PetSpecies,
   type PetState,
   type PetView,
 } from "@zoption/shared";
@@ -25,10 +27,12 @@ import type { Bindings } from "../types";
 export interface PetRepository {
   /** The pet as of `now`, after crediting activity recorded since the last read. */
   get(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
-  /** Records that the app was opened: the login that hatches eggs and earns the daily 10 points. */
+  /** Records that the app was opened: the login that grows the egg streak and earns the daily 10 points. */
   checkIn(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
   /** Picks a new egg. Only allowed while there is no living pet. */
-  chooseEgg(env: Bindings, tenantId: string, species: PetSpecies, now: Date): Promise<PetView>;
+  chooseEgg(env: Bindings, tenantId: string, choice: PetEggChoice, now: Date): Promise<PetView>;
+  /** Hatches a ready egg when the user taps it open. */
+  hatch(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
   setEnabled(env: Bindings, tenantId: string, enabled: boolean, now: Date): Promise<PetView>;
 }
 
@@ -163,6 +167,8 @@ function toView(pet: StoredPet, now: Date): PetView {
   const base = {
     enabled: pet.enabled,
     species: state.species,
+    // Pets from before names existed go by their species.
+    name: state.name ?? (state.species ? petSpeciesLabels[state.species] : null),
     diedAt: iso(state.diedAt),
     eggHatchDays: PET_EGG_HATCH_DAYS,
   };
@@ -180,7 +186,7 @@ function toView(pet: StoredPet, now: Date): PetView {
     };
   }
   const stage = petStageForPoints(state.points);
-  const next = { baby: "juvenile", juvenile: "adult", adult: "monster", monster: null } as const;
+  const next = { baby: "juvenile", juvenile: "adult", adult: "legend", legend: null } as const;
   const nextStage = next[stage];
   // A disabled pet's clock is paused, so it shows the health it had when it was turned off.
   const health = petHealthAt(state.lastActivityAt, pet.enabled ? at : state.lastActivityAt);
@@ -227,12 +233,25 @@ export const petRepository: PetRepository = {
     return toView(pet, now);
   },
 
-  async chooseEgg(env, tenantId, species, now) {
+  async chooseEgg(env, tenantId, { species, name }, now) {
     const pet = await current(env, tenantId, now);
     if (pet.state.species !== null) {
       throw new HttpError(409, "pet_exists", "You already have a pet.");
     }
-    const next = { ...pet, enabled: true, state: startPetEgg(species) };
+    const next = {
+      ...pet,
+      enabled: true,
+      state: startPetEgg(species, name),
+    };
+    await save(env, tenantId, next);
+    return toView(next, now);
+  },
+
+  async hatch(env, tenantId, now) {
+    const pet = await current(env, tenantId, now);
+    const state = pet.enabled ? hatchPetEgg(pet.state, now.getTime()) : null;
+    if (!state) throw new HttpError(409, "egg_not_ready", "Your egg is not ready to hatch.");
+    const next = { ...pet, state };
     await save(env, tenantId, next);
     return toView(next, now);
   },

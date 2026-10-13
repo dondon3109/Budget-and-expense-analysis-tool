@@ -20,6 +20,7 @@ import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { clearPetNotifications } from "@/features/pet/pet-notifications";
+import { clearPetMoment } from "@/features/pet/use-pet-moment";
 import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
 import { isNewAccount, showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -31,6 +32,7 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { telemetry } from "@/telemetry/telemetry";
 
 import { clearAppLock } from "./app-lock";
+import { exchangeCodeOnce, type CodeExchange } from "./code-exchange";
 import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
@@ -118,6 +120,7 @@ export function clearUserScopedRuntimeState(): void {
   void clearDailyReminder().catch(() => undefined);
   void clearOverspendingNotification().catch(() => undefined);
   void clearPetNotifications();
+  void clearPetMoment().catch(() => undefined);
 }
 
 export function SessionProvider({ children }: PropsWithChildren) {
@@ -356,8 +359,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   }, []);
 
   const exchangeCodeForSession = useCallback(async (code: string) => {
-    const { error } = await getSupabaseClient().auth.exchangeCodeForSession(code);
-    if (error) throw error;
+    await exchangeCodeOnce(code);
   }, []);
 
   const updatePassword = useCallback(async (password: string) => {
@@ -399,22 +401,18 @@ export function SessionProvider({ children }: PropsWithChildren) {
       throw new Error("Google callback URL could not be parsed: " + result.url.slice(0, 200));
     }
     if ("error" in callback) throw new Error(callback.error);
-    const { data: exchanged, error: exchangeError } =
-      await getSupabaseClient().auth.exchangeCodeForSession(callback.code);
-    if (exchangeError) {
-      const { data: currentSession } = await getSupabaseClient().auth.getSession();
-      if (!currentSession.session) {
-        throw new Error(
-          "Google code exchange failed: " +
-            JSON.stringify({
-              name: exchangeError.name,
-              message: exchangeError.message,
-              code: exchangeError.code,
-            }),
-        );
-      }
+    let exchanged: CodeExchange;
+    try {
+      exchanged = await exchangeCodeOnce(callback.code);
+    } catch (exchangeError) {
+      const failure = exchangeError as { name?: string; message?: string; code?: string };
+      throw new Error(
+        "Google code exchange failed: " +
+          JSON.stringify({ name: failure.name, message: failure.message, code: failure.code }),
+        { cause: exchangeError },
+      );
     }
-    if (exchanged?.user && isNewAccount(exchanged.user)) showThankYou("signup");
+    if (exchanged.user && isNewAccount(exchanged.user)) showThankYou("signup");
   }, []);
 
   const signOut = useCallback(async (options: SignOutOptions = {}) => {

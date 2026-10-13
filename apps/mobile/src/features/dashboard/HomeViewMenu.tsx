@@ -21,13 +21,16 @@ const OPTIONS: {
 const BUTTON_SIZE = 44;
 
 // An icon button that opens the view list as an overlay, so opening it never
-// moves the page content. The view names appear only inside the list.
+// moves the page content. The view names appear only inside the list. Pet is a
+// link to its own page rather than a view.
 export function HomeViewMenu({
   selected,
   onSelect,
+  onOpenPet,
 }: {
   selected: HomeMenuView;
   onSelect: (view: HomeMenuView) => void;
+  onOpenPet: () => void;
 }) {
   const theme = useZoptionTheme();
   const buttonRef = useRef<View>(null);
@@ -123,6 +126,20 @@ export function HomeViewMenu({
                 </Pressable>
               );
             })}
+            <Pressable
+              accessibilityLabel="Pet"
+              accessibilityRole="menuitem"
+              onPress={withTapSound(() => {
+                close();
+                onOpenPet();
+              })}
+              style={styles.item}
+            >
+              <MaterialCommunityIcons color={String(theme.colors.text)} name="paw" size={20} />
+              <Text style={[typography.body, styles.itemLabel, { color: theme.colors.text }]}>
+                Pet
+              </Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

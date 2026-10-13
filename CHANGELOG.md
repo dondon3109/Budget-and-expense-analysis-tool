@@ -9,14 +9,29 @@ All notable product changes are documented here.
 - New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
 - Bank and savings accounts can hold money in several currencies: pick the currency on each entry. Other accounts record only in their own currency.
 - Adjust balance on a bank or savings account picks the currency, so you can add a second currency (a USD balance in a PHP bank account) without a made-up entry. The mobile account editor lists the balance in every currency the account holds.
+- Web: your pet now has its own page in the sidebar, with the egg picker, stats, and the on/off switch. Opening the web app counts toward the egg streak and daily points.
+- A pop-up shows your pet's picture when its egg is ready, it grows, gets sick, or passes away, and once a day otherwise, on web and mobile.
+- After seven days your pet's egg no longer hatches by itself: tap it 10 times on the pet page, on web or mobile, and watch it shake, crack, and burst open. A ready egg waits for you, and a notification tells you when it is ready.
+- Web: the pet page draws the same animated pet as the phone app.
+- Name your pet when you pick its egg, on web and mobile. Its pop-ups and notifications call it by name.
+- A new Fun theme, on web and mobile: candy colors, puffy clay cards, and chunky buttons that press down, made to match your pet.
+- New accounts finish setup by picking a theme and choosing whether to raise a streak pet, on web and mobile. Saying yes opens the egg picker.
+- The pet page is more playful on web and mobile: your pet stands in a sparkly spotlight, sends up hearts when you pet it, and shows colorful status chips, chunky meters, an Egg to Legend growth path, and earning tiles.
 
 ### Changed
 
 - Mobile: the More tab no longer shows a large "More" title, so the list starts higher.
+- Mobile: the pet moved from a Home card to a Pet entry in the Home view menu.
+- The pet's final stage is now called Legend, with a calm face instead of a snarl.
+- Hatched pets are now full pictures on the pet page and in pop-ups, on web and mobile. A healthy pet blinks, and a sick or fading pet has its own picture instead of a grey tint.
+- A Legend pet now dresses for the part, on web and mobile: each species wears its own golden outfit, like a panda in a bamboo hat holding a golden bamboo staff.
+- A hatched pet now gets three warnings before it passes away (at 24, 48, and 66 hours), down from six.
 - Web: pages drop their descriptive subtitles and most card frames in favor of flat sections divided by thin rules, with rounded corners on the surfaces that remain. The calendar has one place to add events.
 
 ### Fixed
 
+- Opening the app now counts toward your pet's egg streak and daily points again; the server had been turning away the check-in from both the phone and the web.
+- Mobile: signing in with Google on Android no longer reports "invalid flow state" when the sign-in actually succeeded.
 - Web: the Occasions budget list no longer shows another plan's category editor after switching tabs.
 - Web: focus rings on form fields no longer cover the text beneath them, the edit-account form lays out its grouped fields, and the dashboard no longer scrolls sideways on phones.
 

@@ -1,37 +1,12 @@
-import { Check, Coffee, Moon, Sun, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { useTheme, type Theme } from "../../theme/ThemeProvider";
+import { THEME_OPTIONS } from "../../theme/themeOptions";
 import "./ThemeChoiceDialog.css";
-
-const THEME_OPTIONS = [
-  {
-    value: "light",
-    label: "Light",
-    description: "Bright, warm surfaces for daytime use.",
-    icon: Sun,
-  },
-  {
-    value: "dark",
-    label: "Dark",
-    description: "Neutral, low-glare surfaces for lower light.",
-    icon: Moon,
-  },
-  {
-    value: "coffee",
-    label: "Coffee",
-    description: "Cream and coffee tones with Zoption green accents.",
-    icon: Coffee,
-  },
-] satisfies Array<{
-  value: Theme;
-  label: string;
-  description: string;
-  icon: typeof Sun;
-}>;
 
 export function ThemeChoiceDialog() {
   const { theme, hasThemePreference, previewTheme, setTheme } = useTheme();
@@ -41,6 +16,7 @@ export function ThemeChoiceDialog() {
     light: null,
     dark: null,
     coffee: null,
+    fun: null,
   });
   const initialOptionRef = useRef<HTMLButtonElement | null>(null);
   const initialThemeRef = useRef(theme);

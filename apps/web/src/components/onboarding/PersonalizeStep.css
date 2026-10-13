@@ -1,0 +1,117 @@
+.personalize-group {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.personalize-group legend {
+  margin-bottom: 10px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.personalize-themes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.personalize-theme,
+.personalize-pet {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.personalize-theme {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 12px 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Each swatch shows its own theme's page and accent, whatever theme is active. */
+.personalize-swatch {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  color: #0c1512;
+  background: #f1f3f2;
+}
+
+.personalize-theme-dark .personalize-swatch {
+  color: #5fe3b8;
+  background: #080b0a;
+}
+
+.personalize-theme-coffee .personalize-swatch {
+  color: #2a1c15;
+  background: #ece3d5;
+}
+
+.personalize-theme-fun .personalize-swatch {
+  color: #6b3fd9;
+  background: #f1ebff;
+  border-radius: 999px;
+  box-shadow: inset 0 -3px 0 rgba(107, 63, 217, 0.18);
+}
+
+.personalize-pet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  color: var(--muted);
+}
+
+.personalize-pet span {
+  display: grid;
+  gap: 2px;
+}
+
+.personalize-pet strong {
+  color: var(--ink);
+  font-size: 14px;
+}
+
+.personalize-pet small {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.personalize-theme:has(input:checked),
+.personalize-pet:has(input:checked) {
+  color: var(--brand-strong);
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.personalize-theme:has(input:focus-visible),
+.personalize-pet:has(input:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.personalize-theme input,
+.personalize-pet input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 420px) {
+  .personalize-themes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

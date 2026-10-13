@@ -1,14 +1,9 @@
-import { Check, Coffee, Moon, Sun } from "lucide-react";
+import { Check } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 
 import { useTheme, type Theme } from "../../theme/ThemeProvider";
+import { THEME_OPTIONS } from "../../theme/themeOptions";
 import "./ThemeToggle.css";
-
-const THEME_OPTIONS = [
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-  { value: "coffee", label: "Coffee", icon: Coffee },
-] satisfies Array<{ value: Theme; label: string; icon: typeof Sun }>;
 
 interface ThemeToggleProps {
   variant?: "menu" | "segmented" | "pill";
@@ -24,8 +19,9 @@ export function ThemeToggle({ variant = "menu" }: ThemeToggleProps) {
     light: null,
     dark: null,
     coffee: null,
+    fun: null,
   });
-  const currentOption = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[0]!;
+  const currentOption = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[0];
   const CurrentIcon = currentOption.icon;
 
   useEffect(() => {

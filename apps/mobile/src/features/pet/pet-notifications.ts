@@ -3,11 +3,9 @@ import type { Href } from "expo-router";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
-import { PET_DEAD_AFTER_HOURS, type PetView } from "@zoption/shared";
+import { PET_DEAD_AFTER_HOURS, petSpeciesLabels, type PetView } from "@zoption/shared";
 
 import { usePetStore } from "@/stores/pet-store";
-
-import { petSpeciesLabels } from "./pet-labels";
 
 const HOUR_MS = 60 * 60 * 1000;
 // Pet days follow Manila time on the Worker, so the egg reminder and quiet hours do too.
@@ -19,21 +17,24 @@ export const PET_NOTIFICATION_ROUTE: Href = "/(app)/pet";
 
 /** Warnings for a hatched pet, by hours since its last activity. The last one is its death. */
 const HEALTH_ALERTS = [
-  { id: "zoption-pet-sleepy", hours: 20 },
   { id: "zoption-pet-sick", hours: 24 },
-  { id: "zoption-pet-weaker", hours: 36 },
   { id: "zoption-pet-fading", hours: 48 },
-  { id: "zoption-pet-12h", hours: 60 },
-  { id: "zoption-pet-final", hours: 70 },
+  { id: "zoption-pet-final", hours: 66 },
   { id: "zoption-pet-died", hours: PET_DEAD_AFTER_HOURS },
 ] as const;
+// Warnings from the earlier seven-step schedule. A device that upgrades may still hold them, so
+// every reschedule and clear cancels them too.
+const RETIRED_ALERT_IDS = ["zoption-pet-sleepy", "zoption-pet-weaker", "zoption-pet-12h"];
 const EGG_REMINDER_ID = "zoption-pet-egg";
 const EGG_RESET_ID = "zoption-pet-egg-reset";
+const EGG_READY_ID = "zoption-pet-egg-ready";
 /** Every pet identifier, so a reschedule or clear cancels all of them. */
 const PET_NOTIFICATION_IDS: readonly string[] = [
   ...HEALTH_ALERTS.map((alert) => alert.id),
+  ...RETIRED_ALERT_IDS,
   EGG_REMINDER_ID,
   EGG_RESET_ID,
+  EGG_READY_ID,
 ];
 
 export function isPetNotification(identifier: string | undefined): boolean {
@@ -66,39 +67,24 @@ export function outsideQuietHours(at: number): number {
 
 function healthAlertText(id: (typeof HEALTH_ALERTS)[number]["id"], name: string) {
   switch (id) {
-    case "zoption-pet-sleepy":
-      return {
-        title: `Your ${name} is getting sleepy`,
-        body: "Log something today to keep it healthy.",
-      };
     case "zoption-pet-sick":
       return {
-        title: `Your ${name} is sick`,
-        body: "A day without you made it ill. Log a transaction to heal it.",
-      };
-    case "zoption-pet-weaker":
-      return {
-        title: `Your ${name} is getting weaker`,
-        body: "Its health is dropping. Any activity in Zoption heals it.",
+        title: `${name} misses you`,
+        body: "A day without you made it sick. Log something today to heal it.",
       };
     case "zoption-pet-fading":
       return {
-        title: `Your ${name} is fading`,
+        title: `${name} is fading`,
         body: "It has 24 hours left. Open Zoption and log something to save it.",
-      };
-    case "zoption-pet-12h":
-      return {
-        title: `12 hours left for your ${name}`,
-        body: "It is fading fast. One transaction brings it back.",
       };
     case "zoption-pet-final":
       return {
-        title: `Last chance to save your ${name}`,
-        body: "It passes away in 2 hours unless you log something.",
+        title: `Last chance to save ${name}`,
+        body: "It passes away in 6 hours unless you log something.",
       };
     case "zoption-pet-died":
       return {
-        title: `Your ${name} passed away`,
+        title: `${name} passed away`,
         body: "A new egg is waiting. Pick one to start again.",
       };
   }
@@ -107,26 +93,39 @@ function healthAlertText(id: (typeof HEALTH_ALERTS)[number]["id"], name: string)
 /**
  * The alerts to schedule for a pet view. A hatched pet gets the health warnings still ahead of
  * it, and a warning that quiet hours would push past its death is dropped. An egg with a streak
- * gets a reminder at 20:00 the next day, and a note the morning after that if the streak broke.
+ * gets a reminder at 20:00 the next day, and a note the morning after that if the streak broke; a
+ * ready egg gets one "ready to hatch" reminder at the next 20:00 instead.
  * A pet that is off, unchosen, or gone gets none.
  */
 export function petNotificationPlan(view: PetView, now: number): PetNotification[] {
   if (!view.enabled || view.species === null) return [];
-  const name = petSpeciesLabels[view.species].toLowerCase();
+  const name = view.name ?? petSpeciesLabels[view.species];
 
   if (view.stage === "egg") {
+    if (view.eggStreakDays >= view.eggHatchDays) {
+      // A ready egg waits for its taps; remind at the next 20:00 while it is still unopened.
+      const tonight = manilaTime(now, 0, 20);
+      return [
+        {
+          id: EGG_READY_ID,
+          at: tonight > now ? tonight : manilaTime(now, 1, 20),
+          title: `${name}'s egg is ready to hatch`,
+          body: "Open Zoption and tap it 10 times to crack it open.",
+        },
+      ];
+    }
     if (view.eggStreakDays === 0) return [];
     return [
       {
         id: EGG_REMINDER_ID,
         at: manilaTime(now, 1, 20),
-        title: `Your ${name} egg misses you`,
+        title: `${name}'s egg misses you`,
         body: `Open Zoption today to keep its ${view.eggStreakDays}-day streak.`,
       },
       {
         id: EGG_RESET_ID,
         at: manilaTime(now, 2, 7, 30),
-        title: `Your ${name} egg's streak started over`,
+        title: `${name}'s egg streak started over`,
         body: "Open Zoption each day for a week to hatch it.",
       },
     ];

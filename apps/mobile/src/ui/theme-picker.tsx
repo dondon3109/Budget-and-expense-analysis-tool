@@ -17,6 +17,7 @@ const options: Array<{
   { value: "light", label: "Light", swatchBg: "#f1f3f2", swatchDot: "#0c1512" },
   { value: "dark", label: "Dark", swatchBg: "#080b0a", swatchDot: "#5fe3b8" },
   { value: "coffee", label: "Coffee", swatchBg: "#ece3d5", swatchDot: "#2a1c15" },
+  { value: "fun", label: "Fun", swatchBg: "#f1ebff", swatchDot: "#6b3fd9" },
 ];
 
 export function themePreferenceLabel(preference: ThemePreference): string {

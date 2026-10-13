@@ -12,6 +12,7 @@ import { AuthLayout } from "../components/auth/AuthLayout";
 import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatus";
 import { CurrencyPicker } from "../components/onboarding/CurrencyPicker";
 import { GoalPicker } from "../components/onboarding/GoalPicker";
+import { PersonalizeStep } from "../components/onboarding/PersonalizeStep";
 import { isApiRequestError } from "../lib/api";
 import { userWorkspace, type AuthenticatedWorkspace } from "../lib/workspace";
 import {
@@ -27,7 +28,7 @@ import {
 } from "../queries/onboarding";
 import "./OnboardingPage.css";
 
-const STEPS = ["Your goal", "Base currency", "Starting cash", "All set"] as const;
+const STEPS = ["Your goal", "Base currency", "Starting cash", "Make it yours"] as const;
 
 /** The user's calendar day, which the server cannot know. */
 function localDate(): string {
@@ -234,15 +235,15 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
             ? "Choose your base currency"
             : view === "cash"
               ? "How much cash do you have?"
-              : "Your first account is ready"
+              : "Make it yours"
       }
       description={
         view === "complete"
-          ? "Your workspace is set up."
+          ? "Pick a look and decide if a streak pet should cheer you on. You can change both anytime."
           : "A few quick questions, then you can start tracking."
       }
     >
-      <Stepper current={view === "goal" ? 0 : view === "currency" ? 1 : view === "cash" ? 2 : 4} />
+      <Stepper current={view === "goal" ? 0 : view === "currency" ? 1 : view === "cash" ? 2 : 3} />
 
       {view === "goal" && <GoalStep workspace={workspace} onDone={() => setGoalDismissed(true)} />}
 
@@ -321,16 +322,17 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
       )}
 
       {view === "complete" && (
-        <div className="auth-form">
+        <>
           <p className="onboarding-help" role="status">
             Your Cash account is ready to use. You can add more accounts from the dashboard.
             {openingBalanceSkipped &&
               " Your cash amount was not added to the Cash account. You can adjust the balance from the dashboard."}
           </p>
-          <button className="button primary" type="button" onClick={() => navigate("/app")}>
-            Go to dashboard
-          </button>
-        </div>
+          <PersonalizeStep
+            workspace={workspace}
+            onDone={(wantsPet) => navigate(wantsPet ? "/app/pet" : "/app")}
+          />
+        </>
       )}
     </AuthLayout>
   );

@@ -1,25 +1,31 @@
-import { petSpecies, type PetSpecies } from "@zoption/shared";
+import {
+  eggArt,
+  PET_NAME_MAX_LENGTH,
+  petSpecies,
+  petSpeciesLabels,
+  type PetSpecies,
+} from "@zoption/shared";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Button } from "@/ui/components";
+import { Button, FormField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-import { eggArt } from "./art";
-import { petSpeciesLabels } from "./pet-labels";
-import { PetSprite } from "./PetSprite";
+import { EggSprite } from "./EggSprite";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface EggPickerProps {
   busy: boolean;
-  onChoose: (species: PetSpecies) => void;
+  onChoose: (species: PetSpecies, name: string) => void;
 }
 
-/** Six eggs to pick from; each hatches into its species after seven days in a row. */
+/** Six eggs to pick from, each hatching into its species, and the name the pet goes by. */
 export function EggPicker({ busy, onChoose }: EggPickerProps) {
   const theme = useZoptionTheme();
   const [picked, setPicked] = useState<PetSpecies | null>(null);
+  const [name, setName] = useState("");
+  const trimmed = name.trim();
 
   return (
     <View style={{ gap: spacing.md }}>
@@ -41,9 +47,8 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
                 },
               ]}
             >
-              <PetSprite
+              <EggSprite
                 art={eggArt(species)}
-                mood="egg"
                 size={84}
                 accessibilityLabel={`${petSpeciesLabels[species]} egg`}
                 still={!selected}
@@ -55,11 +60,30 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
           );
         })}
       </View>
-      <Button disabled={!picked} loading={busy} onPress={() => picked && onChoose(picked)}>
-        {picked ? `Choose the ${petSpeciesLabels[picked]} egg` : "Pick an egg"}
+      <FormField
+        label="Name your pet"
+        value={name}
+        onChangeText={setName}
+        placeholder={picked ? petSpeciesLabels[picked] : "Pingu"}
+        maxLength={PET_NAME_MAX_LENGTH}
+        autoCapitalize="words"
+        returnKeyType="done"
+      />
+      <Button
+        disabled={!picked || !trimmed}
+        loading={busy}
+        onPress={() => picked && trimmed && onChoose(picked, trimmed)}
+      >
+        {eggButtonLabel(picked, trimmed)}
       </Button>
     </View>
   );
+}
+
+function eggButtonLabel(picked: PetSpecies | null, name: string): string {
+  if (!picked) return "Pick an egg";
+  if (!name) return "Give it a name";
+  return `Choose the ${petSpeciesLabels[picked]} egg`;
 }
 
 const styles = StyleSheet.create({

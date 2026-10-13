@@ -6,15 +6,15 @@ Browser-only code and data that every Zoption web surface shares: the theme toke
 
 ## Key files
 
-| File                                     | Owns                                                                                                       |
-| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `src/styles/tokens.css`                  | Font faces, the light/dark/coffee theme tokens, and base element rules; import once before any surface CSS |
-| `fonts/`                                 | Geist, Geist Mono, and Bricolage Grotesque woff2 files with their licenses; bundlers hash them             |
-| `src/consent/`                           | Consent record shape, storage, and the optional-integration gate                                           |
-| `src/analytics/sanitize.ts`              | URL and host reducers applied to every analytics event                                                     |
-| `src/releases/currentRelease.ts`         | The "What's new" list and `releaseHistory`; update before every release                                    |
-| `src/releases/androidRelease.json`       | Build-time fallback for the last shipped Android Beta                                                      |
-| `src/releases/androidReleaseMetadata.ts` | Strict parser for the untrusted remote `android/latest.json`                                               |
+| File                                     | Owns                                                                                                           |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `src/styles/tokens.css`                  | Font faces, the light/dark/coffee/fun theme tokens, and base element rules; import once before any surface CSS |
+| `fonts/`                                 | Geist, Geist Mono, and Bricolage Grotesque woff2 files with their licenses; bundlers hash them                 |
+| `src/consent/`                           | Consent record shape, storage, and the optional-integration gate                                               |
+| `src/analytics/sanitize.ts`              | URL and host reducers applied to every analytics event                                                         |
+| `src/releases/currentRelease.ts`         | The "What's new" list and `releaseHistory`; update before every release                                        |
+| `src/releases/androidRelease.json`       | Build-time fallback for the last shipped Android Beta                                                          |
+| `src/releases/androidReleaseMetadata.ts` | Strict parser for the untrusted remote `android/latest.json`                                                   |
 
 ## Conventions
 

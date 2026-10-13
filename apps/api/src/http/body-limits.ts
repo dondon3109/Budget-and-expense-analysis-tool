@@ -95,13 +95,20 @@ export function multipartBodyRuleFor(
   return MULTIPART_UPLOADS.get(path);
 }
 
+// POSTs that carry no body, so no Content-Type to check: the browser's voice ticket, and the pet
+// check-in and hatch, which the phone app has always sent bare.
+const BODYLESS_POSTS = new Set([
+  "/api/app/assistant/voice/ticket",
+  "/api/app/pet/check-in",
+  "/api/app/pet/hatch",
+]);
+
 /** The JSON body cap for a `/api/app/*` request, or undefined when it carries no JSON body. */
 export function jsonBodyLimitFor(method: string, path: string): number | undefined {
   const isDeleteWithBody =
     method === "DELETE" && (path === "/api/app/account" || path === "/api/app/profile/avatar");
   if (!JSON_METHODS.has(method) && !isDeleteWithBody) return undefined;
-  // The browser mints the voice ticket with a bodyless POST, which has no Content-Type to check.
-  if (method === "POST" && path === "/api/app/assistant/voice/ticket") return undefined;
+  if (method === "POST" && BODYLESS_POSTS.has(path)) return undefined;
   if (method === "POST" && path === "/api/app/imports/preview") return IMPORT_PREVIEW_BODY_LIMIT;
   return DEFAULT_JSON_BODY_LIMIT;
 }

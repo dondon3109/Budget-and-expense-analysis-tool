@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 
+import { petEggChoiceSchema, petStoredStateSchema } from "../src/schemas/pet";
+
 import {
   applyPetEvent,
   emptyPetState,
+  hatchPetEgg,
   petAwardRows,
   petEggHatches,
   petEggStreakAfterLogin,
@@ -78,7 +81,7 @@ describe("petStageForPoints", () => {
     [999, "juvenile"],
     [1_000, "adult"],
     [5_499, "adult"],
-    [5_500, "monster"],
+    [5_500, "legend"],
   ] as const)("puts %i points at %s", (points, stage) => {
     expect(petStageForPoints(points)).toBe(stage);
   });
@@ -87,7 +90,7 @@ describe("petStageForPoints", () => {
 describe("egg streak", () => {
   const start: PetEggStreak = { streakDays: 0, lastLoginDate: null };
 
-  it("hatches after seven consecutive days, across a month boundary", () => {
+  it("is ready after seven consecutive days, across a month boundary", () => {
     const dates = [
       "2026-10-28",
       "2026-10-29",
@@ -100,6 +103,9 @@ describe("egg streak", () => {
     const streak = dates.reduce(petEggStreakAfterLogin, start);
     expect(streak).toEqual({ streakDays: 7, lastLoginDate: "2026-11-03" });
     expect(petEggHatches(streak)).toBe(true);
+    // A ready egg stays ready through missed days.
+    expect(petEggStreakAfterLogin(streak, "2026-11-20")).toBe(streak);
+    expect(petEggStreakOn(streak, "2026-11-20")).toBe(7);
   });
 
   it("counts a second login on the same day once", () => {
@@ -162,10 +168,14 @@ describe("applyPetEvent", () => {
   const t0 = Date.UTC(2026, 9, 3, 1);
   const login = (occurredAt: number) => ({ action: "login" as const, occurredAt });
 
-  function hatched(): PetState {
-    let state = startPetEgg("panda");
+  function readyEgg(): PetState {
+    let state = startPetEgg("panda", "Bao");
     for (let day = 0; day < 7; day += 1) state = applyPetEvent(state, login(t0 + day * 24 * hour));
     return state;
+  }
+
+  function hatched(): PetState {
+    return hatchPetEgg(readyEgg(), t0 + 6 * 24 * hour)!;
   }
 
   it("uses Manila dates", () => {
@@ -177,17 +187,24 @@ describe("applyPetEvent", () => {
     expect(applyPetEvent(emptyPetState, login(t0))).toBe(emptyPetState);
   });
 
-  it("hatches on the seventh consecutive login day with no points carried over", () => {
-    let state = startPetEgg("panda");
+  it("waits for a tap after seven days, then hatches healthy with no points carried over", () => {
+    let state = startPetEgg("panda", "Bao");
     state = applyPetEvent(state, { action: "transaction", occurredAt: t0 });
     expect(state.eggStreak.streakDays).toBe(0);
-    state = hatched();
-    expect(state.hatchedAt).toBe(t0 + 6 * 24 * hour);
-    expect(state.points).toBe(0);
+    expect(hatchPetEgg(state, t0)).toBeNull();
+
+    const ready = readyEgg();
+    expect(ready.hatchedAt).toBeNull();
+    const tappedAt = t0 + 20 * 24 * hour;
+    const baby = hatchPetEgg(ready, tappedAt)!;
+    expect(baby.hatchedAt).toBe(tappedAt);
+    expect(baby.points).toBe(0);
+    expect(petHealthAt(baby.lastActivityAt!, tappedAt).state).toBe("healthy");
+    expect(hatchPetEgg(baby, tappedAt)).toBeNull();
   });
 
   it("keeps an egg forever, however long it waits", () => {
-    const egg = applyPetEvent(startPetEgg("pig"), login(t0));
+    const egg = applyPetEvent(startPetEgg("pig", "Bao"), login(t0));
     expect(petStateAt(egg, t0 + 30 * 24 * hour)).toBe(egg);
   });
 
@@ -211,6 +228,28 @@ describe("applyPetEvent", () => {
   it("dies after 72 hours and waits for a new egg", () => {
     const state = hatched();
     const dead = applyPetEvent(state, login((state.lastActivityAt ?? 0) + 72 * hour));
-    expect(dead).toEqual({ ...emptyPetState, diedAt: (state.lastActivityAt ?? 0) + 72 * hour });
+    // The name stays for the memorial.
+    expect(dead).toEqual({
+      ...emptyPetState,
+      name: "Bao",
+      diedAt: (state.lastActivityAt ?? 0) + 72 * hour,
+    });
+  });
+});
+
+describe("pet names", () => {
+  it("reads a pet stored before names existed", () => {
+    const stored = { ...emptyPetState, species: "pig" } as Record<string, unknown>;
+    delete stored.name;
+    expect(petStoredStateSchema.parse(stored).name).toBeNull();
+  });
+
+  it("trims a chosen name and rejects a blank or long one", () => {
+    expect(petEggChoiceSchema.parse({ species: "pig", name: "  Oink " }).name).toBe("Oink");
+    expect(petEggChoiceSchema.safeParse({ species: "pig" }).success).toBe(false);
+    expect(petEggChoiceSchema.safeParse({ species: "pig", name: "   " }).success).toBe(false);
+    expect(petEggChoiceSchema.safeParse({ species: "pig", name: "x".repeat(21) }).success).toBe(
+      false,
+    );
   });
 });

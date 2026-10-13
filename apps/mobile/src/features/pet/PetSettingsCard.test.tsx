@@ -13,6 +13,7 @@ jest.mock("@/api/pet", () => ({ setPetEnabled: jest.fn() }));
 const pet: PetView = {
   enabled: true,
   species: "hippo",
+  name: "Gloria",
   stage: "baby",
   points: 40,
   nextStagePoints: 350,

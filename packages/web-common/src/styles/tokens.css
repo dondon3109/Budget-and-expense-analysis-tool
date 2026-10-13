@@ -32,7 +32,7 @@
 
 /* Light is a cool mineral ledger: white sheets on a green-grey desk, near-black ink for
    primary actions, and the emerald and mint of the Z mark carrying brand and selection.
-   Dark and Coffee redefine the same roles, so components only ever read tokens. */
+   Dark, Coffee, and Fun redefine the same roles, so components only ever read tokens. */
 :root {
   color-scheme: light;
   --font-ui:
@@ -311,6 +311,104 @@
   --shadow-card: 0 0 0 1px rgba(60, 38, 24, 0.02), 0 1px 2px rgba(60, 38, 24, 0.06);
   --shadow-raised: 0 1px 2px rgba(60, 38, 24, 0.06), 0 14px 34px rgba(60, 38, 24, 0.14);
   --shadow-dialog: 0 2px 6px rgba(42, 28, 21, 0.08), 0 32px 84px rgba(42, 28, 21, 0.28);
+}
+
+/* Fun is the playful, claymorphic theme: grape ink on a lilac desk, puffy white surfaces lifted
+   by soft violet shadows with an inner highlight, and candy accents to match the pet. Its larger
+   radii and clay shadows ride the same tokens; the app adds button and pet touches on top. */
+:root[data-theme="fun"] {
+  color-scheme: light;
+  color: #2b2250;
+  background: #f1ebff;
+  --page: #f1ebff;
+  --page-accent: #f7f3ff;
+  --ink: #2b2250;
+  --muted: #5d5584;
+  --subtle: #625a89;
+  --sage: #6b3fd9;
+  --sage-hover: #5631bd;
+  --sage-soft: #ece4ff;
+  --action: #6b3fd9;
+  --action-strong: #4a25a6;
+  --action-soft: #ece4ff;
+  --brand: #6b3fd9;
+  --brand-strong: #4a25a6;
+  --brand-soft: #ece4ff;
+  --mint: #2fd4a3;
+  --selection-soft: #dccfff;
+  --brand-glow: rgba(107, 63, 217, 0.2);
+  --income: #0b8460;
+  --income-soft: #d6f7e9;
+  --expense: #f0476b;
+  --expense-soft: #ffe2e9;
+  --expense-text: #c02648;
+  --income-text: #0b7a59;
+  --budget: #2f6be0;
+  --budget-soft: #e0eaff;
+  --info: #1e78c8;
+  --info-soft: #dcefff;
+  --page-glow-alt: rgba(255, 143, 177, 0.16);
+  --inverse-bg: #2b2250;
+  --inverse-text: #fbf8ff;
+  --inverse-muted: #cbc0f2;
+  --excel-accent: #217346;
+  --excel-ink: #175c37;
+  --excel-soft: #e8f6ee;
+  --excel-line: rgba(33, 115, 70, 0.18);
+  --excel-grid: rgba(33, 115, 70, 0.09);
+  --solid-bg: #6b3fd9;
+  --solid-hover: #5631bd;
+  --solid-text: #fff;
+  --paper: #fff;
+  --surface: #fff;
+  --surface-soft: #faf7ff;
+  --surface-hover: #f0e9ff;
+  --surface-glass: rgba(255, 255, 255, 0.78);
+  --surface-translucent: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(107, 63, 217, 0.12);
+  --page-glow: rgba(255, 196, 92, 0.2);
+  --line: #e7dffb;
+  --line-strong: #cdbff3;
+  --focus: #6b3fd9;
+  --shadow: rgba(74, 37, 166, 0.14);
+  --overlay: rgba(43, 34, 80, 0.5);
+  --success: #0b8460;
+  --success-soft: #d6f7e9;
+  --warning: #855700;
+  --warning-soft: #fff0c4;
+  --danger: #d0284c;
+  --danger-soft: #ffe2e9;
+  --amber: #ffad1f;
+  --amber-soft: #fff0d1;
+  --plum: #b04ae8;
+  --plum-soft: #f6e4ff;
+  --plum-text: #8a2cc0;
+  --contrast-bg: #2b2250;
+  --contrast-text: #fbf8ff;
+  --contrast-muted: #cbc0f2;
+  --vault-bg: #3a2b78;
+  --vault-text: #fbf8ff;
+  --vault-muted: #cbc0f2;
+  --chart-income: #19b787;
+  --chart-expense: #ff5f84;
+  --chart-grid: #ebe4fb;
+  --chart-axis: #6a6290;
+  --chart-tooltip-bg: #fff;
+  --chart-tooltip-border: #cdbff3;
+  --chart-slice-separator: #fff;
+  --chart-crosshair: rgba(43, 34, 80, 0.28);
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 30px;
+  /* Clay: a soft drop below, a bright rim on top, and a tinted shade along the bottom edge. */
+  --shadow-card:
+    0 10px 22px -10px rgba(74, 37, 166, 0.28), inset 0 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -4px 0 rgba(107, 63, 217, 0.07);
+  --shadow-raised:
+    0 18px 38px -14px rgba(74, 37, 166, 0.34), inset 0 3px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -5px 0 rgba(107, 63, 217, 0.08);
+  --shadow-dialog: 0 4px 10px rgba(43, 34, 80, 0.08), 0 36px 90px rgba(43, 34, 80, 0.28);
 }
 
 * {

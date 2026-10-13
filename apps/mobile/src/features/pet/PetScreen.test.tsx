@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
-import { choosePetEgg, getPet, setPetEnabled } from "@/api/pet";
+import { choosePetEgg, getPet, hatchPet, setPetEnabled } from "@/api/pet";
 import { usePetStore } from "@/stores/pet-store";
 import { PetScreen } from "./PetScreen";
 import { babyPet, noPet } from "./pet-test-fixtures";
@@ -21,6 +21,7 @@ jest.mock("@/api/pet", () => ({
   getPet: jest.fn(),
   choosePetEgg: jest.fn(),
   setPetEnabled: jest.fn(),
+  hatchPet: jest.fn(),
 }));
 
 describe("PetScreen", () => {
@@ -28,6 +29,7 @@ describe("PetScreen", () => {
     jest.mocked(getPet).mockReset();
     jest.mocked(choosePetEgg).mockReset();
     jest.mocked(setPetEnabled).mockReset();
+    jest.mocked(hatchPet).mockReset();
     mockBack.mockReset();
   });
 
@@ -39,10 +41,12 @@ describe("PetScreen", () => {
 
     expect(screen.getByText("Meet your pet")).toBeTruthy();
     await fireEvent.press(screen.getByRole("radio", { name: "Hippo egg" }));
+    expect(screen.getByRole("button", { name: "Give it a name" })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText("Name your pet"), "  Gloria ");
     await fireEvent.press(screen.getByRole("button", { name: "Choose the Hippo egg" }));
 
     await waitFor(() => expect(usePetStore.getState().pet?.species).toBe("hippo"));
-    expect(choosePetEgg).toHaveBeenCalledWith({ accessToken: "token" }, "hippo");
+    expect(choosePetEgg).toHaveBeenCalledWith({ accessToken: "token" }, "hippo", "Gloria");
   });
 
   it("turns the pet off and leaves on Not now", async () => {
@@ -62,10 +66,22 @@ describe("PetScreen", () => {
     jest.mocked(getPet).mockResolvedValue(babyPet);
     await render(<PetScreen />);
 
+    expect(screen.getByText("Bao")).toBeTruthy();
     expect(screen.getByText("Panda · Baby")).toBeTruthy();
     expect(screen.getByLabelText("120 of 350 points to grow")).toBeTruthy();
     expect(screen.getByLabelText("Health 100 of 100")).toBeTruthy();
     expect(screen.getByLabelText("Today 30 of 100 points")).toBeTruthy();
+  });
+
+  it("shows the pet's place on the growth path and lets the user pet it", async () => {
+    usePetStore.setState({ pet: babyPet });
+    jest.mocked(getPet).mockResolvedValue(babyPet);
+    await render(<PetScreen />);
+
+    expect(screen.getByLabelText("Growth path: Baby now")).toBeTruthy();
+    expect(screen.queryByText("💖")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Pet Bao" }));
+    expect(screen.getAllByText("💖").length).toBeGreaterThan(0);
   });
 
   it("warns when the pet is sick", async () => {
@@ -75,5 +91,44 @@ describe("PetScreen", () => {
     await render(<PetScreen />);
 
     expect(screen.getByRole("alert").props.children).toMatch(/eat points to heal/);
+  });
+
+  describe("a ready egg", () => {
+    const readyEgg = { ...noPet, species: "panda" as const, eggStreakDays: 7 };
+    const tapTenTimes = async () => {
+      for (let tap = 0; tap < 10; tap += 1) {
+        await fireEvent.press(screen.getByRole("imagebutton"));
+      }
+    };
+
+    beforeEach(() => {
+      usePetStore.setState({ pet: readyEgg });
+      jest.mocked(getPet).mockResolvedValue(readyEgg);
+    });
+
+    it("hatches only on the tenth tap", async () => {
+      jest.mocked(hatchPet).mockResolvedValue(babyPet);
+      await render(<PetScreen />);
+
+      await fireEvent.press(screen.getByRole("imagebutton"));
+      expect(screen.getByText("9 more taps…")).toBeTruthy();
+      expect(hatchPet).not.toHaveBeenCalled();
+
+      for (let tap = 1; tap < 10; tap += 1) {
+        await fireEvent.press(screen.getByRole("imagebutton"));
+      }
+      await waitFor(() => expect(usePetStore.getState().pet?.stage).toBe("baby"));
+      expect(hatchPet).toHaveBeenCalledTimes(1);
+    });
+
+    it("settles back when the hatch fails", async () => {
+      jest.mocked(hatchPet).mockRejectedValue(new Error("offline"));
+      await render(<PetScreen />);
+
+      await tapTenTimes();
+
+      await waitFor(() => expect(screen.getByText("Couldn't hatch, try again.")).toBeTruthy());
+      expect(usePetStore.getState().pet?.stage).toBe("egg");
+    });
   });
 });

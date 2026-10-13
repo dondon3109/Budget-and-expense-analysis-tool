@@ -7,6 +7,7 @@ export const accountFeatures = {
   billing: "Plan & billing",
   account: "Account settings",
   support: "Help & support",
+  pet: "The pet companion",
 } as const;
 
 export type AccountFeature = keyof typeof accountFeatures;

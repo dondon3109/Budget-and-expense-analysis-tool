@@ -33,12 +33,12 @@ export function checkInPet(api: PetApi): Promise<PetView> {
   });
 }
 
-export function choosePetEgg(api: PetApi, species: PetSpecies): Promise<PetView> {
+export function choosePetEgg(api: PetApi, species: PetSpecies, name: string): Promise<PetView> {
   return apiRequest({
     ...api,
     path: `${PATH}/egg`,
     method: "PUT",
-    body: { species },
+    body: { species, name },
     fallback: "Zoption could not save your egg. Try again shortly.",
     decode,
   });
@@ -51,6 +51,17 @@ export function setPetEnabled(api: PetApi, enabled: boolean): Promise<PetView> {
     method: "PUT",
     body: { enabled },
     fallback: "Zoption could not update your pet. Try again shortly.",
+    decode,
+  });
+}
+
+/** Breaks open a ready egg after its last tap. The Worker answers 409 when the egg is not ready. */
+export function hatchPet(api: PetApi): Promise<PetView> {
+  return apiRequest({
+    ...api,
+    path: `${PATH}/hatch`,
+    method: "POST",
+    fallback: "Couldn't hatch your egg. Try again.",
     decode,
   });
 }

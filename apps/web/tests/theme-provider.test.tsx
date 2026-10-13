@@ -208,7 +208,7 @@ describe("ThemeProvider", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "coffee");
   });
 
-  it("cycles Light to Dark to Coffee to Light", async () => {
+  it("cycles Light to Dark to Coffee to Fun to Light", async () => {
     const user = userEvent.setup();
     renderThemeStateProbe();
     const cycle = screen.getByRole("button", { name: "Cycle theme" });
@@ -217,6 +217,8 @@ describe("ThemeProvider", () => {
     expect(screen.getByTestId("theme-state")).toHaveTextContent("dark:chosen");
     await user.click(cycle);
     expect(screen.getByTestId("theme-state")).toHaveTextContent("coffee:chosen");
+    await user.click(cycle);
+    expect(screen.getByTestId("theme-state")).toHaveTextContent("fun:chosen");
     await user.click(cycle);
     expect(screen.getByTestId("theme-state")).toHaveTextContent("light:chosen");
   });
