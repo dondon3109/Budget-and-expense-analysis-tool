@@ -7,6 +7,7 @@ import { checkInPet, choosePetEgg, getPet, setPetEnabled } from "./pet";
 const view = {
   enabled: true,
   species: "panda",
+  name: "Bao",
   stage: "egg",
   points: 0,
   nextStagePoints: null,
@@ -33,7 +34,7 @@ describe("pet api", () => {
 
     await expect(getPet(api)).resolves.toEqual(view);
     await checkInPet(api);
-    await choosePetEgg(api, "panda");
+    await choosePetEgg(api, "panda", "Bao");
     await setPetEnabled(api, false);
 
     const base = "https://api.zoption.test/api/app/pet";
@@ -46,7 +47,10 @@ describe("pet api", () => {
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
       `${base}/egg`,
-      expect.objectContaining({ method: "PUT", body: JSON.stringify({ species: "panda" }) }),
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({ species: "panda", name: "Bao" }),
+      }),
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       4,

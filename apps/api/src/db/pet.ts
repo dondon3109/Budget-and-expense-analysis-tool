@@ -8,14 +8,15 @@ import {
   petEggStreakOn,
   petHealthAt,
   petLocalDate,
+  petSpeciesLabels,
   petStageForPoints,
   petStateAt,
   petStoredStateSchema,
   hatchPetEgg,
   startPetEgg,
   type PetEarningAction,
+  type PetEggChoice,
   type PetEvent,
-  type PetSpecies,
   type PetState,
   type PetView,
 } from "@zoption/shared";
@@ -29,7 +30,7 @@ export interface PetRepository {
   /** Records that the app was opened: the login that grows the egg streak and earns the daily 10 points. */
   checkIn(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
   /** Picks a new egg. Only allowed while there is no living pet. */
-  chooseEgg(env: Bindings, tenantId: string, species: PetSpecies, now: Date): Promise<PetView>;
+  chooseEgg(env: Bindings, tenantId: string, choice: PetEggChoice, now: Date): Promise<PetView>;
   /** Hatches a ready egg when the user taps it open. */
   hatch(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
   setEnabled(env: Bindings, tenantId: string, enabled: boolean, now: Date): Promise<PetView>;
@@ -166,6 +167,8 @@ function toView(pet: StoredPet, now: Date): PetView {
   const base = {
     enabled: pet.enabled,
     species: state.species,
+    // Pets from before names existed go by their species.
+    name: state.name ?? (state.species ? petSpeciesLabels[state.species] : null),
     diedAt: iso(state.diedAt),
     eggHatchDays: PET_EGG_HATCH_DAYS,
   };
@@ -230,12 +233,16 @@ export const petRepository: PetRepository = {
     return toView(pet, now);
   },
 
-  async chooseEgg(env, tenantId, species, now) {
+  async chooseEgg(env, tenantId, { species, name }, now) {
     const pet = await current(env, tenantId, now);
     if (pet.state.species !== null) {
       throw new HttpError(409, "pet_exists", "You already have a pet.");
     }
-    const next = { ...pet, enabled: true, state: startPetEgg(species) };
+    const next = {
+      ...pet,
+      enabled: true,
+      state: startPetEgg(species, name ?? petSpeciesLabels[species]),
+    };
     await save(env, tenantId, next);
     return toView(next, now);
   },

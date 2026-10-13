@@ -1,6 +1,6 @@
 import { PET_ACTION_RULES, PET_HATCH_TAPS, type PetSpecies, type PetStage } from "./pet";
 import type { PetMoment } from "./petMoment";
-import type { PetSeen, PetView } from "./schemas/pet";
+import type { PetView } from "./schemas/pet";
 
 // Pet wording both clients render, so web and mobile describe the pet the same way.
 
@@ -46,35 +46,27 @@ export function petStatusLine(view: PetView): string {
   return `${view.points} of ${view.nextStagePoints} points to grow.`;
 }
 
-/**
- * The pet pop-up's title and message. A dead pet's view no longer names it, so `before` (what the
- * device showed last) supplies the species.
- */
-export function petMomentCopy(
-  moment: PetMoment,
-  view: PetView,
-  before: PetSeen | null,
-): { title: string; body: string } {
+/** The pet pop-up's title and message. */
+export function petMomentCopy(moment: PetMoment, view: PetView): { title: string; body: string } {
   if (view.species === null) {
-    const name = before?.species ? petSpeciesLabels[before.species].toLowerCase() : "pet";
     return moment === "died"
       ? {
-          title: `Your ${name} passed away`,
+          title: `${view.name ?? "Your pet"} passed away`,
           body: "Three days went by with nothing logged. Pick a new egg to start again.",
         }
       : { title: "A new egg is waiting", body: petStatusLine(view) };
   }
-  const name = petSpeciesLabels[view.species].toLowerCase();
+  const name = view.name ?? petSpeciesLabels[view.species];
   const stage = petStageLabels[view.stage];
   if (moment === "ready") {
     return {
-      title: `Your ${name} egg is ready to hatch!`,
+      title: `${name}'s egg is ready to hatch!`,
       body: `Seven days in a row did it. Tap the egg ${PET_HATCH_TAPS} times to crack it open.`,
     };
   }
   if (moment === "grew") {
     return {
-      title: `Your ${name} is now ${view.stage === "adult" ? "an" : "a"} ${stage}!`,
+      title: `${name} is now ${view.stage === "adult" ? "an" : "a"} ${stage}!`,
       body:
         view.stage === "legend"
           ? "It reached its final form. Keep logging to keep it healthy."
@@ -84,10 +76,10 @@ export function petMomentCopy(
   if (moment === "sick") {
     return view.healthState === "fading"
       ? {
-          title: `Your ${name} is fading`,
+          title: `${name} is fading`,
           body: "Log something soon, or it passes away three days after your last activity.",
         }
-      : { title: `Your ${name} is sick`, body: "Log something today and it heals." };
+      : { title: `${name} is sick`, body: "Log something today and it heals." };
   }
-  return { title: `${petSpeciesLabels[view.species]} · ${stage}`, body: petStatusLine(view) };
+  return { title: `${name} · ${stage}`, body: petStatusLine(view) };
 }

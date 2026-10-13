@@ -32,6 +32,7 @@ import { renderWithProviders } from "./helpers/render";
 const babyPet: PetView = {
   enabled: true,
   species: "panda",
+  name: "Bao",
   stage: "baby",
   points: 120,
   nextStagePoints: 350,
@@ -46,6 +47,7 @@ const babyPet: PetView = {
 const noPet: PetView = {
   ...babyPet,
   species: null,
+  name: null,
   stage: "egg",
   points: 0,
   nextStagePoints: null,
@@ -67,14 +69,21 @@ describe("pet on the web", () => {
 
   it("lets a new user pick an egg", async () => {
     vi.mocked(checkInPet).mockResolvedValue(noPet);
-    vi.mocked(choosePetEgg).mockResolvedValue({ ...noPet, species: "hippo" });
+    vi.mocked(choosePetEgg).mockResolvedValue({ ...noPet, species: "hippo", name: "Gloria" });
     renderWithProviders(<PetPage />);
 
     fireEvent.click(await screen.findByRole("radio", { name: "Hippo" }));
+    expect(screen.getByRole("button", { name: "Give it a name" })).toBeDisabled();
+    fireEvent.change(screen.getByRole("textbox", { name: "Name your pet" }), {
+      target: { value: " Gloria " },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Choose the Hippo egg" }));
 
-    expect(await screen.findByRole("heading", { name: "Hippo · Egg" })).toBeInTheDocument();
-    expect(vi.mocked(choosePetEgg).mock.calls[0]?.[1]).toBe("hippo");
+    expect(await screen.findByRole("heading", { name: "Gloria" })).toBeInTheDocument();
+    expect(vi.mocked(choosePetEgg).mock.calls[0]?.[1]).toEqual({
+      species: "hippo",
+      name: "Gloria",
+    });
   });
 
   it("hatches a ready egg on the tenth click", async () => {
@@ -88,7 +97,7 @@ describe("pet on the web", () => {
       fireEvent.click(screen.getByRole("button", { name: /Ready egg/ }));
     }
 
-    expect(await screen.findByRole("heading", { name: "Panda · Baby" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Bao" })).toBeInTheDocument();
     expect(hatchPet).toHaveBeenCalledTimes(1);
   });
 
@@ -109,7 +118,7 @@ describe("pet on the web", () => {
     const workspace = { key: "user:user-1", userId: "user-1" } as const;
     renderWithProviders(<PetMomentDialog workspace={workspace} />);
 
-    expect(await screen.findByRole("dialog", { name: "Panda · Baby" })).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Bao · Baby" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     cleanup();
 

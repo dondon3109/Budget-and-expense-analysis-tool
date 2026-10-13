@@ -52,7 +52,7 @@ async function aliceTenant({ call, database }: Harness) {
 
 /** Picks an egg at T0, opens the app on seven consecutive days, and taps it open on the last. */
 async function hatch(harness: Harness, tenantId: string) {
-  await petRepository.chooseEgg(harness.env, tenantId, "panda", new Date(T0));
+  await petRepository.chooseEgg(harness.env, tenantId, { species: "panda" }, new Date(T0));
   for (let day = 0; day < 7; day += 1) {
     await petRepository.checkIn(harness.env, tenantId, new Date(T0 + day * DAY));
   }
@@ -141,12 +141,17 @@ describe("pet activity", () => {
   it("readies the egg after seven consecutive check-ins and resets after a missed day", async () => {
     const harness = createHarness();
     const tenantId = await aliceTenant(harness);
-    await petRepository.chooseEgg(harness.env, tenantId, "pig", new Date(T0));
+    await petRepository.chooseEgg(
+      harness.env,
+      tenantId,
+      { species: "pig", name: "Oink" },
+      new Date(T0),
+    );
     for (const day of [0, 1, 2, 4]) {
       await petRepository.checkIn(harness.env, tenantId, new Date(T0 + day * DAY));
     }
     const reset = await petRepository.get(harness.env, tenantId, new Date(T0 + 4 * DAY));
-    expect(reset).toMatchObject({ stage: "egg", eggStreakDays: 1 });
+    expect(reset).toMatchObject({ name: "Oink", stage: "egg", eggStreakDays: 1 });
 
     const second = await createHarness();
     const secondTenant = await aliceTenant(second);
@@ -250,15 +255,21 @@ describe("pet activity", () => {
       health: 75,
     });
     const dead = await petRepository.get(env, tenantId, new Date(hatchedAt + 72 * HOUR));
-    expect(dead).toMatchObject({ species: null, stage: "egg", diedAt: iso(hatchedAt + 72 * HOUR) });
+    // An egg chosen without a name (an older app) goes by its species, remembered after death.
+    expect(dead).toMatchObject({
+      species: null,
+      name: "Panda",
+      stage: "egg",
+      diedAt: iso(hatchedAt + 72 * HOUR),
+    });
 
     const egg = await petRepository.chooseEgg(
       env,
       tenantId,
-      "hippo",
+      { species: "hippo", name: "Gloria" },
       new Date(hatchedAt + 73 * HOUR),
     );
-    expect(egg).toMatchObject({ species: "hippo", diedAt: null, eggStreakDays: 0 });
+    expect(egg).toMatchObject({ species: "hippo", name: "Gloria", diedAt: null, eggStreakDays: 0 });
   });
 
   it("pauses the clock while turned off and restarts it when turned back on", async () => {

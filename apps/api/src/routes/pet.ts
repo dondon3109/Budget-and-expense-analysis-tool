@@ -23,12 +23,7 @@ export function createPetRoutes(repository: PetRepository) {
   routes.put("/egg", async (context) => {
     const input = parseInput(petEggChoiceSchema, await readJson(context), "Choose an egg.");
     return context.json(
-      await repository.chooseEgg(
-        context.env,
-        context.get("tenant").tenantId,
-        input.species,
-        new Date(),
-      ),
+      await repository.chooseEgg(context.env, context.get("tenant").tenantId, input, new Date()),
     );
   });
 

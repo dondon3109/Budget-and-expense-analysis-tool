@@ -1,4 +1,4 @@
-import { petViewSchema, type PetSpecies, type PetView } from "@zoption/shared";
+import { petViewSchema, type PetEggChoice, type PetView } from "@zoption/shared";
 
 import type { AuthenticatedWorkspace } from "../workspace";
 import { requestJson } from "./transport";
@@ -12,12 +12,12 @@ export async function checkInPet(workspace: AuthenticatedWorkspace): Promise<Pet
 
 export async function choosePetEgg(
   workspace: AuthenticatedWorkspace,
-  species: PetSpecies,
+  choice: PetEggChoice,
 ): Promise<PetView> {
   return petViewSchema.parse(
     await requestJson(workspace, `${PATH}/egg`, {
       method: "PUT",
-      body: JSON.stringify({ species }),
+      body: JSON.stringify(choice),
     }),
   );
 }

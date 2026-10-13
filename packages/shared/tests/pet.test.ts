@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { petEggChoiceSchema, petStoredStateSchema } from "../src/schemas/pet";
+
 import {
   applyPetEvent,
   emptyPetState,
@@ -167,7 +169,7 @@ describe("applyPetEvent", () => {
   const login = (occurredAt: number) => ({ action: "login" as const, occurredAt });
 
   function readyEgg(): PetState {
-    let state = startPetEgg("panda");
+    let state = startPetEgg("panda", "Bao");
     for (let day = 0; day < 7; day += 1) state = applyPetEvent(state, login(t0 + day * 24 * hour));
     return state;
   }
@@ -186,7 +188,7 @@ describe("applyPetEvent", () => {
   });
 
   it("waits for a tap after seven days, then hatches healthy with no points carried over", () => {
-    let state = startPetEgg("panda");
+    let state = startPetEgg("panda", "Bao");
     state = applyPetEvent(state, { action: "transaction", occurredAt: t0 });
     expect(state.eggStreak.streakDays).toBe(0);
     expect(hatchPetEgg(state, t0)).toBeNull();
@@ -202,7 +204,7 @@ describe("applyPetEvent", () => {
   });
 
   it("keeps an egg forever, however long it waits", () => {
-    const egg = applyPetEvent(startPetEgg("pig"), login(t0));
+    const egg = applyPetEvent(startPetEgg("pig", "Bao"), login(t0));
     expect(petStateAt(egg, t0 + 30 * 24 * hour)).toBe(egg);
   });
 
@@ -226,6 +228,28 @@ describe("applyPetEvent", () => {
   it("dies after 72 hours and waits for a new egg", () => {
     const state = hatched();
     const dead = applyPetEvent(state, login((state.lastActivityAt ?? 0) + 72 * hour));
-    expect(dead).toEqual({ ...emptyPetState, diedAt: (state.lastActivityAt ?? 0) + 72 * hour });
+    // The name stays for the memorial.
+    expect(dead).toEqual({
+      ...emptyPetState,
+      name: "Bao",
+      diedAt: (state.lastActivityAt ?? 0) + 72 * hour,
+    });
+  });
+});
+
+describe("pet names", () => {
+  it("reads a pet stored before names existed", () => {
+    const stored = { ...emptyPetState, species: "pig" } as Record<string, unknown>;
+    delete stored.name;
+    expect(petStoredStateSchema.parse(stored).name).toBeNull();
+  });
+
+  it("trims a chosen name and rejects a blank or long one", () => {
+    expect(petEggChoiceSchema.parse({ species: "pig", name: "  Oink " }).name).toBe("Oink");
+    expect(petEggChoiceSchema.parse({ species: "pig" }).name).toBeUndefined();
+    expect(petEggChoiceSchema.safeParse({ species: "pig", name: "   " }).success).toBe(false);
+    expect(petEggChoiceSchema.safeParse({ species: "pig", name: "x".repeat(21) }).success).toBe(
+      false,
+    );
   });
 });

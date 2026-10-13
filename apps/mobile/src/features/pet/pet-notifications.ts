@@ -69,22 +69,22 @@ function healthAlertText(id: (typeof HEALTH_ALERTS)[number]["id"], name: string)
   switch (id) {
     case "zoption-pet-sick":
       return {
-        title: `Your ${name} misses you`,
+        title: `${name} misses you`,
         body: "A day without you made it sick. Log something today to heal it.",
       };
     case "zoption-pet-fading":
       return {
-        title: `Your ${name} is fading`,
+        title: `${name} is fading`,
         body: "It has 24 hours left. Open Zoption and log something to save it.",
       };
     case "zoption-pet-final":
       return {
-        title: `Last chance to save your ${name}`,
+        title: `Last chance to save ${name}`,
         body: "It passes away in 6 hours unless you log something.",
       };
     case "zoption-pet-died":
       return {
-        title: `Your ${name} passed away`,
+        title: `${name} passed away`,
         body: "A new egg is waiting. Pick one to start again.",
       };
   }
@@ -99,7 +99,7 @@ function healthAlertText(id: (typeof HEALTH_ALERTS)[number]["id"], name: string)
  */
 export function petNotificationPlan(view: PetView, now: number): PetNotification[] {
   if (!view.enabled || view.species === null) return [];
-  const name = petSpeciesLabels[view.species].toLowerCase();
+  const name = view.name ?? petSpeciesLabels[view.species];
 
   if (view.stage === "egg") {
     if (view.eggStreakDays >= view.eggHatchDays) {
@@ -109,7 +109,7 @@ export function petNotificationPlan(view: PetView, now: number): PetNotification
         {
           id: EGG_READY_ID,
           at: tonight > now ? tonight : manilaTime(now, 1, 20),
-          title: `Your ${name} egg is ready to hatch`,
+          title: `${name}'s egg is ready to hatch`,
           body: "Open Zoption and tap it 10 times to crack it open.",
         },
       ];
@@ -119,13 +119,13 @@ export function petNotificationPlan(view: PetView, now: number): PetNotification
       {
         id: EGG_REMINDER_ID,
         at: manilaTime(now, 1, 20),
-        title: `Your ${name} egg misses you`,
+        title: `${name}'s egg misses you`,
         body: `Open Zoption today to keep its ${view.eggStreakDays}-day streak.`,
       },
       {
         id: EGG_RESET_ID,
         at: manilaTime(now, 2, 7, 30),
-        title: `Your ${name} egg's streak started over`,
+        title: `${name}'s egg streak started over`,
         body: "Open Zoption each day for a week to hatch it.",
       },
     ];

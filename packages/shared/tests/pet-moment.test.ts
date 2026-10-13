@@ -7,6 +7,7 @@ import type { PetSeen, PetView } from "../src/schemas/pet";
 const baby: PetView = {
   enabled: true,
   species: "panda",
+  name: "Bao",
   stage: "baby",
   points: 120,
   nextStagePoints: 350,
@@ -82,19 +83,18 @@ describe("petMoment", () => {
 });
 
 describe("petMomentCopy", () => {
-  it("names the pet, and a dead pet from what the device showed last", () => {
-    expect(petMomentCopy("grew", { ...baby, stage: "adult" }, seenBaby).title).toBe(
-      "Your panda is now an Adult!",
-    );
+  it("names the pet, alive or remembered", () => {
+    expect(petMomentCopy("grew", { ...baby, stage: "adult" }).title).toBe("Bao is now an Adult!");
     const dead = {
       ...baby,
       species: null,
       stage: "egg" as const,
       diedAt: "2026-10-16T01:00:00.000Z",
     };
-    expect(petMomentCopy("died", dead, seenBaby).title).toBe("Your panda passed away");
-    expect(petMomentCopy("daily", { ...baby, healthState: "sick" }, seenBaby)).toEqual({
-      title: "Panda · Baby",
+    expect(petMomentCopy("died", dead).title).toBe("Bao passed away");
+    expect(petMomentCopy("died", { ...dead, name: null }).title).toBe("Your pet passed away");
+    expect(petMomentCopy("daily", { ...baby, healthState: "sick" })).toEqual({
+      title: "Bao · Baby",
       body: "Feeling sick. Log something to heal it.",
     });
   });

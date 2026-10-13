@@ -12,8 +12,6 @@ import {
 export interface ShownPetMoment {
   moment: PetMoment;
   pet: PetView;
-  /** What this browser showed before, which names a pet that has since died. */
-  before: PetSeen | null;
 }
 
 const storageKey = (userId: string) => `zoption:pet-seen:${userId}`;
@@ -45,7 +43,7 @@ export function usePetMoment(userId: string, pet: PetView | undefined) {
     } catch {
       // Storage blocked: the pop-up may repeat, which is better than never showing it.
     }
-    if (result.moment) setShown({ moment: result.moment, pet, before });
+    if (result.moment) setShown({ moment: result.moment, pet });
   }, [pet, userId]);
 
   return { shown, close: () => setShown(null) };

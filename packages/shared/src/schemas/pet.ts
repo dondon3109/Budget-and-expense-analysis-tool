@@ -2,15 +2,26 @@
 
 import { z } from "zod";
 
-import { petActivityActions, petHealthStates, petSpecies, petStages } from "../pet";
+import {
+  PET_NAME_MAX_LENGTH,
+  petActivityActions,
+  petHealthStates,
+  petSpecies,
+  petStages,
+} from "../pet";
 import { isoDateSchema } from "./common";
 
 const epochMsSchema = z.number().int().nonnegative();
+
+/** A pet name: trimmed, one to PET_NAME_MAX_LENGTH characters. */
+export const petNameSchema = z.string().trim().min(1).max(PET_NAME_MAX_LENGTH);
 
 /** The stored `PetState` (see pet.ts), read back from D1 as JSON. */
 export const petStoredStateSchema = z
   .object({
     species: z.enum(petSpecies).nullable(),
+    // Pets stored before names existed have none; the view falls back to the species label.
+    name: petNameSchema.nullable().default(null),
     eggStreak: z
       .object({
         streakDays: z.number().int().nonnegative(),
@@ -33,7 +44,10 @@ export const petStoredStateSchema = z
   })
   .strict();
 
-export const petEggChoiceSchema = z.object({ species: z.enum(petSpecies) }).strict();
+/** Apps released before names send only the species; the Worker names that egg after it. */
+export const petEggChoiceSchema = z
+  .object({ species: z.enum(petSpecies), name: petNameSchema.optional() })
+  .strict();
 export type PetEggChoice = z.infer<typeof petEggChoiceSchema>;
 
 export const petSettingsSchema = z.object({ enabled: z.boolean() }).strict();
@@ -44,6 +58,8 @@ export const petViewSchema = z
   .object({
     enabled: z.boolean(),
     species: z.enum(petSpecies).nullable(),
+    /** Set whenever `species` is, and kept after death for the memorial. */
+    name: z.string().nullable(),
     stage: z.enum(petStages),
     points: z.number().int().nonnegative(),
     /** Points at which the next stage starts, or null for a Legend. */

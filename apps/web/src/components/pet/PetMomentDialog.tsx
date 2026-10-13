@@ -33,7 +33,7 @@ function PetMomentContent({
   const titleId = useId();
   const descriptionId = useId();
   const { pet } = shown;
-  const copy = petMomentCopy(shown.moment, pet, shown.before);
+  const copy = petMomentCopy(shown.moment, pet);
 
   useRootLock(true);
   const handleKeyDown = useFocusTrap(dialogRef, { initialFocusRef: openRef, onEscape: onClose });

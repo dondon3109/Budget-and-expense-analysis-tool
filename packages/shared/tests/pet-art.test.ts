@@ -39,6 +39,7 @@ describe("petMood", () => {
   const baby = {
     enabled: true,
     species: "panda",
+    name: "Bao",
     stage: "baby",
     points: 120,
     nextStagePoints: 350,

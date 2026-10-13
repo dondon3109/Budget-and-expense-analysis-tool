@@ -55,7 +55,7 @@ describe("PetMomentModal", () => {
   it("shows the pet on the day's first open and links to its page", async () => {
     usePetStore.setState({ pet: babyPet });
     await render(<PetMomentModal />);
-    expect(await screen.findByText("Panda · Baby")).toBeTruthy();
+    expect(await screen.findByText("Bao · Baby")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "See my pet" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/pet");
   });
@@ -65,14 +65,14 @@ describe("PetMomentModal", () => {
     usePetStore.setState({ pet: babyPet });
     await render(<PetMomentModal />);
     await waitFor(() => expect(SecureStore.setItemAsync).toHaveBeenCalled());
-    expect(screen.queryByText("Panda · Baby")).toBeNull();
+    expect(screen.queryByText("Bao · Baby")).toBeNull();
   });
 
   it("announces a death with the tombstone and a new egg button", async () => {
     remember("2026-10-05");
-    usePetStore.setState({ pet: { ...noPet, diedAt: "2026-10-06T01:00:00.000Z" } });
+    usePetStore.setState({ pet: { ...noPet, name: "Bao", diedAt: "2026-10-06T01:00:00.000Z" } });
     await render(<PetMomentModal />);
-    expect(await screen.findByText("Your panda passed away")).toBeTruthy();
+    expect(await screen.findByText("Bao passed away")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose a new egg" })).toBeTruthy();
   });
 
@@ -84,9 +84,9 @@ describe("PetMomentModal", () => {
 
     await act(async () => setHomeFocused(false));
     await act(async () => usePetStore.setState({ pet: { ...babyPet, stage: "juvenile" } }));
-    expect(screen.queryByText("Your panda is now a Juvenile!")).toBeNull();
+    expect(screen.queryByText("Bao is now a Juvenile!")).toBeNull();
 
     await act(async () => setHomeFocused(true));
-    expect(await screen.findByText("Your panda is now a Juvenile!")).toBeTruthy();
+    expect(await screen.findByText("Bao is now a Juvenile!")).toBeTruthy();
   });
 });

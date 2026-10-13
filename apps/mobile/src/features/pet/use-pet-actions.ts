@@ -40,7 +40,7 @@ export function usePetActions() {
     error,
     refresh: useCallback(() => run(getPet), [run]),
     chooseEgg: useCallback(
-      (species: PetSpecies) => run((api) => choosePetEgg(api, species)),
+      (species: PetSpecies, name: string) => run((api) => choosePetEgg(api, species, name)),
       [run],
     ),
     setEnabled: useCallback((enabled: boolean) => run((api) => setPetEnabled(api, enabled)), [run]),

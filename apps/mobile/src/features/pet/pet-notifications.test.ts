@@ -42,7 +42,7 @@ describe("pet notifications", () => {
       ["zoption-pet-final", "2026-10-05T23:30:00.000Z"],
       ["zoption-pet-died", "2026-10-06T01:00:00.000Z"],
     ]);
-    expect(plan[0]).toMatchObject({ title: "Your panda misses you" });
+    expect(plan[0]).toMatchObject({ title: "Bao misses you" });
   });
 
   it("drops a warning that quiet hours would push past the pet's death", () => {

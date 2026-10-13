@@ -33,12 +33,12 @@ export function checkInPet(api: PetApi): Promise<PetView> {
   });
 }
 
-export function choosePetEgg(api: PetApi, species: PetSpecies): Promise<PetView> {
+export function choosePetEgg(api: PetApi, species: PetSpecies, name: string): Promise<PetView> {
   return apiRequest({
     ...api,
     path: `${PATH}/egg`,
     method: "PUT",
-    body: { species },
+    body: { species, name },
     fallback: "Zoption could not save your egg. Try again shortly.",
     decode,
   });

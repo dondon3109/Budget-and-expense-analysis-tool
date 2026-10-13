@@ -50,6 +50,8 @@ export const PET_ASSISTANT_MIN_MESSAGE_LENGTH = 15;
 export const PET_EGG_HATCH_DAYS = 7;
 /** Taps a ready egg takes to break open. Counted on the device; only the last one reaches the Worker. */
 export const PET_HATCH_TAPS = 10;
+/** The longest pet name, in characters. */
+export const PET_NAME_MAX_LENGTH = 20;
 
 /** Points since hatch at which each hatched stage begins. */
 export const PET_STAGE_THRESHOLDS: Record<Exclude<PetStage, "egg">, number> = {
@@ -189,6 +191,8 @@ export function petLocalDate(at: number): string {
 export interface PetState {
   /** Null before the user picks an egg, and again after the pet dies. */
   species: PetSpecies | null;
+  /** What the user called it. Kept after death for the memorial; null before the first egg. */
+  name: string | null;
   eggStreak: PetEggStreak;
   /** When the egg hatched; null while it is an egg. */
   hatchedAt: number | null;
@@ -209,6 +213,7 @@ export interface PetEvent {
 
 export const emptyPetState: PetState = {
   species: null,
+  name: null,
   eggStreak: { streakDays: 0, lastLoginDate: null },
   hatchedAt: null,
   points: 0,
@@ -217,9 +222,9 @@ export const emptyPetState: PetState = {
   diedAt: null,
 };
 
-/** A fresh egg of the chosen species. */
-export function startPetEgg(species: PetSpecies): PetState {
-  return { ...emptyPetState, species };
+/** A fresh egg of the chosen species, under the name the user gave it. */
+export function startPetEgg(species: PetSpecies, name: string): PetState {
+  return { ...emptyPetState, species, name };
 }
 
 /** The state as of `now`: a hatched pet left alone for 72 hours has died. */
@@ -228,7 +233,11 @@ export function petStateAt(state: PetState, now: number): PetState {
     return state;
   }
   if (petHealthAt(state.lastActivityAt, now).state !== "dead") return state;
-  return { ...emptyPetState, diedAt: state.lastActivityAt + PET_DEAD_AFTER_HOURS * HOUR_MS };
+  return {
+    ...emptyPetState,
+    name: state.name,
+    diedAt: state.lastActivityAt + PET_DEAD_AFTER_HOURS * HOUR_MS,
+  };
 }
 
 /**

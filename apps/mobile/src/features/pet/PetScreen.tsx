@@ -141,9 +141,6 @@ export function PetScreen() {
   }
 
   if (pet.species === null) {
-    const choose = async (species: Parameters<typeof actions.chooseEgg>[0]) => {
-      await actions.chooseEgg(species);
-    };
     return (
       <Screen
         title={pet.diedAt ? "Pick a new egg" : "Meet your pet"}
@@ -153,7 +150,10 @@ export function PetScreen() {
             : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."
         }
       >
-        <EggPicker busy={actions.busy} onChoose={(species) => void choose(species)} />
+        <EggPicker
+          busy={actions.busy}
+          onChoose={(species, name) => void actions.chooseEgg(species, name)}
+        />
         {pet.diedAt ? null : (
           <Button
             variant="secondary"
@@ -179,7 +179,8 @@ export function PetScreen() {
     );
   }
 
-  const name = `${petSpeciesLabels[pet.species]} · ${petStageLabels[pet.stage]}`;
+  const kind = `${petSpeciesLabels[pet.species]} · ${petStageLabels[pet.stage]}`;
+  const name = pet.name ?? petSpeciesLabels[pet.species];
   const ready = pet.stage === "egg" && pet.eggStreakDays >= pet.eggHatchDays;
   // Leaves room for the name, meters, and earning rules on a small phone without scrolling.
   const size = Math.round(Math.min(220, window.width * 0.55, window.height * 0.26));
@@ -188,7 +189,7 @@ export function PetScreen() {
       art={petArt(pet.species, pet.stage, pet.eggStreakDays)}
       mood={petMood(pet)}
       size={size}
-      accessibilityLabel={name}
+      accessibilityLabel={`${name}, ${kind}`}
     />
   );
   return (
@@ -212,7 +213,10 @@ export function PetScreen() {
         ) : (
           sprite
         )}
-        <Text style={[typography.title, { color: theme.colors.text }]}>{name}</Text>
+        <View style={{ alignItems: "center" }}>
+          <Text style={[typography.title, { color: theme.colors.text }]}>{name}</Text>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>{kind}</Text>
+        </View>
         <View style={{ alignSelf: "stretch", gap: spacing.sm }}>
           {ready ? null : pet.stage === "egg" ? (
             <>

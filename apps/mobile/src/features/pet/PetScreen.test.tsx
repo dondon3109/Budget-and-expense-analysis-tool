@@ -41,10 +41,12 @@ describe("PetScreen", () => {
 
     expect(screen.getByText("Meet your pet")).toBeTruthy();
     await fireEvent.press(screen.getByRole("radio", { name: "Hippo egg" }));
+    expect(screen.getByRole("button", { name: "Give it a name" })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText("Name your pet"), "  Gloria ");
     await fireEvent.press(screen.getByRole("button", { name: "Choose the Hippo egg" }));
 
     await waitFor(() => expect(usePetStore.getState().pet?.species).toBe("hippo"));
-    expect(choosePetEgg).toHaveBeenCalledWith({ accessToken: "token" }, "hippo");
+    expect(choosePetEgg).toHaveBeenCalledWith({ accessToken: "token" }, "hippo", "Gloria");
   });
 
   it("turns the pet off and leaves on Not now", async () => {
@@ -64,6 +66,7 @@ describe("PetScreen", () => {
     jest.mocked(getPet).mockResolvedValue(babyPet);
     await render(<PetScreen />);
 
+    expect(screen.getByText("Bao")).toBeTruthy();
     expect(screen.getByText("Panda · Baby")).toBeTruthy();
     expect(screen.getByLabelText("120 of 350 points to grow")).toBeTruthy();
     expect(screen.getByLabelText("Health 100 of 100")).toBeTruthy();

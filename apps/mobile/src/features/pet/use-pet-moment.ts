@@ -19,8 +19,6 @@ const SEEN_STORAGE_KEY = "zoption-mobile-pet-seen-v1";
 export interface ShownPetMoment {
   moment: PetMoment;
   pet: PetView;
-  /** What the device showed before, which names a pet that has since died. */
-  before: PetSeen | null;
 }
 
 async function readSeen(): Promise<PetSeen | null> {
@@ -73,7 +71,7 @@ export function usePetMoment(): { shown: ShownPetMoment | null; close: () => voi
         const result = petMoment(pet, before, petLocalDate(Date.now()));
         if (result.seen)
           await SecureStore.setItemAsync(SEEN_STORAGE_KEY, JSON.stringify(result.seen));
-        if (result.moment && mounted.current) setShown({ moment: result.moment, pet, before });
+        if (result.moment && mounted.current) setShown({ moment: result.moment, pet });
       })
       // The pop-up is a nicety: a storage failure skips it rather than surfacing an error.
       .catch(() => undefined);

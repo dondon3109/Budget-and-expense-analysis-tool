@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import {
   PET_DAILY_POINT_CEILING,
+  PET_NAME_MAX_LENGTH,
   PET_STAGE_THRESHOLDS,
   eggArt,
   petArt,
@@ -41,14 +42,28 @@ function Meter({ label, value, max }: { label: string; value: number; max: numbe
   );
 }
 
-function EggPicker({ busy, onChoose }: { busy: boolean; onChoose: (species: PetSpecies) => void }) {
+function eggButtonLabel(picked: PetSpecies | undefined, name: string): string {
+  if (!picked) return "Pick an egg";
+  if (!name) return "Give it a name";
+  return `Choose the ${petSpeciesLabels[picked]} egg`;
+}
+
+function EggPicker({
+  busy,
+  onChoose,
+}: {
+  busy: boolean;
+  onChoose: (species: PetSpecies, name: string) => void;
+}) {
   const [picked, setPicked] = useState<PetSpecies>();
+  const [name, setName] = useState("");
+  const trimmed = name.trim();
   return (
     <form
       className="pet-egg-picker"
       onSubmit={(event) => {
         event.preventDefault();
-        if (picked) onChoose(picked);
+        if (picked && trimmed) onChoose(picked, trimmed);
       }}
     >
       <fieldset>
@@ -67,8 +82,18 @@ function EggPicker({ busy, onChoose }: { busy: boolean; onChoose: (species: PetS
           </label>
         ))}
       </fieldset>
-      <button className="button primary" type="submit" disabled={!picked || busy}>
-        {picked ? `Choose the ${petSpeciesLabels[picked]} egg` : "Pick an egg"}
+      <label className="pet-name-field">
+        <span>Name your pet</span>
+        <input
+          type="text"
+          value={name}
+          maxLength={PET_NAME_MAX_LENGTH}
+          placeholder={picked ? petSpeciesLabels[picked] : "Pingu"}
+          onChange={(event) => setName(event.target.value)}
+        />
+      </label>
+      <button className="button primary" type="submit" disabled={!picked || !trimmed || busy}>
+        {eggButtonLabel(picked, trimmed)}
       </button>
     </form>
   );
@@ -177,7 +202,10 @@ export function PetPage() {
                 ? "Your last pet passed away after three days with nothing logged. Every egg starts fresh."
                 : "Pick an egg. Open Zoption seven days in a row and it is ready to hatch, then it grows as you log money."}
             </p>
-            <EggPicker busy={busy} onChoose={(species) => chooseEgg.mutate(species)} />
+            <EggPicker
+              busy={busy}
+              onChoose={(species, name) => chooseEgg.mutate({ species, name })}
+            />
           </div>
         ) : (
           <div className="pet-panel pet-hero">
@@ -198,9 +226,12 @@ export function PetPage() {
                 size={220}
               />
             )}
-            <h2>
-              {petSpeciesLabels[pet.data.species]} · {petStageLabels[pet.data.stage]}
-            </h2>
+            <div className="pet-title">
+              <h2>{pet.data.name ?? petSpeciesLabels[pet.data.species]}</h2>
+              <p className="pet-note">
+                {petSpeciesLabels[pet.data.species]} · {petStageLabels[pet.data.stage]}
+              </p>
+            </div>
             <div className="pet-stats">
               <PetStats pet={pet.data} />
             </div>

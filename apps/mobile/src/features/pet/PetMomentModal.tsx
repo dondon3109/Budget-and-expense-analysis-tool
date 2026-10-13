@@ -18,7 +18,7 @@ export function PetMomentModal() {
   if (!shown) return null;
 
   const { pet } = shown;
-  const copy = petMomentCopy(shown.moment, pet, shown.before);
+  const copy = petMomentCopy(shown.moment, pet);
   const unwell = pet.healthState === "sick" || pet.healthState === "fading";
   const open = () => {
     close();
