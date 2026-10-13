@@ -10,10 +10,10 @@ import {
 } from "@zoption/shared";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
 import { usePetStore } from "@/stores/pet-store";
-import { Button, Card, CollapsibleCard, MenuGroup } from "@/ui/components";
+import { Button, CollapsibleCard, MenuGroup } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -45,7 +45,7 @@ function Meter({
       style={{ gap: spacing.xxs }}
     >
       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>{label}</Text>
-      <View style={[styles.track, { backgroundColor: theme.colors.canvasMuted }]}>
+      <View style={[styles.track, { backgroundColor: theme.colors.border }]}>
         <View style={[styles.fill, { width: `${share * 100}%`, backgroundColor: color }]} />
       </View>
     </View>
@@ -108,6 +108,7 @@ export function PetScreen() {
   const actions = usePetActions();
   const { refresh } = actions;
   const [justHatched, setJustHatched] = useState(false);
+  const window = useWindowDimensions();
 
   useFocusEffect(
     useCallback(() => {
@@ -180,22 +181,25 @@ export function PetScreen() {
 
   const name = `${petSpeciesLabels[pet.species]} · ${petStageLabels[pet.stage]}`;
   const ready = pet.stage === "egg" && pet.eggStreakDays >= pet.eggHatchDays;
+  // Leaves room for the name, meters, and earning rules on a small phone without scrolling.
+  const size = Math.round(Math.min(220, window.width * 0.55, window.height * 0.26));
   const sprite = (
     <PetSprite
       art={petArt(pet.species, pet.stage, pet.eggStreakDays)}
       mood={petMood(pet)}
-      size={220}
+      size={size}
       accessibilityLabel={name}
     />
   );
   return (
     <Screen title="Your pet" onRefresh={() => refresh().then(() => undefined)}>
-      <Card style={{ alignItems: "center", gap: spacing.md }}>
+      {/* The pet stands on the page itself, not in a card. */}
+      <View style={{ alignItems: "center", gap: spacing.md }}>
         {ready ? (
           <HatchEgg
             species={pet.species}
             days={pet.eggStreakDays}
-            size={220}
+            size={size}
             hatch={(beforeShow) =>
               actions.hatch(beforeShow).then((hatched) => {
                 if (hatched) setJustHatched(true);
@@ -227,7 +231,7 @@ export function PetScreen() {
             <HatchedPet pet={{ ...pet, species: pet.species }} />
           )}
         </View>
-      </Card>
+      </View>
       <MenuGroup>
         <CollapsibleCard
           title="How to earn points"
