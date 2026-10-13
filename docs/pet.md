@@ -88,7 +88,8 @@ Hatched pets and the pop-up use pictures (mobile `PetPicture.tsx`, web `componen
   sweat drop, paler), and `-fading` (lying flat, eyes nearly closed, washed out). Hedgehog, pig, and
   hamster used the Grok CLI's `image_edit`; penguin, panda, and hippo used Gemini's image model,
   through the Antigravity CLI's (`agy -p`) `image-generator` subagent or, for nine hippo looks, the
-  Gemini Mac app, with the same prompts.
+  Gemini Mac app, with the same prompts. The Legend pictures and their looks were remade in the
+  Gemini Mac app with an outfit each (below).
 - A healthy pet breathes and blinks: its `-blink` picture flashes on top for about 130ms every
   3.4s. A blink is cut with its base picture's own mask and crop, so the two line up pixel for
   pixel. A sick pet shows `-sick` and shivers; a fading pet shows `-fading` and barely breathes.
@@ -104,8 +105,12 @@ species with its palette, and the stage reads as follows.
 - Baby: tiny and extra round, oversized head, big sparkly eyes, sitting, sweet small smile.
 - Juvenile: small and playful, standing with a cheerful open smile.
 - Adult: round heavy body, gentle closed-mouth smile, standing.
-- Legend: fully grown, mature and dignified, larger, upright and proud with a calm smile; noble,
-  not scary, with no accessories, glow, aura, or sparkles.
+- Legend: fully grown, mature and dignified, upright and proud with a calm smile, dressed in a
+  golden outfit of its own, with no glow, aura, or sparkles: hedgehog in silver armor with a red cape
+  and gold shield, pig in a top hat, monocle, and vest holding a gold coin, hamster in a crown and
+  ermine cloak holding a golden seed, penguin in a crown and ermine cape with a golden fish scepter,
+  panda in a bamboo hat and red jacket holding a golden bamboo staff, hippo in a lotus crown and
+  sash holding a golden lotus.
 - Tombstone: a small rounded light grey stone, blank face, a tiny pink flower and grass tuft.
 
 ## Notifications
