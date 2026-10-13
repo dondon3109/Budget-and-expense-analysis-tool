@@ -1,5 +1,6 @@
+import { useFocusEffect } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   petLocalDate,
@@ -39,13 +40,23 @@ let queue: Promise<unknown> = Promise.resolve();
 
 /**
  * Opens the pet pop-up on Home when the pet changed since this device last showed it, or on the
- * day's first open. Waits for first-run setup so it never stacks on the setup prompt.
+ * day's first open. Waits for first-run setup so it never stacks on the setup prompt, and decides
+ * only while Home is on screen: Home stays mounted under pushed screens, so a pet refreshed on the
+ * pet page would otherwise pop up there. A change seen elsewhere is announced on return to Home.
  */
 export function usePetMoment(): { shown: ShownPetMoment | null; close: () => void } {
   const pet = usePetStore((state) => state.pet);
   const setupDone = useOnboardingStore((state) => state.state?.step === "complete");
   const [shown, setShown] = useState<ShownPetMoment | null>(null);
+  const [focused, setFocused] = useState(false);
   const mounted = useRef(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
 
   useEffect(() => {
     mounted.current = true;
@@ -55,7 +66,7 @@ export function usePetMoment(): { shown: ShownPetMoment | null; close: () => voi
   }, []);
 
   useEffect(() => {
-    if (!pet || !setupDone) return;
+    if (!pet || !setupDone || !focused) return;
     queue = queue
       .then(async () => {
         const before = await readSeen();
@@ -66,7 +77,7 @@ export function usePetMoment(): { shown: ShownPetMoment | null; close: () => voi
       })
       // The pop-up is a nicety: a storage failure skips it rather than surfacing an error.
       .catch(() => undefined);
-  }, [pet, setupDone]);
+  }, [focused, pet, setupDone]);
 
   return { shown, close: () => setShown(null) };
 }

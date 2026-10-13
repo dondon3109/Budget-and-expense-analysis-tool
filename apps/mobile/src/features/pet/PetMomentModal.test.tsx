@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import type * as React from "react";
 
 import { petLocalDate } from "@zoption/shared";
 
@@ -9,7 +10,28 @@ import { usePetStore } from "@/stores/pet-store";
 import { PetMomentModal } from "./PetMomentModal";
 import { babyPet, noPet } from "./pet-test-fixtures";
 
-jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+// Whether Home is the screen on top; tests cover it with another screen and bring it back.
+const mockFocus = { focused: true, listeners: new Set<() => void>() };
+const setHomeFocused = (focused: boolean) => {
+  mockFocus.focused = focused;
+  for (const listener of mockFocus.listeners) listener();
+};
+jest.mock("expo-router", () => {
+  const { useEffect, useSyncExternalStore } = jest.requireActual<typeof React>("react");
+  return {
+    router: { push: jest.fn() },
+    useFocusEffect: (effect: () => (() => void) | void) => {
+      const focused = useSyncExternalStore(
+        (listener) => {
+          mockFocus.listeners.add(listener);
+          return () => mockFocus.listeners.delete(listener);
+        },
+        () => mockFocus.focused,
+      );
+      useEffect(() => (focused ? effect() : undefined), [effect, focused]);
+    },
+  };
+});
 const mockStorage = new Map<string, string>();
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async (key: string) => mockStorage.get(key) ?? null),
@@ -27,6 +49,7 @@ describe("PetMomentModal", () => {
     jest.mocked(SecureStore.setItemAsync).mockClear();
     jest.mocked(router.push).mockClear();
     useOnboardingStore.setState({ state: { step: "complete" } as never });
+    mockFocus.focused = true;
   });
 
   it("shows the pet on the day's first open and links to its page", async () => {
@@ -51,5 +74,19 @@ describe("PetMomentModal", () => {
     await render(<PetMomentModal />);
     expect(await screen.findByText("Your panda passed away")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Choose a new egg" })).toBeTruthy();
+  });
+
+  it("waits for Home to be on screen, not the pet page above it", async () => {
+    remember(petLocalDate(Date.now()));
+    usePetStore.setState({ pet: babyPet });
+    await render(<PetMomentModal />);
+    await waitFor(() => expect(SecureStore.setItemAsync).toHaveBeenCalled());
+
+    await act(async () => setHomeFocused(false));
+    await act(async () => usePetStore.setState({ pet: { ...babyPet, stage: "juvenile" } }));
+    expect(screen.queryByText("Your panda is now a Juvenile!")).toBeNull();
+
+    await act(async () => setHomeFocused(true));
+    expect(await screen.findByText("Your panda is now a Juvenile!")).toBeTruthy();
   });
 });

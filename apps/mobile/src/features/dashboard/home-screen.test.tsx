@@ -12,6 +12,7 @@ jest.mock("expo-router", () => ({
     push: jest.fn(),
     replace: jest.fn(),
   },
+  useFocusEffect: jest.fn(),
 }));
 
 jest.mock("@react-native-community/netinfo", () => ({
