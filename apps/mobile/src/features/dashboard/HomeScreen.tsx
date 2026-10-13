@@ -5,11 +5,11 @@ import { View } from "react-native";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
+import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
 import { PetMomentModal } from "@/features/pet/PetMomentModal";
 import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
-import { usePetStore } from "@/stores/pet-store";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { useSyncState } from "@/sync/sync-state";
 import { ErrorState, OfflineBanner, Skeleton, SyncPausedBanner, SyncStatus } from "@/ui/components";
@@ -56,8 +56,7 @@ export function HomeScreen() {
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
   const [menuView, setMenuView] = useState<HomeMenuView>("home");
-  // A guest or an offline launch has no pet view, so the menu leaves the Pet entry out.
-  const hasPet = usePetStore((state) => state.pet !== null);
+  const { openFeature } = useAccountGate();
   const [homeView, setHomeView] = useState<HomeViewName>("overview");
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
   const view = useMemo(
@@ -95,7 +94,7 @@ export function HomeScreen() {
           <HomeViewMenu
             selected={menuView}
             onSelect={setMenuView}
-            onOpenPet={hasPet ? () => router.push("/(app)/pet") : undefined}
+            onOpenPet={() => openFeature("pet", "/(app)/pet")}
           />
         </View>
         {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
