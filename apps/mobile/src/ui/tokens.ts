@@ -1,6 +1,6 @@
 import { Platform, type ColorValue, type TextStyle } from "react-native";
 
-export type ThemeName = "light" | "dark" | "coffee";
+export type ThemeName = "light" | "dark" | "coffee" | "fun";
 export type ThemePreference = "system" | ThemeName;
 
 export interface ColorTokens {
@@ -35,6 +35,8 @@ export interface ColorTokens {
 export interface ThemeTokens {
   name: ThemeName;
   dark: boolean;
+  /** Fun's claymorphic shape: puffy cards and round buttons on a darker lip. */
+  clay: boolean;
   colors: ColorTokens;
 }
 
@@ -119,6 +121,7 @@ export const themes: Record<ThemeName, ThemeTokens> = {
   light: {
     name: "light",
     dark: false,
+    clay: false,
     colors: {
       canvas: "#f1f3f2",
       canvasMuted: "#f6f7f7",
@@ -149,6 +152,7 @@ export const themes: Record<ThemeName, ThemeTokens> = {
   dark: {
     name: "dark",
     dark: true,
+    clay: false,
     colors: {
       canvas: "#080b0a",
       canvasMuted: "#0e1312",
@@ -179,6 +183,7 @@ export const themes: Record<ThemeName, ThemeTokens> = {
   coffee: {
     name: "coffee",
     dark: false,
+    clay: false,
     colors: {
       canvas: "#ece3d5",
       canvasMuted: "#f3ebdf",
@@ -206,4 +211,41 @@ export const themes: Record<ThemeName, ThemeTokens> = {
       overlay: "rgba(42, 28, 21, 0.56)",
     },
   },
+  fun: {
+    name: "fun",
+    dark: false,
+    clay: true,
+    colors: {
+      canvas: "#f1ebff",
+      canvasMuted: "#f7f3ff",
+      surface: "#faf7ff",
+      surfaceRaised: "#ffffff",
+      text: "#2b2250",
+      textMuted: "#5d5584",
+      border: "#e7dffb",
+      brand: "#6b3fd9",
+      brandPressed: "#4a25a6",
+      onBrand: "#ffffff",
+      brandSoft: "#ece4ff",
+      solid: "#6b3fd9",
+      solidPressed: "#5631bd",
+      onSolid: "#ffffff",
+      mint: "#2fd4a3",
+      income: "#0b8460",
+      expense: "#c02648",
+      budget: "#2f6be0",
+      info: "#1e78c8",
+      warning: "#855700",
+      warningSoft: "#fff0c4",
+      danger: "#d0284c",
+      dangerSoft: "#ffe2e9",
+      overlay: "rgba(43, 34, 80, 0.5)",
+    },
+  },
 };
+
+/** Fun's clay depth: a soft violet drop, a bright top rim, and a tinted bottom edge. */
+export const clay = {
+  card: "0px 10px 22px -10px rgba(74, 37, 166, 0.28), inset 0px 2px 0px rgba(255, 255, 255, 0.95), inset 0px -4px 0px rgba(107, 63, 217, 0.07)",
+  lip: (color: ColorValue, depth: number) => `0px ${depth}px 0px ${String(color)}`,
+} as const;

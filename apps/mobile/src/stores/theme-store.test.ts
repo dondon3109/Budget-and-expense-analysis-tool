@@ -3,6 +3,7 @@ import { parsePersistedTheme } from "./theme-store";
 describe("theme preference persistence", () => {
   it("accepts only the versioned allowlisted preference", () => {
     expect(parsePersistedTheme({ state: { preference: "coffee" }, version: 1 })).toBe("coffee");
+    expect(parsePersistedTheme({ state: { preference: "fun" }, version: 1 })).toBe("fun");
   });
 
   it("fails closed to system for unknown or malformed state", () => {

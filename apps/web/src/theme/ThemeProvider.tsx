@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from "react";
 
-export const THEMES = ["light", "dark", "coffee"] as const;
+export const THEMES = ["light", "dark", "coffee", "fun"] as const;
 export type Theme = (typeof THEMES)[number];
 
 export const THEME_STORAGE_KEY = "zoption-theme";
@@ -19,12 +19,14 @@ const THEME_COLORS: Record<Theme, string> = {
   light: "#f1f3f2",
   dark: "#080b0a",
   coffee: "#ece3d5",
+  fun: "#f1ebff",
 };
 
 const THEME_COLOR_SCHEMES: Record<Theme, "light" | "dark"> = {
   light: "light",
   dark: "dark",
   coffee: "light",
+  fun: "light",
 };
 
 interface ThemeContextValue {

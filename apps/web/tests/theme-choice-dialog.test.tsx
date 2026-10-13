@@ -204,11 +204,11 @@ describe("ThemeChoiceDialog", () => {
     await user.keyboard("{ArrowRight}");
     expect(screen.getByRole("radio", { name: "Preview Dark theme" })).toHaveFocus();
     await user.keyboard("{End}");
-    const coffeeOption = screen.getByRole("radio", { name: "Preview Coffee theme" });
-    expect(coffeeOption).toHaveFocus();
+    const funOption = screen.getByRole("radio", { name: "Preview Fun theme" });
+    expect(funOption).toHaveFocus();
 
     await user.tab();
-    const confirm = screen.getByRole("button", { name: "Confirm Coffee theme" });
+    const confirm = screen.getByRole("button", { name: "Confirm Fun theme" });
     expect(confirm).toHaveFocus();
     await user.tab();
     expect(screen.getByRole("button", { name: CLOSE_LABEL })).toHaveFocus();

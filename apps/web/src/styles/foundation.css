@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@zoption/web-common/tokens.css";
+@import "./fun-theme.css";
 
 /* Scroll bars stay out of sight until used. A thumb shows while its element is under the pointer
    or scrolling (`data-scrolling`, set by lib/scrollActivity.ts). The page is always under the
@@ -95,7 +96,7 @@ h1[tabindex="-1"]:focus {
 .theme-choice-options {
   margin-top: 28px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 14px;
 }
 .theme-choice-option {
@@ -200,6 +201,13 @@ h1[tabindex="-1"]:focus {
   --choice-preview-surface: #f6eee2;
   --choice-preview-line: #c4ae93;
   --choice-preview-accent: #2a1c15;
+}
+.theme-choice-option-fun .theme-choice-preview {
+  --choice-preview-page: #f1ebff;
+  --choice-preview-paper: #fff;
+  --choice-preview-surface: #ffe2e9;
+  --choice-preview-line: #cdbff3;
+  --choice-preview-accent: #6b3fd9;
 }
 .theme-choice-preview-bar {
   width: 42%;

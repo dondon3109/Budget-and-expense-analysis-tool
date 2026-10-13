@@ -2,7 +2,7 @@
   let theme;
   try {
     const saved = localStorage.getItem("zoption-theme");
-    if (saved === "light" || saved === "dark" || saved === "coffee") {
+    if (saved === "light" || saved === "dark" || saved === "coffee" || saved === "fun") {
       theme = saved;
     } else {
       const legacy = localStorage.getItem("clarity-theme");
@@ -26,6 +26,7 @@
     light: "#f1f3f2",
     dark: "#080b0a",
     coffee: "#ece3d5",
+    fun: "#f1ebff",
   };
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";

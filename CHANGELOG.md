@@ -14,6 +14,7 @@ All notable product changes are documented here.
 - After seven days your pet's egg no longer hatches by itself: tap it 10 times on the pet page, on web or mobile, and watch it shake, crack, and burst open. A ready egg waits for you, and a notification tells you when it is ready.
 - Web: the pet page draws the same animated pet as the phone app.
 - Name your pet when you pick its egg, on web and mobile. Its pop-ups and notifications call it by name.
+- A new Fun theme, on web and mobile: candy colors, puffy clay cards, and chunky buttons that press down, made to match your pet.
 
 ### Changed
 

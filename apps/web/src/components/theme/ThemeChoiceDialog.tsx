@@ -1,4 +1,4 @@
-import { Check, Coffee, Moon, Sun, X } from "lucide-react";
+import { Check, Coffee, Moon, Sparkles, Sun, X } from "lucide-react";
 import { useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
@@ -26,6 +26,12 @@ const THEME_OPTIONS = [
     description: "Cream and coffee tones with Zoption green accents.",
     icon: Coffee,
   },
+  {
+    value: "fun",
+    label: "Fun",
+    description: "Playful candy colors and puffy clay surfaces that match your pet.",
+    icon: Sparkles,
+  },
 ] satisfies Array<{
   value: Theme;
   label: string;
@@ -41,6 +47,7 @@ export function ThemeChoiceDialog() {
     light: null,
     dark: null,
     coffee: null,
+    fun: null,
   });
   const initialOptionRef = useRef<HTMLButtonElement | null>(null);
   const initialThemeRef = useRef(theme);
