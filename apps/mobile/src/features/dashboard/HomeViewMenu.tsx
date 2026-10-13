@@ -139,11 +139,6 @@ export function HomeViewMenu({
               <Text style={[typography.body, styles.itemLabel, { color: theme.colors.text }]}>
                 Pet
               </Text>
-              <MaterialCommunityIcons
-                color={String(theme.colors.textMuted)}
-                name="chevron-right"
-                size={18}
-              />
             </Pressable>
           </View>
         </View>
