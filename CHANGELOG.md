@@ -9,10 +9,15 @@ All notable product changes are documented here.
 - New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
 - Bank and savings accounts can hold money in several currencies: pick the currency on each entry. Other accounts record only in their own currency.
 - Adjust balance on a bank or savings account picks the currency, so you can add a second currency (a USD balance in a PHP bank account) without a made-up entry. The mobile account editor lists the balance in every currency the account holds.
+- Web: your pet now has its own page in the sidebar, with the egg picker, stats, and the on/off switch. Opening the web app counts toward hatching and daily points.
+- A pop-up shows your pet's picture when it hatches, grows, gets sick, or passes away, and once a day otherwise, on web and mobile.
 
 ### Changed
 
 - Mobile: the More tab no longer shows a large "More" title, so the list starts higher.
+- Mobile: the pet moved from a Home card to a Pet entry in the Home view menu.
+- The pet's final stage is now called Legend, with a calm face instead of a snarl.
+- A hatched pet now gets three warnings before it passes away (at 24, 48, and 66 hours), down from six.
 - Web: pages drop their descriptive subtitles and most card frames in favor of flat sections divided by thin rules, with rounded corners on the surfaces that remain. The calendar has one place to add events.
 
 ### Fixed
