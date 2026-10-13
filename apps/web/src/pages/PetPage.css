@@ -229,12 +229,19 @@
   border-radius: 50%;
   background: var(--surface);
   font-size: 20px;
+}
+
+/* Only the emoji dims: a see-through badge would show the track across it. */
+.pet-path-badge > span {
   filter: grayscale(1);
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .pet-path-step:is([data-state="done"], [data-state="now"]) .pet-path-badge {
   border-color: var(--brand);
+}
+
+.pet-path-step:is([data-state="done"], [data-state="now"]) .pet-path-badge > span {
   filter: none;
   opacity: 1;
 }

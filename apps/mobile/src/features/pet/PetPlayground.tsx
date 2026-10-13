@@ -245,7 +245,8 @@ export function GrowthPath({ stage }: { stage: PetView["stage"] }) {
         const lit = index <= reached;
         const now = index === reached;
         return (
-          <View key={step} style={styles.pathStep}>
+          // Earlier steps sit above later ones, so each track runs under the previous badge.
+          <View key={step} style={[styles.pathStep, { zIndex: petStages.length - index }]}>
             {index > 0 ? (
               <View
                 style={[
@@ -260,12 +261,12 @@ export function GrowthPath({ stage }: { stage: PetView["stage"] }) {
                 {
                   borderColor: lit ? theme.colors.brand : theme.colors.border,
                   backgroundColor: now ? theme.colors.brandSoft : theme.colors.surfaceRaised,
-                  opacity: lit ? 1 : 0.55,
                   transform: [{ scale: now ? 1.12 : 1 }],
                 },
               ]}
             >
-              <Text style={{ fontSize: 18 }}>{petStageEmoji[step]}</Text>
+              {/* Only the emoji dims: a see-through badge would show the track across it. */}
+              <Text style={{ fontSize: 18, opacity: lit ? 1 : 0.45 }}>{petStageEmoji[step]}</Text>
             </View>
             <Text style={[typography.caption, { color: theme.colors.text }]}>
               {petStageLabels[step]}

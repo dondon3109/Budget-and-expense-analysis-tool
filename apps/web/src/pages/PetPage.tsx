@@ -141,7 +141,7 @@ function GrowthPath({ stage }: { stage: PetView["stage"] }) {
           aria-current={index === reached ? "step" : undefined}
         >
           <span className="pet-path-badge" aria-hidden="true">
-            {petStageEmoji[step]}
+            <span>{petStageEmoji[step]}</span>
           </span>
           <span className="pet-path-label">{petStageLabels[step]}</span>
           <small>{step === "egg" ? "7 days" : `${PET_STAGE_THRESHOLDS[step]} pts`}</small>
