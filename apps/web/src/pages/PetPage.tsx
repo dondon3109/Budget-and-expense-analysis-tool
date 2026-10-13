@@ -213,8 +213,8 @@ export function PetPage() {
           </p>
         ) : null}
 
-        <section className="pet-panel">
-          <h2>How to earn points</h2>
+        <details className="pet-panel pet-earning-panel">
+          <summary>How to earn points</summary>
           <dl className="pet-earning">
             {petEarningRows.map((row) => (
               <div key={row.label}>
@@ -229,17 +229,18 @@ export function PetPage() {
             Doing three different things in a day adds a 10 point bonus. A day earns at most{" "}
             {PET_DAILY_POINT_CEILING} points.
           </p>
-          {pet.data?.enabled ? (
-            <button
-              className="button secondary"
-              type="button"
-              disabled={busy}
-              onClick={() => setEnabled.mutate(false)}
-            >
-              Turn off my pet
-            </button>
-          ) : null}
-        </section>
+        </details>
+
+        {pet.data?.enabled ? (
+          <button
+            className="button secondary pet-turn-off"
+            type="button"
+            disabled={busy}
+            onClick={() => setEnabled.mutate(false)}
+          >
+            Turn off my pet
+          </button>
+        ) : null}
       </div>
     </AppShell>
   );

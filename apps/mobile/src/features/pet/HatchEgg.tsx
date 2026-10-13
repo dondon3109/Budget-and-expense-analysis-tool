@@ -11,8 +11,7 @@ const play = (animation: Animated.CompositeAnimation) =>
   new Promise<void>((resolve) => animation.start(() => resolve()));
 
 function hatchHint(left: number): string {
-  if (left === PET_HATCH_TAPS)
-    return `Ready to hatch! Tap the egg ${PET_HATCH_TAPS} times to crack it open.`;
+  if (left === PET_HATCH_TAPS) return "Ready to hatch! Tap the egg.";
   if (left === 0) return "Cracking…";
   return left === 1 ? "1 more tap…" : `${left} more taps…`;
 }

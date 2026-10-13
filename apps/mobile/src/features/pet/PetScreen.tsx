@@ -13,7 +13,7 @@ import { useCallback, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { usePetStore } from "@/stores/pet-store";
-import { Button, Card } from "@/ui/components";
+import { Button, Card, CollapsibleCard, MenuGroup } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -228,21 +228,26 @@ export function PetScreen() {
           )}
         </View>
       </Card>
-      <Card>
-        <Text style={[typography.headline, { color: theme.colors.text }]}>How to earn points</Text>
-        {petEarningRows.map((row) => (
-          <View key={row.label} style={styles.row}>
-            <Text style={[typography.callout, { color: theme.colors.text }]}>{row.label}</Text>
-            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-              {row.rule.points} pts, {row.rule.dailyCount}× a day
-            </Text>
-          </View>
-        ))}
-        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Doing three different things in a day adds a 10 point bonus. A day earns at most{" "}
-          {PET_DAILY_POINT_CEILING} points.
-        </Text>
-      </Card>
+      <MenuGroup>
+        <CollapsibleCard
+          title="How to earn points"
+          summary={`Up to ${PET_DAILY_POINT_CEILING} a day`}
+          icon="star-outline"
+        >
+          {petEarningRows.map((row) => (
+            <View key={row.label} style={styles.row}>
+              <Text style={[typography.callout, { color: theme.colors.text }]}>{row.label}</Text>
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                {row.rule.points} pts, {row.rule.dailyCount}× a day
+              </Text>
+            </View>
+          ))}
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Doing three different things in a day adds a 10 point bonus. A day earns at most{" "}
+            {PET_DAILY_POINT_CEILING} points.
+          </Text>
+        </CollapsibleCard>
+      </MenuGroup>
     </Screen>
   );
 }

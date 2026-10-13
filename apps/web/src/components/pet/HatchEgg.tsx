@@ -9,9 +9,7 @@ import "./HatchEgg.css";
 const BURST_MS = 280;
 
 function hatchHint(left: number): string {
-  if (left === PET_HATCH_TAPS) {
-    return `Ready to hatch! Click the egg ${PET_HATCH_TAPS} times to crack it open.`;
-  }
+  if (left === PET_HATCH_TAPS) return "Ready to hatch! Click the egg.";
   if (left === 0) return "Cracking…";
   return left === 1 ? "1 more click…" : `${left} more clicks…`;
 }
