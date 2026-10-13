@@ -1,6 +1,6 @@
 import { petMood, type PetSpecies, type PetView } from "@zoption/shared";
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Image, Pressable, StyleSheet } from "react-native";
+import { Animated, Easing, Image, Pressable } from "react-native";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
 
@@ -91,6 +91,8 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
           },
         ];
   const look = mood === "sick" || mood === "fading" ? mood : "healthy";
+  // Explicit sizes, not absoluteFill: Android otherwise draws the picture at its 512px file size.
+  const box = { position: "absolute" as const, top: 0, left: 0, width: size, height: size };
 
   return (
     <Pressable
@@ -100,21 +102,18 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
       style={{ width: size, height: size }}
     >
       <Animated.View
-        style={[
-          StyleSheet.absoluteFill,
-          { transform: motion, transformOrigin: [size / 2, size * 0.95, 0] },
-        ]}
+        style={[box, { transform: motion, transformOrigin: [size / 2, size * 0.95, 0] }]}
       >
         <Image
           accessibilityIgnoresInvertColors
           source={petImage(pet.species, pet.stage, look)}
-          style={StyleSheet.absoluteFill}
+          style={box}
         />
         {mood === "cute" ? (
           <Animated.Image
             accessibilityIgnoresInvertColors
             source={petImage(pet.species, pet.stage, "blink")}
-            style={[StyleSheet.absoluteFill, { opacity: blink }]}
+            style={[box, { opacity: blink }]}
           />
         ) : null}
       </Animated.View>
