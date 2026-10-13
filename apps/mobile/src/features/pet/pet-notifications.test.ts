@@ -74,6 +74,14 @@ describe("pet notifications", () => {
     expect(plan[0]?.body).toBe("Open Zoption today to keep its 3-day streak.");
   });
 
+  it("reminds a ready egg to hatch at the next 20:00 instead of the streak notes", () => {
+    const ready = { ...babyPet, stage: "egg" as const, eggStreakDays: 7, lastActivityAt: null };
+    const plan = petNotificationPlan(ready, lastActivity);
+    expect(plan.map((alert) => [alert.id, iso(alert.at)])).toEqual([
+      ["zoption-pet-egg-ready", "2026-10-03T12:00:00.000Z"],
+    ]);
+  });
+
   it("plans nothing for a pet that is off, unchosen, or a fresh egg", () => {
     expect(petNotificationPlan({ ...babyPet, enabled: false }, lastActivity)).toEqual([]);
     expect(petNotificationPlan(noPet, lastActivity)).toEqual([]);

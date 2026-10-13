@@ -27,12 +27,14 @@ const HEALTH_ALERTS = [
 const RETIRED_ALERT_IDS = ["zoption-pet-sleepy", "zoption-pet-weaker", "zoption-pet-12h"];
 const EGG_REMINDER_ID = "zoption-pet-egg";
 const EGG_RESET_ID = "zoption-pet-egg-reset";
+const EGG_READY_ID = "zoption-pet-egg-ready";
 /** Every pet identifier, so a reschedule or clear cancels all of them. */
 const PET_NOTIFICATION_IDS: readonly string[] = [
   ...HEALTH_ALERTS.map((alert) => alert.id),
   ...RETIRED_ALERT_IDS,
   EGG_REMINDER_ID,
   EGG_RESET_ID,
+  EGG_READY_ID,
 ];
 
 export function isPetNotification(identifier: string | undefined): boolean {
@@ -91,7 +93,8 @@ function healthAlertText(id: (typeof HEALTH_ALERTS)[number]["id"], name: string)
 /**
  * The alerts to schedule for a pet view. A hatched pet gets the health warnings still ahead of
  * it, and a warning that quiet hours would push past its death is dropped. An egg with a streak
- * gets a reminder at 20:00 the next day, and a note the morning after that if the streak broke.
+ * gets a reminder at 20:00 the next day, and a note the morning after that if the streak broke; a
+ * ready egg gets one "ready to hatch" reminder at the next 20:00 instead.
  * A pet that is off, unchosen, or gone gets none.
  */
 export function petNotificationPlan(view: PetView, now: number): PetNotification[] {
@@ -99,6 +102,18 @@ export function petNotificationPlan(view: PetView, now: number): PetNotification
   const name = petSpeciesLabels[view.species].toLowerCase();
 
   if (view.stage === "egg") {
+    if (view.eggStreakDays >= view.eggHatchDays) {
+      // A ready egg waits for its taps; remind at the next 20:00 while it is still unopened.
+      const tonight = manilaTime(now, 0, 20);
+      return [
+        {
+          id: EGG_READY_ID,
+          at: tonight > now ? tonight : manilaTime(now, 1, 20),
+          title: `Your ${name} egg is ready to hatch`,
+          body: "Open Zoption and tap it 10 times to crack it open.",
+        },
+      ];
+    }
     if (view.eggStreakDays === 0) return [];
     return [
       {

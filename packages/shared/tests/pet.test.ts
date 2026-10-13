@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyPetEvent,
   emptyPetState,
+  hatchPetEgg,
   petAwardRows,
   petEggHatches,
   petEggStreakAfterLogin,
@@ -87,7 +88,7 @@ describe("petStageForPoints", () => {
 describe("egg streak", () => {
   const start: PetEggStreak = { streakDays: 0, lastLoginDate: null };
 
-  it("hatches after seven consecutive days, across a month boundary", () => {
+  it("is ready after seven consecutive days, across a month boundary", () => {
     const dates = [
       "2026-10-28",
       "2026-10-29",
@@ -100,6 +101,9 @@ describe("egg streak", () => {
     const streak = dates.reduce(petEggStreakAfterLogin, start);
     expect(streak).toEqual({ streakDays: 7, lastLoginDate: "2026-11-03" });
     expect(petEggHatches(streak)).toBe(true);
+    // A ready egg stays ready through missed days.
+    expect(petEggStreakAfterLogin(streak, "2026-11-20")).toBe(streak);
+    expect(petEggStreakOn(streak, "2026-11-20")).toBe(7);
   });
 
   it("counts a second login on the same day once", () => {
@@ -162,10 +166,14 @@ describe("applyPetEvent", () => {
   const t0 = Date.UTC(2026, 9, 3, 1);
   const login = (occurredAt: number) => ({ action: "login" as const, occurredAt });
 
-  function hatched(): PetState {
+  function readyEgg(): PetState {
     let state = startPetEgg("panda");
     for (let day = 0; day < 7; day += 1) state = applyPetEvent(state, login(t0 + day * 24 * hour));
     return state;
+  }
+
+  function hatched(): PetState {
+    return hatchPetEgg(readyEgg(), t0 + 6 * 24 * hour)!;
   }
 
   it("uses Manila dates", () => {
@@ -177,13 +185,20 @@ describe("applyPetEvent", () => {
     expect(applyPetEvent(emptyPetState, login(t0))).toBe(emptyPetState);
   });
 
-  it("hatches on the seventh consecutive login day with no points carried over", () => {
+  it("waits for a tap after seven days, then hatches healthy with no points carried over", () => {
     let state = startPetEgg("panda");
     state = applyPetEvent(state, { action: "transaction", occurredAt: t0 });
     expect(state.eggStreak.streakDays).toBe(0);
-    state = hatched();
-    expect(state.hatchedAt).toBe(t0 + 6 * 24 * hour);
-    expect(state.points).toBe(0);
+    expect(hatchPetEgg(state, t0)).toBeNull();
+
+    const ready = readyEgg();
+    expect(ready.hatchedAt).toBeNull();
+    const tappedAt = t0 + 20 * 24 * hour;
+    const baby = hatchPetEgg(ready, tappedAt)!;
+    expect(baby.hatchedAt).toBe(tappedAt);
+    expect(baby.points).toBe(0);
+    expect(petHealthAt(baby.lastActivityAt!, tappedAt).state).toBe("healthy");
+    expect(hatchPetEgg(baby, tappedAt)).toBeNull();
   });
 
   it("keeps an egg forever, however long it waits", () => {

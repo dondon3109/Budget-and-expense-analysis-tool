@@ -11,6 +11,7 @@ import {
   petStageForPoints,
   petStateAt,
   petStoredStateSchema,
+  hatchPetEgg,
   startPetEgg,
   type PetEarningAction,
   type PetEvent,
@@ -25,10 +26,12 @@ import type { Bindings } from "../types";
 export interface PetRepository {
   /** The pet as of `now`, after crediting activity recorded since the last read. */
   get(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
-  /** Records that the app was opened: the login that hatches eggs and earns the daily 10 points. */
+  /** Records that the app was opened: the login that grows the egg streak and earns the daily 10 points. */
   checkIn(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
   /** Picks a new egg. Only allowed while there is no living pet. */
   chooseEgg(env: Bindings, tenantId: string, species: PetSpecies, now: Date): Promise<PetView>;
+  /** Hatches a ready egg when the user taps it open. */
+  hatch(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
   setEnabled(env: Bindings, tenantId: string, enabled: boolean, now: Date): Promise<PetView>;
 }
 
@@ -233,6 +236,15 @@ export const petRepository: PetRepository = {
       throw new HttpError(409, "pet_exists", "You already have a pet.");
     }
     const next = { ...pet, enabled: true, state: startPetEgg(species) };
+    await save(env, tenantId, next);
+    return toView(next, now);
+  },
+
+  async hatch(env, tenantId, now) {
+    const pet = await current(env, tenantId, now);
+    const state = pet.enabled ? hatchPetEgg(pet.state, now.getTime()) : null;
+    if (!state) throw new HttpError(409, "egg_not_ready", "Your egg is not ready to hatch.");
+    const next = { ...pet, state };
     await save(env, tenantId, next);
     return toView(next, now);
   },

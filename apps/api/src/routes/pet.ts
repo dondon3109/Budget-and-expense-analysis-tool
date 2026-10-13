@@ -32,6 +32,10 @@ export function createPetRoutes(repository: PetRepository) {
     );
   });
 
+  routes.post("/hatch", async (context) =>
+    context.json(await repository.hatch(context.env, context.get("tenant").tenantId, new Date())),
+  );
+
   routes.put("/settings", async (context) => {
     const input = parseInput(petSettingsSchema, await readJson(context), "Choose on or off.");
     return context.json(

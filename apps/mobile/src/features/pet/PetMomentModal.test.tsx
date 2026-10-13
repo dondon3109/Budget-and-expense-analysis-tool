@@ -17,7 +17,7 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(async (key: string) => void mockStorage.delete(key)),
 }));
 
-const seenBaby = { species: "panda", stage: "baby", unwell: false, diedAt: null };
+const seenBaby = { species: "panda", stage: "baby", unwell: false, ready: false, diedAt: null };
 const remember = (date: string) =>
   mockStorage.set("zoption-mobile-pet-seen-v1", JSON.stringify({ ...seenBaby, date }));
 

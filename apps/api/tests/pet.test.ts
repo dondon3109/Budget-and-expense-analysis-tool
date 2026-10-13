@@ -50,12 +50,13 @@ async function aliceTenant({ call, database }: Harness) {
   return (database.prepare("SELECT id FROM tenants").get() as { id: string }).id;
 }
 
-/** Picks an egg at T0 and opens the app on seven consecutive days; the last one hatches it. */
+/** Picks an egg at T0, opens the app on seven consecutive days, and taps it open on the last. */
 async function hatch(harness: Harness, tenantId: string) {
   await petRepository.chooseEgg(harness.env, tenantId, "panda", new Date(T0));
   for (let day = 0; day < 7; day += 1) {
     await petRepository.checkIn(harness.env, tenantId, new Date(T0 + day * DAY));
   }
+  await petRepository.hatch(harness.env, tenantId, new Date(T0 + 6 * DAY));
   return T0 + 6 * DAY;
 }
 
@@ -137,7 +138,7 @@ describe("pet routes", () => {
 });
 
 describe("pet activity", () => {
-  it("hatches after seven consecutive check-ins and resets after a missed day", async () => {
+  it("readies the egg after seven consecutive check-ins and resets after a missed day", async () => {
     const harness = createHarness();
     const tenantId = await aliceTenant(harness);
     await petRepository.chooseEgg(harness.env, tenantId, "pig", new Date(T0));
@@ -149,6 +150,11 @@ describe("pet activity", () => {
 
     const second = await createHarness();
     const secondTenant = await aliceTenant(second);
+    await expect(petRepository.hatch(second.env, secondTenant, new Date(T0))).rejects.toMatchObject(
+      {
+        status: 409,
+      },
+    );
     await hatch(second, secondTenant);
     const view = await petRepository.get(second.env, secondTenant, new Date(T0 + 6 * DAY + HOUR));
     expect(view).toMatchObject({ stage: "baby", points: 0, health: 100, healthState: "healthy" });

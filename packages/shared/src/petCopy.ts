@@ -1,4 +1,4 @@
-import { PET_ACTION_RULES, type PetSpecies, type PetStage } from "./pet";
+import { PET_ACTION_RULES, PET_HATCH_TAPS, type PetSpecies, type PetStage } from "./pet";
 import type { PetMoment } from "./petMoment";
 import type { PetSeen, PetView } from "./schemas/pet";
 
@@ -36,6 +36,8 @@ export function petStatusLine(view: PetView): string {
     return view.diedAt ? "Your pet passed away. Pick a new egg." : "Pick an egg to start.";
   }
   if (view.stage === "egg") {
+    if (view.eggStreakDays >= view.eggHatchDays)
+      return "Ready to hatch. Tap the egg to crack it open.";
     return `Day ${view.eggStreakDays} of ${view.eggHatchDays}. Open Zoption daily to hatch it.`;
   }
   if (view.healthState === "fading") return "Fading fast. Log something to save it.";
@@ -64,10 +66,10 @@ export function petMomentCopy(
   }
   const name = petSpeciesLabels[view.species].toLowerCase();
   const stage = petStageLabels[view.stage];
-  if (moment === "hatched") {
+  if (moment === "ready") {
     return {
-      title: `Your ${name} egg hatched!`,
-      body: "Say hi to your baby. Log money each day to help it grow.",
+      title: `Your ${name} egg is ready to hatch!`,
+      body: `Seven days in a row did it. Tap the egg ${PET_HATCH_TAPS} times to crack it open.`,
     };
   }
   if (moment === "grew") {

@@ -2,7 +2,7 @@ import { petStages } from "./pet";
 import type { PetSeen, PetView } from "./schemas/pet";
 
 /** Why the pet pop-up opens: a change since this device last showed it, or the first open of a day. */
-export type PetMoment = "hatched" | "grew" | "sick" | "died" | "daily";
+export type PetMoment = "ready" | "grew" | "sick" | "died" | "daily";
 
 /**
  * Decides whether the pet pop-up opens for `view`, given what this device showed last. Each client
@@ -21,6 +21,7 @@ export function petMoment(
     species: view.species,
     stage: view.stage,
     unwell: view.healthState === "sick" || view.healthState === "fading",
+    ready: view.stage === "egg" && view.eggStreakDays >= view.eggHatchDays,
     diedAt: view.diedAt,
   };
   const change = seen ? changeSince(seen, current) : null;
@@ -33,7 +34,9 @@ function changeSince(seen: PetSeen, current: Omit<PetSeen, "date">): PetMoment |
   if (current.species === null) return current.diedAt !== seen.diedAt ? "died" : null;
   // A new egg, or a different pet since: nothing to compare against.
   if (current.species !== seen.species) return null;
-  if (seen.stage === "egg" && current.stage !== "egg") return "hatched";
+  if (current.ready && !seen.ready) return "ready";
+  // Tapping the egg open is its own celebration, so hatching into a Baby raises no pop-up.
+  if (seen.stage === "egg") return null;
   if (petStages.indexOf(current.stage) > petStages.indexOf(seen.stage)) return "grew";
   if (current.unwell && !seen.unwell) return "sick";
   return null;

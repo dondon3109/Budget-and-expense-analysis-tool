@@ -65,6 +65,8 @@ export const petSeenSchema = z
     species: z.enum(petSpecies).nullable(),
     stage: z.enum(petStages),
     unwell: z.boolean(),
+    /** An egg waiting to be tapped open. */
+    ready: z.boolean(),
     diedAt: z.string().datetime().nullable(),
     date: isoDateSchema,
   })
