@@ -44,8 +44,8 @@ The mobile app schedules local notifications from each pet view it receives
 (`apps/mobile/src/features/pet/pet-notifications.ts`), so they follow activity synced from any
 device once the app checks in again.
 
-- A hatched pet is warned at 20, 24, 36, 48, 60 and 70 hours after its last activity, and told at
-  72 hours that it passed away. An egg with a streak gets a reminder at 20:00 the next day and a
+- A hatched pet is warned at 24, 48 and 66 hours after its last activity, and told at 72 hours
+  that it passed away. Reschedules also cancel the ids of the older seven-step schedule. An egg with a streak gets a reminder at 20:00 the next day and a
   note at 07:30 the morning after that, when the streak has already restarted.
 - Alerts due between 22:00 and 07:00 Manila time wait until 07:30. A warning that would then land
   at or after the pet's death is dropped.

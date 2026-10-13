@@ -11,7 +11,7 @@ import { babyPet, noPet } from "./pet-test-fixtures";
 
 const HOUR = 60 * 60 * 1000;
 const iso = (at: number) => new Date(at).toISOString();
-// 09:00 in Manila, so the pet's alerts start at 05:00 the next morning.
+// 09:00 in Manila, so the 66 hour warning falls at 03:00 and waits until 07:30.
 const lastActivity = Date.parse("2026-10-03T01:00:00Z");
 
 describe("pet notifications", () => {
@@ -37,20 +37,16 @@ describe("pet notifications", () => {
   it("warns a hatched pet ahead of each health step and its death", () => {
     const plan = petNotificationPlan(babyPet, lastActivity + HOUR);
     expect(plan.map((alert) => [alert.id, iso(alert.at)])).toEqual([
-      // 20 hours lands at 05:00 Manila, so it waits until 07:30.
-      ["zoption-pet-sleepy", "2026-10-03T23:30:00.000Z"],
       ["zoption-pet-sick", "2026-10-04T01:00:00.000Z"],
-      ["zoption-pet-weaker", "2026-10-04T13:00:00.000Z"],
       ["zoption-pet-fading", "2026-10-05T01:00:00.000Z"],
-      ["zoption-pet-12h", "2026-10-05T13:00:00.000Z"],
-      ["zoption-pet-final", "2026-10-05T23:00:00.000Z"],
+      ["zoption-pet-final", "2026-10-05T23:30:00.000Z"],
       ["zoption-pet-died", "2026-10-06T01:00:00.000Z"],
     ]);
-    expect(plan[1]).toMatchObject({ title: "Your panda is sick" });
+    expect(plan[0]).toMatchObject({ title: "Your panda misses you" });
   });
 
   it("drops a warning that quiet hours would push past the pet's death", () => {
-    // Fed at 07:30 Manila: the final warning falls at 05:30 and would wait until 07:30, the
+    // Fed at 07:30 Manila: the final warning falls at 01:30 and would wait until 07:30, the
     // moment it dies, so only the death notice goes out.
     const earlyActivity = Date.parse("2026-10-02T23:30:00Z");
     const pet = { ...babyPet, lastActivityAt: iso(earlyActivity) };
@@ -62,9 +58,7 @@ describe("pet notifications", () => {
   it("schedules only the alerts still ahead of a sick pet", () => {
     const plan = petNotificationPlan(babyPet, lastActivity + 30 * HOUR);
     expect(plan.map((alert) => alert.id)).toEqual([
-      "zoption-pet-weaker",
       "zoption-pet-fading",
-      "zoption-pet-12h",
       "zoption-pet-final",
       "zoption-pet-died",
     ]);
@@ -90,7 +84,9 @@ describe("pet notifications", () => {
   it("replaces every pet alert with the new plan on its own channel", async () => {
     await schedulePetNotifications(petNotificationPlan(babyPet, lastActivity + 30 * HOUR));
     expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("zoption-pet-sick");
-    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(5);
+    // An upgraded device may still hold a warning from the old schedule.
+    expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("zoption-pet-12h");
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(3);
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
         identifier: "zoption-pet-died",

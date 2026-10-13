@@ -19,19 +19,20 @@ export const PET_NOTIFICATION_ROUTE: Href = "/(app)/pet";
 
 /** Warnings for a hatched pet, by hours since its last activity. The last one is its death. */
 const HEALTH_ALERTS = [
-  { id: "zoption-pet-sleepy", hours: 20 },
   { id: "zoption-pet-sick", hours: 24 },
-  { id: "zoption-pet-weaker", hours: 36 },
   { id: "zoption-pet-fading", hours: 48 },
-  { id: "zoption-pet-12h", hours: 60 },
-  { id: "zoption-pet-final", hours: 70 },
+  { id: "zoption-pet-final", hours: 66 },
   { id: "zoption-pet-died", hours: PET_DEAD_AFTER_HOURS },
 ] as const;
+// Warnings from the earlier seven-step schedule. A device that upgrades may still hold them, so
+// every reschedule and clear cancels them too.
+const RETIRED_ALERT_IDS = ["zoption-pet-sleepy", "zoption-pet-weaker", "zoption-pet-12h"];
 const EGG_REMINDER_ID = "zoption-pet-egg";
 const EGG_RESET_ID = "zoption-pet-egg-reset";
 /** Every pet identifier, so a reschedule or clear cancels all of them. */
 const PET_NOTIFICATION_IDS: readonly string[] = [
   ...HEALTH_ALERTS.map((alert) => alert.id),
+  ...RETIRED_ALERT_IDS,
   EGG_REMINDER_ID,
   EGG_RESET_ID,
 ];
@@ -66,35 +67,20 @@ export function outsideQuietHours(at: number): number {
 
 function healthAlertText(id: (typeof HEALTH_ALERTS)[number]["id"], name: string) {
   switch (id) {
-    case "zoption-pet-sleepy":
-      return {
-        title: `Your ${name} is getting sleepy`,
-        body: "Log something today to keep it healthy.",
-      };
     case "zoption-pet-sick":
       return {
-        title: `Your ${name} is sick`,
-        body: "A day without you made it ill. Log a transaction to heal it.",
-      };
-    case "zoption-pet-weaker":
-      return {
-        title: `Your ${name} is getting weaker`,
-        body: "Its health is dropping. Any activity in Zoption heals it.",
+        title: `Your ${name} misses you`,
+        body: "A day without you made it sick. Log something today to heal it.",
       };
     case "zoption-pet-fading":
       return {
         title: `Your ${name} is fading`,
         body: "It has 24 hours left. Open Zoption and log something to save it.",
       };
-    case "zoption-pet-12h":
-      return {
-        title: `12 hours left for your ${name}`,
-        body: "It is fading fast. One transaction brings it back.",
-      };
     case "zoption-pet-final":
       return {
         title: `Last chance to save your ${name}`,
-        body: "It passes away in 2 hours unless you log something.",
+        body: "It passes away in 6 hours unless you log something.",
       };
     case "zoption-pet-died":
       return {
