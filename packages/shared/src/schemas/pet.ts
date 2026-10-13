@@ -44,9 +44,8 @@ export const petStoredStateSchema = z
   })
   .strict();
 
-/** Apps released before names send only the species; the Worker names that egg after it. */
 export const petEggChoiceSchema = z
-  .object({ species: z.enum(petSpecies), name: petNameSchema.optional() })
+  .object({ species: z.enum(petSpecies), name: petNameSchema })
   .strict();
 export type PetEggChoice = z.infer<typeof petEggChoiceSchema>;
 

@@ -8,8 +8,7 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
 
 - The user picks one of six eggs (hedgehog, pig, hamster, penguin, panda, hippo) and names it (1 to
   20 characters, trimmed; `PET_NAME_MAX_LENGTH`). The name is kept after death for the memorial
-  and replaced by the next egg's. Pets from before names, and eggs chosen by apps that send no
-  name, go by their species label. An egg is ready
+  and replaced by the next egg's. Pets stored before names existed go by their species label. An egg is ready
   after 7 consecutive Manila days with an app check-in; a missed day before then resets the count.
   A ready egg stays ready however many days pass, until the user taps it 10 times
   (`PET_HATCH_TAPS`) on the mobile or web pet page. The taps are counted on the device and only
@@ -43,10 +42,9 @@ Activity is credited through the last whole second only, because `datetime('now'
 
 ## API
 
-`GET /api/app/pet`, `POST /api/app/pet/check-in`, `PUT /api/app/pet/egg` (`{ species, name? }`, 409 while a
+`GET /api/app/pet`, `POST /api/app/pet/check-in`, `PUT /api/app/pet/egg` (`{ species, name }`, 409 while a
 pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg is enabled),
-`PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`. Apps released
-before the hatch endpoint cannot hatch; a ready egg waits for the update.
+`PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`.
 
 ## Pop-up
 

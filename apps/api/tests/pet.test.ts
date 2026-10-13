@@ -52,7 +52,12 @@ async function aliceTenant({ call, database }: Harness) {
 
 /** Picks an egg at T0, opens the app on seven consecutive days, and taps it open on the last. */
 async function hatch(harness: Harness, tenantId: string) {
-  await petRepository.chooseEgg(harness.env, tenantId, { species: "panda" }, new Date(T0));
+  await petRepository.chooseEgg(
+    harness.env,
+    tenantId,
+    { species: "panda", name: "Bao" },
+    new Date(T0),
+  );
   for (let day = 0; day < 7; day += 1) {
     await petRepository.checkIn(harness.env, tenantId, new Date(T0 + day * DAY));
   }
@@ -114,24 +119,40 @@ describe("pet routes", () => {
       health: null,
     });
 
-    expect((await call("/api/app/pet/egg", ALICE, "PUT", { species: "hippo" })).status).toBe(200);
-    expect(await (await call("/api/app/pet", ALICE)).json()).toMatchObject({ species: "hippo" });
+    expect(
+      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "hippo", name: "Gloria" })).status,
+    ).toBe(200);
+    expect(await (await call("/api/app/pet", ALICE)).json()).toMatchObject({
+      species: "hippo",
+      name: "Gloria",
+    });
     expect(await (await call("/api/app/pet", BOB)).json()).toMatchObject({ species: null });
   });
 
   it("validates the egg and refuses a second one", async () => {
     const { call } = createHarness();
-    expect((await call("/api/app/pet/egg", ALICE, "PUT", { species: "dragon" })).status).toBe(400);
     expect(
-      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", tenantId: "bob" })).status,
+      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "dragon", name: "X" })).status,
     ).toBe(400);
-    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig" });
-    expect((await call("/api/app/pet/egg", ALICE, "PUT", { species: "panda" })).status).toBe(409);
+    expect((await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig" })).status).toBe(400);
+    expect(
+      (
+        await call("/api/app/pet/egg", ALICE, "PUT", {
+          species: "pig",
+          name: "Oink",
+          tenantId: "bob",
+        })
+      ).status,
+    ).toBe(400);
+    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", name: "Oink" });
+    expect(
+      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "panda", name: "Bao" })).status,
+    ).toBe(409);
   });
 
   it("counts a check-in toward the egg streak", async () => {
     const { call } = createHarness();
-    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig" });
+    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", name: "Oink" });
     const response = await call("/api/app/pet/check-in", ALICE, "POST");
     expect(await response.json()).toMatchObject({ stage: "egg", eggStreakDays: 1 });
   });
@@ -255,10 +276,10 @@ describe("pet activity", () => {
       health: 75,
     });
     const dead = await petRepository.get(env, tenantId, new Date(hatchedAt + 72 * HOUR));
-    // An egg chosen without a name (an older app) goes by its species, remembered after death.
+    // The name is remembered after death.
     expect(dead).toMatchObject({
       species: null,
-      name: "Panda",
+      name: "Bao",
       stage: "egg",
       diedAt: iso(hatchedAt + 72 * HOUR),
     });

@@ -241,7 +241,7 @@ export const petRepository: PetRepository = {
     const next = {
       ...pet,
       enabled: true,
-      state: startPetEgg(species, name ?? petSpeciesLabels[species]),
+      state: startPetEgg(species, name),
     };
     await save(env, tenantId, next);
     return toView(next, now);

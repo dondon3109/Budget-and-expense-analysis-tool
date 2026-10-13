@@ -246,7 +246,7 @@ describe("pet names", () => {
 
   it("trims a chosen name and rejects a blank or long one", () => {
     expect(petEggChoiceSchema.parse({ species: "pig", name: "  Oink " }).name).toBe("Oink");
-    expect(petEggChoiceSchema.parse({ species: "pig" }).name).toBeUndefined();
+    expect(petEggChoiceSchema.safeParse({ species: "pig" }).success).toBe(false);
     expect(petEggChoiceSchema.safeParse({ species: "pig", name: "   " }).success).toBe(false);
     expect(petEggChoiceSchema.safeParse({ species: "pig", name: "x".repeat(21) }).success).toBe(
       false,
