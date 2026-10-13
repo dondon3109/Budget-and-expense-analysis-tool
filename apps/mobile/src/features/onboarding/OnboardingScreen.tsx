@@ -14,11 +14,14 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import { usePetStore } from "@/stores/pet-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { Button, FormField, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
+
+import { PersonalizeStep } from "./PersonalizeStep";
 
 /** The message for the amount field, or the parsed minor units when it is valid. */
 function checkAmount(value: string): { error: string } | { amountMinor: number } {
@@ -35,9 +38,9 @@ function checkAmount(value: string): { error: string } | { amountMinor: number }
 }
 
 /**
- * First-run setup, the same two steps as the web app: base currency, then cash on hand. Both
- * need a connection and answer on the Worker, which owns the step. Not now just leaves; the
- * screen is offered again on the next launch until the cash step completes.
+ * First-run setup, the same steps as the web app: base currency, cash on hand, then theme and
+ * streak pet. The first two need a connection and answer on the Worker, which owns the step. Not
+ * now just leaves; the screen is offered again on the next launch until the cash step completes.
  */
 export function OnboardingScreen() {
   const theme = useZoptionTheme();
@@ -50,6 +53,22 @@ export function OnboardingScreen() {
   const [cash, setCash] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The Worker's finished state, held back until the personalize step closes so Home's pet intro
+  // cannot push the pet page over this screen while it is still open.
+  const [finished, setFinished] = useState<typeof state>(null);
+
+  if (finished) {
+    return (
+      <PersonalizeStep
+        onDone={(wantsPet) => {
+          if (wantsPet) usePetStore.getState().markIntroduced();
+          setState(finished);
+          if (wantsPet) router.replace("/(app)/pet");
+          else router.back();
+        }}
+      />
+    );
+  }
 
   if (!state || state.step === "complete") {
     return (
@@ -96,7 +115,7 @@ export function OnboardingScreen() {
     return (
       <Screen title="Choose your currency">
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Budgets, goals, and totals show in this currency. Step 1 of 2.
+          Budgets, goals, and totals show in this currency. Step 1 of 3.
         </Text>
         <SelectionField
           label="Base currency"
@@ -127,17 +146,16 @@ export function OnboardingScreen() {
         { accessToken },
         { amountMinor: checked.amountMinor, date: localIsoDate(new Date()) },
       );
-      setState({ step: result.step, currency: result.currency });
+      setFinished({ step: result.step, currency: result.currency });
       // The opening entry is booked on the Worker, so pull it to this device.
       sync.retry();
-      router.back();
     });
   };
   return (
     <Screen title="How much cash do you have?">
       <Text style={[typography.body, { color: theme.colors.textMuted }]}>
         Physical cash on hand in {currencyMetadata[state.currency].label}. Enter 0 if you have none.
-        Step 2 of 2.
+        Step 2 of 3.
       </Text>
       <FormField
         label="Cash on hand"
@@ -153,7 +171,7 @@ export function OnboardingScreen() {
       />
       {failure}
       <Button loading={busy} disabled={busy} onPress={saveCash}>
-        Finish setup
+        Continue
       </Button>
       {notNow}
     </Screen>

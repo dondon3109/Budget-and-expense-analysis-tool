@@ -32,31 +32,59 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
     "saveGoals",
     "skipGoal",
     "markGoalShown",
+    "checkInPet",
+    "setPetEnabled",
   ]),
 }));
 
+import type { PetView } from "@zoption/shared";
+
 import {
   ApiRequestError,
+  checkInPet,
   getGoalProfile,
   getOnboardingState,
   markGoalShown,
   saveGoals,
   saveOnboardingCashBalance,
   saveOnboardingCurrency,
+  setPetEnabled,
   skipGoal,
 } from "../src/lib/api";
 import { OnboardingPage } from "../src/pages/OnboardingPage";
+import { ThemeProvider } from "../src/theme/ThemeProvider";
 import { renderWithProviders } from "./helpers/render";
+
+const newPet: PetView = {
+  enabled: true,
+  species: null,
+  name: null,
+  stage: "egg",
+  points: 0,
+  nextStagePoints: null,
+  pointsToday: 0,
+  eggStreakDays: 0,
+  eggHatchDays: 7,
+  health: null,
+  healthState: null,
+  lastActivityAt: null,
+  diedAt: null,
+};
 
 function renderPage() {
   return renderWithProviders(
-    <Routes>
-      <Route path="/onboarding" element={<OnboardingPage />} />
-      <Route path="/app" element={<p>Dashboard page</p>} />
-    </Routes>,
+    <ThemeProvider>
+      <Routes>
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route path="/app" element={<p>Dashboard page</p>} />
+        <Route path="/app/pet" element={<p>Pet page</p>} />
+      </Routes>
+    </ThemeProvider>,
     { route: "/onboarding" },
   );
 }
+
+const personalizeHeading = () => screen.findByRole("heading", { name: "Make it yours" });
 
 describe("OnboardingPage", () => {
   const unset = { goals: [], goal: null, otherText: null, selectedAt: null, skipped: false };
@@ -83,6 +111,11 @@ describe("OnboardingPage", () => {
       currency: "PHP",
       openingBalanceBooked: true,
     });
+    vi.mocked(checkInPet).mockResolvedValue(newPet);
+    vi.mocked(setPetEnabled).mockImplementation(async (_workspace, enabled) => ({
+      ...newPet,
+      enabled,
+    }));
   });
 
   afterEach(() => {
@@ -121,9 +154,26 @@ describe("OnboardingPage", () => {
       }),
     );
 
-    expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
+    await personalizeHeading();
+    fireEvent.click(screen.getByRole("radio", { name: "Fun" }));
+    expect(document.documentElement).toHaveAttribute("data-theme", "fun");
+    fireEvent.click(screen.getByRole("radio", { name: /No pet for now/ }));
     fireEvent.click(screen.getByRole("button", { name: "Go to dashboard" }));
     expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
+    expect(setPetEnabled).toHaveBeenCalledWith(expect.anything(), false);
+  });
+
+  it("sends a new user who wants a pet to the egg picker without another request", async () => {
+    vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
+    renderPage();
+
+    await screen.findByRole("textbox", { name: /Physical cash on hand/ });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+    await personalizeHeading();
+    await waitFor(() => expect(checkInPet).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "Pick my egg" }));
+    expect(await screen.findByText("Pet page")).toBeInTheDocument();
+    expect(setPetEnabled).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -169,7 +219,7 @@ describe("OnboardingPage", () => {
 
     await screen.findByRole("textbox", { name: /Physical cash on hand/ });
     fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
-    expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
+    expect(await personalizeHeading()).toBeInTheDocument();
   });
 
   it("says so when the cash amount was not added to a workspace that already has data", async () => {
@@ -198,20 +248,20 @@ describe("OnboardingPage", () => {
       return null;
     }
     renderWithProviders(
-      <>
+      <ThemeProvider>
         <SlowWorkspaceQuery />
         <Routes>
           <Route path="/onboarding" element={<OnboardingPage />} />
           <Route path="/app" element={<p>Dashboard page</p>} />
         </Routes>
-      </>,
+      </ThemeProvider>,
       { route: "/onboarding" },
     );
 
     await screen.findByRole("textbox", { name: /Physical cash on hand/ });
     await waitFor(() => expect(screen.queryByText("Dashboard page")).not.toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
-    expect(await screen.findByText("Your first account is ready")).toBeInTheDocument();
+    expect(await personalizeHeading()).toBeInTheDocument();
     expect(screen.queryByText("Dashboard page")).not.toBeInTheDocument();
   });
 
