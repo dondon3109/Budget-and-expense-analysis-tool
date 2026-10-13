@@ -72,7 +72,7 @@ export function LayerSvg({
   );
 }
 
-function useReduceMotion(): boolean {
+export function useReduceMotion(): boolean {
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
     let active = true;

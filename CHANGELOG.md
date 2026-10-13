@@ -16,6 +16,7 @@ All notable product changes are documented here.
 - Name your pet when you pick its egg, on web and mobile. Its pop-ups and notifications call it by name.
 - A new Fun theme, on web and mobile: candy colors, puffy clay cards, and chunky buttons that press down, made to match your pet.
 - New accounts finish setup by picking a theme and choosing whether to raise a streak pet, on web and mobile. Saying yes opens the egg picker.
+- The pet page is more playful on web and mobile: your pet stands in a sparkly spotlight, sends up hearts when you pet it, and shows colorful status chips, chunky meters, an Egg to Legend growth path, and earning tiles.
 
 ### Changed
 

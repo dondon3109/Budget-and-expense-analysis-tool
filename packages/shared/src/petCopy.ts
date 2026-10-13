@@ -23,12 +23,21 @@ export const petStageLabels: Record<PetStage, string> = {
 
 /** How each action earns points, in the order the pet page lists them. */
 export const petEarningRows = [
-  { label: "Open Zoption", rule: PET_ACTION_RULES.login },
-  { label: "Log a transaction", rule: PET_ACTION_RULES.transaction },
-  { label: "Add a subscription", rule: PET_ACTION_RULES.subscription },
-  { label: "Pay a debt", rule: PET_ACTION_RULES.debt_payment },
-  { label: "Chat with the AI Assistant", rule: PET_ACTION_RULES.assistant },
+  { label: "Open Zoption", emoji: "👋", rule: PET_ACTION_RULES.login },
+  { label: "Log a transaction", emoji: "🧾", rule: PET_ACTION_RULES.transaction },
+  { label: "Add a subscription", emoji: "📅", rule: PET_ACTION_RULES.subscription },
+  { label: "Pay a debt", emoji: "💸", rule: PET_ACTION_RULES.debt_payment },
+  { label: "Chat with the AI Assistant", emoji: "💬", rule: PET_ACTION_RULES.assistant },
 ] as const;
+
+/** The badge each stage wears on the pet page's growth path. */
+export const petStageEmoji: Record<PetStage, string> = {
+  egg: "🥚",
+  baby: "🐣",
+  juvenile: "🌱",
+  adult: "⭐",
+  legend: "👑",
+};
 
 /** One line about how the pet is doing. */
 export function petStatusLine(view: PetView): string {

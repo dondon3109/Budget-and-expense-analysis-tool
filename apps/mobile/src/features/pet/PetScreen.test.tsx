@@ -73,6 +73,17 @@ describe("PetScreen", () => {
     expect(screen.getByLabelText("Today 30 of 100 points")).toBeTruthy();
   });
 
+  it("shows the pet's place on the growth path and lets the user pet it", async () => {
+    usePetStore.setState({ pet: babyPet });
+    jest.mocked(getPet).mockResolvedValue(babyPet);
+    await render(<PetScreen />);
+
+    expect(screen.getByLabelText("Growth path: Baby now")).toBeTruthy();
+    expect(screen.queryByText("💖")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Pet Bao" }));
+    expect(screen.getAllByText("💖").length).toBeGreaterThan(0);
+  });
+
   it("warns when the pet is sick", async () => {
     const sick = { ...babyPet, health: 75, healthState: "sick" as const };
     usePetStore.setState({ pet: sick });

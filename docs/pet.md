@@ -46,6 +46,18 @@ Activity is credited through the last whole second only, because `datetime('now'
 pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg is enabled),
 `PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`.
 
+## Pet page
+
+Web `pages/PetPage.tsx` and mobile `features/pet/PetScreen.tsx` (playful parts in
+`PetPlayground.tsx`) show the same pieces: the pet in a spotlight (a flat disc, ground shadow, and
+drifting sparkles), status chips (egg streak, or points, health, and today's points), chunky
+meters, the Egg to Legend growth path (`petStageEmoji`), and the earning rules as tiles
+(`petEarningRows`). Clicking or tapping a hatched pet sends up hearts; that is local only and
+never reaches the Worker. Motion stops under reduced motion.
+
+New accounts are asked at the end of first-run setup whether they want a pet. A yes opens the egg
+picker; a no turns the pet off (`PUT /api/app/pet/settings`).
+
 ## Pop-up
 
 Mobile Home and every web workspace page open a pop-up with the pet's picture when its egg became

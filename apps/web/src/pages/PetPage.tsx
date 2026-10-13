@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 
 import {
   PET_DAILY_POINT_CEILING,
@@ -10,7 +10,9 @@ import {
   petMood,
   petSpecies,
   petSpeciesLabels,
+  petStageEmoji,
   petStageLabels,
+  petStages,
   type PetSpecies,
   type PetView,
 } from "@zoption/shared";
@@ -23,11 +25,39 @@ import { userWorkspace } from "../lib/workspace";
 import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
 import "./PetPage.css";
 
-function Meter({ label, value, max }: { label: string; value: number; max: number }) {
+type MeterTone = "brand" | "health" | "sick" | "fading" | "sun";
+
+function healthTone(state: PetView["healthState"]): MeterTone {
+  if (state === "sick") return "sick";
+  if (state === "fading" || state === "dead") return "fading";
+  return "health";
+}
+
+function healthEmoji(state: PetView["healthState"]): string {
+  if (state === "sick") return "🤒";
+  if (state === "fading" || state === "dead") return "🥀";
+  return "💚";
+}
+
+function Meter({
+  label,
+  icon,
+  value,
+  max,
+  tone,
+}: {
+  label: string;
+  icon: string;
+  value: number;
+  max: number;
+  tone: MeterTone;
+}) {
   const share = max > 0 ? Math.min(1, Math.max(0, value / max)) : 1;
   return (
-    <div className="pet-meter">
-      <span>{label}</span>
+    <div className="pet-meter" data-tone={tone}>
+      <span>
+        <span aria-hidden="true">{icon}</span> {label}
+      </span>
       <div
         className="pet-meter-track"
         role="progressbar"
@@ -99,6 +129,83 @@ function EggPicker({
   );
 }
 
+/** Egg to Legend as a path of badges, lit up to the pet's current stage. */
+function GrowthPath({ stage }: { stage: PetView["stage"] }) {
+  const reached = petStages.indexOf(stage);
+  return (
+    <ol className="pet-path" aria-label="Growth path">
+      {petStages.map((step, index) => (
+        <li
+          key={step}
+          className="pet-path-step"
+          data-state={index < reached ? "done" : index === reached ? "now" : "next"}
+          aria-current={index === reached ? "step" : undefined}
+        >
+          <span className="pet-path-badge" aria-hidden="true">
+            {petStageEmoji[step]}
+          </span>
+          <span className="pet-path-label">{petStageLabels[step]}</span>
+          <small>{step === "egg" ? "7 days" : `${PET_STAGE_THRESHOLDS[step]} pts`}</small>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// Where each petting heart floats off to, as a horizontal drift in pixels.
+const HEART_DRIFTS = [-46, -18, 12, 40];
+
+/**
+ * A hatched pet the user can pet: each click sends a little burst of hearts up from it. Purely a
+ * delight on this page; nothing is sent to the Worker.
+ */
+function PettablePet({ name, children }: { name: string; children: ReactNode }) {
+  const [pets, setPets] = useState(0);
+  return (
+    <button
+      className="pet-pettable"
+      type="button"
+      aria-label={`Pet ${name}`}
+      onClick={() => setPets((count) => count + 1)}
+    >
+      {children}
+      {pets > 0 ? (
+        <span key={pets} className="pet-hearts" aria-hidden="true">
+          {HEART_DRIFTS.map((drift, index) => (
+            <span
+              key={drift}
+              style={{ "--drift": `${drift}px`, "--delay": `${index * 60}ms` } as CSSProperties}
+            >
+              {index % 2 === 0 ? "💜" : "💖"}
+            </span>
+          ))}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function PetChips({ pet }: { pet: PetView }) {
+  if (pet.stage === "egg") {
+    return (
+      <ul className="pet-chips" aria-label="Egg status">
+        <li data-tone="sun">
+          🔥 {pet.eggStreakDays} day{pet.eggStreakDays === 1 ? "" : "s"} streak
+        </li>
+      </ul>
+    );
+  }
+  return (
+    <ul className="pet-chips" aria-label="Pet status">
+      <li data-tone="brand">⭐ {pet.points} pts</li>
+      <li data-tone={healthTone(pet.healthState)}>
+        {healthEmoji(pet.healthState)} {pet.health ?? 0}% health
+      </li>
+      <li data-tone="sun">☀️ {pet.pointsToday} today</li>
+    </ul>
+  );
+}
+
 function PetStats({ pet }: { pet: PetView }) {
   if (pet.stage === "egg") {
     // A ready egg's hint sits under the egg itself.
@@ -107,8 +214,10 @@ function PetStats({ pet }: { pet: PetView }) {
       <>
         <Meter
           label={`Day ${pet.eggStreakDays} of ${pet.eggHatchDays}`}
+          icon="🥚"
           value={pet.eggStreakDays}
           max={pet.eggHatchDays}
+          tone="sun"
         />
         <p className="pet-note">
           Open Zoption every day until it is ready to hatch. Missing a day starts the count over.
@@ -124,15 +233,25 @@ function PetStats({ pet }: { pet: PetView }) {
       ) : (
         <Meter
           label={`${pet.points} of ${pet.nextStagePoints} points to grow`}
+          icon="🌱"
           value={pet.points - stageStart}
           max={pet.nextStagePoints - stageStart}
+          tone="brand"
         />
       )}
-      <Meter label={`Health ${pet.health ?? 0} of 100`} value={pet.health ?? 0} max={100} />
+      <Meter
+        label={`Health ${pet.health ?? 0} of 100`}
+        icon="❤️"
+        value={pet.health ?? 0}
+        max={100}
+        tone={healthTone(pet.healthState)}
+      />
       <Meter
         label={`Today ${pet.pointsToday} of ${PET_DAILY_POINT_CEILING} points`}
+        icon="☀️"
         value={pet.pointsToday}
         max={PET_DAILY_POINT_CEILING}
+        tone="sun"
       />
       {pet.healthState === "sick" || pet.healthState === "fading" ? (
         <p className="pet-warning" role="alert">
@@ -209,35 +328,57 @@ export function PetPage() {
           </div>
         ) : (
           <div className="pet-panel pet-hero">
-            {pet.data.stage === "egg" && pet.data.eggStreakDays >= pet.data.eggHatchDays ? (
-              <HatchEgg
-                species={pet.data.species}
-                days={pet.data.eggStreakDays}
-                hatch={async (beforeShow) => {
-                  await hatch.mutateAsync(beforeShow);
-                  setJustHatched(true);
-                }}
-              />
-            ) : (
-              <span className="pet-pop-wrap">
-                {justHatched ? <HatchShine className="pet-hatch-afterglow" /> : null}
-                <PetSvg
-                  className={justHatched ? "pet-pop" : undefined}
-                  art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
-                  mood={petMood(pet.data)}
-                  size={220}
-                />
+            <div className="pet-stage">
+              <span className="pet-stage-sparkles" aria-hidden="true">
+                <span>✦</span>
+                <span>★</span>
+                <span>✧</span>
+                <span>♥</span>
               </span>
-            )}
+              {pet.data.stage === "egg" && pet.data.eggStreakDays >= pet.data.eggHatchDays ? (
+                <HatchEgg
+                  species={pet.data.species}
+                  days={pet.data.eggStreakDays}
+                  hatch={async (beforeShow) => {
+                    await hatch.mutateAsync(beforeShow);
+                    setJustHatched(true);
+                  }}
+                />
+              ) : (
+                <span className="pet-pop-wrap">
+                  {justHatched ? <HatchShine className="pet-hatch-afterglow" /> : null}
+                  {pet.data.stage === "egg" ? (
+                    <PetSvg
+                      className={justHatched ? "pet-pop" : undefined}
+                      art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
+                      mood={petMood(pet.data)}
+                      size={220}
+                    />
+                  ) : (
+                    <PettablePet name={pet.data.name ?? petSpeciesLabels[pet.data.species]}>
+                      <PetSvg
+                        className={justHatched ? "pet-pop" : undefined}
+                        art={petArt(pet.data.species, pet.data.stage, pet.data.eggStreakDays)}
+                        mood={petMood(pet.data)}
+                        size={220}
+                      />
+                    </PettablePet>
+                  )}
+                </span>
+              )}
+              <span className="pet-stage-ground" aria-hidden="true" />
+            </div>
             <div className="pet-title">
               <h2>{pet.data.name ?? petSpeciesLabels[pet.data.species]}</h2>
               <p className="pet-note">
                 {petSpeciesLabels[pet.data.species]} · {petStageLabels[pet.data.stage]}
               </p>
             </div>
+            <PetChips pet={pet.data} />
             <div className="pet-stats">
               <PetStats pet={pet.data} />
             </div>
+            <GrowthPath stage={pet.data.stage} />
           </div>
         )}
 
@@ -247,23 +388,26 @@ export function PetPage() {
           </p>
         ) : null}
 
-        <details className="pet-panel pet-earning-panel">
-          <summary>How to earn points</summary>
-          <dl className="pet-earning">
+        <section className="pet-panel pet-earning-panel" aria-labelledby="pet-earning-title">
+          <h2 id="pet-earning-title">How to earn points</h2>
+          <ul className="pet-earning">
             {petEarningRows.map((row) => (
-              <div key={row.label}>
-                <dt>{row.label}</dt>
-                <dd>
-                  {row.rule.points} pts, {row.rule.dailyCount}× a day
-                </dd>
-              </div>
+              <li key={row.label}>
+                <span className="pet-earning-icon" aria-hidden="true">
+                  {row.emoji}
+                </span>
+                <strong>{row.label}</strong>
+                <span>
+                  +{row.rule.points} pts · {row.rule.dailyCount}× a day
+                </span>
+              </li>
             ))}
-          </dl>
+          </ul>
           <p className="pet-note">
             Doing three different things in a day adds a 10 point bonus. A day earns at most{" "}
             {PET_DAILY_POINT_CEILING} points.
           </p>
-        </details>
+        </section>
 
         {pet.data?.enabled ? (
           <button

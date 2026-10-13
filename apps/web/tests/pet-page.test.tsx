@@ -113,6 +113,18 @@ describe("pet on the web", () => {
     expect(screen.getByRole("button", { name: /Click 10 more times/ })).toBeInTheDocument();
   });
 
+  it("marks the current stage on the growth path and hearts a petted pet", async () => {
+    vi.mocked(checkInPet).mockResolvedValue(babyPet);
+    renderWithProviders(<PetPage />);
+
+    const path = await screen.findByRole("list", { name: "Growth path" });
+    expect(path.querySelector('[aria-current="step"]')).toHaveTextContent("Baby");
+    const pet = screen.getByRole("button", { name: "Pet Bao" });
+    expect(pet.querySelector(".pet-hearts")).toBeNull();
+    fireEvent.click(pet);
+    expect(pet.querySelector(".pet-hearts")).not.toBeNull();
+  });
+
   it("shows the pet pop-up once per day", async () => {
     vi.mocked(checkInPet).mockResolvedValue(babyPet);
     const workspace = { key: "user:user-1", userId: "user-1" } as const;
