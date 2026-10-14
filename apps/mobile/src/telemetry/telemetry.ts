@@ -15,23 +15,24 @@
  *    APKs/OTAs; reaching already-installed devices requires shipping such an
  *    update.
  *
- * Privacy: raw errors NEVER leave the device. SDK exception autocapture
- * stays disabled because it would transmit raw messages and stacks, which
- * can embed transaction text, identifiers, or server responses. Custom crash
- * fields carry only a coarse exception type, a deterministic grouping token
- * derived from message-free stack frames, and the reporting source label.
+ * Privacy: error messages NEVER leave the device. SDK exception autocapture
+ * stays disabled because it would transmit raw messages, which can embed
+ * transaction text, identifiers, or server responses. A crash report carries
+ * only a coarse exception type, the reporting source label, a deterministic
+ * grouping token, and the stack frames rebuilt from code locations alone
+ * (function name, file name, line, column). Frames are parsed strictly after
+ * the message header is cut off, so message text cannot ride along as a frame.
  * No Zoption or Supabase identity is supplied: the transport has no identity
  * call at all, so the authenticated subject and the account email never reach
  * the vendor, and the only identifier it sees is PostHog's memory-scoped
- * device id. Raw errors, messages, and stacks are never sent either. See
- * docs/mobile/security-and-privacy.md.
+ * device id. See docs/mobile/security-and-privacy.md.
  */
 
 export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
 /** PostHog feature flag that must be truthy for reports to leave the device. */
 export const REMOTE_KILL_SWITCH_FLAG = "crash-telemetry-enabled";
-/** Custom event name used for sanitized crash reports. */
-export const CRASH_EVENT_NAME = "mobile_crash";
+/** PostHog Error Tracking only groups events with this reserved name into issues. */
+export const CRASH_EVENT_NAME = "$exception";
 
 export interface TelemetryConfig {
   enabled: boolean;
@@ -47,6 +48,15 @@ export interface SanitizedCrashReport {
   type: string;
   /** Deterministic hash of type plus message-free stack-frame shape. */
   fingerprint: string;
+  /** Code locations only, innermost (crashing) frame first. */
+  frames: SanitizedStackFrame[];
+}
+
+export interface SanitizedStackFrame {
+  function: string;
+  filename: string;
+  lineno: number;
+  colno: number;
 }
 
 /** Minimal structural surface of the PostHog client the service relies on. */
@@ -153,11 +163,75 @@ export function normalizedStackShape(error: unknown): string {
     .slice(0, FINGERPRINT_INPUT_LIMIT);
 }
 
+const MAX_FRAMES = 50;
+const MAX_FRAME_TOKEN_LENGTH = 128;
+// Hermes and V8: "at fn (file:1:2)", "at fn (address at file:1:2)", "at file:1:2".
+const AT_FRAME =
+  /^\s*at\s+(?:(.+?)\s+\((?:address at\s+)?(.+):(\d+):(\d+)\)|(?:address at\s+)?(.+):(\d+):(\d+))\s*$/;
+// JavaScriptCore: "fn@file:1:2" or "@file:1:2".
+const AT_SIGN_FRAME = /^\s*([^@\s]*)@(.+):(\d+):(\d+)\s*$/;
+
+function frameFunction(value: string | undefined): string {
+  const cleaned = (value ?? "").replace(/[^A-Za-z0-9_$.<>]/g, "").slice(0, MAX_FRAME_TOKEN_LENGTH);
+  return cleaned || "?";
+}
+
+/** Keeps only the file's base name: device paths and dev-server URLs stay home. */
+function frameFilename(value: string): string {
+  const withoutQuery = value.split(/[?#]/)[0] ?? "";
+  const baseName = withoutQuery.slice(withoutQuery.lastIndexOf("/") + 1);
+  const cleaned = baseName.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, MAX_FRAME_TOKEN_LENGTH);
+  return cleaned || "?";
+}
+
+function parseFrame(line: string): SanitizedStackFrame | undefined {
+  const at = AT_FRAME.exec(line);
+  if (at) {
+    const named = at[2] !== undefined;
+    return {
+      function: frameFunction(named ? at[1] : undefined),
+      filename: frameFilename((named ? at[2] : at[5]) ?? ""),
+      lineno: Number(named ? at[3] : at[6]),
+      colno: Number(named ? at[4] : at[7]),
+    };
+  }
+  const atSign = AT_SIGN_FRAME.exec(line);
+  if (!atSign) return undefined;
+  return {
+    function: frameFunction(atSign[1]),
+    filename: frameFilename(atSign[2] ?? ""),
+    lineno: Number(atSign[3]),
+    colno: Number(atSign[4]),
+  };
+}
+
+/**
+ * Rebuilds the stack from code locations alone. The `Name: message` header
+ * is cut off first, so a multi-line message cannot leave as continuation
+ * lines; every remaining line must then parse as a frame, and only the
+ * function name, the file's base name, and the line and column numbers of
+ * each frame are kept, each reduced to a safe alphabet. Frames keep the
+ * engine's order, innermost (crashing) frame first.
+ */
+export function sanitizedStackFrames(error: unknown): SanitizedStackFrame[] {
+  if (!(error instanceof Error) || typeof error.stack !== "string") return [];
+  const header = error.message ? `${error.name}: ${error.message}` : error.name;
+  const stack = error.stack.startsWith(header) ? error.stack.slice(header.length) : error.stack;
+  const frames: SanitizedStackFrame[] = [];
+  for (const line of stack.split(/\r?\n/)) {
+    if (frames.length >= MAX_FRAMES) break;
+    const frame = parseFrame(line);
+    if (frame) frames.push(frame);
+  }
+  return frames;
+}
+
 /**
  * Reduces any thrown value to the only fields that may be transmitted.
- * Messages are never read. Only message-free stack frames feed the grouping
- * fingerprint, so sensitive text embedded in an error cannot reach the
- * telemetry backend either directly or as a guessable message hash.
+ * Messages are never read into the report. Only message-free stack frames
+ * feed the grouping fingerprint and the transmitted frames, so sensitive text
+ * embedded in an error cannot reach the telemetry backend either directly or
+ * as a guessable message hash.
  */
 export function sanitizeError(error: unknown, source: string): SanitizedCrashReport {
   const rawName = extractErrorName(error);
@@ -166,6 +240,37 @@ export function sanitizeError(error: unknown, source: string): SanitizedCrashRep
     source: normalizeCrashToken(source, MAX_SOURCE_LENGTH) || "unknown-source",
     type: normalizeCrashToken(rawName, MAX_TYPE_LENGTH) || "UnknownError",
     fingerprint: crashFingerprint(fingerprintInput),
+    frames: sanitizedStackFrames(error),
+  };
+}
+
+/**
+ * Shapes a sanitized report as a PostHog Error Tracking `$exception` event.
+ * The exception value is the developer source label, never the message.
+ * PostHog expects raw frames outermost first, so the order is reversed here.
+ */
+export function crashEventProperties(
+  report: SanitizedCrashReport,
+  platform: "hermes" | "web:javascript",
+) {
+  const frames = [...report.frames].reverse().map((frame) => ({
+    platform,
+    ...frame,
+    in_app: true,
+  }));
+  return {
+    $exception_list: [
+      {
+        type: report.type,
+        value: report.source,
+        mechanism: { type: "generic", handled: false, synthetic: false },
+        ...(frames.length > 0 ? { stacktrace: { type: "raw" as const, frames } } : {}),
+      },
+    ],
+    $exception_level: "error" as const,
+    source: report.source,
+    type: report.type,
+    fingerprint: report.fingerprint,
   };
 }
 
@@ -369,7 +474,8 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
 
   return {
     captureCrash: (report) => {
-      client.capture(CRASH_EVENT_NAME, { ...report });
+      const platform = "HermesInternal" in globalThis ? "hermes" : "web:javascript";
+      client.capture(CRASH_EVENT_NAME, crashEventProperties(report, platform));
     },
     capture: (event, properties) => {
       client.capture(event, properties);

@@ -29,7 +29,7 @@ export function DevTelemetryCard() {
       const sent = await telemetry.sendTestCrash("developer-test-action");
       if (sent) {
         setResultMessage(
-          "Test crash event emitted and flushed successfully. Check PostHog for event 'mobile_crash' with source 'developer-test-action' and type 'CustomError'.",
+          "Test crash event emitted and flushed successfully. Check PostHog Error Tracking for a '$exception' with source 'developer-test-action' and type 'CustomError'.",
         );
         setResultOk(true);
       } else {

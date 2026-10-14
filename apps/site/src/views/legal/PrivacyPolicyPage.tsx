@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="October 7, 2026"
+      lastUpdated="October 14, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -210,8 +210,10 @@ export function PrivacyPolicyPage() {
             privacy-safe streams: (1) cookieless, memory-only public web analytics and Core Web
             Vitals on public pages without observing authenticated financial workspaces, (2)
             server-side AI operational observability ($ai_generation, tokens, latency, safe status)
-            after separate assistant consent, and (3) sanitized mobile crash telemetry
-            (mobile_crash) with coarse exception types and hashed stack frame shapes. PostHog
+            after separate assistant consent, and (3) sanitized mobile crash reports with a coarse
+            exception type, the app area that failed, and the code locations of the failure
+            (function and file names, line and column numbers). Crash reports never include the
+            error message, file paths on your device, or anything you entered. PostHog
             person-profile processing is disabled ($process_person_profile: false), and no user
             identities, financial records, prompts, or conversation contents are ever sent.
           </li>

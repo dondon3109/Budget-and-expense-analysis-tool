@@ -1,5 +1,6 @@
 import {
   CRASH_EVENT_NAME,
+  crashEventProperties,
   createPostHogOptions,
   createTelemetryService,
   crashFingerprint,
@@ -10,6 +11,7 @@ import {
   normalizeCrashToken,
   parseTelemetryConfig,
   REMOTE_KILL_SWITCH_FLAG,
+  sanitizedStackFrames,
   sanitizeError,
   type SanitizedCrashReport,
   type TelemetryConfig,
@@ -104,6 +106,96 @@ describe("sanitizeError", () => {
     expect(report.source).toMatch(/^[A-Za-z0-9_.-]{1,48}$/);
     const longName = Object.assign(new Error("x"), { name: "E".repeat(200) });
     expect(sanitizeError(longName, "s").type).toBe("CustomError");
+  });
+});
+
+describe("sanitizedStackFrames", () => {
+  it("keeps code locations and drops a multi-line message, even one shaped like a frame", () => {
+    const error = Object.assign(new Error("acct=ZEN-1\n    at juan@mail.example (ZEN-1:4:2)"), {
+      stack: [
+        "Error: acct=ZEN-1",
+        "    at juan@mail.example (ZEN-1:4:2)",
+        "    at submit (address at /data/user/0/site.zoption.app/files/index.android.bundle:1:2345)",
+        "    at new Entry (http://10.0.2.2:8081/index.bundle?platform=android&token=abc:12:7)",
+        "    at /app/root.js:30:40",
+        "    at native",
+        "flush@/app/sync.js:5:6",
+      ].join("\n"),
+    });
+    const frames = sanitizedStackFrames(error);
+    expect(frames).toEqual([
+      { function: "submit", filename: "index.android.bundle", lineno: 1, colno: 2345 },
+      { function: "newEntry", filename: "index.bundle", lineno: 12, colno: 7 },
+      { function: "?", filename: "root.js", lineno: 30, colno: 40 },
+      { function: "flush", filename: "sync.js", lineno: 5, colno: 6 },
+    ]);
+    const serialized = JSON.stringify(sanitizeError(error, "s"));
+    for (const secret of ["ZEN-1", "juan", "site.zoption.app", "token", "abc", "10.0.2.2"]) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+
+  it("returns no frames for non-errors and caps a runaway stack", () => {
+    expect(sanitizedStackFrames("thrown string")).toEqual([]);
+    expect(sanitizedStackFrames({ stack: "    at fn (a.js:1:1)" })).toEqual([]);
+    const deep = Object.assign(new Error("x"), {
+      stack: [
+        "Error: x",
+        ...Array.from({ length: 80 }, (_, i) => `    at f${i} (a.js:1:${i})`),
+      ].join("\n"),
+    });
+    expect(sanitizedStackFrames(deep)).toHaveLength(50);
+  });
+});
+
+describe("crashEventProperties", () => {
+  it("builds an Error Tracking exception with the source as its value, outermost frame first", () => {
+    const report: SanitizedCrashReport = {
+      source: "root-error-boundary",
+      type: "TypeError",
+      fingerprint: "abc",
+      frames: [
+        { function: "inner", filename: "index.android.bundle", lineno: 1, colno: 9 },
+        { function: "outer", filename: "index.android.bundle", lineno: 1, colno: 3 },
+      ],
+    };
+    const properties = crashEventProperties(report, "hermes");
+    expect(properties.$exception_list).toEqual([
+      {
+        type: "TypeError",
+        value: "root-error-boundary",
+        mechanism: { type: "generic", handled: false, synthetic: false },
+        stacktrace: {
+          type: "raw",
+          frames: [
+            {
+              platform: "hermes",
+              function: "outer",
+              filename: "index.android.bundle",
+              lineno: 1,
+              colno: 3,
+              in_app: true,
+            },
+            {
+              platform: "hermes",
+              function: "inner",
+              filename: "index.android.bundle",
+              lineno: 1,
+              colno: 9,
+              in_app: true,
+            },
+          ],
+        },
+      },
+    ]);
+    expect(properties).toMatchObject({
+      source: "root-error-boundary",
+      type: "TypeError",
+      fingerprint: "abc",
+    });
+    expect(
+      crashEventProperties({ ...report, frames: [] }, "web:javascript").$exception_list[0],
+    ).not.toHaveProperty("stacktrace");
   });
 });
 
@@ -273,7 +365,7 @@ describe("createTelemetryService", () => {
     expect(harness.captured).toHaveLength(1);
     const report = harness.captured[0];
     if (!report) throw new Error("report missing");
-    expect(Object.keys(report).sort()).toEqual(["fingerprint", "source", "type"]);
+    expect(Object.keys(report).sort()).toEqual(["fingerprint", "frames", "source", "type"]);
     expect(report.source).toBe("root-error-boundary");
     expect(report.type).toBe("Error");
     expect(JSON.stringify(harness.captured)).not.toContain("acct=ZEN-1");
@@ -375,7 +467,7 @@ describe("createTelemetryService", () => {
   });
 
   it("keeps the documented event name and flag constant in sync", () => {
-    expect(CRASH_EVENT_NAME).toBe("mobile_crash");
+    expect(CRASH_EVENT_NAME).toBe("$exception");
     expect(REMOTE_KILL_SWITCH_FLAG).toBe("crash-telemetry-enabled");
   });
 });

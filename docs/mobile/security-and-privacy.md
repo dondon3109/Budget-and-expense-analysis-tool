@@ -35,7 +35,7 @@
 | Malicious import                                 | Bounded file size/rows, safe parser, no formula execution, preview before online atomic commit, no file-content logging                                                                                                                                                                                                                                                                                |
 | Compromised/crashed migration                    | Versioned transactional migrations, backup generation/recovery state, fail closed without deleting readable data                                                                                                                                                                                                                                                                                       |
 | Arbitrary exfiltration path                      | Allowlisted Worker base URL and typed routes only; no arbitrary HTTP/SQL/debug consoles in production                                                                                                                                                                                                                                                                                                  |
-| Sensitive telemetry                              | No financial fields, tokens, names, descriptions, file contents, or assistant messages in analytics/crash breadcrumbs; custom crash fields carry only coarse exception types, developer source labels, and message-free stack grouping tokens                                                                                                                                                          |
+| Sensitive telemetry                              | No financial fields, tokens, names, descriptions, file contents, or assistant messages in analytics/crash breadcrumbs; custom crash fields carry only coarse exception types, developer source labels, message-free stack grouping tokens, and stack frames reduced to code locations                                                                                                                  |
 | Stale JWT after account deletion                 | Honor Worker `410` tombstone behavior; freeze and clear according to documented recovery state                                                                                                                                                                                                                                                                                                         |
 | Rooted/jailbroken device                         | At-rest encryption and minimal exposure reduce risk but cannot guarantee secrecy on a fully compromised runtime; document limitation honestly                                                                                                                                                                                                                                                          |
 
@@ -83,12 +83,19 @@ disables the pipeline. Properties:
   key or approved regional host is missing unless the build-time kill switch
   explicitly disables telemetry.
 - **Sanitized crash fields only.** The SDK's exception autocapture stays fully
-  disabled because it would transmit raw errors and stacks, which can embed
-  transaction text, identifiers, or server responses. Zoption's custom fields
-  instead carry a coarse exception type (for example `TypeError`), a grouping
-  token derived from message-free normalized stack frames, and a
-  developer-controlled source label. Raw messages, complete stacks, workspace
-  contents, notes, account identifiers, and credentials are never attached.
+  disabled because it would transmit raw error messages, which can embed
+  transaction text, identifiers, or server responses. Zoption builds the
+  PostHog Error Tracking `$exception` event itself (`sanitizeError` and
+  `crashEventProperties`). It carries a coarse exception type (for example
+  `TypeError`), a developer-controlled source label in place of the message, a
+  grouping token derived from message-free normalized stack frames, and at most
+  50 stack frames reduced to code locations: function name, the file's base
+  name, line, and column. `sanitizedStackFrames` cuts the `Name: message`
+  header off the stack before parsing, keeps only lines that parse as a frame,
+  drops directory paths and URL queries, and reduces each name to a safe
+  alphabet, so neither a multi-line message nor a device path leaves the
+  device. Error messages, workspace contents, notes, account identifiers, and
+  credentials are never attached.
   PostHog still adds the minimal event envelope required by its protocol,
   including ephemeral pseudonymous distinct/session identifiers and SDK
   metadata. Persistence is memory-only, person profiles are restricted to
@@ -112,6 +119,9 @@ disables the pipeline. Properties:
   success only after the remote gate is open and capture plus flush complete.
 - **JS-only dependency.** posthog-react-native has no required native module,
   so adding it does not alter native Android dependencies.
+- **Release frames are minified.** Release bundles are Hermes bytecode, so
+  frames read as `index.android.bundle:1:<column>` until Hermes source maps
+  are uploaded to PostHog; they still group crashes into issues.
 - **Uncaught errors take one path.** SDK autocapture is replaced by a global
   handler wrapper that forwards exceptions through the same sanitizer; the
   root error boundary reports through it as well. Delivery on a fatal crash is

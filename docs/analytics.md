@@ -10,7 +10,7 @@ PostHog serves three distinct, privacy-isolated telemetry channels:
 
 1. **Public site pageviews, web funnel events, and Core Web Vitals** (Client-side, cookieless, memory-only)
 2. **AI Observability** (Server-side Worker metadata, `$ai_generation`)
-3. **Android Crash Telemetry** (Client-side mobile, sanitized `mobile_crash`)
+3. **Android Crash Telemetry** (Client-side mobile, sanitized `$exception` for Error Tracking)
 
 All telemetry is strictly bounded to protect financial privacy, avoid collecting personal or account identifiers, and operate within PostHog's generous Free Tier.
 
@@ -64,12 +64,13 @@ Server-side telemetry in `apps/api/src/assistant/posthog-ai.ts` records operatio
 - **Prohibited Fields**: No user prompts, no AI assistant answers, no tool arguments or outputs, no financial ledger context, no tenant/user identifiers.
 - **Person Profile Disabled**: `$process_person_profile: false` is attached to every event.
 
-### 2.4 Android Crash Telemetry (`mobile_crash`)
+### 2.4 Android Crash Telemetry (`$exception`)
 
-Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` transmits sanitized crash events:
+Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` transmits sanitized crash events as PostHog Error Tracking `$exception` events, so crashes group into issues under **Error Tracking**:
 
-- **Allowed Fields**: Exception class (e.g., `IllegalArgumentException`), sanitized component name (e.g., `AppNavigation`), hashed stack frame fingerprint, app version, build code, OS platform.
-- **Prohibited Fields**: No raw stack traces with user values, no raw error messages, no transaction details, no user identifiers.
+- **Allowed Fields**: Coarse exception type (`TypeError`, `CustomError`, ...), the developer source label (`root-error-boundary`, `uncaught-exception`) as the exception value, hashed stack frame `fingerprint`, up to 50 stack frames reduced to function name, file base name, line, and column, app version, build code, OS platform.
+- **Prohibited Fields**: No error messages (the `Name: message` stack header is cut off before frames are parsed), no directory paths or URL queries in frames, no transaction details, no user identifiers.
+- **Billing**: `$exception` events count against the Error Tracking quota, not product analytics events.
 - **SDK Safeguards**: `personProfiles: "never"`, `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`, and remote kill-switch support (`crash-telemetry-enabled`).
 
 ### 2.5 Goal-Based Onboarding Events (D1, first-party)
@@ -115,7 +116,7 @@ PostHog's generous Free Tier provides:
 | :------------------------- | :------------------------------------------------ | :-------------------------- | :--------------- |
 | **Public Web Analytics**   | 1 `$pageview` + ~3 `$web_vitals` per public visit | ~10,000 – 40,000 events     | 1.0% – 4.0%      |
 | **AI Observability**       | 1 `$ai_generation` per assistant request          | ~1,000 – 10,000 events      | 0.1% – 1.0%      |
-| **Mobile Crash Telemetry** | 1 `mobile_crash` per rare runtime crash           | < 500 events                | < 0.1%           |
+| **Mobile Crash Telemetry** | 1 `$exception` per rare runtime crash             | < 500 events                | < 0.1%           |
 | **Total Estimated**        | —                                                 | **~11,500 – 50,500 events** | **~1.2% – 5.1%** |
 
 ### Quota Guardrails
@@ -256,7 +257,7 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 
 - **Insight Name**: `Mobile Crash Count`
 - **Insight Type**: Trends (Bar)
-- **Event**: `mobile_crash`
+- **Event**: `$exception`
 - **Aggregation**: Total count
 - **Interval**: Daily
 
@@ -264,14 +265,14 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 
 - **Insight Name**: `Unique Crash Issues`
 - **Insight Type**: Value / Table
-- **Event**: `mobile_crash`
+- **Event**: `$exception`
 - **Aggregation**: `count(distinct fingerprint)`
 
 #### Panel 15: Crashes by App Version / Build
 
 - **Insight Name**: `Crashes by App Version`
 - **Insight Type**: Bar / Breakdown
-- **Event**: `mobile_crash`
+- **Event**: `$exception`
 - **Aggregation**: Total count
 - **Breakdown**: `app_version`
 
@@ -279,7 +280,7 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 
 - **Insight Name**: `Top Exception Types`
 - **Insight Type**: Table
-- **Event**: `mobile_crash`
+- **Event**: `$exception`
 - **Aggregation**: Total count
 - **Group by**: `type` (coarse exception class)
 - **Sort**: Descending by count
@@ -291,5 +292,5 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 1. Log into your PostHog Cloud account (e.g. `https://us.posthog.com`).
 2. Navigate to **Dashboards** > **New Dashboard**.
 3. Set the name to **`Zoption Overview`** and description to `Unified telemetry for Zoption Public Web, Assistant AI Observability, and Android Crash Diagnostics`.
-4. Click **Add insight** and configure each of the 16 panels described above using the respective event names (`$pageview`, `$web_vitals`, `$ai_generation`, `mobile_crash`).
+4. Click **Add insight** and configure each of the 16 panels described above using the respective event names (`$pageview`, `$web_vitals`, `$ai_generation`, `$exception`).
 5. Organize the dashboard layout into 3 horizontal sections: **Website Traffic & Web Vitals**, **AI Assistant Observability**, and **Mobile Diagnostics**.
