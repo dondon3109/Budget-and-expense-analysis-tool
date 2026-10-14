@@ -90,35 +90,45 @@ describe("sanitizeError", () => {
     expect(normalizedStackShape(firstError)).not.toContain("ZEN-1");
   });
 
-  it("keeps frame lines with their positions and drops the message line", () => {
-    const error = Object.assign(new Error("acct=ZEN-1"), {
-      stack:
-        "Error: acct=ZEN-1\n    note=ZEN-2 on a continuation line\n" +
-        "    at submit (address at index.android.bundle:1:2345)\n    at root (/app/root.ts:30:40)",
+  it("keeps code locations and drops a multi-line message, even one shaped like a frame", () => {
+    const error = Object.assign(new Error("acct=ZEN-1\n    at juan@mail.example (ZEN-1:4:2)"), {
+      stack: [
+        "Error: acct=ZEN-1",
+        "    at juan@mail.example (ZEN-1:4:2)",
+        "    note=ZEN-2 on a continuation line",
+        "    at submit (address at index.android.bundle:1:2345)",
+        "    at new Entry (http://10.0.2.2:8081/index.bundle?platform=android&token=abc:12:7)",
+        "    at /app/root.js:30:40",
+        "    at native",
+        "flush@/app/sync.js:5:6",
+      ].join("\n"),
     });
     expect(messageFreeFrames(error)).toEqual([
-      "at submit (address at index.android.bundle:1:2345)",
-      "at root (/app/root.ts:30:40)",
+      "at submit (index.android.bundle:1:2345)",
+      "at newEntry (http://10.0.2.2:8081/index.bundle:12:7)",
+      "at /app/root.js:30:40",
+      "at flush (/app/sync.js:5:6)",
     ]);
+    const serialized = JSON.stringify(sanitizeError(error, "s"));
+    for (const secret of ["ZEN-1", "ZEN-2", "juan", "token", "abc"]) {
+      expect(serialized).not.toContain(secret);
+    }
     expect(messageFreeFrames("thrown string")).toEqual([]);
+    expect(messageFreeFrames({ stack: "    at fn (a.js:1:1)" })).toEqual([]);
   });
 
-  it("bounds and scrubs frame lines", () => {
+  it("bounds and scrubs frames", () => {
     const frame = `    at f${"x".repeat(400)} (/app/a.ts:1:2)`;
     const error = Object.assign(new Error("x"), {
-      stack: [
-        "Error: x",
-        ...Array.from({ length: 80 }, () => frame),
-        "    at g\u0000\"';{} (/b.ts:3:4)",
-      ].join("\n"),
+      stack: ["Error: x", ...Array.from({ length: 80 }, () => frame)].join("\n"),
     });
     const frames = messageFreeFrames(error);
     expect(frames).toHaveLength(50);
-    expect(frames.every((line) => line.length <= 300)).toBe(true);
-    const last = messageFreeFrames(
+    expect(frames.every((line) => line.length <= 160)).toBe(true);
+    const scrubbed = messageFreeFrames(
       Object.assign(new Error("x"), { stack: "Error: x\n    at g\u0000\"';{} (/b.ts:3:4)" }),
     );
-    expect(last).toEqual(["at g (/b.ts:3:4)"]);
+    expect(scrubbed).toEqual(["at g (/b.ts:3:4)"]);
   });
 
   it("rebuilds the reported error from the sanitized report only", () => {

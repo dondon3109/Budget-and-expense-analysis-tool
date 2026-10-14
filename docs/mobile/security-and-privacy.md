@@ -86,10 +86,11 @@ disables the pipeline. Properties:
   disabled because it would transmit raw error messages, which can embed
   transaction text, identifiers, or server responses. Each crash is rebuilt as
   a new error whose message is its coarse exception type (for example
-  `TypeError`) and whose stack holds only the original stack's frame lines:
-  at most 50, each at most 300 characters, scrubbed to the characters a frame
-  needs. A frame names a code location (function, bundle file, line, column),
-  never a runtime value. It is sent as a PostHog Error Tracking `$exception`
+  `TypeError`) and whose stack holds only frames rebuilt from code locations.
+  The `Name: message` header is cut off before parsing, so a multi-line
+  message cannot pass as frames; every remaining line must parse as a frame,
+  and only its function name, file path (without query or fragment), line,
+  and column are kept, scrubbed to a safe alphabet, at most 50 frames. It is sent as a PostHog Error Tracking `$exception`
   with a developer-controlled source label and a grouping token derived from
   the normalized frames. Raw messages, continuation lines, error causes,
   workspace contents, notes, account identifiers, and credentials are never

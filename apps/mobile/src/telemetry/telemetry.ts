@@ -19,7 +19,8 @@
  * stays disabled because it would transmit raw messages, which can embed
  * transaction text, identifiers, or server responses. Each crash is rebuilt
  * as a new error whose message is its coarse type and whose stack holds only
- * the original stack's frame lines (code locations), then sent as a PostHog
+ * frames rebuilt from code locations (function, file, line, column), with the
+ * message header cut off before parsing, then sent as a PostHog
  * Error Tracking `$exception` with the reporting source label and a
  * deterministic grouping token. Release builds upload source maps, so those
  * frames resolve to file, function, and line in PostHog.
@@ -47,7 +48,7 @@ export interface SanitizedCrashReport {
   type: string;
   /** Deterministic hash of type plus message-free stack-frame shape. */
   fingerprint: string;
-  /** Frame lines only: no message, no continuation text, bounded and character-scrubbed. */
+  /** Canonical frame lines rebuilt from code locations only; never message text. */
   frames: string[];
 }
 
@@ -90,7 +91,6 @@ const MAX_SOURCE_LENGTH = 48;
 /** Bound on the hashed input so pathological stacks cannot blow up hashing. */
 const FINGERPRINT_INPUT_LIMIT = 4096;
 const MAX_FRAMES = 50;
-const MAX_FRAME_LENGTH = 300;
 
 /** Strips everything but a small safe alphabet; output may be empty. */
 export function normalizeCrashToken(value: string, maxLength: number): string {
@@ -136,45 +136,80 @@ export function extractErrorName(error: unknown): string {
   return "NonError";
 }
 
+// Hermes and V8: "at fn (file:1:2)", "at fn (address at file:1:2)", "at file:1:2".
+const AT_FRAME =
+  /^\s*at\s+(?:(.+?)\s+\((?:address at\s+)?(.+):(\d+):(\d+)\)|(?:address at\s+)?(.+):(\d+):(\d+))\s*$/;
+// JavaScriptCore: "fn@file:1:2" or "@file:1:2".
+const AT_SIGN_FRAME = /^\s*([^@\s]*)@(.+):(\d+):(\d+)\s*$/;
+const MAX_FUNCTION_LENGTH = 128;
+const MAX_FILENAME_LENGTH = 256;
+
+interface ParsedFrame {
+  fn?: string;
+  file: string;
+  lineno: string;
+  colno: string;
+}
+
+function parseFrame(line: string): ParsedFrame | undefined {
+  const at = AT_FRAME.exec(line);
+  if (at?.[2] !== undefined) {
+    return { fn: at[1], file: at[2], lineno: at[3] ?? "", colno: at[4] ?? "" };
+  }
+  if (at) return { file: at[5] ?? "", lineno: at[6] ?? "", colno: at[7] ?? "" };
+  const sign = AT_SIGN_FRAME.exec(line);
+  if (!sign) return undefined;
+  return { fn: sign[1], file: sign[2] ?? "", lineno: sign[3] ?? "", colno: sign[4] ?? "" };
+}
+
 /**
- * Extracts only JavaScript stack frames. The message-bearing first line and
- * any non-frame continuation lines are discarded before hashing. Line and
- * column numbers are normalized so the same code location groups across
- * minor bundle layout changes.
+ * Rebuilds one frame as a canonical V8 line from its code location alone.
+ * The file keeps its path, because the SDK matches it against the bundle's
+ * debug id for source map lookup, but loses any query or fragment, where a
+ * dev-server URL carries tokens.
  */
-function stackFrameLines(error: unknown): string[] {
-  if (!(error instanceof Error) || typeof error.stack !== "string") return [];
-  return error.stack
-    .split(/\r?\n/)
-    .filter((line) => /^\s*at\s+/.test(line) || /@\S+:\d+(?::\d+)?\s*$/.test(line));
-}
-
-export function normalizedStackShape(error: unknown): string {
-  return stackFrameLines(error)
-    .map((line) =>
-      line
-        .trim()
-        .replace(/:\d+:\d+/g, ":#:#")
-        .replace(/:\d+(?=\)?\s*$)/, ":#"),
-    )
-    .join("\n")
-    .slice(0, FINGERPRINT_INPUT_LIMIT);
+function canonicalFrame(line: string): string | undefined {
+  const frame = parseFrame(line);
+  if (!frame) return undefined;
+  const filename = (frame.file.split(/[?#]/)[0] ?? "")
+    .replace(/[^A-Za-z0-9_.:/-]/g, "")
+    .slice(0, MAX_FILENAME_LENGTH);
+  if (!filename) return undefined;
+  const location = `${filename}:${Number(frame.lineno)}:${Number(frame.colno)}`;
+  const name = (frame.fn ?? "").replace(/[^A-Za-z0-9_$.<>]/g, "").slice(0, MAX_FUNCTION_LENGTH);
+  return name ? `at ${name} (${location})` : `at ${location}`;
 }
 
 /**
- * The frame lines PostHog symbolicates, with line and column kept. A frame
- * names a code location (function, bundle file, position), never a runtime
- * value; the scrub still drops anything outside the characters a frame needs.
+ * Code locations only, innermost frame first. The `Name: message` header is
+ * cut off before parsing, so a multi-line message cannot leave as
+ * continuation lines, even one shaped like a frame; every remaining line must
+ * then parse as a frame and is rebuilt from its function, file, line, and
+ * column.
  */
 export function messageFreeFrames(error: unknown): string[] {
-  return stackFrameLines(error)
-    .slice(0, MAX_FRAMES)
-    .map((line) =>
-      line
-        .trim()
-        .replace(/[^A-Za-z0-9_$.:/()@<>[\] -]/g, "")
-        .slice(0, MAX_FRAME_LENGTH),
-    );
+  if (!(error instanceof Error) || typeof error.stack !== "string") return [];
+  const header = error.message ? `${error.name}: ${error.message}` : error.name;
+  const stack = error.stack.startsWith(header) ? error.stack.slice(header.length) : error.stack;
+  const frames: string[] = [];
+  for (const line of stack.split(/\r?\n/)) {
+    if (frames.length >= MAX_FRAMES) break;
+    const frame = canonicalFrame(line);
+    if (frame) frames.push(frame);
+  }
+  return frames;
+}
+
+/**
+ * The grouping input: message-free frames with line and column numbers
+ * normalized, so the same code location groups across minor bundle layout
+ * changes.
+ */
+export function normalizedStackShape(error: unknown): string {
+  return messageFreeFrames(error)
+    .map((line) => line.replace(/:\d+:\d+(?=\)?$)/, ":#:#"))
+    .join("\n")
+    .slice(0, FINGERPRINT_INPUT_LIMIT);
 }
 
 /**
