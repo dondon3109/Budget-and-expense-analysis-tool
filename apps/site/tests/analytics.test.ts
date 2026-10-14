@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { aiReferrer } from "../src/client/analytics";
+import { aiReferrer, isProductionHost } from "../src/client/analytics";
 import { onRequest } from "../functions/ingest/[[path]]";
 
 describe("aiReferrer", () => {
@@ -15,6 +15,17 @@ describe("aiReferrer", () => {
     expect(aiReferrer("https://www.google.com/")).toBeUndefined();
     expect(aiReferrer("https://notchatgpt.com/")).toBeUndefined();
     expect(aiReferrer("")).toBeUndefined();
+  });
+});
+
+describe("isProductionHost", () => {
+  it("counts only the public hostnames, not deployment URLs or lookalikes", () => {
+    expect(isProductionHost("zoption.site")).toBe(true);
+    expect(isProductionHost("www.zoption.site")).toBe(true);
+    expect(isProductionHost("zoption-site.pages.dev")).toBe(false);
+    expect(isProductionHost("abc123.zoption-site.pages.dev")).toBe(false);
+    expect(isProductionHost("localhost")).toBe(false);
+    expect(isProductionHost("zoption.site.example.com")).toBe(false);
   });
 });
 
