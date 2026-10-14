@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 9, 2026",
+  releasedOn: "October 14, 2026",
   changes: [
     {
       title: "Several purchases in one message",
@@ -44,9 +44,34 @@ export const currentRelease: ProductRelease = {
         "Android Beta 0.2.48 could open to a blank screen; that is fixed. The collapsed sidebar on the web assistant page now has readable link names for screen readers. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
     },
     {
-      title: "Android Beta 0.2.51",
+      title: "A pet that grows with your streak",
       description:
-        "The official Android Beta carries multi-purchase drafts, the updated assistant consent, the tidier assistant, the calmer Home and Analytics, the 3x1 mic widget with press feedback, and these fixes. If 0.2.48 opens to a blank screen, install 0.2.51 over it.",
+        "Pick an egg and name it, tap it 10 times to hatch it, and watch your pet grow from Baby to Legend as you keep your streak. Pets have their own page on web and a Pet entry in the Home menu on mobile, with pop-ups when it hatches, grows, gets sick, or passes away. Growing past Baby is part of Zoption Pro.",
+    },
+    {
+      title: "A Fun theme and a personalized start",
+      description:
+        "A new Fun theme brings candy colors and chunky buttons that press down. New accounts finish setup by picking a theme and choosing whether to raise a pet.",
+    },
+    {
+      title: "E-wallets and several currencies per account",
+      description:
+        "Add GCash or Maya as an e-wallet account. Bank and savings accounts can hold money in several currencies, and Adjust balance lets you add a second currency, like a USD balance in a PHP bank account.",
+    },
+    {
+      title: "Flatter pages",
+      description:
+        "Web pages drop their subtitles and most card frames for flat sections, and the mobile More tab starts higher without its large title.",
+    },
+    {
+      title: "More fixes",
+      description:
+        "Opening the app counts toward your pet's streak again, signing in with Google on Android no longer reports \"invalid flow state\" after it succeeded, and the web account list scrolls to an account you just added. Mobile crash reports now say where in Zoption's code a crash happened, still without error messages or your data.",
+    },
+    {
+      title: "Android Beta 0.2.52",
+      description:
+        "The official Android Beta carries the pet, the Fun theme, e-wallets and multi-currency accounts, the flatter More tab, crash reporting that finds the broken line, and these fixes. Install 0.2.52 over 0.2.51.",
     },
   ],
 };
