@@ -1,23 +1,23 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.51-beta",
-  "versionCode": 20351,
-  "filename": "zoption-beta-0.2.51.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.51.apk",
-  "sha256": "1c3f22aad21d089ed3fed8d991372240470f45a4a7f9a34aca66f921096e6ec4",
-  "sizeBytes": 139824025,
-  "sizeLabel": "139,824,025 bytes (133.35 MiB)",
-  "releaseDate": "2026-10-10",
-  "releaseDateLabel": "October 10, 2026",
+  "versionName": "0.2.52-beta",
+  "versionCode": 20352,
+  "filename": "zoption-beta-0.2.52.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.52.apk",
+  "sha256": "38bd3a4af30b59dc9f86bef186809ce92dc50b6efe2a65ed00876ec6895b1879",
+  "sizeBytes": 142688037,
+  "sizeLabel": "142,688,037 bytes (136.08 MiB)",
+  "releaseDate": "2026-10-14",
+  "releaseDateLabel": "October 14, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
   "targetApi": 36,
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Tell the AI Assistant about several purchases at once and it drafts each one with its own Save button.",
-    "Set budgets for a month, every month, or an occasion, with occasions shown on the calendar.",
-    "The mobile calendar is now a full-width month grid with income, expenses, and budget left above it.",
-    "The assistant consent, history, and voice screens are tidier, and the voice orb now moves while it listens and speaks.",
-    "The Android mic widget sits on the home screen as a full 3x1 pill with press feedback."
+    "Raise a streak pet: pick and name an egg, tap it to hatch, and watch it grow, with pop-ups and a Pet entry in the Home menu.",
+    "A new Fun theme with candy colors and chunky buttons, and a theme and pet step for new accounts.",
+    "Add e-wallet accounts like GCash and Maya, and hold several currencies in one bank account.",
+    "The More tab starts higher, and signing in with Google no longer reports a false error.",
+    "Crash reports now say where in the code a crash happened, without error messages or your data."
   ]
 }
