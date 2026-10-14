@@ -59,6 +59,21 @@ jobs:
           EXPO_PUBLIC_POSTHOG_HOST: ${{ vars.EXPO_PUBLIC_POSTHOG_HOST }}
           EXPO_PUBLIC_TELEMETRY_DISABLED: ${{ vars.EXPO_PUBLIC_TELEMETRY_DISABLED }}
 
+      # Source maps let PostHog Error Tracking resolve crash frames to file,
+      # function, and line. The upload runs only when the POSTHOG_CLI_API_KEY
+      # secret exists; without it app.config.ts leaves the PostHog plugin out
+      # and the APK still ships, with minified frames.
+      - name: Install PostHog CLI for source map upload
+        env:
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+        run: |
+          if [ -z "$POSTHOG_CLI_API_KEY" ]; then
+            echo "::notice::POSTHOG_CLI_API_KEY is not set; crash frames stay minified."
+            exit 0
+          fi
+          npm install -g @posthog/cli@0.18.10
+          echo "POSTHOG_UPLOAD_SOURCE_MAPS=1" >> "$GITHUB_ENV"
+
       # A release bump edits exactly two files: package.json for the release
       # version name, app.config.ts for the Android versionCode. Resolve both
       # once so every later publish/verify step shares a single derived
@@ -124,6 +139,10 @@ jobs:
           EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
           EXPO_PUBLIC_POSTHOG_HOST: ${{ vars.EXPO_PUBLIC_POSTHOG_HOST }}
           EXPO_PUBLIC_TELEMETRY_DISABLED: ${{ vars.EXPO_PUBLIC_TELEMETRY_DISABLED }}
+          # Read by posthog-cli in the Hermes source map upload task.
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_CLI_PROJECT_ID: "549527"
+          POSTHOG_CLI_HOST: https://us.posthog.com
 
       # Hard gate: the APK must be signed by the permanent Zoption key
       # (F9:46:70:EB...) and carry the production app identity. Failure here

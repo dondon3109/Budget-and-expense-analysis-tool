@@ -192,6 +192,19 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // (RemoteViews AppWidget + voice capture activity, no new dependencies).
       // See apps/mobile/plugins/with-android-mic-widget.js.
       "./plugins/with-android-mic-widget",
+      // Uploads each release build's Hermes source map to PostHog Error
+      // Tracking so crash frames resolve to file, function, and line. Only the
+      // Android Beta workflow sets POSTHOG_UPLOAD_SOURCE_MAPS, after it installs
+      // posthog-cli with credentials; without them the upload step would fail
+      // a local release build.
+      ...(environmentValue(process.env.POSTHOG_UPLOAD_SOURCE_MAPS) === "1"
+        ? [
+            ["posthog-react-native/expo", { patchMainActivityNewIntent: false }] as [
+              string,
+              unknown,
+            ],
+          ]
+        : []),
     ],
     experiments: {
       typedRoutes: true,

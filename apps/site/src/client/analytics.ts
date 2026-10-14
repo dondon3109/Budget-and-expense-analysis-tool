@@ -50,11 +50,20 @@ const gateAndSanitize: BeforeSendFn = (captureResult) => {
   return { ...captureResult, properties };
 };
 
+/**
+ * Only the public hostnames count. The same production build is also served on
+ * its `*.pages.dev` deployment URLs, which operators open to check a release,
+ * and those visits would otherwise land in web analytics as real traffic.
+ */
+export function isProductionHost(hostname: string): boolean {
+  return hostname === "zoption.site" || hostname === "www.zoption.site";
+}
+
 let initialized = false;
 
 export function startAnalytics(): (() => void) | undefined {
   const key = import.meta.env.PUBLIC_POSTHOG_KEY?.trim();
-  if (!key) return undefined;
+  if (!key || !isProductionHost(location.hostname)) return undefined;
 
   if (!initialized) {
     posthog.init(key, {

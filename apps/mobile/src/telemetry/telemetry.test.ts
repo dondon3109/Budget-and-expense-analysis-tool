@@ -1,11 +1,12 @@
 import {
-  CRASH_EVENT_NAME,
+  crashReportError,
   createPostHogOptions,
   createTelemetryService,
   crashFingerprint,
   DEFAULT_POSTHOG_HOST,
   extractErrorName,
   forwardUncaughtErrors,
+  messageFreeFrames,
   normalizedStackShape,
   normalizeCrashToken,
   parseTelemetryConfig,
@@ -54,7 +55,7 @@ describe("parseTelemetryConfig", () => {
 });
 
 describe("sanitizeError", () => {
-  it("never transmits raw messages or stacks", () => {
+  it("never transmits raw messages", () => {
     const error = new Error("transfer to acct=ZEN-4242 failed, server said overdraft");
     const report = sanitizeError(error, "root-error-boundary");
     const serialized = JSON.stringify(report);
@@ -87,6 +88,60 @@ describe("sanitizeError", () => {
     expect(otherFailure.fingerprint).not.toBe(first.fingerprint);
     expect(otherSource.fingerprint).toBe(first.fingerprint); // source is not hashed
     expect(normalizedStackShape(firstError)).not.toContain("ZEN-1");
+  });
+
+  it("keeps code locations and drops a multi-line message, even one shaped like a frame", () => {
+    const error = Object.assign(new Error("acct=ZEN-1\n    at juan@mail.example (ZEN-1:4:2)"), {
+      stack: [
+        "Error: acct=ZEN-1",
+        "    at juan@mail.example (ZEN-1:4:2)",
+        "    note=ZEN-2 on a continuation line",
+        "    at submit (address at index.android.bundle:1:2345)",
+        "    at new Entry (http://10.0.2.2:8081/index.bundle?platform=android&token=abc:12:7)",
+        "    at /app/root.js:30:40",
+        "    at native",
+        "flush@/app/sync.js:5:6",
+      ].join("\n"),
+    });
+    expect(messageFreeFrames(error)).toEqual([
+      "at submit (index.android.bundle:1:2345)",
+      "at newEntry (http://10.0.2.2:8081/index.bundle:12:7)",
+      "at /app/root.js:30:40",
+      "at flush (/app/sync.js:5:6)",
+    ]);
+    const serialized = JSON.stringify(sanitizeError(error, "s"));
+    for (const secret of ["ZEN-1", "ZEN-2", "juan", "token", "abc"]) {
+      expect(serialized).not.toContain(secret);
+    }
+    expect(messageFreeFrames("thrown string")).toEqual([]);
+    expect(messageFreeFrames({ stack: "    at fn (a.js:1:1)" })).toEqual([]);
+  });
+
+  it("bounds and scrubs frames", () => {
+    const frame = `    at f${"x".repeat(400)} (/app/a.ts:1:2)`;
+    const error = Object.assign(new Error("x"), {
+      stack: ["Error: x", ...Array.from({ length: 80 }, () => frame)].join("\n"),
+    });
+    const frames = messageFreeFrames(error);
+    expect(frames).toHaveLength(50);
+    expect(frames.every((line) => line.length <= 160)).toBe(true);
+    const scrubbed = messageFreeFrames(
+      Object.assign(new Error("x"), { stack: "Error: x\n    at g\u0000\"';{} (/b.ts:3:4)" }),
+    );
+    expect(scrubbed).toEqual(["at g (/b.ts:3:4)"]);
+  });
+
+  it("rebuilds the reported error from the sanitized report only", () => {
+    const error = Object.assign(new Error("transfer acct=ZEN-4242 failed"), {
+      stack: "Error: transfer acct=ZEN-4242 failed\n    at submit (/app/entry.ts:10:20)",
+      cause: new Error("acct=ZEN-4242"),
+    });
+    const rebuilt = crashReportError(sanitizeError(error, "root-error-boundary"));
+    expect(rebuilt.name).toBe("Error");
+    expect(rebuilt.message).toBe("Error");
+    expect(rebuilt.stack).toBe("Error: Error\n    at submit (/app/entry.ts:10:20)");
+    expect(rebuilt.cause).toBeUndefined();
+    expect(JSON.stringify([rebuilt.message, rebuilt.stack])).not.toContain("ZEN-4242");
   });
 
   it("reduces non-Error throws to safe generic types", () => {
@@ -273,7 +328,7 @@ describe("createTelemetryService", () => {
     expect(harness.captured).toHaveLength(1);
     const report = harness.captured[0];
     if (!report) throw new Error("report missing");
-    expect(Object.keys(report).sort()).toEqual(["fingerprint", "source", "type"]);
+    expect(Object.keys(report).sort()).toEqual(["fingerprint", "frames", "source", "type"]);
     expect(report.source).toBe("root-error-boundary");
     expect(report.type).toBe("Error");
     expect(JSON.stringify(harness.captured)).not.toContain("acct=ZEN-1");
@@ -374,8 +429,7 @@ describe("createTelemetryService", () => {
     expect(await failedInit.sendTestCrash()).toBe(false);
   });
 
-  it("keeps the documented event name and flag constant in sync", () => {
-    expect(CRASH_EVENT_NAME).toBe("mobile_crash");
+  it("keeps the documented flag constant in sync", () => {
     expect(REMOTE_KILL_SWITCH_FLAG).toBe("crash-telemetry-enabled");
   });
 });

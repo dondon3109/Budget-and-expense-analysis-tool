@@ -95,7 +95,10 @@ export default function RootLayout() {
     configureConnectivity();
     // Inert unless the build embeds EXPO_PUBLIC_POSTHOG_KEY; init resolves
     // even when the telemetry backend fails, so startup is never affected.
+    // One app_session_started per launch is the first step of the
+    // launch-to-first-transaction funnel; the device id lives only this launch.
     void telemetry.init();
+    void telemetry.capture("app_session_started");
     warmUpSounds();
     void registerBackgroundSyncTask().catch(() => {
       // Background sync is a best-effort convenience; registration failure must

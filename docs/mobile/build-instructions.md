@@ -159,3 +159,18 @@ a missing key or host now fails the workflow. To intentionally ship an inert art
 set the repository variable `EXPO_PUBLIC_TELEMETRY_DISABLED=1`; remove it before
 re-enabling telemetry. A new APK is required whenever the embedded build-time
 values change.
+
+To resolve crash frames in PostHog Error Tracking, also store a PostHog
+**personal API key** with the `error tracking write` and `organization read`
+scopes:
+
+```bash
+gh secret set POSTHOG_CLI_API_KEY
+```
+
+With it set, the workflow installs `@posthog/cli`, exports
+`POSTHOG_UPLOAD_SOURCE_MAPS=1` so `app.config.ts` adds the
+`posthog-react-native/expo` plugin, and the release Gradle build uploads the
+Hermes source map to project `549527` on `https://us.posthog.com`. Without the
+secret the APK still builds and reports crashes, with minified frames. Local
+release builds never upload.
