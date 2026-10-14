@@ -265,6 +265,36 @@ describe("pet activity", () => {
     });
   });
 
+  it("keeps a pet a Baby without Pro and grows it once Pro starts", async () => {
+    const harness = createHarness();
+    const { database, env } = harness;
+    const tenantId = await aliceTenant(harness);
+    const hatchedAt = await hatch(harness, tenantId);
+    database.prepare("DELETE FROM pro_trials WHERE tenant_id = ?").run(tenantId);
+    database
+      .prepare(
+        "UPDATE pets SET state_json = json_set(state_json, '$.points', 340) WHERE tenant_id = ?",
+      )
+      .run(tenantId);
+
+    const at = hatchedAt + HOUR;
+    for (let i = 0; i < 2; i += 1) seedTransaction(database, tenantId, at + i * 60_000 * 11);
+    expect(await petRepository.get(env, tenantId, new Date(at + HOUR))).toMatchObject({
+      stage: "baby",
+      points: 349,
+      pointsToday: 9,
+    });
+
+    database
+      .prepare("INSERT INTO pro_trials (tenant_id, started_at, ends_at) VALUES (?, ?, ?)")
+      .run(tenantId, iso(Date.now() - DAY), iso(Date.now() + DAY));
+    seedTransaction(database, tenantId, at + 2 * HOUR);
+    expect(await petRepository.get(env, tenantId, new Date(at + 3 * HOUR))).toMatchObject({
+      stage: "juvenile",
+      points: 359,
+    });
+  });
+
   it("eats points to heal and dies after 72 hours, then waits for a new egg", async () => {
     const harness = createHarness();
     const { env } = harness;

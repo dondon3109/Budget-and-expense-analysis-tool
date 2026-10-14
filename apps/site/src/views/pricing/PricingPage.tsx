@@ -63,6 +63,7 @@ const COMPARISON_ROWS = [
         free: "Basic list",
         pro: "Interactive monthly grid",
       },
+      { name: "Streak pet", free: "Grows to Baby", pro: "Grows to Juvenile, Adult, and Legend" },
     ],
   },
   {
@@ -293,6 +294,10 @@ export function PricingPage() {
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
                 <span>Unlimited custom categories</span>
+              </li>
+              <li className="pricing-card-feature-item">
+                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
+                <span>A streak pet that grows past Baby, all the way to Legend</span>
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />

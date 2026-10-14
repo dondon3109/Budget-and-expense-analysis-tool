@@ -6,8 +6,9 @@ import { PetScreen } from "./PetScreen";
 import { babyPet, noPet } from "./pet-test-fixtures";
 
 const mockBack = jest.fn();
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-  router: { back: () => mockBack() },
+  router: { back: () => mockBack(), push: (path: string) => mockPush(path) },
   useFocusEffect: (effect: () => void) => {
     const { useEffect } = jest.requireActual<{
       useEffect: (effect: () => void, deps: unknown[]) => void;
@@ -17,6 +18,8 @@ jest.mock("expo-router", () => ({
 }));
 const mockSession = { getAccessToken: async () => "token" };
 jest.mock("@/auth/session-state", () => ({ useSessionSnapshot: () => mockSession }));
+let mockPlan = { plan: "zoption_pro", status: "ready" };
+jest.mock("@/auth/plan-state", () => ({ usePlan: () => mockPlan }));
 jest.mock("@/api/pet", () => ({
   getPet: jest.fn(),
   choosePetEgg: jest.fn(),
@@ -31,6 +34,8 @@ describe("PetScreen", () => {
     jest.mocked(setPetEnabled).mockReset();
     jest.mocked(hatchPet).mockReset();
     mockBack.mockReset();
+    mockPush.mockReset();
+    mockPlan = { plan: "zoption_pro", status: "ready" };
   });
 
   it("lets a new user pick an egg", async () => {
@@ -71,6 +76,17 @@ describe("PetScreen", () => {
     expect(screen.getByLabelText("120 of 350 points to grow")).toBeTruthy();
     expect(screen.getByLabelText("Health 100 of 100")).toBeTruthy();
     expect(screen.getByLabelText("Today 30 of 100 points")).toBeTruthy();
+    expect(screen.queryByText("Growing into a Juvenile needs Zoption Pro.")).toBeNull();
+  });
+
+  it("tells a free user their pet needs Pro to grow", async () => {
+    mockPlan = { plan: "free", status: "ready" };
+    usePetStore.setState({ pet: babyPet });
+    jest.mocked(getPet).mockResolvedValue(babyPet);
+    await render(<PetScreen />);
+    expect(screen.getByText("Growing into a Juvenile needs Zoption Pro.")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "See Zoption Pro" }));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/plan-billing");
   });
 
   it("shows the pet's place on the growth path and lets the user pet it", async () => {

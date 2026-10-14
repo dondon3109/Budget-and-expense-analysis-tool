@@ -1,4 +1,10 @@
-import { PET_ACTION_RULES, PET_HATCH_TAPS, type PetSpecies, type PetStage } from "./pet";
+import {
+  PET_ACTION_RULES,
+  PET_HATCH_TAPS,
+  petStageForPoints,
+  type PetSpecies,
+  type PetStage,
+} from "./pet";
 import type { PetMoment } from "./petMoment";
 import type { PetView } from "./schemas/pet";
 
@@ -53,6 +59,16 @@ export function petStatusLine(view: PetView): string {
   if (view.healthState === "sick") return "Feeling sick. Log something to heal it.";
   if (view.nextStagePoints === null) return `${view.points} points. Fully grown.`;
   return `${view.points} of ${view.nextStagePoints} points to grow.`;
+}
+
+/**
+ * Why a pet without Pro stops short of its next stage (see `petFreePointsCap`), or null for a
+ * Legend or an egg. Clients show it only once they know the plan is Free; the Worker enforces it.
+ */
+export function petGrowthLockedLine(view: PetView): string | null {
+  if (view.stage === "egg" || view.nextStagePoints === null) return null;
+  const next = petStageForPoints(view.nextStagePoints);
+  return `Growing into ${next === "adult" ? "an" : "a"} ${petStageLabels[next]} needs Zoption Pro.`;
 }
 
 /** The pet pop-up's title and message. */

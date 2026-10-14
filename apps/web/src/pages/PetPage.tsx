@@ -6,6 +6,7 @@ import {
   PET_STAGE_THRESHOLDS,
   eggArt,
   petEarningRows,
+  petGrowthLockedLine,
   petSpecies,
   petSpeciesLabels,
   petStageEmoji,
@@ -14,12 +15,14 @@ import {
   type PetSpecies,
   type PetView,
 } from "@zoption/shared";
+import { Link } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
 import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
+import { useBillingSummary } from "../hooks/useBillingSummary";
 import { userWorkspace } from "../lib/workspace";
 import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
 import "./PetPage.css";
@@ -205,7 +208,7 @@ function PetChips({ pet }: { pet: PetView }) {
   );
 }
 
-function PetStats({ pet }: { pet: PetView }) {
+function PetStats({ pet, isFree }: { pet: PetView; isFree: boolean }) {
   if (pet.stage === "egg") {
     // A ready egg's hint sits under the egg itself.
     if (pet.eggStreakDays >= pet.eggHatchDays) return null;
@@ -225,6 +228,7 @@ function PetStats({ pet }: { pet: PetView }) {
     );
   }
   const stageStart = PET_STAGE_THRESHOLDS[pet.stage];
+  const lockedLine = isFree ? petGrowthLockedLine(pet) : null;
   return (
     <>
       {pet.nextStagePoints === null ? (
@@ -238,6 +242,11 @@ function PetStats({ pet }: { pet: PetView }) {
           tone="brand"
         />
       )}
+      {lockedLine ? (
+        <p className="pet-note">
+          {lockedLine} <Link to="/app/settings#plan-and-billing">See Zoption Pro</Link>
+        </p>
+      ) : null}
       <Meter
         label={`Health ${pet.health ?? 0} of 100`}
         icon="❤️"
@@ -271,6 +280,8 @@ export function PetPage() {
   const chooseEgg = useChoosePetEgg(workspace);
   const setEnabled = useSetPetEnabled(workspace);
   const hatch = useHatchPet(workspace);
+  // Only a known Free plan shows the growth lock; the Worker enforces it either way.
+  const billing = useBillingSummary(workspace);
   // Set once this visit hatches the egg, so the Baby springs out instead of just appearing.
   const [justHatched, setJustHatched] = useState(false);
   const busy = chooseEgg.isPending || setEnabled.isPending;
@@ -367,7 +378,7 @@ export function PetPage() {
             </div>
             <PetChips pet={pet.data} />
             <div className="pet-stats">
-              <PetStats pet={pet.data} />
+              <PetStats pet={pet.data} isFree={billing.data?.plan === "free"} />
             </div>
             <GrowthPath stage={pet.data.stage} />
           </div>

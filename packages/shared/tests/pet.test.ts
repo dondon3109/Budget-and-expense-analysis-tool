@@ -10,6 +10,7 @@ import {
   petEggHatches,
   petEggStreakAfterLogin,
   petEggStreakOn,
+  petFreePointsCap,
   petHealCost,
   petHealthAt,
   petLocalDate,
@@ -170,7 +171,8 @@ describe("applyPetEvent", () => {
 
   function readyEgg(): PetState {
     let state = startPetEgg("panda", "Bao");
-    for (let day = 0; day < 7; day += 1) state = applyPetEvent(state, login(t0 + day * 24 * hour));
+    for (let day = 0; day < 7; day += 1)
+      state = applyPetEvent(state, login(t0 + day * 24 * hour), true);
     return state;
   }
 
@@ -184,12 +186,12 @@ describe("applyPetEvent", () => {
   });
 
   it("ignores everything until an egg is picked", () => {
-    expect(applyPetEvent(emptyPetState, login(t0))).toBe(emptyPetState);
+    expect(applyPetEvent(emptyPetState, login(t0), true)).toBe(emptyPetState);
   });
 
   it("waits for a tap after seven days, then hatches healthy with no points carried over", () => {
     let state = startPetEgg("panda", "Bao");
-    state = applyPetEvent(state, { action: "transaction", occurredAt: t0 });
+    state = applyPetEvent(state, { action: "transaction", occurredAt: t0 }, true);
     expect(state.eggStreak.streakDays).toBe(0);
     expect(hatchPetEgg(state, t0)).toBeNull();
 
@@ -204,7 +206,7 @@ describe("applyPetEvent", () => {
   });
 
   it("keeps an egg forever, however long it waits", () => {
-    const egg = applyPetEvent(startPetEgg("pig", "Bao"), login(t0));
+    const egg = applyPetEvent(startPetEgg("pig", "Bao"), login(t0), true);
     expect(petStateAt(egg, t0 + 30 * 24 * hour)).toBe(egg);
   });
 
@@ -212,7 +214,7 @@ describe("applyPetEvent", () => {
     let state = hatched();
     const later = (state.hatchedAt ?? 0) + hour;
     for (let i = 0; i < 5; i += 1) {
-      state = applyPetEvent(state, { action: "transaction", occurredAt: later + i });
+      state = applyPetEvent(state, { action: "transaction", occurredAt: later + i }, true);
     }
     expect(state.points).toBe(30);
   });
@@ -220,14 +222,52 @@ describe("applyPetEvent", () => {
   it("eats points to heal after a long absence", () => {
     let state = { ...hatched(), points: 2_400 };
     const back = (state.lastActivityAt ?? 0) + 60 * hour;
-    state = applyPetEvent(state, { action: "transaction", occurredAt: back });
+    state = applyPetEvent(state, { action: "transaction", occurredAt: back }, true);
     expect(state.points).toBe(2_410 - 75);
     expect(state.day?.entries.at(-1)).toEqual({ action: "heal", points: -75 });
   });
 
+  it("keeps a pet without Pro a Baby, still healing and counting the daily caps", () => {
+    let state = { ...hatched(), points: 340 };
+    const later = (state.lastActivityAt ?? 0) + hour;
+    for (let i = 0; i < 3; i += 1) {
+      state = applyPetEvent(state, { action: "transaction", occurredAt: later + i }, false);
+    }
+    expect(state.points).toBe(349);
+    expect(petStageForPoints(state.points)).toBe("baby");
+    expect(state.day?.entries.slice(-3)).toEqual([
+      { action: "transaction", points: 9 },
+      { action: "transaction", points: 0 },
+      { action: "transaction", points: 0 },
+    ]);
+
+    // Healing still eats points, and the pet can earn them back up to the cap.
+    const back = (state.lastActivityAt ?? 0) + 36 * hour;
+    state = applyPetEvent(state, { action: "login", occurredAt: back }, false);
+    expect(state.points).toBe(349 - 25);
+    state = applyPetEvent(state, { action: "transaction", occurredAt: back + 1 }, false);
+    expect(state.points).toBe(334);
+
+    // With Pro the next activity grows it.
+    state = { ...state, points: 349 };
+    state = applyPetEvent(state, { action: "transaction", occurredAt: back + 2 }, true);
+    expect(petStageForPoints(state.points)).toBe("juvenile");
+  });
+
+  it("freezes a pet that grew on Pro once Pro ends, without demoting it", () => {
+    let state = { ...hatched(), points: 600 };
+    state = applyPetEvent(
+      state,
+      { action: "transaction", occurredAt: (state.lastActivityAt ?? 0) + hour },
+      false,
+    );
+    expect(state.points).toBe(600);
+    expect(petFreePointsCap(600)).toBe(600);
+  });
+
   it("dies after 72 hours and waits for a new egg", () => {
     const state = hatched();
-    const dead = applyPetEvent(state, login((state.lastActivityAt ?? 0) + 72 * hour));
+    const dead = applyPetEvent(state, login((state.lastActivityAt ?? 0) + 72 * hour), true);
     // The name stays for the memorial.
     expect(dead).toEqual({
       ...emptyPetState,

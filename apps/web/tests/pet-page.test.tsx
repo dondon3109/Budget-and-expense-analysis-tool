@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import type { PetView } from "@zoption/shared";
+import type { BillingSummary, PetView } from "@zoption/shared";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/auth/AuthProvider", () => ({
@@ -21,11 +21,12 @@ vi.mock("../src/lib/api", async () =>
     "choosePetEgg",
     "setPetEnabled",
     "hatchPet",
+    "getBillingSummary",
   ]),
 );
 
 import { PetMomentDialog } from "../src/components/pet/PetMomentDialog";
-import { checkInPet, choosePetEgg, hatchPet } from "../src/lib/api";
+import { checkInPet, choosePetEgg, getBillingSummary, hatchPet } from "../src/lib/api";
 import { PetPage } from "../src/pages/PetPage";
 import { renderWithProviders } from "./helpers/render";
 
@@ -58,12 +59,34 @@ const noPet: PetView = {
   lastActivityAt: null,
 };
 
+function billingSummary(plan: "free" | "zoption_pro"): BillingSummary {
+  return {
+    plan,
+    entitlementSource: null,
+    provider: null,
+    status: null,
+    interval: null,
+    currentPeriodEndsAt: null,
+    scheduledChangeAt: null,
+    cancelAtPeriodEnd: false,
+    pendingCheckout: null,
+    canCheckout: plan === "free",
+    canManageBilling: false,
+    canManageSponsoredSeats: false,
+    nonTerminalSubscriptionCount: 0,
+    usages: [],
+    allowances: [],
+  };
+}
+
 describe("pet on the web", () => {
   beforeEach(() => {
     window.localStorage.clear();
     vi.mocked(checkInPet).mockReset();
     vi.mocked(choosePetEgg).mockReset();
     vi.mocked(hatchPet).mockReset();
+    vi.mocked(getBillingSummary).mockReset();
+    vi.mocked(getBillingSummary).mockResolvedValue(billingSummary("zoption_pro"));
   });
   afterEach(cleanup);
 
@@ -123,6 +146,20 @@ describe("pet on the web", () => {
     expect(pet.querySelector(".pet-hearts")).toBeNull();
     fireEvent.click(pet);
     expect(pet.querySelector(".pet-hearts")).not.toBeNull();
+  });
+
+  it("tells a free user their pet needs Pro to grow", async () => {
+    vi.mocked(checkInPet).mockResolvedValue(babyPet);
+    vi.mocked(getBillingSummary).mockResolvedValue(billingSummary("free"));
+    renderWithProviders(<PetPage />);
+
+    expect(
+      await screen.findByText(/Growing into a Juvenile needs Zoption Pro\./),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "See Zoption Pro" })).toHaveAttribute(
+      "href",
+      "/app/settings#plan-and-billing",
+    );
   });
 
   it("shows the pet pop-up once per day", async () => {

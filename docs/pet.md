@@ -18,6 +18,13 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
   payment 20 ×2, assistant reply 5 ×3, plus a +10 bonus on the third distinct action type. No day
   earns more than 100.
 - Stages by points since hatch: Baby 0, Juvenile 350, Adult 1,000, Legend 5,500.
+- Growing past Baby needs Pro (`petFreePointsCap`). Without it a pet stops at 349 points; activity
+  still counts toward the daily caps and still heals it, and the next activity after Pro starts
+  grows it. A pet that grew on Pro keeps its stage and points when Pro ends but earns nothing more
+  until it returns. The Worker checks the entitlement when it credits activity, not when the
+  activity happened. The pet view carries no plan field (installed apps parse it strictly), so
+  each pet page reads the plan itself and shows `petGrowthLockedLine` only once it knows the plan
+  is Free.
 - Health is full for 24 hours after the last activity that earned a row, falls evenly to 0 at 72
   hours, and the pet dies then. The next activity heals it fully by eating one point per missing
   health point, never below the current stage's threshold. After death the user picks a new egg.
