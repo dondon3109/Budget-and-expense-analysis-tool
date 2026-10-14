@@ -109,6 +109,14 @@ export function petAwardRows(
   return rows;
 }
 
+/**
+ * The most points a pet can hold without Pro: one short of Juvenile, so a free pet stays a Baby. A
+ * pet that grew past that on Pro keeps its points and stage but earns nothing more until Pro returns.
+ */
+export function petFreePointsCap(points: number): number {
+  return Math.max(points, PET_STAGE_THRESHOLDS.juvenile - 1);
+}
+
 /** The hatched stage for a points total. Points never fall below the current stage (see heal). */
 export function petStageForPoints(points: number): Exclude<PetStage, "egg"> {
   if (points >= PET_STAGE_THRESHOLDS.legend) return "legend";
@@ -260,9 +268,11 @@ export function hatchPetEgg(state: PetState, at: number): PetState | null {
 
 /**
  * Applies one event, in time order. An egg only counts logins toward hatching. A hatched pet earns
- * the capped points, then eats points to refill the health it lost since its last activity.
+ * the capped points, then eats points to refill the health it lost since its last activity. Without
+ * `canGrow` (Pro) the points stop at `petFreePointsCap`; the rows are still kept, at the points
+ * they actually added, so the daily caps and the variety bonus count them.
  */
-export function applyPetEvent(previous: PetState, event: PetEvent): PetState {
+export function applyPetEvent(previous: PetState, event: PetEvent, canGrow: boolean): PetState {
   const state = petStateAt(previous, event.occurredAt);
   if (state.species === null) return state;
 
@@ -273,7 +283,12 @@ export function applyPetEvent(previous: PetState, event: PetEvent): PetState {
   }
 
   const dayEntries = state.day?.date === date ? state.day.entries : [];
-  const rows = petAwardRows(dayEntries, event.action);
+  let room = canGrow ? Infinity : Math.max(0, petFreePointsCap(state.points) - state.points);
+  const rows = petAwardRows(dayEntries, event.action).map((row) => {
+    const points = Math.min(row.points, room);
+    room -= points;
+    return { ...row, points };
+  });
   if (rows.length === 0) return state;
 
   const { health } = petHealthAt(state.lastActivityAt ?? event.occurredAt, event.occurredAt);

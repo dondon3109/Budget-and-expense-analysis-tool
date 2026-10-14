@@ -26,7 +26,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 | `src/cashflowForecast.ts`      | Forward cashflow projection                                                                      |
 | `src/safeToSpend.ts`           | Weekly safe-to-spend amount                                                                      |
 | `src/overspendingAlert.ts`     | The overspending alert (spent-out week or forecast deficit) and its wording for web and mobile   |
-| `src/pet.ts`                   | Pet companion points, daily caps, stages, egg streak, health and heal cost                       |
+| `src/pet.ts`                   | Pet companion points, daily caps, stages, Free growth cap, egg streak, health, and heal cost     |
 | `src/petMoment.ts`             | When the pet pop-up opens (ready egg, growth, sickness, death, or the day's first open)          |
 | `src/petCopy.ts`               | Pet wording both clients render                                                                  |
 | `src/petArt/`                  | The egg SVG art, its streak and tap cracks, the hatch shine, and the pet's mood                  |

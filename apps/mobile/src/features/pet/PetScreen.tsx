@@ -2,6 +2,7 @@ import {
   PET_DAILY_POINT_CEILING,
   PET_STAGE_THRESHOLDS,
   eggArt,
+  petGrowthLockedLine,
   petSpeciesLabels,
   petStageLabels,
   type PetView,
@@ -10,6 +11,7 @@ import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
+import { usePlan } from "@/auth/plan-state";
 import { usePetStore } from "@/stores/pet-store";
 import { Button } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -67,7 +69,13 @@ function Meter({
 function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["species"]> } }) {
   const theme = useZoptionTheme();
   const tones = useToneColors();
+  const planState = usePlan();
   const stageStart = pet.stage === "egg" ? 0 : PET_STAGE_THRESHOLDS[pet.stage];
+  // Only once the plan is known, so a Pro user never sees the lock while it loads.
+  const lockedLine =
+    planState.status === "ready" && planState.plan !== "zoption_pro"
+      ? petGrowthLockedLine(pet)
+      : null;
   return (
     <>
       {pet.nextStagePoints === null ? (
@@ -83,6 +91,14 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
           color={tones.brand.fill}
         />
       )}
+      {lockedLine ? (
+        <>
+          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>{lockedLine}</Text>
+          <Button variant="secondary" onPress={() => router.push("/(app)/plan-billing")}>
+            See Zoption Pro
+          </Button>
+        </>
+      ) : null}
       <Meter
         label={`Health ${pet.health ?? 0} of 100`}
         icon="❤️"

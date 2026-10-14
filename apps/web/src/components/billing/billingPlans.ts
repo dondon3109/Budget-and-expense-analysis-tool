@@ -22,6 +22,11 @@ export const planFeatures = [
     pro: "Adds monthly and six-month cashflow views",
   },
   {
+    feature: "Streak pet",
+    free: "Grows to Baby",
+    pro: "Grows to Juvenile, Adult, and Legend",
+  },
+  {
     feature: "Transaction export",
     free: "Not included",
     pro: "Filtered CSV export",
