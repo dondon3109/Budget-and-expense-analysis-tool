@@ -334,6 +334,12 @@
   gap: 28px;
 }
 
+/* The account balance panel brings its own top margin; the onboarding cards do not, so
+   without this their edge meets the header buttons' shadows. */
+.dashboard-header + :is(.quick-start-tutorial-card, .goal-checklist) {
+  margin-top: 28px;
+}
+
 .dashboard-heading,
 .dashboard-header > div:first-child {
   max-width: 720px;
