@@ -16,22 +16,22 @@
  *    update.
  *
  * Privacy: raw errors NEVER leave the device. SDK exception autocapture
- * stays disabled because it would transmit raw messages and stacks, which
- * can embed transaction text, identifiers, or server responses. Custom crash
- * fields carry only a coarse exception type, a deterministic grouping token
- * derived from message-free stack frames, and the reporting source label.
+ * stays disabled because it would transmit raw messages, which can embed
+ * transaction text, identifiers, or server responses. Each crash is rebuilt
+ * as a new error whose message is its coarse type and whose stack holds only
+ * the original stack's frame lines (code locations), then sent as a PostHog
+ * Error Tracking `$exception` with the reporting source label and a
+ * deterministic grouping token. Release builds upload source maps, so those
+ * frames resolve to file, function, and line in PostHog.
  * No Zoption or Supabase identity is supplied: the transport has no identity
  * call at all, so the authenticated subject and the account email never reach
  * the vendor, and the only identifier it sees is PostHog's memory-scoped
- * device id. Raw errors, messages, and stacks are never sent either. See
- * docs/mobile/security-and-privacy.md.
+ * device id. See docs/mobile/security-and-privacy.md.
  */
 
 export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
 /** PostHog feature flag that must be truthy for reports to leave the device. */
 export const REMOTE_KILL_SWITCH_FLAG = "crash-telemetry-enabled";
-/** Custom event name used for sanitized crash reports. */
-export const CRASH_EVENT_NAME = "mobile_crash";
 
 export interface TelemetryConfig {
   enabled: boolean;
@@ -47,6 +47,8 @@ export interface SanitizedCrashReport {
   type: string;
   /** Deterministic hash of type plus message-free stack-frame shape. */
   fingerprint: string;
+  /** Frame lines only: no message, no continuation text, bounded and character-scrubbed. */
+  frames: string[];
 }
 
 /** Minimal structural surface of the PostHog client the service relies on. */
@@ -87,6 +89,8 @@ const MAX_TYPE_LENGTH = 64;
 const MAX_SOURCE_LENGTH = 48;
 /** Bound on the hashed input so pathological stacks cannot blow up hashing. */
 const FINGERPRINT_INPUT_LIMIT = 4096;
+const MAX_FRAMES = 50;
+const MAX_FRAME_LENGTH = 300;
 
 /** Strips everything but a small safe alphabet; output may be empty. */
 export function normalizeCrashToken(value: string, maxLength: number): string {
@@ -138,11 +142,15 @@ export function extractErrorName(error: unknown): string {
  * column numbers are normalized so the same code location groups across
  * minor bundle layout changes.
  */
-export function normalizedStackShape(error: unknown): string {
-  if (!(error instanceof Error) || typeof error.stack !== "string") return "";
+function stackFrameLines(error: unknown): string[] {
+  if (!(error instanceof Error) || typeof error.stack !== "string") return [];
   return error.stack
     .split(/\r?\n/)
-    .filter((line) => /^\s*at\s+/.test(line) || /@\S+:\d+(?::\d+)?\s*$/.test(line))
+    .filter((line) => /^\s*at\s+/.test(line) || /@\S+:\d+(?::\d+)?\s*$/.test(line));
+}
+
+export function normalizedStackShape(error: unknown): string {
+  return stackFrameLines(error)
     .map((line) =>
       line
         .trim()
@@ -154,10 +162,27 @@ export function normalizedStackShape(error: unknown): string {
 }
 
 /**
+ * The frame lines PostHog symbolicates, with line and column kept. A frame
+ * names a code location (function, bundle file, position), never a runtime
+ * value; the scrub still drops anything outside the characters a frame needs.
+ */
+export function messageFreeFrames(error: unknown): string[] {
+  return stackFrameLines(error)
+    .slice(0, MAX_FRAMES)
+    .map((line) =>
+      line
+        .trim()
+        .replace(/[^A-Za-z0-9_$.:/()@<>[\] -]/g, "")
+        .slice(0, MAX_FRAME_LENGTH),
+    );
+}
+
+/**
  * Reduces any thrown value to the only fields that may be transmitted.
  * Messages are never read. Only message-free stack frames feed the grouping
- * fingerprint, so sensitive text embedded in an error cannot reach the
- * telemetry backend either directly or as a guessable message hash.
+ * fingerprint and the frames list, so sensitive text embedded in an error
+ * cannot reach the telemetry backend either directly or as a guessable
+ * message hash.
  */
 export function sanitizeError(error: unknown, source: string): SanitizedCrashReport {
   const rawName = extractErrorName(error);
@@ -166,7 +191,23 @@ export function sanitizeError(error: unknown, source: string): SanitizedCrashRep
     source: normalizeCrashToken(source, MAX_SOURCE_LENGTH) || "unknown-source",
     type: normalizeCrashToken(rawName, MAX_TYPE_LENGTH) || "UnknownError",
     fingerprint: crashFingerprint(fingerprintInput),
+    frames: messageFreeFrames(error),
   };
+}
+
+/**
+ * The error handed to PostHog's exception builder: its message is the coarse
+ * type, its stack is the scrubbed frames, and it has no cause, so the SDK has
+ * nothing else to read from it.
+ */
+export function crashReportError(report: SanitizedCrashReport): Error {
+  const error = new Error(report.type);
+  error.name = report.type;
+  error.stack = [
+    `${report.type}: ${report.type}`,
+    ...report.frames.map((frame) => `    ${frame}`),
+  ].join("\n");
+  return error;
 }
 
 /**
@@ -322,8 +363,8 @@ interface GlobalWithErrorUtils {
  * Forwards uncaught JS exceptions through the sanitized pipeline while
  * preserving any previously installed handler (React Native's fatal-error
  * surface). SDK autocapture is off, so this is the only path uncaught errors
- * can take - and it transmits no raw message or stack. Delivery on a fatal
- * crash is best-effort.
+ * can take - and it transmits no raw message. Delivery on a fatal crash is
+ * best-effort.
  */
 export function forwardUncaughtErrors(report: (error: unknown) => void): void {
   const errorUtils = (globalThis as GlobalWithErrorUtils).ErrorUtils;
@@ -369,7 +410,11 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
 
   return {
     captureCrash: (report) => {
-      client.capture(CRASH_EVENT_NAME, { ...report });
+      client.captureException(
+        crashReportError(report),
+        { source: report.source, type: report.type, fingerprint: report.fingerprint },
+        { mechanism: { handled: false, type: "generic" } },
+      );
     },
     capture: (event, properties) => {
       client.capture(event, properties);
@@ -401,7 +446,7 @@ export function createPostHogOptions(host: string) {
     disableSurveys: true,
     // Crash reports only: no lifecycle analytics, no session replay, no
     // console capture, and NO SDK exception autocapture - autocapture would
-    // bypass sanitization by transmitting raw errors and stacks. Uncaught
+    // bypass sanitization by transmitting raw error messages. Uncaught
     // errors reach the pipeline exclusively through forwardUncaughtErrors.
     captureAppLifecycleEvents: false,
     enableSessionReplay: false,

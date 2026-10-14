@@ -1,11 +1,12 @@
 import {
-  CRASH_EVENT_NAME,
+  crashReportError,
   createPostHogOptions,
   createTelemetryService,
   crashFingerprint,
   DEFAULT_POSTHOG_HOST,
   extractErrorName,
   forwardUncaughtErrors,
+  messageFreeFrames,
   normalizedStackShape,
   normalizeCrashToken,
   parseTelemetryConfig,
@@ -54,7 +55,7 @@ describe("parseTelemetryConfig", () => {
 });
 
 describe("sanitizeError", () => {
-  it("never transmits raw messages or stacks", () => {
+  it("never transmits raw messages", () => {
     const error = new Error("transfer to acct=ZEN-4242 failed, server said overdraft");
     const report = sanitizeError(error, "root-error-boundary");
     const serialized = JSON.stringify(report);
@@ -87,6 +88,50 @@ describe("sanitizeError", () => {
     expect(otherFailure.fingerprint).not.toBe(first.fingerprint);
     expect(otherSource.fingerprint).toBe(first.fingerprint); // source is not hashed
     expect(normalizedStackShape(firstError)).not.toContain("ZEN-1");
+  });
+
+  it("keeps frame lines with their positions and drops the message line", () => {
+    const error = Object.assign(new Error("acct=ZEN-1"), {
+      stack:
+        "Error: acct=ZEN-1\n    note=ZEN-2 on a continuation line\n" +
+        "    at submit (address at index.android.bundle:1:2345)\n    at root (/app/root.ts:30:40)",
+    });
+    expect(messageFreeFrames(error)).toEqual([
+      "at submit (address at index.android.bundle:1:2345)",
+      "at root (/app/root.ts:30:40)",
+    ]);
+    expect(messageFreeFrames("thrown string")).toEqual([]);
+  });
+
+  it("bounds and scrubs frame lines", () => {
+    const frame = `    at f${"x".repeat(400)} (/app/a.ts:1:2)`;
+    const error = Object.assign(new Error("x"), {
+      stack: [
+        "Error: x",
+        ...Array.from({ length: 80 }, () => frame),
+        "    at g\u0000\"';{} (/b.ts:3:4)",
+      ].join("\n"),
+    });
+    const frames = messageFreeFrames(error);
+    expect(frames).toHaveLength(50);
+    expect(frames.every((line) => line.length <= 300)).toBe(true);
+    const last = messageFreeFrames(
+      Object.assign(new Error("x"), { stack: "Error: x\n    at g\u0000\"';{} (/b.ts:3:4)" }),
+    );
+    expect(last).toEqual(["at g (/b.ts:3:4)"]);
+  });
+
+  it("rebuilds the reported error from the sanitized report only", () => {
+    const error = Object.assign(new Error("transfer acct=ZEN-4242 failed"), {
+      stack: "Error: transfer acct=ZEN-4242 failed\n    at submit (/app/entry.ts:10:20)",
+      cause: new Error("acct=ZEN-4242"),
+    });
+    const rebuilt = crashReportError(sanitizeError(error, "root-error-boundary"));
+    expect(rebuilt.name).toBe("Error");
+    expect(rebuilt.message).toBe("Error");
+    expect(rebuilt.stack).toBe("Error: Error\n    at submit (/app/entry.ts:10:20)");
+    expect(rebuilt.cause).toBeUndefined();
+    expect(JSON.stringify([rebuilt.message, rebuilt.stack])).not.toContain("ZEN-4242");
   });
 
   it("reduces non-Error throws to safe generic types", () => {
@@ -273,7 +318,7 @@ describe("createTelemetryService", () => {
     expect(harness.captured).toHaveLength(1);
     const report = harness.captured[0];
     if (!report) throw new Error("report missing");
-    expect(Object.keys(report).sort()).toEqual(["fingerprint", "source", "type"]);
+    expect(Object.keys(report).sort()).toEqual(["fingerprint", "frames", "source", "type"]);
     expect(report.source).toBe("root-error-boundary");
     expect(report.type).toBe("Error");
     expect(JSON.stringify(harness.captured)).not.toContain("acct=ZEN-1");
@@ -374,8 +419,7 @@ describe("createTelemetryService", () => {
     expect(await failedInit.sendTestCrash()).toBe(false);
   });
 
-  it("keeps the documented event name and flag constant in sync", () => {
-    expect(CRASH_EVENT_NAME).toBe("mobile_crash");
+  it("keeps the documented flag constant in sync", () => {
     expect(REMOTE_KILL_SWITCH_FLAG).toBe("crash-telemetry-enabled");
   });
 });

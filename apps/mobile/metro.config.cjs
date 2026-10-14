@@ -1,7 +1,9 @@
-const { getDefaultConfig } = require("expo/metro-config");
 const { withNativeWind } = require("nativewind/metro");
+const { getPostHogExpoConfig } = require("posthog-react-native/metro");
 
-const config = getDefaultConfig(__dirname);
+// Expo's default config plus a debug id stamped into every bundle, which ties
+// a crash's frames to the source map uploaded for that build.
+const config = getPostHogExpoConfig(__dirname);
 
 // Expo's default leaves inlineRequires off, which evaluates every module
 // reachable from the entry before the first frame draws. Inlining moves each
