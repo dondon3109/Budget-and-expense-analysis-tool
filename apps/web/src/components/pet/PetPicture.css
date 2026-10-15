@@ -9,6 +9,13 @@
   display: block;
 }
 
+/* Carries a tap's reaction, so it adds to the idle motion on .pet-live. */
+.pet-live-react {
+  position: relative;
+  display: block;
+  transform-origin: 50% 95%;
+}
+
 .pet-live-blink {
   position: absolute;
   inset: 0;

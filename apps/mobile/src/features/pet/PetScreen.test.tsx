@@ -96,8 +96,20 @@ describe("PetScreen", () => {
 
     expect(screen.getByLabelText("Growth path: Baby now")).toBeTruthy();
     expect(screen.queryByText("💖")).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "Pet Bao" }));
+    await fireEvent.press(screen.getByRole("imagebutton", { name: "Bao, Panda · Baby" }));
     expect(screen.getAllByText("💖").length).toBeGreaterThan(0);
+  });
+
+  it("answers a tap on a sick pet weakly, with no hearts", async () => {
+    const sick = { ...babyPet, health: 75, healthState: "sick" as const };
+    usePetStore.setState({ pet: sick });
+    jest.mocked(getPet).mockResolvedValue(sick);
+    await render(<PetScreen />);
+
+    await fireEvent.press(screen.getByRole("imagebutton", { name: "Bao, Panda · Baby" }));
+
+    expect(screen.getByText("🤒")).toBeTruthy();
+    expect(screen.queryByText("💖")).toBeNull();
   });
 
   it("warns when the pet is sick", async () => {

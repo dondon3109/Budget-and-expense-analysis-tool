@@ -4,17 +4,19 @@ import {
   petEarningRows,
   petStageEmoji,
   petStageLabels,
+  petReactionBurst,
   petStages,
+  type PetReaction,
   type PetView,
 } from "@zoption/shared";
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
 import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-// The playful pieces of the pet page: the spotlight the pet stands in, the hearts it sends up
+// The playful pieces of the pet page: the spotlight the pet stands in, what floats up from it
 // when petted, its status chips, the growth path, and the earning tiles.
 
 type Tone = "brand" | "health" | "sick" | "fading" | "sun";
@@ -125,10 +127,18 @@ export function PetSpotlight({ size, children }: { size: number; children: React
   );
 }
 
-const HEART_DRIFTS = [-40, -14, 14, 40];
-
-/** A floating heart that rises and fades once, then stays hidden. */
-function Heart({ drift, delay, emoji }: { drift: number; delay: number; emoji: string }) {
+/** A floating glyph that rises and fades once, then stays hidden. */
+function Heart({
+  drift,
+  delay,
+  rise: height,
+  emoji,
+}: {
+  drift: number;
+  delay: number;
+  rise: number;
+  emoji: string;
+}) {
   const rise = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(rise, {
@@ -147,7 +157,7 @@ function Heart({ drift, delay, emoji }: { drift: number; delay: number; emoji: s
           opacity: rise.interpolate({ inputRange: [0, 0.25, 1], outputRange: [0, 1, 0] }),
           transform: [
             { translateX: rise.interpolate({ inputRange: [0, 1], outputRange: [0, drift] }) },
-            { translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [0, -110] }) },
+            { translateY: rise.interpolate({ inputRange: [0, 1], outputRange: [0, -height] }) },
           ],
         },
       ]}
@@ -158,33 +168,23 @@ function Heart({ drift, delay, emoji }: { drift: number; delay: number; emoji: s
 }
 
 /**
- * A hatched pet the user can pet: each tap sends a burst of hearts up from it. Purely a delight
- * on this screen; nothing is sent to the Worker.
+ * What floats up from a tapped pet: hearts, a wider shower for a dance, or one 🤒 or 💤 that only
+ * drifts a little. Mount it with a new key per tap so the burst restarts.
  */
-export function PettablePet({ name, children }: { name: string; children: ReactNode }) {
-  const reduceMotion = useReduceMotion();
-  const [pets, setPets] = useState(0);
+export function ReactionBurst({ reaction }: { reaction: PetReaction }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Pet ${name}`}
-      onPress={() => setPets((count) => count + 1)}
-      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.96 : 1 }] })}
-    >
-      {children}
-      {pets > 0 && !reduceMotion ? (
-        <View key={pets} pointerEvents="none" style={styles.hearts}>
-          {HEART_DRIFTS.map((drift, index) => (
-            <Heart
-              key={drift}
-              drift={drift}
-              delay={index * 60}
-              emoji={index % 2 === 0 ? "💜" : "💖"}
-            />
-          ))}
-        </View>
-      ) : null}
-    </Pressable>
+    <View pointerEvents="none" style={styles.hearts}>
+      {petReactionBurst(reaction).map((glyph, index) => (
+        <Heart
+          // The burst is fixed per reaction, so its order is stable.
+          key={`${index}-${glyph.glyph}`}
+          drift={glyph.drift}
+          delay={glyph.delay}
+          rise={glyph.rise}
+          emoji={glyph.glyph}
+        />
+      ))}
+    </View>
   );
 }
 

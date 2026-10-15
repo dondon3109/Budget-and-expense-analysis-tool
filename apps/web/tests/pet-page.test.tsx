@@ -25,8 +25,14 @@ vi.mock("../src/lib/api", async () =>
   ]),
 );
 
+vi.mock("../src/lib/petSounds", () => ({
+  playPetReaction: vi.fn(),
+  warmUpPetVoices: vi.fn(),
+}));
+
 import { PetMomentDialog } from "../src/components/pet/PetMomentDialog";
 import { checkInPet, choosePetEgg, getBillingSummary, hatchPet } from "../src/lib/api";
+import { playPetReaction } from "../src/lib/petSounds";
 import { PetPage } from "../src/pages/PetPage";
 import { renderWithProviders } from "./helpers/render";
 
@@ -145,7 +151,20 @@ describe("pet on the web", () => {
     const pet = screen.getByRole("button", { name: "Pet Bao" });
     expect(pet.querySelector(".pet-hearts")).toBeNull();
     fireEvent.click(pet);
-    expect(pet.querySelector(".pet-hearts")).not.toBeNull();
+    expect(pet.querySelector(".pet-hearts")).toHaveTextContent("💖");
+    expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "happy");
+  });
+
+  it("answers a click on a sick pet weakly, in its sad voice", async () => {
+    vi.mocked(checkInPet).mockResolvedValue({ ...babyPet, health: 75, healthState: "sick" });
+    renderWithProviders(<PetPage />);
+
+    const pet = await screen.findByRole("button", { name: "Pet Bao" });
+    fireEvent.click(pet);
+
+    expect(pet.querySelector(".pet-hearts")).toHaveTextContent("🤒");
+    expect(pet.querySelector(".pet-hearts")).not.toHaveTextContent("💖");
+    expect(playPetReaction).toHaveBeenLastCalledWith("panda", "baby", "sick");
   });
 
   it("tells a free user their pet needs Pro to grow", async () => {
