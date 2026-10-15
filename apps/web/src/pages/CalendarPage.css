@@ -377,7 +377,7 @@
 
 .calendar-indicator.income {
   /* Same reason as the expense indicator: the chart hue is for marks, not 11.5px text.
-     --income measured 4.34:1 on the light success-soft cell; the text variant clears AA. */
+     --income measured 4.34:1 on the light success tint; --income-text is 5.0:1. */
   color: var(--income-text);
 }
 
