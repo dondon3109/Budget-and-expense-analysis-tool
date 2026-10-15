@@ -1646,10 +1646,22 @@ main:has(.assistant-page) > .legal-footer,
 /* ============================================================
    CONSENT VIEW
    ============================================================ */
+/* The card clips and the body scrolls. Chromium ignores ::-webkit-scrollbar once scrollbar-color
+   is set, so a scrolling rounded card gets a square track across its corners. The card's
+   vertical padding keeps the body's track clear of the curve. */
 .assistant-consent {
+  display: flex;
+  flex-direction: column;
   width: min(560px, 100%);
-  padding: clamp(20px, 4vw, 28px);
+  padding: 14px 0;
+  overflow: hidden;
   text-align: center;
+}
+
+.assistant-consent-body {
+  min-height: 0;
+  padding: 6px clamp(20px, 4vw, 28px);
+  overflow-y: auto;
 }
 
 .assistant-consent-actions {
@@ -1740,7 +1752,7 @@ main:has(.assistant-page) > .legal-footer,
   line-height: 1.5;
 }
 
-.assistant-consent > small {
+.assistant-consent-body > small {
   display: block;
   margin-top: 10px;
   color: var(--danger);
@@ -2531,8 +2543,11 @@ main:has(.assistant-page) > .legal-footer,
   }
 
   .assistant-consent {
-    padding: 27px 20px;
     border-radius: 17px;
+  }
+
+  .assistant-consent-body {
+    padding-inline: 20px;
   }
 
   .assistant-consent-points {
