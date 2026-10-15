@@ -2,7 +2,7 @@ name: Preview Failure Fix
 
 # Runs only when a Production Release run fails at the preview job's signed-in audit. Claude Haiku
 # 5.5 sorts the failure; a setup problem is reported, a flaky one reruns the failed jobs once, and
-# an app bug goes to Claude Sonnet 5.5, whose draft opens as a draft pull request on a
+# an app bug goes to Claude Opus 5.5, whose draft opens as a draft pull request on a
 # preview-fix/ branch. Nothing merges until the maintainer marks it ready for review, which arms
 # auto-merge (auto-merge.yml); the merge then runs CI, the release, and the audit again.
 #
@@ -142,7 +142,7 @@ jobs:
           schema='{"type":"object","properties":{"category":{"type":"string","enum":["app_bug","flaky","setup"]},"reason":{"type":"string"}},"required":["category","reason"],"additionalProperties":false}'
           # The model gets no tools: everything it needs is in the prompt.
           sort_with() {
-            claude -p "$task" --model "$1" --effort low --output-format json \
+            claude -p "$task" --model "$1" --effort high --output-format json \
               --setting-sources user --strict-mcp-config --tools "" --json-schema "${schema}" \
               > preview-fix/verdict.json \
               && jq -e '.structured_output.category' preview-fix/verdict.json > /dev/null
@@ -181,7 +181,7 @@ jobs:
         run: gh run rerun "${RUN_ID}" --failed
 
   draft:
-    name: Draft the fix (Claude Sonnet 5.5)
+    name: Draft the fix (Claude Opus 5.5)
     needs: [check, triage]
     if: needs.triage.outputs.category == 'app_bug' && needs.check.outputs.can_fix == 'true'
     runs-on: ubuntu-latest
@@ -231,7 +231,7 @@ jobs:
           TASK
           )"
           # File tools and the focused test runner only; no general shell and no network tool.
-          claude -p "$task" --model claude-sonnet-5-5 --effort medium --permission-mode acceptEdits \
+          claude -p "$task" --model claude-opus-5-5 --effort medium --permission-mode acceptEdits \
             --allowedTools "Read,Edit,Write,Glob,Grep,Bash(pnpm vitest run:*),Bash(git diff:*),Bash(git status:*)"
 
       - name: Collect the draft
