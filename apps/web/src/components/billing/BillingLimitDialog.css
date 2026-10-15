@@ -23,10 +23,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .billing-limit-dialog {
-    animation: none;
-  }
+:root[data-reduce-motion] .billing-limit-dialog {
+  animation: none;
 }
 
 .billing-limit-mark {

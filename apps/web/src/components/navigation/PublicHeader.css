@@ -353,8 +353,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .public-header-drawer {
-    animation: none;
-  }
+:root[data-reduce-motion] .public-header-drawer {
+  animation: none;
 }

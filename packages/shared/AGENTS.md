@@ -29,6 +29,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 | `src/pet.ts`                   | Pet companion points, daily caps, stages, Free growth cap, egg streak, health, and heal cost     |
 | `src/petMoment.ts`             | When the pet pop-up opens (ready egg, growth, sickness, death, or the day's first open)          |
 | `src/petCopy.ts`               | Pet wording both clients render                                                                  |
+| `src/petReaction.ts`           | How a hatched pet answers a tap: the combo dance, the floating glyphs, and its voice cue         |
 | `src/petArt/`                  | The egg SVG art, its streak and tap cracks, the hatch shine, and the pet's mood                  |
 | `src/subscriptions.ts`         | Subscription billing dates and monthly cost                                                      |
 | `src/interest.ts`              | Automatic interest credit dates and amounts in Asia/Manila time                                  |

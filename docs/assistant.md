@@ -37,7 +37,7 @@ transcription.
 Voice conversation is the spoken-reply surface. The user starts it on purpose with "Voice chat" next
 to "New chat" and lands on a full-screen talk-to-the-ball experience: a central orb with obvious
 listening, thinking, and speaking states (static ball plus status text under
-`prefers-reduced-motion`), backed by a live caption layer showing Gemini partials, then the final
+reduced motion, from the system or the in-app switch), backed by a live caption layer showing Gemini partials, then the final
 user line, then the assistant reply text while Fish Audio plays it. No Send tap is needed: after a
 final transcript the client runs the same Worker turn used by text chat, then speaks the completed
 reply with the pinned Bright Female voice (`speechVoice "bright"`) — the only voice offered, with no

@@ -12,6 +12,7 @@ import { HelpAndContactSettings } from "../components/account/HelpAndContactSett
 import { PasswordSettings } from "../components/account/PasswordSettings";
 import { GoalSettings } from "../components/account/GoalSettings";
 import { ProfileSettings } from "../components/account/ProfileSettings";
+import { SoundAndMotionSettings } from "../components/account/SoundAndMotionSettings";
 import { VoiceLanguageSettings } from "../components/account/VoiceLanguageSettings";
 import { AppShell } from "../components/layout/AppShell";
 import { CustomerReviewSettings } from "../components/reviews/CustomerReviewSettings";
@@ -92,6 +93,8 @@ export function SettingsPage() {
           <PasswordSettings hasPasswordIdentity={hasPasswordIdentity} />
 
           <VoiceLanguageSettings />
+
+          <SoundAndMotionSettings />
 
           {user && <CurrencySettings workspace={userWorkspace(user)} />}
 

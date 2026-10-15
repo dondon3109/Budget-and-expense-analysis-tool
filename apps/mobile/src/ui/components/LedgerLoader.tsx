@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
+import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 /**
@@ -115,23 +116,6 @@ export function LedgerLoader({
       })}
     </View>
   );
-}
-
-/** `undefined` until the platform answers, which it does asynchronously. */
-function useReduceMotion(): boolean | undefined {
-  const [reduceMotion, setReduceMotion] = useState<boolean>();
-  useEffect(() => {
-    let active = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
-      if (active) setReduceMotion(enabled);
-    });
-    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduceMotion);
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, []);
-  return reduceMotion;
 }
 
 const styles = StyleSheet.create({ row: { overflow: "hidden" } });

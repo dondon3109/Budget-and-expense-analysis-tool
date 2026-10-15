@@ -363,14 +363,12 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .cookie-consent-banner {
-    animation: cookie-consent-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+:root:not([data-reduce-motion]) .cookie-consent-banner {
+  animation: cookie-consent-in 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-  .cookie-preferences-dialog {
-    animation: cookie-preferences-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+:root:not([data-reduce-motion]) .cookie-preferences-dialog {
+  animation: cookie-preferences-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes cookie-consent-in {

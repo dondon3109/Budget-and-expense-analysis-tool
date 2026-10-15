@@ -28,8 +28,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .skeleton {
-    animation: none;
-  }
+:root[data-reduce-motion] .skeleton {
+  animation: none;
 }

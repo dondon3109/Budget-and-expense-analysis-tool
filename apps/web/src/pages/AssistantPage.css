@@ -2540,22 +2540,20 @@ main:has(.assistant-page) > .legal-footer,
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .assistant-empty-core-beacon,
-  .assistant-empty > span,
-  .assistant-thinking-dots i,
-  .assistant-message,
-  .assistant-message.checking > div,
-  .assistant-message.checking .assistant-message-avatar {
-    animation: none;
-  }
+:root[data-reduce-motion] .assistant-empty-core-beacon,
+:root[data-reduce-motion] .assistant-empty > span,
+:root[data-reduce-motion] .assistant-thinking-dots i,
+:root[data-reduce-motion] .assistant-message,
+:root[data-reduce-motion] .assistant-message.checking > div,
+:root[data-reduce-motion] .assistant-message.checking .assistant-message-avatar {
+  animation: none;
+}
 
-  .assistant-voice-button.recording,
-  .assistant-voice-button.recording::after {
-    animation: none;
-  }
+:root[data-reduce-motion] .assistant-voice-button.recording,
+:root[data-reduce-motion] .assistant-voice-button.recording::after {
+  animation: none;
+}
 
-  .assistant-voice-button.recording {
-    box-shadow: 0 2px 10px -2px color-mix(in srgb, var(--danger) 55%, transparent);
-  }
+:root[data-reduce-motion] .assistant-voice-button.recording {
+  box-shadow: 0 2px 10px -2px color-mix(in srgb, var(--danger) 55%, transparent);
 }

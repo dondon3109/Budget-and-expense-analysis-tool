@@ -16,6 +16,10 @@ jest.mock("expo-audio", () => ({
   createAudioPlayer: (source: unknown) => mockCreateAudioPlayer(source),
   setAudioModeAsync: (mode: unknown) => mockSetAudioMode(mode),
 }));
+// Jest gives every asset the same stub; the app gets one id per file.
+jest.mock("../../../assets/sounds/tap.wav", () => "tap");
+jest.mock("../../../assets/sounds/success.wav", () => "success");
+jest.mock("../../../assets/sounds/error.wav", () => "error");
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => null),
   setItemAsync: jest.fn(async () => undefined),

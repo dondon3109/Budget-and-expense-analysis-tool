@@ -1,17 +1,22 @@
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 
 import {
   PET_DAILY_POINT_CEILING,
+  PET_TAP_HISTORY_START,
   PET_NAME_MAX_LENGTH,
   PET_STAGE_THRESHOLDS,
   eggArt,
   petEarningRows,
   petGrowthLockedLine,
+  petMood,
+  petReactionBurst,
   petSpecies,
   petSpeciesLabels,
   petStageEmoji,
   petStageLabels,
   petStages,
+  petTapReaction,
+  type PetReaction,
   type PetSpecies,
   type PetView,
 } from "@zoption/shared";
@@ -23,6 +28,7 @@ import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
 import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
 import { useBillingSummary } from "../hooks/useBillingSummary";
+import { playPetReaction, warmUpPetVoices } from "../lib/petSounds";
 import { userWorkspace } from "../lib/workspace";
 import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
 import "./PetPage.css";
@@ -154,31 +160,45 @@ function GrowthPath({ stage }: { stage: PetView["stage"] }) {
   );
 }
 
-// Where each petting heart floats off to, as a horizontal drift in pixels.
-const HEART_DRIFTS = [-46, -18, 12, 40];
-
 /**
- * A hatched pet the user can pet: each click sends a little burst of hearts up from it. Purely a
- * delight on this page; nothing is sent to the Worker.
+ * A hatched pet the user can pet. A click answers by mood: hearts, a hop, and the species' happy
+ * voice; five quick clicks make a healthy pet dance; a sick or fading pet answers weakly with its
+ * sad voice. Purely a delight on this page; nothing is sent to the Worker.
  */
-function PettablePet({ name, children }: { name: string; children: ReactNode }) {
-  const [pets, setPets] = useState(0);
+function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; name: string }) {
+  const history = useRef(PET_TAP_HISTORY_START);
+  // `id` restarts the burst and the motion on every click.
+  const [tap, setTap] = useState<{ reaction: PetReaction; id: number } | null>(null);
+
+  useEffect(() => warmUpPetVoices(pet.species), [pet.species]);
+
+  const petIt = () => {
+    const mood = petMood(pet);
+    if (mood === "egg" || pet.stage === "egg") return;
+    const result = petTapReaction(mood, history.current, Date.now());
+    history.current = result.history;
+    playPetReaction(pet.species, pet.stage, result.reaction);
+    setTap((last) => ({ reaction: result.reaction, id: (last?.id ?? 0) + 1 }));
+  };
+
   return (
-    <button
-      className="pet-pettable"
-      type="button"
-      aria-label={`Pet ${name}`}
-      onClick={() => setPets((count) => count + 1)}
-    >
-      {children}
-      {pets > 0 ? (
-        <span key={pets} className="pet-hearts" aria-hidden="true">
-          {HEART_DRIFTS.map((drift, index) => (
+    <button className="pet-pettable" type="button" aria-label={`Pet ${name}`} onClick={petIt}>
+      <PetPicture pet={pet} size={220} tap={tap} />
+      {tap ? (
+        <span key={tap.id} className="pet-hearts" aria-hidden="true">
+          {petReactionBurst(tap.reaction).map((glyph, index) => (
             <span
-              key={drift}
-              style={{ "--drift": `${drift}px`, "--delay": `${index * 60}ms` } as CSSProperties}
+              // The burst is fixed per reaction, so its order is stable.
+              key={`${index}-${glyph.glyph}`}
+              style={
+                {
+                  "--drift": `${glyph.drift}px`,
+                  "--rise": `${-glyph.rise}px`,
+                  "--delay": `${glyph.delay}ms`,
+                } as CSSProperties
+              }
             >
-              {index % 2 === 0 ? "💜" : "💖"}
+              {glyph.glyph}
             </span>
           ))}
         </span>
@@ -361,9 +381,10 @@ export function PetPage() {
                     {pet.data.stage === "egg" ? (
                       <PetSvg art={eggArt(pet.data.species, pet.data.eggStreakDays)} size={220} />
                     ) : (
-                      <PettablePet name={pet.data.name ?? petSpeciesLabels[pet.data.species]}>
-                        <PetPicture pet={{ ...pet.data, species: pet.data.species }} size={220} />
-                      </PettablePet>
+                      <PettablePet
+                        pet={{ ...pet.data, species: pet.data.species }}
+                        name={pet.data.name ?? petSpeciesLabels[pet.data.species]}
+                      />
                     )}
                   </span>
                 </span>

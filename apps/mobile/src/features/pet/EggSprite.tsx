@@ -1,9 +1,10 @@
-import { useEffect, useId, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, View } from "react-native";
+import { useEffect, useId, useRef } from "react";
+import { Animated, Easing, Pressable, StyleSheet, View } from "react-native";
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path } from "react-native-svg";
 
 import type { PetLayer, PetShape } from "@zoption/shared";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { useReduceMotion } from "@/ui/reduce-motion";
 
 const CANVAS = 200;
 
@@ -58,23 +59,6 @@ export function LayerSvg({
       )}
     </Svg>
   );
-}
-
-/** Follows the system Reduce Motion setting. */
-export function useReduceMotion(): boolean {
-  const [reduce, setReduce] = useState(false);
-  useEffect(() => {
-    let active = true;
-    void AccessibilityInfo.isReduceMotionEnabled().then((value) => {
-      if (active) setReduce(value);
-    });
-    const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", setReduce);
-    return () => {
-      active = false;
-      subscription.remove();
-    };
-  }, []);
-  return reduce;
 }
 
 const timing = (value: Animated.Value, toValue: number, duration: number) =>

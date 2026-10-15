@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 
 import { BrowserApplication } from "./BrowserApplication";
+import { syncReduceMotionAttribute } from "./hooks/useReducedMotion";
 import { trackScrollActivity } from "./lib/scrollActivity";
 import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
 
@@ -10,6 +11,7 @@ import { registerZoptionServiceWorker } from "./pwa/registerServiceWorker";
 const root = document.getElementById("root");
 if (!root) throw new Error("Zoption could not find the application root.");
 
+syncReduceMotionAttribute();
 createRoot(root).render(<BrowserApplication />);
 
 registerZoptionServiceWorker();

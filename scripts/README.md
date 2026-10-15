@@ -32,6 +32,7 @@ root Vitest `scripts` project (`pnpm vitest run --project scripts`).
 | `validate-mobile-telemetry-env`    | Android Beta Build           | Rejects a release build with an unapproved PostHog host or flag                                          |
 | `refresh-android-release-snapshot` | By hand after an APK release | Refreshes `packages/web-common/src/releases/androidRelease.json` from the live release                   |
 | `freeze-mobile-sync-contract`      | By hand at a mobile bump     | Records a release's sync contract for the API compatibility test                                         |
+| `generate-pet-sounds`              | By hand to change a pet clip | Synthesizes the per-species pet voice clips and the sparkle into the mobile and web asset folders        |
 | `r2-android-cors.json`             | By hand                      | The R2 CORS rules for the APK bucket (`docs/deployment.md`)                                              |
 | `copy-supabase-avatars-to-r2`      | By hand, once per project    | Copies pre-R2 profile pictures from Supabase Storage into the avatar R2 bucket                           |
 

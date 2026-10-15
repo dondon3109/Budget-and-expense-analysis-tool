@@ -716,10 +716,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .app-shell,
-  .sidebar,
-  .mobile-nav-backdrop {
-    transition: none;
-  }
+:root[data-reduce-motion] .app-shell,
+:root[data-reduce-motion] .sidebar,
+:root[data-reduce-motion] .mobile-nav-backdrop {
+  transition: none;
 }

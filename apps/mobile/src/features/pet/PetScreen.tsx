@@ -27,7 +27,6 @@ import {
   GrowthPath,
   PetChips,
   PetSpotlight,
-  PettablePet,
   healthTone,
   useToneColors,
 } from "./PetPlayground";
@@ -218,13 +217,11 @@ export function PetScreen() {
         accessibilityLabel={`${name}, ${kind}`}
       />
     ) : (
-      <PettablePet name={name}>
-        <PetPicture
-          pet={{ ...pet, species: pet.species }}
-          size={size}
-          accessibilityLabel={`${name}, ${kind}`}
-        />
-      </PettablePet>
+      <PetPicture
+        pet={{ ...pet, species: pet.species }}
+        size={size}
+        accessibilityLabel={`${name}, ${kind}`}
+      />
     );
 
   return (

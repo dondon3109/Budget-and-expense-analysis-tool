@@ -17,8 +17,6 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-svg {
-    animation: none !important;
-  }
+:root[data-reduce-motion] .pet-svg {
+  animation: none !important;
 }

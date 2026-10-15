@@ -107,23 +107,19 @@
 }
 
 /* ---------- Motion ---------- */
-@media (prefers-reduced-motion: no-preference) {
-  .full-page-loading-status {
-    animation: zoption-stage-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-
-  /* The step label is the one piece of text that changes while this surface is
-     up, so it is also the one piece that fades rather than snapping. */
-  .full-page-loading-status-phase {
-    animation: zoption-phase-swap 220ms ease-out both;
-  }
+:root:not([data-reduce-motion]) .full-page-loading-status {
+  animation: zoption-stage-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* The loader rests on its filled frame; nothing else moves. */
-  .full-page-loading-track {
-    transition: none;
-  }
+/* The step label is the one piece of text that changes while this surface is
+   up, so it is also the one piece that fades rather than snapping. */
+:root:not([data-reduce-motion]) .full-page-loading-status-phase {
+  animation: zoption-phase-swap 220ms ease-out both;
+}
+
+/* The loader rests on its filled frame; nothing else moves. */
+:root[data-reduce-motion] .full-page-loading-track {
+  transition: none;
 }
 
 @keyframes zoption-stage-enter {

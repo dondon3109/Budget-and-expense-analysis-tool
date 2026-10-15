@@ -1,0 +1,75 @@
+.settings-switch-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  margin-top: 18px;
+}
+
+.settings-switch-row strong {
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-switch-row p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.settings-switch {
+  position: relative;
+  width: 48px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.settings-switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.settings-switch > span:last-child {
+  position: relative;
+  width: 48px;
+  height: 28px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-hover);
+  transition:
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.settings-switch > span:last-child::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 3px 8px var(--shadow);
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.settings-switch input:checked + span {
+  border-color: var(--brand);
+  background: var(--brand);
+}
+
+.settings-switch input:checked + span::after {
+  transform: translateX(20px);
+}
+
+.settings-switch input:focus-visible + span {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}

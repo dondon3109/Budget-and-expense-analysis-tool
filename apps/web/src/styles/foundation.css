@@ -658,13 +658,12 @@ button:disabled {
     width: auto;
   }
 }
-@media (prefers-reduced-motion: no-preference) {
-  .theme-choice-backdrop {
-    animation: theme-choice-backdrop-in 180ms ease-out both;
-  }
-  .theme-choice-dialog {
-    animation: theme-choice-dialog-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+:root:not([data-reduce-motion]) .theme-choice-backdrop {
+  animation: theme-choice-backdrop-in 180ms ease-out both;
+}
+
+:root:not([data-reduce-motion]) .theme-choice-dialog {
+  animation: theme-choice-dialog-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes theme-choice-backdrop-in {
@@ -679,18 +678,18 @@ button:disabled {
     transform: translateY(18px) scale(0.985);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-  }
-  .button:hover {
-    transform: none !important;
-  }
-  .spinning {
-    animation: none !important;
-    transition: none !important;
-  }
+:root[data-reduce-motion] *,
+:root[data-reduce-motion] *::before,
+:root[data-reduce-motion] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+}
+
+:root[data-reduce-motion] .button:hover {
+  transform: none !important;
+}
+
+:root[data-reduce-motion] .spinning {
+  animation: none !important;
+  transition: none !important;
 }

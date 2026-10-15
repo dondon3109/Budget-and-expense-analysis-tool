@@ -647,28 +647,24 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .support-chat-panel {
-    animation: support-chat-open 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
+:root:not([data-reduce-motion]) .support-chat-panel {
+  animation: support-chat-open 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 
-  @keyframes support-chat-open {
-    from {
-      opacity: 0;
-      transform: translateY(14px) scale(0.985);
-      filter: blur(3px);
-    }
+@keyframes support-chat-open {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+    filter: blur(3px);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .support-chat-launcher {
-    transition: none;
-  }
+:root[data-reduce-motion] .support-chat-launcher {
+  transition: none;
+}
 
-  .support-chat-thinking > span:not(.sr-only) {
-    animation: none;
-  }
+:root[data-reduce-motion] .support-chat-thinking > span:not(.sr-only) {
+  animation: none;
 }
 
 @media (max-width: 760px) {

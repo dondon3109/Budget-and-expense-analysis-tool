@@ -18,6 +18,7 @@ import { warmUpSounds } from "@/features/sounds/sound-effects";
 import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
+import { useReduceMotionStore } from "@/stores/reduce-motion-store";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
@@ -108,7 +109,7 @@ export default function RootLayout() {
   }, []);
 
   // These stores set skipHydration, so a saved value is only read when something
-  // asks for it. Without this the voice language, assistant voice options, mic
+  // asks for it. Without this the voice language, reduce motion, assistant voice options, mic
   // capture consent, and default spending account all start at their defaults
   // on every launch. The theme store hydrates in ZoptionThemeProvider, which
   // renders nothing until it has. The daily reminder store hydrates in
@@ -116,6 +117,7 @@ export default function RootLayout() {
   useEffect(() => {
     void useVoiceLanguageStore.persist.rehydrate();
     void useSoundEffectsStore.persist.rehydrate();
+    void useReduceMotionStore.persist.rehydrate();
     void useAssistantVoiceOptionsStore.persist.rehydrate();
     void useMicCaptureConsentStore.persist.rehydrate();
     void useDefaultSpendingAccountStore.persist.rehydrate();
