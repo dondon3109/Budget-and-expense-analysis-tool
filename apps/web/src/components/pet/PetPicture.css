@@ -64,9 +64,7 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-live,
-  .pet-live-blink {
-    animation: none;
-  }
+:root[data-reduce-motion] .pet-live,
+:root[data-reduce-motion] .pet-live-blink {
+  animation: none;
 }

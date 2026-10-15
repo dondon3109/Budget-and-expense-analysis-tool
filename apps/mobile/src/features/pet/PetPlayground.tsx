@@ -10,10 +10,9 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
-
-import { useReduceMotion } from "./EggSprite";
 
 // The playful pieces of the pet page: the spotlight the pet stands in, the hearts it sends up
 // when petted, its status chips, the growth path, and the earning tiles.

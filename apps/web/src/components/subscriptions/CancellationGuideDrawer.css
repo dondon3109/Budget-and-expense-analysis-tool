@@ -206,9 +206,7 @@
 }
 
 /* The slide/fade is decorative chrome; the drawer stays fully usable without it. */
-@media (prefers-reduced-motion: reduce) {
-  .cancellation-drawer-overlay,
-  .cancellation-drawer-content {
-    animation: none;
-  }
+:root[data-reduce-motion] .cancellation-drawer-overlay,
+:root[data-reduce-motion] .cancellation-drawer-content {
+  animation: none;
 }

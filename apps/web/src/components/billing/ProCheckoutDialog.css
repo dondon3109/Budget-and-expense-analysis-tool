@@ -23,10 +23,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pro-checkout-dialog {
-    animation: none;
-  }
+:root[data-reduce-motion] .pro-checkout-dialog {
+  animation: none;
 }
 
 .pro-checkout-header {

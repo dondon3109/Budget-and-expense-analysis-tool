@@ -456,15 +456,13 @@
     inset 0 -3px 0 rgba(74, 37, 166, 0.1);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-stage-sparkles span,
-  .pet-hearts span {
-    animation: none;
-  }
+:root[data-reduce-motion] .pet-stage-sparkles span,
+:root[data-reduce-motion] .pet-hearts span {
+  animation: none;
+}
 
-  .pet-pettable,
-  .pet-egg-option,
-  .pet-meter-fill {
-    transition: none;
-  }
+:root[data-reduce-motion] .pet-pettable,
+:root[data-reduce-motion] .pet-egg-option,
+:root[data-reduce-motion] .pet-meter-fill {
+  transition: none;
 }

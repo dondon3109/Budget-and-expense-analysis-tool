@@ -100,14 +100,12 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pet-hatch-shake[data-shaking],
-  .pet-pop {
-    animation: none;
-  }
+:root[data-reduce-motion] .pet-hatch-shake[data-shaking],
+:root[data-reduce-motion] .pet-pop {
+  animation: none;
+}
 
-  .pet-hatch-shine,
-  .pet-hatch-afterglow {
-    display: none;
-  }
+:root[data-reduce-motion] .pet-hatch-shine,
+:root[data-reduce-motion] .pet-hatch-afterglow {
+  display: none;
 }

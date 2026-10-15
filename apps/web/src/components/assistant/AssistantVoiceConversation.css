@@ -906,21 +906,19 @@
 }
 
 /* --- Reduced Motion --- */
-@media (prefers-reduced-motion: reduce) {
-  .assistant-voice-orb-listening,
-  .assistant-voice-orb-thinking,
-  .assistant-voice-orb-speaking,
-  .assistant-voice-orb-listening::before,
-  .assistant-voice-orb-listening::after,
-  .assistant-voice-orb-thinking::before,
-  .assistant-voice-orb-speaking::before,
-  .assistant-voice-waveform-thinking .assistant-voice-wave-bar,
-  .assistant-voice-waveform-speaking .assistant-voice-wave-bar,
-  .assistant-voice-thinking-dots span {
-    animation: none;
-    transform: scale(1);
-    opacity: 0.95;
-  }
+:root[data-reduce-motion] .assistant-voice-orb-listening,
+:root[data-reduce-motion] .assistant-voice-orb-thinking,
+:root[data-reduce-motion] .assistant-voice-orb-speaking,
+:root[data-reduce-motion] .assistant-voice-orb-listening::before,
+:root[data-reduce-motion] .assistant-voice-orb-listening::after,
+:root[data-reduce-motion] .assistant-voice-orb-thinking::before,
+:root[data-reduce-motion] .assistant-voice-orb-speaking::before,
+:root[data-reduce-motion] .assistant-voice-waveform-thinking .assistant-voice-wave-bar,
+:root[data-reduce-motion] .assistant-voice-waveform-speaking .assistant-voice-wave-bar,
+:root[data-reduce-motion] .assistant-voice-thinking-dots span {
+  animation: none;
+  transform: scale(1);
+  opacity: 0.95;
 }
 
 /* --- Mobile Responsiveness --- */

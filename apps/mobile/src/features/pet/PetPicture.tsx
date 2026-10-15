@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 import { Animated, Easing, Image, Pressable } from "react-native";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { useReduceMotion } from "@/ui/reduce-motion";
 
-import { useReduceMotion } from "./EggSprite";
 import { petImage } from "./pet-images";
 
 // How long one idle swing takes: a calm breath, a quick shiver, or a slow faint breath.

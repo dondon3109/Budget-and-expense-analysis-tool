@@ -13,10 +13,8 @@
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .assistant-voice-dot {
-    animation: none;
-  }
+:root[data-reduce-motion] .assistant-voice-dot {
+  animation: none;
 }
 
 /* Live speech sits in the box as ghost text until the final transcript replaces it. */
