@@ -128,13 +128,14 @@ export function CookiePolicyPage() {
           call-structure, finish, and error metadata for the financial assistant without questions,
           answers, financial records, tool payloads, credentials, or internal IDs. Mobile builds
           transmit only sanitized crash summaries without message contents or financial records, and
-          feature-use events, linked to your user ID and email while you are signed in (an app
-          launch, the name of each screen opened, that a transaction, budget, savings goal, debt,
-          subscription, or import was added, changed, or removed, and that a voice entry, voice
-          widget note, receipt scan, SMS paste, PDF statement, assistant message, or pet action
-          succeeded, with fixed labels such as the transaction type and counts such as imported
-          rows, never amounts or text). Read the <a href="/privacy-policy">Privacy Policy</a> for
-          account, financial, provider, assistant, and rights information.
+          feature-use events, linked to your user ID and email only if you allow it in the app (an
+          app launch, the name of each screen opened, that a transaction, budget, savings goal,
+          debt, subscription, or import was added, changed, or removed, and that a voice entry,
+          voice widget note, receipt scan, SMS paste, PDF statement, assistant message, or pet
+          action succeeded, with fixed labels such as the transaction type and counts such as
+          imported rows, never amounts or text). Read the{" "}
+          <a href="/privacy-policy">Privacy Policy</a> for account, financial, provider, assistant,
+          and rights information.
         </p>
       </section>
 
