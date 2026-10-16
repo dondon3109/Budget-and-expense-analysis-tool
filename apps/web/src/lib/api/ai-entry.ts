@@ -1,6 +1,7 @@
 import { transactionVoiceDraftSchema } from "@zoption/shared";
 import type { VoiceLanguage, TransactionVoiceDraft } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { ApiRequestError, apiErrorPayload } from "./errors";
 import { workspaceFetch } from "./transport";
@@ -68,5 +69,6 @@ export async function extractVoiceTransaction(
       "entry_voice_failed",
     );
   }
+  captureFunnelEvent("voice_entry_drafted", {});
   return draft;
 }

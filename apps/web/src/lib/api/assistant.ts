@@ -16,6 +16,7 @@ import type {
   VoiceLanguage,
 } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { ApiRequestError, isRecord, apiErrorPayload } from "./errors";
 import { apiUrl, workspaceFetch, requestJson } from "./transport";
@@ -254,11 +255,11 @@ export function getAssistantMessages(
  */
 const ASSISTANT_TURN_TIMEOUT_MS = 120_000;
 
-export function createAssistantThread(
+export async function createAssistantThread(
   workspace: AuthenticatedWorkspace,
   input: AssistantMessageInput,
 ): Promise<AssistantTurnResult> {
-  return requestJson(
+  const turn = await requestJson<AssistantTurnResult>(
     workspace,
     "/api/app/assistant/threads",
     {
@@ -267,18 +268,22 @@ export function createAssistantThread(
     },
     { timeoutMs: ASSISTANT_TURN_TIMEOUT_MS },
   );
+  captureFunnelEvent("assistant_message_sent", { kind: input.kind ?? "text" });
+  return turn;
 }
 
-export function sendAssistantMessage(
+export async function sendAssistantMessage(
   workspace: AuthenticatedWorkspace,
   args: { threadId: string; input: AssistantMessageInput },
 ): Promise<AssistantTurnResult> {
-  return requestJson(
+  const turn = await requestJson<AssistantTurnResult>(
     workspace,
     `/api/app/assistant/threads/${encodeURIComponent(args.threadId)}/messages`,
     { method: "POST", body: JSON.stringify(args.input) },
     { timeoutMs: ASSISTANT_TURN_TIMEOUT_MS },
   );
+  captureFunnelEvent("assistant_message_sent", { kind: args.input.kind ?? "text" });
+  return turn;
 }
 
 /**
@@ -295,6 +300,7 @@ export async function confirmAssistantTransactionDraft(
     `/api/app/assistant/messages/${encodeURIComponent(messageId)}/transaction`,
     { method: "POST", body: JSON.stringify({ slot }) },
   );
+  captureFunnelEvent("assistant_transaction_saved", {});
   // Metadata stays a loose record in the shared schema; the draft card parses its draft.
   return assistantMessageSchema.parse(value) as AssistantMessage;
 }
@@ -312,6 +318,7 @@ export async function confirmAssistantAction(
     `/api/app/assistant/messages/${encodeURIComponent(messageId)}/action`,
     { method: "POST", body: "{}" },
   );
+  captureFunnelEvent("assistant_action_confirmed", {});
   return assistantMessageSchema.parse(value) as AssistantMessage;
 }
 

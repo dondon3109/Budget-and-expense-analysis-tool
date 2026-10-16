@@ -41,11 +41,36 @@ const mockedPostHog = posthog as unknown as MockPostHog;
 
 const EVENT_PROPERTIES: { [Name in FunnelEventName]: FunnelEventProperties[Name] } = {
   signup_viewed: {},
-  signup_submitted: { outcome: "confirmation_required" },
+  signup_submitted: { method: "password", outcome: "confirmation_required" },
   app_session_started: {},
   first_import_committed: {},
   assistant_consent_granted: {},
   assistant_first_question: { surface: "chat" },
+  page_viewed: { page: "budgets" },
+  transaction_created: { transaction_kind: "expense" },
+  transaction_updated: {},
+  transaction_deleted: {},
+  budget_saved: { scope: "month" },
+  goal_created: {},
+  goal_updated: {},
+  goal_deleted: {},
+  debt_created: {},
+  debt_updated: {},
+  debt_deleted: {},
+  subscription_created: {},
+  subscription_updated: {},
+  subscription_deleted: {},
+  import_completed: {},
+  voice_entry_drafted: {},
+  receipt_scanned: {},
+  sms_paste_applied: {},
+  assistant_message_sent: { kind: "voice" },
+  assistant_transaction_saved: {},
+  assistant_action_confirmed: {},
+  pet_egg_chosen: {},
+  pet_hatched: {},
+  pet_color_set: {},
+  pet_enabled_set: { enabled: false },
 };
 
 const EVENT_ENTRIES = Object.entries(EVENT_PROPERTIES) as Array<
@@ -88,6 +113,7 @@ describe("funnel events", () => {
 
   it("drops any property key outside the event's fixed schema", () => {
     captureFunnelEvent("signup_submitted", {
+      method: "password",
       outcome: "signed_in",
       email: "person@example.com",
       amount_minor: 5_000,
@@ -95,7 +121,7 @@ describe("funnel events", () => {
     } as FunnelEventProperties["signup_submitted"]);
 
     expect(mockedPostHog.__getCapturedEvents()).toEqual([
-      { event: "signup_submitted", properties: { outcome: "signed_in" } },
+      { event: "signup_submitted", properties: { method: "password", outcome: "signed_in" } },
     ]);
   });
 

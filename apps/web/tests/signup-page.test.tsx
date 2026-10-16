@@ -86,6 +86,10 @@ describe("SignupPage", () => {
       expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app?proCheckout=open"),
     );
     expect(screen.getByRole("button", { name: "Connecting to Google…" })).toBeDisabled();
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+      method: "google",
+      outcome: "redirect_started",
+    });
     expect(
       screen.queryByRole("button", { name: "Continue with Facebook" }),
     ).not.toBeInTheDocument();
@@ -188,6 +192,7 @@ describe("SignupPage", () => {
       expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
     );
     expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+      method: "password",
       outcome: "signed_in",
     });
   });
@@ -207,6 +212,7 @@ describe("SignupPage", () => {
 
     await waitFor(() =>
       expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+        method: "password",
         outcome: "confirmation_required",
       }),
     );
@@ -220,6 +226,7 @@ describe("SignupPage", () => {
 
     await waitFor(() =>
       expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+        method: "password",
         outcome: "failed",
       }),
     );

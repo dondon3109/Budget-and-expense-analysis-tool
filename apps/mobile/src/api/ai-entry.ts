@@ -6,6 +6,7 @@ import {
 } from "@zoption/shared";
 import { File } from "expo-file-system";
 
+import { telemetry } from "@/telemetry/telemetry";
 import { publicConfig } from "@/config/public-config";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
@@ -91,7 +92,9 @@ export async function extractVoiceTransaction(
       entryFallback,
     );
   }
-  return transactionVoiceDraftSchema.parse(await response.json());
+  const draft = transactionVoiceDraftSchema.parse(await response.json());
+  void telemetry.capture("voice_entry_drafted");
+  return draft;
 }
 
 /** Submits a transcribed voice text directly and returns a review-only transaction draft without audio upload. */
@@ -139,7 +142,9 @@ export async function extractVoiceTransactionFromTranscript(
       entryFallback,
     );
   }
-  return transactionVoiceDraftSchema.parse(await response.json());
+  const draft = transactionVoiceDraftSchema.parse(await response.json());
+  void telemetry.capture("voice_entry_drafted");
+  return draft;
 }
 
 /**

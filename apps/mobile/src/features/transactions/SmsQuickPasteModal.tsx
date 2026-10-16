@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Clipboard, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { telemetry } from "@/telemetry/telemetry";
 import { BottomSheet, Button, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -106,6 +107,7 @@ export function SmsQuickPasteModal({
 
   const apply = (): void => {
     if (!parsed) return;
+    void telemetry.capture("sms_paste_applied");
     if (onApply) {
       onApply(parsed);
     } else {

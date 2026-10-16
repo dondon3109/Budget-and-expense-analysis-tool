@@ -1,5 +1,6 @@
 import type { ReceiptDraft, ReceiptPreferences } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { ApiRequestError, apiErrorPayload } from "./errors";
 import { workspaceFetch, requestJson } from "./transport";
@@ -49,5 +50,7 @@ export async function extractReceipt(
       payload.details,
     );
   }
-  return (await response.json()) as ReceiptDraft;
+  const draft = (await response.json()) as ReceiptDraft;
+  captureFunnelEvent("receipt_scanned", {});
+  return draft;
 }

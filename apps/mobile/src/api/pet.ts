@@ -1,5 +1,7 @@
 import { petViewSchema, type PetColor, type PetSpecies, type PetView } from "@zoption/shared";
 
+import { telemetry } from "@/telemetry/telemetry";
+
 import { apiRequest } from "./authenticated";
 
 export interface PetApi {
@@ -33,13 +35,13 @@ export function checkInPet(api: PetApi): Promise<PetView> {
   });
 }
 
-export function choosePetEgg(
+export async function choosePetEgg(
   api: PetApi,
   species: PetSpecies,
   name: string,
   color: PetColor,
 ): Promise<PetView> {
-  return apiRequest({
+  const view = await apiRequest({
     ...api,
     path: `${PATH}/egg`,
     method: "PUT",
@@ -47,11 +49,13 @@ export function choosePetEgg(
     fallback: "Zoption could not save your egg. Try again shortly.",
     decode,
   });
+  void telemetry.capture("pet_egg_chosen");
+  return view;
 }
 
 /** Recolors the pet. The Worker answers 409 when there is no pet or egg. */
-export function setPetColor(api: PetApi, color: PetColor): Promise<PetView> {
-  return apiRequest({
+export async function setPetColor(api: PetApi, color: PetColor): Promise<PetView> {
+  const view = await apiRequest({
     ...api,
     path: `${PATH}/color`,
     method: "PUT",
@@ -59,10 +63,12 @@ export function setPetColor(api: PetApi, color: PetColor): Promise<PetView> {
     fallback: "Zoption could not recolor your pet. Try again shortly.",
     decode,
   });
+  void telemetry.capture("pet_color_set");
+  return view;
 }
 
-export function setPetEnabled(api: PetApi, enabled: boolean): Promise<PetView> {
-  return apiRequest({
+export async function setPetEnabled(api: PetApi, enabled: boolean): Promise<PetView> {
+  const view = await apiRequest({
     ...api,
     path: `${PATH}/settings`,
     method: "PUT",
@@ -70,15 +76,19 @@ export function setPetEnabled(api: PetApi, enabled: boolean): Promise<PetView> {
     fallback: "Zoption could not update your pet. Try again shortly.",
     decode,
   });
+  void telemetry.capture("pet_enabled_set", { enabled });
+  return view;
 }
 
 /** Breaks open a ready egg after its last tap. The Worker answers 409 when the egg is not ready. */
-export function hatchPet(api: PetApi): Promise<PetView> {
-  return apiRequest({
+export async function hatchPet(api: PetApi): Promise<PetView> {
+  const view = await apiRequest({
     ...api,
     path: `${PATH}/hatch`,
     method: "POST",
     fallback: "Couldn't hatch your egg. Try again.",
     decode,
   });
+  void telemetry.capture("pet_hatched");
+  return view;
 }

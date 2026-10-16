@@ -1,5 +1,6 @@
 import type { FinancialGoal, FinancialGoalInput, FinancialGoalUpdate } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { requestJson } from "./transport";
 
@@ -9,28 +10,37 @@ export function getFinancialGoals(
   return requestJson(workspace, "/api/app/goals");
 }
 
-export function createFinancialGoal(
+export async function createFinancialGoal(
   workspace: AuthenticatedWorkspace,
   input: FinancialGoalInput,
 ): Promise<FinancialGoal> {
-  return requestJson(workspace, "/api/app/goals", {
+  const created = await requestJson<FinancialGoal>(workspace, "/api/app/goals", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  captureFunnelEvent("goal_created", {});
+  return created;
 }
 
-export function updateFinancialGoal(
+export async function updateFinancialGoal(
   workspace: AuthenticatedWorkspace,
   args: { id: string; input: FinancialGoalUpdate },
 ): Promise<FinancialGoal> {
-  return requestJson(workspace, `/api/app/goals/${encodeURIComponent(args.id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(args.input),
-  });
+  const updated = await requestJson<FinancialGoal>(
+    workspace,
+    `/api/app/goals/${encodeURIComponent(args.id)}`,
+    { method: "PATCH", body: JSON.stringify(args.input) },
+  );
+  captureFunnelEvent("goal_updated", {});
+  return updated;
 }
 
-export function deleteFinancialGoal(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
-  return requestJson(workspace, `/api/app/goals/${encodeURIComponent(id)}`, {
+export async function deleteFinancialGoal(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<void> {
+  await requestJson<void>(workspace, `/api/app/goals/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+  captureFunnelEvent("goal_deleted", {});
 }

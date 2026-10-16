@@ -10,6 +10,7 @@ import {
   type TransactionListItem,
 } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import "./SmsQuickPasteModal.css";
@@ -131,6 +132,7 @@ const SmsQuickPasteDialog: React.FC<SmsQuickPasteDialogProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    captureFunnelEvent("sms_paste_applied", {});
     onApply(parsedData);
     onClose();
   };

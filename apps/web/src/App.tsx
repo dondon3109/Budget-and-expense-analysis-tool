@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
+import { AppPageViewed } from "./analytics/AppPageViewed";
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
 import { useAuth } from "./auth/AuthProvider";
 import { FullPageLoadingStatus } from "./components/layout/FullPageLoadingStatus";
@@ -153,6 +154,7 @@ export function App() {
     <>
       <ScrollToTop />
       <RouteTitle />
+      <AppPageViewed />
       <ConnectivityStatus />
       <VerifiedIdentitySync />
       <Suspense

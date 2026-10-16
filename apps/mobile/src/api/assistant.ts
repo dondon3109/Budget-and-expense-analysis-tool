@@ -16,6 +16,8 @@ import {
 } from "@zoption/shared";
 import { z } from "zod";
 
+import { telemetry } from "@/telemetry/telemetry";
+
 import { ApiTransportError, apiRequest } from "./authenticated";
 import {
   clearDummyAssistantMemory,
@@ -280,7 +282,7 @@ export async function createAssistantThreadTurn(
   input: AssistantMessageInput,
 ): Promise<AssistantWireTurnResult> {
   try {
-    return await apiRequest({
+    const turn = await apiRequest({
       ...api,
       path: "/api/app/assistant/threads",
       method: "POST",
@@ -290,6 +292,8 @@ export async function createAssistantThreadTurn(
       timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
       timeoutFallback: "The assistant took too long. Try again.",
     });
+    void telemetry.capture("assistant_message_sent", { kind: input.kind ?? "text" });
+    return turn;
   } catch (error) {
     if (error instanceof ApiTransportError && error.status > 0) {
       throw error;
@@ -307,7 +311,7 @@ export async function sendAssistantTurn(
   input: AssistantMessageInput,
 ): Promise<AssistantWireTurnResult> {
   try {
-    return await apiRequest({
+    const turn = await apiRequest({
       ...api,
       path: "/api/app/assistant/threads/" + encodeURIComponent(threadId) + "/messages",
       method: "POST",
@@ -317,6 +321,8 @@ export async function sendAssistantTurn(
       timeoutMs: ASSISTANT_TURN_TIMEOUT_MS,
       timeoutFallback: "The assistant took too long. Try again.",
     });
+    void telemetry.capture("assistant_message_sent", { kind: input.kind ?? "text" });
+    return turn;
   } catch (error) {
     if (error instanceof ApiTransportError && error.status > 0) {
       throw error;
@@ -338,7 +344,7 @@ export async function confirmAssistantTransactionDraft(
   messageId: string,
   slot = 0,
 ): Promise<AssistantWireMessage> {
-  return apiRequest({
+  const message = await apiRequest({
     ...api,
     path: "/api/app/assistant/messages/" + encodeURIComponent(messageId) + "/transaction",
     method: "POST",
@@ -346,6 +352,8 @@ export async function confirmAssistantTransactionDraft(
     fallback: "The transaction could not be saved. Try again.",
     decode: (value) => assistantMessageSchema.parse(value),
   });
+  void telemetry.capture("assistant_transaction_saved");
+  return message;
 }
 
 /**
@@ -357,7 +365,7 @@ export async function confirmAssistantAction(
   api: AssistantApi,
   messageId: string,
 ): Promise<AssistantWireMessage> {
-  return apiRequest({
+  const message = await apiRequest({
     ...api,
     path: "/api/app/assistant/messages/" + encodeURIComponent(messageId) + "/action",
     method: "POST",
@@ -365,6 +373,8 @@ export async function confirmAssistantAction(
     fallback: "The change could not be applied. Try again.",
     decode: (value) => assistantMessageSchema.parse(value),
   });
+  void telemetry.capture("assistant_action_confirmed");
+  return message;
 }
 
 export async function deleteAssistantThread(api: AssistantApi, threadId: string): Promise<void> {
