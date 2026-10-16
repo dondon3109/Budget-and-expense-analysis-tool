@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
-import { choosePetEgg, getPet, hatchPet, setPetEnabled } from "@/api/pet";
+import { choosePetEgg, getPet, hatchPet, setPetColor, setPetEnabled } from "@/api/pet";
 import { usePetStore } from "@/stores/pet-store";
 import { PetScreen } from "./PetScreen";
 import { babyPet, noPet } from "./pet-test-fixtures";
@@ -24,6 +24,7 @@ jest.mock("@/api/pet", () => ({
   getPet: jest.fn(),
   choosePetEgg: jest.fn(),
   setPetEnabled: jest.fn(),
+  setPetColor: jest.fn(),
   hatchPet: jest.fn(),
 }));
 
@@ -33,6 +34,7 @@ describe("PetScreen", () => {
     jest.mocked(choosePetEgg).mockReset();
     jest.mocked(setPetEnabled).mockReset();
     jest.mocked(hatchPet).mockReset();
+    jest.mocked(setPetColor).mockReset();
     mockBack.mockReset();
     mockPush.mockReset();
     mockPlan = { plan: "zoption_pro", status: "ready" };
@@ -46,12 +48,27 @@ describe("PetScreen", () => {
 
     expect(screen.getByText("Meet your pet")).toBeTruthy();
     await fireEvent.press(screen.getByRole("radio", { name: "Hippo egg" }));
+    await fireEvent.press(screen.getByRole("radio", { name: "Pink" }));
     expect(screen.getByRole("button", { name: "Give it a name" })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText("Name your pet"), "  Gloria ");
     await fireEvent.press(screen.getByRole("button", { name: "Choose the Hippo egg" }));
 
     await waitFor(() => expect(usePetStore.getState().pet?.species).toBe("hippo"));
-    expect(choosePetEgg).toHaveBeenCalledWith({ accessToken: "token" }, "hippo", "Gloria");
+    expect(choosePetEgg).toHaveBeenCalledWith({ accessToken: "token" }, "hippo", "Gloria", "pink");
+  });
+
+  it("asks the owner of a pet from before colors to pick one, once", async () => {
+    const older = { ...babyPet, color: null };
+    usePetStore.setState({ pet: older });
+    jest.mocked(getPet).mockResolvedValue(older);
+    jest.mocked(setPetColor).mockResolvedValue(babyPet);
+    await render(<PetScreen />);
+
+    expect(await screen.findByText("Pick a color for Bao")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Keep original" }));
+
+    await waitFor(() => expect(screen.queryByText("Pick a color for Bao")).toBeNull());
+    expect(setPetColor).toHaveBeenCalledWith({ accessToken: "token" }, "original");
   });
 
   it("turns the pet off and leaves on Not now", async () => {

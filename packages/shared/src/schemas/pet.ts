@@ -5,6 +5,7 @@ import { z } from "zod";
 import {
   PET_NAME_MAX_LENGTH,
   petActivityActions,
+  petColors,
   petHealthStates,
   petSpecies,
   petStages,
@@ -22,6 +23,8 @@ export const petStoredStateSchema = z
     species: z.enum(petSpecies).nullable(),
     // Pets stored before names existed have none; the view falls back to the species label.
     name: petNameSchema.nullable().default(null),
+    // Pets stored before colors existed have none until the user picks one.
+    color: z.enum(petColors).nullable().default(null),
     eggStreak: z
       .object({
         streakDays: z.number().int().nonnegative(),
@@ -45,9 +48,12 @@ export const petStoredStateSchema = z
   .strict();
 
 export const petEggChoiceSchema = z
-  .object({ species: z.enum(petSpecies), name: petNameSchema })
+  .object({ species: z.enum(petSpecies), name: petNameSchema, color: z.enum(petColors) })
   .strict();
 export type PetEggChoice = z.infer<typeof petEggChoiceSchema>;
+
+export const petColorChoiceSchema = z.object({ color: z.enum(petColors) }).strict();
+export type PetColorChoice = z.infer<typeof petColorChoiceSchema>;
 
 export const petSettingsSchema = z.object({ enabled: z.boolean() }).strict();
 export type PetSettings = z.infer<typeof petSettingsSchema>;
@@ -59,6 +65,8 @@ export const petViewSchema = z
     species: z.enum(petSpecies).nullable(),
     /** Set whenever `species` is, and kept after death for the memorial. */
     name: z.string().nullable(),
+    /** Null while a living pet's owner has not picked a color yet (and with no pet). */
+    color: z.enum(petColors).nullable(),
     stage: z.enum(petStages),
     points: z.number().int().nonnegative(),
     /** Points at which the next stage starts, or null for a Legend. */

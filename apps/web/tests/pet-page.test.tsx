@@ -21,6 +21,7 @@ vi.mock("../src/lib/api", async () =>
     "choosePetEgg",
     "setPetEnabled",
     "hatchPet",
+    "setPetColor",
     "getBillingSummary",
   ]),
 );
@@ -31,7 +32,7 @@ vi.mock("../src/lib/petSounds", () => ({
 }));
 
 import { PetMomentDialog } from "../src/components/pet/PetMomentDialog";
-import { checkInPet, choosePetEgg, getBillingSummary, hatchPet } from "../src/lib/api";
+import { checkInPet, choosePetEgg, getBillingSummary, hatchPet, setPetColor } from "../src/lib/api";
 import { playPetReaction } from "../src/lib/petSounds";
 import { PetPage } from "../src/pages/PetPage";
 import { renderWithProviders } from "./helpers/render";
@@ -40,6 +41,7 @@ const babyPet: PetView = {
   enabled: true,
   species: "panda",
   name: "Bao",
+  color: "original",
   stage: "baby",
   points: 120,
   nextStagePoints: 350,
@@ -55,6 +57,7 @@ const noPet: PetView = {
   ...babyPet,
   species: null,
   name: null,
+  color: null,
   stage: "egg",
   points: 0,
   nextStagePoints: null,
@@ -91,6 +94,7 @@ describe("pet on the web", () => {
     vi.mocked(checkInPet).mockReset();
     vi.mocked(choosePetEgg).mockReset();
     vi.mocked(hatchPet).mockReset();
+    vi.mocked(setPetColor).mockReset();
     vi.mocked(getBillingSummary).mockReset();
     vi.mocked(getBillingSummary).mockResolvedValue(billingSummary("zoption_pro"));
   });
@@ -102,6 +106,7 @@ describe("pet on the web", () => {
     renderWithProviders(<PetPage />);
 
     fireEvent.click(await screen.findByRole("radio", { name: "Hippo" }));
+    fireEvent.click(screen.getByRole("radio", { name: "Pink" }));
     expect(screen.getByRole("button", { name: "Give it a name" })).toBeDisabled();
     fireEvent.change(screen.getByRole("textbox", { name: "Name your pet" }), {
       target: { value: " Gloria " },
@@ -112,7 +117,28 @@ describe("pet on the web", () => {
     expect(vi.mocked(choosePetEgg).mock.calls[0]?.[1]).toEqual({
       species: "hippo",
       name: "Gloria",
+      color: "pink",
     });
+  });
+
+  it("asks the owner of a pet from before colors to pick one, once", async () => {
+    vi.mocked(checkInPet).mockResolvedValue({ ...babyPet, color: null });
+    vi.mocked(setPetColor).mockResolvedValue(babyPet);
+    renderWithProviders(<PetPage />);
+
+    expect(await screen.findByRole("heading", { name: "Pick a color for Bao" })).toBeVisible();
+    // The pet itself previews each color.
+    expect(
+      screen.getByRole("radio", { name: "Pink" }).closest("label")?.querySelector("img"),
+    ).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Keep original" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "Pick a color for Bao" })).toBeNull(),
+    );
+    expect(vi.mocked(setPetColor).mock.calls[0]?.[1]).toBe("original");
+    // Afterwards the color can still change from the pet's own panel.
+    expect(screen.getByRole("radio", { name: "Original" })).toBeChecked();
   });
 
   it("hatches a ready egg on the tenth click", async () => {

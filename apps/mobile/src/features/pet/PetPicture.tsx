@@ -8,13 +8,13 @@ import {
   type PetView,
 } from "@zoption/shared";
 import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Image, Pressable } from "react-native";
+import { Animated, Easing, Pressable } from "react-native";
 
 import { useReduceMotion } from "@/ui/reduce-motion";
 
 import { playPetReaction, warmUpPetVoices } from "./pet-sounds";
 import { ReactionBurst } from "./PetPlayground";
-import { petImage } from "./pet-images";
+import { TintedPetImage } from "./TintedPetImage";
 
 // How long one idle swing takes: a calm breath, a quick shiver, or a slow faint breath.
 const IDLE_MS = { cute: 1300, sick: 90, fading: 2200 } as const;
@@ -46,9 +46,9 @@ interface PetPictureProps {
 }
 
 /**
- * A hatched pet as its Grok picture. A healthy pet breathes and blinks (an eyes-closed copy of
- * the same picture flashes on top), a sick one shows its sick picture and shivers, and a fading
- * one shows its fading picture and barely breathes. A tap answers by mood with motion, a burst,
+ * A hatched pet as its Grok picture in its pet color. A healthy pet breathes and blinks (an
+ * eyes-closed copy of the same picture flashes on top), a sick one shows its sick picture and
+ * shivers, and a fading one shows its fading picture and barely breathes. A tap answers by mood with motion, a burst,
  * the species' voice, and a buzz; five quick taps make a healthy pet dance. Petting is local only.
  * Every motion runs on the native driver, and Reduce Motion keeps it still but keeps the voice.
  */
@@ -125,6 +125,7 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
     { scaleY: Animated.add(along(1, swing.stretch), reacting(keyframes.squash)) },
   ];
   const look = mood === "sick" || mood === "fading" ? mood : "healthy";
+  const picture = { species: pet.species, stage: pet.stage, color: pet.color, size };
   // Explicit sizes, not absoluteFill: Android otherwise draws the picture at its 512px file size.
   const box = { position: "absolute" as const, top: 0, left: 0, width: size, height: size };
 
@@ -139,17 +140,11 @@ export function PetPicture({ pet, size, accessibilityLabel }: PetPictureProps) {
       <Animated.View
         style={[box, { transform: motion, transformOrigin: [size / 2, size * 0.95, 0] }]}
       >
-        <Image
-          accessibilityIgnoresInvertColors
-          source={petImage(pet.species, pet.stage, look)}
-          style={box}
-        />
+        <TintedPetImage {...picture} look={look} style={box} />
         {mood === "cute" ? (
-          <Animated.Image
-            accessibilityIgnoresInvertColors
-            source={petImage(pet.species, pet.stage, "blink")}
-            style={[box, { opacity: blink }]}
-          />
+          <Animated.View style={[box, { opacity: blink }]}>
+            <TintedPetImage {...picture} look="blink" />
+          </Animated.View>
         ) : null}
       </Animated.View>
       {tap && !reduceMotion ? <ReactionBurst key={tap.id} reaction={tap.reaction} /> : null}

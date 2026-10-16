@@ -55,7 +55,7 @@ async function hatch(harness: Harness, tenantId: string) {
   await petRepository.chooseEgg(
     harness.env,
     tenantId,
-    { species: "panda", name: "Bao" },
+    { species: "panda", name: "Bao", color: "original" },
     new Date(T0),
   );
   for (let day = 0; day < 7; day += 1) {
@@ -120,7 +120,13 @@ describe("pet routes", () => {
     });
 
     expect(
-      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "hippo", name: "Gloria" })).status,
+      (
+        await call("/api/app/pet/egg", ALICE, "PUT", {
+          species: "hippo",
+          name: "Gloria",
+          color: "original",
+        })
+      ).status,
     ).toBe(200);
     expect(await (await call("/api/app/pet", ALICE)).json()).toMatchObject({
       species: "hippo",
@@ -132,7 +138,13 @@ describe("pet routes", () => {
   it("validates the egg and refuses a second one", async () => {
     const { call } = createHarness();
     expect(
-      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "dragon", name: "X" })).status,
+      (
+        await call("/api/app/pet/egg", ALICE, "PUT", {
+          species: "dragon",
+          name: "X",
+          color: "original",
+        })
+      ).status,
     ).toBe(400);
     expect((await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig" })).status).toBe(400);
     expect(
@@ -140,19 +152,56 @@ describe("pet routes", () => {
         await call("/api/app/pet/egg", ALICE, "PUT", {
           species: "pig",
           name: "Oink",
+          color: "original",
           tenantId: "bob",
         })
       ).status,
     ).toBe(400);
-    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", name: "Oink" });
+    await call("/api/app/pet/egg", ALICE, "PUT", {
+      species: "pig",
+      name: "Oink",
+      color: "original",
+    });
     expect(
-      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "panda", name: "Bao" })).status,
+      (
+        await call("/api/app/pet/egg", ALICE, "PUT", {
+          species: "panda",
+          name: "Bao",
+          color: "original",
+        })
+      ).status,
     ).toBe(409);
+  });
+
+  it("picks the color with the egg, changes it later, and asks again only for an old pet", async () => {
+    const { call, database } = createHarness();
+    expect((await call("/api/app/pet/color", ALICE, "PUT", { color: "pink" })).status).toBe(409);
+    expect(
+      (await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", name: "Oink", color: "red" }))
+        .status,
+    ).toBe(400);
+
+    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", name: "Oink", color: "mint" });
+    expect(await (await call("/api/app/pet", ALICE)).json()).toMatchObject({ color: "mint" });
+    const changed = await call("/api/app/pet/color", ALICE, "PUT", { color: "pink" });
+    expect(await changed.json()).toMatchObject({ species: "pig", color: "pink" });
+    expect(await (await call("/api/app/pet", BOB)).json()).toMatchObject({ color: null });
+
+    // A pet stored before colors existed has none, which is what makes the app ask.
+    database.prepare("UPDATE pets SET state_json = json_remove(state_json, '$.color')").run();
+    expect(await (await call("/api/app/pet", ALICE)).json()).toMatchObject({
+      species: "pig",
+      color: null,
+    });
   });
 
   it("counts a check-in toward the egg streak", async () => {
     const { call } = createHarness();
-    await call("/api/app/pet/egg", ALICE, "PUT", { species: "pig", name: "Oink" });
+    await call("/api/app/pet/egg", ALICE, "PUT", {
+      species: "pig",
+      name: "Oink",
+      color: "original",
+    });
     const response = await call("/api/app/pet/check-in", ALICE, "POST");
     expect(await response.json()).toMatchObject({ stage: "egg", eggStreakDays: 1 });
   });
@@ -165,7 +214,7 @@ describe("pet activity", () => {
     await petRepository.chooseEgg(
       harness.env,
       tenantId,
-      { species: "pig", name: "Oink" },
+      { species: "pig", name: "Oink", color: "original" },
       new Date(T0),
     );
     for (const day of [0, 1, 2, 4]) {
@@ -310,6 +359,7 @@ describe("pet activity", () => {
     expect(dead).toMatchObject({
       species: null,
       name: "Bao",
+      color: null,
       stage: "egg",
       diedAt: iso(hatchedAt + 72 * HOUR),
     });
@@ -317,7 +367,7 @@ describe("pet activity", () => {
     const egg = await petRepository.chooseEgg(
       env,
       tenantId,
-      { species: "hippo", name: "Gloria" },
+      { species: "hippo", name: "Gloria", color: "original" },
       new Date(hatchedAt + 73 * HOUR),
     );
     expect(egg).toMatchObject({ species: "hippo", name: "Gloria", diedAt: null, eggStreakDays: 0 });

@@ -9,6 +9,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
 
 import { petImage } from "./pet-images";
+import { TintedPetImage } from "./TintedPetImage";
 import { usePetMoment } from "./use-pet-moment";
 
 /** The pet pop-up on Home: the pet's picture and how it is doing, at most once per open. */
@@ -41,11 +42,21 @@ export function PetMomentModal() {
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
           ]}
         >
-          <Image
-            accessibilityIgnoresInvertColors
-            source={petImage(pet.species, pet.stage, look)}
-            style={styles.picture}
-          />
+          {pet.species === null ? (
+            <Image
+              accessibilityIgnoresInvertColors
+              source={petImage(null, pet.stage)}
+              style={styles.picture}
+            />
+          ) : (
+            <TintedPetImage
+              species={pet.species}
+              stage={pet.stage}
+              look={look}
+              color={pet.color}
+              size={200}
+            />
+          )}
           <Text
             accessibilityRole="header"
             style={[typography.title, styles.center, { color: theme.colors.text }]}

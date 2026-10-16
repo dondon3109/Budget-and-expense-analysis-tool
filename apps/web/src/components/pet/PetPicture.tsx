@@ -7,14 +7,15 @@ import {
 import { useEffect, useRef } from "react";
 
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { petImageUrl, petLook } from "../../lib/petImages";
+import { petLook } from "../../lib/petImages";
+import { TintedPicture } from "./TintedPicture";
 import "./PetPicture.css";
 
 /**
- * A hatched pet as its Grok picture, like the phone app's: a healthy pet breathes and blinks (an
- * eyes-closed copy of the same picture flashes on top), a sick one shows its sick picture and
- * shivers, and a fading one shows its fading picture and barely breathes. Each new `tap` plays
- * that reaction's motion once on top of the idle one, unless motion is reduced.
+ * A hatched pet as its Grok picture in its pet color, like the phone app's: a healthy pet breathes
+ * and blinks (an eyes-closed copy of the same picture flashes on top), a sick one shows its sick
+ * picture and shivers, and a fading one shows its fading picture and barely breathes. Each new
+ * `tap` plays that reaction's motion once on top of the idle one, unless motion is reduced.
  */
 export function PetPicture({
   pet,
@@ -28,6 +29,7 @@ export function PetPicture({
   tap?: { reaction: PetReaction; id: number } | null;
 }) {
   const look = petLook(pet);
+  const picture = { species: pet.species, stage: pet.stage, color: pet.color, size };
   const reduceMotion = useReducedMotion();
   const reacting = useRef<HTMLSpanElement>(null);
 
@@ -51,15 +53,9 @@ export function PetPicture({
       style={{ width: size, height: size }}
     >
       <span ref={reacting} className="pet-live-react">
-        <img src={petImageUrl(pet.species, pet.stage, look)} alt="" width={size} height={size} />
+        <TintedPicture {...picture} look={look} />
         {look === "healthy" ? (
-          <img
-            className="pet-live-blink"
-            src={petImageUrl(pet.species, pet.stage, "blink")}
-            alt=""
-            width={size}
-            height={size}
-          />
+          <TintedPicture {...picture} look="blink" className="pet-live-blink" />
         ) : null}
       </span>
     </span>

@@ -1,7 +1,7 @@
-import type { PetSpecies, PetView } from "@zoption/shared";
+import type { PetColor, PetSpecies, PetView } from "@zoption/shared";
 import { useCallback, useState } from "react";
 
-import { choosePetEgg, getPet, hatchPet, setPetEnabled, type PetApi } from "@/api/pet";
+import { choosePetEgg, getPet, hatchPet, setPetColor, setPetEnabled, type PetApi } from "@/api/pet";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { usePetStore } from "@/stores/pet-store";
 
@@ -40,9 +40,11 @@ export function usePetActions() {
     error,
     refresh: useCallback(() => run(getPet), [run]),
     chooseEgg: useCallback(
-      (species: PetSpecies, name: string) => run((api) => choosePetEgg(api, species, name)),
+      (species: PetSpecies, name: string, color: PetColor) =>
+        run((api) => choosePetEgg(api, species, name, color)),
       [run],
     ),
+    setColor: useCallback((color: PetColor) => run((api) => setPetColor(api, color)), [run]),
     setEnabled: useCallback((enabled: boolean) => run((api) => setPetEnabled(api, enabled)), [run]),
     hatch: useCallback((beforeShow: () => Promise<void>) => run(hatchPet, beforeShow), [run]),
   };

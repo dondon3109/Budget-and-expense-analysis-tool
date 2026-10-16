@@ -1,4 +1,6 @@
-import type { PetSpecies } from "../pet";
+import type { PetColor, PetSpecies } from "../pet";
+
+import { tintPetHex } from "./colors";
 
 import {
   blob,
@@ -152,11 +154,40 @@ export function eggCracks(days: number, taps = 0): PetShape[] {
   return cracks;
 }
 
-/** An egg of each species, with the crack for `days` consecutive login days and `taps` to hatch. */
-export function eggArt(species: PetSpecies, days = 0, taps = 0): PetArt {
+// The fills that are the egg's body, which a pet color tints; the rest (bellies, seeds, water,
+// bamboo) keeps its color, like the pictures' body masks.
+const bodyFills: Record<PetSpecies, string[]> = {
+  hedgehog: ["#B07A45", "#6B4527"],
+  pig: ["#F6A9B8", "#E98AA0"],
+  hamster: ["#F0A040"],
+  penguin: ["#2C3340"],
+  panda: ["#24242C"],
+  hippo: ["#A7A1C6", "#C9C3E0"],
+};
+
+function tinted(species: PetSpecies, color: PetColor): PetShape[] {
+  if (color === "original") return patterns[species];
+  const body = bodyFills[species];
+  return patterns[species].map((shape) =>
+    shape.fill && body.includes(shape.fill)
+      ? { ...shape, fill: tintPetHex(shape.fill, color) }
+      : shape,
+  );
+}
+
+/**
+ * An egg of each species in its pet color, with the crack for `days` consecutive login days and
+ * `taps` to hatch.
+ */
+export function eggArt(
+  species: PetSpecies,
+  days = 0,
+  taps = 0,
+  color: PetColor = "original",
+): PetArt {
   return [
     groundShadow(56),
-    { clip: EGG, shapes: patterns[species] },
+    { clip: EGG, shapes: tinted(species, color) },
     { shapes: [shine, outline, ...eggCracks(days, taps)] },
   ];
 }

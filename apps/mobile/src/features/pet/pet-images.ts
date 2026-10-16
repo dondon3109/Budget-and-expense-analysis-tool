@@ -1,5 +1,7 @@
 import type { PetSpecies, PetStage } from "@zoption/shared";
 
+import { petMasks } from "./pet-masks";
+
 import hedgehogEgg from "../../../assets/pet/hedgehog-egg.webp";
 import hedgehogBaby from "../../../assets/pet/hedgehog-baby.webp";
 import hedgehogBabyBlink from "../../../assets/pet/hedgehog-baby-blink.webp";
@@ -270,6 +272,13 @@ const images: Record<PetSpecies, { egg: number } & Record<HatchedStage, Record<P
       },
     },
   };
+
+/** The body mask a pet color tints through (scripts/generate-pet-masks.mjs). Eggs have one look. */
+export function petMask(species: PetSpecies, stage: PetStage, look: PetLook = "healthy"): number {
+  const name =
+    stage === "egg" || look === "healthy" ? `${species}-${stage}` : `${species}-${stage}-${look}`;
+  return petMasks[name]!;
+}
 
 /** The picture for a pet, or the tombstone once it has passed away. Eggs have one look. */
 export function petImage(

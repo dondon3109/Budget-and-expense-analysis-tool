@@ -3,6 +3,7 @@ import {
   PET_NAME_MAX_LENGTH,
   petSpecies,
   petSpeciesLabels,
+  type PetColor,
   type PetSpecies,
 } from "@zoption/shared";
 import { useState } from "react";
@@ -13,17 +14,19 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
 import { EggSprite } from "./EggSprite";
+import { PetColorPicker } from "./PetColorPicker";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 interface EggPickerProps {
   busy: boolean;
-  onChoose: (species: PetSpecies, name: string) => void;
+  onChoose: (species: PetSpecies, name: string, color: PetColor) => void;
 }
 
-/** Six eggs to pick from, each hatching into its species, and the name the pet goes by. */
+/** Six eggs to pick from, each hatching into its species, the pet's color, and its name. */
 export function EggPicker({ busy, onChoose }: EggPickerProps) {
   const theme = useZoptionTheme();
   const [picked, setPicked] = useState<PetSpecies | null>(null);
+  const [color, setColor] = useState<PetColor>("original");
   const [name, setName] = useState("");
   const trimmed = name.trim();
 
@@ -48,7 +51,7 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
               ]}
             >
               <EggSprite
-                art={eggArt(species)}
+                art={eggArt(species, 0, 0, color)}
                 size={84}
                 accessibilityLabel={`${petSpeciesLabels[species]} egg`}
                 still={!selected}
@@ -60,6 +63,7 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
           );
         })}
       </View>
+      <PetColorPicker label="Pick a color" value={color} onChange={setColor} />
       <FormField
         label="Name your pet"
         value={name}
@@ -72,7 +76,7 @@ export function EggPicker({ busy, onChoose }: EggPickerProps) {
       <Button
         disabled={!picked || !trimmed}
         loading={busy}
-        onPress={() => picked && trimmed && onChoose(picked, trimmed)}
+        onPress={() => picked && trimmed && onChoose(picked, trimmed, color)}
       >
         {eggButtonLabel(picked, trimmed)}
       </Button>

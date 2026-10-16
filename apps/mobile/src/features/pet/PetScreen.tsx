@@ -20,6 +20,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 
 import { EggPicker } from "./EggPicker";
 import { HatchEgg, HatchPop } from "./HatchEgg";
+import { PetColorCatchUp } from "./PetColorCatchUp";
 import { EggSprite } from "./EggSprite";
 import { PetPicture } from "./PetPicture";
 import {
@@ -177,7 +178,7 @@ export function PetScreen() {
       >
         <EggPicker
           busy={actions.busy}
-          onChoose={(species, name) => void actions.chooseEgg(species, name)}
+          onChoose={(species, name, color) => void actions.chooseEgg(species, name, color)}
         />
         {pet.diedAt ? null : (
           <Button
@@ -212,7 +213,7 @@ export function PetScreen() {
   const sprite =
     pet.stage === "egg" ? (
       <EggSprite
-        art={eggArt(pet.species, pet.eggStreakDays)}
+        art={eggArt(pet.species, pet.eggStreakDays, 0, pet.color ?? "original")}
         size={size}
         accessibilityLabel={`${name}, ${kind}`}
       />
@@ -226,12 +227,21 @@ export function PetScreen() {
 
   return (
     <Screen title="Your pet" onRefresh={() => refresh().then(() => undefined)}>
+      {pet.color === null ? (
+        <PetColorCatchUp
+          pet={{ ...pet, species: pet.species }}
+          name={name}
+          busy={actions.busy}
+          onPick={(color) => void actions.setColor(color)}
+        />
+      ) : null}
       {/* The pet stands on the page itself, not in a card. */}
       <View style={{ alignItems: "center", gap: spacing.md }}>
         <PetSpotlight size={size}>
           {ready ? (
             <HatchEgg
               species={pet.species}
+              color={pet.color}
               days={pet.eggStreakDays}
               size={size}
               hatch={(beforeShow) =>

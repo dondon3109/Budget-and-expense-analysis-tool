@@ -8,6 +8,10 @@
 export const petSpecies = ["hedgehog", "pig", "hamster", "penguin", "panda", "hippo"] as const;
 export type PetSpecies = (typeof petSpecies)[number];
 
+/** A pet's body color; "original" keeps the art as drawn. See petArt/colors.ts. */
+export const petColors = ["original", "pink", "mint", "sky", "lilac", "peach"] as const;
+export type PetColor = (typeof petColors)[number];
+
 export const petStages = ["egg", "baby", "juvenile", "adult", "legend"] as const;
 export type PetStage = (typeof petStages)[number];
 
@@ -201,6 +205,8 @@ export interface PetState {
   species: PetSpecies | null;
   /** What the user called it. Kept after death for the memorial; null before the first egg. */
   name: string | null;
+  /** Null until the user picks one: pets from before colors existed, and after a death. */
+  color: PetColor | null;
   eggStreak: PetEggStreak;
   /** When the egg hatched; null while it is an egg. */
   hatchedAt: number | null;
@@ -222,6 +228,7 @@ export interface PetEvent {
 export const emptyPetState: PetState = {
   species: null,
   name: null,
+  color: null,
   eggStreak: { streakDays: 0, lastLoginDate: null },
   hatchedAt: null,
   points: 0,
@@ -230,9 +237,9 @@ export const emptyPetState: PetState = {
   diedAt: null,
 };
 
-/** A fresh egg of the chosen species, under the name the user gave it. */
-export function startPetEgg(species: PetSpecies, name: string): PetState {
-  return { ...emptyPetState, species, name };
+/** A fresh egg of the chosen species and color, under the name the user gave it. */
+export function startPetEgg(species: PetSpecies, name: string, color: PetColor): PetState {
+  return { ...emptyPetState, species, name, color };
 }
 
 /** The state as of `now`: a hatched pet left alone for 72 hours has died. */

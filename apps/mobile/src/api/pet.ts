@@ -1,4 +1,4 @@
-import { petViewSchema, type PetSpecies, type PetView } from "@zoption/shared";
+import { petViewSchema, type PetColor, type PetSpecies, type PetView } from "@zoption/shared";
 
 import { apiRequest } from "./authenticated";
 
@@ -33,13 +33,30 @@ export function checkInPet(api: PetApi): Promise<PetView> {
   });
 }
 
-export function choosePetEgg(api: PetApi, species: PetSpecies, name: string): Promise<PetView> {
+export function choosePetEgg(
+  api: PetApi,
+  species: PetSpecies,
+  name: string,
+  color: PetColor,
+): Promise<PetView> {
   return apiRequest({
     ...api,
     path: `${PATH}/egg`,
     method: "PUT",
-    body: { species, name },
+    body: { species, name, color },
     fallback: "Zoption could not save your egg. Try again shortly.",
+    decode,
+  });
+}
+
+/** Recolors the pet. The Worker answers 409 when there is no pet or egg. */
+export function setPetColor(api: PetApi, color: PetColor): Promise<PetView> {
+  return apiRequest({
+    ...api,
+    path: `${PATH}/color`,
+    method: "PUT",
+    body: { color },
+    fallback: "Zoption could not recolor your pet. Try again shortly.",
     decode,
   });
 }

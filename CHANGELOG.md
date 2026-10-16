@@ -17,6 +17,7 @@ All notable product changes are documented here.
 - A new Fun theme, on web and mobile: candy colors, puffy clay cards, and chunky buttons that press down, made to match your pet.
 - New accounts finish setup by picking a theme and choosing whether to raise a streak pet, on web and mobile. Saying yes opens the egg picker.
 - The pet page is more playful on web and mobile: your pet stands in a sparkly spotlight, sends up hearts when you pet it, and shows colorful status chips, chunky meters, an Egg to Legend growth path, and earning tiles.
+- Pick your pet's color when you choose its egg, on web and mobile: Pink, Mint, Sky, Lilac, Peach, or the original. Change it any time on the web pet page or in mobile Settings. If you already have a pet, the pet page asks you once to pick its color.
 - Pet your pet and it answers in its own voice, on web and mobile: a pig oinks, a panda bleats, a hamster squeaks, and a baby sounds higher than a legend. Tap five times quickly and a healthy pet dances. A sick or tired pet answers weakly, which is your cue to log something. On mobile you also feel a light buzz.
 - A Reduce motion switch keeps animations still across Zoption, on web and mobile, even if your device's own setting is off. Web also gains a Sound effects switch in Account Settings.
 

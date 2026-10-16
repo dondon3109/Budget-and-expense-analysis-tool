@@ -8,6 +8,7 @@ const baby: PetView = {
   enabled: true,
   species: "panda",
   name: "Bao",
+  color: "original",
   stage: "baby",
   points: 120,
   nextStagePoints: 350,

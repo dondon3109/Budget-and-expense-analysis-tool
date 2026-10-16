@@ -1,6 +1,12 @@
 import { useState, type CSSProperties } from "react";
 
-import { eggArt, hatchShineLayer, PET_HATCH_TAPS, type PetSpecies } from "@zoption/shared";
+import {
+  eggArt,
+  hatchShineLayer,
+  PET_HATCH_TAPS,
+  type PetColor,
+  type PetSpecies,
+} from "@zoption/shared";
 
 import { PetSvg } from "./PetSvg";
 import "./HatchEgg.css";
@@ -26,10 +32,12 @@ export function HatchShine({ className }: { className: string }) {
  */
 export function HatchEgg({
   species,
+  color,
   days,
   hatch,
 }: {
   species: PetSpecies;
+  color: PetColor | null;
   days: number;
   hatch: (beforeShow: () => Promise<void>) => Promise<unknown>;
 }) {
@@ -70,7 +78,7 @@ export function HatchEgg({
           data-shaking={taps > 0 || undefined}
           style={{ "--pet-swing": `${3 + taps * 1.4}deg` } as CSSProperties}
         >
-          <PetSvg art={eggArt(species, days, taps)} size={220} />
+          <PetSvg art={eggArt(species, days, taps, color ?? "original")} size={220} />
         </span>
         {bursting ? <HatchShine className="pet-hatch-shine" /> : null}
       </button>
