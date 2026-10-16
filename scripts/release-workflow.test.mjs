@@ -78,6 +78,14 @@ describe("Production Release privileges", () => {
     expect(deploy).not.toContain("pnpm release");
   });
 
+  // A new APK against an older Worker broke the pet screen, so Android waits for the web release.
+  it("publishes Android only after the web release is tagged", async () => {
+    const { android } = await jobs();
+    expect(android).toMatch(/^ {4}needs: \[preflight, publish-release\]$/m);
+    expect(android).toMatch(/^ {4}if: needs\.publish-release\.result == 'success'$/m);
+    expect(android).toMatch(/^ {4}uses: \.\/\.github\/workflows\/android-beta\.yml$/m);
+  });
+
   // The Cloudflare token reaches a job only through the preview or production environment.
   it("reads the Cloudflare token only in jobs that name an environment", async () => {
     const offenders = Object.entries(await jobs())

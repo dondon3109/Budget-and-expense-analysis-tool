@@ -18,6 +18,41 @@ on:
         type: string
         required: false
         default: ""
+  # Production Release calls this after production is live; see its android job. Dispatch it by
+  # hand only for a build-only check or to retry a failed publish.
+  workflow_call:
+    inputs:
+      ref:
+        description: "Commit to build"
+        type: string
+        required: true
+      publish_apk:
+        type: boolean
+        required: true
+      publish_latest_json:
+        type: boolean
+        required: true
+      release_notes:
+        type: string
+        required: true
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: true
+      ANDROID_KEYSTORE_PASSWORD:
+        required: true
+      ANDROID_KEY_ALIAS:
+        required: true
+      ANDROID_KEY_PASSWORD:
+        required: true
+      R2_ACCESS_KEY_ID:
+        required: true
+      R2_SECRET_ACCESS_KEY:
+        required: true
+      # Both optional: without them the APK ships with crash telemetry off or minified frames.
+      EXPO_PUBLIC_POSTHOG_KEY:
+        required: false
+      POSTHOG_CLI_API_KEY:
+        required: false
 
 # The workflow stays read-only over the repository: it publishes artifacts to
 # R2 but never commits. After publication, refresh the website fallback through
@@ -37,6 +72,8 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          # Empty on a manual dispatch, which builds the dispatched ref.
+          ref: ${{ inputs.ref }}
           persist-credentials: false
 
       - uses: ./.github/actions/setup

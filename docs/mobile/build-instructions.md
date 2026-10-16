@@ -58,13 +58,13 @@ Once the development build is installed on your device/emulator, you do **not** 
 
 ### Separation of Change Types
 
-| Change Type                                                   | Action Required                      | Command                                                                 |
-| ------------------------------------------------------------- | ------------------------------------ | ----------------------------------------------------------------------- |
-| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`)       | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running)                                        |
-| **Native Packages / Dependencies** (`package.json`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                          |
-| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App              | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache` |
-| **Custom Native Code** (`modules/**`, `android/**`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                          |
-| **Production Release**                                        | Trigger GitHub Actions CI            | `Android Beta Build` workflow (Signs with production key)               |
+| Change Type                                                   | Action Required                      | Command                                                                  |
+| ------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------ |
+| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`)       | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running)                                         |
+| **Native Packages / Dependencies** (`package.json`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                           |
+| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App              | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache`  |
+| **Custom Native Code** (`modules/**`, `android/**`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                           |
+| **Production Release**                                        | Dispatch `Production Release`        | Its `android` job calls `Android Beta Build` (signs with production key) |
 
 ## Android emulator (available on this host)
 
@@ -109,7 +109,10 @@ npx expo export --platform ios   # bundle sanity; delete dist afterwards
 ## Signed production artifacts
 
 The website-linked Android Beta is built and published only through the
-manually dispatched `Android Beta Build` GitHub Actions workflow. Its signing
+`Android Beta Build` GitHub Actions workflow. A release publishes it from the
+`android` job of `Production Release`, after the Worker and web are live, so an
+APK never reaches users before the API it needs; dispatch `Android Beta Build`
+by hand only for a build-only check or to retry a failed publish. Its signing
 key and R2 credentials remain in GitHub Actions secrets; the workflow prebuilds
 the production variant, signs with the permanent Zoption key, verifies the APK
 identity, publishes the immutable versioned object, verifies that public object,
@@ -125,8 +128,8 @@ node scripts/refresh-android-release-snapshot.mjs --write
 git diff -- packages/web-common/src/releases/androidRelease.json
 ```
 
-Commit the reviewed snapshot as `fix(web): refresh Android install snapshot`
-and let the normal CI/`Production Release` workflow deploy and smoke-test it.
+Commit the reviewed snapshot as `fix(web): refresh Android install snapshot`;
+the next dispatched `Production Release` deploys and smoke-tests it.
 This explicit second commit is intentional: refreshing after Pages deployment
 or committing with `[skip ci]` would leave the deployed fallback and SEO
 metadata one release behind. The script rejects a lower live `versionCode`;

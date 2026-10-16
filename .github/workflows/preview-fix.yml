@@ -4,7 +4,7 @@ name: Preview Failure Fix
 # 5.5 sorts the failure; a setup problem is reported, a flaky one reruns the failed jobs once, and
 # an app bug goes to Claude Opus 5.5, whose draft opens as a draft pull request on a
 # preview-fix/ branch. Nothing merges until the maintainer marks it ready for review, which arms
-# auto-merge (auto-merge.yml); the merge then runs CI, the release, and the audit again.
+# auto-merge (auto-merge.yml); the merge runs CI, and the next dispatched release runs the audit again.
 #
 # The same split as bugfix.yml: the jobs that run a model hold a read only token, the job that
 # pushes runs no model, and an artifact sits between them.
