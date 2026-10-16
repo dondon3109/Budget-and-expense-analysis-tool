@@ -1,19 +1,20 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { PetView } from "@zoption/shared";
 
-import { setPetEnabled } from "@/api/pet";
+import { setPetColor, setPetEnabled } from "@/api/pet";
 import { usePetStore } from "@/stores/pet-store";
 import { PetSettingsCard } from "./PetSettingsCard";
 
 jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({ getAccessToken: async () => "token" }),
 }));
-jest.mock("@/api/pet", () => ({ setPetEnabled: jest.fn() }));
+jest.mock("@/api/pet", () => ({ setPetEnabled: jest.fn(), setPetColor: jest.fn() }));
 
 const pet: PetView = {
   enabled: true,
   species: "hippo",
   name: "Gloria",
+  color: "original",
   stage: "baby",
   points: 40,
   nextStagePoints: 350,
@@ -48,6 +49,19 @@ describe("PetSettingsCard", () => {
     await waitFor(() => expect(usePetStore.getState().pet?.enabled).toBe(false));
     expect(setPetEnabled).toHaveBeenCalledWith({ accessToken: "token" }, false);
     expect(screen.getByRole("button", { name: "Pet companion, Off" })).toBeTruthy();
+  });
+
+  it("recolors the pet", async () => {
+    usePetStore.setState({ pet });
+    jest.mocked(setPetColor).mockResolvedValue({ ...pet, color: "pink" });
+    await render(<PetSettingsCard />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Pet companion, On" }));
+    await fireEvent.press(screen.getByRole("radio", { name: "Pink" }));
+
+    await waitFor(() => expect(usePetStore.getState().pet?.color).toBe("pink"));
+    expect(setPetColor).toHaveBeenCalledWith({ accessToken: "token" }, "pink");
+    expect(screen.getByRole("radio", { name: "Pink" })).toBeSelected();
   });
 
   it("says so when the change fails", async () => {

@@ -14,6 +14,7 @@ import {
   petStoredStateSchema,
   hatchPetEgg,
   startPetEgg,
+  type PetColor,
   type PetEarningAction,
   type PetEggChoice,
   type PetEvent,
@@ -34,6 +35,8 @@ export interface PetRepository {
   chooseEgg(env: Bindings, tenantId: string, choice: PetEggChoice, now: Date): Promise<PetView>;
   /** Hatches a ready egg when the user taps it open. */
   hatch(env: Bindings, tenantId: string, now: Date): Promise<PetView>;
+  /** Recolors the living pet (or its egg). */
+  setColor(env: Bindings, tenantId: string, color: PetColor, now: Date): Promise<PetView>;
   setEnabled(env: Bindings, tenantId: string, enabled: boolean, now: Date): Promise<PetView>;
 }
 
@@ -171,6 +174,7 @@ function toView(pet: StoredPet, now: Date): PetView {
     species: state.species,
     // Pets from before names existed go by their species.
     name: state.name ?? (state.species ? petSpeciesLabels[state.species] : null),
+    color: state.color,
     diedAt: iso(state.diedAt),
     eggHatchDays: PET_EGG_HATCH_DAYS,
   };
@@ -239,7 +243,7 @@ export const petRepository: PetRepository = {
     return toView(pet, now);
   },
 
-  async chooseEgg(env, tenantId, { species, name }, now) {
+  async chooseEgg(env, tenantId, { species, name, color }, now) {
     const pet = await current(env, tenantId, now);
     if (pet.state.species !== null) {
       throw new HttpError(409, "pet_exists", "You already have a pet.");
@@ -247,7 +251,7 @@ export const petRepository: PetRepository = {
     const next = {
       ...pet,
       enabled: true,
-      state: startPetEgg(species, name),
+      state: startPetEgg(species, name, color),
     };
     await save(env, tenantId, next);
     return toView(next, now);
@@ -258,6 +262,16 @@ export const petRepository: PetRepository = {
     const state = pet.enabled ? hatchPetEgg(pet.state, now.getTime()) : null;
     if (!state) throw new HttpError(409, "egg_not_ready", "Your egg is not ready to hatch.");
     const next = { ...pet, state };
+    await save(env, tenantId, next);
+    return toView(next, now);
+  },
+
+  async setColor(env, tenantId, color, now) {
+    const pet = await current(env, tenantId, now);
+    if (pet.state.species === null) {
+      throw new HttpError(409, "no_pet", "Pick an egg before choosing a color.");
+    }
+    const next = { ...pet, state: { ...pet.state, color } };
     await save(env, tenantId, next);
     return toView(next, now);
   },

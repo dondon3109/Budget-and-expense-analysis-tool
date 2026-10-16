@@ -1,4 +1,10 @@
-import { eggArt, hatchShineLayer, PET_HATCH_TAPS, type PetSpecies } from "@zoption/shared";
+import {
+  eggArt,
+  hatchShineLayer,
+  PET_HATCH_TAPS,
+  type PetColor,
+  type PetSpecies,
+} from "@zoption/shared";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Animated, Easing, StyleSheet, Text, Vibration, View } from "react-native";
 
@@ -38,6 +44,7 @@ function hatchHint(left: number): string {
 
 interface HatchEggProps {
   species: PetSpecies;
+  color: PetColor | null;
   days: number;
   size: number;
   /** Sends the hatch; `beforeShow` runs once the Worker agrees, before the Baby replaces the egg. */
@@ -48,7 +55,7 @@ interface HatchEggProps {
  * A ready egg the user taps open. Each tap shakes it harder and spreads the cracks; the last tap
  * asks the Worker, and only its answer bursts the shell. Leaving the screen forgets partial taps.
  */
-export function HatchEgg({ species, days, size, hatch }: HatchEggProps) {
+export function HatchEgg({ species, color, days, size, hatch }: HatchEggProps) {
   const theme = useZoptionTheme();
   const [taps, setTaps] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -108,7 +115,7 @@ export function HatchEgg({ species, days, size, hatch }: HatchEggProps) {
           }}
         >
           <EggSprite
-            art={eggArt(species, days, taps)}
+            art={eggArt(species, days, taps, color ?? "original")}
             size={size}
             accessibilityLabel={`Ready egg. Tap ${left} more times to hatch it.`}
             onPress={tap}

@@ -1,7 +1,8 @@
+import type { PetColor, PetView } from "@zoption/shared";
 import { useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 
-import { setPetEnabled } from "@/api/pet";
+import { setPetColor, setPetEnabled, type PetApi } from "@/api/pet";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { usePetStore } from "@/stores/pet-store";
 import { CollapsibleCard } from "@/ui/components";
@@ -9,7 +10,12 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, touchTarget, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
-/** Turns the pet companion on or off. Hidden until the Worker has answered, as for guests. */
+import { PetColorPicker } from "./PetColorPicker";
+
+/**
+ * Turns the pet companion on or off and recolors the pet. Hidden until the Worker has answered,
+ * as for guests.
+ */
 export function PetSettingsCard() {
   const theme = useZoptionTheme();
   const { getAccessToken } = useSessionSnapshot();
@@ -19,13 +25,13 @@ export function PetSettingsCard() {
 
   if (!pet) return null;
 
-  const toggle = async (enabled: boolean) => {
+  const save = async (request: (api: PetApi) => Promise<PetView>) => {
     if (pending) return;
     setPending(true);
     setFailed(false);
     try {
       const accessToken = await getAccessToken(false);
-      usePetStore.getState().setPet(await setPetEnabled({ accessToken }, enabled));
+      usePetStore.getState().setPet(await request({ accessToken }));
     } catch {
       setFailed(true);
     } finally {
@@ -45,10 +51,18 @@ export function PetSettingsCard() {
           accessibilityLabel="Show my pet"
           disabled={pending}
           value={pet.enabled}
-          onValueChange={withTapSound((next) => void toggle(next))}
+          onValueChange={withTapSound((next) => void save((api) => setPetEnabled(api, next)))}
           trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
         />
       </View>
+      {pet.enabled && pet.species !== null && pet.color !== null ? (
+        <PetColorPicker
+          label="Color"
+          value={pet.color}
+          disabled={pending}
+          onChange={(color: PetColor) => void save((api) => setPetColor(api, color))}
+        />
+      ) : null}
       {failed ? (
         <Text
           accessibilityRole="alert"

@@ -10,6 +10,7 @@ import { useRootLock } from "../../hooks/useRootLock";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { petImageUrl, petLook } from "../../lib/petImages";
 import { usePet } from "../../queries/pet";
+import { TintedPicture } from "./TintedPicture";
 import "./PetMomentDialog.css";
 
 /** The pet pop-up in the workspace: the pet's picture and how it is doing, at most once per open. */
@@ -55,13 +56,24 @@ function PetMomentContent({
         aria-describedby={descriptionId}
         onKeyDown={handleKeyDown}
       >
-        <img
-          className="pet-moment-picture"
-          src={petImageUrl(pet.species, pet.stage, petLook(pet))}
-          alt=""
-          width={200}
-          height={200}
-        />
+        {pet.species === null ? (
+          <img
+            className="pet-moment-picture"
+            src={petImageUrl(null, pet.stage)}
+            alt=""
+            width={200}
+            height={200}
+          />
+        ) : (
+          <TintedPicture
+            className="pet-moment-picture"
+            species={pet.species}
+            stage={pet.stage}
+            look={petLook(pet)}
+            color={pet.color}
+            size={200}
+          />
+        )}
         <h2 id={titleId}>{copy.title}</h2>
         <p id={descriptionId} className="pet-moment-description">
           {copy.body}

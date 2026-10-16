@@ -1,6 +1,7 @@
 import type { PetView } from "../schemas/pet";
 
 export type { PetArt, PetLayer, PetShape } from "./shapes";
+export { petColorMatrix, petColorSwatch, tintPetHex } from "./colors";
 export { eggArt, hatchShineLayer } from "./eggs";
 
 export type PetMood = "egg" | "cute" | "sick" | "fading";

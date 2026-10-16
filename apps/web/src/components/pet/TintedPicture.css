@@ -1,0 +1,25 @@
+.pet-tinted {
+  position: relative;
+  display: block;
+  line-height: 0;
+}
+
+.pet-tinted img {
+  display: block;
+}
+
+.pet-tint {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: var(--pet-mask);
+  mask-image: var(--pet-mask);
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+
+.pet-tint-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}

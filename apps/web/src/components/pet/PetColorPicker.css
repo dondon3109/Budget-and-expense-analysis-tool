@@ -1,0 +1,57 @@
+.pet-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.pet-color-picker legend {
+  width: 100%;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pet-color-option {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  min-width: 56px;
+  padding: 6px;
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.pet-color-option:has(input:checked) {
+  border-color: var(--brand);
+  background: var(--brand-soft);
+}
+
+.pet-color-option:has(input:focus-visible) {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.pet-color-option:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.pet-color-option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.pet-color-dot {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+}

@@ -14,6 +14,11 @@ the web it has its own page (`/app/pet`) in the sidebar. The rules live in
   (`PET_HATCH_TAPS`) on the mobile or web pet page. The taps are counted on the device and only
   the last one calls the Worker, so leaving the page forgets a partial count. The health clock
   starts at that tap. Eggs never get sick or die.
+- The user also picks the pet's color with the egg (`petColors`: Original, Pink, Mint, Sky,
+  Lilac, Peach) and can change it any time: on the web pet page, or in the mobile Settings pet
+  card. It belongs to that pet and clears when it dies. A pet stored before colors existed has
+  `color: null`; the pet page (web and mobile) asks its owner once to pick one, and "Keep original"
+  saves `original` so the question never returns. All colors are free.
 - Points per action and daily counts: check-in 10 ×1, transaction 10 ×3, subscription 15 ×2, debt
   payment 20 ×2, assistant reply 5 ×3, plus a +10 bonus on the third distinct action type. No day
   earns more than 100.
@@ -49,8 +54,9 @@ Activity is credited through the last whole second only, because `datetime('now'
 
 ## API
 
-`GET /api/app/pet`, `POST /api/app/pet/check-in`, `PUT /api/app/pet/egg` (`{ species, name }`, 409 while a
+`GET /api/app/pet`, `POST /api/app/pet/check-in`, `PUT /api/app/pet/egg` (`{ species, name, color }`, 409 while a
 pet is alive), `POST /api/app/pet/hatch` (409 `egg_not_ready` unless a ready egg is enabled),
+`PUT /api/app/pet/color` (`{ color }`, 409 `no_pet` without an egg or pet),
 `PUT /api/app/pet/settings` (`{ enabled }`). Every response is a `petViewSchema`.
 
 ## Pet page
@@ -130,6 +136,22 @@ species with its palette, and the stage reads as follows.
   panda in a bamboo hat and red jacket holding a golden bamboo staff, hippo in a lotus crown and
   sash holding a golden lotus.
 - Tombstone: a small rounded light grey stone, blank face, a tiny pink flower and grass tuft.
+
+### Colors
+
+A pet color changes only the body (fur, skin, feathers), so cheeks, bellies, eyes, outlines, and
+Legend outfits stay as drawn, and Pink is the same pink on every species, black panda patches
+included. Each body pixel's luminance picks a point between the color's dark and light ends
+(`packages/shared/src/petArt/colors.ts`), so shading survives.
+
+- Pictures: `scripts/generate-pet-masks.mjs` writes a 256px body mask per picture to
+  `apps/web/public/pet/masks/` and `apps/mobile/assets/pet/masks/` (plus the mobile import map
+  `pet-masks.ts`), picking body pixels by per-species hue, lightness, and saturation bands, with
+  paler bands for sick and fading looks. Rerun it after a picture changes and look at the result.
+  The web (`TintedPicture.tsx`) and mobile (`TintedPetImage.tsx`) draw the picture, then a copy cut
+  to the mask and run through `petColorMatrix` as an sRGB `feColorMatrix`: CSS `mask-image` with
+  an SVG filter on the web, a `react-native-svg` `Mask` and `Filter` on mobile.
+- SVG eggs: `eggArt` tints the species' body fills with `tintPetHex`, the same math.
 
 ## Notifications
 

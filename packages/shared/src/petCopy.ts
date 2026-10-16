@@ -2,6 +2,7 @@ import {
   PET_ACTION_RULES,
   PET_HATCH_TAPS,
   petStageForPoints,
+  type PetColor,
   type PetSpecies,
   type PetStage,
 } from "./pet";
@@ -17,6 +18,15 @@ export const petSpeciesLabels: Record<PetSpecies, string> = {
   penguin: "Penguin",
   panda: "Panda",
   hippo: "Hippo",
+};
+
+export const petColorLabels: Record<PetColor, string> = {
+  original: "Original",
+  pink: "Pink",
+  mint: "Mint",
+  sky: "Sky",
+  lilac: "Lilac",
+  peach: "Peach",
 };
 
 export const petStageLabels: Record<PetStage, string> = {

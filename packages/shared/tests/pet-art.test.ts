@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-import { petSpecies } from "../src/pet";
+import { petColors, petSpecies } from "../src/pet";
 import { petMood } from "../src/petArt";
+import { petColorMatrix, tintPetHex } from "../src/petArt/colors";
 import { eggArt, eggCracks } from "../src/petArt/eggs";
 import type { PetView } from "../src/schemas/pet";
 
@@ -25,11 +26,49 @@ describe("pet art", () => {
   });
 });
 
+describe("pet colors", () => {
+  it("tints an egg's body fills the way the picture matrix tints a pixel", () => {
+    const fills = (color: (typeof petColors)[number]) =>
+      eggArt("panda", 0, 0, color)
+        .flatMap((layer) => layer.shapes)
+        .map((shape) => shape.fill);
+    const pink = fills("pink");
+    // The black patches turn pink; the white shell and green bamboo stay as drawn.
+    expect(pink).toContain(tintPetHex("#24242C", "pink"));
+    expect(pink).not.toContain("#24242C");
+    expect(pink).toContain("#FAFAF5");
+    expect(pink).toContain("#6CBF45");
+    expect(fills("original")).toContain("#24242C");
+
+    for (const color of petColors) {
+      const matrix = petColorMatrix(color);
+      if (!matrix) {
+        expect(color).toBe("original");
+        continue;
+      }
+      const rgb = [0x24, 0x24, 0x2c].map((value) => value / 255);
+      const channel = (row: number) =>
+        Math.round(
+          Math.min(
+            1,
+            rgb.reduce(
+              (sum, value, index) => sum + value * matrix[row * 5 + index]!,
+              matrix[row * 5 + 4]!,
+            ),
+          ) * 255,
+        );
+      const hex = `#${[0, 1, 2].map((row) => channel(row).toString(16).padStart(2, "0")).join("")}`;
+      expect(hex).toBe(tintPetHex("#24242C", color));
+    }
+  });
+});
+
 describe("petMood", () => {
   const baby = {
     enabled: true,
     species: "panda",
     name: "Bao",
+    color: "original",
     stage: "baby",
     points: 120,
     nextStagePoints: 350,

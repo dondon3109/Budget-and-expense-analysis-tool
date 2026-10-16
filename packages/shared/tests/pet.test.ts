@@ -170,7 +170,7 @@ describe("applyPetEvent", () => {
   const login = (occurredAt: number) => ({ action: "login" as const, occurredAt });
 
   function readyEgg(): PetState {
-    let state = startPetEgg("panda", "Bao");
+    let state = startPetEgg("panda", "Bao", "original");
     for (let day = 0; day < 7; day += 1)
       state = applyPetEvent(state, login(t0 + day * 24 * hour), true);
     return state;
@@ -190,7 +190,7 @@ describe("applyPetEvent", () => {
   });
 
   it("waits for a tap after seven days, then hatches healthy with no points carried over", () => {
-    let state = startPetEgg("panda", "Bao");
+    let state = startPetEgg("panda", "Bao", "original");
     state = applyPetEvent(state, { action: "transaction", occurredAt: t0 }, true);
     expect(state.eggStreak.streakDays).toBe(0);
     expect(hatchPetEgg(state, t0)).toBeNull();
@@ -206,7 +206,7 @@ describe("applyPetEvent", () => {
   });
 
   it("keeps an egg forever, however long it waits", () => {
-    const egg = applyPetEvent(startPetEgg("pig", "Bao"), login(t0), true);
+    const egg = applyPetEvent(startPetEgg("pig", "Bao", "original"), login(t0), true);
     expect(petStateAt(egg, t0 + 30 * 24 * hour)).toBe(egg);
   });
 
@@ -285,11 +285,15 @@ describe("pet names", () => {
   });
 
   it("trims a chosen name and rejects a blank or long one", () => {
-    expect(petEggChoiceSchema.parse({ species: "pig", name: "  Oink " }).name).toBe("Oink");
-    expect(petEggChoiceSchema.safeParse({ species: "pig" }).success).toBe(false);
-    expect(petEggChoiceSchema.safeParse({ species: "pig", name: "   " }).success).toBe(false);
-    expect(petEggChoiceSchema.safeParse({ species: "pig", name: "x".repeat(21) }).success).toBe(
-      false,
+    expect(petEggChoiceSchema.parse({ species: "pig", color: "pink", name: "  Oink " }).name).toBe(
+      "Oink",
     );
+    expect(petEggChoiceSchema.safeParse({ species: "pig" }).success).toBe(false);
+    expect(
+      petEggChoiceSchema.safeParse({ species: "pig", color: "pink", name: "   " }).success,
+    ).toBe(false);
+    expect(
+      petEggChoiceSchema.safeParse({ species: "pig", color: "pink", name: "x".repeat(21) }).success,
+    ).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
-import type { PetEggChoice, PetView } from "@zoption/shared";
+import type { PetColor, PetEggChoice, PetView } from "@zoption/shared";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { checkInPet, choosePetEgg, hatchPet, setPetEnabled } from "../lib/api";
+import { checkInPet, choosePetEgg, hatchPet, setPetColor, setPetEnabled } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
@@ -36,6 +36,10 @@ function usePetWrite<Input>(
 
 export function useChoosePetEgg(workspace: AuthenticatedWorkspace) {
   return usePetWrite<PetEggChoice>(workspace, choosePetEgg);
+}
+
+export function useSetPetColor(workspace: AuthenticatedWorkspace) {
+  return usePetWrite<PetColor>(workspace, setPetColor);
 }
 
 export function useSetPetEnabled(workspace: AuthenticatedWorkspace) {

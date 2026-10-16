@@ -2,12 +2,13 @@ jest.mock("@/config/public-config", () => ({
   publicConfig: { apiUrl: "https://api.zoption.test" },
 }));
 
-import { checkInPet, choosePetEgg, getPet, setPetEnabled } from "./pet";
+import { checkInPet, choosePetEgg, getPet, setPetColor, setPetEnabled } from "./pet";
 
 const view = {
   enabled: true,
   species: "panda",
   name: "Bao",
+  color: "original",
   stage: "egg",
   points: 0,
   nextStagePoints: null,
@@ -34,8 +35,9 @@ describe("pet api", () => {
 
     await expect(getPet(api)).resolves.toEqual(view);
     await checkInPet(api);
-    await choosePetEgg(api, "panda", "Bao");
+    await choosePetEgg(api, "panda", "Bao", "pink");
     await setPetEnabled(api, false);
+    await setPetColor(api, "mint");
 
     const base = "https://api.zoption.test/api/app/pet";
     expect(fetchImpl).toHaveBeenNthCalledWith(1, base, expect.objectContaining({ method: "GET" }));
@@ -49,13 +51,18 @@ describe("pet api", () => {
       `${base}/egg`,
       expect.objectContaining({
         method: "PUT",
-        body: JSON.stringify({ species: "panda", name: "Bao" }),
+        body: JSON.stringify({ species: "panda", name: "Bao", color: "pink" }),
       }),
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       4,
       `${base}/settings`,
       expect.objectContaining({ method: "PUT", body: JSON.stringify({ enabled: false }) }),
+    );
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      5,
+      `${base}/color`,
+      expect.objectContaining({ method: "PUT", body: JSON.stringify({ color: "mint" }) }),
     );
   });
 

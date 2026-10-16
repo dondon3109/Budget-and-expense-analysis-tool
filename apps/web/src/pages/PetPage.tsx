@@ -16,6 +16,7 @@ import {
   petStageLabels,
   petStages,
   petTapReaction,
+  type PetColor,
   type PetReaction,
   type PetSpecies,
   type PetView,
@@ -25,12 +26,20 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { HatchEgg, HatchShine } from "../components/pet/HatchEgg";
+import { PetColorPicker } from "../components/pet/PetColorPicker";
 import { PetPicture } from "../components/pet/PetPicture";
 import { PetSvg } from "../components/pet/PetSvg";
+import { TintedPicture } from "../components/pet/TintedPicture";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { playPetReaction, warmUpPetVoices } from "../lib/petSounds";
 import { userWorkspace } from "../lib/workspace";
-import { useChoosePetEgg, useHatchPet, usePet, useSetPetEnabled } from "../queries/pet";
+import {
+  useChoosePetEgg,
+  useHatchPet,
+  usePet,
+  useSetPetColor,
+  useSetPetEnabled,
+} from "../queries/pet";
 import "./PetPage.css";
 
 type MeterTone = "brand" | "health" | "sick" | "fading" | "sun";
@@ -91,9 +100,10 @@ function EggPicker({
   onChoose,
 }: {
   busy: boolean;
-  onChoose: (species: PetSpecies, name: string) => void;
+  onChoose: (species: PetSpecies, name: string, color: PetColor) => void;
 }) {
   const [picked, setPicked] = useState<PetSpecies>();
+  const [color, setColor] = useState<PetColor>("original");
   const [name, setName] = useState("");
   const trimmed = name.trim();
   return (
@@ -101,7 +111,7 @@ function EggPicker({
       className="pet-egg-picker"
       onSubmit={(event) => {
         event.preventDefault();
-        if (picked && trimmed) onChoose(picked, trimmed);
+        if (picked && trimmed) onChoose(picked, trimmed, color);
       }}
     >
       <fieldset>
@@ -115,11 +125,12 @@ function EggPicker({
               checked={picked === species}
               onChange={() => setPicked(species)}
             />
-            <PetSvg art={eggArt(species)} size={96} still />
+            <PetSvg art={eggArt(species, 0, 0, color)} size={96} still />
             <span>{petSpeciesLabels[species]}</span>
           </label>
         ))}
       </fieldset>
+      <PetColorPicker legend="Pick a color" value={color} onChange={setColor} />
       <label className="pet-name-field">
         <span>Name your pet</span>
         <input
@@ -204,6 +215,55 @@ function PettablePet({ pet, name }: { pet: PetView & { species: PetSpecies }; na
         </span>
       ) : null}
     </button>
+  );
+}
+
+/**
+ * Asks the owner of a pet from before colors existed to pick one, once: each option previews their
+ * own pet. "Keep original" saves the original, so the question never comes back.
+ */
+function PetColorCatchUp({
+  pet,
+  busy,
+  onPick,
+}: {
+  pet: PetView & { species: PetSpecies };
+  busy: boolean;
+  onPick: (color: PetColor) => void;
+}) {
+  const name = pet.name ?? petSpeciesLabels[pet.species];
+  return (
+    <section className="pet-panel pet-color-catch-up" aria-labelledby="pet-color-catch-up-title">
+      <h2 id="pet-color-catch-up-title">Pick a color for {name}</h2>
+      <p className="pet-note">Pets come in colors now. You can change it any time on this page.</p>
+      <PetColorPicker
+        legend={`${name}'s color`}
+        value={null}
+        disabled={busy}
+        onChange={onPick}
+        preview={(color) =>
+          pet.stage === "egg" ? (
+            <PetSvg art={eggArt(pet.species, 0, 0, color)} size={72} still />
+          ) : (
+            <TintedPicture
+              species={pet.species}
+              stage={pet.stage}
+              look="healthy"
+              color={color}
+              size={72}
+            />
+          )
+        }
+      />
+      <button
+        className="button secondary"
+        type="button"
+        disabled={busy}
+        onClick={() => onPick("original")}
+      >
+        Keep original
+      </button>
+    </section>
   );
 }
 
@@ -299,13 +359,14 @@ export function PetPage() {
   const pet = usePet(workspace);
   const chooseEgg = useChoosePetEgg(workspace);
   const setEnabled = useSetPetEnabled(workspace);
+  const setColor = useSetPetColor(workspace);
   const hatch = useHatchPet(workspace);
   // Only a known Free plan shows the growth lock; the Worker enforces it either way.
   const billing = useBillingSummary(workspace);
   // Set once this visit hatches the egg, so the Baby springs out instead of just appearing.
   const [justHatched, setJustHatched] = useState(false);
-  const busy = chooseEgg.isPending || setEnabled.isPending;
-  const writeError = chooseEgg.error ?? setEnabled.error;
+  const busy = chooseEgg.isPending || setEnabled.isPending || setColor.isPending;
+  const writeError = chooseEgg.error ?? setEnabled.error ?? setColor.error;
 
   return (
     <AppShell>
@@ -316,6 +377,14 @@ export function PetPage() {
             <h1>Your pet</h1>
           </div>
         </header>
+
+        {pet.data?.enabled && pet.data.species !== null && pet.data.color === null ? (
+          <PetColorCatchUp
+            pet={{ ...pet.data, species: pet.data.species }}
+            busy={busy}
+            onPick={(color) => setColor.mutate(color)}
+          />
+        ) : null}
 
         {pet.isPending ? (
           <p className="pet-note">Finding your pet…</p>
@@ -353,7 +422,7 @@ export function PetPage() {
             </p>
             <EggPicker
               busy={busy}
-              onChoose={(species, name) => chooseEgg.mutate({ species, name })}
+              onChoose={(species, name, color) => chooseEgg.mutate({ species, name, color })}
             />
           </div>
         ) : (
@@ -368,6 +437,7 @@ export function PetPage() {
               {pet.data.stage === "egg" && pet.data.eggStreakDays >= pet.data.eggHatchDays ? (
                 <HatchEgg
                   species={pet.data.species}
+                  color={pet.data.color}
                   days={pet.data.eggStreakDays}
                   hatch={async (beforeShow) => {
                     await hatch.mutateAsync(beforeShow);
@@ -379,7 +449,15 @@ export function PetPage() {
                   {justHatched ? <HatchShine className="pet-hatch-afterglow" /> : null}
                   <span className={justHatched ? "pet-pop" : undefined}>
                     {pet.data.stage === "egg" ? (
-                      <PetSvg art={eggArt(pet.data.species, pet.data.eggStreakDays)} size={220} />
+                      <PetSvg
+                        art={eggArt(
+                          pet.data.species,
+                          pet.data.eggStreakDays,
+                          0,
+                          pet.data.color ?? "original",
+                        )}
+                        size={220}
+                      />
                     ) : (
                       <PettablePet
                         pet={{ ...pet.data, species: pet.data.species }}
@@ -402,6 +480,14 @@ export function PetPage() {
               <PetStats pet={pet.data} isFree={billing.data?.plan === "free"} />
             </div>
             <GrowthPath stage={pet.data.stage} />
+            {pet.data.color === null ? null : (
+              <PetColorPicker
+                legend="Color"
+                value={pet.data.color}
+                disabled={busy}
+                onChange={(color) => setColor.mutate(color)}
+              />
+            )}
           </div>
         )}
 

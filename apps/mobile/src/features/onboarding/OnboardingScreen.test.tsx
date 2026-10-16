@@ -75,6 +75,7 @@ describe("OnboardingScreen", () => {
       enabled: false,
       species: null,
       name: null,
+      color: null,
       stage: "egg",
       points: 0,
       nextStagePoints: null,
