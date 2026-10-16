@@ -243,6 +243,19 @@ describe("HomeScreen", () => {
             categoryIconEmoji: "🛒",
             accountName: "Main Bank",
           },
+          {
+            id: "tx-3",
+            date: today,
+            description: "Coffee",
+            amountMinor: -500_00,
+            currency: "PHP",
+            kind: "expense",
+            categoryId: "cat-dining",
+            categoryName: "Dining",
+            categoryColor: "#c84b2f",
+            categoryIconEmoji: "☕",
+            accountName: "Main Bank",
+          },
         ],
         recentTransactions: [
           {
@@ -296,13 +309,16 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Total Balance")).toBeTruthy();
     expect(screen.queryByText("Main Bank")).toBeNull();
 
-    // Recent activity stays on the overview
-    expect(screen.getByText("Recent activity")).toBeTruthy();
-    expect(screen.getByText("Salary deposit")).toBeTruthy();
+    // The overview shows only the category with the most spending this month
+    expect(screen.getByText("Top spending category")).toBeTruthy();
+    expect(screen.getByText("Groceries")).toBeTruthy();
+    expect(screen.getByText("90% of this month's spending")).toBeTruthy();
+    expect(screen.queryByText("Dining")).toBeNull();
+    expect(screen.queryByText("Recent activity")).toBeNull();
     expect(screen.queryByText("This month")).toBeNull();
 
-    // Month summary lives under Analytics
-    await fireEvent.press(screen.getByRole("tab", { name: "Analytics" }));
+    // "View all" on the top category opens Analytics, where the month summary lives
+    await fireEvent.press(screen.getByRole("button", { name: "View spending by category" }));
     expect(screen.getByText("This month")).toBeTruthy();
     expect(screen.getByText("Money in")).toBeTruthy();
     expect(screen.getByText("Money out")).toBeTruthy();

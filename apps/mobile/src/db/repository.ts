@@ -476,8 +476,9 @@ LIMIT ?`;
   async getDashboardData(anchorDate: string): Promise<LocalDashboardData> {
     // The dashboard aggregates over a bounded window rather than the whole
     // ledger: the summary reads the current month and the chart the widest
-    // view, both of which sit inside `cashflowWindowStart`. Recent activity
-    // is a separate three row read so it is not clipped by that window.
+    // view, both of which sit inside `cashflowWindowStart`. The newest rows
+    // are a separate three row read so Home still knows the ledger is not
+    // empty after it has been dormant for longer than that window.
     const transactionRows = await this.database.getAllAsync(
       `${dashboardTransactionSelect} AND t.date >= ? ${dashboardTransactionOrder}`,
       cashflowWindowStart(anchorDate),

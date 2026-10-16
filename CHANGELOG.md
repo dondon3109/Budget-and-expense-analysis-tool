@@ -23,6 +23,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: the Home overview shows the category you spent the most on this month, with its amount and share of your spending, in place of Recent activity. View all opens Analytics.
 - Mobile crash reports now include where in Zoption's code the crash happened (file, function, and line), so crashes can be found and fixed. They still never include the error message or your data. The Privacy Policy says this.
 - Growing your pet past Baby is now part of Zoption Pro, on web and mobile. On the free plan your pet stays a Baby at 349 points and keeps healing; upgrade and your next activity grows it into a Juvenile. A pet that grew on Pro keeps its stage if Pro ends.
 - Mobile: the More tab no longer shows a large "More" title, so the list starts higher.
