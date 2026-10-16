@@ -114,6 +114,21 @@ export function localCalendarDate(now = new Date()): string {
   return `${year}-${month}-${day}`;
 }
 
+/** A new entry's starting values, dated the day the module loads. */
+export const emptyTransactionForm: TransactionFormValues = {
+  kind: "expense",
+  accountId: "",
+  toAccountId: "",
+  categoryId: "",
+  date: localCalendarDate(),
+  description: "",
+  amount: "",
+  transferFee: "",
+  currency: "PHP",
+  notes: "",
+  debtId: "",
+};
+
 export function parseTransactionForm(
   values: TransactionFormValues,
 ): { success: true; input: TransactionInput } | { success: false; errors: TransactionFormErrors } {

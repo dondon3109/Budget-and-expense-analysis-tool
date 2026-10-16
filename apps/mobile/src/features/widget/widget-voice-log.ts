@@ -92,6 +92,7 @@ export function buildWidgetTransactionInputs({
       description: draft.description,
       amountMinor: draft.amountMinor,
       currency: draft.currency,
+      entryMethod: "widget",
     });
     if (!parsed.success) return null;
     inputs.push(parsed.data);

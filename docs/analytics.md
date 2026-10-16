@@ -109,6 +109,33 @@ pnpm --filter @zoption/api exec wrangler d1 execute budget-expense-production \
 
 Use `budget-expense-preview` with `--env preview` for preview. `apps/api/tests/goal-profile.test.ts` runs the same file against seeded workspaces to pin the numbers.
 
+### 2.7 Feature Use per User (D1, first-party)
+
+PostHog events are anonymous by design, so they can say how often voice entry is used but not by whom. Per-user feature use is answered from D1 instead. Every transaction create records how it was entered in `transactions.entry_method` (migration `0074_transaction_entry_method.sql`), one of `transactionEntryMethods` in `packages/shared/src/types.ts`:
+
+| Method      | Set by                                                                                                   |
+| ----------- | -------------------------------------------------------------------------------------------------------- |
+| `manual`    | The web transaction form and the mobile editor when nothing prefilled them                               |
+| `voice`     | Those same forms after a voice draft (web `TransactionForm`, mobile `TransactionEditorScreen`)           |
+| `widget`    | The mobile home-screen widget mic, both the background log and the review screen                         |
+| `receipt`   | A mobile receipt scan, and a web receipt, which commits through the import with `entryMethod: "receipt"` |
+| `sms`       | An SMS paste into the web form or the mobile editor                                                      |
+| `pdf`       | A mobile PDF statement import                                                                            |
+| `assistant` | The Worker, for an assistant-drafted transaction or a balance adjustment the assistant proposed          |
+| `import`    | The Worker, for a CSV or Excel import commit that names no other method                                  |
+
+The method is written once at create and never changed, returned by the API, or sent in a mobile sync pull. Rows from before migration 0074, rows from app releases that predate it, and system entries (balance adjustments made outside the assistant, subscription charges, interest credits) are `NULL`. It is deleted with the transaction and the workspace, is not sent to PostHog, and is not part of the account export.
+
+`docs/queries/feature-usage-by-user.sql` is a read-only D1 query: one row per workspace, busiest first, with a count per method (transfers count once, deleted rows do not). It shows the verified sign-in email from `app_user_identities`, which the Worker records when someone opens the web app, and the Supabase `user_id` for people who only use the mobile app. Run it against production, read-only, from the repository root:
+
+```bash
+pnpm --filter @zoption/api exec wrangler d1 execute budget-expense-production \
+  --remote --config wrangler.deploy.jsonc --env production \
+  --file ../../docs/queries/feature-usage-by-user.sql
+```
+
+`apps/api/tests/feature-usage-by-user-query.test.ts` runs the file against seeded workspaces.
+
 ---
 
 ## 3. Free Tier Capacity & Quota Management

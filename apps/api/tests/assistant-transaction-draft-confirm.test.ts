@@ -124,6 +124,7 @@ describe("assistant transaction draft confirmation", () => {
         currency: "PHP",
         categoryId: "category-food",
         accountId: "account-gcash",
+        entryMethod: "assistant",
       },
       { id: MESSAGE },
     );

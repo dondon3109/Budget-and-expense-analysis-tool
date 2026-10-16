@@ -534,16 +534,16 @@ describe("durable local transaction mutations", () => {
     });
   });
 
-  it("coalesces edits into an unacknowledged create", async () => {
+  it("coalesces edits into an unacknowledged create and keeps how it was entered", async () => {
     const mutations = repository(database);
-    const id = await mutations.createTransaction(input);
+    const id = await mutations.createTransaction({ ...input, entryMethod: "voice" });
     await mutations.updateTransaction(id, { description: "Edited offline", amountMinor: 20_000 });
 
     const batch = await mutations.getPushBatch();
     expect(batch?.operations).toHaveLength(1);
     expect(batch?.operations[0]).toMatchObject({
       operationType: "create",
-      payload: { description: "Edited offline", amountMinor: 20_000 },
+      payload: { description: "Edited offline", amountMinor: 20_000, entryMethod: "voice" },
     });
     expect(
       database.native

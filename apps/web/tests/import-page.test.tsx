@@ -248,7 +248,7 @@ describe("ImportPage", () => {
     });
   });
 
-  it("previews each reviewed receipt line as its own signed row", async () => {
+  it("previews each reviewed receipt line as its own signed row and commits it as a receipt", async () => {
     const user = userEvent.setup();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
@@ -278,6 +278,10 @@ describe("ImportPage", () => {
       ].join("\r\n"),
       fallbackDate: "2026-08-13",
     });
+
+    await user.click(await screen.findByRole("button", { name: /^Import \d+ ready rows?$/ }));
+    await waitFor(() => expect(commitImport).toHaveBeenCalledOnce());
+    expect(vi.mocked(commitImport).mock.calls[0]?.[1]).toMatchObject({ entryMethod: "receipt" });
   });
 
   it("shows the committed import allowance at the bottom after a preview", async () => {
@@ -862,6 +866,7 @@ describe("ImportPage", () => {
       token: "preview-token",
       categoryOverrides: [{ rowNumber: 2, categoryId: "food" }],
       kindOverrides: [{ rowNumber: 2, kind: "expense" }],
+      entryMethod: "import",
     });
   });
 

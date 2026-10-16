@@ -340,6 +340,7 @@ export function TransactionsPage() {
         parsed.currency !== "PHP"
           ? parsed.currency
           : matchedAccount?.currency || workspaceCurrency(),
+      entryMethod: "sms",
     });
     setEditing(undefined);
     setFormOpen(true);

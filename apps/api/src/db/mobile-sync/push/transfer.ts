@@ -115,8 +115,8 @@ export async function pushTransferOperation(
         `INSERT INTO transactions (
           id, tenant_id, account_id, category_id, date, description, amount_minor,
           currency, kind, notes, transfer_group_id, transfer_fee_minor, debt_id, source_kind,
-          revision, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, 'manual', 1, ?)`,
+          entry_method, revision, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, 'manual', ?, 1, ?)`,
       ).bind(
         payload.fromTransactionId,
         tenantId,
@@ -130,14 +130,15 @@ export async function pushTransferOperation(
         operation.entityId,
         fromLeg.transferFeeMinor,
         nextPayment?.debtId ?? null,
+        payload.transfer.entryMethod ?? null,
         timestamp,
       ),
       env.DB.prepare(
         `INSERT INTO transactions (
           id, tenant_id, account_id, category_id, date, description, amount_minor,
           currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind,
-          revision, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', 1, ?)`,
+          entry_method, revision, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', ?, 1, ?)`,
       ).bind(
         payload.toTransactionId,
         tenantId,
@@ -150,6 +151,7 @@ export async function pushTransferOperation(
         payload.transfer.notes || null,
         operation.entityId,
         toLeg.transferFeeMinor,
+        payload.transfer.entryMethod ?? null,
         timestamp,
       ),
     );

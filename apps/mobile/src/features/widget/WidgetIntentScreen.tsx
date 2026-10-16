@@ -182,6 +182,7 @@ function TransactionConfirm({
         description: resolvedDescription.trim(),
         amountMinor,
         currency: account?.currency ?? useWorkspaceCurrencyStore.getState().currency,
+        entryMethod: "widget",
       });
       if (!parsed.success || !resolvedAccountId || !resolvedCategoryId) {
         setMessage("Check the highlighted details before saving.");

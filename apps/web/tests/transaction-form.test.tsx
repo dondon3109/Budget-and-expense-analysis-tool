@@ -125,7 +125,7 @@ const transaction: TransactionListItem = {
 };
 
 describe("TransactionForm", () => {
-  it("prefills fields from an AI voice draft without saving", async () => {
+  it("prefills fields from an AI voice draft without saving, then saves it as a voice entry", async () => {
     const onSubmit = vi.fn(async () => undefined);
     render(
       <TransactionForm
@@ -139,12 +139,18 @@ describe("TransactionForm", () => {
       />,
     );
 
-    await userEvent.setup().click(screen.getByRole("button", { name: "Simulate voice draft" }));
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Simulate voice draft" }));
 
     expect(screen.getByLabelText("Date")).toHaveValue("2026-08-21");
     expect(screen.getByLabelText("Amount (PHP)")).toHaveValue("250.00");
     expect(screen.getByLabelText("Category")).toHaveValue("food");
     expect(onSubmit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Add transaction" }));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ entryMethod: "voice" })),
+    );
   });
 
   it("prefills a new transaction with the selected calendar date", () => {
@@ -268,6 +274,10 @@ describe("TransactionForm", () => {
           accountId: "account-savings",
         }),
       ),
+    );
+    // The update schema is strict and has no entry method.
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.not.objectContaining({ entryMethod: expect.anything() }),
     );
   });
 
@@ -446,6 +456,7 @@ describe("TransactionForm", () => {
         accountId: "account-everyday",
         categoryId: "salary",
         amountMinor: 2_500_000,
+        entryMethod: "manual",
       }),
     );
     // The strict transaction schema rejects a debt link on income.

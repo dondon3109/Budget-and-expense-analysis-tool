@@ -61,6 +61,28 @@ describe("mobile sync transaction push repository", () => {
     ).toEqual({ count: 1 });
   });
 
+  it("stores the entry method a create names and leaves it out of pulled changes", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const input = createOperation();
+    Object.assign(input.operations[0]!.payload, { entryMethod: "receipt" });
+
+    await repository.push(env, "tenant-1", input);
+
+    expect(
+      database.prepare("SELECT entry_method FROM transactions WHERE id = ?").get(entityId),
+    ).toEqual({ entry_method: "receipt" });
+    // Installed apps reject unknown pull keys, so the method stays server-side.
+    const pulled = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: encodeMobileSyncCursor(0),
+      limit: 100,
+    });
+    const change = pulled.changes.find((item) => item.entityId === entityId);
+    expect(change?.payload).toBeDefined();
+    expect(change?.payload).not.toHaveProperty("entryMethod");
+  });
+
   it("rejects reuse of one idempotency key with a different payload", async () => {
     const { env } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => true));

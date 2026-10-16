@@ -61,7 +61,10 @@ export function updateTransfer(
             next_attempt_at = NULL, last_error_code = NULL WHERE operation_id = ?`,
           JSON.stringify(
             operation.operationType === "create"
-              ? { ...operation.payload, transfer: input }
+              ? {
+                  ...operation.payload,
+                  transfer: { ...input, entryMethod: operation.payload.transfer.entryMethod },
+                }
               : { transfer: input },
           ),
           operation.operationId,

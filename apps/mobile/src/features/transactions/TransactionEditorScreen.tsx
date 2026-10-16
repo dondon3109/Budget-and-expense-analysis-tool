@@ -47,6 +47,7 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import {
   debtPaymentApplies,
+  emptyTransactionForm,
   fallbackDescription,
   formatMinorForInput,
   initialEditDescription,
@@ -69,20 +70,6 @@ import { KindSelector } from "./KindSelector";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
-
-const emptyForm: TransactionFormValues = {
-  kind: "expense",
-  accountId: "",
-  toAccountId: "",
-  categoryId: "",
-  date: localCalendarDate(),
-  description: "",
-  amount: "",
-  transferFee: "",
-  currency: "PHP",
-  notes: "",
-  debtId: "",
-};
 
 function singleParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -114,13 +101,16 @@ export function TransactionEditorScreen() {
   const formData = useTransactionFormData(id);
   const theme = useZoptionTheme();
   const initializedFor = useRef<string | null>(null);
-  const [values, setValues] = useState<TransactionFormValues>(emptyForm);
+  const [values, setValues] = useState<TransactionFormValues>(emptyTransactionForm);
   const [errors, setErrors] = useState<TransactionFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [voicePreviewState, setVoicePreviewState] = useState<VoicePreviewState>({ status: "idle" });
   const [previewSummary, setPreviewSummary] = useState<VoicePreviewDraftSummary | null>(null);
+  const [voiceDrafted, setVoiceDrafted] = useState(false);
+  // Only the SMS paste opens the editor with a `channel` param.
+  const entryMethod = voiceDrafted ? "voice" : singleParam(params.channel) ? "sms" : "manual";
   const pendingValuesToSaveRef = useRef<TransactionFormValues | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
@@ -348,7 +338,10 @@ export function TransactionEditorScreen() {
           notes: parsed.input.notes ?? "",
         });
       } else {
-        savedId = await local.workspace.transactionMutations.createTransaction(parsed.input);
+        savedId = await local.workspace.transactionMutations.createTransaction({
+          ...parsed.input,
+          entryMethod,
+        });
       }
       if (savedId && photoDraft !== undefined && parsed.input.kind !== "transfer") {
         await local.workspace.transactionMutations.setTransactionPhoto(savedId, photoDraft);
@@ -415,6 +408,7 @@ export function TransactionEditorScreen() {
     machineRef.current?.cancel();
     pendingValuesToSaveRef.current = null;
     setPreviewSummary(null);
+    setVoiceDrafted(false);
     const synchronizedAccounts =
       formData.data?.accounts.filter((account) => !account.pending) ?? [];
     const defaultAccount = preferredTransactionAccount(
@@ -654,6 +648,7 @@ export function TransactionEditorScreen() {
                   notes: values.notes,
                 };
                 setValues(nextValues);
+                setVoiceDrafted(true);
                 setErrors({});
                 setMessage(null);
 

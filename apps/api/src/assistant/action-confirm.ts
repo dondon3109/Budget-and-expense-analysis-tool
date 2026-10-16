@@ -74,7 +74,14 @@ async function adjustBalance(
     newBalanceMinor,
     date: todayInTimeZone(env),
   });
-  if (input) await deps.transactions.create(env, tenantId, input, { id: messageId });
+  if (input) {
+    await deps.transactions.create(
+      env,
+      tenantId,
+      { ...input, entryMethod: "assistant" },
+      { id: messageId },
+    );
+  }
 }
 
 /** Runs the stored proposal through the repository the app's own forms use. */

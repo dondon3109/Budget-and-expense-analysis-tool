@@ -76,6 +76,12 @@ a transaction cannot depend on a debt create. The server owns debt balances: it 
 push, gives the amount back on edit or delete, and the new balance reaches the device as a debt
 change. An edit without `debtId` keeps the stored link.
 
+A transaction or transfer create may also say how it was entered (`entryMethod`, one of
+`transactionEntryMethods` in `packages/shared/src/types.ts`). It is push-only: the Worker stores it in
+`transactions.entry_method` for first-party feature counts and never puts it in a pull payload, so it
+needs no client feature. The client keeps it when an edit rewrites a create that has not synced yet.
+Older releases send none, and their rows store `NULL`.
+
 ## Client features
 
 Installed apps validate responses strictly and reject unknown keys or enum values, so a payload

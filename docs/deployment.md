@@ -658,6 +658,8 @@ Cloud sessions at claude.ai/code run in the environment configured under the ses
 
 The environment snapshots the setup script's result for about seven days, so the repo's `.claude/settings.json` `SessionStart` hook runs on every cloud session (`CLAUDE_CODE_REMOTE=true`) and is a no-op locally. It unshallows the clone and fetches tags, which the web release-note and content-freshness tests read, then runs `pnpm install --frozen-lockfile` to catch lockfile changes.
 
+The same file sets `autoCompactWindow` to `400000`, so sessions compact at 400K tokens instead of the model's default window. Claude Code caps it at the model's context window, so it only takes effect on a 1M-context model.
+
 ## Current hosted resources
 
 The intended production endpoints are:
