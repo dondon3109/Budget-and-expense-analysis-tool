@@ -73,7 +73,7 @@ Server-side telemetry in `apps/api/src/assistant/posthog-ai.ts` records operatio
 
 Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` sends each crash to PostHog Error Tracking as a sanitized `$exception`. Earlier builds sent a custom `mobile_crash` event with the same `source`, `type`, and `fingerprint` and no frames.
 
-- **Allowed Fields**: Coarse exception class (e.g., `TypeError`, also used as the exception message), message-free stack frame lines (code locations only), `source` label (e.g., `root-error-boundary`), hashed `fingerprint`, `type`, app version, build code, OS platform, app state.
+- **Allowed Fields**: Coarse exception class (e.g., `TypeError`, also used as the exception message), message-free stack frame lines (code locations only), `source` label (e.g., `root-error-boundary`), hashed `fingerprint`, `type`, and the SDK envelope. `customAppProperties` returns nothing, so no app version or build number is attached, and crashes cannot be grouped by release.
 - **Prohibited Fields**: No raw error messages, no error causes, no transaction details, no user identifiers.
 - **Source maps**: release builds upload their Hermes source map when the `POSTHOG_CLI_API_KEY` secret is set, so frames resolve to file, function, and line (`docs/mobile/security-and-privacy.md`).
 - **Launch event**: `apps/mobile/app/_layout.tsx` sends one property-free `app_session_started` per launch, the first step of the launch-to-first-transaction funnel (`transaction_created` is the second). The device id lives only for that launch, so the funnel counts launches, not returning people.
@@ -264,68 +264,50 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 
 ### 4.3 Mobile Crash Insights (Android Builds)
 
-#### Panel 13: Total Crash Trend
+Every crash panel has two series: `$exception` filtered to `$lib` = `posthog-react-native` (builds from 2026-10-14) and `mobile_crash` (older builds), so both show until old installs update. Both events carry `source`, `type`, and `fingerprint`.
 
-- **Insight Name**: `Mobile Crash Count`
-- **Insight Type**: Trends (Bar)
-- **Event**: `$exception` (filter `$lib` = `posthog-react-native`)
-- **Aggregation**: Total count
-- **Interval**: Daily
+#### Panel 13: Crash Trend
+
+- **Insight Type**: Trends (Line), daily
 
 #### Panel 14: Unique Crash Fingerprints
 
-- **Insight Name**: `Unique Crash Issues`
-- **Insight Type**: Value / Table
-- **Event**: `$exception` (filter `$lib` = `posthog-react-native`)
-- **Aggregation**: `count(distinct fingerprint)`
+- **Insight Type**: Bar per value
+- **Breakdown**: `fingerprint`
 
-#### Panel 15: Crashes by App Version / Build
+#### Panel 15: Crashes by Source
 
-- **Insight Name**: `Crashes by App Version`
-- **Insight Type**: Bar / Breakdown
-- **Event**: `$exception` (filter `$lib` = `posthog-react-native`)
-- **Aggregation**: Total count
-- **Breakdown**: `app_version`
+- **Insight Type**: Trends (Line)
+- **Breakdown**: `source` (`root-error-boundary` or `uncaught-exception`)
 
-#### Panel 16: Most Frequent Exception Types
+#### Panel 16: Top Crash Types
 
-- **Insight Name**: `Top Exception Types`
-- **Insight Type**: Table
-- **Event**: `$exception` (filter `$lib` = `posthog-react-native`)
-- **Aggregation**: Total count
-- **Group by**: `type` (coarse exception class)
-- **Sort**: Descending by count
+- **Insight Type**: Bar per value
+- **Breakdown**: `type` (coarse exception class)
 
 ### 4.4 Feature Usage (Web and Mobile)
 
-#### Panel 17: Pages Opened
+#### Panel 17: Web App Pages
 
-- **Insight Name**: `Web App Pages`
-- **Insight Type**: Bar / Table
+- **Insight Type**: Bar per value, last 30 days
 - **Event**: `page_viewed`
-- **Aggregation**: Total count and unique users (`distinct_id`, one page load on the web)
 - **Breakdown**: `page`
 
-#### Panel 18: Feature Writes by Client
+#### Panel 18: Transactions Created by Client
 
-- **Insight Name**: `Feature Writes`
-- **Insight Type**: Table
-- **Events**: the write events in sections 2.1 and 2.4
-- **Aggregation**: Total count
-- **Breakdown**: event name, then `$lib`
+- **Insight Type**: Trends (Line), daily
+- **Event**: `transaction_created`
+- **Breakdown**: `$lib` (`web` or `posthog-react-native`)
 
 #### Panel 19: Feature Adoption
 
-- **Insight Name**: `Feature Adoption`
-- **Insight Type**: Table, last 30 days
+- **Insight Type**: SQL table, last 30 days, one row per event with `web`, `mobile`, `total`, and `sessions` columns
 - **Events**: `voice_entry_drafted`, `widget_voice_logged`, `receipt_scanned`, `sms_paste_applied`, `pdf_statement_previewed`, `import_completed`, `assistant_message_sent`, `assistant_transaction_saved`, `assistant_action_confirmed`, `budget_saved`, `budget_limit_set`, and the `pet_*` events
 - **Aggregation**: Total count and unique users. On both clients the identifier lasts one page load or one app launch, so unique users counts sessions, not people
-- **Breakdown**: event name, then `$lib`
 
 #### Panel 20: Mobile Screens
 
-- **Insight Name**: `Mobile Screens`
-- **Insight Type**: Bar / Table
+- **Insight Type**: Bar per value, last 30 days
 - **Event**: `screen_viewed`
 - **Breakdown**: `screen`
 
