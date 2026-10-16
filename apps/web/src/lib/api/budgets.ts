@@ -1,5 +1,6 @@
 import type { BudgetOccasionSummary, BudgetPlan, BudgetQuery, BudgetUpsert } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { requestJson } from "./transport";
 
@@ -19,12 +20,14 @@ export function getBudgetOccasions(
   return requestJson(workspace, `/api/app/budgets/occasions?month=${encodeURIComponent(month)}`);
 }
 
-export function saveBudgets(
+export async function saveBudgets(
   workspace: AuthenticatedWorkspace,
   input: BudgetUpsert,
 ): Promise<BudgetPlan> {
-  return requestJson(workspace, "/api/app/budgets", {
+  const plan = await requestJson<BudgetPlan>(workspace, "/api/app/budgets", {
     method: "PUT",
     body: JSON.stringify(input),
   });
+  captureFunnelEvent("budget_saved", { scope: input.scope });
+  return plan;
 }

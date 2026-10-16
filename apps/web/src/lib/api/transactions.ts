@@ -7,6 +7,7 @@ import type {
   TransactionUpdate,
 } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { requestJson } from "./transport";
 
@@ -31,26 +32,35 @@ export function getTransactionCalendar(
   );
 }
 
-export function createTransaction(
+export async function createTransaction(
   workspace: AuthenticatedWorkspace,
   input: TransactionInput,
 ): Promise<TransactionListItem> {
-  return requestJson(workspace, "/api/app/transactions", {
+  const created = await requestJson<TransactionListItem>(workspace, "/api/app/transactions", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  captureFunnelEvent("transaction_created", { transaction_kind: input.kind });
+  return created;
 }
 
-export function updateTransaction(
+export async function updateTransaction(
   workspace: AuthenticatedWorkspace,
   args: { id: string; input: TransactionUpdate },
 ): Promise<TransactionListItem> {
-  return requestJson(workspace, `/api/app/transactions/${args.id}`, {
-    method: "PATCH",
-    body: JSON.stringify(args.input),
-  });
+  const updated = await requestJson<TransactionListItem>(
+    workspace,
+    `/api/app/transactions/${args.id}`,
+    { method: "PATCH", body: JSON.stringify(args.input) },
+  );
+  captureFunnelEvent("transaction_updated", {});
+  return updated;
 }
 
-export function deleteTransaction(workspace: AuthenticatedWorkspace, id: string): Promise<void> {
-  return requestJson(workspace, `/api/app/transactions/${id}`, { method: "DELETE" });
+export async function deleteTransaction(
+  workspace: AuthenticatedWorkspace,
+  id: string,
+): Promise<void> {
+  await requestJson<void>(workspace, `/api/app/transactions/${id}`, { method: "DELETE" });
+  captureFunnelEvent("transaction_deleted", {});
 }

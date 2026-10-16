@@ -69,13 +69,16 @@ export function SignupPage() {
       markSignupThankYouPending();
       if (result.confirmationRequired) {
         setConfirmationSent(true);
-        captureFunnelEvent("signup_submitted", { outcome: "confirmation_required" });
+        captureFunnelEvent("signup_submitted", {
+          method: "password",
+          outcome: "confirmation_required",
+        });
       } else {
-        captureFunnelEvent("signup_submitted", { outcome: "signed_in" });
+        captureFunnelEvent("signup_submitted", { method: "password", outcome: "signed_in" });
         void navigate("/app?proCheckout=open", { replace: true });
       }
     } catch (submitError) {
-      captureFunnelEvent("signup_submitted", { outcome: "failed" });
+      captureFunnelEvent("signup_submitted", { method: "password", outcome: "failed" });
       setError(
         submitError instanceof AuthOperationError
           ? submitError
@@ -89,9 +92,12 @@ export function SignupPage() {
   async function handleSocialSignIn(provider: SocialAuthProvider) {
     setBusyProvider(provider);
     setError(undefined);
+    // Sent before the call: a successful start navigates away to Google.
+    captureFunnelEvent("signup_submitted", { method: provider, outcome: "redirect_started" });
     try {
       await signInWithSocial(provider, "/app?proCheckout=open");
     } catch {
+      captureFunnelEvent("signup_submitted", { method: provider, outcome: "failed" });
       setError(
         new AuthOperationError(
           "unknown",
