@@ -39,6 +39,7 @@ describe("current release notes", () => {
       "Pick your pet's color",
       "A pet that answers back",
       "Your top spending category on mobile Home",
+      "Analytics linked to your account",
       "Android Beta 0.2.54",
     ]);
 

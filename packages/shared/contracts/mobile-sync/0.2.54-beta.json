@@ -1,6 +1,6 @@
 {
   "versionName": "0.2.54-beta",
-  "source": "dc5cba74a637d0a36ed32afd28882d748ad813c8",
+  "source": "fbacb1d6fb0e8d48248c92f9b63ee66f700acf31",
   "features": ["debt-links", "account-types-v2", "account-types-v3", "budget-scopes"],
   "samplePushRequest": {
     "protocolVersion": 1,

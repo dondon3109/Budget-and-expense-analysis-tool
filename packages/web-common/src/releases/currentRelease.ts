@@ -84,9 +84,14 @@ export const currentRelease: ProductRelease = {
         "The Home overview now shows the category you spent the most on this month, with its amount and share, in place of Recent activity. View all opens Analytics.",
     },
     {
+      title: "Analytics linked to your account",
+      description:
+        "While you are signed in, usage analytics and crash reports are linked to your Zoption account, on web after you allow Analytics and on mobile after you tap Allow or turn on More, Usage analytics. They still never include amounts, categories, or text, and the web app asks for your Analytics choice again.",
+    },
+    {
       title: "Android Beta 0.2.54",
       description:
-        "The official Android Beta carries pet colors, pet voices and the Reduce motion switch, the top spending category on Home, and everything from 0.2.52. It ships together with the server update, so the pet page loads again for anyone on 0.2.53. Install 0.2.54 over 0.2.53.",
+        "The official Android Beta carries pet colors, pet voices and the Reduce motion switch, the top spending category on Home, the new analytics choice, and everything from 0.2.52. It ships together with the server update, so the pet page loads again for anyone on 0.2.53. Install 0.2.54 over 0.2.53.",
     },
   ],
 };
