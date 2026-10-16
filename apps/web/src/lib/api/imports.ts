@@ -5,6 +5,7 @@ import type {
   ImportPreviewRequest,
 } from "@zoption/shared";
 
+import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { requestJson } from "./transport";
 
@@ -18,12 +19,14 @@ export function previewImport(
   });
 }
 
-export function commitImport(
+export async function commitImport(
   workspace: AuthenticatedWorkspace,
   input: ImportCommitRequest,
 ): Promise<ImportCommitResult> {
-  return requestJson(workspace, "/api/app/imports/commit", {
+  const result = await requestJson<ImportCommitResult>(workspace, "/api/app/imports/commit", {
     method: "POST",
     body: JSON.stringify(input),
   });
+  captureFunnelEvent("import_completed", {});
+  return result;
 }

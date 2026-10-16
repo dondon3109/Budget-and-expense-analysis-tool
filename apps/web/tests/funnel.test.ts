@@ -60,6 +60,17 @@ const EVENT_PROPERTIES: { [Name in FunnelEventName]: FunnelEventProperties[Name]
   subscription_created: {},
   subscription_updated: {},
   subscription_deleted: {},
+  import_completed: {},
+  voice_entry_drafted: {},
+  receipt_scanned: {},
+  sms_paste_applied: {},
+  assistant_message_sent: { kind: "voice" },
+  assistant_transaction_saved: {},
+  assistant_action_confirmed: {},
+  pet_egg_chosen: {},
+  pet_hatched: {},
+  pet_color_set: {},
+  pet_enabled_set: { enabled: false },
 };
 
 const EVENT_ENTRIES = Object.entries(EVENT_PROPERTIES) as Array<

@@ -53,6 +53,17 @@ export interface FunnelEventProperties {
   subscription_created: NoProperties;
   subscription_updated: NoProperties;
   subscription_deleted: NoProperties;
+  import_completed: NoProperties;
+  voice_entry_drafted: NoProperties;
+  receipt_scanned: NoProperties;
+  sms_paste_applied: NoProperties;
+  assistant_message_sent: { kind: "text" | "voice" };
+  assistant_transaction_saved: NoProperties;
+  assistant_action_confirmed: NoProperties;
+  pet_egg_chosen: NoProperties;
+  pet_hatched: NoProperties;
+  pet_color_set: NoProperties;
+  pet_enabled_set: { enabled: boolean };
 }
 
 export type FunnelEventName = keyof FunnelEventProperties;
@@ -79,6 +90,17 @@ const FUNNEL_PROPERTY_KEYS: Record<FunnelEventName, readonly string[]> = {
   subscription_created: [],
   subscription_updated: [],
   subscription_deleted: [],
+  import_completed: [],
+  voice_entry_drafted: [],
+  receipt_scanned: [],
+  sms_paste_applied: [],
+  assistant_message_sent: ["kind"],
+  assistant_transaction_saved: [],
+  assistant_action_confirmed: [],
+  pet_egg_chosen: [],
+  pet_hatched: [],
+  pet_color_set: [],
+  pet_enabled_set: ["enabled"],
 };
 
 /**
