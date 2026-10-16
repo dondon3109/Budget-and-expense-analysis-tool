@@ -204,9 +204,9 @@ export interface LocalDashboardData {
   /** Transactions inside the dashboard window, newest first. */
   transactions: TransactionRecord[];
   /**
-   * The newest transactions overall, for the recent activity card. Read
-   * separately because that card must show the latest entries even when the
-   * ledger has been dormant for longer than the dashboard window.
+   * The newest transactions overall. Read separately so Home can tell the
+   * ledger is not empty even when it has been dormant for longer than the
+   * dashboard window.
    */
   recentTransactions: TransactionRecord[];
   accounts: AccountRecord[];

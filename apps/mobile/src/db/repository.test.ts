@@ -156,7 +156,7 @@ describe("encrypted local workspace repository", () => {
     expect(windowSql).toContain("AND t.date >= ?");
     expect(windowStart).toBe(cashflowWindowStart("2026-08-14"));
 
-    // Recent activity must keep showing the newest rows from any date, so it
+    // The newest rows from any date tell Home the ledger is not empty, so it
     // is the one dashboard read that is not bounded by the window.
     const [recentSql] = getAllAsync.mock.calls[1] as [string];
     expect(recentSql).not.toContain("t.date >=");
