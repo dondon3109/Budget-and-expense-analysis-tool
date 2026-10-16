@@ -36,14 +36,17 @@ describe("current release notes", () => {
       "E-wallets and several currencies per account",
       "Flatter pages",
       "More fixes",
-      "Android Beta 0.2.52",
+      "Pick your pet's color",
+      "A pet that answers back",
+      "Your top spending category on mobile Home",
+      "Android Beta 0.2.53",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/several purchases/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.52/);
+    expect(copy).toMatch(/Android Beta 0\.2\.53/);
   });
 
   it("keeps the compact layout and guides notes as 3.7.0", () => {

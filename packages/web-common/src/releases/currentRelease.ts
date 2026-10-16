@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 14, 2026",
+  releasedOn: "October 16, 2026",
   changes: [
     {
       title: "Several purchases in one message",
@@ -69,9 +69,24 @@ export const currentRelease: ProductRelease = {
         "Opening the app counts toward your pet's streak again, signing in with Google on Android no longer reports \"invalid flow state\" after it succeeded, and the web account list scrolls to an account you just added. Mobile crash reports now say where in Zoption's code a crash happened, still without error messages or your data.",
     },
     {
-      title: "Android Beta 0.2.52",
+      title: "Pick your pet's color",
       description:
-        "The official Android Beta carries the pet, the Fun theme, e-wallets and multi-currency accounts, the flatter More tab, crash reporting that finds the broken line, and these fixes. Install 0.2.52 over 0.2.51.",
+        "Choose Pink, Mint, Sky, Lilac, Peach, or the original when you pick an egg, and change it any time on the web pet page or in mobile Settings. If you already have a pet, the pet page asks you once.",
+    },
+    {
+      title: "A pet that answers back",
+      description:
+        "Pet your pet and it replies in its own voice, and tap five times quickly for a dance. A new Reduce motion switch keeps animations still across Zoption, and web gains a Sound effects switch in Account Settings.",
+    },
+    {
+      title: "Your top spending category on mobile Home",
+      description:
+        "The Home overview now shows the category you spent the most on this month, with its amount and share, in place of Recent activity. View all opens Analytics.",
+    },
+    {
+      title: "Android Beta 0.2.53",
+      description:
+        "The official Android Beta carries pet colors, pet voices and the Reduce motion switch, the top spending category on Home, and everything from 0.2.52. Install 0.2.53 over 0.2.52.",
     },
   ],
 };
