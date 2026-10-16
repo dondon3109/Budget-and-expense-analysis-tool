@@ -2,7 +2,13 @@
 
 import { z } from "zod";
 
-import { accountTypes, currencies, interestFrequencies, transactionKinds } from "../types";
+import {
+  accountTypes,
+  currencies,
+  interestFrequencies,
+  transactionEntryMethods,
+  transactionKinds,
+} from "../types";
 import { isoDateSchema, monthStartSchema, resourceIdSchema } from "./common";
 
 export const dashboardQuerySchema = z
@@ -108,6 +114,8 @@ const transactionBaseSchema = z
     currency: z.enum(currencies),
     categoryId: resourceIdSchema,
     notes: z.string().trim().max(500).optional(),
+    // Optional so older clients and system entries (balance adjustments) store none.
+    entryMethod: z.enum(transactionEntryMethods).optional(),
   })
   .strict();
 

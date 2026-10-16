@@ -362,7 +362,12 @@ export function ImportScreen() {
       const next = await withToken((token) =>
         commitImport({
           accessToken: token,
-          input: { token: preview.token, categoryOverrides, kindOverrides },
+          input: {
+            token: preview.token,
+            categoryOverrides,
+            kindOverrides,
+            entryMethod: fileKind === "pdf" ? "pdf" : "import",
+          },
         }),
       );
       void telemetry.capture("import_completed", {

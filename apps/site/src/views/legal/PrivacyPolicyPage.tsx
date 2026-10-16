@@ -103,6 +103,14 @@ export function PrivacyPolicyPage() {
             and your goals and optional text are included in your account data export.
           </li>
           <li>
+            <strong>How you enter transactions:</strong> with each new transaction, Zoption notes
+            how it was entered: typed in a form, a voice entry, the home-screen widget, a receipt
+            photo, an SMS paste, a PDF statement, the assistant, or a file import. This label is
+            stored with your workspace, is never sent to PostHog or any other provider, and is not
+            shown in the app. We use it to see which entry features each account uses, so we know
+            which ones to improve. It is deleted with the transaction or your account.
+          </li>
+          <li>
             <strong>Measurement and optional analytics:</strong> limited aggregate page-use and Core
             Web Vitals performance information sent to PostHog on public web pages in cookieless,
             memory-only mode, plus anonymous conversion and feature-use events that cover the signup

@@ -108,6 +108,9 @@ export function TransactionEditorScreen() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [voicePreviewState, setVoicePreviewState] = useState<VoicePreviewState>({ status: "idle" });
   const [previewSummary, setPreviewSummary] = useState<VoicePreviewDraftSummary | null>(null);
+  const [voiceDrafted, setVoiceDrafted] = useState(false);
+  // Only the SMS paste opens the editor with a `channel` param.
+  const entryMethod = voiceDrafted ? "voice" : singleParam(params.channel) ? "sms" : "manual";
   const pendingValuesToSaveRef = useRef<TransactionFormValues | null>(null);
   const valuesRef = useRef(values);
   valuesRef.current = values;
@@ -335,7 +338,10 @@ export function TransactionEditorScreen() {
           notes: parsed.input.notes ?? "",
         });
       } else {
-        savedId = await local.workspace.transactionMutations.createTransaction(parsed.input);
+        savedId = await local.workspace.transactionMutations.createTransaction({
+          ...parsed.input,
+          entryMethod,
+        });
       }
       if (savedId && photoDraft !== undefined && parsed.input.kind !== "transfer") {
         await local.workspace.transactionMutations.setTransactionPhoto(savedId, photoDraft);
@@ -402,6 +408,7 @@ export function TransactionEditorScreen() {
     machineRef.current?.cancel();
     pendingValuesToSaveRef.current = null;
     setPreviewSummary(null);
+    setVoiceDrafted(false);
     const synchronizedAccounts =
       formData.data?.accounts.filter((account) => !account.pending) ?? [];
     const defaultAccount = preferredTransactionAccount(
@@ -641,6 +648,7 @@ export function TransactionEditorScreen() {
                   notes: values.notes,
                 };
                 setValues(nextValues);
+                setVoiceDrafted(true);
                 setErrors({});
                 setMessage(null);
 

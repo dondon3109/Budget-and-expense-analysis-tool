@@ -55,6 +55,7 @@ function createSqliteEnvironment(): {
       transfer_group_id text,
       transfer_fee_minor integer,
       source_kind text NOT NULL DEFAULT 'manual',
+      entry_method text,
       debt_id text,
       created_at text NOT NULL DEFAULT (datetime('now')),
       updated_at text NOT NULL DEFAULT (datetime('now'))
@@ -331,6 +332,48 @@ describe("transactionRepository SQLite behavior", () => {
     expect(readback?.query).toContain("LIMIT 1");
     expect(readback?.query).not.toContain("ORDER BY");
     expect(readback?.bindings).toEqual(["tenant-1", created.id]);
+  });
+
+  it("stores how each row was entered, on both transfer legs, without returning it", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+
+    const voiced = await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Spoken lunch",
+      amountMinor: 250,
+      currency: "PHP",
+      kind: "expense",
+      entryMethod: "voice",
+    });
+    const moved = await transactionRepository.create(env, "tenant-1", {
+      fromAccountId: "cash-1",
+      toAccountId: "savings-1",
+      categoryId: "transfer-1",
+      date: "2026-07-05",
+      amountMinor: 500,
+      currency: "PHP",
+      kind: "transfer",
+      entryMethod: "sms",
+    });
+
+    expect(voiced).not.toHaveProperty("entryMethod");
+    const methods = database
+      .prepare(
+        `SELECT id, entry_method AS entryMethod FROM transactions
+         WHERE id = ? OR transfer_group_id = (SELECT transfer_group_id FROM transactions WHERE id = ?)`,
+      )
+      .all(voiced.id, moved.id);
+    expect(methods).toHaveLength(3);
+    expect(methods).toEqual(
+      expect.arrayContaining([
+        { id: voiced.id, entryMethod: "voice" },
+        { id: moved.id, entryMethod: "sms" },
+      ]),
+    );
+    expect(methods.filter((row) => row.entryMethod === "sms")).toHaveLength(2);
   });
 
   it("keys a created row on a caller-supplied id so a retry cannot add a second", async () => {

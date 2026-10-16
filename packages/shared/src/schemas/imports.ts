@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 
-import { transactionKinds } from "../types";
+import { transactionEntryMethods, transactionKinds } from "../types";
 import { isoDateSchema, resourceIdSchema } from "./common";
 
 const importColumnSchema = z.string().trim().min(1);
@@ -70,6 +70,8 @@ export type ImportPreviewRequest = z.infer<typeof importPreviewRequestSchema>;
 export const importCommitSchema = z
   .object({
     token: z.string().uuid(),
+    // What the rows came from; a file import when absent. Stored on each row, never returned.
+    entryMethod: z.enum(transactionEntryMethods).extract(["import", "pdf", "receipt"]).optional(),
     categoryOverrides: z
       .array(
         z

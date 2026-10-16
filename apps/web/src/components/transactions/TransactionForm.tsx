@@ -15,6 +15,7 @@ import {
   type CategoryRecord,
   type Currency,
   type Debt,
+  type TransactionEntryMethod,
   type TransactionInput,
   type TransactionKind,
   type TransactionListItem,
@@ -46,6 +47,8 @@ export interface TransactionFormDraft {
   notes?: string;
   currency?: Currency;
   debtId?: string;
+  /** Where the prefill came from; a create records it, and a typed entry is "manual". */
+  entryMethod?: TransactionEntryMethod;
 }
 
 interface TransactionFormProps {
@@ -120,6 +123,9 @@ export function TransactionForm({
   // Null until the user or a draft picks one, so a bank entry starts in the account's currency.
   const [chosenCurrency, setChosenCurrency] = useState<Currency | null>(
     initialDraft?.currency ?? item?.currency ?? null,
+  );
+  const [entryMethod, setEntryMethod] = useState<TransactionEntryMethod>(
+    initialDraft?.entryMethod ?? "manual",
   );
   const [clientError, setClientError] = useState<string>();
   const [creatingCategory, setCreatingCategory] = useState(false);
@@ -283,6 +289,8 @@ export function TransactionForm({
       kind,
       categoryId,
       notes,
+      // The update schema has no entry method, so only a create carries one.
+      ...(item ? {} : { entryMethod }),
     };
     // Only an expense or a transfer carries a debt link. The strict schema rejects the key
     // on income, so an income entry must leave it out rather than send an explicit null.
@@ -336,6 +344,7 @@ export function TransactionForm({
     setAmount(formatMinorAmount(draft.amountMinor));
     setTransferFee("");
     setChosenCurrency(draft.currency);
+    setEntryMethod("voice");
     if (!activeAccounts.some((account) => account.id === accountId)) {
       setAccountId(fromAccountIdValue);
     }

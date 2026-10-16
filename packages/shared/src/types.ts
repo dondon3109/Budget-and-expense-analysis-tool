@@ -9,6 +9,22 @@ export * from "./currencies";
 export const transactionKinds = ["income", "expense", "transfer"] as const;
 export type TransactionKind = (typeof transactionKinds)[number];
 
+/**
+ * How a transaction was first entered, stored once at create in D1 so Zoption can count feature
+ * use per workspace without sending identity to analytics. Never returned to clients.
+ */
+export const transactionEntryMethods = [
+  "manual",
+  "voice",
+  "widget",
+  "receipt",
+  "sms",
+  "pdf",
+  "assistant",
+  "import",
+] as const;
+export type TransactionEntryMethod = (typeof transactionEntryMethods)[number];
+
 export interface TransactionRecord {
   id: string;
   date: string;
@@ -260,6 +276,7 @@ export interface ImportCommitRequest {
   token: string;
   categoryOverrides: ImportCategoryOverride[];
   kindOverrides: ImportKindOverride[];
+  entryMethod?: Extract<TransactionEntryMethod, "import" | "pdf" | "receipt">;
 }
 
 export interface ImportCommitResult {

@@ -5,6 +5,7 @@ import {
   normalizeSignedAmount,
   transactionInputSchema,
   transactionUpdateSchema,
+  type TransactionEntryMethod,
   type TransactionInput,
   type TransactionUpdate,
 } from "@zoption/shared";
@@ -218,7 +219,11 @@ export function updateTransaction(
            SET payload_json = ?, dependency_ids_json = ?, state = 'pending', attempt_count = 0,
                next_attempt_at = NULL, last_error_code = NULL
            WHERE operation_id = ?`,
-          JSON.stringify(outbox.operation_type === "create" ? merged : fullUpdate(merged)),
+          JSON.stringify(
+            outbox.operation_type === "create"
+              ? { ...merged, entryMethod: queuedEntryMethod(outbox.payload_json) }
+              : fullUpdate(merged),
+          ),
           JSON.stringify(dependencyIds),
           outbox.operation_id,
         );
@@ -257,6 +262,16 @@ export function updateTransaction(
       );
     });
   });
+}
+
+/** The entry method a pending create was queued with, so an edit before it syncs keeps it. */
+function queuedEntryMethod(payloadJson: string): TransactionEntryMethod | undefined {
+  try {
+    const queued = transactionInputSchema.safeParse(JSON.parse(payloadJson));
+    return queued.success ? queued.data.entryMethod : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 export function deleteTransaction(ctx: LocalCommandContext, id: string): Promise<void> {

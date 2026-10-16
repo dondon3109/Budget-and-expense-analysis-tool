@@ -196,6 +196,9 @@ export const transactions = sqliteTable(
       .default("manual"),
     importId: text("import_id"),
     importRowNumber: integer("import_row_number"),
+    // One of transactionEntryMethods in @zoption/shared, set once at create. Null for rows from
+    // before it was recorded and for system entries.
+    entryMethod: text("entry_method"),
     notes: text("notes"),
     transferFeeMinor: integer("transfer_fee_minor"),
     subscriptionId: text("subscription_id"),

@@ -686,6 +686,7 @@ export function createAssistantService(
               currency: draft.currency,
               categoryId: draft.categoryId,
               accountId: draft.accountId,
+              entryMethod: "assistant",
             },
             { id: transactionId },
           );

@@ -8,6 +8,7 @@ import {
   type TransactionCalendarMonth,
   type TransactionCalendarQuery,
   type TransactionExportQuery,
+  type TransactionEntryMethod,
   type TransactionInput,
   type TransactionListItem,
   type TransactionListQuery,
@@ -339,12 +340,13 @@ function insertStatement(
     debtId?: string | null;
     transferGroupId?: string;
     transferFeeMinor?: number | null;
+    entryMethod?: TransactionEntryMethod;
   },
 ) {
   return env.DB.prepare(
     `INSERT INTO transactions (
-      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, debt_id, transfer_group_id, transfer_fee_minor, source_kind
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual')`,
+      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, debt_id, transfer_group_id, transfer_fee_minor, source_kind, entry_method
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?)`,
   ).bind(
     values.id,
     values.tenantId,
@@ -359,6 +361,7 @@ function insertStatement(
     values.debtId ?? null,
     values.transferGroupId ?? null,
     values.transferFeeMinor ?? null,
+    values.entryMethod ?? null,
   );
 }
 
@@ -553,6 +556,7 @@ export const transactionRepository: TransactionRepository = {
           debtId,
           transferGroupId: groupId,
           transferFeeMinor: fromLeg.transferFeeMinor,
+          entryMethod: input.entryMethod,
         }),
         insertStatement(env, {
           id: toId,
@@ -567,6 +571,7 @@ export const transactionRepository: TransactionRepository = {
           notes: input.notes,
           transferGroupId: groupId,
           transferFeeMinor: toLeg.transferFeeMinor,
+          entryMethod: input.entryMethod,
         }),
         ...(debtId ? [applyDebtPayment(env, tenantId, debtId, toLeg.amountMinor)] : []),
       ]);
@@ -588,6 +593,7 @@ export const transactionRepository: TransactionRepository = {
       kind: input.kind,
       notes: input.notes,
       debtId: input.kind === "expense" ? input.debtId : null,
+      entryMethod: input.entryMethod,
     });
     // The expense row and the linked debt's new balance are one atomic write.
     if (input.kind === "expense" && input.debtId) {

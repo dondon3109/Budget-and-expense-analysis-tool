@@ -346,8 +346,8 @@ function createGraphMutation(
   return env.DB.prepare(
     `INSERT INTO transactions (
       id, tenant_id, account_id, category_id, date, description, amount_minor,
-      currency, kind, notes, debt_id, source_kind, revision, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', 1, ?)`,
+      currency, kind, notes, debt_id, source_kind, entry_method, revision, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, 1, ?)`,
   ).bind(
     operation.entityId,
     tenantId,
@@ -360,6 +360,7 @@ function createGraphMutation(
     transaction.kind,
     transaction.notes || null,
     transaction.kind === "expense" ? (transaction.debtId ?? null) : null,
+    transaction.entryMethod ?? null,
     timestamp,
   );
 }

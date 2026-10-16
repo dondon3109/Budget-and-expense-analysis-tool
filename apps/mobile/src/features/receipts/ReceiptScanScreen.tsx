@@ -351,7 +351,7 @@ export function ReceiptScanScreen() {
         setMessage("Receipt items must be income or expense transactions.");
         return;
       }
-      inputs.push(parsed.input);
+      inputs.push({ ...parsed.input, entryMethod: "receipt" });
     }
 
     setSaving(true);

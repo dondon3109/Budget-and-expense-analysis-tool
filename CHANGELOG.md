@@ -23,6 +23,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Zoption now notes how each new transaction was entered (typed, voice, the widget, a receipt, an SMS paste, a PDF statement, the assistant, or a file import) with your workspace, so it can see which entry features people rely on. It is never sent to analytics, and the Privacy Policy says so.
 - The Privacy and Cookie policies now list every anonymous feature-use event the web and mobile apps send (page names and that a record was added, changed, or removed, never amounts or text). On the web these are sent only after you allow Analytics.
 - Mobile: the Home overview shows the category you spent the most on this month, with its amount and share of your spending, in place of Recent activity. View all opens Analytics.
 - Mobile crash reports now include where in Zoption's code the crash happened (file, function, and line), so crashes can be found and fixed. They still never include the error message or your data. The Privacy Policy says this.

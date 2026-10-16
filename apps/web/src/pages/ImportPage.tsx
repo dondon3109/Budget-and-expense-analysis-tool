@@ -133,6 +133,8 @@ export function ImportPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const entryMode = searchParams.get("mode") === "receipt" ? "receipt" : "file";
+  // A reviewed receipt continues as a file import, so the commit needs to be told where it began.
+  const [importSource, setImportSource] = useState<"import" | "receipt">("import");
 
   useEffect(() => {
     if (searchParams.get("wizard") === "true") {
@@ -163,6 +165,7 @@ export function ImportPage() {
     const receiptCsv = [headers.join(","), ...rows].join("\r\n");
 
     beginFileSelection();
+    setImportSource("receipt");
     setFileName("receipt-" + draft.date + ".csv");
     setCsvText(receiptCsv);
     setInspection(inspectCsv(receiptCsv));
@@ -219,7 +222,8 @@ export function ImportPage() {
     },
   });
   const commitMutation = useMutation({
-    mutationFn: (input: ImportCommitRequest) => commitImport(workspace, input),
+    mutationFn: (input: ImportCommitRequest) =>
+      commitImport(workspace, { ...input, entryMethod: importSource }),
     onSuccess: async (data) => {
       workbookClientRef.current?.dispose();
       workbookClientRef.current = undefined;
@@ -381,6 +385,7 @@ export function ImportPage() {
     setSelectedWorksheet("");
     setWorkbookBusy(false);
     setFileError(undefined);
+    setImportSource("import");
     clearConvertedImport();
     return fileSelectionIdRef.current;
   }
