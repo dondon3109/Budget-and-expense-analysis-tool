@@ -36,6 +36,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: the pet page loads again on Android Beta 0.2.53, which reached phones before the server that sends the pet's color.
 - Opening the app now counts toward your pet's egg streak and daily points again; the server had been turning away the check-in from both the phone and the web.
 - Mobile: signing in with Google on Android no longer reports "invalid flow state" when the sign-in actually succeeded.
 - Web: the Occasions budget list no longer shows another plan's category editor after switching tabs.
