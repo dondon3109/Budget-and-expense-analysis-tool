@@ -26,6 +26,7 @@ All telemetry is strictly bounded to protect financial privacy, avoid collecting
 - **A closed event set in the app**: the app at `app.zoption.site` sends no `$pageview` and no URL. Its signup page and signed-in app send only the events typed in `apps/web/src/analytics/funnel.ts`, and every property is a fixed enum:
   - Funnel: `signup_viewed`, `signup_submitted {method: password|google, outcome}`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question {surface}`. `app_session_started`, `first_import_committed`, and `assistant_first_question` fire at most once per page load. A Google sign-up is sent as `outcome: redirect_started` before the redirect (with `send_instantly`, so leaving the page cannot drop it); whether it finished shows as the next `app_session_started`.
   - Page use: `page_viewed {page}` once per signed-in path change (`apps/web/src/analytics/AppPageViewed.tsx`), naming the page from a fixed map. Admin pages and query strings are never sent.
+  - Feature adoption: `voice_entry_drafted`, `receipt_scanned`, `sms_paste_applied`, `import_completed`, `assistant_message_sent {kind: text|voice}`, `assistant_transaction_saved`, `assistant_action_confirmed`, `pet_egg_chosen`, `pet_hatched`, `pet_color_set`, and `pet_enabled_set {enabled}`. Each fires once its feature returns a result (in `lib/api/<domain>.ts`, or the SMS dialog's apply), so it counts use, not only saves: a voice draft the user then discards still counts.
   - Feature use: `transaction_created {transaction_kind}`, `transaction_updated`, `transaction_deleted`, `budget_saved {scope}`, and `goal_`, `debt_`, `subscription_` `created`/`updated`/`deleted`, each sent from its `apps/web/src/lib/api/<domain>.ts` write only after the server accepted it, so every screen that writes is counted. The names match the mobile events (section 2.4), so a breakdown by `$lib` (`web` or `posthog-react-native`) compares the two clients.
 - **Goal events stay first-party**: the goals chosen at setup and its events live in D1 (section 2.5), never in PostHog.
 - **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, account IDs, tenant IDs, or user IDs are ever captured or transmitted.
@@ -77,6 +78,7 @@ Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` sends each crash t
 - **Source maps**: release builds upload their Hermes source map when the `POSTHOG_CLI_API_KEY` secret is set, so frames resolve to file, function, and line (`docs/mobile/security-and-privacy.md`).
 - **Launch event**: `apps/mobile/app/_layout.tsx` sends one property-free `app_session_started` per launch, the first step of the launch-to-first-transaction funnel (`transaction_created` is the second). The device id lives only for that launch, so the funnel counts launches, not returning people.
 - **Product events**: each screen sends one event after a completed local write: `transaction_created`/`transaction_updated {transaction_kind}`, `transaction_deleted {transaction_kind: transaction|transfer}`, `budget_limit_set {action}`, `budget_removed`, `budget_occasion_created`, `goal_created`/`goal_updated {status}`, `goal_deleted`, `debt_created`/`debt_updated {debt_type, status}`, `debt_deleted`, `subscription_created`/`subscription_updated {billing_cycle, status}`, `subscription_deleted`, and `import_completed {file_kind, imported_count, rejected_count}`. They are not user opt-in, like crash reports (`docs/mobile/security-and-privacy.md`).
+- **Feature adoption and screens**: the same adoption events as the web (section 2.1) fire from `apps/mobile/src/api/` when the feature returns a result, plus `pdf_statement_previewed` and `widget_voice_logged {entry_count}` (the home screen mic widget's headless task, after it saves). A demo session's offline stand-in results are not counted. `screen_viewed {screen}` (`src/telemetry/screen-viewed.tsx`, mounted in the authenticated gate) names each signed-in screen from a fixed map, the counterpart of the web's `page_viewed`.
 - **One gate for both**: product events wait in the same bounded buffer as crash reports until the `crash-telemetry-enabled` flag answers, and are dropped while it is off, so the remote kill switch and `EXPO_PUBLIC_TELEMETRY_DISABLED` stop everything the app sends.
 - **SDK Safeguards**: `personProfiles: "identified_only"` with no `identify()` call (so no profile is ever made), `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`. Builds before 2026-10-14 still send the older `mobile_crash` event instead of `$exception`, and builds before 2026-09-18 sent `$identify`; both fade out as devices update.
 
@@ -312,6 +314,21 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 - **Aggregation**: Total count
 - **Breakdown**: event name, then `$lib`
 
+#### Panel 19: Feature Adoption
+
+- **Insight Name**: `Feature Adoption`
+- **Insight Type**: Table, last 30 days
+- **Events**: `voice_entry_drafted`, `widget_voice_logged`, `receipt_scanned`, `sms_paste_applied`, `pdf_statement_previewed`, `import_completed`, `assistant_message_sent`, `assistant_transaction_saved`, `assistant_action_confirmed`, `budget_saved`, `budget_limit_set`, and the `pet_*` events
+- **Aggregation**: Total count and unique users. On both clients the identifier lasts one page load or one app launch, so unique users counts sessions, not people
+- **Breakdown**: event name, then `$lib`
+
+#### Panel 20: Mobile Screens
+
+- **Insight Name**: `Mobile Screens`
+- **Insight Type**: Bar / Table
+- **Event**: `screen_viewed`
+- **Breakdown**: `screen`
+
 ---
 
 ## 5. Dashboard Setup Instructions
@@ -319,5 +336,5 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 1. Log into your PostHog Cloud account (e.g. `https://us.posthog.com`).
 2. Navigate to **Dashboards** > **New Dashboard**.
 3. Set the name to **`Zoption Overview`** and description to `Unified telemetry for Zoption Public Web, Assistant AI Observability, and Android Crash Diagnostics`.
-4. Click **Add insight** and configure each of the 18 panels described above using the respective event names (`$pageview`, `$web_vitals`, `$ai_generation`, `$exception`, `page_viewed`, and the feature write events).
+4. Click **Add insight** and configure each of the 20 panels described above using the respective event names (`$pageview`, `$web_vitals`, `$ai_generation`, `$exception`, `page_viewed`, and the feature write events).
 5. Organize the dashboard layout into 4 horizontal sections: **Website Traffic & Web Vitals**, **AI Assistant Observability**, **Mobile Diagnostics**, and **Feature Usage**.

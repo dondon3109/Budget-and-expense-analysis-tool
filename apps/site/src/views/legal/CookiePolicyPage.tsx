@@ -44,10 +44,13 @@ export function CookiePolicyPage() {
           people use, can be read: a signup page view, the outcome and method (password or Google)
           of a signup attempt, a first app load, a first import into an empty workspace, assistant
           consent, a first assistant question, the name of each app page you open, and that a
-          transaction, budget, savings goal, debt, or subscription was added, changed, or removed.
-          These events are cookieless, carry no financial detail, and write nothing to your device:
-          they never include an email, name, amount, category, account, or tenant identifier, free
-          text, page address with parameters, or a persistent identifier.
+          transaction, budget, savings goal, debt, or subscription was added, changed, or removed,
+          and when a voice entry, receipt scan, SMS paste, import, assistant message,
+          assistant-drafted transaction, or pet action (choosing an egg, hatching, recoloring,
+          turning it on or off) succeeds. These events are cookieless, carry no financial detail,
+          and write nothing to your device: they never include an email, name, amount, category,
+          account, or tenant identifier, free text, page address with parameters, or a persistent
+          identifier.
         </p>
         <p>
           The goals you choose during setup are not one of those steps. It is stored with your
@@ -120,9 +123,11 @@ export function CookiePolicyPage() {
           call-structure, finish, and error metadata for the financial assistant without questions,
           answers, financial records, tool payloads, credentials, or internal IDs. Mobile builds
           transmit only sanitized crash summaries without message contents or financial records, and
-          anonymous feature-use events (an app launch, and that a transaction, budget, savings goal,
-          debt, subscription, or import was added, changed, or removed, with fixed labels such as
-          the transaction type and the number of imported rows, never amounts or text). Read the{" "}
+          anonymous feature-use events (an app launch, the name of each screen opened, that a
+          transaction, budget, savings goal, debt, subscription, or import was added, changed, or
+          removed, and that a voice entry, voice widget note, receipt scan, SMS paste, PDF
+          statement, assistant message, or pet action succeeded, with fixed labels such as the
+          transaction type and counts such as imported rows, never amounts or text). Read the{" "}
           <a href="/privacy-policy">Privacy Policy</a> for account, financial, provider, assistant,
           and rights information.
         </p>

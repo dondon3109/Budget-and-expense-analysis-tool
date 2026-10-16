@@ -109,13 +109,14 @@ export function PrivacyPolicyPage() {
             and app surfaces: a signup page view, the outcome and method (password or Google) of a
             signup attempt, a first app load, a first import into an empty workspace, assistant
             consent, a first assistant question, the name of each app page opened, and that a
-            transaction, budget, savings goal, debt, or subscription was added, changed, or removed.
-            Those events are cookieless, carry no financial detail, and write nothing to your
-            device: they never include an email, name, amount, category, account, or tenant
-            identifier, free text, page address with parameters, or a persistent identifier. On the
-            web they are sent only after you allow Analytics. Zoption does not send financial
-            workspace data, account credentials, or assistant conversations to the analytics
-            platform.
+            transaction, budget, savings goal, debt, or subscription was added, changed, or removed,
+            and when a voice entry, receipt scan, SMS paste, import, assistant message,
+            assistant-drafted transaction, or pet action succeeds. Those events are cookieless,
+            carry no financial detail, and write nothing to your device: they never include an
+            email, name, amount, category, account, or tenant identifier, free text, page address
+            with parameters, or a persistent identifier. On the web they are sent only after you
+            allow Analytics. Zoption does not send financial workspace data, account credentials, or
+            assistant conversations to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">
@@ -214,11 +215,13 @@ export function PrivacyPolicyPage() {
             after separate assistant consent, and (3) sanitized mobile crash reports in PostHog
             Error Tracking with the coarse exception type and the code locations (file, function,
             and line) from the stack trace, never the error message, plus anonymous mobile
-            feature-use events (an app launch, and that a transaction, budget, savings goal, debt,
-            subscription, or import was added, changed, or removed, with fixed labels and counts but
-            no amounts or text) tied only to an identifier that lasts one app launch. PostHog
-            person-profile processing is disabled ($process_person_profile: false), and no user
-            identities, financial records, prompts, or conversation contents are ever sent.
+            feature-use events (an app launch, the name of each screen opened, that a transaction,
+            budget, savings goal, debt, subscription, or import was added, changed, or removed, and
+            that a voice entry, voice widget note, receipt scan, SMS paste, PDF statement, assistant
+            message, or pet action succeeded, with fixed labels and counts but no amounts or text)
+            tied only to an identifier that lasts one app launch. PostHog person-profile processing
+            is disabled ($process_person_profile: false), and no user identities, financial records,
+            prompts, or conversation contents are ever sent.
           </li>
           <li>
             <strong>Cloudflare Workers AI</strong> for AI entry after separate AI entry consent: it
