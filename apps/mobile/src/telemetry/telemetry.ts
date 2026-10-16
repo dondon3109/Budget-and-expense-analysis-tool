@@ -1,9 +1,10 @@
 /**
- * Operator-enabled crash telemetry for the Android Beta.
+ * Operator-enabled crash telemetry and product events for the Android Beta.
  *
  * This is NOT user opt-in: every installation built with an embedded
- * EXPO_PUBLIC_POSTHOG_KEY reports crashes unless the operator disables the
- * pipeline. Two independent gates control exactly that:
+ * EXPO_PUBLIC_POSTHOG_KEY reports crashes and product events unless the
+ * operator disables the pipeline. Two independent gates control exactly that,
+ * for both kinds of report:
  *
  *  - Remote kill switch: the PostHog feature flag
  *    `crash-telemetry-enabled`. Absent or false closes the gate, including
@@ -263,12 +264,16 @@ export function parseTelemetryConfig(
   };
 }
 
-const MAX_BUFFERED_CRASHES = 25;
+const MAX_BUFFERED_REPORTS = 25;
+
+type PendingReport =
+  | { kind: "crash"; report: SanitizedCrashReport }
+  | { kind: "event"; event: string; properties?: Record<string, string | number | boolean> };
 
 /**
- * Buffers sanitized reports until BOTH the transport exists and the remote
- * gate has answered, then drains in order. If the gate closes, buffered and
- * future reports are dropped (fail-closed).
+ * Buffers crash reports and product events until BOTH the transport exists
+ * and the remote gate has answered, then drains in order. If the gate closes,
+ * buffered and future reports are dropped (fail-closed).
  */
 export function createTelemetryService(
   config: TelemetryConfig,
@@ -279,7 +284,23 @@ export function createTelemetryService(
   let gateOpen = false;
   let initializationFailed = false;
   let initialization: Promise<void> | null = null;
-  const pending: SanitizedCrashReport[] = [];
+  const pending: PendingReport[] = [];
+
+  const enqueue = (item: PendingReport): void => {
+    if (pending.length >= MAX_BUFFERED_REPORTS) pending.shift();
+    pending.push(item);
+  };
+
+  const deliverEvent = (
+    event: string,
+    properties?: Record<string, string | number | boolean>,
+  ): void => {
+    try {
+      transport?.capture?.(event, properties);
+    } catch {
+      // Product analytics must never interfere with the completed action.
+    }
+  };
 
   const deliver = (report: SanitizedCrashReport): void => {
     if (!transport) return;
@@ -297,8 +318,9 @@ export function createTelemetryService(
 
   const drainPending = (): void => {
     while (pending.length > 0) {
-      const report = pending.shift();
-      if (report) deliver(report);
+      const item = pending.shift();
+      if (item?.kind === "crash") deliver(item.report);
+      else if (item) deliverEvent(item.event, item.properties);
     }
   };
 
@@ -343,11 +365,13 @@ export function createTelemetryService(
     async capture(event, properties) {
       if (!config.enabled || initializationFailed) return;
       await this.init();
-      try {
-        transport?.capture?.(event, properties);
-      } catch {
-        // Product analytics must never interfere with the completed action.
+      if (!transport) return;
+      if (!gateResolved) {
+        // app_session_started fires at launch, before flags have loaded.
+        enqueue({ kind: "event", event, properties });
+        return;
       }
+      if (gateOpen) deliverEvent(event, properties);
     },
     // Synchronous internally (delivery is fire-and-forget); the Promise keeps
     // the awaited contract callers rely on.
@@ -358,8 +382,7 @@ export function createTelemetryService(
       if (!transport || !gateResolved) {
         // Hold at most a bounded window of reports while the remote gate is
         // still unresolved (or init is still importing its backend).
-        if (pending.length >= MAX_BUFFERED_CRASHES) pending.shift();
-        pending.push(report);
+        enqueue({ kind: "crash", report });
         return Promise.resolve();
       }
       if (gateOpen) deliver(report);
@@ -479,8 +502,9 @@ export function createPostHogOptions(host: string) {
     setDefaultPersonProperties: false,
     customAppProperties: () => ({}),
     disableSurveys: true,
-    // Crash reports only: no lifecycle analytics, no session replay, no
-    // console capture, and NO SDK exception autocapture - autocapture would
+    // Only the manual crash reports and product events: no lifecycle
+    // analytics, no session replay, no console capture, and NO SDK
+    // exception autocapture - autocapture would
     // bypass sanitization by transmitting raw error messages. Uncaught
     // errors reach the pipeline exclusively through forwardUncaughtErrors.
     captureAppLifecycleEvents: false,

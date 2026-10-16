@@ -202,6 +202,7 @@ describe("createTelemetryService", () => {
     service: ReturnType<typeof createTelemetryService>;
     transports: GateableTransport[];
     captured: SanitizedCrashReport[];
+    events: string[];
     resetCalls: number;
     flushCalls: number;
   }
@@ -211,6 +212,7 @@ describe("createTelemetryService", () => {
   ): Harness {
     const transports: GateableTransport[] = [];
     const captured: SanitizedCrashReport[] = [];
+    const events: string[] = [];
     let resetCalls = 0;
     let flushCalls = 0;
     const service = createTelemetryService(enabledConfig, async (): Promise<TelemetryTransport> => {
@@ -223,6 +225,9 @@ describe("createTelemetryService", () => {
           : (report) => {
               captured.push(report);
             },
+        capture: (event) => {
+          events.push(event);
+        },
         reset: () => {
           resetCalls += 1;
         },
@@ -248,6 +253,7 @@ describe("createTelemetryService", () => {
       service,
       transports,
       captured,
+      events,
       get resetCalls() {
         return resetCalls;
       },
@@ -371,6 +377,20 @@ describe("createTelemetryService", () => {
     harness.transports[0]?.notifyGate(false);
     await harness.service.captureException(new Error("after-close"), "b");
     expect(harness.captured).toHaveLength(0);
+  });
+
+  it("holds product events behind the same gate as crash reports", async () => {
+    const harness = createHarness({ gated: true });
+    await harness.service.capture("app_session_started");
+    expect(harness.events).toEqual([]); // launch event waits for the flags
+
+    harness.transports[0]?.notifyGate(true);
+    await harness.service.capture("transaction_created", { transaction_kind: "expense" });
+    expect(harness.events).toEqual(["app_session_started", "transaction_created"]);
+
+    harness.transports[0]?.notifyGate(false);
+    await harness.service.capture("transaction_deleted");
+    expect(harness.events).toEqual(["app_session_started", "transaction_created"]);
   });
 
   it("flushes transport when flush is called directly", async () => {
