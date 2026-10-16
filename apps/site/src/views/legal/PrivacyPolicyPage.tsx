@@ -119,18 +119,20 @@ export function PrivacyPolicyPage() {
             first assistant question, the name of each app page opened, and that a transaction,
             budget, savings goal, debt, or subscription was added, changed, or removed, and when a
             voice entry, receipt scan, SMS paste, import, assistant message, assistant-drafted
-            transaction, or pet action succeeds. While you are signed in, these events, and the
-            mobile app events described in section 4, are linked to your Zoption account: PostHog
-            receives your account&apos;s user ID and your email address and keeps them on an
-            analytics profile, so we can see how each account uses Zoption, find where people get
-            stuck, and answer support questions. Events sent before you sign in, on the public site,
-            or while using the mobile app without an account stay anonymous. The events carry no
-            financial detail and write nothing to your device: they never include an amount,
-            category, financial-account name, tenant identifier, free text, or page address with
-            parameters. On the web they are sent only after you allow Analytics, and turning
-            Analytics off stops them and clears the link to your account in that browser. Zoption
-            does not send financial workspace data, account credentials, or assistant conversations
-            to the analytics platform.
+            transaction, or pet action succeeds. While you are signed in and have allowed it, these
+            events, and the mobile app events described in section 4, are linked to your Zoption
+            account: PostHog receives your account&apos;s user ID and your email address and keeps
+            them on an analytics profile, so we can see how each account uses Zoption, find where
+            people get stuck, and answer support questions. Events sent before you sign in, on the
+            public site, or while using the mobile app without an account stay anonymous. The events
+            carry no financial detail and write nothing to your device: they never include an
+            amount, category, financial-account name, tenant identifier, free text, or page address
+            with parameters. On the web they are sent only after you allow Analytics, and turning
+            Analytics off stops them and clears the link to your account in that browser. The mobile
+            app asks once per account whether to link its events to your account; if you choose Not
+            now they stay anonymous, and you can change the choice any time in More, Usage
+            analytics. Zoption does not send financial workspace data, account credentials, or
+            assistant conversations to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">
@@ -234,11 +236,12 @@ export function PrivacyPolicyPage() {
             budget, savings goal, debt, subscription, or import was added, changed, or removed, and
             that a voice entry, voice widget note, receipt scan, SMS paste, PDF statement, assistant
             message, or pet action succeeded, with fixed labels and counts but no amounts or text).
-            While you are signed in to the mobile app, its crash reports and feature-use events are
-            linked to your user ID and email address on a PostHog analytics profile; without an
-            account they are tied only to an identifier that lasts one app launch. AI observability
-            events keep person-profile processing disabled ($process_person_profile: false). No
-            financial records, prompts, or conversation contents are ever sent to PostHog.
+            While you are signed in to the mobile app and have allowed it, its crash reports and
+            feature-use events are linked to your user ID and email address on a PostHog analytics
+            profile; otherwise they are tied only to an identifier that lasts one app launch. AI
+            observability events keep person-profile processing disabled ($process_person_profile:
+            false). No financial records, prompts, or conversation contents are ever sent to
+            PostHog.
           </li>
           <li>
             <strong>Cloudflare Workers AI</strong> for AI entry after separate AI entry consent: it

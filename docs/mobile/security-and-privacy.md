@@ -103,9 +103,10 @@ and product events unless the operator disables the pipeline. Properties:
   PostHog still adds the minimal event envelope required by its protocol,
   including ephemeral pseudonymous distinct/session identifiers and SDK
   metadata. Persistence is memory-only and default person properties are
-  disabled. A signed-in session calls `identify()` with the Supabase user id
-  and the account email as the `email` person property (`session-state.tsx`
-  `applySubject`), so crashes and product events read per account; person
+  disabled. A signed-in account that tapped Allow in the usage analytics prompt
+  (or turned on More, Usage analytics) is identified with the Supabase user id
+  and the account email as the `email` person property (`telemetry/account-link.ts`),
+  so its crashes and product events read per account; Not now keeps it anonymous; person
   profiles are `identified_only`, so a guest or signed-out launch stays on
   PostHog's memory-scoped device id. The identity waits behind the same kill
   switch as every event and is sent before the events queued ahead of it.

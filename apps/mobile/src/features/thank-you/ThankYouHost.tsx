@@ -55,6 +55,11 @@ export function isNewAccount(user: { created_at: string; last_sign_in_at?: strin
   return Number.isFinite(gap) && Math.abs(gap) < 60_000;
 }
 
+/** Whether the thank-you card is open, so another dialog can wait for it to close. */
+export function useThankYouOpen(): boolean {
+  return useSyncExternalStore(subscribe, () => currentFlow) !== null;
+}
+
 /** Mounted once in the authenticated gate so every screen shares one card. */
 export function ThankYouHost() {
   const theme = useZoptionTheme();

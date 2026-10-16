@@ -12,6 +12,7 @@ import { AccountPromptHost } from "@/features/account-prompt/AccountPromptHost";
 import { AppLockGate } from "@/features/app-lock/AppLockGate";
 import { PlanLimitHost } from "@/features/billing/PlanLimitDialog";
 import { ThankYouHost } from "@/features/thank-you/ThankYouHost";
+import { UsageAnalyticsPromptHost } from "@/features/usage-analytics/UsageAnalytics";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
@@ -105,6 +106,7 @@ function LocalWorkspaceGate({
       <PlanLimitHost />
       <ThankYouHost />
       <AccountPromptHost />
+      <UsageAnalyticsPromptHost />
     </SyncProvider>
   );
 }

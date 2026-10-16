@@ -9,12 +9,13 @@ import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 import { GoalSettingsCard } from "@/features/primary-goal/GoalSettingsCard";
 import { PetSettingsCard } from "@/features/pet/PetSettingsCard";
+import { UsageAnalyticsCard } from "@/features/usage-analytics/UsageAnalytics";
 import { DailyReminderCard } from "./DailyReminderCard";
 import { ReduceMotionCard } from "./ReduceMotionCard";
 import { SoundEffectsCard } from "./SoundEffectsCard";
 import { WorkspaceCurrencyCard } from "./WorkspaceCurrencyCard";
 
-/** Currency, goal, theme, voice language, daily reminder, pet, sound, and motion pickers as one group, each folded to its current choice until opened. */
+/** Currency, goal, theme, voice language, daily reminder, pet, sound, motion, and usage analytics pickers as one group, each folded to its current choice until opened. */
 export function PreferenceCards() {
   const theme = useZoptionTheme();
   const themePreference = useThemeStore((state) => state.preference);
@@ -47,6 +48,7 @@ export function PreferenceCards() {
       <PetSettingsCard />
       <SoundEffectsCard />
       <ReduceMotionCard />
+      <UsageAnalyticsCard />
     </MenuGroup>
   );
 }

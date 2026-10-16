@@ -30,6 +30,7 @@ import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { usePetStore } from "@/stores/pet-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { telemetry } from "@/telemetry/telemetry";
+import { setSignedInAccount } from "@/telemetry/account-link";
 
 import { clearAppLock } from "./app-lock";
 import { exchangeCodeOnce, type CodeExchange } from "./code-exchange";
@@ -142,11 +143,10 @@ export function SessionProvider({ children }: PropsWithChildren) {
       clearUserScopedRuntimeState();
     }
     // PostHog attributes events to the signed-in account (Supabase user id plus
-    // email, disclosed in the privacy policy). Sign-out drops that identity so
-    // the next person on this device starts anonymous.
-    if (nextSubject) {
-      telemetry.identify({ id: nextSubject, email });
-    } else if (previousSubject) {
+    // email) only once that account allowed it on this device (account-link.ts).
+    // Sign-out drops the identity so the next person here starts anonymous.
+    setSignedInAccount(nextSubject ? { id: nextSubject, email } : null);
+    if (!nextSubject && previousSubject) {
       void telemetry.reset();
     }
     subjectRef.current = nextSubject;
@@ -454,6 +454,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
     // Reset here only when that listener did not already clear PostHog.
     if (subjectRef.current === subject) void telemetry.reset();
+    setSignedInAccount(null);
 
     if (subject && !options.preserveLocalWorkspace) {
       await discardLocalWorkspace(subject);
