@@ -24,6 +24,7 @@ jest.mock("@/db/local-workspace-state", () => ({
 }));
 jest.mock("@/features/reminders/daily-reminder", () => ({ DailyReminderTapHandler: () => null }));
 jest.mock("@/features/billing/PlanLimitDialog", () => ({ PlanLimitHost: () => null }));
+jest.mock("@/telemetry/screen-viewed", () => ({ ScreenViewedTracker: () => null }));
 jest.mock("@/sync/sync-state", () => ({
   SyncProvider: ({ children }: { children: React.ReactNode }) => children,
 }));

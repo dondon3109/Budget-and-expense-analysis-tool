@@ -15,6 +15,7 @@ import { ThankYouHost } from "@/features/thank-you/ThankYouHost";
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { SyncProvider } from "@/sync/sync-state";
+import { ScreenViewedTracker } from "@/telemetry/screen-viewed";
 import { ErrorState, LedgerLoader } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
@@ -99,6 +100,7 @@ function LocalWorkspaceGate({
       }
     >
       {children}
+      <ScreenViewedTracker />
       <DailyReminderTapHandler />
       <PlanLimitHost />
       <ThankYouHost />

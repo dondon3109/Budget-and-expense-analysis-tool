@@ -8,6 +8,7 @@ import {
 } from "@zoption/shared";
 import { File } from "expo-file-system";
 
+import { telemetry } from "@/telemetry/telemetry";
 import { publicConfig } from "@/config/public-config";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 import { fetchMultipartWithTimeout } from "./assistant-voice";
@@ -237,6 +238,7 @@ export async function previewPdfImport({
       response.status,
     );
   }
+  void telemetry.capture("pdf_statement_previewed");
   return decoded.data;
 }
 

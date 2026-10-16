@@ -4,6 +4,7 @@ import { AppRegistry, Platform } from "react-native";
 import { extractVoiceTransactionsFromTranscript } from "@/api/ai-entry";
 import { getSupabaseClient } from "@/auth/supabase-client";
 import { openLocalWorkspace } from "@/db/workspace";
+import { telemetry } from "@/telemetry/telemetry";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 
 import { parseWidgetTranscriptToIntent } from "./widget-intent";
@@ -87,7 +88,11 @@ export async function runWidgetVoiceTask(
     return;
   }
   try {
-    await notify(widgetLogNotificationBody(await logWidgetVoiceNote(transcript, deps)));
+    const result = await logWidgetVoiceNote(transcript, deps);
+    if (result.status === "logged") {
+      void telemetry.capture("widget_voice_logged", { entry_count: result.count });
+    }
+    await notify(widgetLogNotificationBody(result));
   } catch {
     await notify(widgetLogNotificationBody({ status: "failed", reason: "unavailable" }));
   }

@@ -8,6 +8,7 @@ import {
 
 import { File } from "expo-file-system";
 
+import { telemetry } from "@/telemetry/telemetry";
 import { publicConfig } from "@/config/public-config";
 
 import { ApiTransportError, apiRequest, mapApiError } from "./authenticated";
@@ -114,5 +115,7 @@ export async function extractReceipt(api: ReceiptApi, image: ReceiptImage): Prom
       receiptFallback,
     );
   }
-  return receiptDraftSchema.parse(await response.json());
+  const draft = receiptDraftSchema.parse(await response.json());
+  void telemetry.capture("receipt_scanned");
+  return draft;
 }
