@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 
 import { AppPageViewed } from "./analytics/AppPageViewed";
+import { setAnalyticsAccount } from "./analytics/PostHogAnalytics";
 import { PublicOnly, RequireAuth } from "./auth/RouteGuards";
 import { useAuth } from "./auth/AuthProvider";
 import { FullPageLoadingStatus } from "./components/layout/FullPageLoadingStatus";
@@ -149,6 +150,19 @@ function VerifiedIdentitySync() {
   return null;
 }
 
+/** Attributes analytics to the signed-in account; consent still gates what is sent. */
+function AnalyticsIdentitySync() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const email = user?.email;
+
+  useEffect(() => {
+    setAnalyticsAccount(userId ? { id: userId, email } : null);
+  }, [userId, email]);
+
+  return null;
+}
+
 export function App() {
   return (
     <>
@@ -157,6 +171,7 @@ export function App() {
       <AppPageViewed />
       <ConnectivityStatus />
       <VerifiedIdentitySync />
+      <AnalyticsIdentitySync />
       <Suspense
         fallback={
           <FullPageLoadingStatus

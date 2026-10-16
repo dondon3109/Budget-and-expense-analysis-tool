@@ -12,11 +12,19 @@ PostHog serves three distinct, privacy-isolated telemetry channels:
 2. **AI Observability** (Server-side Worker metadata, `$ai_generation`)
 3. **Android crash telemetry and product events** (Client-side mobile, sanitized `$exception` in Error Tracking plus named feature events)
 
-All telemetry is strictly bounded to protect financial privacy, avoid collecting personal or account identifiers, and operate within PostHog's generous Free Tier.
+All telemetry is strictly bounded to protect financial privacy and operate within PostHog's generous Free Tier. The one personal data it carries is the signed-in account's identity (section 2.0), so the web and mobile app events read per account in PostHog's Persons view.
 
 ---
 
 ## 2. Privacy Boundaries & Gating
+
+### 2.0 Account identity
+
+- **Who is identified**: a signed-in account, on the web app (after Analytics consent) and on mobile (behind the `crash-telemetry-enabled` kill switch). The distinct id is the Supabase user id and the person property `email` is the account email. Nothing else is set on the person; default person properties stay off on mobile.
+- **Web** (`apps/web/src/analytics/PostHogAnalytics.tsx`): `AnalyticsIdentitySync` in `App.tsx` passes the auth user to `setAnalyticsAccount`, which calls `posthog.identify(id, { email })` once per account while consent holds, and `posthog.reset()` on sign-out or consent revocation. Events captured before sign-in in the same page load (the signup funnel) merge into the person through `$anon_distinct_id`.
+- **Mobile** (`apps/mobile/src/telemetry/telemetry.ts`): `applySubject` in `session-state.tsx` calls `telemetry.identify({ id, email })`; the service holds it until the kill switch opens and sends it before the events queued at launch. Sign-out calls `reset()`. Guests and the dev dummy session are never identified.
+- **Never identified**: the public site (`zoption.site`, cookieless, `person_profiles: "never"`) and server-side AI observability (`$process_person_profile: false`).
+- **Deletion**: deleting a Zoption account does not delete its PostHog person. A deletion request to support is handled by deleting the person (and its events) in PostHog under **Persons**, as the Privacy Policy promises; otherwise the project's 12-month retention applies.
 
 ### 2.1 Public vs. Authenticated Web Surfaces
 
@@ -29,18 +37,17 @@ All telemetry is strictly bounded to protect financial privacy, avoid collecting
   - Feature adoption: `voice_entry_drafted`, `receipt_scanned`, `sms_paste_applied`, `import_completed`, `assistant_message_sent {kind: text|voice}`, `assistant_transaction_saved`, `assistant_action_confirmed`, `pet_egg_chosen`, `pet_hatched`, `pet_color_set`, and `pet_enabled_set {enabled}`. Each fires once its feature returns a result (in `lib/api/<domain>.ts`, or the SMS dialog's apply), so it counts use, not only saves: a voice draft the user then discards still counts.
   - Feature use: `transaction_created {transaction_kind}`, `transaction_updated`, `transaction_deleted`, `budget_saved {scope}`, and `goal_`, `debt_`, `subscription_` `created`/`updated`/`deleted`, each sent from its `apps/web/src/lib/api/<domain>.ts` write only after the server accepted it, so every screen that writes is counted. The names match the mobile events (section 2.4), so a breakdown by `$lib` (`web` or `posthog-react-native`) compares the two clients.
 - **Goal events stay first-party**: the goals chosen at setup and its events live in D1 (section 2.5), never in PostHog.
-- **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, account IDs, tenant IDs, or user IDs are ever captured or transmitted.
+- **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, financial account IDs, or tenant IDs are ever captured or transmitted. The user id and email reach PostHog only through `identify()` (section 2.0), never as an event property.
 
-### 2.2 Client-Side Cookieless Web SDK Configuration
+### 2.2 Client-Side Web SDK Configuration
 
-The client SDK (`posthog-js`) is initialized with strict data-minimization settings:
+The web app's client SDK (`posthog-js`) is initialized with strict data-minimization settings. The public site (`apps/site/src/client/analytics.ts`) uses the same settings plus `cookieless_mode: "always"` and `person_profiles: "never"`, because it never identifies anyone:
 
 ```ts
 posthog.init(posthogKey, {
   api_host: posthogHost, // Default: "https://us.i.posthog.com"
-  cookieless_mode: "always",
   persistence: "memory",
-  person_profiles: "never",
+  person_profiles: "identified_only",
   capture_pageview: false, // The site sends its one pageview manually; the app sends none
   capture_pageleave: false,
   autocapture: false,
@@ -55,8 +62,8 @@ posthog.init(posthogKey, {
 });
 ```
 
-- **No Cookies or LocalStorage**: `cookieless_mode: "always"` and `persistence: "memory"` ensure no cookies or localStorage/sessionStorage persistence keys are set.
-- **No Person Profiles**: `person_profiles: "never"` prevents PostHog from stitching anonymous sessions or creating user records.
+- **No Cookies or LocalStorage**: `persistence: "memory"` ensures no cookies or localStorage/sessionStorage persistence keys are set, so each page load starts anonymous until the session restore identifies the account again. The app does not use `cookieless_mode`, because posthog-js ignores `identify()` in it, and does not call `opt_in_capturing`/`opt_out_capturing`, which would write the decision to localStorage; the `before_send` consent gate drops every event, `$identify` included, once Analytics is withdrawn.
+- **Identified-only Person Profiles**: `person_profiles: "identified_only"` creates a person only for a signed-in account (section 2.0); anonymous events never make one.
 - **No Session Replay / Heatmaps**: Remote recording scripts and network payload capture are completely disabled.
 - **Web vitals are bundled**: the SDK's web-vitals extension is imported from `posthog-js/dist/web-vitals` in both `apps/web/src/analytics/PostHogAnalytics.tsx` and `apps/site/src/client/analytics.ts`. Without that import the SDK tries to download the extension at runtime, which the next setting forbids, and no `$web_vitals` is ever sent.
 - **No External Script Ingestion**: `disable_external_dependency_loading: true` ensures that PostHog does not load external CDN scripts dynamically at runtime, maintaining full compliance with the strict Pages CSP (`script-src 'self'`). On the site, `api_host` is the same-origin `/ingest` proxy.
@@ -74,13 +81,13 @@ Server-side telemetry in `apps/api/src/assistant/posthog-ai.ts` records operatio
 Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` sends each crash to PostHog Error Tracking as a sanitized `$exception`. Earlier builds sent a custom `mobile_crash` event with the same `source`, `type`, and `fingerprint` and no frames.
 
 - **Allowed Fields**: Coarse exception class (e.g., `TypeError`, also used as the exception message), message-free stack frame lines (code locations only), `source` label (e.g., `root-error-boundary`), hashed `fingerprint`, `type`, and the SDK envelope. `customAppProperties` returns nothing, so no app version or build number is attached, and crashes cannot be grouped by release.
-- **Prohibited Fields**: No raw error messages, no error causes, no transaction details, no user identifiers.
+- **Prohibited Fields**: No raw error messages, no error causes, no transaction details. The signed-in account is attached by `identify()` (section 2.0), not as a crash property.
 - **Source maps**: release builds upload their Hermes source map when the `POSTHOG_CLI_API_KEY` secret is set, so frames resolve to file, function, and line (`docs/mobile/security-and-privacy.md`).
-- **Launch event**: `apps/mobile/app/_layout.tsx` sends one property-free `app_session_started` per launch, the first step of the launch-to-first-transaction funnel (`transaction_created` is the second). The device id lives only for that launch, so the funnel counts launches, not returning people.
+- **Launch event**: `apps/mobile/app/_layout.tsx` sends one property-free `app_session_started` per launch, the first step of the launch-to-first-transaction funnel (`transaction_created` is the second). A guest's device id lives only for that launch; a signed-in launch is identified, so the funnel reads per account.
 - **Product events**: each screen sends one event after a completed local write: `transaction_created`/`transaction_updated {transaction_kind}`, `transaction_deleted {transaction_kind: transaction|transfer}`, `budget_limit_set {action}`, `budget_removed`, `budget_occasion_created`, `goal_created`/`goal_updated {status}`, `goal_deleted`, `debt_created`/`debt_updated {debt_type, status}`, `debt_deleted`, `subscription_created`/`subscription_updated {billing_cycle, status}`, `subscription_deleted`, and `import_completed {file_kind, imported_count, rejected_count}`. They are not user opt-in, like crash reports (`docs/mobile/security-and-privacy.md`).
 - **Feature adoption and screens**: the same adoption events as the web (section 2.1) fire from `apps/mobile/src/api/` when the feature returns a result, plus `pdf_statement_previewed` and `widget_voice_logged {entry_count}` (the home screen mic widget's headless task, after it saves). A demo session's offline stand-in results are not counted. `screen_viewed {screen}` (`src/telemetry/screen-viewed.tsx`, mounted in the authenticated gate) names each signed-in screen from a fixed map, the counterpart of the web's `page_viewed`.
 - **One gate for both**: product events wait in the same bounded buffer as crash reports until the `crash-telemetry-enabled` flag answers, and are dropped while it is off, so the remote kill switch and `EXPO_PUBLIC_TELEMETRY_DISABLED` stop everything the app sends.
-- **SDK Safeguards**: `personProfiles: "identified_only"` with no `identify()` call (so no profile is ever made), `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`. Builds before 2026-10-14 still send the older `mobile_crash` event instead of `$exception`, and builds before 2026-09-18 sent `$identify`; both fade out as devices update.
+- **SDK Safeguards**: `personProfiles: "identified_only"` (a profile only for a signed-in account, section 2.0), `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`. Builds before 2026-10-14 still send the older `mobile_crash` event instead of `$exception`, and builds from 2026-09-18 until account identification returned send no `$identify`, so their events stay anonymous until devices update.
 
 ### 2.5 Goal-Based Onboarding Events (D1, first-party)
 
@@ -111,7 +118,7 @@ Use `budget-expense-preview` with `--env preview` for preview. `apps/api/tests/g
 
 ### 2.7 Feature Use per User (D1, first-party)
 
-PostHog events are anonymous by design, so they can say how often voice entry is used but not by whom. Per-user feature use is answered from D1 instead. Every transaction create records how it was entered in `transactions.entry_method` (migration `0074_transaction_entry_method.sql`), one of `transactionEntryMethods` in `packages/shared/src/types.ts`:
+PostHog events from current web and mobile builds are attributed to the signed-in account (section 2.0), so PostHog's Persons view answers who uses a feature from then on. Entry methods are also recorded in D1, which covers older builds and history before identification. Every transaction create records how it was entered in `transactions.entry_method` (migration `0074_transaction_entry_method.sql`), one of `transactionEntryMethods` in `packages/shared/src/types.ts`:
 
 | Method      | Set by                                                                                                   |
 | ----------- | -------------------------------------------------------------------------------------------------------- |
@@ -330,7 +337,7 @@ Every crash panel has two series: `$exception` filtered to `$lib` = `posthog-rea
 
 - **Insight Type**: SQL table, last 30 days, one row per event with `web`, `mobile`, `total`, and `sessions` columns
 - **Events**: `voice_entry_drafted`, `widget_voice_logged`, `receipt_scanned`, `sms_paste_applied`, `pdf_statement_previewed`, `import_completed`, `assistant_message_sent`, `assistant_transaction_saved`, `assistant_action_confirmed`, `budget_saved`, `budget_limit_set`, and the `pet_*` events
-- **Aggregation**: Total count and unique users. On both clients the identifier lasts one page load or one app launch, so unique users counts sessions, not people
+- **Aggregation**: Total count and unique users. Signed-in events count accounts; a guest's or pre-sign-in identifier lasts one page load or one app launch, so those count sessions
 
 #### Panel 20: Mobile Screens
 

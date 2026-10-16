@@ -113,18 +113,24 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>Measurement and optional analytics:</strong> limited aggregate page-use and Core
             Web Vitals performance information sent to PostHog on public web pages in cookieless,
-            memory-only mode, plus anonymous conversion and feature-use events that cover the signup
-            and app surfaces: a signup page view, the outcome and method (password or Google) of a
-            signup attempt, a first app load, a first import into an empty workspace, assistant
-            consent, a first assistant question, the name of each app page opened, and that a
-            transaction, budget, savings goal, debt, or subscription was added, changed, or removed,
-            and when a voice entry, receipt scan, SMS paste, import, assistant message,
-            assistant-drafted transaction, or pet action succeeds. Those events are cookieless,
-            carry no financial detail, and write nothing to your device: they never include an
-            email, name, amount, category, account, or tenant identifier, free text, page address
-            with parameters, or a persistent identifier. On the web they are sent only after you
-            allow Analytics. Zoption does not send financial workspace data, account credentials, or
-            assistant conversations to the analytics platform.
+            memory-only mode, plus conversion and feature-use events that cover the signup and app
+            surfaces: a signup page view, the outcome and method (password or Google) of a signup
+            attempt, a first app load, a first import into an empty workspace, assistant consent, a
+            first assistant question, the name of each app page opened, and that a transaction,
+            budget, savings goal, debt, or subscription was added, changed, or removed, and when a
+            voice entry, receipt scan, SMS paste, import, assistant message, assistant-drafted
+            transaction, or pet action succeeds. While you are signed in, these events, and the
+            mobile app events described in section 4, are linked to your Zoption account: PostHog
+            receives your account&apos;s user ID and your email address and keeps them on an
+            analytics profile, so we can see how each account uses Zoption, find where people get
+            stuck, and answer support questions. Events sent before you sign in, on the public site,
+            or while using the mobile app without an account stay anonymous. The events carry no
+            financial detail and write nothing to your device: they never include an amount,
+            category, financial-account name, tenant identifier, free text, or page address with
+            parameters. On the web they are sent only after you allow Analytics, and turning
+            Analytics off stops them and clears the link to your account in that browser. Zoption
+            does not send financial workspace data, account credentials, or assistant conversations
+            to the analytics platform.
           </li>
         </ul>
         <div className="legal-callout">
@@ -218,18 +224,21 @@ export function PrivacyPolicyPage() {
           <li>
             <strong>PostHog</strong> for unified product analytics and observability across three
             privacy-safe streams: (1) cookieless, memory-only public web analytics and Core Web
-            Vitals on public pages without observing authenticated financial workspaces, (2)
-            server-side AI operational observability ($ai_generation, tokens, latency, safe status)
-            after separate assistant consent, and (3) sanitized mobile crash reports in PostHog
-            Error Tracking with the coarse exception type and the code locations (file, function,
-            and line) from the stack trace, never the error message, plus anonymous mobile
+            Vitals on public pages, plus web app conversion and feature-use events linked to your
+            user ID and email after you allow Analytics, without observing financial workspace
+            contents, (2) server-side AI operational observability ($ai_generation, tokens, latency,
+            safe status) after separate assistant consent, and (3) sanitized mobile crash reports in
+            PostHog Error Tracking with the coarse exception type and the code locations (file,
+            function, and line) from the stack trace, never the error message, plus anonymous mobile
             feature-use events (an app launch, the name of each screen opened, that a transaction,
             budget, savings goal, debt, subscription, or import was added, changed, or removed, and
             that a voice entry, voice widget note, receipt scan, SMS paste, PDF statement, assistant
-            message, or pet action succeeded, with fixed labels and counts but no amounts or text)
-            tied only to an identifier that lasts one app launch. PostHog person-profile processing
-            is disabled ($process_person_profile: false), and no user identities, financial records,
-            prompts, or conversation contents are ever sent.
+            message, or pet action succeeded, with fixed labels and counts but no amounts or text).
+            While you are signed in to the mobile app, its crash reports and feature-use events are
+            linked to your user ID and email address on a PostHog analytics profile; without an
+            account they are tied only to an identifier that lasts one app launch. AI observability
+            events keep person-profile processing disabled ($process_person_profile: false). No
+            financial records, prompts, or conversation contents are ever sent to PostHog.
           </li>
           <li>
             <strong>Cloudflare Workers AI</strong> for AI entry after separate AI entry consent: it
@@ -432,11 +441,15 @@ export function PrivacyPolicyPage() {
           information sent to the configured AI provider is governed by that provider&apos;s
           practices as described above. Voice recordings and generated audio are not stored in
           Zoption&apos;s D1; information processed by Cloudflare Workers AI, your browser&apos;s
-          speech service, and Fish Audio remains subject to their provider practices. Metadata-only
-          PostHog AI observability events are subject to the project&apos;s current 12-month
-          event-retention plan. PostHog controls provider-side retention enforcement and deletion
-          timing, so these events do not disappear when the related Zoption chat is deleted and may
-          remain through that provider retention period.
+          speech service, and Fish Audio remains subject to their provider practices. PostHog
+          analytics events, including the account-linked events and the analytics profile holding
+          your user ID and email, and metadata-only AI observability events are subject to the
+          project&apos;s current 12-month event-retention plan. To have your PostHog analytics
+          profile and its events deleted sooner, including after you delete your account, contact{" "}
+          <a href="mailto:support@zoption.site">support@zoption.site</a>. PostHog controls
+          provider-side retention enforcement and deletion timing, so these events do not disappear
+          when the related Zoption chat is deleted and may remain through that provider retention
+          period.
         </p>
         <p>
           On Android, the local copy of your workspace stays on the device while you are signed in
@@ -499,14 +512,15 @@ export function PrivacyPolicyPage() {
           receipt image, spoken note, or statement text is processed by Cloudflare Workers AI. If
           you enable voice, the recording described above may be processed by Cloudflare Workers AI,
           Google, or your browser&apos;s speech service and the generated-reply text may be
-          processed by Fish Audio in locations where they or their subprocessors operate.
-          Metadata-only AI observability events are sent to PostHog&apos;s US Cloud region. Privacy
-          laws in those locations may differ from those in your country. Zoption remains responsible
-          for personal data under its control and restricts transfers to information reasonably
-          necessary for the relevant service. We use applicable provider terms and reasonable access
-          and security controls, and will use any additional consent or transfer mechanism required
-          by law. Contact <a href="mailto:support@zoption.site">support@zoption.site</a> for
-          information about relevant processing locations or safeguards.
+          processed by Fish Audio in locations where they or their subprocessors operate. Analytics
+          events, the analytics profile holding your user ID and email, and metadata-only AI
+          observability events are sent to PostHog&apos;s US Cloud region. Privacy laws in those
+          locations may differ from those in your country. Zoption remains responsible for personal
+          data under its control and restricts transfers to information reasonably necessary for the
+          relevant service. We use applicable provider terms and reasonable access and security
+          controls, and will use any additional consent or transfer mechanism required by law.
+          Contact <a href="mailto:support@zoption.site">support@zoption.site</a> for information
+          about relevant processing locations or safeguards.
         </p>
       </section>
 

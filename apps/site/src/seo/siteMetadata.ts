@@ -539,12 +539,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/cookie-policy": {
     title: "Cookie Policy — Zoption",
     description:
-      "Learn about the browser storage Zoption uses and how PostHog measures cookieless pageviews and anonymous conversion steps without cookies or financial detail.",
+      "Learn about the browser storage Zoption uses and how PostHog measures cookieless pageviews and account-linked app usage without cookies or financial detail.",
     canonical: `${SITE_ORIGIN}/cookie-policy`,
     robots: "index,follow",
     structuredData: contentPageStructuredData(
       "Cookie Policy — Zoption",
-      "The browser storage Zoption uses and how PostHog measures cookieless pageviews and anonymous conversion steps without cookies or financial detail.",
+      "The browser storage Zoption uses and how PostHog measures cookieless pageviews and account-linked app usage without cookies or financial detail.",
       `${SITE_ORIGIN}/cookie-policy`,
       COOKIE_POLICY_LAST_MODIFIED,
     ),

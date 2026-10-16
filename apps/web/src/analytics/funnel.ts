@@ -25,8 +25,9 @@ type NoProperties = Record<string, never>;
 /**
  * The closed set of app events (the signup funnel plus feature usage) and the
  * only properties each one may carry. Every value is a fixed enum, so no event
- * can carry an email, name, amount, category, account or tenant identifier,
- * free text, or a persistent identifier. Feature events share their names with
+ * can carry an amount, category, financial account or tenant identifier, or
+ * free text. The signed-in account is attached by `identify()` in
+ * `PostHogAnalytics.tsx`, never as an event property. Feature events share their names with
  * the mobile app's, so one PostHog breakdown by `$lib` compares both clients.
  */
 export interface FunnelEventProperties {

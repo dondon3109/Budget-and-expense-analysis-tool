@@ -1,6 +1,6 @@
 export const CONSENT_STORAGE_KEY = "zoption-cookie-consent";
 export const CONSENT_SCHEMA_VERSION = 1;
-export const CONSENT_POLICY_VERSION = "2026-07-28";
+export const CONSENT_POLICY_VERSION = "2026-10-16";
 
 export const OPTIONAL_CONSENT_CATEGORIES = ["analytics", "marketing"] as const;
 

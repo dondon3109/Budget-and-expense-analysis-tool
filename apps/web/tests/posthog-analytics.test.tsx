@@ -7,7 +7,11 @@ import posthog from "posthog-js";
 import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PostHogAnalytics, resetPostHogForTests } from "../src/analytics/PostHogAnalytics";
+import {
+  PostHogAnalytics,
+  resetPostHogForTests,
+  setAnalyticsAccount,
+} from "../src/analytics/PostHogAnalytics";
 import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
 import { resetConsentGateForTests, updateConsentGate } from "@zoption/web-common/consent-gate";
 
@@ -33,8 +37,7 @@ vi.mock("posthog-js", () => {
         initOptions = null;
         initKey = null;
       }),
-      opt_in_capturing: vi.fn(),
-      opt_out_capturing: vi.fn(),
+      identify: vi.fn(),
       __getCapturedEvents: () => capturedEvents,
       __getInitOptions: () => initOptions,
       __getInitKey: () => initKey,
@@ -45,9 +48,8 @@ vi.mock("posthog-js", () => {
 interface MockPostHog {
   init: ReturnType<typeof vi.fn>;
   capture: ReturnType<typeof vi.fn>;
-  opt_in_capturing: ReturnType<typeof vi.fn>;
-  opt_out_capturing: ReturnType<typeof vi.fn>;
-  reset: () => void;
+  identify: ReturnType<typeof vi.fn>;
+  reset: ReturnType<typeof vi.fn<() => void>>;
   __getCapturedEvents: () => Array<{ event: string; properties?: Record<string, unknown> }>;
   __getInitOptions: () => Record<string, unknown> | null;
   __getInitKey: () => string | null;
@@ -111,7 +113,7 @@ afterEach(() => {
 });
 
 describe("PostHog Web Analytics", () => {
-  it("initializes with a privacy-preserving, cookieless configuration once consented", async () => {
+  it("initializes with a memory-only, identified-only configuration once consented", async () => {
     render(<AnalyticsApp initialEntry="/app" />);
 
     await waitFor(() => expect(mockedPostHog.init).toHaveBeenCalledTimes(1));
@@ -119,9 +121,8 @@ describe("PostHog Web Analytics", () => {
     expect(mockedPostHog.__getInitKey()).toBe(POSTHOG_KEY);
     expect(mockedPostHog.__getInitOptions()).toMatchObject({
       api_host: POSTHOG_HOST,
-      cookieless_mode: "always",
       persistence: "memory",
-      person_profiles: "never",
+      person_profiles: "identified_only",
       capture_pageview: false,
       capture_pageleave: false,
       autocapture: false,
@@ -234,16 +235,39 @@ describe("PostHog Web Analytics", () => {
     expect(beforeSend(event)).not.toBeNull();
   });
 
-  it("opts out on revocation and back in when consent returns", async () => {
-    render(<AnalyticsApp initialEntry="/app" />);
-    await waitFor(() => expect(mockedPostHog.opt_in_capturing).toHaveBeenCalledTimes(1));
-
+  it("identifies the signed-in account with its email once consented", async () => {
     storeAnalyticsConsent(false);
-    await waitFor(() => expect(mockedPostHog.opt_out_capturing).toHaveBeenCalledTimes(1));
+    setAnalyticsAccount({ id: "user-1", email: "person@example.com" });
+    render(<AnalyticsApp initialEntry="/app" />);
+    expect(mockedPostHog.identify).not.toHaveBeenCalled();
 
-    mockedPostHog.opt_in_capturing.mockClear();
     storeAnalyticsConsent(true);
-    await waitFor(() => expect(mockedPostHog.opt_in_capturing).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mockedPostHog.identify).toHaveBeenCalledWith("user-1", {
+        email: "person@example.com",
+      }),
+    );
+
+    // The same account is identified once, and sign-out drops the identity.
+    setAnalyticsAccount({ id: "user-1", email: "person@example.com" });
+    expect(mockedPostHog.identify).toHaveBeenCalledTimes(1);
+    mockedPostHog.reset.mockClear();
+    setAnalyticsAccount(null);
+    expect(mockedPostHog.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears the identity on revocation and identifies again when consent returns", async () => {
+    setAnalyticsAccount({ id: "user-1" });
+    render(<AnalyticsApp initialEntry="/app" />);
+    await waitFor(() => expect(mockedPostHog.identify).toHaveBeenCalledWith("user-1", undefined));
+
+    mockedPostHog.reset.mockClear();
+    storeAnalyticsConsent(false);
+    await waitFor(() => expect(mockedPostHog.reset).toHaveBeenCalledTimes(1));
+
+    mockedPostHog.identify.mockClear();
+    storeAnalyticsConsent(true);
+    await waitFor(() => expect(mockedPostHog.identify).toHaveBeenCalledTimes(1));
     expect(pageviews()).toHaveLength(0);
   });
 });

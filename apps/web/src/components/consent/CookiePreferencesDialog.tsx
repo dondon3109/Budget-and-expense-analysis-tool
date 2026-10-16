@@ -57,8 +57,8 @@ function CookiePreferencesDialogContent() {
             <p className="eyebrow">Privacy controls</p>
             <h2 id="cookie-preferences-title">Cookie and storage preferences</h2>
             <p id="cookie-preferences-description">
-              Optional categories stay blocked until you enable them. No Analytics or Marketing
-              provider is currently active.
+              Optional categories stay blocked until you enable them. No Marketing provider is
+              currently active.
             </p>
           </div>
           <button
@@ -95,9 +95,11 @@ function CookiePreferencesDialogContent() {
             <div className="cookie-preference-copy">
               <span className="cookie-preference-title">
                 <strong>Analytics</strong>
-                <small>No provider connected</small>
               </span>
-              <p>Would help measure product usage and performance if a provider is added later.</p>
+              <p>
+                PostHog product usage and page performance, linked to your account ID and email
+                while you are signed in, with no financial detail.
+              </p>
             </div>
             <label className="cookie-switch">
               <span className="sr-only">Allow Analytics storage</span>
