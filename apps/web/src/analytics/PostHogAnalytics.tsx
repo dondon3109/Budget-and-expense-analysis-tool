@@ -1,4 +1,7 @@
 import posthog, { type BeforeSendFn } from "posthog-js";
+// web_vitals needs the SDK's web-vitals extension, which it would otherwise download
+// at runtime; disable_external_dependency_loading forbids that, so it ships in the bundle.
+import "posthog-js/dist/web-vitals";
 import { useEffect } from "react";
 
 import { sanitizeAnalyticsProperties } from "@zoption/web-common/analytics-sanitize";
