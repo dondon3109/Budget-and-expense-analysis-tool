@@ -1,40 +1,45 @@
 name: Production Release
 
+# Dispatched by hand from main when a batch of merged work should ship; merging alone releases
+# nothing. One run ships web and Android together, in that order: the Worker and both Pages
+# projects go live first, and the APK and android/latest.json publish only after production is
+# green and tagged, so a new app never meets an older Worker.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      android_release_notes:
+        description: "Android update notes for android/latest.json (one line per bullet)"
+        type: string
+        required: true
 
 permissions:
   contents: read
 
-# One human checkpoint: approving the production environment on deploy-and-release. Everything
-# before it is automatic, and approval-summary writes what the approver needs to see (changes, bot
-# authorship, migrations, CODEOWNERS paths, preview result, bundle hash) and announces the wait.
+# Two human checkpoints: dispatching the run, and approving the production environment on
+# deploy-and-release. Everything between is automatic, and approval-summary writes what the
+# approver needs to see (changes, bot authorship, migrations, CODEOWNERS paths, preview result,
+# bundle hash) and announces the wait.
 #
 # contents: write is held by exactly two jobs. preflight needs it only because semantic-release's
 # dry run authenticates a push; it publishes nothing. publish-release runs semantic-release after
 # production is fully green. The Cloudflare token is read only by jobs in the preview or
 # production environment (preview, deploy-and-release), never by a job outside one.
 jobs:
-  # Preflight is deliberately outside the production environment. It decides whether this CI
-  # result is still main and whether it owes a release, and a superseded result fails at the
-  # "Verify release source" guard below - before the gated job and its reviewer exist - so it
-  # never asks anyone to approve a run that could only do nothing.
+  # Preflight is deliberately outside the production environment. It decides whether the
+  # dispatched commit is still main, passed CI, carries a new Android version, and owes a release.
+  # Any of those failing stops here - before the gated job and its reviewer exist - so it never
+  # asks anyone to approve a run that could only do nothing.
   preflight:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     # semantic-release's dry run still performs a real "git push --dry-run" auth check before it
     # analyses a single commit, so the decision cannot run on a read only token: it fails with
     # EGITNOPERMISSION and no release is ever owed. This job never publishes, persist-credentials
     # is off, and the main ruleset refuses a push from github-actions[bot] regardless.
+    # actions: read is only for finding this commit's CI run.
     permissions:
       contents: write
+      actions: read
     outputs:
       release_needed: ${{ steps.next_release.outputs.release_needed }}
       version: ${{ steps.next_release.outputs.version }}
@@ -50,7 +55,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           # Read-only job: it never leaves a push-capable credential in .git/config, and the
           # anonymous "git ls-remote" below works because this repository is public.
           persist-credentials: false
@@ -62,17 +67,50 @@ jobs:
       # name and the byte-identity.
       - name: Verify release source
         env:
-          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: |
           remote_main="$(git ls-remote origin refs/heads/main | cut -f1)"
           if [[ "$RELEASE_COMMIT" != "$remote_main" ]]; then
-            echo "::error::Skipping stale CI result for $RELEASE_COMMIT; current main is $remote_main."
+            echo "::error::main moved from $RELEASE_COMMIT to $remote_main; dispatch Production Release again to ship it."
             exit 1
           fi
           if ! git tag --merged "$RELEASE_COMMIT" --list 'v[0-9]*' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::No semantic-release baseline tag is reachable from $RELEASE_COMMIT. Create the documented one-time v2.2.1 tag before enabling releases."
             exit 1
           fi
+      - name: Require green CI for the release commit
+        # A dispatch does not wait for CI, so the push run on main for this exact commit must
+        # already have passed. Kept below the name: a comment above it would join the source
+        # guard's text, which release-workflow.test.mjs pins byte for byte.
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          conclusion="$(gh run list --workflow ci.yml --commit "$RELEASE_COMMIT" --event push \
+            --json status,conclusion --jq '[.[] | select(.status == "completed")][0].conclusion // ""')"
+          if [[ "$conclusion" != "success" ]]; then
+            echo "::error::CI on main has not passed for $RELEASE_COMMIT (latest finished run: ${conclusion:-none}). Wait for it, then dispatch again."
+            exit 1
+          fi
+      # Every release ships a new APK, and the Android job runs only after production is live, so
+      # a forgotten version bump must stop the release here rather than after the deploy.
+      - name: Require a new Android version
+        working-directory: apps/mobile
+        env:
+          APP_VARIANT: production
+        run: |
+          set -euo pipefail
+          pnpm exec expo config --type introspect --json \
+            | node ../../scripts/android-release-metadata.mjs > "$RUNNER_TEMP/android-release.env"
+          code="$(sed -n 's/^RELEASE_VERSION_CODE=//p' "$RUNNER_TEMP/android-release.env")"
+          live="$(curl -fsS --retry 5 --retry-delay 5 --max-time 60 \
+            https://downloads.zoption.site/android/latest.json | jq -r '.versionCode')"
+          if (( code <= live )); then
+            echo "::error::android.versionCode $code is not newer than the published $live. Bump apps/mobile/package.json version and android.versionCode in apps/mobile/app.config.ts."
+            exit 1
+          fi
+          echo "Android $code will replace the published $live."
       - name: Determine the next semantic release
         id: next_release
         run: node scripts/next-semantic-release.mjs
@@ -82,7 +120,7 @@ jobs:
       - name: Find the current release
         id: previous_release
         run: |
-          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${{ github.event.workflow_run.head_sha }}")"
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${{ github.sha }}")"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
   # Rehearses the release on the preview stack before anyone is asked to approve production: the
@@ -115,7 +153,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup
       - name: Validate preview deployment configuration
@@ -134,7 +172,7 @@ jobs:
         working-directory: apps/api
         run: >-
           ./node_modules/.bin/wrangler deploy --config wrangler.deploy.jsonc --env preview
-          --tag "v${ZOPTION_RELEASE_VERSION}" --message "Preview of ${{ github.event.workflow_run.head_sha }}"
+          --tag "v${ZOPTION_RELEASE_VERSION}" --message "Preview of ${{ github.sha }}"
       # Preview builds omit PostHog, so the smoke gate expects no PostHog origin in the CSP.
       - name: Build preview web app
         run: pnpm --filter @zoption/web build
@@ -217,7 +255,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup
       - run: node scripts/export-deployment-env.mjs production
@@ -268,7 +306,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Write the approval summary
         id: summary
@@ -307,7 +345,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
-          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: |
           gh run list --workflow release.yml --status waiting --json databaseId,headSha \
             --jq ".[] | select(.databaseId < $RUN_ID and .headSha != \"$RELEASE_COMMIT\") | .databaseId" |
@@ -348,7 +386,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           # This job holds contents: write and runs install scripts, so it must not leave a
           # push-capable credential in .git/config. Publishing goes through the GitHub API with
           # GITHUB_TOKEN, and the anonymous "git ls-remote" in Verify release source works
@@ -360,11 +398,11 @@ jobs:
       # it, because approval happens between the two jobs.
       - name: Verify release source
         env:
-          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: |
           remote_main="$(git ls-remote origin refs/heads/main | cut -f1)"
           if [[ "$RELEASE_COMMIT" != "$remote_main" ]]; then
-            echo "::error::Skipping stale CI result for $RELEASE_COMMIT; current main is $remote_main."
+            echo "::error::main moved from $RELEASE_COMMIT to $remote_main; dispatch Production Release again to ship it."
             exit 1
           fi
           if ! git tag --merged "$RELEASE_COMMIT" --list 'v[0-9]*' | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
@@ -418,7 +456,7 @@ jobs:
         run: node scripts/github-production-deployment.mjs begin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_COMMIT: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_COMMIT: ${{ github.sha }}
       - name: Plan the production Worker rollout
         id: rollout
         if: steps.deployment.outputs.worker_deployed != 'true'
@@ -465,7 +503,7 @@ jobs:
             args=(--config wrangler.deploy.jsonc --env production)
           fi
           args+=(--tag "v${{ needs.preflight.outputs.version }}"
-            --message "GitHub Actions release ${{ github.event.workflow_run.head_sha }}")
+            --message "GitHub Actions release ${{ github.sha }}")
           # Durable Object migrations and queue consumer changes apply only through a full deploy.
           if [[ "$STRATEGY" == "atomic" ]]; then
             echo "::warning::This release changes settings a gradual rollout cannot apply; deploying to 100% at once."
@@ -672,7 +710,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ github.sha }}
           # Publishing goes through the GitHub API and semantic-release's own token handling; no
           # push-capable credential is left in .git/config.
           persist-credentials: false
@@ -698,3 +736,26 @@ jobs:
           text: "Zoption v${{ needs.preflight.outputs.version }} is deployed but publishing the release tag failed. ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+  # The APK and android/latest.json publish only once production is live and tagged, so the app
+  # update prompt never offers a build that needs a Worker production does not run yet. A failure
+  # here leaves the web release in place: rerun this job, or dispatch Android Beta Build with both
+  # publish inputs on.
+  android:
+    needs: [preflight, publish-release]
+    if: needs.publish-release.result == 'success'
+    uses: ./.github/workflows/android-beta.yml
+    with:
+      ref: ${{ github.sha }}
+      publish_apk: true
+      publish_latest_json: true
+      release_notes: ${{ inputs.android_release_notes }}
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
+      POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

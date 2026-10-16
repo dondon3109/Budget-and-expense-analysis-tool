@@ -16,13 +16,13 @@ permissions:
   contents: read
 
 # A new push to a pull request makes its running CI worthless, so cancel it. Pushes to main never
-# cancel: each finished main run is what Production Release keys off.
+# cancel: Production Release requires a passed main run for the commit it ships.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# The jobs run in parallel and share no state; the Production Release workflow waits for the
-# whole CI run, so a failure in any job still blocks a release. static, unit, e2e,
+# The jobs run in parallel and share no state; Production Release requires the whole CI run
+# to have passed, so a failure in any job still blocks a release. static, unit, e2e,
 # dependency-review, and codeql are the required checks of the main CI gate ruleset.
 jobs:
   static:
