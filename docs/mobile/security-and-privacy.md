@@ -69,13 +69,13 @@ opens. It exposes no caller-selected path; failure prevents workspace access.
 - Exercise two real Supabase identities and prove no local or server cross-tenant visibility.
 - Exercise expired tokens, identity switch, migration corruption, interrupted cleanup, and lost sync responses.
 
-## Crash telemetry
+## Crash telemetry and product events
 
-The Android Beta ships operator-enabled, build-time gated crash reporting
-(`apps/mobile/src/telemetry`, posthog-react-native). It is **not user opt-in**:
-there is no in-app consent setting today, and every installation built with an
-embedded `EXPO_PUBLIC_POSTHOG_KEY` reports crashes unless the operator
-disables the pipeline. Properties:
+The Android Beta ships operator-enabled, build-time gated crash reporting and
+product events (`apps/mobile/src/telemetry`, posthog-react-native). It is
+**not user opt-in**: there is no in-app consent setting today, and every
+installation built with an embedded `EXPO_PUBLIC_POSTHOG_KEY` reports crashes
+and product events unless the operator disables the pipeline. Properties:
 
 - **Inert without a key.** Without `EXPO_PUBLIC_POSTHOG_KEY` at build time no
   client is constructed and no network calls are made. Local builds remain
@@ -109,7 +109,13 @@ disables the pipeline. Properties:
   sent, and the only identifier the vendor sees is PostHog's memory-scoped
   device id for the current launch. App lifecycle events, surveys, session
   replay, console capture, and the native crash plugin are all disabled.
-- **Two kill switches.** Remote: disabling the PostHog feature flag
+- **Product events carry fixed labels only.** After a completed action the
+  screens send one named event (the list is in `docs/analytics.md` section
+  2.4) whose properties are enum values such as the transaction kind or a
+  debt type, plus row counts for an import. No amount, category, account,
+  note, or other user text is sent.
+- **Two kill switches, covering both crash reports and product events.**
+  Remote: disabling the PostHog feature flag
   `crash-telemetry-enabled` stops reporting after the next SDK flag refresh or
   app restart; the app fails closed and sends nothing while flags are unknown
   or the flag is absent or false. Build-time:

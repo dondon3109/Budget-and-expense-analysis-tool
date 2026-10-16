@@ -8,9 +8,9 @@ Legacy third-party tracking mechanisms—specifically **Google Analytics 4** and
 
 PostHog serves three distinct, privacy-isolated telemetry channels:
 
-1. **Public site pageviews, web funnel events, and Core Web Vitals** (Client-side, cookieless, memory-only)
+1. **Public site pageviews, web app funnel and feature-usage events, and Core Web Vitals** (Client-side, cookieless, memory-only)
 2. **AI Observability** (Server-side Worker metadata, `$ai_generation`)
-3. **Android Crash Telemetry** (Client-side mobile, sanitized `$exception` in Error Tracking)
+3. **Android crash telemetry and product events** (Client-side mobile, sanitized `$exception` in Error Tracking plus named feature events)
 
 All telemetry is strictly bounded to protect financial privacy, avoid collecting personal or account identifiers, and operate within PostHog's generous Free Tier.
 
@@ -23,7 +23,10 @@ All telemetry is strictly bounded to protect financial privacy, avoid collecting
 - **Consent first**: nothing is captured until the visitor grants the Analytics cookie category. Without that stored decision, or without a configured key, every capture is a silent no-op.
 - **Pageviews on the public site only**: `zoption.site` (`apps/site/src/client/analytics.ts`) sends one `$pageview` per page load, only on `zoption.site` or `www.zoption.site` (never on a `*.pages.dev` deployment URL, `isProductionHost`), only on a built manifest page (not the 404), and never when the query carries anything but campaign parameters or the fragment carries auth state (`isTrackableUrl` in `apps/site/src/lib/trackableUrl.ts`). The module itself downloads only after consent. When an AI answer engine sent the visit (ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Meta AI, You.com), the pageview carries `ai_referrer` with the engine's name and nothing else from the referrer.
 - **Same-origin ingestion on the site**: the site posts to its own `/ingest` Pages Function (`apps/site/functions/ingest/[[path]].ts`), which forwards only PostHog capture endpoints to `us.i.posthog.com` and strips cookies and client address headers, so the site CSP keeps `connect-src 'self'` for analytics and blocklists aimed at the PostHog host do not drop consented events.
-- **Six funnel events in the app**: the app at `app.zoption.site` sends no pageviews. Its signup page and signed-in app send only the closed set in `apps/web/src/analytics/funnel.ts` (`signup_viewed`, `signup_submitted`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question`). Their only properties are fixed enums, and the page-load events fire at most once per page load.
+- **A closed event set in the app**: the app at `app.zoption.site` sends no `$pageview` and no URL. Its signup page and signed-in app send only the events typed in `apps/web/src/analytics/funnel.ts`, and every property is a fixed enum:
+  - Funnel: `signup_viewed`, `signup_submitted {method: password|google, outcome}`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question {surface}`. `app_session_started`, `first_import_committed`, and `assistant_first_question` fire at most once per page load. A Google sign-up is sent as `outcome: redirect_started` before the redirect (with `send_instantly`, so leaving the page cannot drop it); whether it finished shows as the next `app_session_started`.
+  - Page use: `page_viewed {page}` once per signed-in path change (`apps/web/src/analytics/AppPageViewed.tsx`), naming the page from a fixed map. Admin pages and query strings are never sent.
+  - Feature use: `transaction_created {transaction_kind}`, `transaction_updated`, `transaction_deleted`, `budget_saved {scope}`, and `goal_`, `debt_`, `subscription_` `created`/`updated`/`deleted`, each sent from its `apps/web/src/lib/api/<domain>.ts` write only after the server accepted it, so every screen that writes is counted. The names match the mobile events (section 2.4), so a breakdown by `$lib` (`web` or `posthog-react-native`) compares the two clients.
 - **Goal events stay first-party**: the goals chosen at setup and its events live in D1 (section 2.5), never in PostHog.
 - **Financial Data Zero-Knowledge**: No transaction descriptions, amounts, categories, account balances, financial goals, debts, budgets, account IDs, tenant IDs, or user IDs are ever captured or transmitted.
 
@@ -54,6 +57,7 @@ posthog.init(posthogKey, {
 - **No Cookies or LocalStorage**: `cookieless_mode: "always"` and `persistence: "memory"` ensure no cookies or localStorage/sessionStorage persistence keys are set.
 - **No Person Profiles**: `person_profiles: "never"` prevents PostHog from stitching anonymous sessions or creating user records.
 - **No Session Replay / Heatmaps**: Remote recording scripts and network payload capture are completely disabled.
+- **Web vitals are bundled**: the SDK's web-vitals extension is imported from `posthog-js/dist/web-vitals` in both `apps/web/src/analytics/PostHogAnalytics.tsx` and `apps/site/src/client/analytics.ts`. Without that import the SDK tries to download the extension at runtime, which the next setting forbids, and no `$web_vitals` is ever sent.
 - **No External Script Ingestion**: `disable_external_dependency_loading: true` ensures that PostHog does not load external CDN scripts dynamically at runtime, maintaining full compliance with the strict Pages CSP (`script-src 'self'`). On the site, `api_host` is the same-origin `/ingest` proxy.
 
 ### 2.3 Server-Side AI Observability (`$ai_generation`)
@@ -72,7 +76,9 @@ Android telemetry in `apps/mobile/src/telemetry/telemetry.ts` sends each crash t
 - **Prohibited Fields**: No raw error messages, no error causes, no transaction details, no user identifiers.
 - **Source maps**: release builds upload their Hermes source map when the `POSTHOG_CLI_API_KEY` secret is set, so frames resolve to file, function, and line (`docs/mobile/security-and-privacy.md`).
 - **Launch event**: `apps/mobile/app/_layout.tsx` sends one property-free `app_session_started` per launch, the first step of the launch-to-first-transaction funnel (`transaction_created` is the second). The device id lives only for that launch, so the funnel counts launches, not returning people.
-- **SDK Safeguards**: `personProfiles: "never"`, `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`, and remote kill-switch support (`crash-telemetry-enabled`).
+- **Product events**: each screen sends one event after a completed local write: `transaction_created`/`transaction_updated {transaction_kind}`, `transaction_deleted {transaction_kind: transaction|transfer}`, `budget_limit_set {action}`, `budget_removed`, `budget_occasion_created`, `goal_created`/`goal_updated {status}`, `goal_deleted`, `debt_created`/`debt_updated {debt_type, status}`, `debt_deleted`, `subscription_created`/`subscription_updated {billing_cycle, status}`, `subscription_deleted`, and `import_completed {file_kind, imported_count, rejected_count}`. They are not user opt-in, like crash reports (`docs/mobile/security-and-privacy.md`).
+- **One gate for both**: product events wait in the same bounded buffer as crash reports until the `crash-telemetry-enabled` flag answers, and are dropped while it is off, so the remote kill switch and `EXPO_PUBLIC_TELEMETRY_DISABLED` stop everything the app sends.
+- **SDK Safeguards**: `personProfiles: "identified_only"` with no `identify()` call (so no profile is ever made), `persistence: "memory"`, `captureAppLifecycleEvents: false`, `enableSessionReplay: false`. Builds before 2026-10-14 still send the older `mobile_crash` event instead of `$exception`, and builds before 2026-09-18 sent `$identify`; both fade out as devices update.
 
 ### 2.5 Goal-Based Onboarding Events (D1, first-party)
 
@@ -81,7 +87,7 @@ The goals chosen during setup (several can be picked; the first is the lead goal
 - **`first_action_completed {goal, action}`** is recorded at most once per workspace and only when it has a goal. `goalProfileRepository.get` (`apps/api/src/db/goal-profile.ts`) looks for tenant data created at or after `goal_selected_at` that matches `firstActionByGoal[goal]` (`packages/shared/src/goals.ts`): a transaction outside the opening balance category, a budget, a savings goal, a debt, a message from the user to the assistant, or an import. The event is stamped with the time of that first record, not the time of the read, so the 24 hour activation window stays honest. No feature route, middleware, or auth code reports it, and nothing is logged per request.
 - The first action is noticed the next time the goal profile is read (`GET /api/app/profile/goals`, which the apps call, or the older `GET /api/app/profile/goal`, and an account export also reads it), so a workspace that never opens the app again is not counted until it does.
 - Every event and the retention report are about the lead goal (`tenants.primary_goal`, the first pick). The other picks are kept in `tenants.secondary_goals` (migration `0071_secondary_goals.sql`) and are not analysed. `goal_changed` fires only when the lead goal changes.
-- These events are not sent to PostHog. The anonymous PostHog funnel in section 2.1 stays at six events; adding goal events there would need a new event in `apps/web/src/analytics/funnel.ts`, a wired surface, and a policy update.
+- These events are not sent to PostHog. Adding goal events to the PostHog set in section 2.1 would need a new event in `apps/web/src/analytics/funnel.ts`, a wired surface, and a policy update.
 
 ### 2.6 Goal Retention Report
 
@@ -113,17 +119,19 @@ PostHog's generous Free Tier provides:
 
 ### Estimated Monthly Consumption
 
-| Stream                     | Events / Unit                                     | Expected Monthly Volume     | % of Free Quota  |
-| :------------------------- | :------------------------------------------------ | :-------------------------- | :--------------- |
-| **Public Web Analytics**   | 1 `$pageview` + ~3 `$web_vitals` per public visit | ~10,000 – 40,000 events     | 1.0% – 4.0%      |
-| **AI Observability**       | 1 `$ai_generation` per assistant request          | ~1,000 – 10,000 events      | 0.1% – 1.0%      |
-| **Mobile Crash Telemetry** | 1 `$exception` per rare runtime crash             | < 500 events                | < 0.1%           |
-| **Total Estimated**        | —                                                 | **~11,500 – 50,500 events** | **~1.2% – 5.1%** |
+| Stream                     | Events / Unit                                     | Expected Monthly Volume      | % of Free Quota   |
+| :------------------------- | :------------------------------------------------ | :--------------------------- | :---------------- |
+| **Public Web Analytics**   | 1 `$pageview` + ~3 `$web_vitals` per public visit | ~10,000 – 40,000 events      | 1.0% – 4.0%       |
+| **AI Observability**       | 1 `$ai_generation` per assistant request          | ~1,000 – 10,000 events       | 0.1% – 1.0%       |
+| **Web app events**         | 1 `page_viewed` per page, 1 event per write       | ~5,000 – 50,000 events       | 0.5% – 5.0%       |
+| **Mobile Crash Telemetry** | 1 `$exception` per rare runtime crash             | < 500 events                 | < 0.1%            |
+| **Mobile product events**  | 1 event per launch and per completed write        | ~2,000 – 20,000 events       | 0.2% – 2.0%       |
+| **Total Estimated**        | —                                                 | **~18,500 – 120,500 events** | **~1.9% – 12.1%** |
 
 ### Quota Guardrails
 
 1. Autocapture, session replay, and heatmap recordings are permanently disabled.
-2. Authenticated financial routes (`/app/*`) are completely excluded from client analytics.
+2. Authenticated routes (`/app/*`) send no `$pageview`, URL, or financial value; only the fixed-enum events in section 2.1, after Analytics consent.
 3. If traffic exceeds expectations, Core Web Vitals sampling or PostHog event ingestion rate-limiting can be applied without breaking analytics integrity.
 
 ---
@@ -286,6 +294,24 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 - **Group by**: `type` (coarse exception class)
 - **Sort**: Descending by count
 
+### 4.4 Feature Usage (Web and Mobile)
+
+#### Panel 17: Pages Opened
+
+- **Insight Name**: `Web App Pages`
+- **Insight Type**: Bar / Table
+- **Event**: `page_viewed`
+- **Aggregation**: Total count and unique users (`distinct_id`, one page load on the web)
+- **Breakdown**: `page`
+
+#### Panel 18: Feature Writes by Client
+
+- **Insight Name**: `Feature Writes`
+- **Insight Type**: Table
+- **Events**: the write events in sections 2.1 and 2.4
+- **Aggregation**: Total count
+- **Breakdown**: event name, then `$lib`
+
 ---
 
 ## 5. Dashboard Setup Instructions
@@ -293,5 +319,5 @@ A single, consolidated PostHog dashboard named **`Zoption Overview`** should be 
 1. Log into your PostHog Cloud account (e.g. `https://us.posthog.com`).
 2. Navigate to **Dashboards** > **New Dashboard**.
 3. Set the name to **`Zoption Overview`** and description to `Unified telemetry for Zoption Public Web, Assistant AI Observability, and Android Crash Diagnostics`.
-4. Click **Add insight** and configure each of the 16 panels described above using the respective event names (`$pageview`, `$web_vitals`, `$ai_generation`, `$exception`).
-5. Organize the dashboard layout into 3 horizontal sections: **Website Traffic & Web Vitals**, **AI Assistant Observability**, and **Mobile Diagnostics**.
+4. Click **Add insight** and configure each of the 18 panels described above using the respective event names (`$pageview`, `$web_vitals`, `$ai_generation`, `$exception`, `page_viewed`, and the feature write events).
+5. Organize the dashboard layout into 4 horizontal sections: **Website Traffic & Web Vitals**, **AI Assistant Observability**, **Mobile Diagnostics**, and **Feature Usage**.

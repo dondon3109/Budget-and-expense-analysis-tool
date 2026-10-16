@@ -5,7 +5,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="October 3, 2026"
+      lastUpdated="October 16, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>
@@ -36,18 +36,18 @@ export function CookiePolicyPage() {
           cookieless, memory-only mode without setting analytics cookies, storing persistent device
           identifiers, or creating person profiles. Zoption does not send your financial workspace
           data, account credentials, or assistant conversations to the analytics platform. On the
-          public website, this measurement loads only after you allow Analytics. In the web app,
-          because nothing is stored on your device and nothing identifies you, it runs without an
-          Analytics choice, and the Analytics and Marketing categories stay off and gate any
-          provider connected in the future.
+          public website and in the web app, this measurement runs only after you allow Analytics.
         </p>
         <p>
-          Zoption also records six anonymous conversion steps so the path from a first public page
-          visit to a first import can be read: a signup page view, the outcome of a signup attempt,
-          a first app load, a first import into an empty workspace, assistant consent, and a first
-          assistant question. These steps are cookieless, carry no financial detail, and write
-          nothing to your device: they never include an email, name, amount, category, account, or
-          tenant identifier, free text, page address with parameters, or a persistent identifier.
+          With Analytics allowed, the web app also records anonymous conversion steps and feature
+          use, so the path from a first public page visit to a first import, and which features
+          people use, can be read: a signup page view, the outcome and method (password or Google)
+          of a signup attempt, a first app load, a first import into an empty workspace, assistant
+          consent, a first assistant question, the name of each app page you open, and that a
+          transaction, budget, savings goal, debt, or subscription was added, changed, or removed.
+          These events are cookieless, carry no financial detail, and write nothing to your device:
+          they never include an email, name, amount, category, account, or tenant identifier, free
+          text, page address with parameters, or a persistent identifier.
         </p>
         <p>
           The goals you choose during setup are not one of those steps. It is stored with your
@@ -96,8 +96,8 @@ export function CookiePolicyPage() {
         <h2>5. Providers and future changes</h2>
         <p>
           PostHog is Zoption&apos;s web measurement provider. It receives cookieless, memory-only
-          page-use and Core Web Vitals measurements on public pages and the six anonymous conversion
-          steps described in section 2. It never receives what you enter: no amounts, categories,
+          page-use and Core Web Vitals measurements and the anonymous conversion and feature-use
+          events described in section 2. It never receives what you enter: no amounts, categories,
           accounts, search text, page addresses with parameters, or free text, and no person profile
           is built. Before enabling any additional Analytics or Marketing provider, Zoption must
           connect it to the consent gate, update this policy and its vendor inventory, disclose
@@ -119,9 +119,12 @@ export function CookiePolicyPage() {
           controlled by Cookie Settings. PostHog receives operational model, latency, token,
           call-structure, finish, and error metadata for the financial assistant without questions,
           answers, financial records, tool payloads, credentials, or internal IDs. Mobile builds
-          transmit only sanitized crash summaries without message contents or financial records.
-          Read the <a href="/privacy-policy">Privacy Policy</a> for account, financial, provider,
-          assistant, and rights information.
+          transmit only sanitized crash summaries without message contents or financial records, and
+          anonymous feature-use events (an app launch, and that a transaction, budget, savings goal,
+          debt, subscription, or import was added, changed, or removed, with fixed labels such as
+          the transaction type and the number of imported rows, never amounts or text). Read the{" "}
+          <a href="/privacy-policy">Privacy Policy</a> for account, financial, provider, assistant,
+          and rights information.
         </p>
       </section>
 
