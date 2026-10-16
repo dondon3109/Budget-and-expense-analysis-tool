@@ -47,6 +47,7 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import {
   debtPaymentApplies,
+  emptyTransactionForm,
   fallbackDescription,
   formatMinorForInput,
   initialEditDescription,
@@ -69,20 +70,6 @@ import { KindSelector } from "./KindSelector";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
-
-const emptyForm: TransactionFormValues = {
-  kind: "expense",
-  accountId: "",
-  toAccountId: "",
-  categoryId: "",
-  date: localCalendarDate(),
-  description: "",
-  amount: "",
-  transferFee: "",
-  currency: "PHP",
-  notes: "",
-  debtId: "",
-};
 
 function singleParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -114,7 +101,7 @@ export function TransactionEditorScreen() {
   const formData = useTransactionFormData(id);
   const theme = useZoptionTheme();
   const initializedFor = useRef<string | null>(null);
-  const [values, setValues] = useState<TransactionFormValues>(emptyForm);
+  const [values, setValues] = useState<TransactionFormValues>(emptyTransactionForm);
   const [errors, setErrors] = useState<TransactionFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
