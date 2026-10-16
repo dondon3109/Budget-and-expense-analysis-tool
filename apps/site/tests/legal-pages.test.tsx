@@ -68,9 +68,13 @@ describe("legal pages", () => {
     expect(screen.getByText(/not a complete account-data archive/i)).toBeInTheDocument();
     expect(screen.getByText(/includes an in-app account-deletion control/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/anonymous conversion and feature-use events that cover the signup/i),
+      screen.getByText(
+        /linked to your Zoption\s+account: PostHog receives your account.s user ID and your email address/i,
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/cookieless, carry no financial detail/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/carry no financial detail and write nothing to your device/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(/optional text you type \(up to 140 characters\)/i),
     ).toBeInTheDocument();
@@ -78,7 +82,7 @@ describe("legal pages", () => {
     expect(
       screen.getByText(/deleted with your account, and your goals and optional/i),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(5);
+    expect(screen.getAllByRole("link", { name: "support@zoption.site" })).toHaveLength(6);
   });
 
   it("states optional categories are inactive and exposes Cookie Settings", () => {
@@ -88,8 +92,8 @@ describe("legal pages", () => {
     expect(
       screen.getByText(/PostHog for privacy-preserving, cookieless aggregate usage/i),
     ).toBeInTheDocument();
-    expect(screen.getByText(/anonymous conversion steps\s+and feature use/i)).toBeInTheDocument();
-    expect(screen.getByText(/write nothing to your device/i)).toBeInTheDocument();
+    expect(screen.getByText(/records conversion steps and feature use/i)).toBeInTheDocument();
+    expect(screen.getByText(/writes nothing to your device/i)).toBeInTheDocument();
     expect(screen.getByText(/goal events stay in Zoption's own database/i)).toBeInTheDocument();
     expect(screen.getByText(/No marketing provider is currently enabled/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open Cookie Settings" })).toBeInTheDocument();

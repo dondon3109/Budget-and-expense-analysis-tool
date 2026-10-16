@@ -30,7 +30,8 @@ export function CookieConsentBanner() {
         <h2 id="cookie-consent-title">Choose what this browser may use</h2>
         <p id="cookie-consent-description">
           Necessary storage keeps Zoption working. Analytics and Marketing are off unless you choose
-          otherwise, and neither category currently has a provider connected. Read the{" "}
+          otherwise. Analytics sends PostHog how you use the app, linked to your account and email,
+          with no financial detail. Read the{" "}
           <Link to={siteUrl("/cookie-policy")} target="_blank" rel="noopener noreferrer">
             Cookie Policy
           </Link>

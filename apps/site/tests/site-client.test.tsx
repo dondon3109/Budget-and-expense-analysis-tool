@@ -4,7 +4,7 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CONSENT_STORAGE_KEY } from "@zoption/web-common/consent";
+import { CONSENT_POLICY_VERSION, CONSENT_STORAGE_KEY } from "@zoption/web-common/consent";
 import { readConsentRecord } from "@zoption/web-common/consent-storage";
 import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -111,7 +111,7 @@ describe("cookie consent", () => {
       CONSENT_STORAGE_KEY,
       JSON.stringify({
         schemaVersion: 1,
-        policyVersion: "2026-07-28",
+        policyVersion: CONSENT_POLICY_VERSION,
         decidedAt: "2026-09-01T00:00:00.000Z",
         source: "accept_all",
         preferences: { analytics: true, marketing: true },

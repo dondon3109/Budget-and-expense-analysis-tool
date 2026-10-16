@@ -130,7 +130,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const isDummySessionRef = useRef(false);
   const initializedRef = useRef(false);
 
-  const applySubject = useCallback((nextSubject: string | null) => {
+  const applySubject = useCallback((nextSubject: string | null, email?: string) => {
     isDummySessionRef.current = false;
     if (nextSubject) {
       void SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
@@ -141,11 +141,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (initializedRef.current && previousSubject !== nextSubject) {
       clearUserScopedRuntimeState();
     }
-    // Telemetry is never given the Supabase subject or email: identifying a
-    // finance-app user to the vendor is both unnecessary and outside the
-    // threat model. Only sign-out propagates, to drop whatever anonymous id
-    // PostHog minted for this launch.
-    if (!nextSubject && previousSubject) {
+    // PostHog attributes events to the signed-in account (Supabase user id plus
+    // email, disclosed in the privacy policy). Sign-out drops that identity so
+    // the next person on this device starts anonymous.
+    if (nextSubject) {
+      telemetry.identify({ id: nextSubject, email });
+    } else if (previousSubject) {
       void telemetry.reset();
     }
     subjectRef.current = nextSubject;
@@ -228,13 +229,13 @@ export function SessionProvider({ children }: PropsWithChildren) {
       // The startup getSession() below owns the initial state. INITIAL_SESSION
       // reports null whenever the startup refresh fails, including offline.
       if (event === "INITIAL_SESSION") return;
-      if (active) applySubject(session?.user.id ?? null);
+      if (active) applySubject(session?.user.id ?? null, session?.user.email);
     });
 
     void client.auth.getSession().then(async ({ data, error }) => {
       if (!active) return;
       if (!error && data?.session) {
-        applySubject(data.session.user.id);
+        applySubject(data.session.user.id, data.session.user.email);
         return;
       }
       if (error && isAuthRetryableFetchError(error)) {

@@ -23,8 +23,9 @@ All notable product changes are documented here.
 
 ### Changed
 
+- PostHog analytics are now linked to your Zoption account while you are signed in: the web app (after you allow Analytics) and the mobile app send your user ID and email with their usage events and crash reports, so we can see how each account uses Zoption. They still never include amounts, categories, or text. The Privacy Policy, Cookie Policy, and the web app's cookie settings say so, and the web app asks for your Analytics choice again.
 - Zoption now notes how each new transaction was entered (typed, voice, the widget, a receipt, an SMS paste, a PDF statement, the assistant, or a file import) with your workspace, so it can see which entry features people rely on. It is never sent to analytics, and the Privacy Policy says so.
-- The Privacy and Cookie policies now list every anonymous feature-use event the web and mobile apps send (page names and that a record was added, changed, or removed, never amounts or text). On the web these are sent only after you allow Analytics.
+- The Privacy and Cookie policies now list every feature-use event the web and mobile apps send (page names and that a record was added, changed, or removed, never amounts or text). On the web these are sent only after you allow Analytics.
 - Mobile: the Home overview shows the category you spent the most on this month, with its amount and share of your spending, in place of Recent activity. View all opens Analytics.
 - Mobile crash reports now include where in Zoption's code the crash happened (file, function, and line), so crashes can be found and fixed. They still never include the error message or your data. The Privacy Policy says this.
 - Growing your pet past Baby is now part of Zoption Pro, on web and mobile. On the free plan your pet stays a Baby at 349 points and keeps healing; upgrade and your next activity grows it into a Juvenile. A pet that grew on Pro keeps its stage if Pro ends.

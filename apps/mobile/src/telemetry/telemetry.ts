@@ -25,10 +25,12 @@
  * Error Tracking `$exception` with the reporting source label and a
  * deterministic grouping token. Release builds upload source maps, so those
  * frames resolve to file, function, and line in PostHog.
- * No Zoption or Supabase identity is supplied: the transport has no identity
- * call at all, so the authenticated subject and the account email never reach
- * the vendor, and the only identifier it sees is PostHog's memory-scoped
- * device id. See docs/mobile/security-and-privacy.md.
+ * A signed-in account is identified by its Supabase user id with the account
+ * email as a person property, so events can be read per account. The identity
+ * passes the same kill switch as every event: nothing, including `$identify`,
+ * leaves the device while the gate is closed or unknown. Guests and signed-out
+ * launches stay on PostHog's memory-scoped device id. See
+ * docs/mobile/security-and-privacy.md.
  */
 
 export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
@@ -58,11 +60,18 @@ export interface TelemetryTransport {
   captureCrash(report: SanitizedCrashReport): void;
   /** Captures a product event after a completed user action. */
   capture?(event: string, properties?: Record<string, string | number | boolean>): void;
+  identify?(account: TelemetryAccount): void;
   /** Optional so existing minimal transports remain valid in tests. */
   reset?(): void;
   flush(): Promise<void>;
   /** Registers the remote kill-switch listener when the backend supports flags. */
   onRemoteGateChange?(listener: (allowed: boolean) => void): void;
+}
+
+/** The signed-in account PostHog attributes events to. */
+export interface TelemetryAccount {
+  id: string;
+  email?: string;
 }
 
 export type TelemetryTransportFactory = (config: TelemetryConfig) => Promise<TelemetryTransport>;
@@ -71,7 +80,9 @@ export interface TelemetryService {
   /** Resolves even when initialization fails; telemetry can never block startup. */
   init(): Promise<void>;
   isActive(): boolean;
-  /** Clears the anonymous analytics identity when the authenticated session ends. */
+  /** Attributes later events to the signed-in account, once the remote gate is open. */
+  identify(account: TelemetryAccount): void;
+  /** Clears the analytics identity when the authenticated session ends. */
   reset(): Promise<void>;
   /** Best-effort product event for a completed user action; never blocks callers. */
   capture(event: string, properties?: Record<string, string | number | boolean>): Promise<void>;
@@ -285,6 +296,9 @@ export function createTelemetryService(
   let initializationFailed = false;
   let initialization: Promise<void> | null = null;
   const pending: PendingReport[] = [];
+  // Held until the gate opens, so the identity is sent before any queued event.
+  let account: TelemetryAccount | null = null;
+  let identifiedId: string | null = null;
 
   const enqueue = (item: PendingReport): void => {
     if (pending.length >= MAX_BUFFERED_REPORTS) pending.shift();
@@ -316,7 +330,18 @@ export function createTelemetryService(
     }
   };
 
+  const deliverIdentity = (): void => {
+    if (!transport || !account || identifiedId === account.id) return;
+    try {
+      transport.identify?.(account);
+      identifiedId = account.id;
+    } catch {
+      // Identity is best-effort, like every other report.
+    }
+  };
+
   const drainPending = (): void => {
+    deliverIdentity();
     while (pending.length > 0) {
       const item = pending.shift();
       if (item?.kind === "crash") deliver(item.report);
@@ -343,6 +368,7 @@ export function createTelemetryService(
             // Transport opted out of remote gating entirely (tests/simple sinks).
             gateResolved = true;
             gateOpen = true;
+            deliverIdentity();
           }
         } catch {
           // Fail-safe: a broken telemetry backend must never affect the app.
@@ -354,7 +380,15 @@ export function createTelemetryService(
       return initialization;
     },
     isActive: () => transport !== null,
+    identify(nextAccount) {
+      if (!config.enabled) return;
+      account = nextAccount;
+      if (identifiedId !== nextAccount.id) identifiedId = null;
+      if (transport && gateResolved && gateOpen) deliverIdentity();
+    },
     reset() {
+      account = null;
+      identifiedId = null;
       try {
         transport?.reset?.();
       } catch {
@@ -477,6 +511,9 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
     capture: (event, properties) => {
       client.capture(event, properties);
     },
+    identify: (account) => {
+      client.identify(account.id, account.email ? { email: account.email } : undefined);
+    },
     reset: () => {
       client.reset();
     },
@@ -495,8 +532,8 @@ export function createPostHogOptions(host: string) {
   return {
     host,
     // Do not persist a device identity or queued events across app restarts.
-    // No person is ever identified, so the vendor only ever holds PostHog's
-    // ephemeral device id for the duration of a launch.
+    // A signed-in account is identified again on every launch; a guest only
+    // ever has PostHog's ephemeral device id for the duration of a launch.
     persistence: "memory" as const,
     personProfiles: "identified_only" as const,
     setDefaultPersonProperties: false,

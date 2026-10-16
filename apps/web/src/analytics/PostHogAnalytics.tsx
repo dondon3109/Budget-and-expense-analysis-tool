@@ -18,6 +18,17 @@ function getPostHogHost(): string {
 
 let isInitialized = false;
 
+/** The signed-in account PostHog attributes events to. */
+export interface AnalyticsAccount {
+  id: string;
+  email?: string;
+}
+
+// The account is held here rather than identified on sight: consent can be
+// granted after sign-in, and identification has to wait for it.
+let currentAccount: AnalyticsAccount | null = null;
+let identifiedAccountId: string | null = null;
+
 /**
  * The stored analytics decision, read on every check rather than mirrored in
  * module state: analytics is only ever active with it, and a revocation in
@@ -32,10 +43,10 @@ export function isAnalyticsConsented(): boolean {
  * The before_send hook the SDK is actually given: drop the event outright once
  * the analytics consent is gone, then sanitize what is left.
  *
- * posthog-js cannot stop on its own here. Its opt_out_capturing() returns early
- * with a warning while cookieless_mode is "always", and is_capturing() is true
- * for that mode regardless of consent, so this hook — the one place that sees
- * every outbound event, including the SDK's own web vitals — is the real stop.
+ * The SDK's own opt_out_capturing() would write its decision to localStorage,
+ * which this memory-only setup never does, so this hook — the one place that
+ * sees every outbound event, including `$identify` and the SDK's own web
+ * vitals — is the consent stop.
  */
 const gateAndSanitizeAnalyticsEvent: BeforeSendFn = (captureResult) => {
   if (!captureResult || !isAnalyticsConsented()) return null;
@@ -67,11 +78,13 @@ export function ensurePostHogInitialized(): boolean {
   if (!posthogKey) return false;
   if (isInitialized) return true;
 
+  // No cookieless_mode: the SDK ignores identify() in it. persistence "memory"
+  // still keeps every identifier out of cookies and storage, so a reload starts
+  // anonymous until the session restore identifies the account again.
   posthog.init(posthogKey, {
     api_host: getPostHogHost(),
-    cookieless_mode: "always",
     persistence: "memory",
-    person_profiles: "never",
+    person_profiles: "identified_only",
     capture_pageview: false,
     capture_pageleave: false,
     autocapture: false,
@@ -90,8 +103,41 @@ export function ensurePostHogInitialized(): boolean {
   return true;
 }
 
+/**
+ * Identifies the consented, signed-in account by its Supabase user id with the
+ * email as a person property, and drops the identity once nobody is signed in
+ * so the next person in this tab starts anonymous.
+ */
+function applyAnalyticsIdentity(): void {
+  if (!isInitialized || !isAnalyticsConsented()) return;
+  try {
+    if (currentAccount && identifiedAccountId !== currentAccount.id) {
+      posthog.identify(
+        currentAccount.id,
+        currentAccount.email ? { email: currentAccount.email } : undefined,
+      );
+      identifiedAccountId = currentAccount.id;
+      return;
+    }
+    if (!currentAccount && identifiedAccountId) {
+      posthog.reset();
+      identifiedAccountId = null;
+    }
+  } catch {
+    // Analytics must never reach the user.
+  }
+}
+
+/** Records the signed-in account (or null after sign-out) for analytics. */
+export function setAnalyticsAccount(account: AnalyticsAccount | null): void {
+  currentAccount = account;
+  applyAnalyticsIdentity();
+}
+
 export function resetPostHogForTests(): void {
   isInitialized = false;
+  currentAccount = null;
+  identifiedAccountId = null;
   try {
     posthog.reset();
   } catch {
@@ -102,18 +148,17 @@ export function resetPostHogForTests(): void {
 /**
  * Starts PostHog as an optional analytics integration. The consent gate calls
  * this only while the analytics category is granted, and the returned cleanup
- * runs when the visitor revokes it: the SDK instance stays alive for the rest of
- * the page load, so opt_out_capturing() is the SDK's own switch. Under
- * cookieless_mode "always" that call is inert, which is why the before_send gate
- * above carries the guarantee.
+ * runs when the visitor revokes it: the before_send gate above then drops every
+ * event, and the identity is cleared so a later grant identifies afresh.
  */
 function startAnalytics(): (() => void) | undefined {
   if (!ensurePostHogInitialized()) return undefined;
-  posthog.opt_in_capturing();
+  applyAnalyticsIdentity();
 
   return () => {
     try {
-      posthog.opt_out_capturing();
+      posthog.reset();
+      identifiedAccountId = null;
     } catch {
       // Revoking consent must never surface an error to the visitor.
     }
@@ -122,8 +167,9 @@ function startAnalytics(): (() => void) | undefined {
 
 /**
  * Registers PostHog with the consent gate. The app sends no pageviews (every route
- * is private and the public site counts its own); only the anonymous funnel events
- * in `funnel.ts` go out, and only after analytics consent.
+ * is private and the public site counts its own); only the funnel events in
+ * `funnel.ts` go out, attributed to the signed-in account, and only after
+ * analytics consent.
  */
 export function PostHogAnalytics() {
   useEffect(() => registerOptionalIntegration("analytics", startAnalytics), []);
