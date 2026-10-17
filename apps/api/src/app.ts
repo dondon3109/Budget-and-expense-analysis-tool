@@ -14,6 +14,7 @@ import { requireOnboarding } from "./http/onboarding-gate";
 import {
   createAppRateLimit,
   createBillingWebhookRateLimit,
+  createPublicShareRateLimit,
   createSupportRateLimit,
 } from "./http/rate-limit-policy";
 import { createAccountDeletionRoutes } from "./routes/account-deletion";
@@ -47,6 +48,7 @@ import { createPayPalWebhookRoutes } from "./routes/paypal-webhooks";
 import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platform-admin";
 import { createProviderCredentialRoutes } from "./routes/provider-credentials";
 import { createReceiptRoutes } from "./routes/receipts";
+import { createPublicShareLinkRoutes, createShareLinkRoutes } from "./routes/share-links";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import {
   createAuthenticatedSupportRoutes,
@@ -70,6 +72,9 @@ export function createApp(options: AppOptions = {}) {
     const path = `${context.req.param("userId")}/${context.req.param("file")}`;
     return servePublicAvatar(context.env, path);
   });
+
+  app.use("/api/public/shares/*", createPublicShareRateLimit(dependencies.rateLimiter));
+  app.route("/api/public/shares", createPublicShareLinkRoutes(dependencies.shareLinks));
 
   app.use("/api/app/*", async (context, next) => {
     if (context.req.header("Upgrade")?.toLowerCase() === "websocket") {
@@ -217,6 +222,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/entry", createAiEntryRoutes(dependencies.aiEntryService));
   app.route("/api/app/sync", createMobileSyncRoutes(dependencies.mobileSync));
   app.route("/api/app/receipts", createReceiptRoutes(dependencies.receiptService));
+  app.route("/api/app/shares", createShareLinkRoutes(dependencies.shareLinks));
   app.route(
     "/api/app/exports",
     createExportRoutes(dependencies.transactions, dependencies.billing),

@@ -54,6 +54,8 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "categories"] as const,
   accounts: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "accounts"] as const,
+  shareLinks: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "share-links"] as const,
   assistantPreferences: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "assistant", "preferences"] as const,
   assistantThreads: (workspace: AuthenticatedWorkspace) =>

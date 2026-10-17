@@ -35,6 +35,7 @@ import {
 import { bugReportRepository, type BugReportRepository } from "./db/bug-reports";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { customerReviewRepository, type CustomerReviewRepository } from "./db/customer-reviews";
+import { createShareLinkRepository, type ShareLinkRepository } from "./db/share-links";
 import { loadCashflowTrend, loadDashboard, loadTransferFeeInsight } from "./db/dashboard";
 import { debtRepository, type DebtRepository } from "./db/debts";
 import { calendarEventRepository, type CalendarEventRepository } from "./db/events";
@@ -108,6 +109,7 @@ export interface AppOptions {
   bugReportEgressAudit?: BugReportEgressAuditRepository;
   bugReportEgressRedact?: typeof redactBugReport;
   customerReviews?: CustomerReviewRepository;
+  shareLinks?: ShareLinkRepository;
 }
 
 /**
@@ -234,6 +236,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     overrides.bugReportEgressAudit ?? bugReportEgressAuditRepository;
   const bugReportService = overrides.bugReportService ?? createBugReportService(bugReportStore);
   const customerReviews = overrides.customerReviews ?? customerReviewRepository;
+  const shareLinks = overrides.shareLinks ?? createShareLinkRepository(accountStore);
   const accountDeletionService =
     overrides.accountDeletionService ??
     createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
@@ -274,5 +277,6 @@ export function createDependencies(overrides: AppOptions = {}) {
     bugReportEgressAudit: bugReportEgressAuditStore,
     bugReportEgressRedact: overrides.bugReportEgressRedact,
     customerReviews,
+    shareLinks,
   };
 }

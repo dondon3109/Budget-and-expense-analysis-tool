@@ -16,6 +16,7 @@ import { SoundAndMotionSettings } from "../components/account/SoundAndMotionSett
 import { VoiceLanguageSettings } from "../components/account/VoiceLanguageSettings";
 import { AppShell } from "../components/layout/AppShell";
 import { CustomerReviewSettings } from "../components/reviews/CustomerReviewSettings";
+import { SharedLinksSettings } from "../components/sharing/SharedLinksSettings";
 import { userWorkspace } from "../lib/workspace";
 import "./SettingsPage.css";
 // Each section's rules used to sit in SettingsPage.css in this order, so they load right after it.
@@ -35,6 +36,7 @@ const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#help": "help",
   "#contact": "contact",
   "#data-portability": "data-portability",
+  "#shared-links": "shared-links",
   "#default-spending-account": "default-spending-account",
   "#workspace-currency": "workspace-currency",
   "#primary-goal": "primary-goal",
@@ -107,6 +109,8 @@ export function SettingsPage() {
           {user && <BillingSettings user={user} />}
 
           <HelpAndContactSettings />
+
+          {user && <SharedLinksSettings workspace={userWorkspace(user)} />}
 
           <DataPortabilitySettings />
 

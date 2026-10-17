@@ -34,6 +34,7 @@
     "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_local-test-key",
     "SUPABASE_JWT_AUDIENCE": "authenticated",
     "WEB_APP_URL": "http://localhost:5173",
+    "PUBLIC_SITE_URL": "http://localhost:4321",
     "ASSISTANT_ENABLED": "false",
     "RECEIPT_ENTRY_ENABLED": "false",
     "PAYPAL_ENVIRONMENT": "sandbox",

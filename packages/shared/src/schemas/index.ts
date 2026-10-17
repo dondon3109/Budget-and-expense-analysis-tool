@@ -14,3 +14,4 @@ export * from "./user-account";
 export * from "./admin";
 export * from "./workspace";
 export * from "./pet";
+export * from "./sharing";

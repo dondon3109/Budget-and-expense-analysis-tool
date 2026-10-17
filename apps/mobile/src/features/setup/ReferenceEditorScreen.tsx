@@ -39,6 +39,7 @@ import {
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
+import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useSyncState } from "@/sync/sync-state";
 import {
@@ -832,6 +833,9 @@ export function ReferenceEditorScreen() {
                 balancesByCurrency={modelingState.modeling.balancesByCurrency}
                 disabled={blocked || saving}
               />
+            ) : null}
+            {entityType === "account" && editing && id ? (
+              <ShareLinkButton disabled={saving} target={{ kind: "balance", id }} />
             ) : null}
             {message ? (
               <Text

@@ -98,6 +98,8 @@ export function validateRequiredApiBindings(env: Bindings): void {
 
   const webAppUrl = env.WEB_APP_URL?.trim();
   if (webAppUrl) validateOrigin(webAppUrl, "web_app_url", true, production);
+  const publicSiteUrl = env.PUBLIC_SITE_URL?.trim();
+  if (publicSiteUrl) validateOrigin(publicSiteUrl, "public_site_url", true, production);
 
   validatePublishableKey(requiredText(env, "SUPABASE_PUBLISHABLE_KEY"));
 }

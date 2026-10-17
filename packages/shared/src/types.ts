@@ -25,6 +25,14 @@ export const transactionEntryMethods = [
 ] as const;
 export type TransactionEntryMethod = (typeof transactionEntryMethods)[number];
 
+/** What a public share link shows: one transaction, or one account's balance. */
+export const shareLinkKinds = ["transaction", "balance"] as const;
+export type ShareLinkKind = (typeof shareLinkKinds)[number];
+
+/** How long a public share link stays readable; `never` keeps it until revoked. */
+export const shareLinkExpiries = ["24h", "7d", "30d", "never"] as const;
+export type ShareLinkExpiry = (typeof shareLinkExpiries)[number];
+
 export interface TransactionRecord {
   id: string;
   date: string;

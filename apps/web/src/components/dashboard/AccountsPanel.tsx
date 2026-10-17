@@ -9,7 +9,7 @@ import {
   type Currency,
   type DashboardSummary,
 } from "@zoption/shared";
-import { Pencil, Plus, SlidersHorizontal, Star, Trash2, WalletCards } from "lucide-react";
+import { Pencil, Plus, Share2, SlidersHorizontal, Star, Trash2, WalletCards } from "lucide-react";
 import { useRef } from "react";
 
 import type { AccountMutations } from "./useAccountMutations";
@@ -34,6 +34,7 @@ interface AccountsPanelProps {
   trendComparison: string;
   isPro: boolean;
   onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
+  onShareBalance: (account: AccountBalanceSummaryItem) => void;
 }
 
 function parseOptionalAmount(value: string): number | undefined | null {
@@ -59,6 +60,7 @@ export function AccountsPanel({
   trendComparison,
   isPro,
   onAdjustBalance,
+  onShareBalance,
 }: AccountsPanelProps) {
   const {
     isAddingAccount,
@@ -307,6 +309,14 @@ export function AccountsPanel({
                             <Trash2 size={14} aria-hidden="true" />
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => onShareBalance(account)}
+                          aria-label={`Share balance of ${account.name}`}
+                          title={`Share balance of ${account.name}`}
+                        >
+                          <Share2 size={14} aria-hidden="true" />
+                        </button>
                         <button
                           type="button"
                           className="dashboard-account-default"
