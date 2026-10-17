@@ -14,7 +14,8 @@ import { tenants, transactions } from "./schema";
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
 // The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
 // 0078_family_spaces.sql, 0079_family_closures.sql, 0080_family_shares.sql,
-// 0081_family_remittances.sql, and 0082_family_transaction_events.sql.
+// 0081_family_remittances.sql, 0082_family_transaction_events.sql, and
+// 0083_family_comments_and_alerts.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -207,3 +208,43 @@ export const familyTransactionEvents = sqliteTable(
     ),
   ],
 );
+
+export const familyComments = sqliteTable(
+  "family_comments",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subjectKind: text("subject_kind", { enum: ["transaction", "remittance"] }).notNull(),
+    subjectId: text("subject_id").notNull(),
+    userId: text("user_id").notNull(),
+    body: text("body").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("family_comments_subject_idx").on(
+      table.tenantId,
+      table.subjectKind,
+      table.subjectId,
+      table.createdAt,
+    ),
+    check(
+      "family_comments_subject_check",
+      sql`${table.subjectKind} IN ('transaction', 'remittance')`,
+    ),
+  ],
+);
+
+export const familyAlertSettings = sqliteTable("family_alert_settings", {
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  spendingAlertMinor: integer("spending_alert_minor"),
+  lowBalanceMinor: integer("low_balance_minor"),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});

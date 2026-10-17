@@ -13,6 +13,8 @@ export interface FamilyNotice {
   exceptUserId?: string;
   /** Only these people; still limited to current members. */
   onlyUserIds?: string[];
+  /** Only the family's owner. */
+  ownerOnly?: boolean;
 }
 
 /**
@@ -36,11 +38,12 @@ export function createFamilyNotifier(
     async notify(env, notice) {
       try {
         const { results } = await env.DB.prepare(
-          "SELECT user_id AS userId FROM tenant_members WHERE tenant_id = ?",
+          "SELECT user_id AS userId, role FROM tenant_members WHERE tenant_id = ?",
         )
           .bind(notice.familyTenantId)
-          .all<{ userId: string }>();
+          .all<{ userId: string; role: string }>();
         const userIds = results
+          .filter((row) => !notice.ownerOnly || row.role === "owner")
           .map((row) => row.userId)
           .filter((userId) => userId !== notice.exceptUserId)
           .filter((userId) => !notice.onlyUserIds || notice.onlyUserIds.includes(userId));

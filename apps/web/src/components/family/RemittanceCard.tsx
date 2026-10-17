@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { FamilyRemittance } from "@zoption/shared";
-import { Plus, Send } from "lucide-react";
+import { MessageSquare, Plus, Send } from "lucide-react";
 import { useState } from "react";
 
 import { cancelRemittance } from "../../lib/api";
@@ -9,6 +9,7 @@ import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { useFamily } from "../../queries/families";
 import { invalidateAfterRemittanceWrite, useRemittanceOverview } from "../../queries/remittances";
 import { memberName } from "./familyLabels";
+import { FamilyThreadDialog } from "./FamilyThreadDialog";
 import { RemittanceDialog } from "./RemittanceDialog";
 import "./RemittanceCard.css";
 
@@ -28,6 +29,7 @@ export function RemittanceCard({
   const overview = useRemittanceOverview(family, `${month}-01`).data;
   const detail = useFamily(family).data;
   const [dialog, setDialog] = useState<{ remittance?: FamilyRemittance }>();
+  const [threadOf, setThreadOf] = useState<FamilyRemittance>();
   const cancel = useMutation({
     mutationFn: (remittanceId: string) => cancelRemittance(family, remittanceId),
     onSuccess: () => invalidateAfterRemittanceWrite(queryClient, family),
@@ -36,6 +38,12 @@ export function RemittanceCard({
   if (!overview) return null;
   const canWrite = detail?.role !== "viewer" && !detail?.closesAt;
   const label = (userId: string) => memberName(detail, userId, family.userId);
+  const commentsButton = (item: FamilyRemittance) => (
+    <button className="icon-button" type="button" onClick={() => setThreadOf(item)}>
+      <MessageSquare size={15} aria-hidden="true" />
+      <span className="sr-only">Comments</span>
+    </button>
+  );
   const dialogElement = dialog && (
     <RemittanceDialog
       family={family}
@@ -97,27 +105,30 @@ export function RemittanceCard({
                   {item.provider ? ` via ${item.provider}` : ""}
                 </span>
               </div>
-              {canWrite && (
-                <div className="remittance-actions">
-                  <button
-                    className="button primary compact"
-                    type="button"
-                    onClick={() => setDialog({ remittance: item })}
-                  >
-                    Confirm received
-                  </button>
-                  {(detail?.role === "owner" || item.sentByUserId === family.userId) && (
+              <div className="remittance-actions">
+                {commentsButton(item)}
+                {canWrite && (
+                  <>
                     <button
-                      className="button secondary compact"
+                      className="button primary compact"
                       type="button"
-                      disabled={cancel.isPending}
-                      onClick={() => cancel.mutate(item.id)}
+                      onClick={() => setDialog({ remittance: item })}
                     >
-                      Cancel
+                      Confirm received
                     </button>
-                  )}
-                </div>
-              )}
+                    {(detail?.role === "owner" || item.sentByUserId === family.userId) && (
+                      <button
+                        className="button secondary compact"
+                        type="button"
+                        disabled={cancel.isPending}
+                        onClick={() => cancel.mutate(item.id)}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </li>
           ))}
         </ul>
@@ -144,6 +155,7 @@ export function RemittanceCard({
                     {item.received!.date}
                   </span>
                 </div>
+                {commentsButton(item)}
               </li>
             ))}
           </ul>
@@ -172,6 +184,14 @@ export function RemittanceCard({
         </details>
       )}
       {dialogElement}
+      {threadOf && (
+        <FamilyThreadDialog
+          family={family}
+          subject={{ kind: "remittance", subjectId: threadOf.id }}
+          title={`${formatMoney(threadOf.sentAmountMinor, threadOf.sentCurrency)} sent on ${threadOf.sentOn}`}
+          onClose={() => setThreadOf(undefined)}
+        />
+      )}
     </section>
   );
 }

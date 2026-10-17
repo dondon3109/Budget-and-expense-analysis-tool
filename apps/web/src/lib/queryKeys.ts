@@ -118,6 +118,12 @@ export const queryKeys = {
   /** A family workspace: entries deleted inside the restore window. */
   familyDeletedEntries: (family: AuthenticatedWorkspace) =>
     [...queryKeys.family(family), "deleted-entries"] as const,
+  /** A family workspace: the comments under one transaction or remittance. */
+  familyComments: (family: AuthenticatedWorkspace, kind: string, subjectId: string) =>
+    [...queryKeys.family(family), "comments", kind, subjectId] as const,
+  /** A family workspace: the owner's alert thresholds. */
+  familyAlerts: (family: AuthenticatedWorkspace) =>
+    [...queryKeys.family(family), "alerts"] as const,
   /** Personal workspace only: the balances this person shares into families. */
   myBalanceShares: (personal: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(personal), "balance-shares"] as const,

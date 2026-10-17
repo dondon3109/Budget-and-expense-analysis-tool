@@ -1,5 +1,13 @@
 import type { Currency, TransactionListItem, TransactionListQuery } from "@zoption/shared";
-import { ArrowDown, ArrowUp, ArrowUpDown, History, Pencil, Share2, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  MessageSquare,
+  Pencil,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import { type CSSProperties, useEffect, useRef } from "react";
 
 import { formatMoney } from "../../lib/formatters";
@@ -21,8 +29,8 @@ interface TransactionTableProps {
   onEdit: (item: TransactionListItem) => void;
   /** Opens the share dialog; transfers have no share button. Omitted in a family workspace. */
   onShare?: (item: TransactionListItem) => void;
-  /** Opens who changed the row; only a family keeps entry history. */
-  onHistory?: (item: TransactionListItem) => void;
+  /** Opens the row's comments and history; only a family has them. */
+  onThread?: (item: TransactionListItem) => void;
   /** A short line about where the row was shared from or to. */
   rowNote?: (item: TransactionListItem) => string | null;
   /** False locks the row's edit, delete, and select controls (a family member's rule). */
@@ -136,7 +144,7 @@ export function TransactionTable({
   onSort,
   onEdit,
   onShare,
-  onHistory,
+  onThread,
   rowNote,
   canChange,
   onRequestDelete,
@@ -238,13 +246,13 @@ export function TransactionTable({
                 <Share2 size={15} />
               </button>
             )}
-            {onHistory && (
+            {onThread && (
               <button
                 type="button"
-                onClick={() => onHistory(item)}
-                aria-label={`History of ${item.description}`}
+                onClick={() => onThread(item)}
+                aria-label={`Comments and history of ${item.description}`}
               >
-                <History size={15} />
+                <MessageSquare size={15} />
               </button>
             )}
             <button

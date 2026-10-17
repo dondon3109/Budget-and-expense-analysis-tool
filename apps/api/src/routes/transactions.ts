@@ -9,8 +9,10 @@ import { Hono } from "hono";
 import type { FamilyJournal } from "../db/family-journal";
 import type { EntryAccess, TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
+import type { FamilyAlerts } from "../family-alerts";
 import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment, TenantContext } from "../types";
+import { afterResponse } from "./remittances";
 
 /** In a family, members change only the entries they added; the owner changes any. */
 function entryAccess(tenant: TenantContext, userId: string): EntryAccess | undefined {
@@ -21,8 +23,15 @@ function entryAccess(tenant: TenantContext, userId: string): EntryAccess | undef
 
 const notFound = () => new HttpError(404, "transaction_not_found", "Transaction not found.");
 
-/** `journal` records family changes and deletes; personal rows keep no history. */
-export function createTransactionRoutes(repository: TransactionRepository, journal: FamilyJournal) {
+/**
+ * `family.journal` records family changes and deletes, and `family.alerts` reacts to a new
+ * family expense; personal rows have neither.
+ */
+export function createTransactionRoutes(
+  repository: TransactionRepository,
+  family: { journal: FamilyJournal; alerts: FamilyAlerts },
+) {
+  const { journal, alerts } = family;
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/calendar", async (context) => {
@@ -51,10 +60,16 @@ export function createTransactionRoutes(repository: TransactionRepository, journ
     const tenant = context.get("tenant");
     // Family rows record who added them; personal rows have only one person.
     const authorUserId = tenant.membership ? context.get("authUser").id : undefined;
-    return context.json(
-      await repository.create(context.env, tenant.tenantId, input, { authorUserId }),
-      201,
-    );
+    const created = await repository.create(context.env, tenant.tenantId, input, {
+      authorUserId,
+    });
+    if (authorUserId) {
+      await afterResponse(
+        context,
+        alerts.afterExpense(context.env, tenant.tenantId, authorUserId, created),
+      );
+    }
+    return context.json(created, 201);
   });
 
   routes.patch("/:id", async (context) => {

@@ -139,6 +139,24 @@ function monthsBack(month: string, first: string, limit: number): string[] {
   return months;
 }
 
+/** "Left": the family's own open account balances in its currency, never shared balances. */
+export async function familyLeftMinor(
+  env: Bindings,
+  tenantId: string,
+  currency: Currency,
+): Promise<number> {
+  const row = await env.DB.prepare(
+    `SELECT COALESCE(SUM(t.amount_minor), 0) AS total
+     FROM transactions t
+     JOIN accounts a ON a.id = t.account_id AND a.tenant_id = t.tenant_id
+     WHERE t.tenant_id = ? AND t.currency = ? AND a.archived = 0
+       AND (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL)`,
+  )
+    .bind(tenantId, currency)
+    .first<{ total: number }>();
+  return Number(row?.total ?? 0);
+}
+
 export const remittanceRepository: RemittanceRepository = {
   async send(env, tenantId, userId, input) {
     const id = crypto.randomUUID();
@@ -274,15 +292,7 @@ export const remittanceRepository: RemittanceRepository = {
       )
         .bind(tenantId, currency, from, to)
         .all<{ month: string; total: number }>(),
-      env.DB.prepare(
-        `SELECT COALESCE(SUM(t.amount_minor), 0) AS total
-         FROM transactions t
-         JOIN accounts a ON a.id = t.account_id AND a.tenant_id = t.tenant_id
-         WHERE t.tenant_id = ? AND t.currency = ? AND a.archived = 0
-           AND (t.kind != 'transfer' OR t.transfer_group_id IS NOT NULL)`,
-      )
-        .bind(tenantId, currency)
-        .first<{ total: number }>(),
+      familyLeftMinor(env, tenantId, currency),
       env.DB.prepare(
         `${REMITTANCE_SELECT} WHERE r.tenant_id = ? AND r.received_at IS NULL
          ORDER BY r.sent_on DESC, r.created_at DESC`,
@@ -308,7 +318,7 @@ export const remittanceRepository: RemittanceRepository = {
     return {
       currency,
       month: row(month),
-      leftMinor: Number(left?.total ?? 0),
+      leftMinor: left,
       pending: pending.results.map(normalize),
       recent: recent.results.map(normalize),
       history: months.map(row),

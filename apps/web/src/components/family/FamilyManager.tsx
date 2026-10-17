@@ -28,6 +28,7 @@ import {
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useActiveWorkspace } from "../layout/ActiveWorkspaceProvider";
 import { ROLE_LABELS, formatFamilyDate } from "./familyLabels";
+import { FamilyAlertsSection } from "./FamilyAlertsSection";
 import { SeatRulesDialog } from "./SeatRulesDialog";
 
 type Pending =
@@ -164,6 +165,8 @@ export function FamilyManager({ family }: { family: WorkspaceSummary }) {
           {writeError}
         </p>
       )}
+
+      <FamilyAlertsSection family={workspace} canManage={canManage} />
 
       <section className="family-section" aria-labelledby="family-end-title">
         <h2 id="family-end-title">{owner ? "Close the family" : "Leave the family"}</h2>

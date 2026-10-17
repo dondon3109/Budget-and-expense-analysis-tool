@@ -11,10 +11,19 @@ export function formatFamilyDate(timestamp: string): string {
   }).format(new Date(timestamp));
 }
 
-/** A member as a sentence names them: "you", their email, or "a former member". */
-export function memberName(detail: FamilyDetail | undefined, userId: string, me: string): string {
-  if (userId === me) return "you";
+/**
+ * A member as a sentence names them: "you", their email, or "a former member". `start`
+ * capitalizes the phrases (never an email) for the start of a sentence.
+ */
+export function memberName(
+  detail: FamilyDetail | undefined,
+  userId: string,
+  me: string,
+  start = false,
+): string {
+  const phrase = (text: string) => (start ? text.charAt(0).toUpperCase() + text.slice(1) : text);
+  if (userId === me) return phrase("you");
   const member = detail?.members.find((item) => item.userId === userId);
-  if (!member) return "a former member";
-  return member.email ?? "a family member";
+  if (!member) return phrase("a former member");
+  return member.email ?? phrase("a family member");
 }

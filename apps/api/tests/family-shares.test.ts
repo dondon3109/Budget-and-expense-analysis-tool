@@ -22,6 +22,7 @@ import {
 } from "../src/db/tenants";
 import { transactionRepository } from "../src/db/transactions";
 import { HttpError } from "../src/errors";
+import { createFamilyAlerts } from "../src/family-alerts";
 import { createFamilyService } from "../src/families";
 import { createFamilyRoutes } from "../src/routes/families";
 import {
@@ -59,7 +60,13 @@ async function setup() {
   const verifier: AuthVerifier = { verify: async (_env, token) => ({ id: token }) };
   const app = new Hono<AppEnvironment>();
   app.use("/api/app/*", createAuthMiddleware(verifier, createTenantResolver()));
-  app.route("/api/app/transactions", createTransactionRoutes(transactionRepository, familyJournal));
+  app.route(
+    "/api/app/transactions",
+    createTransactionRoutes(transactionRepository, {
+      journal: familyJournal,
+      alerts: createFamilyAlerts({ notify: async () => undefined }),
+    }),
+  );
   app.route("/api/app/families/balance-shares", createMyBalanceShareRoutes(familyShareRepository));
   app.route("/api/app/family/shares", createActiveFamilyShareRoutes(familyShareRepository));
   app.route("/api/app/families", createFamilyRoutes(createFamilyService()));

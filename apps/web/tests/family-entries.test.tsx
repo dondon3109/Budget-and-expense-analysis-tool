@@ -3,22 +3,26 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, screen } from "@testing-library/react";
-import type { FamilyEntryView, TransactionListItem } from "@zoption/shared";
+import type { FamilyEntryView } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../src/lib/api", async () =>
   (await import("./helpers/api-mock")).createApiMock([
     "getFamily",
+    "getFamilyComments",
+    "addFamilyComment",
     "getFamilyEntryHistory",
     "getFamilyDeletedEntries",
     "restoreFamilyEntry",
   ]),
 );
 
-import { FamilyEntryHistoryDialog } from "../src/components/family/FamilyEntryHistoryDialog";
+import { FamilyThreadDialog } from "../src/components/family/FamilyThreadDialog";
 import { RecentlyDeletedEntries } from "../src/components/family/RecentlyDeletedEntries";
 import {
+  addFamilyComment,
   getFamily,
+  getFamilyComments,
   getFamilyDeletedEntries,
   getFamilyEntryHistory,
   restoreFamilyEntry,
@@ -48,9 +52,10 @@ function familyAs(userId: string, role: "owner" | "member") {
   return familyWorkspace({ id: userId } as never, "family:santos");
 }
 
-describe("family entry history", () => {
+describe("family entry thread", () => {
   it("names who changed an entry and only the fields that changed", async () => {
     const family = familyAs("mama", "owner");
+    vi.mocked(getFamilyComments).mockResolvedValue([]);
     vi.mocked(getFamilyEntryHistory).mockResolvedValue([
       {
         action: "updated",
@@ -62,9 +67,10 @@ describe("family entry history", () => {
     ]);
 
     renderWithProviders(
-      <FamilyEntryHistoryDialog
+      <FamilyThreadDialog
         family={family}
-        item={{ id: "rice", description: "Rice" } as TransactionListItem}
+        subject={{ kind: "transaction", subjectId: "rice" }}
+        title="Rice"
         onClose={() => undefined}
       />,
     );
@@ -72,6 +78,31 @@ describe("family entry history", () => {
     expect(await screen.findByText(/kuya@example.com changed it/u)).toBeInTheDocument();
     expect(screen.getByText("Amount: ₱1,200 → ₱1,500")).toBeInTheDocument();
     expect(screen.queryByText(/^Category:/u)).not.toBeInTheDocument();
+  });
+
+  it("posts a comment on the entry", async () => {
+    const family = familyAs("mama", "owner");
+    vi.mocked(getFamilyEntryHistory).mockResolvedValue([]);
+    vi.mocked(getFamilyComments).mockResolvedValue([]);
+    vi.mocked(addFamilyComment).mockResolvedValue({} as never);
+    const subject = { kind: "transaction", subjectId: "rice" } as const;
+
+    renderWithProviders(
+      <FamilyThreadDialog
+        family={family}
+        subject={subject}
+        title="Rice"
+        onClose={() => undefined}
+      />,
+    );
+    fireEvent.change(await screen.findByPlaceholderText("Add a comment"), {
+      target: { value: "  Which store?  " },
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Post" }));
+
+    await vi.waitFor(() =>
+      expect(addFamilyComment).toHaveBeenCalledWith(family, subject, "Which store?"),
+    );
   });
 
   it("offers a member Restore only for what they deleted", async () => {

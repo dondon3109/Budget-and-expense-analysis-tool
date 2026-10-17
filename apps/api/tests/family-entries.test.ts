@@ -20,6 +20,7 @@ import {
 } from "../src/db/tenants";
 import { transactionRepository } from "../src/db/transactions";
 import { HttpError } from "../src/errors";
+import { createFamilyAlerts } from "../src/family-alerts";
 import { createFamilyEntryRoutes } from "../src/routes/family-entries";
 import { createTransactionRoutes } from "../src/routes/transactions";
 import type { AppEnvironment, Bindings } from "../src/types";
@@ -57,7 +58,13 @@ async function setup() {
   const verifier: AuthVerifier = { verify: async (_env, token) => ({ id: token }) };
   const app = new Hono<AppEnvironment>();
   app.use("/api/app/*", createAuthMiddleware(verifier, createTenantResolver()));
-  app.route("/api/app/transactions", createTransactionRoutes(transactionRepository, familyJournal));
+  app.route(
+    "/api/app/transactions",
+    createTransactionRoutes(transactionRepository, {
+      journal: familyJournal,
+      alerts: createFamilyAlerts({ notify: async () => undefined }),
+    }),
+  );
   app.route("/api/app/family/transactions", createFamilyEntryRoutes(familyJournal));
   app.onError((error, context) =>
     error instanceof HttpError
