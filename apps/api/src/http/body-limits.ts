@@ -126,6 +126,10 @@ export const supportBodyLimits: MiddlewareHandler<AppEnvironment> = async (conte
   return capBody(SUPPORT_CHAT_BODY_LIMIT, BODY_TOO_LARGE)(context, next);
 };
 
+function hasNoBody(request: Request): boolean {
+  return request.body === null || request.headers.get("Content-Length") === "0";
+}
+
 /** Content type and size gate for every authenticated `/api/app/*` request body. */
 export const appBodyLimits: MiddlewareHandler<AppEnvironment> = async (context, next) => {
   const { method, path } = context.req;
@@ -140,7 +144,8 @@ export const appBodyLimits: MiddlewareHandler<AppEnvironment> = async (context, 
   }
 
   const maxSize = jsonBodyLimitFor(method, path);
-  if (maxSize === undefined) {
+  // A bare action (restore, close, decline) has no body, so there is no type to check.
+  if (maxSize === undefined || hasNoBody(context.req.raw)) {
     await next();
     return;
   }
