@@ -52,7 +52,11 @@ export function isAnalyticsConsented(): boolean {
  */
 const gateAndSanitizeAnalyticsEvent: BeforeSendFn = (captureResult) => {
   if (!captureResult || !isAnalyticsConsented()) return null;
-  return keepDashboardHeatmap(sanitizeAnalyticsEvent(scrubExceptionEvent(captureResult)));
+  const scrubbed = scrubExceptionEvent(captureResult);
+  if (!scrubbed) return null;
+  const sanitized = sanitizeAnalyticsEvent(scrubbed);
+  if (!sanitized) return null;
+  return keepDashboardHeatmap(sanitized);
 };
 
 /**

@@ -53,7 +53,6 @@ export function GuidesIndexPage() {
               data-filter-value={guide.category}
               href={`/guides/${guide.slug}`}
               className="guide-card"
-              aria-label={`Read guide: ${guide.title}`}
             >
               <header className="guide-card-header">
                 <span className="guide-category-badge">{guide.category}</span>

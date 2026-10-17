@@ -11,12 +11,12 @@
     "test": "vitest run --root ../.. --project site"
   },
   "dependencies": {
-    "@astrojs/react": "^7.0.1",
+    "@astrojs/react": "^7.1.0",
     "@zoption/shared": "workspace:*",
     "@zoption/web-common": "workspace:*",
-    "astro": "^7.3.8",
-    "lucide-react": "^1.55.0",
-    "posthog-js": "^1.438.7",
+    "astro": "^7.4.0",
+    "lucide-react": "^1.58.0",
+    "posthog-js": "^1.438.12",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
   },
