@@ -1,7 +1,7 @@
 name: Production Release
 
-# Dispatched by hand from main when a batch of merged work should ship; merging alone releases
-# nothing. One run ships web and Android together, in that order: the Worker and both Pages
+# Dispatched by Dispatch Production Release when a release-prep commit (an android.versionCode
+# bump) passes CI on main, or by hand for a retry; merging any other change releases nothing. One run ships web and Android together, in that order: the Worker and both Pages
 # projects go live first, and the APK and android/latest.json publish only after production is
 # green and tagged, so a new app never meets an older Worker.
 on:
@@ -15,8 +15,8 @@ on:
 permissions:
   contents: read
 
-# Two human checkpoints: dispatching the run, and approving the production environment on
-# deploy-and-release. Everything between is automatic, and approval-summary writes what the
+# One human checkpoint: approving the production environment on deploy-and-release. Everything
+# before it is automatic, and approval-summary writes what the
 # approver needs to see (changes, bot authorship, migrations, CODEOWNERS paths, preview result,
 # bundle hash) and announces the wait.
 #
