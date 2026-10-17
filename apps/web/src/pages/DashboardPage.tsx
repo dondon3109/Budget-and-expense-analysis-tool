@@ -42,6 +42,7 @@ import { useInitialDashboardExperience } from "../components/dashboard/InitialDa
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { MonthSelector } from "../components/month/MonthSelector";
+import { RemittanceCard } from "../components/family/RemittanceCard";
 import { SharedBalancesCard } from "../components/family/SharedBalancesCard";
 import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
 import { AppShell } from "../components/layout/AppShell";
@@ -451,6 +452,8 @@ export function DashboardPage() {
             />
           </>
         )}
+
+        {family && <RemittanceCard family={workspace} month={summaryMonth} />}
 
         <AccountsPanel
           accounts={accountMutations}

@@ -109,6 +109,9 @@ export const queryKeys = {
   /** A family workspace: the balances its members share into it. */
   familySharedBalances: (family: AuthenticatedWorkspace) =>
     [...queryKeys.family(family), "shared-balances"] as const,
+  /** A family workspace: the Sent · Spent · Left card for one month, and its history. */
+  familyRemittances: (family: AuthenticatedWorkspace, month: string) =>
+    [...queryKeys.family(family), "remittances", month] as const,
   /** Personal workspace only: the balances this person shares into families. */
   myBalanceShares: (personal: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(personal), "balance-shares"] as const,

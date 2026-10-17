@@ -65,6 +65,7 @@ export function tenantDataStatements(env: Bindings, tenantId: string): D1Prepare
       "DELETE FROM family_transaction_shares WHERE source_tenant_id = ?1 OR family_tenant_id = ?1",
     ).bind(tenantId),
     env.DB.prepare("DELETE FROM family_balance_shares WHERE family_tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM family_remittances WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM bug_reports WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM customer_reviews WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM share_links WHERE tenant_id = ?").bind(tenantId),

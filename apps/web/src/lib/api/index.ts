@@ -29,6 +29,7 @@ export * from "./debts";
 export * from "./events";
 export * from "./exports";
 export * from "./families";
+export * from "./remittances";
 export * from "./goalProfile";
 export * from "./goals";
 export * from "./imports";

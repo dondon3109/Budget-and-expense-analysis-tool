@@ -13,7 +13,8 @@ import { tenants, transactions } from "./schema";
 
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
 // The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
-// 0078_family_spaces.sql, 0079_family_closures.sql, and 0080_family_shares.sql.
+// 0078_family_spaces.sql, 0079_family_closures.sql, 0080_family_shares.sql, and
+// 0081_family_remittances.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -145,5 +146,33 @@ export const familyBalanceShares = sqliteTable(
       table.sourceAccountId,
     ),
     index("family_balance_shares_source_idx").on(table.sourceTenantId),
+  ],
+);
+
+export const familyRemittances = sqliteTable(
+  "family_remittances",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sentByUserId: text("sent_by_user_id").notNull(),
+    sentAmountMinor: integer("sent_amount_minor").notNull(),
+    sentCurrency: text("sent_currency").notNull(),
+    feeMinor: integer("fee_minor").notNull().default(0),
+    provider: text("provider"),
+    sentOn: text("sent_on").notNull(),
+    note: text("note"),
+    transactionId: text("transaction_id"),
+    receivedByUserId: text("received_by_user_id"),
+    receivedAt: text("received_at"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("family_remittances_tenant_idx").on(table.tenantId, table.sentOn),
+    uniqueIndex("family_remittances_transaction_unique").on(table.transactionId),
+    check("family_remittances_amount_check", sql`${table.sentAmountMinor} > 0`),
   ],
 );
