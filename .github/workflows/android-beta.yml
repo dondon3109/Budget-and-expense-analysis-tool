@@ -53,6 +53,9 @@ on:
         required: false
       POSTHOG_CLI_API_KEY:
         required: false
+      # Optional: without it (and the EXPO_PROJECT_ID variable) the APK has no server push.
+      ANDROID_GOOGLE_SERVICES_JSON:
+        required: false
 
 # The workflow stays read-only over the repository: it publishes artifacts to
 # R2 but never commits. After publication, refresh the website fallback through
@@ -124,6 +127,22 @@ jobs:
           node "$GITHUB_WORKSPACE/scripts/android-release-metadata.mjs" \
             < "$RUNNER_TEMP/zoption-release-config.json" >> "$GITHUB_ENV"
 
+      # Server push needs the Firebase file (prebuild links the build to FCM) and the EAS
+      # project id (scopes Expo push tokens), at prebuild and again when Gradle embeds the
+      # app config. Without both, app.config.ts leaves push out and the APK still ships.
+      - name: Configure server push
+        env:
+          ANDROID_GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+          EXPO_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
+        run: |
+          if [ -z "$ANDROID_GOOGLE_SERVICES_JSON" ] || [ -z "$EXPO_PROJECT_ID" ]; then
+            echo "::notice::ANDROID_GOOGLE_SERVICES_JSON or EXPO_PROJECT_ID is not set; this APK has no server push."
+            exit 0
+          fi
+          printf '%s' "$ANDROID_GOOGLE_SERVICES_JSON" > "$RUNNER_TEMP/google-services.json"
+          echo "GOOGLE_SERVICES_JSON=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
+          echo "EAS_PROJECT_ID=$EXPO_PROJECT_ID" >> "$GITHUB_ENV"
+
       - name: Prebuild Android (production)
         working-directory: apps/mobile
         run: CI=1 APP_VARIANT=production npx expo prebuild --platform android --clean --no-install
@@ -162,7 +181,6 @@ jobs:
         run: ./gradlew assembleRelease --no-daemon
         env:
           APP_VARIANT: production
-          EAS_PROJECT_ID: ${{ vars.EXPO_PROJECT_ID }}
           ANDROID_KEYSTORE_PATH: ${{ env.ANDROID_KEYSTORE_PATH }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}

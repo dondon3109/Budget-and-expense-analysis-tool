@@ -40,6 +40,7 @@ import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, readStoredSessionSubject, supabase } from "./supabase-client";
 
 import { DUMMY_DEV_SUBJECT } from "@/db/demo-seed";
+import { unregisterForPush } from "@/features/push/push-registration";
 import { GUEST_SUBJECT } from "@/db/guest-workspace";
 export { DUMMY_DEV_SUBJECT };
 export const DUMMY_DEV_STORAGE_KEY = "zoption.dev.dummy_session";
@@ -416,53 +417,64 @@ export function SessionProvider({ children }: PropsWithChildren) {
     if (exchanged.user && isNewAccount(exchanged.user)) showThankYou("signup");
   }, []);
 
-  const signOut = useCallback(async (options: SignOutOptions = {}) => {
-    const subject = subjectRef.current;
-    if (subject && !options.preserveLocalWorkspace) {
-      const risk = await inspectLocalWorkspaceForSignOut(subject);
-      assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
-    }
+  const signOut = useCallback(
+    async (options: SignOutOptions = {}) => {
+      const subject = subjectRef.current;
+      if (subject && !options.preserveLocalWorkspace) {
+        const risk = await inspectLocalWorkspaceForSignOut(subject);
+        assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
+      }
 
-    if (isDummySessionRef.current) {
-      await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
-    } else if (supabase) {
-      const client = getSupabaseClient();
-      if (options.preserveLocalWorkspace) {
-        // Forced sign-out: the Worker already rejected the credential, so
-        // there is nothing left to revoke and the encrypted workspace stays
-        // for recovery. This device alone is cleared.
-        const { error } = await client.auth.signOut({ scope: "local" });
-        if (error) throw error;
-      } else {
-        // A user-initiated sign-out revokes the refresh token server-side
-        // (auth-js's default global scope), so a copied refresh token stops
-        // minting access tokens.
-        const { error } = await client.auth.signOut({ scope: "global" });
-        if (error) {
-          // Revocation needs Supabase, and offline is normal on mobile. A user
-          // who asked to sign out must never stay signed in here, so clear
-          // this device as well. Revocation is best-effort in that case, and
-          // the fallback is not surfaced as an error: the user's intent - no
-          // longer being signed in - was carried out.
-          const { error: localError } = await client.auth.signOut({ scope: "local" });
-          if (localError) throw localError;
+      if (!options.preserveLocalWorkspace && !isDummySessionRef.current) {
+        // Before the session ends, while there is still a token to authenticate with, so a phone
+        // that is signed out stops showing this person's notifications.
+        await getAccessToken(false)
+          .then(unregisterForPush)
+          .catch(() => undefined);
+      }
+
+      if (isDummySessionRef.current) {
+        await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
+      } else if (supabase) {
+        const client = getSupabaseClient();
+        if (options.preserveLocalWorkspace) {
+          // Forced sign-out: the Worker already rejected the credential, so
+          // there is nothing left to revoke and the encrypted workspace stays
+          // for recovery. This device alone is cleared.
+          const { error } = await client.auth.signOut({ scope: "local" });
+          if (error) throw error;
+        } else {
+          // A user-initiated sign-out revokes the refresh token server-side
+          // (auth-js's default global scope), so a copied refresh token stops
+          // minting access tokens.
+          const { error } = await client.auth.signOut({ scope: "global" });
+          if (error) {
+            // Revocation needs Supabase, and offline is normal on mobile. A user
+            // who asked to sign out must never stay signed in here, so clear
+            // this device as well. Revocation is best-effort in that case, and
+            // the fallback is not surfaced as an error: the user's intent - no
+            // longer being signed in - was carried out.
+            const { error: localError } = await client.auth.signOut({ scope: "local" });
+            if (localError) throw localError;
+          }
         }
       }
-    }
-    isDummySessionRef.current = false;
-    clearUserScopedRuntimeState();
-    // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
-    // Reset here only when that listener did not already clear PostHog.
-    if (subjectRef.current === subject) void telemetry.reset();
-    setSignedInAccount(null);
+      isDummySessionRef.current = false;
+      clearUserScopedRuntimeState();
+      // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
+      // Reset here only when that listener did not already clear PostHog.
+      if (subjectRef.current === subject) void telemetry.reset();
+      setSignedInAccount(null);
 
-    if (subject && !options.preserveLocalWorkspace) {
-      await discardLocalWorkspace(subject);
-      await clearAppLock(subject);
-    }
-    subjectRef.current = null;
-    setSnapshot(signedOutSession);
-  }, []);
+      if (subject && !options.preserveLocalWorkspace) {
+        await discardLocalWorkspace(subject);
+        await clearAppLock(subject);
+      }
+      subjectRef.current = null;
+      setSnapshot(signedOutSession);
+    },
+    [getAccessToken],
+  );
 
   const value = useMemo<SessionContextValue>(
     () => ({

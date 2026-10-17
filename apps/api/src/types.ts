@@ -25,6 +25,8 @@ export interface Bindings {
   WEB_APP_URL?: string;
   /** Public site origin that share links point at (`<origin>/s#<token>`). */
   PUBLIC_SITE_URL?: string;
+  /** Secret; Expo requires it only when the project turns on enhanced push security. */
+  EXPO_ACCESS_TOKEN?: string;
   DEV_USER_ID?: string;
   DEV_ACCESS_TOKEN_ENABLED?: string;
   EMAIL_FROM?: string;
