@@ -270,6 +270,17 @@ Safe diagnostic actions:
 - `invalid_response/request_rejected` or `malformed_response` — verify the request/response contract without logging provider bodies.
 - No provider event with an API `500` — investigate D1 migration and repository state.
 
+### Server push (Expo and Firebase)
+
+The Worker sends push through the Expo push service (`apps/api/src/push.ts`), which delivers to Android through Firebase Cloud Messaging. **Current external state: not configured.** No Firebase project or EAS project exists for Zoption, the repository has no `ANDROID_GOOGLE_SERVICES_JSON` secret or `EXPO_PROJECT_ID` variable, and no Worker has `EXPO_ACCESS_TOKEN`. Until both build values exist the APK has no push, devices never register, and nothing is sent. To turn it on:
+
+1. Create a Firebase project and add an Android app with the production package name (`variants.production.androidPackage` in `apps/mobile/app.config.ts`). Store the downloaded `google-services.json` contents, raw, as the repository secret `ANDROID_GOOGLE_SERVICES_JSON`. The Android Beta Build writes it to a temp file and passes its path as `GOOGLE_SERVICES_JSON`.
+2. Create the EAS project for the `zoption-mobile` slug (`npx eas init` in `apps/mobile`, without committing the `extra.eas` it writes) and store its id as the repository variable `EXPO_PROJECT_ID`.
+3. In Firebase, create a service account key for FCM HTTP v1 and upload it to the EAS project (`npx eas credentials`, Android, Push Notifications: FCM V1). Expo uses it to reach FCM; it never goes to the Worker.
+4. Optional: turn on "enhanced push security" for the EAS project and store an Expo access token as the Worker secret `EXPO_ACCESS_TOKEN` in each environment. Without the setting Expo accepts unauthenticated sends to the project's tokens.
+
+Read the state back with `gh secret list` and `gh variable list` (the build values), `npx eas credentials` (the FCM key), and `wrangler secret list --config wrangler.deploy.jsonc --env production` (the access token). Push is Android only; the iOS build strips the push entitlement.
+
 ## Frontend configuration
 
 Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production-only API fallback to `https://api.zoption.site`. Preview and staging builds must receive `VITE_API_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` explicitly from the build process; local or production fallbacks are rejected. All deployment API and Supabase values must be exact HTTPS origins without credentials, paths, queries, or fragments. Production must use `https://api.zoption.site`; Preview and Staging must not. The build accepts only a Supabase `sb_publishable_…` or legacy JWT `anon` key and rejects secret/service-role types without echoing the value. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`: `pnpm --filter @zoption/api dev` binds `127.0.0.1:8787` only, and `pnpm --filter @zoption/api dev:lan` is the explicit opt-in to `0.0.0.0:8787` for testing from a phone on the same Wi-Fi.

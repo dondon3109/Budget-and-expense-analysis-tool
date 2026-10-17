@@ -3,7 +3,7 @@
 // Expo Go checks on import, which session-state reaches through the daily
 // reminder cleanup. Suites that assert on notifications mock it explicitly.
 module.exports = {
-  AndroidImportance: { DEFAULT: 5 },
+  AndroidImportance: { DEFAULT: 5, HIGH: 6 },
   SchedulableTriggerInputTypes: { DAILY: "daily", DATE: "date" },
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
   dismissNotificationAsync: jest.fn(async () => undefined),
@@ -15,4 +15,6 @@ module.exports = {
   getLastNotificationResponse: jest.fn(() => null),
   clearLastNotificationResponse: jest.fn(),
   addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getExpoPushTokenAsync: jest.fn(async () => ({ type: "expo", data: "ExponentPushToken[test]" })),
+  addPushTokenListener: jest.fn(() => ({ remove: jest.fn() })),
 };

@@ -1074,4 +1074,5 @@ export const customerReviews = sqliteTable(
 
 export * from "./schema-providers";
 export * from "./schema-fx";
+export * from "./schema-push";
 export * from "./schema-sharing";

@@ -88,9 +88,9 @@ const withLegacyBackHandling: ConfigPlugin = (config) =>
 /**
  * expo-notifications' config plugin always writes the `aps-environment` push
  * entitlement, and prebuild applies that plugin whenever the package is
- * installed, listed or not. The daily reminder is a local notification and
- * nothing uses push, so strip the entitlement: iOS signing would otherwise
- * require the Push Notifications capability on every provisioning profile.
+ * installed, listed or not. Server push is Android only for now, so strip the
+ * entitlement: iOS signing would otherwise require the Push Notifications
+ * capability on every provisioning profile.
  */
 const withoutPushEntitlement: ConfigPlugin = (config) =>
   withEntitlementsPlist(config, (cfg) => {
@@ -101,6 +101,12 @@ const withoutPushEntitlement: ConfigPlugin = (config) =>
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appVariant = resolveVariant(environmentValue(process.env.APP_VARIANT));
   const variant = variants[appVariant];
+  // Server push needs both: the Firebase file links the Android build to FCM, and the EAS
+  // project id scopes its Expo push tokens. Without either, the build has no push and the app
+  // never asks Expo for a token (`pushProjectId` in src/features/push/push-registration.ts).
+  const googleServicesFile = environmentValue(process.env.GOOGLE_SERVICES_JSON);
+  const easProjectId = environmentValue(process.env.EAS_PROJECT_ID);
+  const push = googleServicesFile && easProjectId ? { googleServicesFile, easProjectId } : null;
 
   return {
     ...config,
@@ -131,6 +137,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // system finished the activity instead of popping the native stack,
       // closing the app whenever the user pressed back from a pushed screen.
       predictiveBackGestureEnabled: false,
+      ...(push ? { googleServicesFile: push.googleServicesFile } : {}),
     },
     plugins: [
       "expo-router",
@@ -211,6 +218,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appVariant,
+      ...(push ? { eas: { projectId: push.easProjectId } } : {}),
     },
   };
 };
