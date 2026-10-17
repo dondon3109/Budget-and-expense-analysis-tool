@@ -8,6 +8,7 @@ import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  keepDashboardHeatmap,
   PostHogAnalytics,
   resetPostHogForTests,
   setAnalyticsAccount,
@@ -126,6 +127,7 @@ describe("PostHog Web Analytics", () => {
       capture_pageview: false,
       capture_pageleave: false,
       autocapture: false,
+      capture_heatmaps: true,
       disable_session_recording: true,
       disable_surveys: true,
       disable_external_dependency_loading: true,
@@ -274,5 +276,29 @@ describe("PostHog Web Analytics", () => {
     storeAnalyticsConsent(true);
     await waitFor(() => expect(mockedPostHog.identify).toHaveBeenCalledTimes(1));
     expect(pageviews()).toHaveLength(0);
+  });
+});
+
+describe("keepDashboardHeatmap", () => {
+  const point = { x: 10, y: 20, target_fixed: false, type: "click" };
+  const heatmap = (data: Record<string, unknown>) =>
+    ({ uuid: "u", event: "$$heatmap", properties: { $heatmap_data: data } }) as Parameters<
+      typeof keepDashboardHeatmap
+    >[0];
+
+  it("keeps only the dashboard's points", () => {
+    const result = keepDashboardHeatmap(
+      heatmap({
+        "https://app.zoption.site/app": [point],
+        "https://app.zoption.site/app/transactions": [point],
+      }),
+    );
+    expect(result?.properties.$heatmap_data).toEqual({ "https://app.zoption.site/app": [point] });
+  });
+
+  it("drops a heatmap event with no dashboard points", () => {
+    expect(
+      keepDashboardHeatmap(heatmap({ "https://app.zoption.site/app/settings": [point] })),
+    ).toBeNull();
   });
 });
