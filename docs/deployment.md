@@ -272,10 +272,17 @@ Safe diagnostic actions:
 
 ### Server push (Expo and Firebase)
 
-The Worker sends push through the Expo push service (`apps/api/src/push.ts`), which delivers to Android through Firebase Cloud Messaging. **Current external state: not configured.** No Firebase project or EAS project exists for Zoption, the repository has no `ANDROID_GOOGLE_SERVICES_JSON` secret or `EXPO_PROJECT_ID` variable, and no Worker has `EXPO_ACCESS_TOKEN`. Until both build values exist the APK has no push, devices never register, and nothing is sent. To turn it on:
+The Worker sends push through the Expo push service (`apps/api/src/push.ts`), which delivers to Android through Firebase Cloud Messaging. **Current external state (configured 2026-10-17):**
+
+- Firebase project "Zoption" (project ID `zoption-8bb3e`; Gemini in Firebase and Google Analytics off) has the Android app `site.zoption.android` ("Zoption Android"). Its `google-services.json` is stored raw as the repository secret `ANDROID_GOOGLE_SERVICES_JSON`.
+- The EAS project `@zoption/zoption-mobile` belongs to the `zoption` Expo organization, not the personal `dondon3109` account (https://expo.dev/accounts/zoption/projects/zoption-mobile). Its ID `95148bf7-d5c7-4d46-acad-377f5de188d5` is the repository variable `EXPO_PROJECT_ID`. Nothing about it is committed, because `eas init` cannot write to the dynamic `app.config.ts`.
+- An FCM V1 service account key (`firebase-adminsdk-fbsvc@zoption-8bb3e.iam.gserviceaccount.com`) is uploaded to EAS for `site.zoption.android` under the production profile. FCM Legacy is not set.
+- Enhanced push security is off, and no Worker has `EXPO_ACCESS_TOKEN`.
+
+Every APK the Android Beta Build makes from now on registers for push. To set it up again, or for another project:
 
 1. Create a Firebase project and add an Android app with the production package name (`variants.production.androidPackage` in `apps/mobile/app.config.ts`). Store the downloaded `google-services.json` contents, raw, as the repository secret `ANDROID_GOOGLE_SERVICES_JSON`. The Android Beta Build writes it to a temp file and passes its path as `GOOGLE_SERVICES_JSON`.
-2. Create the EAS project for the `zoption-mobile` slug (`npx eas init` in `apps/mobile`, without committing the `extra.eas` it writes) and store its id as the repository variable `EXPO_PROJECT_ID`.
+2. Create the EAS project for the `zoption-mobile` slug (`npx eas init` in `apps/mobile`, without committing the `extra.eas` it writes) and store its id as the repository variable `EXPO_PROJECT_ID`. Any local `eas` command, including `eas credentials`, needs `EAS_PROJECT_ID=<id>` and `GOOGLE_SERVICES_JSON=<path>` in the environment; without both, `app.config.ts` leaves out `extra.eas.projectId` and EAS cannot find the project.
 3. In Firebase, create a service account key for FCM HTTP v1 and upload it to the EAS project (`npx eas credentials`, Android, Push Notifications: FCM V1). Expo uses it to reach FCM; it never goes to the Worker.
 4. Optional: turn on "enhanced push security" for the EAS project and store an Expo access token as the Worker secret `EXPO_ACCESS_TOKEN` in each environment. Without the setting Expo accepts unauthenticated sends to the project's tokens.
 
