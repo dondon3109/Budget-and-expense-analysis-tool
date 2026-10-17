@@ -51,6 +51,57 @@ function cleanupLeaseUntil(): string {
   return new Date(Date.now() + 5 * 60 * 1_000).toISOString();
 }
 
+/**
+ * Deletes everything a workspace holds, for a deleted person's own workspace and a closed family
+ * alike. Keep this explicit list in sync with every tenant_id table in db/schema.ts. The caller
+ * deletes the `tenants` row itself after these.
+ */
+export function tenantDataStatements(env: Bindings, tenantId: string): D1PreparedStatement[] {
+  return [
+    env.DB.prepare("DELETE FROM bug_reports WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM customer_reviews WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM share_links WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_tool_calls WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_runs WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_messages WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_threads WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_memories WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_preferences WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM assistant_model_memory_pass_usage WHERE tenant_id = ?").bind(
+      tenantId,
+    ),
+    env.DB.prepare("DELETE FROM receipt_preferences WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM billing_monthly_usage WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM billing_checkout_references WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM billing_subscriptions WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM billing_customers WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM pro_trials WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM import_previews WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM imports WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM financial_goals WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM debts WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM budgets WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM subscription_renewal_notifications WHERE tenant_id = ?").bind(
+      tenantId,
+    ),
+    env.DB.prepare("DELETE FROM subscriptions WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM transfer_groups WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM calendar_events WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM goal_events WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM pets WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM accounts WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM categories WHERE tenant_id = ?").bind(tenantId),
+    // The sync rows come last: deleting the tables above fires the mobile sync
+    // triggers, which insert fresh change rows for the departing tenant.
+    env.DB.prepare("DELETE FROM mobile_sync_change_groups WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM mobile_sync_changes WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM mobile_sync_state WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM mobile_sync_clients WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM mobile_sync_idempotency WHERE tenant_id = ?").bind(tenantId),
+  ];
+}
+
 export const accountDeletionRepository: AccountDeletionRepository = {
   async find(env, userId) {
     const row = await env.DB.prepare(
@@ -70,7 +121,6 @@ export const accountDeletionRepository: AccountDeletionRepository = {
 
     const tenantId = tenantIdForUser(userId);
     const deletedAt = now();
-    // Keep this explicit list in sync with every tenant_id table in db/schema.ts.
     // The tombstone is inserted in the same D1 batch as the local purge so an
     // old JWT can never bootstrap a replacement workspace between operations.
     await env.DB.batch([
@@ -86,51 +136,11 @@ export const accountDeletionRepository: AccountDeletionRepository = {
          WHERE state = 'active' AND beneficiary_user_id = ?`,
       ).bind(userId),
       env.DB.prepare("DELETE FROM app_user_identities WHERE user_id = ?").bind(userId),
-      env.DB.prepare("DELETE FROM bug_reports WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM customer_reviews WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM share_links WHERE tenant_id = ?").bind(tenantId),
       env.DB.prepare("DELETE FROM push_devices WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM push_preferences WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM tenant_members WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM family_seat_events WHERE user_id = ?").bind(userId),
-      env.DB.prepare("DELETE FROM assistant_tool_calls WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM assistant_runs WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM assistant_messages WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM assistant_threads WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM assistant_memories WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM assistant_preferences WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM assistant_model_memory_pass_usage WHERE tenant_id = ?").bind(
-        tenantId,
-      ),
-      env.DB.prepare("DELETE FROM receipt_preferences WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM billing_monthly_usage WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM billing_checkout_references WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM billing_subscriptions WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM billing_customers WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM pro_trials WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM import_previews WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM imports WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM financial_goals WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM debts WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM budgets WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM subscription_renewal_notifications WHERE tenant_id = ?").bind(
-        tenantId,
-      ),
-      env.DB.prepare("DELETE FROM subscriptions WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM transfer_groups WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM calendar_events WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM goal_events WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM pets WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM accounts WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM categories WHERE tenant_id = ?").bind(tenantId),
-      // The sync rows come last: deleting the tables above fires the mobile sync
-      // triggers, which insert fresh change rows for the departing tenant.
-      env.DB.prepare("DELETE FROM mobile_sync_change_groups WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM mobile_sync_changes WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM mobile_sync_state WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM mobile_sync_clients WHERE tenant_id = ?").bind(tenantId),
-      env.DB.prepare("DELETE FROM mobile_sync_idempotency WHERE tenant_id = ?").bind(tenantId),
+      ...tenantDataStatements(env, tenantId),
       env.DB.prepare("DELETE FROM user_tenants WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM tenants WHERE id = ?").bind(tenantId),
     ]);

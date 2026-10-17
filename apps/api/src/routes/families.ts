@@ -127,6 +127,12 @@ export function createActiveFamilyRoutes(families: FamilyService) {
     return context.body(null, 204);
   });
 
+  // Members keep reading and exporting until the closing period ends; the auth middleware
+  // refuses every other write from here on.
+  routes.post("/close", async (context) =>
+    context.json(await families.close(context.env, context.get("tenant"), context.get("authUser"))),
+  );
+
   routes.post("/transfer", async (context) => {
     const input = parseInput(
       familyTransferSchema,

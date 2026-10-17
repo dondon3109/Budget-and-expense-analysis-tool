@@ -121,6 +121,7 @@ const FAMILY_WORKSPACE_PATHS = [
   "/api/app/categories",
   "/api/app/budgets",
   "/api/app/family",
+  "/api/app/exports",
 ] as const;
 
 function acceptsFamilyWorkspace(path: string): boolean {
@@ -206,8 +207,17 @@ export function createAuthMiddleware(
             "This is not available in a family workspace.",
           );
         }
+        const reading = ["GET", "HEAD"].includes(context.req.method);
+        // Members leave a closed family through /api/app/families, which takes no header.
+        if (tenant.membership.closing && !reading) {
+          throw new HttpError(
+            403,
+            "workspace_closing",
+            "This family is closed. You can still view and export it.",
+          );
+        }
         // Viewers read only. Per-entry rules for members land with the family entities.
-        if (tenant.membership.role === "viewer" && !["GET", "HEAD"].includes(context.req.method)) {
+        if (tenant.membership.role === "viewer" && !reading) {
           throw new HttpError(403, "workspace_read_only", "Viewers cannot change this workspace.");
         }
       }

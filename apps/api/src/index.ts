@@ -4,6 +4,7 @@ import { reconcileDueBillingCheckouts } from "./billing/scheduled-reconciliation
 import { trialEmailService } from "./billing/trial-emails";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
+import { familyRepository } from "./db/families";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
 import { refreshDailyFxRates } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
@@ -127,6 +128,11 @@ export default {
     const reconciled = await accountDeletionService.reconcile(env, 25);
     if (reconciled > 0)
       console.log(JSON.stringify({ message: "Pending account deletions reconciled", reconciled }));
+    for (;;) {
+      const deleted = await familyRepository.purgeClosed(env, 25);
+      if (deleted > 0) console.log(JSON.stringify({ message: "Closed families deleted", deleted }));
+      if (deleted < 25) break;
+    }
     for (;;) {
       const deleted = await bugReportService.cleanupExpired(env, 100);
       if (deleted > 0)

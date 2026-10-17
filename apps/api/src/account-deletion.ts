@@ -281,12 +281,13 @@ export function createAccountDeletionService(
             { billingPath: "/app/settings" },
           );
         }
-        // A family outlives its owner only through a transfer; deleting the owner would orphan it.
+        // An open family needs an owner, so it must be transferred or closed first. A closing
+        // family is deleted on schedule whether or not its owner is still here.
         if (await families?.ownedFamilyId(env, user.id)) {
           throw new HttpError(
             409,
             "family_owner_blocks_account_deletion",
-            "Transfer your family to another member before deleting your account.",
+            "Transfer or close your family before deleting your account.",
           );
         }
         record = await repository.purgeTenant(env, user.id);

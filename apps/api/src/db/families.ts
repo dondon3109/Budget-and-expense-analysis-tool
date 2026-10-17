@@ -1,4 +1,5 @@
 import {
+  FAMILY_CLOSING_DAYS,
   FAMILY_INVITATION_DAYS,
   FAMILY_JOIN_COOLDOWN_DAYS,
   FAMILY_SEAT_COOLDOWN_DAYS,
@@ -13,6 +14,7 @@ import {
 } from "@zoption/shared";
 
 import type { Bindings } from "../types";
+import { tenantDataStatements } from "./account-deletion";
 import { starterStatements } from "./tenants";
 
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
@@ -41,6 +43,7 @@ export interface FamilyRepository {
   /** The email the person confirmed with Supabase, synced by `POST /api/app/identity`. */
   verifiedEmail(env: Bindings, userId: string): Promise<string | null>;
   membershipCount(env: Bindings, userId: string): Promise<number>;
+  /** The family the person owns and has not closed; a closing family no longer needs them. */
   ownedFamilyId(env: Bindings, userId: string): Promise<string | null>;
   create(env: Bindings, ownerId: string, name: string): Promise<string>;
   detail(env: Bindings, tenantId: string, role: WorkspaceRole): Promise<FamilyDetail>;
@@ -74,6 +77,10 @@ export interface FamilyRepository {
     role: FamilyMemberRole,
   ): Promise<boolean>;
   transfer(env: Bindings, tenantId: string, ownerId: string, newOwnerId: string): Promise<boolean>;
+  /** Makes the family read only, drops its pending invitations, and returns its deletion time. */
+  close(env: Bindings, tenantId: string, userId: string): Promise<string>;
+  /** Deletes up to `limit` families whose closing period has ended; returns how many. */
+  purgeClosed(env: Bindings, limit: number): Promise<number>;
 }
 
 export const familyRepository: FamilyRepository = {
@@ -97,7 +104,9 @@ export const familyRepository: FamilyRepository = {
 
   async ownedFamilyId(env, userId) {
     const row = await env.DB.prepare(
-      "SELECT tenant_id AS tenantId FROM tenant_members WHERE user_id = ? AND role = 'owner'",
+      `SELECT tm.tenant_id AS tenantId FROM tenant_members tm
+       WHERE tm.user_id = ? AND tm.role = 'owner'
+         AND NOT EXISTS (SELECT 1 FROM family_closures fc WHERE fc.tenant_id = tm.tenant_id)`,
     )
       .bind(userId)
       .first<{ tenantId: string }>();
@@ -122,9 +131,12 @@ export const familyRepository: FamilyRepository = {
 
   async detail(env, tenantId, role) {
     const [family, members, invitations, counts] = await Promise.all([
-      env.DB.prepare("SELECT name FROM tenants WHERE id = ?")
+      env.DB.prepare(
+        `SELECT t.name, fc.purge_after AS closesAt
+         FROM tenants t LEFT JOIN family_closures fc ON fc.tenant_id = t.id WHERE t.id = ?`,
+      )
         .bind(tenantId)
-        .first<{ name: string }>(),
+        .first<{ name: string; closesAt: string | null }>(),
       env.DB.prepare(
         `SELECT tm.user_id AS userId, identity.verified_email AS email, tm.role,
                 tm.created_at AS joinedAt
@@ -163,6 +175,7 @@ export const familyRepository: FamilyRepository = {
         cooling: counts.cooling,
       },
       swaps: { limit: FAMILY_SWAP_LIMIT_PER_YEAR, used: counts.swaps },
+      closesAt: family.closesAt,
     };
   },
 
@@ -330,5 +343,42 @@ export const familyRepository: FamilyRepository = {
       ).bind(tenantId, newOwnerId),
     ]);
     return (promoted!.meta.changes ?? 0) > 0;
+  },
+
+  async close(env, tenantId, userId) {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO family_closures (tenant_id, closed_by, purge_after)
+         VALUES (?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+${FAMILY_CLOSING_DAYS} days'))`,
+      ).bind(tenantId, userId),
+      env.DB.prepare("DELETE FROM family_invitations WHERE tenant_id = ?").bind(tenantId),
+    ]);
+    const row = await env.DB.prepare(
+      "SELECT purge_after AS closesAt FROM family_closures WHERE tenant_id = ?",
+    )
+      .bind(tenantId)
+      .first<{ closesAt: string }>();
+    if (!row) throw new Error("The family closure could not be read.");
+    return row.closesAt;
+  },
+
+  async purgeClosed(env, limit) {
+    const { results } = await env.DB.prepare(
+      `SELECT tenant_id AS tenantId FROM family_closures
+       WHERE purge_after <= ${NOW} ORDER BY purge_after LIMIT ?`,
+    )
+      .bind(limit)
+      .all<{ tenantId: string }>();
+    for (const { tenantId } of results) {
+      // family_seat_events stay: the join cooldown must outlive the family.
+      await env.DB.batch([
+        ...tenantDataStatements(env, tenantId),
+        env.DB.prepare("DELETE FROM family_invitations WHERE tenant_id = ?").bind(tenantId),
+        env.DB.prepare("DELETE FROM tenant_members WHERE tenant_id = ?").bind(tenantId),
+        env.DB.prepare("DELETE FROM family_closures WHERE tenant_id = ?").bind(tenantId),
+        env.DB.prepare("DELETE FROM tenants WHERE id = ? AND kind = 'family'").bind(tenantId),
+      ]);
+    }
+    return results.length;
   },
 };

@@ -265,12 +265,13 @@ async function resolveFamily(
   workspaceId: string,
 ): Promise<TenantContext> {
   const member = await env.DB.prepare(
-    `SELECT tm.role AS role
+    `SELECT tm.role AS role, fc.tenant_id IS NOT NULL AS closing
      FROM tenant_members tm JOIN tenants t ON t.id = tm.tenant_id
+     LEFT JOIN family_closures fc ON fc.tenant_id = tm.tenant_id
      WHERE tm.tenant_id = ? AND tm.user_id = ? AND t.kind = 'family'`,
   )
     .bind(workspaceId, user.id)
-    .first<{ role: WorkspaceRole }>();
+    .first<{ role: WorkspaceRole; closing: number }>();
   if (!member) {
     throw new HttpError(403, "workspace_forbidden", "You are not a member of this workspace.");
   }
@@ -279,7 +280,7 @@ async function resolveFamily(
     defaultAccountId: defaultAccountIdForTenant(workspaceId),
     // First-run onboarding belongs to the person's own workspace, never a shared one.
     onboardingComplete: true,
-    membership: { role: member.role },
+    membership: { role: member.role, closing: Boolean(member.closing) },
   };
 }
 

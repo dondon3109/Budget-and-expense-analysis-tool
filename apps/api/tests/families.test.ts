@@ -261,13 +261,54 @@ describe("families", () => {
     await expect(response.json()).resolves.toEqual({ error: "new_owner_owns_family" });
     expect((await detail(family)).role).toBe("owner");
   });
+
+  it("closes into a read-only family, then deletes it once the closing period ends", async () => {
+    const { env, database, call, createFamily, invite, join, detail } = await setup();
+    const family = await createFamily();
+    await join(family, "lola");
+    await invite(family, "papa");
+
+    const closed = await call("lola", "POST", "/family/close", { family });
+    const response = await call("mama", "POST", "/family/close", { family });
+
+    expect(closed.status).toBe(403);
+    const { closesAt } = (await response.json()) as { closesAt: string };
+    expect(Date.parse(closesAt) - Date.now()).toBeGreaterThan(29 * 86_400_000);
+    expect(await detail(family, "lola")).toMatchObject({ closesAt, invitations: [] });
+    for (const user of ["mama", "lola"]) {
+      await expect(
+        (
+          await call(user, "PATCH", "/family/members/lola", { family, body: { role: "viewer" } })
+        ).json(),
+      ).resolves.toEqual({ error: "workspace_closing" });
+    }
+
+    expect(await familyRepository.purgeClosed(env, 25)).toBe(0);
+    database.prepare("UPDATE family_closures SET purge_after = '2000-01-01T00:00:00.000Z'").run();
+    expect(await familyRepository.purgeClosed(env, 25)).toBe(1);
+
+    expect((await call("lola", "GET", "/family", { family })).status).toBe(403);
+    const left = (table: string) =>
+      database.prepare(`SELECT COUNT(*) AS count FROM ${table} WHERE tenant_id = ?`).get(family);
+    expect(left("tenant_members")).toEqual({ count: 0 });
+    expect(left("accounts")).toEqual({ count: 0 });
+    // The join cooldown outlives the family.
+    expect(left("family_seat_events")).toEqual({ count: 1 });
+  });
 });
 
 describe("account deletion for a family owner", () => {
-  it("is refused until the family is transferred", async () => {
-    const { env, createFamily } = await setup();
-    await createFamily();
-    const purgeTenant = vi.fn();
+  it("is refused until the family is closed", async () => {
+    const { env, call, createFamily } = await setup();
+    const family = await createFamily();
+    const purgeTenant = vi.fn(async () => ({
+      userId: "mama",
+      storagePurgedAt: "done",
+      authDeletedAt: "done",
+      cleanupAttempts: 0,
+      cleanupLeaseUntil: null,
+      lastErrorCode: null,
+    }));
     const service = createAccountDeletionService(
       { find: vi.fn(async () => null), purgeTenant } as unknown as AccountDeletionRepository,
       () => ({
@@ -285,5 +326,10 @@ describe("account deletion for a family owner", () => {
       service.deleteAccount({ env, user: { id: "mama" }, accessToken: "token", password: "pw" }),
     ).rejects.toMatchObject({ status: 409, code: "family_owner_blocks_account_deletion" });
     expect(purgeTenant).not.toHaveBeenCalled();
+
+    expect((await call("mama", "POST", "/family/close", { family })).status).toBe(200);
+    await expect(
+      service.deleteAccount({ env, user: { id: "mama" }, accessToken: "token", password: "pw" }),
+    ).resolves.toBe("deleted");
   });
 });

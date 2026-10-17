@@ -99,7 +99,11 @@ export interface TenantContext {
   /** False until first-run onboarding finishes; the gate in `app.ts` keys off it. */
   onboardingComplete: boolean;
   /** Set only when the request acts in a family workspace; absent means the caller's own. */
-  membership?: { role: WorkspaceRole };
+  membership?: {
+    role: WorkspaceRole;
+    /** A closed family is read only for everyone until it is deleted. */
+    closing: boolean;
+  };
 }
 
 export interface AppEnvironment {
