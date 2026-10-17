@@ -212,7 +212,7 @@ describe("API platform routes", () => {
     });
     expect(response.status).toBe(204);
     expect(response.headers.get("Access-Control-Allow-Headers")).toBe(
-      "Authorization, Content-Type",
+      "Authorization, Content-Type, X-Zoption-Workspace",
     );
     expect(authVerifier.verify).not.toHaveBeenCalled();
   });

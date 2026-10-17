@@ -1,8 +1,10 @@
 import {
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  type WorkspaceRole,
 } from "@zoption/shared";
 
+import { HttpError } from "../errors";
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
 export const PRO_TRIAL_DAYS = 7;
@@ -138,7 +140,8 @@ export interface TenantBootstrapRepository {
 }
 
 export interface TenantResolver {
-  resolve(env: Bindings, user: AuthUser): Promise<TenantContext>;
+  /** `workspaceId` is the requested family workspace; absent means the caller's personal one. */
+  resolve(env: Bindings, user: AuthUser, workspaceId?: string): Promise<TenantContext>;
 }
 
 export function tenantIdForUser(userId: string): string {
@@ -218,7 +221,10 @@ export function createTenantResolver(
   bootstrapRepository: TenantBootstrapRepository = tenantBootstrapRepository,
 ): TenantResolver {
   return {
-    async resolve(env, user) {
+    async resolve(env, user, workspaceId) {
+      if (workspaceId && workspaceId !== tenantIdForUser(user.id)) {
+        return resolveFamily(env, user, workspaceId);
+      }
       // The account_deletions tombstone is enforced in the auth middleware, which every
       // authenticated path passes through before resolution. Keeping a second check here
       // would duplicate one indexed D1 read on every request.
@@ -238,6 +244,34 @@ export function createTenantResolver(
       }
       return bootstrapRepository.bootstrap(env, user);
     },
+  };
+}
+
+/**
+ * A family workspace resolves only through the caller's own `tenant_members` row. Anything else,
+ * including another person's personal workspace, is the same 403 so ids cannot be probed.
+ */
+async function resolveFamily(
+  env: Bindings,
+  user: AuthUser,
+  workspaceId: string,
+): Promise<TenantContext> {
+  const member = await env.DB.prepare(
+    `SELECT tm.role AS role
+     FROM tenant_members tm JOIN tenants t ON t.id = tm.tenant_id
+     WHERE tm.tenant_id = ? AND tm.user_id = ? AND t.kind = 'family'`,
+  )
+    .bind(workspaceId, user.id)
+    .first<{ role: WorkspaceRole }>();
+  if (!member) {
+    throw new HttpError(403, "workspace_forbidden", "You are not a member of this workspace.");
+  }
+  return {
+    tenantId: workspaceId,
+    defaultAccountId: defaultAccountIdForTenant(workspaceId),
+    // First-run onboarding belongs to the person's own workspace, never a shared one.
+    onboardingComplete: true,
+    membership: { role: member.role },
   };
 }
 

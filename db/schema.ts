@@ -32,7 +32,7 @@ const timestamps = {
 
 export const tenants = sqliteTable("tenants", {
   id: text("id").primaryKey(),
-  kind: text("kind", { enum: ["user"] }).notNull(),
+  kind: text("kind", { enum: ["user", "family"] }).notNull(),
   name: text("name").notNull(),
   currency: text("currency").notNull().default("PHP"),
   primaryGoal: text("primary_goal", { enum: primaryGoals }),
@@ -1075,4 +1075,5 @@ export const customerReviews = sqliteTable(
 export * from "./schema-providers";
 export * from "./schema-fx";
 export * from "./schema-push";
+export * from "./schema-family";
 export * from "./schema-sharing";

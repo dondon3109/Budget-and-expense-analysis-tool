@@ -49,6 +49,7 @@ import { createIdentityRoutes, createPlatformAdminRoutes } from "./routes/platfo
 import { createProviderCredentialRoutes } from "./routes/provider-credentials";
 import { createReceiptRoutes } from "./routes/receipts";
 import { createPushRoutes } from "./routes/push";
+import { createWorkspaceRoutes } from "./routes/workspaces";
 import { createPublicShareLinkRoutes, createShareLinkRoutes } from "./routes/share-links";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import {
@@ -225,6 +226,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/receipts", createReceiptRoutes(dependencies.receiptService));
   app.route("/api/app/shares", createShareLinkRoutes(dependencies.shareLinks));
   app.route("/api/app/push", createPushRoutes(dependencies.push));
+  app.route("/api/app/workspaces", createWorkspaceRoutes(dependencies.memberships));
   app.route(
     "/api/app/exports",
     createExportRoutes(dependencies.transactions, dependencies.billing),

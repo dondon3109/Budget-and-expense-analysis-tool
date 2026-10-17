@@ -35,6 +35,7 @@ import {
 import { bugReportRepository, type BugReportRepository } from "./db/bug-reports";
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { customerReviewRepository, type CustomerReviewRepository } from "./db/customer-reviews";
+import { membershipRepository, type MembershipRepository } from "./db/memberships";
 import { pushRepository, type PushRepository } from "./db/push";
 import { createShareLinkRepository, type ShareLinkRepository } from "./db/share-links";
 import { loadCashflowTrend, loadDashboard, loadTransferFeeInsight } from "./db/dashboard";
@@ -112,6 +113,7 @@ export interface AppOptions {
   customerReviews?: CustomerReviewRepository;
   shareLinks?: ShareLinkRepository;
   push?: PushRepository;
+  memberships?: MembershipRepository;
 }
 
 /**
@@ -240,6 +242,7 @@ export function createDependencies(overrides: AppOptions = {}) {
   const customerReviews = overrides.customerReviews ?? customerReviewRepository;
   const shareLinks = overrides.shareLinks ?? createShareLinkRepository(accountStore);
   const push = overrides.push ?? pushRepository;
+  const memberships = overrides.memberships ?? membershipRepository;
   const accountDeletionService =
     overrides.accountDeletionService ??
     createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
@@ -282,5 +285,6 @@ export function createDependencies(overrides: AppOptions = {}) {
     customerReviews,
     shareLinks,
     push,
+    memberships,
   };
 }

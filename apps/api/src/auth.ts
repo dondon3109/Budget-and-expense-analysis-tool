@@ -1,3 +1,4 @@
+import { WORKSPACE_HEADER } from "@zoption/shared";
 import { createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
 import type { MiddlewareHandler } from "hono";
 
@@ -109,6 +110,22 @@ export function isLoopbackOrigin(origin: string | undefined): boolean {
   );
 }
 
+/**
+ * Surfaces that already act on any tenant through `tenantId` alone and so may run in a family
+ * workspace. Everything else (billing, account, onboarding, sync, ...) is personal until its own
+ * family PR makes it workspace aware, so a request naming another workspace there fails closed.
+ */
+const FAMILY_WORKSPACE_PATHS = [
+  "/api/app/transactions",
+  "/api/app/accounts",
+  "/api/app/categories",
+  "/api/app/budgets",
+] as const;
+
+function acceptsFamilyWorkspace(path: string): boolean {
+  return FAMILY_WORKSPACE_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
 export function createAuthMiddleware(
   verifier: AuthVerifier,
   tenantResolver: TenantResolver,
@@ -178,7 +195,22 @@ export function createAuthMiddleware(
     }
 
     if (!skipTenantResolution(context.req.path, context.req.method)) {
-      context.set("tenant", await tenantResolver.resolve(context.env, user));
+      const workspaceId = context.req.header(WORKSPACE_HEADER)?.trim() || undefined;
+      const tenant = await tenantResolver.resolve(context.env, user, workspaceId);
+      if (tenant.membership) {
+        if (!acceptsFamilyWorkspace(context.req.path)) {
+          throw new HttpError(
+            400,
+            "workspace_not_supported",
+            "This is not available in a family workspace.",
+          );
+        }
+        // Viewers read only. Per-entry rules for members land with the family entities.
+        if (tenant.membership.role === "viewer" && !["GET", "HEAD"].includes(context.req.method)) {
+          throw new HttpError(403, "workspace_read_only", "Viewers cannot change this workspace.");
+        }
+      }
+      context.set("tenant", tenant);
     }
     await next();
   };
