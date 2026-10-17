@@ -24,6 +24,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: Home lists each account (Cash, GCash, bank, and the rest) with its balance below the Total Balance, as the web dashboard does. Archived accounts stay hidden.
 - PostHog analytics are now linked to your Zoption account while you are signed in: the web app (after you allow Analytics) and the mobile app (after you tap Allow when it asks, or turn on More, Usage analytics) send your user ID and email with their usage events and crash reports, so we can see how each account uses Zoption. They still never include amounts, categories, or text. The Privacy Policy, Cookie Policy, and the web app's cookie settings say so, and the web app asks for your Analytics choice again.
 - Zoption now notes how each new transaction was entered (typed, voice, the widget, a receipt, an SMS paste, a PDF statement, the assistant, or a file import) with your workspace, so it can see which entry features people rely on. It is never sent to analytics, and the Privacy Policy says so.
 - The Privacy and Cookie policies now list every feature-use event the web and mobile apps send (page names and that a record was added, changed, or removed, never amounts or text). On the web these are sent only after you allow Analytics.
