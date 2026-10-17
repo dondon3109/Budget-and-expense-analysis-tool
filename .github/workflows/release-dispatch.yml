@@ -1,0 +1,64 @@
+name: Dispatch Production Release
+
+# Starts Production Release when a release-prep commit lands on main and its CI passes, so the
+# only human step left is approving the production environment gate. A release-prep commit is
+# one that changes android.versionCode in apps/mobile/app.config.ts, the same bump Production
+# Release's preflight already demands, so ordinary merges never request an approval. Preflight
+# stays the authority: it re-checks main, CI, the Android version, and whether a release is owed.
+#
+# The Android notes are the feat, fix, and perf commit subjects since the last release tag.
+# The job only reads git history; it runs none of the repository's code. GITHUB_TOKEN may start
+# workflow_dispatch runs, so no personal token is involved.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Dispatch Production Release for a release-prep commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          COMMIT: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          # A newer push has its own CI run; this one's commit can no longer be released.
+          main="$(gh api "repos/$GH_REPO/commits/main" --jq .sha)"
+          if [[ "$main" != "$COMMIT" ]]; then
+            echo "main moved to $main; nothing to dispatch for $COMMIT."
+            exit 0
+          fi
+          if ! gh api "repos/$GH_REPO/commits/$COMMIT" \
+            --jq '.files[] | select(.filename == "apps/mobile/app.config.ts") | .patch' |
+            grep -Eq '^[+-].*versionCode'; then
+            echo "$COMMIT does not change android.versionCode; not a release-prep commit."
+            exit 0
+          fi
+          if [[ -n "$(gh run list --workflow release.yml --commit "$COMMIT" --json databaseId --jq '.[].databaseId')" ]]; then
+            echo "Production Release already ran or is running for $COMMIT."
+            exit 0
+          fi
+          # Subjects of the feat, fix, and perf commits since the last release, newest first.
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$COMMIT")"
+          notes="$(git log --no-merges --format=%s "$tag..$COMMIT" |
+            sed -nE 's/^(feat|fix|perf)(\([^)]*\))?!?: (.)/\u\3/p' |
+            sed -E 's/ \(#[0-9]+\)$//' | head -n 8)"
+          notes="${notes:-Bug fixes and improvements.}"
+          gh workflow run release.yml --ref main -f android_release_notes="$notes"
+          echo "Dispatched Production Release for $COMMIT."

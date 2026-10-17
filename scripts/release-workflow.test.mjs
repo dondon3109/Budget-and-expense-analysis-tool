@@ -118,3 +118,19 @@ describe("Cancel Superseded Releases", () => {
     expect(workflow).toContain('select(.headSha != \\"$MAIN_COMMIT\\")');
   });
 });
+
+describe("Dispatch Production Release", () => {
+  // Its token can start workflows, so it must only react to a passed main push CI run and only
+  // for a commit that bumps android.versionCode; anything broader would spam approval requests.
+  it("dispatches only for a passed push CI run that bumps the Android version", async () => {
+    const workflow = await readFile(".github/workflows/release-dispatch.yml", "utf8");
+    expect(workflow).toMatch(
+      /^ {2}workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]\n {4}branches: \[main\]$/m,
+    );
+    expect(workflow).toContain("conclusion == 'success'");
+    expect(workflow).toContain("event == 'push'");
+    expect(workflow).toContain("versionCode");
+    expect(workflow).toContain("gh workflow run release.yml --ref main");
+    expect(workflow).not.toMatch(/pnpm|environment:/);
+  });
+});
