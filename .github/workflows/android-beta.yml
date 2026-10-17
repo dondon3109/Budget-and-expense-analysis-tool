@@ -53,6 +53,9 @@ on:
         required: false
       POSTHOG_CLI_API_KEY:
         required: false
+      # Optional: without it (and the EXPO_PROJECT_ID variable) the APK has no server push.
+      ANDROID_GOOGLE_SERVICES_JSON:
+        required: false
 
 # The workflow stays read-only over the repository: it publishes artifacts to
 # R2 but never commits. After publication, refresh the website fallback through
