@@ -32,10 +32,9 @@ describe("GuidesIndexPage", () => {
 
     // All guide cards should be rendered initially
     for (const guide of FINANCE_GUIDES) {
-      expect(screen.getByRole("link", { name: `Read guide: ${guide.title}` })).toHaveAttribute(
-        "href",
-        `/guides/${guide.slug}`,
-      );
+      expect(
+        screen.getByRole("link", { name: (name) => name.includes(guide.title) }),
+      ).toHaveAttribute("href", `/guides/${guide.slug}`);
       expect(screen.getByRole("heading", { level: 2, name: guide.title })).toBeInTheDocument();
       expect(screen.getByText(guide.description)).toBeInTheDocument();
     }

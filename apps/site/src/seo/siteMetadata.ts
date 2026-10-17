@@ -298,7 +298,7 @@ function installPageStructuredData(): StructuredDataGraph {
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
 const LANDING_LAST_MODIFIED = "2026-10-10";
 const PRICING_LAST_MODIFIED = "2026-10-14";
-const GUIDES_LAST_MODIFIED = "2026-10-01";
+const GUIDES_LAST_MODIFIED = "2026-10-17";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;

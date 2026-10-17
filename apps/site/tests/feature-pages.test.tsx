@@ -64,17 +64,15 @@ describe("feature explainer pages", () => {
 
       const guide = getFinanceGuideBySlug(page.relatedGuideSlug);
       expect(guide).not.toBeNull();
-      expect(screen.getByRole("link", { name: `Read guide: ${guide?.title}` })).toHaveAttribute(
-        "href",
-        `/guides/${guide?.slug}`,
-      );
+      expect(
+        screen.getByRole("link", { name: (name) => name.includes(guide?.title ?? "") }),
+      ).toHaveAttribute("href", `/guides/${guide?.slug}`);
 
       const sibling = findFeaturePage(page.relatedFeaturePath);
       expect(sibling).toBeDefined();
-      expect(screen.getByRole("link", { name: `Read: ${sibling?.heading}` })).toHaveAttribute(
-        "href",
-        sibling?.path,
-      );
+      expect(
+        screen.getByRole("link", { name: (name) => name.includes(sibling?.heading ?? "") }),
+      ).toHaveAttribute("href", sibling?.path);
 
       cleanup();
     }

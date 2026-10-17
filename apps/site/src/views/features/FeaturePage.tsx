@@ -48,11 +48,7 @@ export function FeaturePage({ path }: { path: FeaturePagePath }) {
           <h2 className="guide-related-heading">Keep reading</h2>
           <div className="guide-related-grid">
             {relatedGuide && (
-              <a
-                href={`/guides/${relatedGuide.slug}`}
-                className="guide-related-card"
-                aria-label={`Read guide: ${relatedGuide.title}`}
-              >
+              <a href={`/guides/${relatedGuide.slug}`} className="guide-related-card">
                 <h3>{relatedGuide.title}</h3>
                 <p>{relatedGuide.description}</p>
                 <span className="guide-read-more">
@@ -61,11 +57,7 @@ export function FeaturePage({ path }: { path: FeaturePagePath }) {
               </a>
             )}
             {relatedFeature && (
-              <a
-                href={relatedFeature.path}
-                className="guide-related-card"
-                aria-label={`Read: ${relatedFeature.heading}`}
-              >
+              <a href={relatedFeature.path} className="guide-related-card">
                 <h3>{relatedFeature.heading}</h3>
                 <p>{relatedFeature.summary}</p>
                 <span className="guide-read-more">

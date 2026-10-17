@@ -37,8 +37,8 @@ export interface FeaturePage {
 export type FeaturePagePath = "/features/receipt-scanning" | "/features/voice-expense-entry";
 
 /** Feeds the WebPage dateModified and the sitemap lastmod; keep the two in step. */
-export const FEATURE_PAGES_LAST_MODIFIED = "2026-10-01";
-export const FEATURE_PAGES_LAST_UPDATED = "October 1, 2026";
+export const FEATURE_PAGES_LAST_MODIFIED = "2026-10-17";
+export const FEATURE_PAGES_LAST_UPDATED = "October 17, 2026";
 
 export const FEATURE_PAGES: FeaturePage[] = [
   {
