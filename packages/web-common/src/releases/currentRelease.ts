@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 16, 2026",
+  releasedOn: "October 17, 2026",
   changes: [
     {
       title: "Several purchases in one message",
@@ -89,9 +89,19 @@ export const currentRelease: ProductRelease = {
         "While you are signed in, usage analytics and crash reports are linked to your Zoption account, on web after you allow Analytics and on mobile after you tap Allow or turn on More, Usage analytics. They still never include amounts, categories, or text, and the web app asks for your Analytics choice again.",
     },
     {
-      title: "Android Beta 0.2.54",
+      title: "Pets that sound like animals",
       description:
-        "The official Android Beta carries pet colors, pet voices and the Reduce motion switch, the top spending category on Home, the new analytics choice, and everything from 0.2.52. It ships together with the server update, so the pet page loads again for anyone on 0.2.53. Install 0.2.54 over 0.2.53.",
+        "Your pet's voice now sounds like the real animal: the pig oinks and grunts, the hamster squeaks, the hedgehog snuffles, the hippo honks, the panda bleats, and the penguin brays, on web and mobile.",
+    },
+    {
+      title: "Crash reports from the web app",
+      description:
+        "After you allow Analytics, the web app reports its errors to us with only the error type and where in the code it happened, never the error message or your data, so we can fix them sooner. The web app and site ask for your Analytics choice again.",
+    },
+    {
+      title: "Android Beta 0.2.55",
+      description:
+        "The official Android Beta carries the new pet voices and everything from 0.2.54. Install 0.2.55 over 0.2.54.",
     },
   ],
 };

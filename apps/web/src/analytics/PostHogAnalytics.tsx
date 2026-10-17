@@ -2,6 +2,8 @@ import posthog, { type BeforeSendFn } from "posthog-js";
 // web_vitals needs the SDK's web-vitals extension, which it would otherwise download
 // at runtime; disable_external_dependency_loading forbids that, so it ships in the bundle.
 import "posthog-js/dist/web-vitals";
+// Same reason: exception autocapture is an extension the SDK would otherwise download.
+import "posthog-js/dist/exception-autocapture";
 import { useEffect } from "react";
 
 import { sanitizeAnalyticsProperties } from "@zoption/web-common/analytics-sanitize";
@@ -50,8 +52,91 @@ export function isAnalyticsConsented(): boolean {
  */
 const gateAndSanitizeAnalyticsEvent: BeforeSendFn = (captureResult) => {
   if (!captureResult || !isAnalyticsConsented()) return null;
-  return sanitizeAnalyticsEvent(captureResult);
+  return sanitizeAnalyticsEvent(scrubExceptionEvent(captureResult));
 };
+
+/** One exception the SDK built: its class, its message, and its parsed stack. */
+interface ExceptionEntry {
+  type?: unknown;
+  mechanism?: { type?: unknown; handled?: unknown; exception_id?: unknown; parent_id?: unknown };
+  stacktrace?: { frames?: unknown };
+}
+
+interface StackFrame {
+  platform?: unknown;
+  filename?: unknown;
+  function?: unknown;
+  lineno?: unknown;
+  colno?: unknown;
+  in_app?: unknown;
+  chunk_id?: unknown;
+}
+
+function scrubFrame(frame: StackFrame) {
+  return {
+    platform: frame.platform,
+    // A bundle URL never carries a query here, but a page frame would carry the route's.
+    filename: typeof frame.filename === "string" ? frame.filename.split(/[?#]/)[0] : undefined,
+    function: frame.function,
+    lineno: frame.lineno,
+    colno: frame.colno,
+    in_app: frame.in_app,
+    chunk_id: frame.chunk_id,
+  };
+}
+
+function scrubException(entry: ExceptionEntry) {
+  const type = typeof entry.type === "string" && entry.type ? entry.type : "Error";
+  const frames = Array.isArray(entry.stacktrace?.frames)
+    ? (entry.stacktrace.frames as StackFrame[]).map(scrubFrame)
+    : undefined;
+  return {
+    type,
+    // PostHog groups and titles by value; the class stands in for the message.
+    value: type,
+    mechanism: {
+      type: entry.mechanism?.type,
+      handled: entry.mechanism?.handled,
+      exception_id: entry.mechanism?.exception_id,
+      parent_id: entry.mechanism?.parent_id,
+    },
+    ...(frames ? { stacktrace: { type: "raw", frames } } : {}),
+  };
+}
+
+/**
+ * An error message can quote what the user typed or what the API returned (a payee, an
+ * amount), so a `$exception` leaves with only the error class and code locations, the
+ * same boundary as mobile crash reports. Every other `$exception_*` property (the
+ * message copies, the breadcrumb steps) is dropped; non-exception events pass through.
+ */
+export const scrubExceptionEvent: BeforeSendFn = (captureResult) => {
+  if (!captureResult || captureResult.event !== "$exception") return captureResult;
+  const source: Record<string, unknown> = captureResult.properties;
+  const list = source.$exception_list;
+  const properties: typeof captureResult.properties = {};
+  for (const [key, value] of Object.entries(source)) {
+    if (!key.startsWith("$exception_") || key === "$exception_level") properties[key] = value;
+  }
+  properties.$exception_list = Array.isArray(list)
+    ? (list as ExceptionEntry[]).map(scrubException)
+    : [];
+  return { ...captureResult, properties };
+};
+
+/**
+ * Reports a render failure the app's error boundary caught. React keeps those away
+ * from window.onerror, so autocapture never sees them. A no-op until analytics is
+ * initialized; the before_send gate still applies consent and the scrub.
+ */
+export function captureAppException(error: unknown, source: string): void {
+  if (!isInitialized) return;
+  try {
+    posthog.captureException(error, { source });
+  } catch {
+    // Error reporting must never surface a second failure.
+  }
+}
 
 /**
  * posthog-js attaches $current_url, $referrer, $pathname and $host from the browser, and a
@@ -93,6 +178,13 @@ export function ensurePostHogInitialized(): boolean {
     disable_external_dependency_loading: true,
     advanced_disable_flags: true,
     before_send: gateAndSanitizeAnalyticsEvent,
+    // Uncaught errors and rejections go to Error Tracking; console.error stays out
+    // because the app logs handled failures there.
+    capture_exceptions: {
+      capture_unhandled_errors: true,
+      capture_unhandled_rejections: true,
+      capture_console_errors: false,
+    },
     capture_performance: {
       web_vitals: true,
       web_vitals_allowed_metrics: ["LCP", "CLS", "INP"],

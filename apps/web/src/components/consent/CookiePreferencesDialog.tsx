@@ -97,8 +97,8 @@ function CookiePreferencesDialogContent() {
                 <strong>Analytics</strong>
               </span>
               <p>
-                PostHog product usage and page performance, linked to your account ID and email
-                while you are signed in, with no financial detail.
+                PostHog product usage, page performance, and error reports, linked to your account
+                ID and email while you are signed in, with no financial detail.
               </p>
             </div>
             <label className="cookie-switch">

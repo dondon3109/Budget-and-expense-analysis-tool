@@ -5,7 +5,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="October 16, 2026"
+      lastUpdated="October 17, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>
@@ -104,11 +104,12 @@ export function CookiePolicyPage() {
         <p>
           PostHog is Zoption&apos;s web measurement provider. It receives cookieless, memory-only
           page-use and Core Web Vitals measurements from the public site, and the conversion and
-          feature-use events described in section 2, linked to your user ID and email while you are
-          signed in to the web app. It never receives what you enter: no amounts, categories,
-          financial-account names, search text, page addresses with parameters, or free text. Before
-          enabling any additional Analytics or Marketing provider, Zoption must connect it to the
-          consent gate, update this policy and its vendor inventory, disclose purposes and
+          feature-use events described in section 2, plus web app error reports carrying only the
+          error type and code locations (never the error message), linked to your user ID and email
+          while you are signed in to the web app. It never receives what you enter: no amounts,
+          categories, financial-account names, search text, page addresses with parameters, or free
+          text. Before enabling any additional Analytics or Marketing provider, Zoption must connect
+          it to the consent gate, update this policy and its vendor inventory, disclose purposes and
           retention, and make any minimal Content Security Policy changes deliberately. Optional
           technology must not load before the corresponding consent.
         </p>

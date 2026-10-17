@@ -115,6 +115,53 @@ describe("PostHog outbound payload", () => {
     expect(event.properties.source).toBe("web");
   });
 
+  it("sends an exception as its class and code locations, never its message", async () => {
+    expect(analytics.ensurePostHogInitialized()).toBe(true);
+    const secret = "Rent to Juan Dela Cruz 15000";
+    const error = new TypeError(secret, { cause: new Error(`cause: ${secret}`) });
+    // $exception goes out in a batch; send it now so the transport can be read.
+    posthog.set_config({ request_batching: false });
+
+    analytics.captureAppException(error, "app-error-boundary");
+    await vi.waitFor(() => expect(outboundRequests.length).toBeGreaterThan(0));
+
+    const body = decodeRequestBody(outboundRequests[0]?.body);
+    const event = body.batch.find((entry) => entry.event === "$exception");
+    if (!event) throw new Error("The PostHog capture payload did not include $exception");
+
+    expect(JSON.stringify(body)).not.toContain("Juan");
+    expect(event.properties.source).toBe("app-error-boundary");
+    const list = event.properties.$exception_list as Array<{
+      type: string;
+      value: string;
+      stacktrace?: { frames: Array<{ lineno?: number }> };
+    }>;
+    expect(list.map(({ type, value }) => [type, value])).toEqual([
+      ["TypeError", "TypeError"],
+      ["Error", "Error"],
+    ]);
+    expect(list[0]?.stacktrace?.frames.length).toBeGreaterThan(0);
+    posthog.set_config({ request_batching: true });
+  });
+
+  it("autocaptures an uncaught error from the bundled extension", async () => {
+    expect(analytics.ensurePostHogInitialized()).toBe(true);
+    posthog.set_config({ request_batching: false });
+
+    // The extension wraps window.onerror; calling it directly keeps jsdom from also
+    // failing the run with the uncaught error.
+    window.onerror?.("Uncaught RangeError", "app.js", 1, 1, new RangeError("balance 15000"));
+    await vi.waitFor(() => expect(outboundRequests.length).toBeGreaterThan(0));
+
+    const body = decodeRequestBody(outboundRequests[0]?.body);
+    const event = body.batch.find((entry) => entry.event === "$exception");
+    expect(event?.properties.$exception_list).toMatchObject([
+      { type: "RangeError", value: "RangeError" },
+    ]);
+    expect(JSON.stringify(body)).not.toContain("15000");
+    posthog.set_config({ request_batching: true });
+  });
+
   it("control: without before_send the same SDK hands the raw private URL to its transport", async () => {
     expect(analytics.ensurePostHogInitialized()).toBe(true);
 
