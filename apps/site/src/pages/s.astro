@@ -1,0 +1,22 @@
+---
+import { ShareCard } from "../components/share/ShareCard";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { SITE_ORIGIN } from "../seo/siteMetadata";
+import { SharePage } from "../views/SharePage";
+
+// Deliberately generic: link previews (Messenger, Facebook) fetch this HTML and keep a copy, so
+// it must never name an amount. The token lives in the fragment, which crawlers never see.
+// Outside the route manifest, so it is never in the sitemap or llms.txt and never counted.
+const metadata = {
+  title: "Shared on Zoption",
+  description: "Someone shared a read-only money snapshot with you on Zoption.",
+  canonical: `${SITE_ORIGIN}/s`,
+  robots: "noindex,nofollow",
+} as const;
+---
+
+<BaseLayout metadata={metadata} analytics={false}>
+  <SharePage>
+    <ShareCard slot="shareCard" client:load />
+  </SharePage>
+</BaseLayout>

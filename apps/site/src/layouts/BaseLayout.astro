@@ -22,12 +22,15 @@ import "../styles/foundation.css";
 interface Props {
   path?: string;
   metadata?: SeoMetadata;
+  /** False keeps PostHog off the page entirely, even after consent (the share page). */
+  analytics?: boolean;
 }
 
 const metadata = Astro.props.metadata ?? getPublicRouteMetadata(Astro.props.path ?? "");
 if (!metadata) throw new Error(`No route metadata for ${Astro.props.path}`);
 // Only manifest pages count as page views; the 404 page does not.
 const trackable = Astro.props.metadata === undefined;
+const analytics = Astro.props.analytics ?? true;
 const socialImageAlt = "Zoption private budget and expense tracker";
 ---
 
@@ -76,7 +79,7 @@ const socialImageAlt = "Zoption private budget and expense tracker";
       )
     }
   </head>
-  <body data-trackable={String(trackable)}>
+  <body data-trackable={String(trackable)} data-analytics={analytics ? undefined : "off"}>
     <slot />
     <CookieConsent />
     <script>

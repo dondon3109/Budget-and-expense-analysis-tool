@@ -37,6 +37,7 @@ export * from "./platform-admin";
 export * from "./receipts";
 export * from "./reviews";
 export * from "./settings";
+export * from "./shares";
 export * from "./subscriptions";
 export * from "./support";
 export * from "./transactions";

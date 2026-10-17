@@ -295,8 +295,10 @@ export function startSite() {
   setupPricingInterval();
   setupDisclosureAnchors();
   setupStickyCta();
-  registerOptionalIntegration("analytics", async () =>
-    (await import("./analytics")).startAnalytics(),
-  );
+  if (document.body.dataset.analytics !== "off") {
+    registerOptionalIntegration("analytics", async () =>
+      (await import("./analytics")).startAnalytics(),
+    );
+  }
   setupConsent();
 }

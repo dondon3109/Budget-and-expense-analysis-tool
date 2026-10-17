@@ -1,5 +1,5 @@
 import type { Currency, TransactionListItem, TransactionListQuery } from "@zoption/shared";
-import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Pencil, Share2, Trash2 } from "lucide-react";
 import { type CSSProperties, useEffect, useRef } from "react";
 
 import { formatMoney } from "../../lib/formatters";
@@ -19,6 +19,8 @@ interface TransactionTableProps {
   busyIds?: ReadonlySet<string>;
   onSort: (sortBy: TransactionListQuery["sortBy"]) => void;
   onEdit: (item: TransactionListItem) => void;
+  /** Opens the public link dialog; transfers have no share button. */
+  onShare: (item: TransactionListItem) => void;
   onRequestDelete: (item: TransactionListItem, trigger: HTMLButtonElement) => void;
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
@@ -127,6 +129,7 @@ export function TransactionTable({
   busyIds,
   onSort,
   onEdit,
+  onShare,
   onRequestDelete,
   onToggleSelect,
   onToggleSelectAll,
@@ -213,6 +216,16 @@ export function TransactionTable({
             >
               <Pencil size={15} />
             </button>
+            {item.kind !== "transfer" && (
+              <button
+                type="button"
+                onClick={() => onShare(item)}
+                disabled={busyIds?.has(item.id)}
+                aria-label={`Share ${item.description}`}
+              >
+                <Share2 size={15} />
+              </button>
+            )}
             <button
               type="button"
               onClick={(event) => onRequestDelete(item, event.currentTarget)}

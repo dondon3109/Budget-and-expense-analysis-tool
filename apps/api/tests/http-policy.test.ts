@@ -10,11 +10,13 @@ import {
   supportBodyLimits,
 } from "../src/http/body-limits";
 import {
+  PUBLIC_SHARE_RATE_LIMITS,
   SUPPORT_CHAT_RATE_LIMITS,
   appRateLimitFor,
   billingWebhookRateLimits,
   createAppRateLimit,
   createBillingWebhookRateLimit,
+  createPublicShareRateLimit,
   createSupportRateLimit,
   type RateLimitIdentity,
 } from "../src/http/rate-limit-policy";
@@ -103,6 +105,14 @@ const APP_RATE_LIMITS: [string, string, RateLimitIdentity, RateLimitPolicy[]][] 
     ],
   ],
   ["POST", "/api/app/support/bug-reports", "tenant", tenantWrite],
+  [
+    "POST",
+    "/api/app/shares",
+    "user",
+    [{ scope: "user-share-link-create-day", limit: 10, windowSeconds: DAY }],
+  ],
+  ["DELETE", "/api/app/shares/share-1", "tenant", tenantWrite],
+  ["GET", "/api/app/shares", "tenant", tenantRead],
   ["POST", "/api/app/assistant/threads", "tenant", assistantGeneration],
   ["POST", "/api/app/assistant/threads/thread-1/messages", "tenant", assistantGeneration],
   ["POST", "/api/app/assistant/threads/thread-1/extra/messages", "tenant", tenantWrite],
@@ -308,6 +318,22 @@ describe("public rate limit policy", () => {
       ["203.0.113.9", "public-support-day"],
       ["missing-cf-connecting-ip", "public-support-minute"],
       ["missing-cf-connecting-ip", "public-support-day"],
+    ]);
+  });
+
+  it("keys public share reads by client IP", async () => {
+    expect(PUBLIC_SHARE_RATE_LIMITS).toEqual([
+      { scope: "public-share-read-minute", limit: 30, windowSeconds: MINUTE },
+    ]);
+    const consumed: Consumed[] = [];
+    const app = appWith(createPublicShareRateLimit(capturingRateLimiter(consumed)));
+
+    await send(app, "GET", "/api/public/shares/token", { clientIp: "192.0.2.7" });
+    await send(app, "GET", "/api/public/shares/token");
+
+    expect(consumed.map(({ identity, policy }) => [identity, policy.scope])).toEqual([
+      ["192.0.2.7", "public-share-read-minute"],
+      ["missing-cf-connecting-ip", "public-share-read-minute"],
     ]);
   });
 

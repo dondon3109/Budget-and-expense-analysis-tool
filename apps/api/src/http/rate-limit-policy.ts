@@ -112,6 +112,10 @@ export function appRateLimitFor(method: string, path: string): AppRateLimit {
     return byUser({ scope: "platform-admin-seat-read", limit: 60, windowSeconds: MINUTE });
   }
 
+  // Links are unlimited in number; this only stops a script from minting them in bulk.
+  if (method === "POST" && path === "/api/app/shares") {
+    return byUser({ scope: "user-share-link-create-day", limit: 10, windowSeconds: DAY });
+  }
   if (method === "POST" && path === "/api/app/support/chat") {
     return byTenant(
       { scope: "tenant-support-minute", limit: 10, windowSeconds: MINUTE },
@@ -192,6 +196,28 @@ export function createAppRateLimit(rateLimiter: RateLimiter): MiddlewareHandler<
     );
     if (limited) return limited;
 
+    await next();
+  };
+}
+
+export const PUBLIC_SHARE_RATE_LIMITS = [
+  { scope: "public-share-read-minute", limit: 30, windowSeconds: MINUTE },
+] as const;
+
+/** Public share link reads, keyed by client IP; slows anyone trying to guess tokens. */
+export function createPublicShareRateLimit(
+  rateLimiter: RateLimiter,
+): MiddlewareHandler<AppEnvironment> {
+  return async (context, next) => {
+    const clientIdentifier = context.req.header("CF-Connecting-IP")?.trim() || MISSING_CLIENT_IP;
+    const limited = await enforceRateLimits(
+      context,
+      rateLimiter,
+      clientIdentifier,
+      [...PUBLIC_SHARE_RATE_LIMITS],
+      (seconds) => `Too many requests. Try again in ${seconds} seconds.`,
+    );
+    if (limited) return limited;
     await next();
   };
 }

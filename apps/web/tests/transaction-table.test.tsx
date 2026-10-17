@@ -53,6 +53,7 @@ function renderTable(
       selectedIds={options.selectedIds ?? new Set<string>()}
       onSort={onSort}
       onEdit={vi.fn()}
+      onShare={vi.fn()}
       onRequestDelete={onRequestDelete}
       onToggleSelect={onToggleSelect}
       onToggleSelectAll={onToggleSelectAll}

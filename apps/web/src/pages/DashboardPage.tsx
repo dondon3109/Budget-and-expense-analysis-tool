@@ -26,6 +26,7 @@ import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
 import { ThankYouDialog } from "../components/common/ThankYouDialog";
 import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
+import { ShareLinkModal } from "../components/sharing/ShareLinkModal";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalChecklist";
@@ -76,6 +77,7 @@ export function DashboardPage() {
   const shouldRestoreDashboardFocusRef = useRef(!hasCompletedInitialDashboardExperience);
   const accountMutations = useAccountMutations(workspace);
   const [adjustingAccount, setAdjustingAccount] = useState<AccountBalanceSummaryItem>();
+  const [sharingAccount, setSharingAccount] = useState<AccountBalanceSummaryItem>();
   const [chosenCashflowView, setCashflowView] = useState<CashflowTrendView>();
   const billingSummary = useBillingSummary(workspace);
   const isPro = billingSummary.data?.plan === "zoption_pro";
@@ -443,7 +445,15 @@ export function DashboardPage() {
           trendComparison={trendComparison}
           isPro={isPro}
           onAdjustBalance={setAdjustingAccount}
+          onShareBalance={setSharingAccount}
         />
+
+        {sharingAccount && (
+          <ShareLinkModal
+            target={{ kind: "balance", id: sharingAccount.id, label: sharingAccount.name }}
+            onClose={() => setSharingAccount(undefined)}
+          />
+        )}
 
         {adjustingAccount && (
           <AdjustBalanceModal

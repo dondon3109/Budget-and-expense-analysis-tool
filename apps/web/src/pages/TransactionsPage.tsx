@@ -38,6 +38,7 @@ import {
   TransactionForm,
   type TransactionFormDraft,
 } from "../components/transactions/TransactionForm";
+import { ShareLinkModal } from "../components/sharing/ShareLinkModal";
 import { TransactionTable } from "../components/transactions/TransactionTable";
 import { AppShell } from "../components/layout/AppShell";
 import { useBulkTransactionActions } from "../hooks/useBulkTransactionActions";
@@ -117,6 +118,7 @@ export function TransactionsPage() {
   const [formOpen, setFormOpen] = useState(() => searchParams.get("add") === "1");
   const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionListItem>();
+  const [sharing, setSharing] = useState<TransactionListItem>();
   const [formDraft, setFormDraft] = useState<TransactionFormDraft>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
@@ -580,6 +582,7 @@ export function TransactionsPage() {
                 busyIds={deletingIds}
                 onSort={handleSort}
                 onEdit={openEdit}
+                onShare={setSharing}
                 onRequestDelete={requestDelete}
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}
@@ -696,6 +699,17 @@ export function TransactionsPage() {
           workspace={workspace}
           categories={categories}
           onClose={() => setCategoryManagerOpen(false)}
+        />
+      )}
+      {sharing && (
+        <ShareLinkModal
+          target={{
+            kind: "transaction",
+            id: sharing.id,
+            label: sharing.description,
+            hasNote: Boolean(sharing.notes),
+          }}
+          onClose={() => setSharing(undefined)}
         />
       )}
       <SmsQuickPasteModal

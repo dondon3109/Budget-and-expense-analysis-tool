@@ -24,6 +24,7 @@ The public website at `zoption.site`: marketing, pricing, guides, import guides,
 | `src/views/`                   | Page bodies as React components, rendered to static HTML                                    |
 | `src/client/site.ts`           | Theme menu, header drawer, filters, pricing toggle, FAQ anchors, sticky CTA, consent        |
 | `src/lib/appUrl.ts`            | The app origin; `PUBLIC_APP_URL` overrides it for preview builds                            |
+| `src/pages/s.astro`            | Public share link page; the token stays in the URL fragment, noindex, no analytics          |
 | `deployment-config.ts`         | Build-time env validation and the CSP                                                       |
 | `scripts/finalize-build.mjs`   | Writes `dist/_headers` (CSP with inline-script hashes, cache rules) and verifies the output |
 | `functions/ingest/[[path]].ts` | Same-origin PostHog capture proxy that strips cookies and client addresses                  |

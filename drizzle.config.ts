@@ -7,6 +7,7 @@ export default defineConfig({
     "./db/schema-providers.ts",
     "./db/schema-goals.ts",
     "./db/schema-fx.ts",
+    "./db/schema-sharing.ts",
   ],
   out: "./db/migrations",
 });

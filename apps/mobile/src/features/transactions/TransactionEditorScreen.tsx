@@ -64,6 +64,7 @@ import {
   remainingSecondsFromMs,
   type VoicePreviewState,
 } from "./voice-preview";
+import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
 import { DebtPaymentField } from "./DebtPaymentField";
 import { EntryCurrencyField } from "./EntryCurrencyField";
 import { KindSelector } from "./KindSelector";
@@ -953,6 +954,9 @@ export function TransactionEditorScreen() {
           >
             {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
           </Button>
+          {id && !transfer ? (
+            <ShareLinkButton target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }} />
+          ) : null}
           {editing ? (
             <Button
               accessibilityLabel={transfer ? "Delete transfer" : "Delete transaction"}
