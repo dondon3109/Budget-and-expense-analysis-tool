@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 
+import { currencies } from "../types";
+import { resourceIdSchema } from "./common";
 import { workspaceRoles } from "./membership";
 
 /** Seats include the owner and every unexpired pending invitation. */
@@ -99,6 +101,48 @@ export const familyInvitationListSchema = z
   .object({ invitations: z.array(familyInvitationSchema) })
   .strict();
 
+/**
+ * Copies one personal income or expense into the active family. The source is read from the
+ * caller's own personal workspace; the account and category belong to the family.
+ */
+export const familyTransactionShareSchema = z
+  .object({
+    transactionId: resourceIdSchema,
+    accountId: resourceIdSchema,
+    categoryId: resourceIdSchema,
+    includeNotes: z.boolean(),
+  })
+  .strict();
+
+/** Shows one of the caller's personal accounts in the active family. */
+export const familyBalanceShareSchema = z.object({ accountId: resourceIdSchema }).strict();
+
+/** A balance as the family sees it: live while shared, fixed once `stoppedAt` is set. */
+export const familySharedBalanceSchema = z
+  .object({
+    id: z.string(),
+    accountName: z.string(),
+    currency: z.enum(currencies),
+    /** Signed: a credit card can be below zero. */
+    balanceMinor: z.number().int(),
+    sharedByUserId: z.string(),
+    stoppedAt: timestampSchema.nullable(),
+  })
+  .strict();
+
+export const familySharedBalanceListSchema = z
+  .object({ balances: z.array(familySharedBalanceSchema) })
+  .strict();
+
+/** The signed-in person's live balance shares, for their own account menus. */
+export const myBalanceShareSchema = z
+  .object({ id: z.string(), familyId: z.string(), accountId: z.string() })
+  .strict();
+
+export const myBalanceShareListSchema = z
+  .object({ shares: z.array(myBalanceShareSchema) })
+  .strict();
+
 export type FamilyMemberRole = (typeof familyMemberRoles)[number];
 export type FamilyCreateInput = z.infer<typeof familyCreateSchema>;
 export type FamilyInviteInput = z.infer<typeof familyInviteSchema>;
@@ -108,3 +152,8 @@ export type FamilyDetail = z.infer<typeof familyDetailSchema>;
 export type FamilyInvitation = z.infer<typeof familyInvitationSchema>;
 export type FamilyInvitationList = z.infer<typeof familyInvitationListSchema>;
 export type FamilyClosure = z.infer<typeof familyClosureSchema>;
+export type FamilyTransactionShareInput = z.infer<typeof familyTransactionShareSchema>;
+export type FamilySharedBalance = z.infer<typeof familySharedBalanceSchema>;
+export type FamilySharedBalanceList = z.infer<typeof familySharedBalanceListSchema>;
+export type MyBalanceShare = z.infer<typeof myBalanceShareSchema>;
+export type MyBalanceShareList = z.infer<typeof myBalanceShareListSchema>;

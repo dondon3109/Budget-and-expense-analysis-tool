@@ -15,6 +15,7 @@ import {
 
 import type { Bindings } from "../types";
 import { tenantDataStatements } from "./account-deletion";
+import { freezeMemberBalanceShares } from "./family-shares";
 import { starterStatements } from "./tenants";
 
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
@@ -312,6 +313,7 @@ export const familyRepository: FamilyRepository = {
         `INSERT INTO family_seat_events (tenant_id, user_id, kind)
          SELECT ?, ?, 'freed' WHERE changes() > 0`,
       ).bind(tenantId, userId),
+      freezeMemberBalanceShares(env, tenantId, userId),
     ]);
     return (removed!.meta.changes ?? 0) > 0;
   },

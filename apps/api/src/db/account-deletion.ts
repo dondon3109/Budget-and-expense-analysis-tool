@@ -1,4 +1,5 @@
 import type { Bindings } from "../types";
+import { freezeBalanceSharesFrom } from "./family-shares";
 import { tenantIdForUser } from "./tenants";
 
 export type AccountDeletionStatus = "deleted" | "cleanup_pending";
@@ -58,6 +59,12 @@ function cleanupLeaseUntil(): string {
  */
 export function tenantDataStatements(env: Bindings, tenantId: string): D1PreparedStatement[] {
   return [
+    // First, while the accounts still exist: a family keeps the last balance this tenant shared.
+    freezeBalanceSharesFrom(env, tenantId),
+    env.DB.prepare(
+      "DELETE FROM family_transaction_shares WHERE source_tenant_id = ?1 OR family_tenant_id = ?1",
+    ).bind(tenantId),
+    env.DB.prepare("DELETE FROM family_balance_shares WHERE family_tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM bug_reports WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM customer_reviews WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM share_links WHERE tenant_id = ?").bind(tenantId),

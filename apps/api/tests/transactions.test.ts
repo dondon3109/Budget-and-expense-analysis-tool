@@ -57,8 +57,14 @@ function createSqliteEnvironment(): {
       source_kind text NOT NULL DEFAULT 'manual',
       entry_method text,
       debt_id text,
+      created_by_user_id text,
       created_at text NOT NULL DEFAULT (datetime('now')),
       updated_at text NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE TABLE family_transaction_shares (
+      source_transaction_id text NOT NULL,
+      family_tenant_id text NOT NULL,
+      family_transaction_id text NOT NULL
     );
     CREATE TABLE debts (
       id text PRIMARY KEY NOT NULL,

@@ -179,6 +179,7 @@ describe("API ledger routes", () => {
       undefined,
       TENANT_ID,
       expect.objectContaining({ description: "Weekend groceries" }),
+      { authorUserId: undefined },
     );
   });
 
@@ -225,9 +226,13 @@ describe("API ledger routes", () => {
       body: JSON.stringify({ notes: "" }),
     });
     expect(response.status).toBe(200);
-    expect(transactions.update).toHaveBeenCalledWith(undefined, TENANT_ID, "transaction-1", {
-      notes: "",
-    });
+    expect(transactions.update).toHaveBeenCalledWith(
+      undefined,
+      TENANT_ID,
+      "transaction-1",
+      { notes: "" },
+      undefined,
+    );
   });
 
   it("lists and creates categories for the resolved tenant", async () => {

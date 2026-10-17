@@ -204,6 +204,7 @@ export const transactions = sqliteTable(
     subscriptionId: text("subscription_id"),
     /** The debt a recorded payment went to; null when the expense is not a debt payment. */
     debtId: text("debt_id").references(() => debts.id, { onDelete: "set null" }),
+    createdByUserId: text("created_by_user_id"), // Family entries only (0080_family_shares.sql).
     revision: integer("revision").notNull().default(1),
     deletedAt: text("deleted_at"),
     ...timestamps,

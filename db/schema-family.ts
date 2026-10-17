@@ -9,11 +9,11 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-import { tenants } from "./schema";
+import { tenants, transactions } from "./schema";
 
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
 // The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
-// 0078_family_spaces.sql, and 0079_family_closures.sql.
+// 0078_family_spaces.sql, 0079_family_closures.sql, and 0080_family_shares.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -94,4 +94,56 @@ export const familyClosures = sqliteTable(
     purgeAfter: text("purge_after").notNull(),
   },
   (table) => [index("family_closures_purge_idx").on(table.purgeAfter)],
+);
+
+export const familyTransactionShares = sqliteTable(
+  "family_transaction_shares",
+  {
+    sourceTransactionId: text("source_transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    sourceTenantId: text("source_tenant_id").notNull(),
+    familyTenantId: text("family_tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    familyTransactionId: text("family_transaction_id")
+      .notNull()
+      .references(() => transactions.id, { onDelete: "cascade" }),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sourceTransactionId, table.familyTenantId] }),
+    uniqueIndex("family_transaction_shares_copy_unique").on(table.familyTransactionId),
+    index("family_transaction_shares_source_tenant_idx").on(table.sourceTenantId),
+  ],
+);
+
+export const familyBalanceShares = sqliteTable(
+  "family_balance_shares",
+  {
+    id: text("id").primaryKey(),
+    familyTenantId: text("family_tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sourceTenantId: text("source_tenant_id").notNull(),
+    sourceAccountId: text("source_account_id").notNull(),
+    sharedByUserId: text("shared_by_user_id").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+    frozenAt: text("frozen_at"),
+    frozenName: text("frozen_name"),
+    frozenCurrency: text("frozen_currency"),
+    frozenBalanceMinor: integer("frozen_balance_minor"),
+  },
+  (table) => [
+    uniqueIndex("family_balance_shares_account_unique").on(
+      table.familyTenantId,
+      table.sourceTenantId,
+      table.sourceAccountId,
+    ),
+    index("family_balance_shares_source_idx").on(table.sourceTenantId),
+  ],
 );
