@@ -8,6 +8,7 @@ import {
   type AccountDeletionStatus,
 } from "./db/account-deletion";
 import type { BillingRepository } from "./db/billing";
+import type { FamilyRepository } from "./db/families";
 import type { PlatformAdminRepository } from "./db/platform-admin";
 import { tenantIdForUser } from "./db/tenants";
 import { HttpError } from "./errors";
@@ -242,6 +243,7 @@ export function createAccountDeletionService(
   ) => SupabaseDeletionGateway = createSupabaseDeletionGatewayForEnvironment,
   billing?: Pick<BillingRepository, "hasNonTerminalSubscription">,
   platformAdmins?: Pick<PlatformAdminRepository, "isPlatformAdminIdentity">,
+  families?: Pick<FamilyRepository, "ownedFamilyId">,
 ): AccountDeletionService {
   return {
     async deleteAccount({ env, user, accessToken, password }) {
@@ -277,6 +279,14 @@ export function createAccountDeletionService(
             "subscription_blocks_account_deletion",
             "Cancel your paid subscription and wait for the provider to confirm it before deleting your account.",
             { billingPath: "/app/settings" },
+          );
+        }
+        // A family outlives its owner only through a transfer; deleting the owner would orphan it.
+        if (await families?.ownedFamilyId(env, user.id)) {
+          throw new HttpError(
+            409,
+            "family_owner_blocks_account_deletion",
+            "Transfer your family to another member before deleting your account.",
           );
         }
         record = await repository.purgeTenant(env, user.id);

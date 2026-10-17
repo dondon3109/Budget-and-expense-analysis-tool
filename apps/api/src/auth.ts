@@ -120,6 +120,7 @@ const FAMILY_WORKSPACE_PATHS = [
   "/api/app/accounts",
   "/api/app/categories",
   "/api/app/budgets",
+  "/api/app/family",
 ] as const;
 
 function acceptsFamilyWorkspace(path: string): boolean {

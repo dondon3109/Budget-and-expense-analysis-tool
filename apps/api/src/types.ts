@@ -58,6 +58,8 @@ export interface Bindings {
   ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS?: string;
   ASSISTANT_VOICE_STREAM_TIMEOUT_MS?: string;
   RECEIPT_ENTRY_ENABLED?: string;
+  /** "true" lets people create families; off until the Family plan ships. */
+  FAMILY_WORKSPACES_ENABLED?: string;
   RECEIPT_VISION_MODEL?: string;
   RECEIPT_VISION_PROVIDER_TIMEOUT_MS?: string;
   AI_ENTRY_PROVIDER_TIMEOUT_MS?: string;
