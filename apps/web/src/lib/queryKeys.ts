@@ -98,4 +98,12 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "admin", "provider-config-audits", service] as const,
   providerCredentials: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "admin", "provider-credentials"] as const,
+  /** Personal workspace only: the workspaces this person can switch between. */
+  workspaces: (personal: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(personal), "workspaces"] as const,
+  /** Personal workspace only: invitations addressed to this person. */
+  familyInvitations: (personal: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(personal), "family-invitations"] as const,
+  /** A family workspace: its members, invitations, and seats. */
+  family: (family: AuthenticatedWorkspace) => [...queryKeys.workspace(family), "family"] as const,
 };

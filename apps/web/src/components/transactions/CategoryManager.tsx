@@ -22,7 +22,7 @@ import {
   updateOptimistically,
 } from "../../lib/optimistic";
 import { queryKeys } from "../../lib/queryKeys";
-import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { personalWorkspace, type AuthenticatedWorkspace } from "../../lib/workspace";
 import { invalidateCategoriesAndBilling } from "../../queries/categories";
 
 interface CategoryManagerProps {
@@ -60,7 +60,8 @@ function emojiValue(value: string): string | null | undefined {
 
 export function CategoryManager({ workspace, categories, onClose }: CategoryManagerProps) {
   const queryClient = useQueryClient();
-  const billingQuery = useBillingSummary(workspace);
+  // The plan belongs to the person, even while they edit a family's categories.
+  const billingQuery = useBillingSummary(personalWorkspace(workspace));
   const dialogRef = useRef<HTMLElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);

@@ -34,7 +34,8 @@ interface AccountsPanelProps {
   trendComparison: string;
   isPro: boolean;
   onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
-  onShareBalance: (account: AccountBalanceSummaryItem) => void;
+  /** Omitted where public links are not offered (a family workspace). */
+  onShareBalance?: (account: AccountBalanceSummaryItem) => void;
 }
 
 function parseOptionalAmount(value: string): number | undefined | null {
@@ -309,14 +310,16 @@ export function AccountsPanel({
                             <Trash2 size={14} aria-hidden="true" />
                           </button>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => onShareBalance(account)}
-                          aria-label={`Share balance of ${account.name}`}
-                          title={`Share balance of ${account.name}`}
-                        >
-                          <Share2 size={14} aria-hidden="true" />
-                        </button>
+                        {onShareBalance && (
+                          <button
+                            type="button"
+                            onClick={() => onShareBalance(account)}
+                            aria-label={`Share balance of ${account.name}`}
+                            title={`Share balance of ${account.name}`}
+                          >
+                            <Share2 size={14} aria-hidden="true" />
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="dashboard-account-default"

@@ -8,7 +8,10 @@ export function createWorkspaceRoutes(memberships: MembershipRepository) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) =>
-    context.json(await memberships.list(context.env, context.get("authUser").id)),
+    context.json({
+      workspaces: await memberships.list(context.env, context.get("authUser").id),
+      familiesAvailable: context.env.FAMILY_WORKSPACES_ENABLED === "true",
+    }),
   );
 
   return routes;

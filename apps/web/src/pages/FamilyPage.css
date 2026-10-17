@@ -1,0 +1,113 @@
+.family-page {
+  display: grid;
+  gap: 20px;
+}
+
+.family-section {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.family-section h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+}
+
+.family-muted {
+  margin: 0;
+  color: var(--muted);
+}
+
+.family-closing {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.family-list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.family-list:empty {
+  display: none;
+}
+
+.family-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+
+.family-list li:first-child {
+  border-top: 0;
+}
+
+.family-list li > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.family-list li span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.family-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.family-role-select select,
+.family-inline-form input,
+.family-inline-form select {
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.family-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.family-inline-form label {
+  display: grid;
+  gap: 6px;
+  flex: 1 1 200px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.family-inline-form label:has(select) {
+  flex: 0 1 140px;
+}
+
+.family-section > .button {
+  justify-self: start;
+}

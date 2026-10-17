@@ -14,21 +14,22 @@ The signed-in browser app at `app.zoption.site`: sign-in and recovery, the works
 
 ## Key files
 
-| File                        | Owns                                                                                                             |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `src/App.tsx`               | Route table; `/` sends a visit to `/app` and forwards Supabase auth codes and errors to `/auth/callback`         |
-| `src/RouteTitle.tsx`        | The tab title per route; the app has no other per-route head state because it is never indexed                   |
-| `src/lib/siteUrl.ts`        | Absolute links to the public site (`VITE_SITE_URL` overrides the origin)                                         |
-| `src/lib/api/index.ts`      | The barrel every caller and every `vi.mock("../src/lib/api")` goes through                                       |
-| `src/lib/api/transport.ts`  | Bearer attachment, one refresh retry, sign-out on 410, the request timeout, and one timeout retry for reads      |
-| `src/lib/api/errors.ts`     | `ApiRequestError` and the billing limit guards                                                                   |
-| `src/lib/api/<domain>.ts`   | The calls for one API surface, named like the Worker route (`goals.ts`, `transactions.ts`, `admin-providers.ts`) |
-| `src/lib/queryKeys.ts`      | Workspace scoped query key roots                                                                                 |
-| `src/queries/<domain>.ts`   | Query options, `useX` hooks, and the invalidation helper for each write                                          |
-| `src/auth/AuthProvider.tsx` | Session restore, code exchange, and the cache reset on identity change                                           |
-| `deployment-config.ts`      | Build time environment validation and the derived CSP origin list                                                |
-| `public/_redirects`         | Legacy workspace paths to `/app`, public page paths to `zoption.site`, everything else to `index.html`           |
-| `tests/`                    | Flat Vitest suites for the whole app                                                                             |
+| File                                                | Owns                                                                                                             |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `src/App.tsx`                                       | Route table; `/` sends a visit to `/app` and forwards Supabase auth codes and errors to `/auth/callback`         |
+| `src/RouteTitle.tsx`                                | The tab title per route; the app has no other per-route head state because it is never indexed                   |
+| `src/lib/siteUrl.ts`                                | Absolute links to the public site (`VITE_SITE_URL` overrides the origin)                                         |
+| `src/lib/api/index.ts`                              | The barrel every caller and every `vi.mock("../src/lib/api")` goes through                                       |
+| `src/lib/api/transport.ts`                          | Bearer attachment, one refresh retry, sign-out on 410, the request timeout, and one timeout retry for reads      |
+| `src/lib/api/errors.ts`                             | `ApiRequestError` and the billing limit guards                                                                   |
+| `src/lib/api/<domain>.ts`                           | The calls for one API surface, named like the Worker route (`goals.ts`, `transactions.ts`, `admin-providers.ts`) |
+| `src/lib/queryKeys.ts`                              | Workspace scoped query key roots                                                                                 |
+| `src/queries/<domain>.ts`                           | Query options, `useX` hooks, and the invalidation helper for each write                                          |
+| `src/components/layout/ActiveWorkspaceProvider.tsx` | The active workspace (personal or a family), remembered per user in this browser                                 |
+| `src/auth/AuthProvider.tsx`                         | Session restore, code exchange, and the cache reset on identity change                                           |
+| `deployment-config.ts`                              | Build time environment validation and the derived CSP origin list                                                |
+| `public/_redirects`                                 | Legacy workspace paths to `/app`, public page paths to `zoption.site`, everything else to `index.html`           |
+| `tests/`                                            | Flat Vitest suites for the whole app                                                                             |
 
 ## Commands
 
@@ -67,6 +68,7 @@ pnpm test:e2e                      # Playwright, from the repo root
 - `src/BrowserApplication.tsx` keeps `<BrowserRouter>` outside the providers that remount when the signed-in user changes (`AssistantSessionProvider` keys its subtree by user id). A router inside them restarts on sign-in and re-reads `window.location`, which is how the sign-in callback used to report a successful sign-in as a failure.
 - `src/main.tsx` defines no components. One there makes the entry a Fast Refresh boundary, so an edit re-runs `createRoot` on `#root` and the two roots crash the page in dev.
 - Money is integer minor units. Format only through `formatMoney` and never add float math.
+- A page that works in a family reads its workspace from `useActiveWorkspace()`; a family `AuthenticatedWorkspace` carries `familyId`, which the transport sends as `X-Zoption-Workspace`, and its own query key. Calls that belong to the person (billing, AI, receipts consent, goals, invitations) use `personal` or `personalWorkspace(workspace)` even while a family is open. `FAMILY_ROUTES` in `AppShell.tsx` lists the routes that work in a family; any other page shows a switch-back notice instead of personal data.
 
 ## Related specs
 

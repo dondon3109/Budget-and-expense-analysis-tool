@@ -20,7 +20,8 @@ interface TransactionTableProps {
   onSort: (sortBy: TransactionListQuery["sortBy"]) => void;
   onEdit: (item: TransactionListItem) => void;
   /** Opens the public link dialog; transfers have no share button. */
-  onShare: (item: TransactionListItem) => void;
+  /** Omitted where public links are not offered (a family workspace). */
+  onShare?: (item: TransactionListItem) => void;
   onRequestDelete: (item: TransactionListItem, trigger: HTMLButtonElement) => void;
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
@@ -216,7 +217,7 @@ export function TransactionTable({
             >
               <Pencil size={15} />
             </button>
-            {item.kind !== "transfer" && (
+            {onShare && item.kind !== "transfer" && (
               <button
                 type="button"
                 onClick={() => onShare(item)}

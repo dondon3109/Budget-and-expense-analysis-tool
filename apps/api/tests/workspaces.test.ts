@@ -6,12 +6,14 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createAuthMiddleware, type AuthVerifier } from "../src/auth";
 import { membershipRepository } from "../src/db/memberships";
+import { workspaceSettingsRepository } from "../src/db/workspace-settings";
 import {
   createTenantResolver,
   tenantBootstrapRepository,
   tenantIdForUser,
 } from "../src/db/tenants";
 import { HttpError } from "../src/errors";
+import { createWorkspaceSettingsRoutes } from "../src/routes/workspace-settings";
 import { createWorkspaceRoutes } from "../src/routes/workspaces";
 import type { AppEnvironment, Bindings } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
@@ -47,25 +49,28 @@ async function setup() {
   );
   app.get("/api/app/billing", (context) => context.json({ ok: true }));
   app.route("/api/app/workspaces", createWorkspaceRoutes(membershipRepository));
+  app.route("/api/app/settings", createWorkspaceSettingsRoutes(workspaceSettingsRepository));
   app.onError((error, context) =>
     error instanceof HttpError
       ? context.json({ error: error.code }, error.status)
       : context.json({ error: "internal_server_error" }, 500),
   );
 
-  const call = (user: string, path: string, workspace?: string, method = "GET") =>
+  const call = (user: string, path: string, workspace?: string, method = "GET", body?: unknown) =>
     app.request(
       path,
       {
         method,
         headers: {
           Authorization: `Bearer ${user}`,
+          "Content-Type": "application/json",
           ...(workspace ? { [WORKSPACE_HEADER]: workspace } : {}),
         },
+        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       },
       env,
     );
-  return { call };
+  return { call, member: (user: string) => member.run(FAMILY, user, "member") };
 }
 
 describe("active workspace", () => {
@@ -109,6 +114,26 @@ describe("active workspace", () => {
   });
 });
 
+describe("family currency", () => {
+  it("is read by everyone in the family and changed only by the owner", async () => {
+    const { call, member } = await setup();
+    member("tito");
+
+    const byMember = await call("tito", "/api/app/settings", FAMILY, "PUT", { currency: "USD" });
+    const byOwner = await call("mama", "/api/app/settings", FAMILY, "PUT", { currency: "USD" });
+
+    await expect(byMember.json()).resolves.toEqual({ error: "family_owner_required" });
+    expect(byOwner.status).toBe(200);
+    await expect((await call("tito", "/api/app/settings", FAMILY)).json()).resolves.toEqual({
+      currency: "USD",
+    });
+    // The owner's own workspace keeps its currency.
+    await expect((await call("mama", "/api/app/settings")).json()).resolves.toEqual({
+      currency: "PHP",
+    });
+  });
+});
+
 describe("workspace list", () => {
   it("lists the personal workspace first, then the families the caller belongs to", async () => {
     const { call } = await setup();
@@ -125,5 +150,7 @@ describe("workspace list", () => {
       { id: FAMILY, kind: "family", name: "Dela Cruz family", role: "viewer" },
     ]);
     expect(tito.workspaces.map((workspace) => workspace.id)).toEqual([tenantIdForUser("tito")]);
+    // The test env leaves FAMILY_WORKSPACES_ENABLED unset.
+    expect(lola.familiesAvailable).toBe(false);
   });
 });
