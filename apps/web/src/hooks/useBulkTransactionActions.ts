@@ -7,7 +7,12 @@ import type {
 import { useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 
-import { createTransaction, deleteTransaction, updateTransaction } from "../lib/api";
+import {
+  createTransaction,
+  deleteTransaction,
+  restoreFamilyEntry,
+  updateTransaction,
+} from "../lib/api";
 import { restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import {
   deleteOptimisticTransaction,
@@ -103,6 +108,11 @@ export function useBulkTransactionActions({
   const undoDeleteMutation = useMutation({
     mutationFn: async (items: TransactionListItem[]) => {
       for (const item of items) {
+        // A family keeps what was deleted, so undo brings back the same entry and its history.
+        if (workspace.familyId) {
+          await restoreFamilyEntry(workspace, item.id);
+          continue;
+        }
         const input = transactionInputFromItem(item);
         if (!input) {
           throw new Error(

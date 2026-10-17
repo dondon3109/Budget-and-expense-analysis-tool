@@ -11,6 +11,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { createAuthMiddleware, type AuthVerifier } from "../src/auth";
 import { tenantDataStatements } from "../src/db/account-deletion";
+import { familyJournal } from "../src/db/family-journal";
 import { familyShareRepository } from "../src/db/family-shares";
 import {
   createTenantResolver,
@@ -58,7 +59,7 @@ async function setup() {
   const verifier: AuthVerifier = { verify: async (_env, token) => ({ id: token }) };
   const app = new Hono<AppEnvironment>();
   app.use("/api/app/*", createAuthMiddleware(verifier, createTenantResolver()));
-  app.route("/api/app/transactions", createTransactionRoutes(transactionRepository));
+  app.route("/api/app/transactions", createTransactionRoutes(transactionRepository, familyJournal));
   app.route("/api/app/families/balance-shares", createMyBalanceShareRoutes(familyShareRepository));
   app.route("/api/app/family/shares", createActiveFamilyShareRoutes(familyShareRepository));
   app.route("/api/app/families", createFamilyRoutes(createFamilyService()));

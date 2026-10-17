@@ -19,3 +19,4 @@ export * from "./sharing";
 export * from "./membership";
 export * from "./family";
 export * from "./remittances";
+export * from "./family-entries";

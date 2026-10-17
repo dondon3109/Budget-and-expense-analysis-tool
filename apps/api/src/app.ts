@@ -50,6 +50,7 @@ import { createProviderCredentialRoutes } from "./routes/provider-credentials";
 import { createReceiptRoutes } from "./routes/receipts";
 import { createPushRoutes } from "./routes/push";
 import { createWorkspaceRoutes } from "./routes/workspaces";
+import { createFamilyEntryRoutes } from "./routes/family-entries";
 import { createActiveFamilyRoutes, createFamilyRoutes } from "./routes/families";
 import { createActiveFamilyShareRoutes, createMyBalanceShareRoutes } from "./routes/family-shares";
 import { createRemittanceRoutes } from "./routes/remittances";
@@ -206,7 +207,10 @@ export function createApp(options: AppOptions = {}) {
     createVoiceStreamRoutes(dependencies.assistantVoiceService),
   );
   app.route("/api/app/assistant", createAssistantRoutes(dependencies.assistantService));
-  app.route("/api/app/transactions", createTransactionRoutes(dependencies.transactions));
+  app.route(
+    "/api/app/transactions",
+    createTransactionRoutes(dependencies.transactions, dependencies.familyJournal),
+  );
   app.route(
     "/api/app/reviews",
     createAuthenticatedCustomerReviewRoutes(dependencies.customerReviews),
@@ -239,6 +243,7 @@ export function createApp(options: AppOptions = {}) {
     "/api/app/family/remittances",
     createRemittanceRoutes(dependencies.remittances, dependencies.familyNotifier),
   );
+  app.route("/api/app/family/transactions", createFamilyEntryRoutes(dependencies.familyJournal));
   app.route("/api/app/families", createFamilyRoutes(dependencies.families));
   app.route("/api/app/family", createActiveFamilyRoutes(dependencies.families));
   app.route(

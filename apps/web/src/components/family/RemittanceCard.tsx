@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { FamilyDetail, FamilyRemittance } from "@zoption/shared";
+import type { FamilyRemittance } from "@zoption/shared";
 import { Plus, Send } from "lucide-react";
 import { useState } from "react";
 
@@ -8,15 +8,9 @@ import { formatMoney, formatMonth } from "../../lib/formatters";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { useFamily } from "../../queries/families";
 import { invalidateAfterRemittanceWrite, useRemittanceOverview } from "../../queries/remittances";
+import { memberName } from "./familyLabels";
 import { RemittanceDialog } from "./RemittanceDialog";
 import "./RemittanceCard.css";
-
-function personLabel(detail: FamilyDetail | undefined, userId: string, me: string): string {
-  if (userId === me) return "you";
-  const member = detail?.members.find((item) => item.userId === userId);
-  if (!member) return "a former member";
-  return member.email ?? "a family member";
-}
 
 /**
  * Sent · Spent · Left for one family month, with sends waiting to be confirmed and earlier
@@ -41,7 +35,7 @@ export function RemittanceCard({
 
   if (!overview) return null;
   const canWrite = detail?.role !== "viewer" && !detail?.closesAt;
-  const label = (userId: string) => personLabel(detail, userId, family.userId);
+  const label = (userId: string) => memberName(detail, userId, family.userId);
   const dialogElement = dialog && (
     <RemittanceDialog
       family={family}

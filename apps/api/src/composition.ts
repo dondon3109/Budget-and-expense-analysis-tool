@@ -38,6 +38,7 @@ import { customerReviewRepository, type CustomerReviewRepository } from "./db/cu
 import { membershipRepository, type MembershipRepository } from "./db/memberships";
 import { familyRepository } from "./db/families";
 import { familyShareRepository, type FamilyShareRepository } from "./db/family-shares";
+import { familyJournal, type FamilyJournal } from "./db/family-journal";
 import { remittanceRepository, type RemittanceRepository } from "./db/remittances";
 import { createFamilyNotifier, type FamilyNotifier } from "./family-notifier";
 import { createFamilyService, type FamilyService } from "./families";
@@ -123,6 +124,7 @@ export interface AppOptions {
   familyShares?: FamilyShareRepository;
   remittances?: RemittanceRepository;
   familyNotifier?: FamilyNotifier;
+  familyJournal?: FamilyJournal;
 }
 
 /**
@@ -256,6 +258,7 @@ export function createDependencies(overrides: AppOptions = {}) {
   const familyShares = overrides.familyShares ?? familyShareRepository;
   const remittances = overrides.remittances ?? remittanceRepository;
   const familyNotifier = overrides.familyNotifier ?? createFamilyNotifier(push);
+  const journal = overrides.familyJournal ?? familyJournal;
   const accountDeletionService =
     overrides.accountDeletionService ??
     createAccountDeletionService(
@@ -309,5 +312,6 @@ export function createDependencies(overrides: AppOptions = {}) {
     familyShares,
     remittances,
     familyNotifier,
+    familyJournal: journal,
   };
 }

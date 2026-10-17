@@ -12,7 +12,8 @@ import { noticeAmount, type FamilyNotifier } from "../family-notifier";
 import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment, TenantContext } from "../types";
 
-function familyTenantId(tenant: TenantContext): string {
+/** The family the workspace header names; family surfaces refuse a personal workspace. */
+export function familyTenantId(tenant: TenantContext): string {
   if (!tenant.membership) {
     throw new HttpError(400, "family_required", "Open a family workspace first.");
   }

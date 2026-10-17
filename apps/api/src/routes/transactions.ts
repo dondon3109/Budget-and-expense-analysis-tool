@@ -6,7 +6,9 @@ import {
 } from "@zoption/shared";
 import { Hono } from "hono";
 
+import type { FamilyJournal } from "../db/family-journal";
 import type { EntryAccess, TransactionRepository } from "../db/transactions";
+import { HttpError } from "../errors";
 import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment, TenantContext } from "../types";
 
@@ -17,7 +19,10 @@ function entryAccess(tenant: TenantContext, userId: string): EntryAccess | undef
     : undefined;
 }
 
-export function createTransactionRoutes(repository: TransactionRepository) {
+const notFound = () => new HttpError(404, "transaction_not_found", "Transaction not found.");
+
+/** `journal` records family changes and deletes; personal rows keep no history. */
+export function createTransactionRoutes(repository: TransactionRepository, journal: FamilyJournal) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/calendar", async (context) => {
@@ -56,25 +61,41 @@ export function createTransactionRoutes(repository: TransactionRepository) {
     const body = await readJson(context);
     const input = parseInput(transactionUpdateSchema, body, "Check the transaction fields.");
     const tenant = context.get("tenant");
-    return context.json(
-      await repository.update(
-        context.env,
-        tenant.tenantId,
-        parsePathParameter(context.req.param("id")),
-        input,
-        entryAccess(tenant, context.get("authUser").id),
-      ),
+    const userId = context.get("authUser").id;
+    const id = parsePathParameter(context.req.param("id"));
+    const before = tenant.membership
+      ? await journal.capture(context.env, tenant.tenantId, id)
+      : null;
+    const updated = await repository.update(
+      context.env,
+      tenant.tenantId,
+      id,
+      input,
+      entryAccess(tenant, userId),
     );
+    if (before) await journal.recordUpdate(context.env, tenant.tenantId, userId, before, updated);
+    return context.json(updated);
   });
 
   routes.delete("/:id", async (context) => {
     const tenant = context.get("tenant");
-    await repository.remove(
-      context.env,
-      tenant.tenantId,
-      parsePathParameter(context.req.param("id")),
-      entryAccess(tenant, context.get("authUser").id),
-    );
+    const userId = context.get("authUser").id;
+    const id = parsePathParameter(context.req.param("id"));
+    const access = entryAccess(tenant, userId);
+    if (!tenant.membership) {
+      await repository.remove(context.env, tenant.tenantId, id, access);
+      return context.body(null, 204);
+    }
+    // A family delete is journaled first, with the rows a restore needs.
+    const before = await journal.capture(context.env, tenant.tenantId, id);
+    if (!before) throw notFound();
+    const withdraw = await journal.recordDelete(context.env, tenant.tenantId, userId, before);
+    try {
+      await repository.remove(context.env, tenant.tenantId, id, access);
+    } catch (error) {
+      await withdraw();
+      throw error;
+    }
     return context.body(null, 204);
   });
 

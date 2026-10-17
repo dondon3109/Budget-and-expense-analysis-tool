@@ -13,8 +13,8 @@ import { tenants, transactions } from "./schema";
 
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
 // The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
-// 0078_family_spaces.sql, 0079_family_closures.sql, 0080_family_shares.sql, and
-// 0081_family_remittances.sql.
+// 0078_family_spaces.sql, 0079_family_closures.sql, 0080_family_shares.sql,
+// 0081_family_remittances.sql, and 0082_family_transaction_events.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -174,5 +174,36 @@ export const familyRemittances = sqliteTable(
     index("family_remittances_tenant_idx").on(table.tenantId, table.sentOn),
     uniqueIndex("family_remittances_transaction_unique").on(table.transactionId),
     check("family_remittances_amount_check", sql`${table.sentAmountMinor} > 0`),
+  ],
+);
+
+export const familyTransactionEvents = sqliteTable(
+  "family_transaction_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    transactionId: text("transaction_id").notNull(),
+    userId: text("user_id").notNull(),
+    action: text("action", { enum: ["updated", "deleted", "restored"] }).notNull(),
+    beforeJson: text("before_json"),
+    afterJson: text("after_json"),
+    snapshotJson: text("snapshot_json"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("family_transaction_events_entry_idx").on(table.tenantId, table.transactionId, table.id),
+    index("family_transaction_events_deleted_idx").on(
+      table.tenantId,
+      table.action,
+      table.createdAt,
+    ),
+    check(
+      "family_transaction_events_action_check",
+      sql`${table.action} IN ('updated', 'deleted', 'restored')`,
+    ),
   ],
 );

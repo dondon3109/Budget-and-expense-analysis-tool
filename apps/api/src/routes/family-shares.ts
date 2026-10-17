@@ -4,14 +4,8 @@ import { Hono } from "hono";
 import type { FamilyShareRepository } from "../db/family-shares";
 import { HttpError } from "../errors";
 import { parseInput, parsePathParameter, readJson } from "../request";
-import type { AppEnvironment, TenantContext } from "../types";
-
-function familyTenantId(tenant: TenantContext): string {
-  if (!tenant.membership) {
-    throw new HttpError(400, "family_required", "Open a family workspace first.");
-  }
-  return tenant.tenantId;
-}
+import type { AppEnvironment } from "../types";
+import { familyTenantId } from "./remittances";
 
 /**
  * `/api/app/family/shares`: copies into the family the workspace header names. The auth
