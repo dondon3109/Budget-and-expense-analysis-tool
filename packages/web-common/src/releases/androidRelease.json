@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.53-beta",
-  "versionCode": 20353,
-  "filename": "zoption-beta-0.2.53.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.53.apk",
-  "sha256": "08a9e3dc3e4fd3d0a4c4c57b45b7611818e7cee034bb8c9f2d89e5a09a4e6530",
-  "sizeBytes": 144524690,
-  "sizeLabel": "144,524,690 bytes (137.83 MiB)",
+  "versionName": "0.2.54-beta",
+  "versionCode": 20354,
+  "filename": "zoption-beta-0.2.54.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.54.apk",
+  "sha256": "e2a3cc9bb1c9813faf5c1d0a8a4e7a5d388dcc84bee0ddc8546021683b8b1fb7",
+  "sizeBytes": 144524682,
+  "sizeLabel": "144,524,682 bytes (137.83 MiB)",
   "releaseDate": "2026-10-16",
   "releaseDateLabel": "October 16, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,8 +14,6 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Pick your pet's color: Pink, Mint, Sky, Lilac, Peach, or the original.",
-    "Pet your pet and it answers in its own voice, with a new Reduce motion switch.",
-    "The Home overview shows the category you spent the most on this month."
+    "Pick your pet's color Your pet answers back, plus a Reduce motion switch Top spending category on Home Fixes the pet page not loading on 0.2.53"
   ]
 }
