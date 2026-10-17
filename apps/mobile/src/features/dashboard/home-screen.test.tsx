@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import { HomeScreen } from "./HomeScreen";
@@ -307,7 +307,7 @@ describe("HomeScreen", () => {
 
     // Total Balance card
     expect(screen.getByText("Total Balance")).toBeTruthy();
-    expect(screen.queryByText("Main Bank")).toBeNull();
+    expect(screen.getByText("Main Bank")).toBeTruthy();
 
     // The overview shows only the category with the most spending this month
     expect(screen.getByText("Top spending category")).toBeTruthy();
@@ -329,7 +329,7 @@ describe("HomeScreen", () => {
     expect(screen.getByText("Groceries")).toBeTruthy();
   });
 
-  it("shows only the total balance and opens account management when tapped", async () => {
+  it("lists each active account under the total balance, Cash first", async () => {
     const expense = {
       id: "tx-1",
       date: localIsoDate(new Date()),
@@ -351,6 +351,15 @@ describe("HomeScreen", () => {
         accounts: [
           { ...account, id: "acc-cash", name: "Cash", type: "cash", balanceMinor: 250_00 },
           { ...account, id: "acc-bank", name: "Bank", type: "checking", balanceMinor: 750_00 },
+          { ...account, id: "acc-gcash", name: "GCash", type: "ewallet", balanceMinor: 120_00 },
+          {
+            ...account,
+            id: "acc-old",
+            name: "Old wallet",
+            type: "ewallet",
+            balanceMinor: 0,
+            archived: true,
+          },
         ],
         budgets: [],
       },
@@ -360,8 +369,13 @@ describe("HomeScreen", () => {
 
     await render(<HomeScreen />);
 
-    expect(screen.queryByText("Bank")).toBeNull();
-    expect(screen.queryByLabelText(/Balance split/)).toBeNull();
+    const rows = within(screen.getByLabelText("Account balances")).getAllByLabelText(/, .+ pesos$/);
+    expect(rows.map((row) => row.props.accessibilityLabel)).toEqual([
+      "Cash, 250.00 Philippine pesos",
+      "Bank, 750.00 Philippine pesos",
+      "GCash, 120.00 Philippine pesos",
+    ]);
+    expect(screen.queryByText("Old wallet")).toBeNull();
 
     await fireEvent.press(
       screen.getByRole("button", { name: "Total balance. Opens account management." }),
