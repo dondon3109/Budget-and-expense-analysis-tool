@@ -7,6 +7,7 @@ const MINUTE = 60;
 const QUARTER_HOUR = 15 * 60;
 const DAY = 24 * 60 * 60;
 const WRITE_METHODS = new Set(["POST", "PATCH", "PUT", "DELETE"]);
+const FAMILY_INVITATION_RESEND = /^\/api\/app\/family\/invitations\/[^/]+\/resend$/;
 const ASSISTANT_THREAD_MESSAGES = /^\/api\/app\/assistant\/threads\/[^/]+\/messages$/;
 // Public callers are keyed by client IP. Without the header they all share one bucket.
 const MISSING_CLIENT_IP = "missing-cf-connecting-ip";
@@ -112,6 +113,13 @@ export function appRateLimitFor(method: string, path: string): AppRateLimit {
     return byUser({ scope: "platform-admin-seat-read", limit: 60, windowSeconds: MINUTE });
   }
 
+  // Each invitation sends an email to an address the owner typed in.
+  if (
+    method === "POST" &&
+    (path === "/api/app/family/invitations" || FAMILY_INVITATION_RESEND.test(path))
+  ) {
+    return byUser({ scope: "user-family-invitation-day", limit: 20, windowSeconds: DAY });
+  }
   // Links are unlimited in number; this only stops a script from minting them in bulk.
   if (method === "POST" && path === "/api/app/shares") {
     return byUser({ scope: "user-share-link-create-day", limit: 10, windowSeconds: DAY });

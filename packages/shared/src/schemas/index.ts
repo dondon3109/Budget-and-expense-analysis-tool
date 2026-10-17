@@ -17,3 +17,4 @@ export * from "./pet";
 export * from "./push";
 export * from "./sharing";
 export * from "./membership";
+export * from "./family";

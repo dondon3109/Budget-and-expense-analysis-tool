@@ -156,6 +156,40 @@ export function defaultCategoryIdForTenant(tenantId: string, key: string): strin
   return `${tenantId}:category:${key}`;
 }
 
+/** The accounts and categories every new workspace starts with, personal or family. */
+export function starterStatements(env: Bindings, tenantId: string): D1PreparedStatement[] {
+  const defaultAccountId = defaultAccountIdForTenant(tenantId);
+  return [
+    ...SYSTEM_ACCOUNTS.map((account) =>
+      env.DB.prepare(
+        "INSERT OR IGNORE INTO accounts (id, tenant_id, name, type, currency, system_key) VALUES (?, ?, ?, ?, 'PHP', ?)",
+      ).bind(
+        account.suffix === "default" ? defaultAccountId : `${tenantId}:account:${account.suffix}`,
+        tenantId,
+        account.name,
+        account.type,
+        account.systemKey,
+      ),
+    ),
+    ...DEFAULT_CATEGORIES.map((category) =>
+      env.DB.prepare(
+        "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, icon_emoji, system_key, origin, required_plan, archived) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'free', ?)",
+      ).bind(
+        defaultCategoryIdForTenant(tenantId, category.key),
+        tenantId,
+        category.name,
+        category.kind,
+        category.color,
+        category.iconEmoji,
+        category.systemKey,
+        category.origin,
+        // The opening-balance category holds one system entry and is never offered in a picker.
+        category.systemKey === OPENING_BALANCE_CATEGORY_SYSTEM_KEY ? 1 : 0,
+      ),
+    ),
+  ];
+}
+
 export const tenantBootstrapRepository: TenantBootstrapRepository = {
   async bootstrap(env, user) {
     const tenantId = tenantIdForUser(user.id);
@@ -175,33 +209,7 @@ export const tenantBootstrapRepository: TenantBootstrapRepository = {
          VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
                  strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+${PRO_TRIAL_DAYS} days'))`,
       ).bind(tenantId),
-      ...SYSTEM_ACCOUNTS.map((account) =>
-        env.DB.prepare(
-          "INSERT OR IGNORE INTO accounts (id, tenant_id, name, type, currency, system_key) VALUES (?, ?, ?, ?, 'PHP', ?)",
-        ).bind(
-          account.suffix === "default" ? defaultAccountId : `${tenantId}:account:${account.suffix}`,
-          tenantId,
-          account.name,
-          account.type,
-          account.systemKey,
-        ),
-      ),
-      ...DEFAULT_CATEGORIES.map((category) =>
-        env.DB.prepare(
-          "INSERT OR IGNORE INTO categories (id, tenant_id, name, kind, color, icon_emoji, system_key, origin, required_plan, archived) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'free', ?)",
-        ).bind(
-          defaultCategoryIdForTenant(tenantId, category.key),
-          tenantId,
-          category.name,
-          category.kind,
-          category.color,
-          category.iconEmoji,
-          category.systemKey,
-          category.origin,
-          // The opening-balance category holds one system entry and is never offered in a picker.
-          category.systemKey === OPENING_BALANCE_CATEGORY_SYSTEM_KEY ? 1 : 0,
-        ),
-      ),
+      ...starterStatements(env, tenantId),
     ];
 
     await env.DB.batch(statements);

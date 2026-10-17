@@ -36,6 +36,8 @@ import { bugReportRepository, type BugReportRepository } from "./db/bug-reports"
 import { categoryRepository, type CategoryRepository } from "./db/categories";
 import { customerReviewRepository, type CustomerReviewRepository } from "./db/customer-reviews";
 import { membershipRepository, type MembershipRepository } from "./db/memberships";
+import { familyRepository } from "./db/families";
+import { createFamilyService, type FamilyService } from "./families";
 import { pushRepository, type PushRepository } from "./db/push";
 import { createShareLinkRepository, type ShareLinkRepository } from "./db/share-links";
 import { loadCashflowTrend, loadDashboard, loadTransferFeeInsight } from "./db/dashboard";
@@ -114,6 +116,7 @@ export interface AppOptions {
   shareLinks?: ShareLinkRepository;
   push?: PushRepository;
   memberships?: MembershipRepository;
+  families?: FamilyService;
 }
 
 /**
@@ -243,9 +246,16 @@ export function createDependencies(overrides: AppOptions = {}) {
   const shareLinks = overrides.shareLinks ?? createShareLinkRepository(accountStore);
   const push = overrides.push ?? pushRepository;
   const memberships = overrides.memberships ?? membershipRepository;
+  const families = overrides.families ?? createFamilyService();
   const accountDeletionService =
     overrides.accountDeletionService ??
-    createAccountDeletionService(undefined, undefined, billingStore, platformAdminStore);
+    createAccountDeletionService(
+      undefined,
+      undefined,
+      billingStore,
+      platformAdminStore,
+      familyRepository,
+    );
   const readinessCheck = overrides.readinessCheck ?? checkApiReadiness;
 
   return {
@@ -286,5 +296,6 @@ export function createDependencies(overrides: AppOptions = {}) {
     shareLinks,
     push,
     memberships,
+    families,
   };
 }

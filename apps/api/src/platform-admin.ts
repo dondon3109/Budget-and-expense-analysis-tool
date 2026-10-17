@@ -34,7 +34,7 @@ function requiredPublishableKey(env: Bindings): string {
   return key;
 }
 
-function configuredAppUrl(env: Bindings): URL {
+export function configuredAppUrl(env: Bindings): URL {
   const value = env.WEB_APP_URL?.trim();
   if (!value)
     throw new HttpError(
@@ -63,7 +63,7 @@ function configuredAppUrl(env: Bindings): URL {
   return url;
 }
 
-function configuredSender(env: Bindings): { email: string; name: string } {
+export function configuredSender(env: Bindings): { email: string; name: string } {
   const email = env.EMAIL_FROM?.trim();
   if (!email || !EMAIL_PATTERN.test(email)) {
     throw new HttpError(
