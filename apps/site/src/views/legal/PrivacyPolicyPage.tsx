@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="October 16, 2026"
+      lastUpdated="October 17, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -227,14 +227,16 @@ export function PrivacyPolicyPage() {
             <strong>PostHog</strong> for unified product analytics and observability across three
             privacy-safe streams: (1) cookieless, memory-only public web analytics and Core Web
             Vitals on public pages, plus web app conversion and feature-use events linked to your
-            user ID and email after you allow Analytics, without observing financial workspace
-            contents, (2) server-side AI operational observability ($ai_generation, tokens, latency,
-            safe status) after separate assistant consent, and (3) sanitized mobile crash reports in
-            PostHog Error Tracking with the coarse exception type and the code locations (file,
-            function, and line) from the stack trace, never the error message, plus anonymous mobile
-            feature-use events (an app launch, the name of each screen opened, that a transaction,
-            budget, savings goal, debt, subscription, or import was added, changed, or removed, and
-            that a voice entry, voice widget note, receipt scan, SMS paste, PDF statement, assistant
+            user ID and email after you allow Analytics, and, under the same Analytics choice, web
+            app error reports in PostHog Error Tracking with the error type and code locations but
+            never the error message, without observing financial workspace contents, (2) server-side
+            AI operational observability ($ai_generation, tokens, latency, safe status) after
+            separate assistant consent, and (3) sanitized mobile crash reports in PostHog Error
+            Tracking with the coarse exception type and the code locations (file, function, and
+            line) from the stack trace, never the error message, plus anonymous mobile feature-use
+            events (an app launch, the name of each screen opened, that a transaction, budget,
+            savings goal, debt, subscription, or import was added, changed, or removed, and that a
+            voice entry, voice widget note, receipt scan, SMS paste, PDF statement, assistant
             message, or pet action succeeded, with fixed labels and counts but no amounts or text).
             While you are signed in to the mobile app and have allowed it, its crash reports and
             feature-use events are linked to your user ID and email address on a PostHog analytics

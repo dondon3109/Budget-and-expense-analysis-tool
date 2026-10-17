@@ -1,5 +1,6 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
+import { captureAppException } from "../../analytics/PostHogAnalytics";
 import "./AppErrorBoundary.css";
 
 interface AppErrorBoundaryProps {
@@ -24,6 +25,7 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
 
   override componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Zoption screen failed to render", error, info.componentStack);
+    captureAppException(error, "app-error-boundary");
   }
 
   override render() {

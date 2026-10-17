@@ -134,6 +134,11 @@ describe("PostHog Web Analytics", () => {
         web_vitals: true,
         web_vitals_allowed_metrics: ["LCP", "CLS", "INP"],
       },
+      capture_exceptions: {
+        capture_unhandled_errors: true,
+        capture_unhandled_rejections: true,
+        capture_console_errors: false,
+      },
     });
 
     // Every app route is private; the public site on zoption.site counts its own pageviews.

@@ -8,7 +8,7 @@ Legacy third-party tracking mechanisms—specifically **Google Analytics 4** and
 
 PostHog serves three distinct, privacy-isolated telemetry channels:
 
-1. **Public site pageviews, web app funnel and feature-usage events, and Core Web Vitals** (Client-side, cookieless, memory-only)
+1. **Public site pageviews, web app funnel and feature-usage events, Core Web Vitals, and web app error reports** (Client-side, memory-only; `$exception` in Error Tracking, sanitized like mobile)
 2. **AI Observability** (Server-side Worker metadata, `$ai_generation`)
 3. **Android crash telemetry and product events** (Client-side mobile, sanitized `$exception` in Error Tracking plus named feature events)
 
@@ -59,6 +59,12 @@ posthog.init(posthogKey, {
     web_vitals: true,
     web_vitals_allowed_metrics: ["LCP", "CLS", "INP"],
   },
+  // App only; the public site captures no exceptions.
+  capture_exceptions: {
+    capture_unhandled_errors: true,
+    capture_unhandled_rejections: true,
+    capture_console_errors: false,
+  },
 });
 ```
 
@@ -67,6 +73,8 @@ posthog.init(posthogKey, {
 - **No Session Replay / Heatmaps**: Remote recording scripts and network payload capture are completely disabled.
 - **Web vitals are bundled**: the SDK's web-vitals extension is imported from `posthog-js/dist/web-vitals` in both `apps/web/src/analytics/PostHogAnalytics.tsx` and `apps/site/src/client/analytics.ts`. Without that import the SDK tries to download the extension at runtime, which the next setting forbids, and no `$web_vitals` is ever sent.
 - **No External Script Ingestion**: `disable_external_dependency_loading: true` ensures that PostHog does not load external CDN scripts dynamically at runtime, maintaining full compliance with the strict Pages CSP (`script-src 'self'`). On the site, `api_host` is the same-origin `/ingest` proxy.
+
+- **Web app error tracking**: uncaught errors and unhandled rejections are autocaptured as `$exception`, and `AppErrorBoundary` reports render failures through `captureAppException` with `source: "app-error-boundary"` (React keeps those away from `window.onerror`). The extension is bundled from `posthog-js/dist/exception-autocapture`, as web vitals are. Before sending, `scrubExceptionEvent` replaces each exception's message with its class, keeps only frame code locations (file without query, function, line, column), and drops every other `$exception_*` property, including the SDK's message copies and breadcrumb steps. The events pass the same consent gate as the rest, so nothing is sent without Analytics consent. No web source maps are uploaded yet, so frames stay minified.
 
 ### 2.3 Server-Side AI Observability (`$ai_generation`)
 
@@ -161,8 +169,9 @@ PostHog's generous Free Tier provides:
 | **AI Observability**       | 1 `$ai_generation` per assistant request          | ~1,000 – 10,000 events       | 0.1% – 1.0%       |
 | **Web app events**         | 1 `page_viewed` per page, 1 event per write       | ~5,000 – 50,000 events       | 0.5% – 5.0%       |
 | **Mobile Crash Telemetry** | 1 `$exception` per rare runtime crash             | < 500 events                 | < 0.1%            |
+| **Web Error Tracking**     | 1 `$exception` per uncaught error (rate limited)  | < 1,000 events               | < 0.1%            |
 | **Mobile product events**  | 1 event per launch and per completed write        | ~2,000 – 20,000 events       | 0.2% – 2.0%       |
-| **Total Estimated**        | —                                                 | **~18,500 – 120,500 events** | **~1.9% – 12.1%** |
+| **Total Estimated**        | —                                                 | **~18,500 – 121,500 events** | **~1.9% – 12.1%** |
 
 ### Quota Guardrails
 
