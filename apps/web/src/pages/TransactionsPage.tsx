@@ -40,6 +40,7 @@ import {
 import { ShareLinkModal } from "../components/sharing/ShareLinkModal";
 import { TransactionTable } from "../components/transactions/TransactionTable";
 import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
+import { useTransactionSharing } from "../hooks/useTransactionSharing";
 import { AppShell } from "../components/layout/AppShell";
 import { useBulkTransactionActions } from "../hooks/useBulkTransactionActions";
 import { SORT_OPTIONS, useTransactionFilters } from "../hooks/useTransactionFilters";
@@ -93,6 +94,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 export function TransactionsPage() {
   const { workspace, family } = useActiveWorkspace();
+  const rowSharing = useTransactionSharing();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -583,6 +585,8 @@ export function TransactionsPage() {
                 onSort={handleSort}
                 onEdit={openEdit}
                 onShare={family ? undefined : setSharing}
+                rowNote={rowSharing.rowNote}
+                canChange={rowSharing.canChange}
                 onRequestDelete={requestDelete}
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}
@@ -708,6 +712,8 @@ export function TransactionsPage() {
             id: sharing.id,
             label: sharing.description,
             hasNote: Boolean(sharing.notes),
+            categoryName: sharing.categoryName,
+            direction: sharing.kind === "income" ? "income" : "expense",
           }}
           onClose={() => setSharing(undefined)}
         />

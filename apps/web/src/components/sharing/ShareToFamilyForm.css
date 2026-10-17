@@ -1,0 +1,44 @@
+/* The share sheet's destination switch and its two forms, laid out like the dialog body. */
+.share-family-form {
+  display: grid;
+  gap: 18px;
+}
+
+.share-destination {
+  display: inline-flex;
+  justify-self: start;
+  padding: 3px;
+  gap: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-muted);
+}
+
+.share-destination button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.share-destination button[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--surface);
+  box-shadow: var(--shadow-card);
+}
+
+.share-destination button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.share-family-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+}

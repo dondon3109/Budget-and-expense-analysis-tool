@@ -14,12 +14,23 @@ import { useRootLock } from "../../hooks/useRootLock";
 import { renderShareImage } from "../../lib/shareImage";
 import { userWorkspace } from "../../lib/workspace";
 import { useCreateShareLink } from "../../queries/shares";
+import { useActiveWorkspace } from "../layout/ActiveWorkspaceProvider";
+import { ShareToFamilyForm } from "./ShareToFamilyForm";
 // The dialog shares its look with the budget share dialog.
 import "../budgets/ShareBudgetModal.css";
+import "./ShareToFamilyForm.css";
 
 /** What the dialog shares: one transaction, or one account's balance. */
 export type ShareTarget =
-  | { kind: "transaction"; id: string; label: string; hasNote: boolean }
+  | {
+      kind: "transaction";
+      id: string;
+      label: string;
+      hasNote: boolean;
+      /** Used to suggest the matching family category. */
+      categoryName: string;
+      direction: "income" | "expense";
+    }
   | { kind: "balance"; id: string; label: string };
 
 interface ShareLinkModalProps {
@@ -50,14 +61,19 @@ function firstName(value: unknown): string {
 /**
  * Creates a public, read-only snapshot link for one transaction or balance. Only the amount is
  * always shown; every other field is opt in, and the snapshot never changes after it is made.
+ * A person in a family can instead share into it (`ShareToFamilyForm`).
  */
 export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
   const { user } = useAuth();
   const workspace = userWorkspace(user!);
+  const families = useActiveWorkspace().workspaces.filter(
+    (item) => item.kind === "family" && item.role !== "viewer",
+  );
+  const [destination, setDestination] = useState<"link" | "family">("link");
   const createMutation = useCreateShareLink(workspace);
   const titleId = useId();
   const descriptionId = useId();
-  const dialogRef = useRef<HTMLFormElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [show, setShow] = useState<Record<FieldKey, boolean>>({
     description: false,
     category: true,
@@ -124,7 +140,7 @@ export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
   // Portalled so the inert application root from useRootLock does not disable the dialog.
   return createPortal(
     <div className="share-budget-backdrop" role="presentation" onMouseDown={handleBackdropClick}>
-      <form
+      <div
         ref={dialogRef}
         className="share-budget-modal"
         role="dialog"
@@ -132,17 +148,19 @@ export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
         onKeyDown={handleKeyDown}
-        onSubmit={handleSubmit}
       >
         <header className="share-budget-modal-header">
           <div>
-            <p className="share-budget-eyebrow">Read-only link</p>
+            <p className="share-budget-eyebrow">
+              {destination === "family" ? "Family" : "Read-only link"}
+            </p>
             <h2 id={titleId}>
               {target.kind === "transaction" ? "Share transaction" : "Share balance"}
             </h2>
             <p id={descriptionId}>
-              {target.label}. Anyone with the link sees a frozen snapshot, never your accounts or
-              other transactions. You can turn the link off in Settings.
+              {destination === "family"
+                ? `${target.label}. Only the family you choose sees it.`
+                : `${target.label}. Anyone with the link sees a frozen snapshot, never your accounts or other transactions. You can turn the link off in Settings.`}
             </p>
           </div>
           <button className="share-budget-icon-button" type="button" onClick={onClose}>
@@ -151,7 +169,28 @@ export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
           </button>
         </header>
 
-        {created ? (
+        {families.length > 0 && !created && (
+          <div className="share-destination" role="group" aria-label="Share with">
+            <button
+              type="button"
+              aria-pressed={destination === "link"}
+              onClick={() => setDestination("link")}
+            >
+              Public link
+            </button>
+            <button
+              type="button"
+              aria-pressed={destination === "family"}
+              onClick={() => setDestination("family")}
+            >
+              Family
+            </button>
+          </div>
+        )}
+
+        {destination === "family" ? (
+          <ShareToFamilyForm user={user!} target={target} families={families} onClose={onClose} />
+        ) : created ? (
           <section className="share-budget-generated" aria-label="Share link">
             <label className="share-budget-field">
               <span>Link</span>
@@ -192,7 +231,7 @@ export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
             )}
           </section>
         ) : (
-          <>
+          <form className="share-family-form" onSubmit={handleSubmit}>
             {target.kind === "transaction" && (
               <fieldset className="share-budget-fieldset">
                 <legend>Show with the amount</legend>
@@ -259,9 +298,9 @@ export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
                 {createMutation.isPending ? "Creating…" : "Create link"}
               </button>
             </footer>
-          </>
+          </form>
         )}
-      </form>
+      </div>
     </div>,
     document.body,
   );

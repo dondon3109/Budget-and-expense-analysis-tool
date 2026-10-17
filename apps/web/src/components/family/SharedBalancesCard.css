@@ -1,0 +1,73 @@
+.shared-balances {
+  display: grid;
+  gap: 14px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.shared-balances header h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.shared-balances header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.shared-balances ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shared-balances li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.shared-balances li > div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.shared-balances li span {
+  overflow-wrap: anywhere;
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.shared-balances-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.shared-balances-remove {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.shared-balances-remove:hover {
+  background: var(--surface-hover);
+}
+
+.shared-balances-remove:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
