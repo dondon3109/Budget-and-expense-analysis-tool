@@ -52,7 +52,9 @@ export function isAnalyticsConsented(): boolean {
  */
 const gateAndSanitizeAnalyticsEvent: BeforeSendFn = (captureResult) => {
   if (!captureResult || !isAnalyticsConsented()) return null;
-  return sanitizeAnalyticsEvent(scrubExceptionEvent(captureResult));
+  const scrubbed = scrubExceptionEvent(captureResult);
+  if (!scrubbed) return null;
+  return sanitizeAnalyticsEvent(scrubbed);
 };
 
 /** One exception the SDK built: its class, its message, and its parsed stack. */
