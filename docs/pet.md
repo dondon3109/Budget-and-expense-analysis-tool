@@ -72,12 +72,13 @@ healthy pet hops and sends up hearts in its species' happy voice, and five taps 
 make it dance with a shower of hearts, a higher voice, and a sparkle jingle (then three seconds
 before the next dance). A sick pet wobbles with a 🤒 and a fading one barely stirs with a 💤, both
 in the species' sad voice, quieter when fading. Each species has its own happy and sad clip, pitched
-up for a baby and down for a legend; `scripts/generate-pet-sounds.mjs` synthesizes them into
-`apps/mobile/assets/sounds/pet/` and `apps/web/public/pet/sounds/`. The phone also buzzes, lightly
-or with a success pattern on a dance; the web does not. The voice follows the Sound effects switch
-(mobile Preferences, or web Account Settings for that browser). Reduced motion, from the system or
-the in-app switch, stills the motion and the burst but keeps the voice. Petting is local only: it
-never reaches the Worker and earns nothing.
+up for a baby and down for a legend; `scripts/generate-pet-sounds.mjs` synthesizes them from a
+seeded model of each species' real call into `apps/mobile/assets/sounds/pet/` and
+`apps/web/public/pet/sounds/`. The phone also buzzes, lightly or with a success pattern on a dance;
+the web does not. The voice follows the Sound effects switch (mobile Preferences, or web Account
+Settings for that browser). Reduced motion, from the system or the in-app switch, stills the motion
+and the burst but keeps the voice. Petting is local only: it never reaches the Worker and
+earns nothing.
 
 New accounts are asked at the end of first-run setup whether they want a pet. A yes opens the egg
 picker; a no turns the pet off (`PUT /api/app/pet/settings`).
