@@ -79,6 +79,8 @@ export function startAnalytics(): (() => void) | undefined {
       capture_pageview: false,
       capture_pageleave: false,
       autocapture: false,
+      // Click and mouse-move points for the landing page only; every page load re-inits.
+      capture_heatmaps: location.pathname === "/",
       disable_session_recording: true,
       disable_surveys: true,
       disable_external_dependency_loading: true,

@@ -31,6 +31,19 @@ describe("sanitizeAnalyticsProperties", () => {
     });
   });
 
+  it("reduces heatmap page keys to origin and path, merging their points", () => {
+    const tap = { x: 1, y: 2, target_fixed: false, type: "click" };
+    const move = { x: 3, y: 4, target_fixed: false, type: "mousemove" };
+    expect(
+      sanitizeAnalyticsProperties({
+        $heatmap_data: {
+          "https://app.zoption.site/app?month=2026-10": [tap],
+          "https://app.zoption.site/app#top": [move],
+        },
+      }),
+    ).toEqual({ $heatmap_data: { "https://app.zoption.site/app": [tap, move] } });
+  });
+
   it("normalizes $host to a bare lowercase host", () => {
     expect(sanitizeAnalyticsProperties({ $host: "https://Zoption.Site:8443/path" })).toEqual({
       $host: "zoption.site:8443",

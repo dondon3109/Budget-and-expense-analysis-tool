@@ -52,8 +52,31 @@ export function isAnalyticsConsented(): boolean {
  */
 const gateAndSanitizeAnalyticsEvent: BeforeSendFn = (captureResult) => {
   if (!captureResult || !isAnalyticsConsented()) return null;
-  return sanitizeAnalyticsEvent(scrubExceptionEvent(captureResult));
+  return keepDashboardHeatmap(sanitizeAnalyticsEvent(scrubExceptionEvent(captureResult)));
 };
+
+/**
+ * Heatmaps cover the dashboard (`/app`) alone. The SDK records clicks and mouse moves on
+ * every page, keyed by URL, so points from any other private page are dropped here, and a
+ * `$$heatmap` left with none is not sent. Runs after the sanitizer has reduced the keys to
+ * origin and path. Non-heatmap events pass through.
+ */
+export const keepDashboardHeatmap: BeforeSendFn = (captureResult) => {
+  if (!captureResult || captureResult.event !== "$$heatmap") return captureResult;
+  const data: unknown = captureResult.properties.$heatmap_data;
+  if (!data || typeof data !== "object") return null;
+  const kept = Object.fromEntries(Object.entries(data).filter(([url]) => isDashboardUrl(url)));
+  if (Object.keys(kept).length === 0) return null;
+  return { ...captureResult, properties: { ...captureResult.properties, $heatmap_data: kept } };
+};
+
+function isDashboardUrl(url: string): boolean {
+  try {
+    return new URL(url).pathname.replace(/\/+$/, "") === "/app";
+  } catch {
+    return false;
+  }
+}
 
 /** One exception the SDK built: its class, its message, and its parsed stack. */
 interface ExceptionEntry {
@@ -173,6 +196,8 @@ export function ensurePostHogInitialized(): boolean {
     capture_pageview: false,
     capture_pageleave: false,
     autocapture: false,
+    // Click and mouse-move points; keepDashboardHeatmap keeps only the dashboard's.
+    capture_heatmaps: true,
     disable_session_recording: true,
     disable_surveys: true,
     disable_external_dependency_loading: true,

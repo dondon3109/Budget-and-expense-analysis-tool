@@ -31,7 +31,7 @@ All telemetry is strictly bounded to protect financial privacy and operate withi
 - **Consent first**: nothing is captured until the visitor grants the Analytics cookie category. Without that stored decision, or without a configured key, every capture is a silent no-op.
 - **Pageviews on the public site only**: `zoption.site` (`apps/site/src/client/analytics.ts`) sends one `$pageview` per page load, only on `zoption.site` or `www.zoption.site` (never on a `*.pages.dev` deployment URL, `isProductionHost`), only on a built manifest page (not the 404), and never when the query carries anything but campaign parameters or the fragment carries auth state (`isTrackableUrl` in `apps/site/src/lib/trackableUrl.ts`). The module itself downloads only after consent. When an AI answer engine sent the visit (ChatGPT, Perplexity, Claude, Gemini, Copilot, DeepSeek, Meta AI, You.com), the pageview carries `ai_referrer` with the engine's name and nothing else from the referrer.
 - **Same-origin ingestion on the site**: the site posts to its own `/ingest` Pages Function (`apps/site/functions/ingest/[[path]].ts`), which forwards only PostHog capture endpoints to `us.i.posthog.com` and strips cookies and client address headers, so the site CSP keeps `connect-src 'self'` for analytics and blocklists aimed at the PostHog host do not drop consented events.
-- **A closed event set in the app**: the app at `app.zoption.site` sends no `$pageview` and no URL. Its signup page and signed-in app send only the events typed in `apps/web/src/analytics/funnel.ts`, and every property is a fixed enum:
+- **A closed event set in the app**: the app at `app.zoption.site` sends no `$pageview` and no URL beyond the origin-and-path `$current_url` the SDK attaches. Its signup page and signed-in app send only the events typed in `apps/web/src/analytics/funnel.ts`, every property a fixed enum, plus SDK web vitals, scrubbed `$exception`s, and dashboard-only `$$heatmap` points (section 2.2):
   - Funnel: `signup_viewed`, `signup_submitted {method: password|google, outcome}`, `app_session_started`, `first_import_committed`, `assistant_consent_granted`, `assistant_first_question {surface}`. `app_session_started`, `first_import_committed`, and `assistant_first_question` fire at most once per page load. A Google sign-up is sent as `outcome: redirect_started` before the redirect (with `send_instantly`, so leaving the page cannot drop it); whether it finished shows as the next `app_session_started`.
   - Page use: `page_viewed {page}` once per signed-in path change (`apps/web/src/analytics/AppPageViewed.tsx`), naming the page from a fixed map. Admin pages and query strings are never sent.
   - Feature adoption: `voice_entry_drafted`, `receipt_scanned`, `sms_paste_applied`, `import_completed`, `assistant_message_sent {kind: text|voice}`, `assistant_transaction_saved`, `assistant_action_confirmed`, `pet_egg_chosen`, `pet_hatched`, `pet_color_set`, and `pet_enabled_set {enabled}`. Each fires once its feature returns a result (in `lib/api/<domain>.ts`, or the SMS dialog's apply), so it counts use, not only saves: a voice draft the user then discards still counts.
@@ -51,6 +51,7 @@ posthog.init(posthogKey, {
   capture_pageview: false, // The site sends its one pageview manually; the app sends none
   capture_pageleave: false,
   autocapture: false,
+  capture_heatmaps: true, // Site: only on "/" (the landing page). App: kept for "/app" only
   disable_session_recording: true,
   disable_surveys: true,
   disable_external_dependency_loading: true,
@@ -70,7 +71,8 @@ posthog.init(posthogKey, {
 
 - **No Cookies or LocalStorage**: `persistence: "memory"` ensures no cookies or localStorage/sessionStorage persistence keys are set, so each page load starts anonymous until the session restore identifies the account again. The app does not use `cookieless_mode`, because posthog-js ignores `identify()` in it, and does not call `opt_in_capturing`/`opt_out_capturing`, which would write the decision to localStorage; the `before_send` consent gate drops every event, `$identify` included, once Analytics is withdrawn.
 - **Identified-only Person Profiles**: `person_profiles: "identified_only"` creates a person only for a signed-in account (section 2.0); anonymous events never make one.
-- **No Session Replay / Heatmaps**: Remote recording scripts and network payload capture are completely disabled.
+- **No Session Replay**: Remote recording scripts and network payload capture are completely disabled.
+- **Heatmaps on two pages only**: `$$heatmap` events carry click and mouse-move coordinates (with `target_fixed` and the point type), keyed by page URL, and nothing about the element clicked or its text. The site turns them on only for the landing page (`https://zoption.site/`). The app records them on every page, and `keepDashboardHeatmap` in `PostHogAnalytics.tsx` drops every point not on the dashboard (`https://app.zoption.site/app`) before the event leaves. The shared sanitizer reduces each `$heatmap_data` key to origin and path, like `$current_url`. Both pages are in the PostHog project's heatmap capture URL list (Settings → Heatmaps), which the free plan caps at 3 pages.
 - **Web vitals are bundled**: the SDK's web-vitals extension is imported from `posthog-js/dist/web-vitals` in both `apps/web/src/analytics/PostHogAnalytics.tsx` and `apps/site/src/client/analytics.ts`. Without that import the SDK tries to download the extension at runtime, which the next setting forbids, and no `$web_vitals` is ever sent.
 - **No External Script Ingestion**: `disable_external_dependency_loading: true` ensures that PostHog does not load external CDN scripts dynamically at runtime, maintaining full compliance with the strict Pages CSP (`script-src 'self'`). On the site, `api_host` is the same-origin `/ingest` proxy.
 
@@ -175,7 +177,7 @@ PostHog's generous Free Tier provides:
 
 ### Quota Guardrails
 
-1. Autocapture, session replay, and heatmap recordings are permanently disabled.
+1. Autocapture and session replay are permanently disabled. Heatmaps cover only the landing page and the app dashboard (section 2.2).
 2. Authenticated routes (`/app/*`) send no `$pageview`, URL, or financial value; only the fixed-enum events in section 2.1, after Analytics consent.
 3. If traffic exceeds expectations, Core Web Vitals sampling or PostHog event ingestion rate-limiting can be applied without breaking analytics integrity.
 
