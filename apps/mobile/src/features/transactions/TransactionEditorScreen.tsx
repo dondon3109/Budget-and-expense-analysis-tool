@@ -35,9 +35,9 @@ import {
   Button,
   Card,
   ConfirmationDialog,
+  DateField,
   ErrorState,
   FormField,
-  formatDateInput,
   SelectionField,
   Skeleton,
   SyncStatus,
@@ -858,17 +858,11 @@ export function TransactionEditorScreen() {
               onCancel={() => setCreatingCategory(false)}
             />
           ) : null}
-          <FormField
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!saving && !mutationBlocked}
+          <DateField
+            disabled={saving || mutationBlocked}
             error={errors.date}
-            hint="Use YYYY-MM-DD."
-            keyboardType="numbers-and-punctuation"
             label="Date"
-            maxLength={10}
-            onChangeText={(value) => updateValue("date", formatDateInput(value))}
-            placeholder="YYYY-MM-DD"
+            onChange={(date) => updateValue("date", date)}
             value={values.date}
           />
           <FormField

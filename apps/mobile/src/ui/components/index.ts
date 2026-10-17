@@ -6,6 +6,7 @@ export * from "./CashflowChart";
 export * from "./ChartCard";
 export * from "./CollapsibleCard";
 export * from "./ConfirmationDialog";
+export * from "./DateField";
 export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./FormField";
