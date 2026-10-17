@@ -1,4 +1,4 @@
-// Family workspaces: creating one, inviting people, roles, leaving, and transfer.
+// Family workspaces: creating one, inviting people, roles, leaving, transfer, and closing.
 
 import { z } from "zod";
 
@@ -15,6 +15,8 @@ export const FAMILY_SWAP_LIMIT_PER_YEAR = 5;
 /** Families a person can belong to, including the one they own. */
 export const FAMILY_MEMBERSHIP_LIMIT = 3;
 export const FAMILY_INVITATION_DAYS = 14;
+/** A closed family stays read only, so members can export it, for this long before deletion. */
+export const FAMILY_CLOSING_DAYS = 30;
 
 /** The roles an owner can give; ownership moves only through a transfer. */
 export const familyMemberRoles = ["member", "viewer"] as const;
@@ -74,8 +76,12 @@ export const familyDetailSchema = z
       })
       .strict(),
     swaps: z.object({ limit: z.number().int(), used: z.number().int() }).strict(),
+    /** When a closed family is deleted; null while it is open. */
+    closesAt: timestampSchema.nullable(),
   })
   .strict();
+
+export const familyClosureSchema = z.object({ closesAt: timestampSchema }).strict();
 
 /** An invitation addressed to the signed-in person's verified email. */
 export const familyInvitationSchema = z
@@ -101,3 +107,4 @@ export type FamilyPendingInvitation = z.infer<typeof familyPendingInvitationSche
 export type FamilyDetail = z.infer<typeof familyDetailSchema>;
 export type FamilyInvitation = z.infer<typeof familyInvitationSchema>;
 export type FamilyInvitationList = z.infer<typeof familyInvitationListSchema>;
+export type FamilyClosure = z.infer<typeof familyClosureSchema>;

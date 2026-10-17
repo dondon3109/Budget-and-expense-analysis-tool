@@ -12,8 +12,8 @@ import {
 import { tenants } from "./schema";
 
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
-// The repositories use hand written SQL; this mirrors 0077_tenant_members.sql
-// and 0078_family_spaces.sql.
+// The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
+// 0078_family_spaces.sql, and 0079_family_closures.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -79,4 +79,19 @@ export const familySeatEvents = sqliteTable(
     index("family_seat_events_user_idx").on(table.userId, table.kind, table.createdAt),
     check("family_seat_events_kind_check", sql`${table.kind} IN ('joined', 'freed')`),
   ],
+);
+
+export const familyClosures = sqliteTable(
+  "family_closures",
+  {
+    tenantId: text("tenant_id")
+      .primaryKey()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    closedBy: text("closed_by").notNull(),
+    closedAt: text("closed_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+    purgeAfter: text("purge_after").notNull(),
+  },
+  (table) => [index("family_closures_purge_idx").on(table.purgeAfter)],
 );

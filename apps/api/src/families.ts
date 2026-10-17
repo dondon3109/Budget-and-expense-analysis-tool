@@ -1,5 +1,6 @@
 import {
   FAMILY_MEMBERSHIP_LIMIT,
+  type FamilyClosure,
   type FamilyDetail,
   type FamilyInvitationList,
   type FamilyInviteInput,
@@ -38,6 +39,7 @@ export interface FamilyService {
   ): Promise<void>;
   remove(env: Bindings, tenant: TenantContext, user: AuthUser, userId: string): Promise<void>;
   transfer(env: Bindings, tenant: TenantContext, user: AuthUser, userId: string): Promise<void>;
+  close(env: Bindings, tenant: TenantContext, user: AuthUser): Promise<FamilyClosure>;
   invitations(env: Bindings, user: AuthUser): Promise<FamilyInvitationList>;
   accept(env: Bindings, user: AuthUser, invitationId: string): Promise<void>;
   decline(env: Bindings, user: AuthUser, invitationId: string): Promise<void>;
@@ -213,6 +215,11 @@ export function createFamilyService(
       if (!moved) {
         throw new HttpError(404, "member_not_found", "Only a current member can own the family.");
       }
+    },
+
+    async close(env, tenant, user) {
+      requireOwner(tenant);
+      return { closesAt: await repository.close(env, tenant.tenantId, user.id) };
     },
 
     async invitations(env, user) {
