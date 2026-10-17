@@ -19,8 +19,9 @@ promo/
 # Generated artifacts: the Android toolchain, Expo, pnpm, and drizzle-kit own these.
 apps/mobile/.expo/
 apps/mobile/expo-env.d.ts
-apps/mobile/android/app/build/
-apps/mobile/android/build/
+# The whole native prebuild is generated and gitignored (apps/mobile/.gitignore).
+apps/mobile/android/
+apps/mobile/ios/
 apps/mobile/modules/*/android/build/
 pnpm-lock.yaml
 db/migrations/meta/
