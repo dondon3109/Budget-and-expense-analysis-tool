@@ -1,0 +1,19 @@
+.seat-rules-body {
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-right: 4px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.seat-rules-body ul {
+  display: grid;
+  gap: 8px;
+  padding-left: 20px;
+}
+
+.seat-rules-dialog > .form-error {
+  margin: 12px 0 0;
+}

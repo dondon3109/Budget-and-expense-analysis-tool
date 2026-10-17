@@ -8,6 +8,8 @@ export function debtsQueryOptions(workspace: AuthenticatedWorkspace) {
   return queryOptions({
     queryKey: queryKeys.debts(workspace),
     queryFn: () => getDebts(workspace),
+    // Debts are personal only; the API refuses them in a family workspace.
+    enabled: !workspace.familyId,
   });
 }
 

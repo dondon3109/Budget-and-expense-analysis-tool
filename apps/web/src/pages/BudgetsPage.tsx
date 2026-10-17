@@ -11,12 +11,12 @@ import { Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthProvider";
 import { BudgetOccasions } from "../components/budgets/BudgetOccasions";
 import { BudgetScopeTabs, type BudgetTab } from "../components/budgets/BudgetScopeTabs";
 import { ShareBudgetModal } from "../components/budgets/ShareBudgetModal";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
+import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { saveBudgets } from "../lib/api";
@@ -26,15 +26,13 @@ import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
-import { userWorkspace } from "../lib/workspace";
 import { budgetPlanKey, invalidateAfterBudgetWrite, useBudgets } from "../queries/budgets";
 import "./BudgetsPage.css";
 import { useWorkspaceCurrency } from "../lib/workspaceCurrency";
 
 export function BudgetsPage() {
   const currencySymbol = currencyMetadata[useWorkspaceCurrency()].symbol;
-  const { user } = useAuth();
-  const workspace = userWorkspace(user!);
+  const { workspace, family } = useActiveWorkspace();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedMonth = searchParams.get("month");
@@ -249,14 +247,16 @@ export function BudgetsPage() {
             <h1>Budgets</h1>
           </div>
           <div className="header-actions budgets-header-actions">
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => setShareModalOpen(true)}
-              disabled={!data || data.items.length === 0 || tab !== "month"}
-            >
-              <Share2 size={17} aria-hidden="true" /> Share envelopes
-            </button>
+            {!family && (
+              <button
+                className="button secondary"
+                type="button"
+                onClick={() => setShareModalOpen(true)}
+                disabled={!data || data.items.length === 0 || tab !== "month"}
+              >
+                <Share2 size={17} aria-hidden="true" /> Share envelopes
+              </button>
+            )}
             {tab !== "every-month" && !occasionId && (
               <MonthSelector
                 label="Budget month"

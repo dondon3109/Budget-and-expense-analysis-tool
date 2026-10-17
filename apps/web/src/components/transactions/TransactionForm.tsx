@@ -28,7 +28,7 @@ import { createPortal } from "react-dom";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { useDefaultSpendingAccountId } from "../../lib/defaultSpendingAccount";
-import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { personalWorkspace, type AuthenticatedWorkspace } from "../../lib/workspace";
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
 import { formatMoney } from "../../lib/formatters";
@@ -424,7 +424,8 @@ export function TransactionForm({
         >
           {!item && (
             <TransactionVoiceEntry
-              workspace={workspace}
+              // AI and receipt consent belong to the person, even in a family.
+              workspace={personalWorkspace(workspace)}
               disabled={busy || activeCategoryNames.length === 0 || activeAccounts.length === 0}
               onDraft={applyVoiceDraft}
               categories={activeCategoryNames}

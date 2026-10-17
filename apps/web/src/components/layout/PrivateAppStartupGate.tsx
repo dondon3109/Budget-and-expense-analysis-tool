@@ -1,4 +1,3 @@
-import type { User } from "@supabase/supabase-js";
 import {
   Fragment,
   Suspense,
@@ -16,12 +15,12 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { captureFunnelEvent } from "../../analytics/funnel";
 import { useAuth } from "../../auth/AuthProvider";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
-import { userWorkspace } from "../../lib/workspace";
 import { setWorkspaceCurrency } from "../../lib/workspaceCurrency";
 import { useOnboarding } from "../../queries/onboarding";
 import { useWorkspaceSettings } from "../../queries/settings";
 import { useInitialDashboardExperience } from "../dashboard/InitialDashboardExperienceProvider";
 
+import { ActiveWorkspaceProvider, useActiveWorkspace } from "./ActiveWorkspaceProvider";
 import { FullPageLoadingStatus, type LoadingPhase } from "./FullPageLoadingStatus";
 import { InlineLoader } from "./InlineLoader";
 
@@ -43,16 +42,17 @@ type RouteCommitReporterProps = {
 };
 
 /**
- * Renders the private page in the workspace currency. Amounts without their own currency read it
- * when they format, so the page is keyed by it and remounts on a change instead of keeping stale
- * labels. A user with no currency remembered in this browser waits for the first answer rather
+ * Renders the private page in the active workspace's currency. Amounts without their own currency
+ * read it when they format, so the page is keyed by it (and by the workspace, so switching starts
+ * every page fresh) and remounts on a change instead of keeping stale labels. A user with no currency remembered in this browser waits for the first answer rather
  * than rendering in PHP and remounting (and dropping a started draft) when USD arrives. A
  * workspace that has not finished first-run onboarding is sent there instead of the private page.
  */
-function WorkspaceCurrencyBoundary({ user, children }: { user: User; children: ReactNode }) {
-  const workspace = userWorkspace(user);
+function WorkspaceCurrencyBoundary({ children }: { children: ReactNode }) {
+  const { personal, workspace } = useActiveWorkspace();
   const settings = useWorkspaceSettings(workspace);
-  const onboarding = useOnboarding(workspace);
+  // First-run onboarding belongs to the person's own workspace, never a family.
+  const onboarding = useOnboarding(personal);
   if (settings.isPending || onboarding.isPending) return null;
   // The Worker refuses ledger data until onboarding finishes; this sends the user to finish it.
   // A failed load goes there too: the onboarding page can retry, and sends a finished user back.
@@ -62,7 +62,7 @@ function WorkspaceCurrencyBoundary({ user, children }: { user: User; children: R
   const currency = settings.data?.currency ?? "PHP";
   // Assigned before the keyed subtree renders; nothing subscribes, so this cannot loop.
   setWorkspaceCurrency(currency);
-  return <Fragment key={currency}>{children}</Fragment>;
+  return <Fragment key={`${workspace.key}|${currency}`}>{children}</Fragment>;
 }
 
 function RouteCommitReporter({ locationKey, onCommit }: RouteCommitReporterProps) {
@@ -154,10 +154,12 @@ export function PrivateAppStartupGate() {
               ) : null
             }
           >
-            <WorkspaceCurrencyBoundary user={user}>
-              <Outlet />
-              <RouteCommitReporter locationKey={location.key} onCommit={handleRouteCommit} />
-            </WorkspaceCurrencyBoundary>
+            <ActiveWorkspaceProvider user={user}>
+              <WorkspaceCurrencyBoundary>
+                <Outlet />
+                <RouteCommitReporter locationKey={location.key} onCommit={handleRouteCommit} />
+              </WorkspaceCurrencyBoundary>
+            </ActiveWorkspaceProvider>
           </Suspense>
         )}
       </div>

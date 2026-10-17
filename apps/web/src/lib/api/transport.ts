@@ -1,3 +1,5 @@
+import { WORKSPACE_HEADER } from "@zoption/shared";
+
 import { getSupabaseClient } from "../supabase";
 import type { AuthenticatedWorkspace } from "../workspace";
 import { ApiRequestError, apiErrorPayload } from "./errors";
@@ -59,6 +61,7 @@ export async function workspaceFetch(
     const run = async (refresh: boolean) => {
       const headers = new Headers(init.headers);
       headers.set("Authorization", `Bearer ${await accessToken(workspace, refresh)}`);
+      if (workspace.familyId) headers.set(WORKSPACE_HEADER, workspace.familyId);
       return fetch(`${apiUrl}${path}`, { ...init, headers, signal: controller.signal });
     };
 

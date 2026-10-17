@@ -18,14 +18,13 @@ import { Check, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import { useAuth } from "../../auth/AuthProvider";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
 import { createTransaction, deleteTransaction, getCategories } from "../../lib/api";
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
-import { userWorkspace } from "../../lib/workspace";
 import { invalidateAfterAccountWrite } from "../../queries/accounts";
+import { useActiveWorkspace } from "../layout/ActiveWorkspaceProvider";
 import "./AdjustBalanceModal.css";
 
 export interface AdjustBalanceModalProps {
@@ -41,9 +40,8 @@ export function AdjustBalanceModal({
   onSelectAccount,
   onClose,
 }: AdjustBalanceModalProps) {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
-  const workspace = user ? userWorkspace(user) : undefined;
+  const { workspace } = useActiveWorkspace();
 
   const [newBalance, setNewBalance] = useState("");
   // Null follows the account's own currency; only a bank account offers another one.

@@ -1,0 +1,67 @@
+.workspace-switcher {
+  display: grid;
+  gap: 6px;
+  margin: 14px 8px 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.workspace-switcher select {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.app-shell.nav-collapsed .workspace-switcher {
+  display: none;
+}
+
+.family-workspace-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--budget);
+  border-radius: var(--radius-md);
+  background: var(--budget-soft);
+  color: var(--ink);
+}
+
+.family-workspace-banner > svg {
+  color: var(--budget);
+  flex: none;
+}
+
+.family-workspace-banner > span {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.family-unsupported {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.family-unsupported h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.family-unsupported p {
+  margin: 0;
+  color: var(--muted);
+}

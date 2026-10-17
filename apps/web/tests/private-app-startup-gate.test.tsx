@@ -36,6 +36,10 @@ vi.mock("../src/queries/onboarding", () => ({
       : { isPending: false, isError: false, data: { step: onboarding.step, currency: "PHP" } },
 }));
 
+vi.mock("../src/queries/families", () => ({
+  useWorkspaces: () => ({ isPending: false, data: { workspaces: [], familiesAvailable: false } }),
+}));
+
 vi.mock("../src/queries/settings", () => ({
   useWorkspaceSettings: () => ({ isPending: false, data: { currency: "PHP" } }),
 }));

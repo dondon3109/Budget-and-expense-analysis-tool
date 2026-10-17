@@ -23,7 +23,6 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthProvider";
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { SkeletonStatus, SkeletonTableRows } from "../components/common/Skeleton";
@@ -40,6 +39,7 @@ import {
 } from "../components/transactions/TransactionForm";
 import { ShareLinkModal } from "../components/sharing/ShareLinkModal";
 import { TransactionTable } from "../components/transactions/TransactionTable";
+import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { useBulkTransactionActions } from "../hooks/useBulkTransactionActions";
 import { SORT_OPTIONS, useTransactionFilters } from "../hooks/useTransactionFilters";
@@ -61,7 +61,6 @@ import {
   saveOptimisticTransaction,
   type TransactionFeed,
 } from "../lib/optimisticTransactions";
-import { userWorkspace } from "../lib/workspace";
 import { useAccounts } from "../queries/accounts";
 import { useCategories } from "../queries/categories";
 import { useDebts } from "../queries/debts";
@@ -93,8 +92,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 export function TransactionsPage() {
-  const { user } = useAuth();
-  const workspace = userWorkspace(user!);
+  const { workspace, family } = useActiveWorkspace();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const {
@@ -402,9 +400,11 @@ export function TransactionsPage() {
             >
               <FolderCog size={17} /> Categories
             </button>
-            <Link className="button secondary" to="/app/import?mode=receipt">
-              <Receipt size={17} /> Scan receipt
-            </Link>
+            {!family && (
+              <Link className="button secondary" to="/app/import?mode=receipt">
+                <Receipt size={17} /> Scan receipt
+              </Link>
+            )}
             <button
               className="button secondary"
               type="button"
@@ -582,7 +582,7 @@ export function TransactionsPage() {
                 busyIds={deletingIds}
                 onSort={handleSort}
                 onEdit={openEdit}
-                onShare={setSharing}
+                onShare={family ? undefined : setSharing}
                 onRequestDelete={requestDelete}
                 onToggleSelect={toggleSelect}
                 onToggleSelectAll={toggleSelectAll}

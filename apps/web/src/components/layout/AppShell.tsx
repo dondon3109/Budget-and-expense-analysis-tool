@@ -13,6 +13,7 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Users,
   X,
 } from "lucide-react";
 import {
@@ -45,6 +46,12 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { LegalFooter } from "../legal/LegalFooter";
 import { PetMomentDialog } from "../pet/PetMomentDialog";
 import { UserAvatar } from "../profile/UserAvatar";
+import { useActiveWorkspace } from "./ActiveWorkspaceProvider";
+import {
+  FamilyUnsupportedNotice,
+  FamilyWorkspaceBanner,
+  WorkspaceSwitcher,
+} from "./WorkspaceSwitcher";
 import { CustomerReviewPrompt } from "../reviews/CustomerReviewPrompt";
 import { SupportChat } from "../support/SupportChat";
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -66,10 +73,34 @@ const navItems = [
 ];
 
 const adminNavItem = { label: "Admin", icon: ShieldCheck, to: "/app/admin" };
+const familyNavItem = { label: "Family", icon: Users, to: "/app/family" };
+
+/** Pages that act in the active family, plus account-level pages that never read its data. */
+const FAMILY_ROUTES = [
+  "/app",
+  "/app/transactions",
+  "/app/budgets",
+  "/app/family",
+  "/app/settings",
+  "/app/tutorials",
+  "/app/support",
+  "/app/admin",
+];
+const FAMILY_NAV_ROUTES = new Set(["/app", "/app/transactions", "/app/budgets", "/app/family"]);
+
+function worksInFamily(pathname: string): boolean {
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, "") : pathname;
+  return FAMILY_ROUTES.some((route) =>
+    route === "/app" ? path === route : path === route || path.startsWith(`${route}/`),
+  );
+}
 
 /** What the shell was asked to do while a page still holds unsaved edits. */
 type PendingNavigation = {
-  action: { kind: "route"; to: string } | { kind: "sign-out" };
+  action:
+    | { kind: "route"; to: string }
+    | { kind: "sign-out" }
+    | { kind: "workspace"; familyId: string | null };
   /** Control to focus again when the user chooses to keep editing. */
   opener: HTMLElement | null;
 };
@@ -154,11 +185,20 @@ export function AppShell({ children }: AppShellProps) {
   const drawerKeyDownRef = useRef<((event: ReactKeyboardEvent<HTMLElement>) => void) | null>(null);
   const drawerWasOpenRef = useRef(false);
   const billing = useBillingSummary(userWorkspace(user!));
-  const visibleNavItems =
-    billing.data?.canManageSponsoredSeats === true ? [...navItems, adminNavItem] : navItems;
+  const { family, workspaces, familiesAvailable, switchTo } = useActiveWorkspace();
+  const showFamilyNav = familiesAvailable || workspaces.some(({ kind }) => kind === "family");
+  const baseNavItems = showFamilyNav ? [...navItems, familyNavItem] : navItems;
+  const personalNavItems =
+    billing.data?.canManageSponsoredSeats === true ? [...baseNavItems, adminNavItem] : baseNavItems;
+  const visibleNavItems = family
+    ? personalNavItems.filter((item) => FAMILY_NAV_ROUTES.has(item.to))
+    : personalNavItems;
+  const visibleMobileNavItems = family
+    ? mobileNavItems.filter((item) => FAMILY_NAV_ROUTES.has(item.to))
+    : mobileNavItems;
   const showSupportChat =
     location.pathname !== "/app/assistant" && location.pathname !== "/app/assistant/";
-  const mobilePrimaryRoute = mobileNavItems.some(({ end, to }) =>
+  const mobilePrimaryRoute = visibleMobileNavItems.some(({ end, to }) =>
     end ? location.pathname === to || location.pathname === `${to}/` : location.pathname === to,
   );
 
@@ -212,6 +252,15 @@ export function AppShell({ children }: AppShellProps) {
     setMenuOpen(false);
   }
 
+  /** Switching remounts every page, so a page with unsaved edits asks first. */
+  function requestWorkspaceSwitch(familyId: string | null, opener: HTMLElement) {
+    if (hasUnsavedChanges) {
+      setPendingNavigation({ action: { kind: "workspace", familyId }, opener });
+      return;
+    }
+    switchTo(familyId);
+  }
+
   function handlePendingNavigationConfirm() {
     const pending = pendingNavigation;
     setPendingNavigation(undefined);
@@ -220,6 +269,7 @@ export function AppShell({ children }: AppShellProps) {
     // for them. Without this a restored draft would reappear on the next visit.
     discardUnsavedChanges();
     if (pending.action.kind === "route") void navigate(pending.action.to);
+    else if (pending.action.kind === "workspace") switchTo(pending.action.familyId);
     else void handleSignOut();
   }
 
@@ -341,6 +391,11 @@ export function AppShell({ children }: AppShellProps) {
               <ThemeToggle />
             </div>
           </div>
+          <WorkspaceSwitcher
+            workspaces={workspaces}
+            activeFamilyId={family?.id}
+            onSwitch={requestWorkspaceSwitch}
+          />
           <div className="sidebar-profile-divider" aria-hidden="true" />
 
           <nav id="primary-navigation" className="side-nav" aria-label="Main navigation">
@@ -412,12 +467,24 @@ export function AppShell({ children }: AppShellProps) {
         />
       )}
       <main className="app-main" id="main-content" tabIndex={-1}>
-        <div className="app-main-content">{children}</div>
+        <div className="app-main-content">
+          {family && (
+            <FamilyWorkspaceBanner
+              family={family}
+              onLeave={(opener) => requestWorkspaceSwitch(null, opener)}
+            />
+          )}
+          {family && !worksInFamily(location.pathname) ? (
+            <FamilyUnsupportedNotice onLeave={(opener) => requestWorkspaceSwitch(null, opener)} />
+          ) : (
+            children
+          )}
+        </div>
         <LegalFooter />
       </main>
 
       <nav className="mobile-tab-bar" aria-label="Mobile navigation">
-        {mobileNavItems.map((item) => {
+        {visibleMobileNavItems.map((item) => {
           const Icon = item.icon;
           return (
             <NavLink

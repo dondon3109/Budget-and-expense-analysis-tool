@@ -17,7 +17,6 @@ import {
 import { Fragment, useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
-import { useAuth } from "../auth/AuthProvider";
 import { useAccountMutations } from "../components/dashboard/useAccountMutations";
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
@@ -43,6 +42,7 @@ import { useInitialDashboardExperience } from "../components/dashboard/InitialDa
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { MonthSelector } from "../components/month/MonthSelector";
+import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { usePrivateAppStartupReadiness } from "../components/layout/PrivateAppStartupGate";
 import { getCashflowTrend, getDashboard, getTransferFeeInsight } from "../lib/api";
@@ -58,7 +58,6 @@ import { calculatePercentageChange, isDashboardEmpty, trendState } from "../lib/
 import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { clearSignupThankYouPending, isSignupThankYouPending } from "../lib/thankYou";
-import { userWorkspace } from "../lib/workspace";
 import { useGoalProfile } from "../queries/goalProfile";
 import { transactionsQueryOptions } from "../queries/transactions";
 import "./DashboardPage.css";
@@ -69,26 +68,28 @@ import "../components/dashboard/AccountsPanel.css";
 const dashboardHistoryPageSize = 8;
 
 export function DashboardPage() {
-  const { user } = useAuth();
   const { hasCompletedInitialDashboardExperience } = useInitialDashboardExperience();
   const reportStartupReadiness = usePrivateAppStartupReadiness();
-  const workspace = userWorkspace(user!);
+  // Personal-only parts (plan, goals, setup guides, public links) stay out of a family's home.
+  const { personal, workspace, family } = useActiveWorkspace();
   const dashboardHeadingRef = useRef<HTMLHeadingElement>(null);
   const shouldRestoreDashboardFocusRef = useRef(!hasCompletedInitialDashboardExperience);
   const accountMutations = useAccountMutations(workspace);
   const [adjustingAccount, setAdjustingAccount] = useState<AccountBalanceSummaryItem>();
   const [sharingAccount, setSharingAccount] = useState<AccountBalanceSummaryItem>();
   const [chosenCashflowView, setCashflowView] = useState<CashflowTrendView>();
-  const billingSummary = useBillingSummary(workspace);
+  const billingSummary = useBillingSummary(personal);
   const isPro = billingSummary.data?.plan === "zoption_pro";
-  const cashflowView = chosenCashflowView ?? (isPro ? "monthly" : "weekly");
+  // Longer views need Pro on the workspace itself, which a family does not have until it is billed.
+  const cashflowView = chosenCashflowView ?? (isPro && !family ? "monthly" : "weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const [signupThankYouOpen, setSignupThankYouOpen] = useState(isSignupThankYouPending);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [addTransactionOpen, setAddTransactionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
-  const goal = useGoalProfile(workspace).data?.goal ?? null;
+  const personalGoal = useGoalProfile(personal).data?.goal ?? null;
+  const goal = family ? null : personalGoal;
   const goalConfig = goalConfigFor(goal);
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const handledPostAuthCheckoutIntentRef = useRef(false);
@@ -269,6 +270,7 @@ export function DashboardPage() {
       return left.name.localeCompare(right.name);
     });
   const empty =
+    !family &&
     transactionHistoryQuery.data !== undefined &&
     isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
   // Totals lead with the workspace currency; other currencies follow as secondary lines.
@@ -359,7 +361,7 @@ export function DashboardPage() {
         }}
       />
     ),
-    plan: <GoalsSubscriptionPanel workspace={workspace} />,
+    plan: family ? null : <GoalsSubscriptionPanel workspace={workspace} />,
     budget: (
       <BudgetProgress
         data={data.budgetProgress}
@@ -407,9 +409,11 @@ export function DashboardPage() {
                 });
               }}
             />
-            <Link className="button secondary" to="/app/import?mode=receipt">
-              <Receipt size={17} aria-hidden="true" /> Scan receipt
-            </Link>
+            {!family && (
+              <Link className="button secondary" to="/app/import?mode=receipt">
+                <Receipt size={17} aria-hidden="true" /> Scan receipt
+              </Link>
+            )}
             <button
               className="button primary"
               type="button"
@@ -420,21 +424,25 @@ export function DashboardPage() {
           </div>
         </header>
 
-        <QuickStartTutorial
-          onAddTransaction={() => setAddTransactionOpen(true)}
-          onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
-          onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
-        />
+        {!family && (
+          <>
+            <QuickStartTutorial
+              onAddTransaction={() => setAddTransactionOpen(true)}
+              onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
+              onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
+            />
 
-        <GoalChecklist
-          workspace={workspace}
-          goal={goal}
-          signals={{
-            has_transaction: (transactionHistoryQuery.data?.total ?? 0) > 0,
-            has_budget: data.budgetProgress.some((row) => row.limitMinor > 0),
-          }}
-          onAction={runGoalAction}
-        />
+            <GoalChecklist
+              workspace={workspace}
+              goal={goal}
+              signals={{
+                has_transaction: (transactionHistoryQuery.data?.total ?? 0) > 0,
+                has_budget: data.budgetProgress.some((row) => row.limitMinor > 0),
+              }}
+              onAction={runGoalAction}
+            />
+          </>
+        )}
 
         <AccountsPanel
           accounts={accountMutations}
@@ -445,7 +453,7 @@ export function DashboardPage() {
           trendComparison={trendComparison}
           isPro={isPro}
           onAdjustBalance={setAdjustingAccount}
-          onShareBalance={setSharingAccount}
+          onShareBalance={family ? undefined : setSharingAccount}
         />
 
         {sharingAccount && (
@@ -528,7 +536,8 @@ export function DashboardPage() {
         ) : (
           <>
             <OverviewStatBar items={overviewItems} />
-            {summaryMonth === currentDashboardMonth && (
+            {/* Safe to spend reads subscriptions, which stay personal for now. */}
+            {summaryMonth === currentDashboardMonth && !family && (
               <SafeToSpendCard
                 workspace={workspace}
                 startingBalanceMinor={overallBalanceMinor}
@@ -562,7 +571,7 @@ export function DashboardPage() {
         <ProCheckoutDialog
           open={isProCheckoutOpen}
           summary={billingSummary.data}
-          workspace={workspace}
+          workspace={personal}
           returnFocus={subscribeTriggerRef.current}
           onClose={closeProCheckout}
         />
@@ -583,7 +592,7 @@ export function DashboardPage() {
         <AddTransactionDialog workspace={workspace} onClose={() => setAddTransactionOpen(false)} />
       )}
       <SpreadsheetMigrationWizard
-        open={migrationWizardOpen}
+        open={migrationWizardOpen && !family}
         onClose={() => setMigrationWizardOpen(false)}
         onComplete={() => {
           setMigrationWizardOpen(false);
