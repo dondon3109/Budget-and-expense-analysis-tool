@@ -1,3 +1,5 @@
+import type { WorkspaceRole } from "@zoption/shared";
+
 export interface EmailSender {
   send(message: {
     to: string;
@@ -94,6 +96,8 @@ export interface TenantContext {
   defaultAccountId: string;
   /** False until first-run onboarding finishes; the gate in `app.ts` keys off it. */
   onboardingComplete: boolean;
+  /** Set only when the request acts in a family workspace; absent means the caller's own. */
+  membership?: { role: WorkspaceRole };
 }
 
 export interface AppEnvironment {

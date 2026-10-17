@@ -8,6 +8,7 @@ export default defineConfig({
     "./db/schema-goals.ts",
     "./db/schema-fx.ts",
     "./db/schema-push.ts",
+    "./db/schema-family.ts",
     "./db/schema-sharing.ts",
   ],
   out: "./db/migrations",

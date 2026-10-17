@@ -1,3 +1,4 @@
+import { WORKSPACE_HEADER } from "@zoption/shared";
 import type { MiddlewareHandler } from "hono";
 
 import { isLoopbackOrigin } from "../auth";
@@ -46,7 +47,10 @@ export const corsAndSecurityHeaders: MiddlewareHandler<AppEnvironment> = async (
     context.header("Vary", "Origin");
   }
   context.header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS");
-  context.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  context.header(
+    "Access-Control-Allow-Headers",
+    `Authorization, Content-Type, ${WORKSPACE_HEADER}`,
+  );
   context.header("Access-Control-Max-Age", "86400");
 
   if (context.req.method === "OPTIONS") return context.body(null, 204);
