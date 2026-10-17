@@ -120,6 +120,8 @@ const FAMILY_WORKSPACE_PATHS = [
   "/api/app/accounts",
   "/api/app/categories",
   "/api/app/budgets",
+  "/api/app/dashboard",
+  "/api/app/settings",
   "/api/app/family",
   "/api/app/exports",
 ] as const;

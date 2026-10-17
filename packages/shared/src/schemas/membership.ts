@@ -21,7 +21,11 @@ export const workspaceSummarySchema = z
   .strict();
 
 export const workspaceListSchema = z
-  .object({ workspaces: z.array(workspaceSummarySchema) })
+  .object({
+    workspaces: z.array(workspaceSummarySchema),
+    /** Whether this person may create a family now; existing families show either way. */
+    familiesAvailable: z.boolean(),
+  })
   .strict();
 
 export type WorkspaceKind = (typeof workspaceKinds)[number];

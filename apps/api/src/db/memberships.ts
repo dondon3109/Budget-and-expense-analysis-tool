@@ -1,11 +1,11 @@
-import type { WorkspaceList, WorkspaceRole } from "@zoption/shared";
+import type { WorkspaceRole, WorkspaceSummary } from "@zoption/shared";
 
 import type { Bindings } from "../types";
 import { tenantIdForUser } from "./tenants";
 
 /** The workspaces one person can switch between, keyed by the user id from the auth context. */
 export interface MembershipRepository {
-  list(env: Bindings, userId: string): Promise<WorkspaceList>;
+  list(env: Bindings, userId: string): Promise<WorkspaceSummary[]>;
 }
 
 export const membershipRepository: MembershipRepository = {
@@ -23,6 +23,6 @@ export const membershipRepository: MembershipRepository = {
     )
       .bind(tenantIdForUser(userId), userId)
       .all<{ id: string; kind: "user" | "family"; name: string; role: WorkspaceRole }>();
-    return { workspaces: results };
+    return results;
   },
 };
