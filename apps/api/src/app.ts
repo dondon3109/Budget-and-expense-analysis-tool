@@ -50,8 +50,12 @@ import { createProviderCredentialRoutes } from "./routes/provider-credentials";
 import { createReceiptRoutes } from "./routes/receipts";
 import { createPushRoutes } from "./routes/push";
 import { createWorkspaceRoutes } from "./routes/workspaces";
+import { createFamilyAlertRoutes } from "./routes/family-alerts";
+import { createFamilyCommentRoutes } from "./routes/family-comments";
+import { createFamilyEntryRoutes } from "./routes/family-entries";
 import { createActiveFamilyRoutes, createFamilyRoutes } from "./routes/families";
 import { createActiveFamilyShareRoutes, createMyBalanceShareRoutes } from "./routes/family-shares";
+import { createRemittanceRoutes } from "./routes/remittances";
 import { createPublicShareLinkRoutes, createShareLinkRoutes } from "./routes/share-links";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import {
@@ -205,7 +209,13 @@ export function createApp(options: AppOptions = {}) {
     createVoiceStreamRoutes(dependencies.assistantVoiceService),
   );
   app.route("/api/app/assistant", createAssistantRoutes(dependencies.assistantService));
-  app.route("/api/app/transactions", createTransactionRoutes(dependencies.transactions));
+  app.route(
+    "/api/app/transactions",
+    createTransactionRoutes(dependencies.transactions, {
+      journal: dependencies.familyJournal,
+      alerts: dependencies.familyAlerts,
+    }),
+  );
   app.route(
     "/api/app/reviews",
     createAuthenticatedCustomerReviewRoutes(dependencies.customerReviews),
@@ -234,6 +244,16 @@ export function createApp(options: AppOptions = {}) {
     createMyBalanceShareRoutes(dependencies.familyShares),
   );
   app.route("/api/app/family/shares", createActiveFamilyShareRoutes(dependencies.familyShares));
+  app.route(
+    "/api/app/family/remittances",
+    createRemittanceRoutes(dependencies.remittances, dependencies.familyNotifier),
+  );
+  app.route("/api/app/family/transactions", createFamilyEntryRoutes(dependencies.familyJournal));
+  app.route(
+    "/api/app/family/comments",
+    createFamilyCommentRoutes(dependencies.familyComments, dependencies.familyNotifier),
+  );
+  app.route("/api/app/family/alerts", createFamilyAlertRoutes(dependencies.familyAlerts));
   app.route("/api/app/families", createFamilyRoutes(dependencies.families));
   app.route("/api/app/family", createActiveFamilyRoutes(dependencies.families));
   app.route(

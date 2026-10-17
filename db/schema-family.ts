@@ -13,7 +13,9 @@ import { tenants, transactions } from "./schema";
 
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
 // The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
-// 0078_family_spaces.sql, 0079_family_closures.sql, and 0080_family_shares.sql.
+// 0078_family_spaces.sql, 0079_family_closures.sql, 0080_family_shares.sql,
+// 0081_family_remittances.sql, 0082_family_transaction_events.sql, and
+// 0083_family_comments_and_alerts.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -147,3 +149,102 @@ export const familyBalanceShares = sqliteTable(
     index("family_balance_shares_source_idx").on(table.sourceTenantId),
   ],
 );
+
+export const familyRemittances = sqliteTable(
+  "family_remittances",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    sentByUserId: text("sent_by_user_id").notNull(),
+    sentAmountMinor: integer("sent_amount_minor").notNull(),
+    sentCurrency: text("sent_currency").notNull(),
+    feeMinor: integer("fee_minor").notNull().default(0),
+    provider: text("provider"),
+    sentOn: text("sent_on").notNull(),
+    note: text("note"),
+    transactionId: text("transaction_id"),
+    receivedByUserId: text("received_by_user_id"),
+    receivedAt: text("received_at"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("family_remittances_tenant_idx").on(table.tenantId, table.sentOn),
+    uniqueIndex("family_remittances_transaction_unique").on(table.transactionId),
+    check("family_remittances_amount_check", sql`${table.sentAmountMinor} > 0`),
+  ],
+);
+
+export const familyTransactionEvents = sqliteTable(
+  "family_transaction_events",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    transactionId: text("transaction_id").notNull(),
+    userId: text("user_id").notNull(),
+    action: text("action", { enum: ["updated", "deleted", "restored"] }).notNull(),
+    beforeJson: text("before_json"),
+    afterJson: text("after_json"),
+    snapshotJson: text("snapshot_json"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("family_transaction_events_entry_idx").on(table.tenantId, table.transactionId, table.id),
+    index("family_transaction_events_deleted_idx").on(
+      table.tenantId,
+      table.action,
+      table.createdAt,
+    ),
+    check(
+      "family_transaction_events_action_check",
+      sql`${table.action} IN ('updated', 'deleted', 'restored')`,
+    ),
+  ],
+);
+
+export const familyComments = sqliteTable(
+  "family_comments",
+  {
+    id: text("id").primaryKey(),
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subjectKind: text("subject_kind", { enum: ["transaction", "remittance"] }).notNull(),
+    subjectId: text("subject_id").notNull(),
+    userId: text("user_id").notNull(),
+    body: text("body").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [
+    index("family_comments_subject_idx").on(
+      table.tenantId,
+      table.subjectKind,
+      table.subjectId,
+      table.createdAt,
+    ),
+    check(
+      "family_comments_subject_check",
+      sql`${table.subjectKind} IN ('transaction', 'remittance')`,
+    ),
+  ],
+);
+
+export const familyAlertSettings = sqliteTable("family_alert_settings", {
+  tenantId: text("tenant_id")
+    .primaryKey()
+    .references(() => tenants.id, { onDelete: "cascade" }),
+  spendingAlertMinor: integer("spending_alert_minor"),
+  lowBalanceMinor: integer("low_balance_minor"),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+});

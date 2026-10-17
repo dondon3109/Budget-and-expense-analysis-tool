@@ -109,6 +109,21 @@ export const queryKeys = {
   /** A family workspace: the balances its members share into it. */
   familySharedBalances: (family: AuthenticatedWorkspace) =>
     [...queryKeys.family(family), "shared-balances"] as const,
+  /** A family workspace: the Sent · Spent · Left card for one month, and its history. */
+  familyRemittances: (family: AuthenticatedWorkspace, month: string) =>
+    [...queryKeys.family(family), "remittances", month] as const,
+  /** A family workspace: who changed or deleted one entry, newest first. */
+  familyEntryHistory: (family: AuthenticatedWorkspace, transactionId: string) =>
+    [...queryKeys.family(family), "entry-history", transactionId] as const,
+  /** A family workspace: entries deleted inside the restore window. */
+  familyDeletedEntries: (family: AuthenticatedWorkspace) =>
+    [...queryKeys.family(family), "deleted-entries"] as const,
+  /** A family workspace: the comments under one transaction or remittance. */
+  familyComments: (family: AuthenticatedWorkspace, kind: string, subjectId: string) =>
+    [...queryKeys.family(family), "comments", kind, subjectId] as const,
+  /** A family workspace: the owner's alert thresholds. */
+  familyAlerts: (family: AuthenticatedWorkspace) =>
+    [...queryKeys.family(family), "alerts"] as const,
   /** Personal workspace only: the balances this person shares into families. */
   myBalanceShares: (personal: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(personal), "balance-shares"] as const,

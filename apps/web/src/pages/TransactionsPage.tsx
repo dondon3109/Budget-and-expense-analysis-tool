@@ -25,6 +25,8 @@ import { Link, useSearchParams } from "react-router-dom";
 
 import { UpgradePrompt } from "../components/billing/UpgradePrompt";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
+import { FamilyThreadDialog } from "../components/family/FamilyThreadDialog";
+import { RecentlyDeletedEntries } from "../components/family/RecentlyDeletedEntries";
 import { SkeletonStatus, SkeletonTableRows } from "../components/common/Skeleton";
 import { CategoryManager } from "../components/transactions/CategoryManager";
 import { SavedViewsBar } from "../components/transactions/SavedViewsBar";
@@ -119,6 +121,7 @@ export function TransactionsPage() {
   const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
   const [editing, setEditing] = useState<TransactionListItem>();
   const [sharing, setSharing] = useState<TransactionListItem>();
+  const [threadOf, setThreadOf] = useState<TransactionListItem>();
   const [formDraft, setFormDraft] = useState<TransactionFormDraft>();
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<{
@@ -585,6 +588,7 @@ export function TransactionsPage() {
                 onSort={handleSort}
                 onEdit={openEdit}
                 onShare={family ? undefined : setSharing}
+                onThread={family ? setThreadOf : undefined}
                 rowNote={rowSharing.rowNote}
                 canChange={rowSharing.canChange}
                 onRequestDelete={requestDelete}
@@ -636,6 +640,7 @@ export function TransactionsPage() {
               </button>
             </div>
           )}
+          {family && <RecentlyDeletedEntries family={workspace} />}
         </section>
 
         {deleteMutation.isError && !pendingDelete && (
@@ -703,6 +708,14 @@ export function TransactionsPage() {
           workspace={workspace}
           categories={categories}
           onClose={() => setCategoryManagerOpen(false)}
+        />
+      )}
+      {threadOf && (
+        <FamilyThreadDialog
+          family={workspace}
+          subject={{ kind: "transaction", subjectId: threadOf.id }}
+          title={threadOf.description}
+          onClose={() => setThreadOf(undefined)}
         />
       )}
       {sharing && (

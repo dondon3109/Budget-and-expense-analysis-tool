@@ -404,7 +404,7 @@ describe("app body limits", () => {
     });
   });
 
-  it("requires JSON for writes and caps it at the default", async () => {
+  it("requires JSON for writes that carry a body and caps it at the default", async () => {
     const app = appWith(appBodyLimits);
 
     const plain = await send(app, "POST", "/api/app/transactions", {
@@ -420,7 +420,16 @@ describe("app body limits", () => {
       size: 64 * KIB + 1,
     });
     const read = await send(app, "GET", "/api/app/transactions");
+    const bare = await send(app, "POST", "/api/app/family/close");
+    // What a browser sends for a POST without a body.
+    const empty = await app.request(
+      "/api/app/family/close",
+      { method: "POST", headers: { "Content-Length": "0" }, body: "" },
+      {} as Bindings,
+    );
 
+    expect(bare.status).toBe(200);
+    expect(empty.status).toBe(200);
     expect(plain.status).toBe(415);
     await expect(plain.json()).resolves.toEqual({
       error: "unsupported_media_type",

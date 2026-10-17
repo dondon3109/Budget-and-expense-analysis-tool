@@ -1,0 +1,133 @@
+/* The family Home's Sent · Spent · Left card, laid out like the Home sections around it. */
+.remittance-card,
+.remittance-prompt {
+  display: grid;
+  gap: 16px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.remittance-prompt {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.remittance-prompt p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.remittance-card > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.remittance-card h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.remittance-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.remittance-totals > div {
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.remittance-totals dt {
+  color: var(--subtle);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.remittance-totals dd {
+  margin: 4px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.remittance-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remittance-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.remittance-list li > div:first-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.remittance-list span {
+  overflow-wrap: anywhere;
+  color: var(--subtle);
+  font-size: 12px;
+}
+
+.remittance-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.remittance-history summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.remittance-history[open] summary {
+  margin-bottom: 10px;
+}
+
+.remittance-months {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.remittance-months th,
+.remittance-months td {
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.remittance-dialog-summary {
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 680px) {
+  .remittance-totals,
+  .remittance-prompt {
+    grid-template-columns: 1fr;
+  }
+}

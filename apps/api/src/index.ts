@@ -6,6 +6,7 @@ import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { familyRepository } from "./db/families";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
+import { familyAlerts } from "./family-alerts";
 import { refreshDailyFxRates } from "./fx/rates";
 import { creditDueInterest } from "./interest/scheduled-credit";
 import { handleQueuedJob } from "./job-handler";
@@ -139,6 +140,8 @@ export default {
         console.log(JSON.stringify({ message: "Expired bug reports deleted", deleted }));
       if (deleted < 100) break;
     }
+    const digests = await familyAlerts.sendDailyDigests(env, new Date(controller.scheduledTime));
+    if (digests > 0) console.log(JSON.stringify({ message: "Family digests sent", digests }));
     const syncCompaction = await compactMobileSyncChanges(env);
     if (syncCompaction.deletedChanges > 0 || syncCompaction.expiredClients > 0) {
       console.log(
