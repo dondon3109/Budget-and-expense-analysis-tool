@@ -38,6 +38,17 @@ export function sanitizeAnalyticsProperties(
     if (typeof value === "string" && value.length > 0) sanitized[key] = sanitizeAnalyticsUrl(value);
   }
 
+  // `$$heatmap` keys its click and move points by the raw page href, query included.
+  const heatmap = sanitized["$heatmap_data"];
+  if (heatmap && typeof heatmap === "object" && !Array.isArray(heatmap)) {
+    const merged: Record<string, unknown[]> = {};
+    for (const [url, points] of Object.entries(heatmap as Record<string, unknown>)) {
+      if (!Array.isArray(points)) continue;
+      (merged[sanitizeAnalyticsUrl(url)] ??= []).push(...(points as unknown[]));
+    }
+    sanitized["$heatmap_data"] = merged;
+  }
+
   const host = sanitized["$host"];
   if (typeof host === "string" && host.length > 0) {
     const normalizedHost = sanitizeAnalyticsHost(host);
