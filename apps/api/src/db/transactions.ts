@@ -40,21 +40,25 @@ export interface TransactionRepository {
     env: Bindings,
     tenantId: string,
     input: TransactionInput,
-    options?: { id?: string },
+    options?: { id?: string; authorUserId?: string },
   ): Promise<TransactionListItem>;
+  /** `access.authorOnly` refuses a row someone else added: a family member's own-entries rule. */
   update(
     env: Bindings,
     tenantId: string,
     id: string,
     input: TransactionUpdate,
+    access?: EntryAccess,
   ): Promise<TransactionListItem>;
-  remove(env: Bindings, tenantId: string, id: string): Promise<void>;
+  remove(env: Bindings, tenantId: string, id: string, access?: EntryAccess): Promise<void>;
   export(
     env: Bindings,
     tenantId: string,
     query: TransactionExportQuery,
   ): Promise<TransactionListItem[]>;
 }
+
+export type EntryAccess = { authorOnly?: string };
 
 type TransactionRow = {
   id: string;
@@ -78,6 +82,9 @@ type TransactionRow = {
   transferGroupId: string | null;
   toAccountId: string | null;
   toAccountName: string | null;
+  authorUserId: string | null;
+  sharedCopy: number;
+  sharedToFamiliesJson: string | null;
 };
 
 function nextMonthStart(month: string): string {
@@ -86,10 +93,20 @@ function nextMonthStart(month: string): string {
   return date.toISOString().slice(0, 10);
 }
 
+/** json_group_array yields a JSON array of family tenant ids. */
+function familyIds(value: string | null): string[] {
+  if (!value) return [];
+  const parsed: unknown = JSON.parse(value);
+  return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+}
+
 function normalizeRow(row: TransactionRow): TransactionListItem {
   const linkedTransfer = row.kind === "transfer" && row.transferGroupId !== null;
+  const { sharedToFamiliesJson, ...rest } = row;
   return {
-    ...row,
+    ...rest,
+    sharedCopy: Boolean(row.sharedCopy),
+    sharedToFamilyIds: familyIds(sharedToFamiliesJson),
     amountMinor: linkedTransfer ? Math.abs(row.amountMinor) : row.amountMinor,
     currency: row.currency as Currency,
     accountName: row.accountName ?? "Unassigned",
@@ -122,7 +139,12 @@ const LOGICAL_ROWS_SELECT = `SELECT
   t.created_at AS createdAt,
   t.transfer_group_id AS transferGroupId,
   peer.account_id AS toAccountId,
-  destination.name AS toAccountName`;
+  destination.name AS toAccountName,
+  t.created_by_user_id AS authorUserId,
+  EXISTS (SELECT 1 FROM family_transaction_shares copy WHERE copy.family_transaction_id = t.id)
+    AS sharedCopy,
+  (SELECT json_group_array(link.family_tenant_id) FROM family_transaction_shares link
+   WHERE link.source_transaction_id = t.id) AS sharedToFamiliesJson`;
 
 const LOGICAL_ROWS_FROM = `FROM transactions t
   INNER JOIN categories c ON c.id = t.category_id AND c.tenant_id = t.tenant_id
@@ -307,7 +329,7 @@ export async function validateTransactionReferences(
   }
 }
 
-async function findTransaction(
+export async function findTransaction(
   env: Bindings,
   tenantId: string,
   id: string,
@@ -324,7 +346,7 @@ async function findTransaction(
   return row ? normalizeRow(row) : null;
 }
 
-function insertStatement(
+export function insertStatement(
   env: Bindings,
   values: {
     id: string;
@@ -341,12 +363,13 @@ function insertStatement(
     transferGroupId?: string;
     transferFeeMinor?: number | null;
     entryMethod?: TransactionEntryMethod;
+    authorUserId?: string;
   },
 ) {
   return env.DB.prepare(
     `INSERT INTO transactions (
-      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, debt_id, transfer_group_id, transfer_fee_minor, source_kind, entry_method
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?)`,
+      id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, notes, debt_id, transfer_group_id, transfer_fee_minor, source_kind, entry_method, created_by_user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?)`,
   ).bind(
     values.id,
     values.tenantId,
@@ -362,7 +385,30 @@ function insertStatement(
     values.transferGroupId ?? null,
     values.transferFeeMinor ?? null,
     values.entryMethod ?? null,
+    values.authorUserId ?? null,
   );
+}
+
+/** Family members change only the entries they added; the route omits `access` for the owner. */
+async function assertEntryAccess(
+  env: Bindings,
+  tenantId: string,
+  id: string,
+  access: EntryAccess | undefined,
+): Promise<void> {
+  if (!access?.authorOnly) return;
+  const row = await env.DB.prepare(
+    "SELECT created_by_user_id AS authorUserId FROM transactions WHERE id = ? AND tenant_id = ?",
+  )
+    .bind(id, tenantId)
+    .first<{ authorUserId: string | null }>();
+  if (row && row.authorUserId !== access.authorOnly) {
+    throw new HttpError(
+      403,
+      "family_entry_not_yours",
+      "Only the person who added this entry, or the family owner, can change it.",
+    );
+  }
 }
 
 /**
@@ -557,6 +603,7 @@ export const transactionRepository: TransactionRepository = {
           transferGroupId: groupId,
           transferFeeMinor: fromLeg.transferFeeMinor,
           entryMethod: input.entryMethod,
+          authorUserId: options.authorUserId,
         }),
         insertStatement(env, {
           id: toId,
@@ -572,6 +619,7 @@ export const transactionRepository: TransactionRepository = {
           transferGroupId: groupId,
           transferFeeMinor: toLeg.transferFeeMinor,
           entryMethod: input.entryMethod,
+          authorUserId: options.authorUserId,
         }),
         ...(debtId ? [applyDebtPayment(env, tenantId, debtId, toLeg.amountMinor)] : []),
       ]);
@@ -594,6 +642,7 @@ export const transactionRepository: TransactionRepository = {
       notes: input.notes,
       debtId: input.kind === "expense" ? input.debtId : null,
       entryMethod: input.entryMethod,
+      authorUserId: options.authorUserId,
     });
     // The expense row and the linked debt's new balance are one atomic write.
     if (input.kind === "expense" && input.debtId) {
@@ -609,7 +658,8 @@ export const transactionRepository: TransactionRepository = {
     return created;
   },
 
-  async update(env, tenantId, id, input) {
+  async update(env, tenantId, id, input, access) {
+    await assertEntryAccess(env, tenantId, id, access);
     const existing = await env.DB.prepare(
       `SELECT t.transfer_group_id AS transferGroupId, t.category_id AS categoryId,
               (
@@ -753,7 +803,8 @@ export const transactionRepository: TransactionRepository = {
     return updated;
   },
 
-  async remove(env, tenantId, id) {
+  async remove(env, tenantId, id, access) {
+    await assertEntryAccess(env, tenantId, id, access);
     const existing = await env.DB.prepare(
       `SELECT transfer_group_id AS transferGroupId, kind, amount_minor AS amountMinor, debt_id AS debtId
        FROM transactions WHERE id = ? AND tenant_id = ?`,

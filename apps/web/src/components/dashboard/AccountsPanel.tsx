@@ -36,6 +36,8 @@ interface AccountsPanelProps {
   onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
   /** Omitted where public links are not offered (a family workspace). */
   onShareBalance?: (account: AccountBalanceSummaryItem) => void;
+  /** The families that see an account's balance live. */
+  sharedTo?: (accountId: string) => string[];
 }
 
 function parseOptionalAmount(value: string): number | undefined | null {
@@ -62,6 +64,7 @@ export function AccountsPanel({
   isPro,
   onAdjustBalance,
   onShareBalance,
+  sharedTo,
 }: AccountsPanelProps) {
   const {
     isAddingAccount,
@@ -270,6 +273,9 @@ export function AccountsPanel({
                       <span className="dashboard-account-meta">
                         {accountTypeLabel(account.type)}
                         {account.system && <em>Permanent</em>}
+                        {sharedTo?.(account.id).map((name) => (
+                          <em key={name}>Shared to {name}</em>
+                        ))}
                       </span>
                     </div>
                     <div className="dashboard-account-value">

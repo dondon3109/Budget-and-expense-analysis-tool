@@ -42,6 +42,7 @@ import { useInitialDashboardExperience } from "../components/dashboard/InitialDa
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { MonthSelector } from "../components/month/MonthSelector";
+import { SharedBalancesCard } from "../components/family/SharedBalancesCard";
 import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
 import { AppShell } from "../components/layout/AppShell";
 import { usePrivateAppStartupReadiness } from "../components/layout/PrivateAppStartupGate";
@@ -58,6 +59,7 @@ import { calculatePercentageChange, isDashboardEmpty, trendState } from "../lib/
 import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { clearSignupThankYouPending, isSignupThankYouPending } from "../lib/thankYou";
+import { useMyBalanceShares } from "../queries/families";
 import { useGoalProfile } from "../queries/goalProfile";
 import { transactionsQueryOptions } from "../queries/transactions";
 import "./DashboardPage.css";
@@ -71,7 +73,13 @@ export function DashboardPage() {
   const { hasCompletedInitialDashboardExperience } = useInitialDashboardExperience();
   const reportStartupReadiness = usePrivateAppStartupReadiness();
   // Personal-only parts (plan, goals, setup guides, public links) stay out of a family's home.
-  const { personal, workspace, family } = useActiveWorkspace();
+  const { personal, workspace, family, workspaces } = useActiveWorkspace();
+  const myBalanceShares = useMyBalanceShares(personal).data ?? [];
+  const sharedTo = (accountId: string) =>
+    myBalanceShares.flatMap((share) => {
+      const name = workspaces.find((item) => item.id === share.familyId)?.name;
+      return share.accountId === accountId && name ? [name] : [];
+    });
   const dashboardHeadingRef = useRef<HTMLHeadingElement>(null);
   const shouldRestoreDashboardFocusRef = useRef(!hasCompletedInitialDashboardExperience);
   const accountMutations = useAccountMutations(workspace);
@@ -454,7 +462,10 @@ export function DashboardPage() {
           isPro={isPro}
           onAdjustBalance={setAdjustingAccount}
           onShareBalance={family ? undefined : setSharingAccount}
+          sharedTo={family ? undefined : sharedTo}
         />
+
+        {family && <SharedBalancesCard family={workspace} />}
 
         {sharingAccount && (
           <ShareLinkModal

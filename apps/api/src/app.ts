@@ -51,6 +51,7 @@ import { createReceiptRoutes } from "./routes/receipts";
 import { createPushRoutes } from "./routes/push";
 import { createWorkspaceRoutes } from "./routes/workspaces";
 import { createActiveFamilyRoutes, createFamilyRoutes } from "./routes/families";
+import { createActiveFamilyShareRoutes, createMyBalanceShareRoutes } from "./routes/family-shares";
 import { createPublicShareLinkRoutes, createShareLinkRoutes } from "./routes/share-links";
 import { createSubscriptionRoutes } from "./routes/subscriptions";
 import {
@@ -228,6 +229,11 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/shares", createShareLinkRoutes(dependencies.shareLinks));
   app.route("/api/app/push", createPushRoutes(dependencies.push));
   app.route("/api/app/workspaces", createWorkspaceRoutes(dependencies.memberships));
+  app.route(
+    "/api/app/families/balance-shares",
+    createMyBalanceShareRoutes(dependencies.familyShares),
+  );
+  app.route("/api/app/family/shares", createActiveFamilyShareRoutes(dependencies.familyShares));
   app.route("/api/app/families", createFamilyRoutes(dependencies.families));
   app.route("/api/app/family", createActiveFamilyRoutes(dependencies.families));
   app.route(

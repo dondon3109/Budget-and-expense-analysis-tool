@@ -19,9 +19,12 @@ interface TransactionTableProps {
   busyIds?: ReadonlySet<string>;
   onSort: (sortBy: TransactionListQuery["sortBy"]) => void;
   onEdit: (item: TransactionListItem) => void;
-  /** Opens the public link dialog; transfers have no share button. */
-  /** Omitted where public links are not offered (a family workspace). */
+  /** Opens the share dialog; transfers have no share button. Omitted in a family workspace. */
   onShare?: (item: TransactionListItem) => void;
+  /** A short line about where the row was shared from or to. */
+  rowNote?: (item: TransactionListItem) => string | null;
+  /** False locks the row's edit, delete, and select controls (a family member's rule). */
+  canChange?: (item: TransactionListItem) => boolean;
   onRequestDelete: (item: TransactionListItem, trigger: HTMLButtonElement) => void;
   onToggleSelect: (id: string) => void;
   onToggleSelectAll: () => void;
@@ -131,6 +134,8 @@ export function TransactionTable({
   onSort,
   onEdit,
   onShare,
+  rowNote,
+  canChange,
   onRequestDelete,
   onToggleSelect,
   onToggleSelectAll,
@@ -147,6 +152,8 @@ export function TransactionTable({
   }, [someSelected]);
 
   function renderRow(item: TransactionListItem) {
+    const locked = busyIds?.has(item.id) || canChange?.(item) === false;
+    const note = rowNote?.(item);
     return (
       // Rows are programmatically focusable so the page's j/k shortcut can walk the
       // ledger without adding 240 tab stops.
@@ -157,7 +164,7 @@ export function TransactionTable({
               type="checkbox"
               checked={selectedIds.has(item.id)}
               onChange={() => onToggleSelect(item.id)}
-              disabled={busyIds?.has(item.id)}
+              disabled={locked}
               aria-label={`Select ${item.description}`}
             />
           </label>
@@ -180,6 +187,7 @@ export function TransactionTable({
                 ? ` · ${formatMoney(item.transferFeeMinor, item.currency)} fee`
                 : ""}
               {item.notes ? ` · ${item.notes}` : ""}
+              {note ? ` · ${note}` : ""}
             </span>
           </div>
         </td>
@@ -212,7 +220,7 @@ export function TransactionTable({
             <button
               type="button"
               onClick={() => onEdit(item)}
-              disabled={busyIds?.has(item.id)}
+              disabled={locked}
               aria-label={`Edit ${item.description}`}
             >
               <Pencil size={15} />
@@ -230,7 +238,7 @@ export function TransactionTable({
             <button
               type="button"
               onClick={(event) => onRequestDelete(item, event.currentTarget)}
-              disabled={busyIds?.has(item.id)}
+              disabled={locked}
               aria-label={`Delete ${item.description}`}
             >
               <Trash2 size={15} />

@@ -1,6 +1,12 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 
-import { getFamily, getFamilyInvitations, getWorkspaces } from "../lib/api";
+import {
+  getFamily,
+  getFamilyInvitations,
+  getFamilySharedBalances,
+  getMyBalanceShares,
+  getWorkspaces,
+} from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
@@ -26,6 +32,20 @@ export function useFamily(family: AuthenticatedWorkspace | undefined) {
   });
 }
 
+export function useFamilySharedBalances(family: AuthenticatedWorkspace) {
+  return useQuery({
+    queryKey: queryKeys.familySharedBalances(family),
+    queryFn: () => getFamilySharedBalances(family),
+  });
+}
+
+export function useMyBalanceShares(personal: AuthenticatedWorkspace) {
+  return useQuery({
+    queryKey: queryKeys.myBalanceShares(personal),
+    queryFn: () => getMyBalanceShares(personal),
+  });
+}
+
 /** Creating, joining, leaving, or closing a family changes which workspaces the person has. */
 export function invalidateAfterMembershipChange(
   queryClient: QueryClient,
@@ -43,4 +63,20 @@ export function invalidateAfterFamilyWrite(
   family: AuthenticatedWorkspace,
 ) {
   return queryClient.invalidateQueries({ queryKey: queryKeys.family(family) });
+}
+
+/**
+ * A share writes into the family and changes what the person sees on their own rows, so both
+ * workspaces refresh: the family's ledger and balances, and the person's "Shared to" marks.
+ */
+export function invalidateAfterShare(
+  queryClient: QueryClient,
+  personal: AuthenticatedWorkspace,
+  family: AuthenticatedWorkspace,
+) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: queryKeys.workspace(family) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(personal) }),
+    queryClient.invalidateQueries({ queryKey: queryKeys.myBalanceShares(personal) }),
+  ]);
 }

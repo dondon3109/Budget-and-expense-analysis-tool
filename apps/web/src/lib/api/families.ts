@@ -2,6 +2,8 @@ import {
   familyClosureSchema,
   familyDetailSchema,
   familyInvitationListSchema,
+  familySharedBalanceListSchema,
+  myBalanceShareListSchema,
   workspaceListSchema,
   workspaceSummarySchema,
   type FamilyClosure,
@@ -9,6 +11,10 @@ import {
   type FamilyInvitation,
   type FamilyInviteInput,
   type FamilyMemberRole,
+  type FamilySharedBalance,
+  type FamilyTransactionShareInput,
+  type MyBalanceShare,
+  type TransactionListItem,
   type WorkspaceList,
   type WorkspaceSummary,
 } from "@zoption/shared";
@@ -138,5 +144,60 @@ export function transferFamily(family: AuthenticatedWorkspace, userId: string): 
 export async function closeFamily(family: AuthenticatedWorkspace): Promise<FamilyClosure> {
   return familyClosureSchema.parse(
     await requestJson(family, "/api/app/family/close", { method: "POST" }),
+  );
+}
+
+/** Copies one of the person's own transactions into `family`; the server reads the source. */
+export function shareTransactionToFamily(
+  family: AuthenticatedWorkspace,
+  input: FamilyTransactionShareInput,
+): Promise<TransactionListItem> {
+  return requestJson(family, "/api/app/family/shares/transactions", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export function shareBalanceToFamily(
+  family: AuthenticatedWorkspace,
+  accountId: string,
+): Promise<void> {
+  return requestJson(family, "/api/app/family/shares/balances", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
+  });
+}
+
+export async function getFamilySharedBalances(
+  family: AuthenticatedWorkspace,
+): Promise<FamilySharedBalance[]> {
+  return familySharedBalanceListSchema.parse(
+    await requestJson(family, "/api/app/family/shares/balances"),
+  ).balances;
+}
+
+/** Owner only. */
+export function removeFamilySharedBalance(
+  family: AuthenticatedWorkspace,
+  shareId: string,
+): Promise<void> {
+  return requestJson(family, `/api/app/family/shares/balances/${encodeURIComponent(shareId)}`, {
+    method: "DELETE",
+  });
+}
+
+export async function getMyBalanceShares(
+  personal: AuthenticatedWorkspace,
+): Promise<MyBalanceShare[]> {
+  return myBalanceShareListSchema.parse(
+    await requestJson(personal, "/api/app/families/balance-shares"),
+  ).shares;
+}
+
+export function stopBalanceShare(personal: AuthenticatedWorkspace, shareId: string): Promise<void> {
+  return requestJson(
+    personal,
+    `/api/app/families/balance-shares/${encodeURIComponent(shareId)}/stop`,
+    { method: "POST" },
   );
 }

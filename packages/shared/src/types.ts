@@ -74,6 +74,12 @@ export interface TransactionListItem extends TransactionRecord {
   toAccountName?: string | null;
   transferFeeMinor?: number | null;
   legacyTransfer?: boolean;
+  /** Who added a family entry; null for personal rows and older family rows. */
+  authorUserId?: string | null;
+  /** A family row copied from someone's personal workspace. */
+  sharedCopy?: boolean;
+  /** The families a personal row was copied into. */
+  sharedToFamilyIds?: string[];
 }
 
 export interface TransactionPage {
