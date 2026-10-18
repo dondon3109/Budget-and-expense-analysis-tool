@@ -147,3 +147,23 @@
   font: inherit;
   font-size: 14px;
 }
+
+.family-receipt {
+  display: grid;
+  gap: 10px;
+}
+
+.family-receipt img {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  object-fit: contain;
+}
+
+.family-receipt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

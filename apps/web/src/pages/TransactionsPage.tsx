@@ -715,6 +715,7 @@ export function TransactionsPage() {
           family={workspace}
           subject={{ kind: "transaction", subjectId: threadOf.id }}
           title={threadOf.description}
+          authorUserId={threadOf.authorUserId}
           onClose={() => setThreadOf(undefined)}
         />
       )}

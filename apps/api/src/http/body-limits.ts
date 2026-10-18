@@ -1,3 +1,4 @@
+import { FAMILY_RECEIPT_MAX_BYTES } from "@zoption/shared";
 import type { MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
@@ -55,6 +56,14 @@ const MULTIPART_UPLOADS = new Map<string, MultipartBodyRule>([
       maxSize: 5 * MIB + MULTIPART_ENVELOPE,
       typeMessage: "Send the statement PDF as multipart form data.",
       sizeMessage: "The statement PDF is too large.",
+    },
+  ],
+  [
+    "/api/app/family/receipts",
+    {
+      maxSize: FAMILY_RECEIPT_MAX_BYTES + MULTIPART_ENVELOPE,
+      typeMessage: "Send the receipt photo as multipart form data.",
+      sizeMessage: "Receipt photos must be 5 MB or smaller.",
     },
   ],
   [

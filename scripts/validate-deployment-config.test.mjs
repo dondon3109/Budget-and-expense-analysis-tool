@@ -20,6 +20,10 @@ function environment({
         binding: "AVATARS",
         bucket_name: `zoption-avatars-${resourceName}`,
       },
+      {
+        binding: "RECEIPTS",
+        bucket_name: `zoption-receipts-${resourceName}`,
+      },
     ],
     queues: {
       producers: [

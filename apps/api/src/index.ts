@@ -5,6 +5,7 @@ import { trialEmailService } from "./billing/trial-emails";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { familyRepository } from "./db/families";
+import { familyReceiptRepository } from "./db/family-receipts";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
 import { familyAlerts } from "./family-alerts";
 import { refreshDailyFxRates } from "./fx/rates";
@@ -133,6 +134,12 @@ export default {
       const deleted = await familyRepository.purgeClosed(env, 25);
       if (deleted > 0) console.log(JSON.stringify({ message: "Closed families deleted", deleted }));
       if (deleted < 25) break;
+    }
+    for (;;) {
+      const deleted = await familyReceiptRepository.purgeExpired(env, 100);
+      if (deleted > 0)
+        console.log(JSON.stringify({ message: "Expired family receipts deleted", deleted }));
+      if (deleted < 100) break;
     }
     for (;;) {
       const deleted = await bugReportService.cleanupExpired(env, 100);

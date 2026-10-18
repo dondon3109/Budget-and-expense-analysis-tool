@@ -81,6 +81,12 @@ const APP_RATE_LIMITS: [string, string, RateLimitIdentity, RateLimitPolicy[]][] 
     [{ scope: "tenant-entry-pdf-minute", limit: 3, windowSeconds: MINUTE }],
   ],
   [
+    "POST",
+    "/api/app/family/receipts",
+    "tenant",
+    [{ scope: "tenant-family-receipt-minute", limit: 12, windowSeconds: MINUTE }],
+  ],
+  [
     "DELETE",
     "/api/app/account",
     "user",
@@ -189,6 +195,12 @@ const avatarUpload: BodyRule = {
   typeMessage: "Send the profile picture as multipart form data.",
   sizeMessage: "The profile picture is too large.",
 };
+const familyReceiptUpload: BodyRule = {
+  kind: "multipart",
+  maxSize: 5 * MIB + 64 * KIB,
+  typeMessage: "Send the receipt photo as multipart form data.",
+  sizeMessage: "Receipt photos must be 5 MB or smaller.",
+};
 const defaultJson: BodyRule = { kind: "json", maxSize: 64 * KIB };
 const noBody: BodyRule = { kind: "none" };
 
@@ -208,6 +220,8 @@ const APP_BODY_RULES: [string, string, string | undefined, BodyRule][] = [
   ["POST", "/api/app/pet/check-in", undefined, noBody],
   ["POST", "/api/app/pet/hatch", undefined, noBody],
   ["POST", "/api/app/entry/pdf-preview", MULTIPART, statementUpload],
+  ["POST", "/api/app/family/receipts", MULTIPART, familyReceiptUpload],
+  ["POST", "/api/app/family/receipts", "application/json", familyReceiptUpload],
   ["POST", "/api/app/profile/avatar", MULTIPART, avatarUpload],
   ["PATCH", "/api/app/profile/avatar", "application/json", defaultJson],
   ["DELETE", "/api/app/profile/avatar", "application/json", defaultJson],

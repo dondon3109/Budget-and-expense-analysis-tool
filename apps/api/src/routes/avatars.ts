@@ -4,8 +4,8 @@ import {
   AVATAR_MAX_BYTES,
   createAvatarPath,
   deleteAvatarObject,
-  hasAvatarImageSignature,
-  isAllowedAvatarType,
+  hasImageSignature,
+  isAllowedImageType,
   isOwnedAvatarPath,
   parseAvatarPath,
   putAvatarObject,
@@ -35,12 +35,12 @@ export function createAvatarRoutes() {
     if (file.size > AVATAR_MAX_BYTES) {
       throw new HttpError(400, "invalid_request", "Profile pictures must be 2 MB or smaller.");
     }
-    if (!isAllowedAvatarType(file.type)) {
+    if (!isAllowedImageType(file.type)) {
       throw new HttpError(400, "invalid_request", "Choose a JPEG, PNG, or WebP image.");
     }
 
     const bytes = await file.arrayBuffer();
-    if (!hasAvatarImageSignature(file.type, new Uint8Array(bytes))) {
+    if (!hasImageSignature(file.type, new Uint8Array(bytes))) {
       throw new HttpError(400, "invalid_request", "Choose a JPEG, PNG, or WebP image.");
     }
 

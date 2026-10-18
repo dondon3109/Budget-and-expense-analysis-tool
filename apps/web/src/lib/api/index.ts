@@ -30,6 +30,7 @@ export * from "./events";
 export * from "./exports";
 export * from "./families";
 export * from "./family-comments";
+export * from "./family-receipts";
 export * from "./family-entries";
 export * from "./remittances";
 export * from "./goalProfile";

@@ -15,7 +15,7 @@ import type { AppEnvironment, TenantContext } from "../types";
 import { afterResponse } from "./remittances";
 
 /** In a family, members change only the entries they added; the owner changes any. */
-function entryAccess(tenant: TenantContext, userId: string): EntryAccess | undefined {
+export function entryAccess(tenant: TenantContext, userId: string): EntryAccess | undefined {
   return tenant.membership && tenant.membership.role !== "owner"
     ? { authorOnly: userId }
     : undefined;

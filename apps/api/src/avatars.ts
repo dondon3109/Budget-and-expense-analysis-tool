@@ -1,19 +1,19 @@
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export const AVATAR_KEY_PREFIX = "avatars/";
 
-const avatarExtensions = {
+export const imageExtensions = {
   "image/jpeg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
 } as const;
 
-export function isAllowedAvatarType(value: string): value is keyof typeof avatarExtensions {
-  return Object.hasOwn(avatarExtensions, value);
+export function isAllowedImageType(value: string): value is keyof typeof imageExtensions {
+  return Object.hasOwn(imageExtensions, value);
 }
 
 // The declared content type is client supplied, so a caller can label any bytes as an
 // image. Check the file signature before storing an upload under an image extension.
-export function hasAvatarImageSignature(mimeType: string, bytes: Uint8Array): boolean {
+export function hasImageSignature(mimeType: string, bytes: Uint8Array): boolean {
   if (mimeType === "image/jpeg") {
     return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
   }
@@ -59,8 +59,8 @@ export function isOwnedAvatarPath(path: string | undefined, userId: string): pat
 }
 
 export function createAvatarPath(userId: string, mimeType: string): string {
-  if (!isAllowedAvatarType(mimeType)) throw new Error("Choose a JPEG, PNG, or WebP image.");
-  return `${userId}/${crypto.randomUUID()}.${avatarExtensions[mimeType]}`;
+  if (!isAllowedImageType(mimeType)) throw new Error("Choose a JPEG, PNG, or WebP image.");
+  return `${userId}/${crypto.randomUUID()}.${imageExtensions[mimeType]}`;
 }
 
 export function avatarObjectKey(path: string): string {

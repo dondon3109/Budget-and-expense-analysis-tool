@@ -11,38 +11,7 @@ import type { AuthVerifier } from "../src/auth";
 import type { TenantResolver } from "../src/db/tenants";
 import type { RateLimiter } from "../src/rate-limit";
 import type { Bindings } from "../src/types";
-
-function createMemoryR2() {
-  const objects = new Map<string, { body: ArrayBuffer; contentType: string }>();
-  const bucket = {
-    async put(
-      key: string,
-      value: ArrayBuffer,
-      options?: { httpMetadata?: { contentType?: string } },
-    ) {
-      objects.set(key, {
-        body: value,
-        contentType: options?.httpMetadata?.contentType ?? "application/octet-stream",
-      });
-    },
-    async get(key: string) {
-      const stored = objects.get(key);
-      if (!stored) return null;
-      return {
-        body: stored.body,
-        httpMetadata: { contentType: stored.contentType },
-      };
-    },
-    async delete(key: string) {
-      objects.delete(key);
-    },
-    async list({ prefix }: { prefix: string }) {
-      const keys = [...objects.keys()].filter((key) => key.startsWith(prefix));
-      return { objects: keys.map((key) => ({ key })), truncated: false };
-    },
-  } as unknown as R2Bucket;
-  return { objects, bucket };
-}
+import { createMemoryR2 } from "./helpers/memory-r2";
 
 function createAppWithAuth() {
   const authVerifier: AuthVerifier = {

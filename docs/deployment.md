@@ -87,11 +87,13 @@ Before release, test Google in Preview with a fresh address and with the verifie
 
 1. Authenticate locally with `pnpm --filter @zoption/api exec wrangler login`.
 2. Create `budget-expense-preview` and `budget-expense-production` with `wrangler d1 create`; retain the returned database IDs.
-3. Create separate preview and production R2 buckets and Queues. The tracked names are `zoption-avatars-preview`, `zoption-avatars-production`, `budget-expense-jobs-preview`, and `budget-expense-jobs-production`:
+3. Create separate preview and production R2 buckets and Queues. The tracked names are `zoption-avatars-preview`, `zoption-avatars-production`, `zoption-receipts-preview`, `zoption-receipts-production`, `budget-expense-jobs-preview`, and `budget-expense-jobs-production`. Every bucket stays private (no public access, no `r2.dev` URL): avatars are served by the Worker's `/api/public/avatars/*`, and family receipt photos only through the signed-in `/api/app/family/receipts/*`. A deploy fails when a bound bucket is missing, so a new bucket must exist before the first Worker that binds it; `wrangler r2 bucket list` reads them back:
 
    ```bash
    pnpm --filter @zoption/api exec wrangler r2 bucket create zoption-avatars-preview
    pnpm --filter @zoption/api exec wrangler r2 bucket create zoption-avatars-production
+   pnpm --filter @zoption/api exec wrangler r2 bucket create zoption-receipts-preview
+   pnpm --filter @zoption/api exec wrangler r2 bucket create zoption-receipts-production
    pnpm --filter @zoption/api exec wrangler queues create budget-expense-jobs-preview
    pnpm --filter @zoption/api exec wrangler queues create budget-expense-jobs-production
    ```
@@ -106,7 +108,7 @@ Before release, test Google in Preview with a fresh address and with the verifie
    node scripts/validate-deployment-config.mjs
    ```
 
-   It checks Preview and Production D1 bindings, RATE_LIMIT Durable Object, AVATARS R2, and JOBS queue bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins, keys, R2 buckets, and queues across environments, PayPal namespace and distinct monthly/annual plan variables, optional Dodo Payments mode and product variables, optional PostHog enable/environment values and the exact approved US Cloud origin, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
+   It checks Preview and Production D1 bindings, RATE_LIMIT Durable Object, AVATARS and RECEIPTS R2, and JOBS queue bindings, exact HTTPS web/Supabase origins, production routing, publishable-key type, distinct Supabase origins, keys, R2 buckets, and queues across environments, PayPal namespace and distinct monthly/annual plan variables, optional Dodo Payments mode and product variables, optional PostHog enable/environment values and the exact approved US Cloud origin, placeholders, and forbidden secret values in `vars`. Production PayPal must use `production`; Preview and Staging may intentionally use either `sandbox` or `production`. It also validates Staging when an `env.staging` block exists.
 
 7. Create separate preview and production Pages projects for each surface. Production: `zoption-site` (public site) carries the custom domains `zoption.site` and `www.zoption.site`; `clarity-budget` (web app) carries `app.zoption.site`. Custom domains are dashboard-managed. `apps/site/wrangler.jsonc` is the source of truth for the site project's build output and runtime (it has no bindings or secrets); the app project has no Wrangler file.
 8. Keep the production Worker custom domain route for `api.zoption.site` in `apps/api/wrangler.deploy.jsonc`; the tracked example documents the same route.

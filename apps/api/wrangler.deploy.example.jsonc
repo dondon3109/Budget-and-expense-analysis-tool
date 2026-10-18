@@ -14,7 +14,10 @@
       "durable_objects": {
         "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
       },
-      "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-preview" }],
+      "r2_buckets": [
+        { "binding": "AVATARS", "bucket_name": "zoption-avatars-preview" },
+        { "binding": "RECEIPTS", "bucket_name": "zoption-receipts-preview" },
+      ],
       "queues": {
         "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-preview" }],
         "consumers": [
@@ -72,7 +75,10 @@
       "durable_objects": {
         "bindings": [{ "name": "RATE_LIMIT", "class_name": "RateLimitDurableObject" }],
       },
-      "r2_buckets": [{ "binding": "AVATARS", "bucket_name": "zoption-avatars-production" }],
+      "r2_buckets": [
+        { "binding": "AVATARS", "bucket_name": "zoption-avatars-production" },
+        { "binding": "RECEIPTS", "bucket_name": "zoption-receipts-production" },
+      ],
       "queues": {
         "producers": [{ "binding": "JOBS", "queue": "budget-expense-jobs-production" }],
         "consumers": [

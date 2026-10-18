@@ -121,6 +121,9 @@ export const queryKeys = {
   /** A family workspace: the comments under one transaction or remittance. */
   familyComments: (family: AuthenticatedWorkspace, kind: string, subjectId: string) =>
     [...queryKeys.family(family), "comments", kind, subjectId] as const,
+  /** A family workspace: one transaction's receipt photo, as a blob or null. */
+  familyReceipt: (family: AuthenticatedWorkspace, transactionId: string) =>
+    [...queryKeys.family(family), "receipt", transactionId] as const,
   /** A family workspace: the owner's alert thresholds. */
   familyAlerts: (family: AuthenticatedWorkspace) =>
     [...queryKeys.family(family), "alerts"] as const,
