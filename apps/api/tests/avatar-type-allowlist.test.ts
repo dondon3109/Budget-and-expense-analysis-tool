@@ -4,8 +4,8 @@ import { createApp } from "../src/app";
 import type { AuthVerifier } from "../src/auth";
 import {
   createAvatarPath,
-  hasAvatarImageSignature,
-  isAllowedAvatarType,
+  hasImageSignature,
+  isAllowedImageType,
   servePublicAvatar,
 } from "../src/avatars";
 import type { TenantResolver } from "../src/db/tenants";
@@ -65,16 +65,16 @@ function createAppWithAuth() {
 
 describe("avatar MIME allowlist", () => {
   it("accepts only the declared image types", () => {
-    expect(isAllowedAvatarType("image/jpeg")).toBe(true);
-    expect(isAllowedAvatarType("image/png")).toBe(true);
-    expect(isAllowedAvatarType("image/webp")).toBe(true);
-    expect(isAllowedAvatarType("image/gif")).toBe(false);
-    expect(isAllowedAvatarType("image/svg+xml")).toBe(false);
+    expect(isAllowedImageType("image/jpeg")).toBe(true);
+    expect(isAllowedImageType("image/png")).toBe(true);
+    expect(isAllowedImageType("image/webp")).toBe(true);
+    expect(isAllowedImageType("image/gif")).toBe(false);
+    expect(isAllowedImageType("image/svg+xml")).toBe(false);
   });
 
   it("rejects Object prototype property names", () => {
     for (const value of ["constructor", "toString", "__proto__", "hasOwnProperty", "valueOf"]) {
-      expect(isAllowedAvatarType(value)).toBe(false);
+      expect(isAllowedImageType(value)).toBe(false);
       expect(() => createAvatarPath("user-1", value)).toThrow("Choose a JPEG, PNG, or WebP image.");
     }
   });
@@ -82,18 +82,18 @@ describe("avatar MIME allowlist", () => {
 
 describe("avatar file signatures", () => {
   it("accepts declared types that match the stored bytes", () => {
-    expect(hasAvatarImageSignature("image/jpeg", JPEG_BYTES)).toBe(true);
-    expect(hasAvatarImageSignature("image/png", PNG_BYTES)).toBe(true);
-    expect(hasAvatarImageSignature("image/webp", WEBP_BYTES)).toBe(true);
+    expect(hasImageSignature("image/jpeg", JPEG_BYTES)).toBe(true);
+    expect(hasImageSignature("image/png", PNG_BYTES)).toBe(true);
+    expect(hasImageSignature("image/webp", WEBP_BYTES)).toBe(true);
   });
 
   it("rejects mislabelled, truncated, or unknown uploads", () => {
-    expect(hasAvatarImageSignature("image/png", JPEG_BYTES)).toBe(false);
-    expect(hasAvatarImageSignature("image/jpeg", PNG_BYTES)).toBe(false);
-    expect(hasAvatarImageSignature("image/webp", PNG_BYTES)).toBe(false);
-    expect(hasAvatarImageSignature("image/png", new TextEncoder().encode("png-bytes"))).toBe(false);
-    expect(hasAvatarImageSignature("image/png", new Uint8Array([0x89, 0x50]))).toBe(false);
-    expect(hasAvatarImageSignature("image/gif", PNG_BYTES)).toBe(false);
+    expect(hasImageSignature("image/png", JPEG_BYTES)).toBe(false);
+    expect(hasImageSignature("image/jpeg", PNG_BYTES)).toBe(false);
+    expect(hasImageSignature("image/webp", PNG_BYTES)).toBe(false);
+    expect(hasImageSignature("image/png", new TextEncoder().encode("png-bytes"))).toBe(false);
+    expect(hasImageSignature("image/png", new Uint8Array([0x89, 0x50]))).toBe(false);
+    expect(hasImageSignature("image/gif", PNG_BYTES)).toBe(false);
   });
 
   it("refuses to store a file whose bytes do not match its declared type", async () => {
