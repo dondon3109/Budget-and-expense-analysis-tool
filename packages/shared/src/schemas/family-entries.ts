@@ -57,3 +57,6 @@ export type FamilyEntryEvent = z.infer<typeof familyEntryEventSchema>;
 export type FamilyEntryHistory = z.infer<typeof familyEntryHistorySchema>;
 export type FamilyDeletedEntry = z.infer<typeof familyDeletedEntrySchema>;
 export type FamilyDeletedEntryList = z.infer<typeof familyDeletedEntryListSchema>;
+
+/** A family receipt photo's size cap; the web app shrinks larger photos before upload. */
+export const FAMILY_RECEIPT_MAX_BYTES = 5 * 1024 * 1024;

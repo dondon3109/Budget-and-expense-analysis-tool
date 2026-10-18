@@ -15,6 +15,8 @@ export interface Bindings {
   RATE_LIMIT?: DurableObjectNamespace;
   JOBS?: Queue;
   AVATARS?: R2Bucket;
+  /** Private family receipt photos, read only through the signed-in API. */
+  RECEIPTS?: R2Bucket;
   AI?: Ai;
   // Deployed environments bind it so /health names the serving version for the release canary.
   CF_VERSION_METADATA?: WorkerVersionMetadata;

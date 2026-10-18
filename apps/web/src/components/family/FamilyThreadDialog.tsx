@@ -10,6 +10,7 @@ import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { useFamilyEntryHistory } from "../../queries/family-entries";
 import { useFamily } from "../../queries/families";
 import { FamilyComments } from "./FamilyComments";
+import { FamilyReceipt } from "./FamilyReceipt";
 import { formatFamilyDate, memberName } from "./familyLabels";
 import "./FamilyEntries.css";
 
@@ -37,16 +38,21 @@ function eventDetail(event: FamilyEntryEvent): string[] {
   return [];
 }
 
-/** Comments on a family entry or remittance, and for an entry who changed it, newest first. */
+/**
+ * Comments on a family entry or remittance; an entry also shows its receipt photo and who
+ * changed it, newest first. `authorUserId` is the entry's author, who may change its photo.
+ */
 export function FamilyThreadDialog({
   family,
   subject,
   title,
+  authorUserId = null,
   onClose,
 }: {
   family: AuthenticatedWorkspace;
   subject: FamilyCommentSubject;
   title: string;
+  authorUserId?: string | null;
   onClose: () => void;
 }) {
   const dialogRef = useRef<HTMLElement>(null);
@@ -74,6 +80,16 @@ export function FamilyThreadDialog({
             <span className="sr-only">Close</span>
           </button>
         </header>
+        {subject.kind === "transaction" && (
+          <>
+            <h3 className="family-thread-heading">Receipt</h3>
+            <FamilyReceipt
+              family={family}
+              transactionId={subject.subjectId}
+              authorUserId={authorUserId}
+            />
+          </>
+        )}
         <h3 className="family-thread-heading">Comments</h3>
         <FamilyComments family={family} subject={subject} />
         {subject.kind === "transaction" && (

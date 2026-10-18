@@ -6,6 +6,8 @@ import { pathToFileURL } from "node:url";
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const defaultConfigPath = resolve(repositoryRoot, "apps/api/wrangler.deploy.jsonc");
 const requiredEnvironments = ["preview", "production"];
+// Every R2 binding a deployed Worker needs; each environment must use its own buckets.
+const R2_BINDINGS = ["AVATARS", "RECEIPTS"];
 const requiredVariables = [
   "ALLOWED_ORIGINS",
   "SUPABASE_URL",
@@ -320,17 +322,19 @@ function validateEnvironment(environment, config) {
     throw new Error(`${environment} is missing the RATE_LIMIT Durable Object binding.`);
   }
 
-  const avatars = Array.isArray(config.r2_buckets) ? config.r2_buckets : [];
-  const avatarBucket = avatars.find((candidate) => candidate?.binding === "AVATARS");
-  if (
-    !avatarBucket ||
-    typeof avatarBucket.bucket_name !== "string" ||
-    !avatarBucket.bucket_name.trim()
-  ) {
-    throw new Error(`${environment} is missing the AVATARS R2 bucket binding.`);
-  }
-  if (/REPLACE_WITH|YOUR_[A-Z_]+/.test(avatarBucket.bucket_name)) {
-    throw new Error(`${environment} AVATARS bucket name still contains a deployment placeholder.`);
+  const r2Buckets = Array.isArray(config.r2_buckets) ? config.r2_buckets : [];
+  const buckets = {};
+  for (const binding of R2_BINDINGS) {
+    const bucket = r2Buckets.find((candidate) => candidate?.binding === binding);
+    if (!bucket || typeof bucket.bucket_name !== "string" || !bucket.bucket_name.trim()) {
+      throw new Error(`${environment} is missing the ${binding} R2 bucket binding.`);
+    }
+    if (/REPLACE_WITH|YOUR_[A-Z_]+/.test(bucket.bucket_name)) {
+      throw new Error(
+        `${environment} ${binding} bucket name still contains a deployment placeholder.`,
+      );
+    }
+    buckets[binding] = bucket.bucket_name.trim();
   }
 
   const queueProducers = Array.isArray(config.queues?.producers) ? config.queues.producers : [];
@@ -367,7 +371,7 @@ function validateEnvironment(environment, config) {
   return {
     supabaseOrigin,
     publishableKey,
-    avatarBucket: avatarBucket.bucket_name.trim(),
+    buckets,
     jobsQueue: jobsQueue.queue.trim(),
   };
 }
@@ -402,8 +406,10 @@ export function validateWranglerDeploymentConfig(config) {
           `${leftName} and ${rightName} must use different Supabase publishable keys.`,
         );
       }
-      if (left.avatarBucket === right.avatarBucket) {
-        throw new Error(`${leftName} and ${rightName} must use different AVATARS R2 buckets.`);
+      for (const binding of R2_BINDINGS) {
+        if (left.buckets[binding] === right.buckets[binding]) {
+          throw new Error(`${leftName} and ${rightName} must use different ${binding} R2 buckets.`);
+        }
       }
       if (left.jobsQueue === right.jobsQueue) {
         throw new Error(`${leftName} and ${rightName} must use different JOBS queues.`);

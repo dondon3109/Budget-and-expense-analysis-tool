@@ -15,6 +15,7 @@ import {
 
 import type { Bindings } from "../types";
 import { tenantDataStatements } from "./account-deletion";
+import { familyReceiptRepository } from "./family-receipts";
 import { freezeMemberBalanceShares } from "./family-shares";
 import { starterStatements } from "./tenants";
 
@@ -372,6 +373,8 @@ export const familyRepository: FamilyRepository = {
       .bind(limit)
       .all<{ tenantId: string }>();
     for (const { tenantId } of results) {
+      // Photos first: a failed batch is retried tomorrow, but rows gone first would orphan them.
+      await familyReceiptRepository.purgeTenantObjects(env, tenantId);
       // family_seat_events stay: the join cooldown must outlive the family.
       await env.DB.batch([
         ...tenantDataStatements(env, tenantId),

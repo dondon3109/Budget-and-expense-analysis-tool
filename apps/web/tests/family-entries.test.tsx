@@ -14,6 +14,9 @@ vi.mock("../src/lib/api", async () =>
     "getFamilyEntryHistory",
     "getFamilyDeletedEntries",
     "restoreFamilyEntry",
+    "getFamilyReceipt",
+    "uploadFamilyReceipt",
+    "removeFamilyReceipt",
   ]),
 );
 
@@ -25,7 +28,10 @@ import {
   getFamilyComments,
   getFamilyDeletedEntries,
   getFamilyEntryHistory,
+  getFamilyReceipt,
+  removeFamilyReceipt,
   restoreFamilyEntry,
+  uploadFamilyReceipt,
 } from "../src/lib/api";
 import { familyWorkspace } from "../src/lib/workspace";
 import { renderWithProviders } from "./helpers/render";
@@ -49,6 +55,7 @@ function familyAs(userId: string, role: "owner" | "member") {
     closesAt: null,
     members: [{ userId: "kuya", email: "kuya@example.com" }],
   } as never);
+  vi.mocked(getFamilyReceipt).mockResolvedValue(null);
   return familyWorkspace({ id: userId } as never, "family:santos");
 }
 
@@ -127,5 +134,39 @@ describe("family entry thread", () => {
 
     expect(restoreButtons).toHaveLength(1);
     await vi.waitFor(() => expect(restoreFamilyEntry).toHaveBeenCalledWith(family, "Mine"));
+  });
+
+  it("lets a member change the photo only on their own entry", async () => {
+    const family = familyAs("kuya", "member");
+    vi.mocked(getFamilyEntryHistory).mockResolvedValue([]);
+    vi.mocked(getFamilyComments).mockResolvedValue([]);
+    vi.mocked(getFamilyReceipt).mockResolvedValue(new Blob(["photo"], { type: "image/png" }));
+    vi.mocked(uploadFamilyReceipt).mockResolvedValue(undefined);
+    vi.mocked(removeFamilyReceipt).mockResolvedValue(undefined);
+    URL.createObjectURL = vi.fn(() => "blob:receipt");
+    URL.revokeObjectURL = vi.fn();
+    const thread = (authorUserId: string) => (
+      <FamilyThreadDialog
+        family={family}
+        subject={{ kind: "transaction", subjectId: "rice" }}
+        title="Rice"
+        authorUserId={authorUserId}
+        onClose={() => undefined}
+      />
+    );
+
+    const mamas = renderWithProviders(thread("mama"));
+    expect(await screen.findByAltText("Receipt photo")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Replace photo/u })).not.toBeInTheDocument();
+    mamas.unmount();
+
+    renderWithProviders(thread("kuya"));
+    await screen.findByRole("button", { name: /Replace photo/u });
+    const photo = new File(["new"], "receipt.png", { type: "image/png" });
+    fireEvent.change(screen.getByLabelText("Choose receipt photo"), { target: { files: [photo] } });
+    fireEvent.click(screen.getByRole("button", { name: /Remove/u }));
+
+    await vi.waitFor(() => expect(uploadFamilyReceipt).toHaveBeenCalledWith(family, "rice", photo));
+    await vi.waitFor(() => expect(removeFamilyReceipt).toHaveBeenCalledWith(family, "rice"));
   });
 });

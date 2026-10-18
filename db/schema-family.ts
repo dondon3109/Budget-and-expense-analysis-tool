@@ -14,8 +14,8 @@ import { tenants, transactions } from "./schema";
 // Family workspaces, split out of schema.ts (re-exported there) to keep it under its ceiling.
 // The repositories use hand written SQL; this mirrors 0077_tenant_members.sql,
 // 0078_family_spaces.sql, 0079_family_closures.sql, 0080_family_shares.sql,
-// 0081_family_remittances.sql, 0082_family_transaction_events.sql, and
-// 0083_family_comments_and_alerts.sql.
+// 0081_family_remittances.sql, 0082_family_transaction_events.sql,
+// 0083_family_comments_and_alerts.sql, and 0084_family_receipts.sql.
 
 export const tenantMembers = sqliteTable(
   "tenant_members",
@@ -248,3 +248,21 @@ export const familyAlertSettings = sqliteTable("family_alert_settings", {
     .notNull()
     .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
 });
+
+export const familyReceipts = sqliteTable(
+  "family_receipts",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    transactionId: text("transaction_id").notNull(),
+    objectKey: text("object_key").notNull(),
+    contentType: text("content_type").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    uploadedByUserId: text("uploaded_by_user_id").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.transactionId] })],
+);
