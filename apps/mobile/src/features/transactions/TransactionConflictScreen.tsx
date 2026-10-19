@@ -1,4 +1,6 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
+
+import { FamilyLastEditor } from "@/features/family/FamilyLastEditor";
 import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -180,6 +182,7 @@ export function TransactionConflictScreen() {
             }
             categoryName={findCategory(state.conflict.local.input.categoryId)}
           />
+          {id ? <FamilyLastEditor transactionId={id} /> : null}
           <VersionCard
             title="On the server"
             version={state.conflict.server}

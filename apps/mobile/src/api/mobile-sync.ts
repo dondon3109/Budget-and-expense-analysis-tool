@@ -4,6 +4,7 @@ import {
   MOBILE_APP_VERSION_HEADER,
   MOBILE_SYNC_FEATURES_HEADER,
   MOBILE_SYNC_PROTOCOL_VERSION,
+  WORKSPACE_HEADER,
   mobileSyncFeatures,
   mobileSyncAcknowledgeRequestSchema,
   mobileSyncAcknowledgeResponseSchema,
@@ -28,13 +29,15 @@ const SYNC_FEATURES = mobileSyncFeatures.join(",");
 // The server refuses sync below its minimum app version; a build without a version sends none.
 const APP_VERSION = Constants.expoConfig?.version ?? "";
 
-function syncHeaders(accessToken: string): Record<string, string> {
+// A family workspace id selects that family; without one the request acts in the personal one.
+function syncHeaders(accessToken: string, workspaceId?: string | null): Record<string, string> {
   return {
     Accept: "application/json",
     Authorization: `Bearer ${accessToken}`,
     "Content-Type": "application/json",
     [MOBILE_SYNC_FEATURES_HEADER]: SYNC_FEATURES,
     ...(APP_VERSION ? { [MOBILE_APP_VERSION_HEADER]: APP_VERSION } : {}),
+    ...(workspaceId ? { [WORKSPACE_HEADER]: workspaceId } : {}),
   };
 }
 
@@ -51,7 +54,19 @@ export type MobileSyncTransportErrorCode =
   | "permanent_rejection"
   | "idempotency_mismatch"
   | "invalid_response"
-  | "update_required";
+  | "update_required"
+  | WorkspaceAccessCode;
+
+/**
+ * Why a family refused this device: no longer a member, a viewer, or a family being closed.
+ * Retrying cannot help, so the caller settles the family's local copy instead.
+ */
+const WORKSPACE_ACCESS_CODES = [
+  "workspace_forbidden",
+  "workspace_read_only",
+  "workspace_closing",
+] as const;
+export type WorkspaceAccessCode = (typeof WORKSPACE_ACCESS_CODES)[number];
 
 export class MobileSyncTransportError extends Error {
   constructor(
@@ -72,6 +87,20 @@ function updateRequiredError(): MobileSyncTransportError {
     "update_required",
     426,
   );
+}
+
+// Reads the body of a 403 only; every caller then fails without reading it again.
+async function throwIfWorkspaceRefused(response: Response): Promise<void> {
+  if (response.status !== 403) return;
+  const payload = await decodeResponse(response).catch(() => null);
+  if (typeof payload !== "object" || payload === null || !("error" in payload)) return;
+  const code = WORKSPACE_ACCESS_CODES.find((candidate) => candidate === payload.error);
+  if (!code) return;
+  const message =
+    "message" in payload && typeof payload.message === "string"
+      ? payload.message
+      : "This family no longer accepts changes from you.";
+  throw new MobileSyncTransportError(message, code, 403);
 }
 
 async function decodeResponse(response: Response): Promise<unknown> {
@@ -108,8 +137,10 @@ export async function pullMobileSync({
   limit = 100,
   signal,
   fetchImpl = fetch,
+  workspaceId,
 }: {
   accessToken: string;
+  workspaceId?: string | null;
   cursor: string | null;
   limit?: number;
   signal?: AbortSignal;
@@ -119,7 +150,7 @@ export async function pullMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/pull", publicConfig.apiUrl), {
       method: "POST",
-      headers: syncHeaders(accessToken),
+      headers: syncHeaders(accessToken, workspaceId),
       body: JSON.stringify({ protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION, cursor, limit }),
       signal,
     });
@@ -132,6 +163,7 @@ export async function pullMobileSync({
     );
   }
 
+  await throwIfWorkspaceRefused(response);
   if (response.status === 401) {
     throw new MobileSyncTransportError(
       "Your session expired before synchronization completed.",
@@ -198,8 +230,10 @@ export async function snapshotMobileSync({
   limit = 200,
   signal,
   fetchImpl = fetch,
+  workspaceId,
 }: {
   accessToken: string;
+  workspaceId?: string | null;
   clientId: string;
   snapshotCursor: string | null;
   offset?: number;
@@ -218,7 +252,7 @@ export async function snapshotMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/snapshot", publicConfig.apiUrl), {
       method: "POST",
-      headers: syncHeaders(accessToken),
+      headers: syncHeaders(accessToken, workspaceId),
       body: JSON.stringify(request),
       signal,
     });
@@ -231,6 +265,7 @@ export async function snapshotMobileSync({
     );
   }
 
+  await throwIfWorkspaceRefused(response);
   if (response.status === 401) {
     throw new MobileSyncTransportError(
       "Your session expired before synchronization completed.",
@@ -295,8 +330,10 @@ export async function acknowledgeMobileSync({
   cursor,
   signal,
   fetchImpl = fetch,
+  workspaceId,
 }: {
   accessToken: string;
+  workspaceId?: string | null;
   clientId: string;
   cursor: string;
   signal?: AbortSignal;
@@ -311,7 +348,7 @@ export async function acknowledgeMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/acknowledge", publicConfig.apiUrl), {
       method: "POST",
-      headers: syncHeaders(accessToken),
+      headers: syncHeaders(accessToken, workspaceId),
       body: JSON.stringify(request),
       signal,
     });
@@ -323,6 +360,7 @@ export async function acknowledgeMobileSync({
       0,
     );
   }
+  await throwIfWorkspaceRefused(response);
   if (response.status === 401) {
     throw new MobileSyncTransportError(
       "Your session expired before synchronization completed.",
@@ -377,8 +415,10 @@ export async function pushMobileSync({
   request,
   signal,
   fetchImpl = fetch,
+  workspaceId,
 }: {
   accessToken: string;
+  workspaceId?: string | null;
   request: MobileSyncPushRequest;
   signal?: AbortSignal;
   fetchImpl?: (input: URL | RequestInfo, init?: RequestInit) => Promise<Response>;
@@ -388,7 +428,7 @@ export async function pushMobileSync({
   try {
     response = await fetchImpl(new URL("/api/app/sync/push", publicConfig.apiUrl), {
       method: "POST",
-      headers: syncHeaders(accessToken),
+      headers: syncHeaders(accessToken, workspaceId),
       body: JSON.stringify(encodedRequest),
       signal,
     });
@@ -401,6 +441,7 @@ export async function pushMobileSync({
     );
   }
 
+  await throwIfWorkspaceRefused(response);
   if (response.status === 401) {
     throw new MobileSyncTransportError(
       "Your session expired before synchronization completed.",

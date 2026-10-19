@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { BudgetQuery } from "@zoption/shared";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { useBudgetOccasions, useBudgetPlan, useLocalWorkspace } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
@@ -42,6 +43,9 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "occasions", label: "Occasions" },
 ];
 
+// Occasions hang off calendar events, which a family does not have.
+const FAMILY_TABS = TABS.filter((item) => item.id !== "occasions");
+
 const EMPTY_EDITOR: BudgetEditorValue = { categoryId: null, amount: "", appliesTo: "month" };
 
 function emptyOccasion(month: string): OccasionEditorValue {
@@ -62,6 +66,8 @@ function emptyOccasion(month: string): OccasionEditorValue {
 export function BudgetsScreen() {
   const local = useLocalWorkspace();
   const sync = useSyncState();
+  const { family, writable } = useActiveWorkspace();
+  const readOnly = !writable;
   // The calendar opens an occasion by id; the screen stays mounted in its tab, so follow the param.
   const params = useLocalSearchParams<{ occasion?: string | string[] }>();
   const requestedOccasion = Array.isArray(params.occasion) ? params.occasion[0] : params.occasion;
@@ -123,6 +129,7 @@ export function BudgetsScreen() {
       : monthLabel(month);
 
   const openAdd = (): void => {
+    if (readOnly) return;
     // No silent default: the first category alphabetically is "Debt payment", and a
     // preselected choice sent budgets there when people only typed an amount.
     setEditor({ open: true, isEditing: false, ...EMPTY_EDITOR });
@@ -131,6 +138,7 @@ export function BudgetsScreen() {
   };
 
   const openEdit = (categoryId: string): void => {
+    if (readOnly) return;
     const row = view?.rows.find((candidate) => candidate.categoryId === categoryId);
     if (!row) return;
     setEditor({
@@ -284,14 +292,18 @@ export function BudgetsScreen() {
               variant="secondary"
             />
           ) : null}
-          <Button
-            accessibilityLabel={tab === "occasions" && !inOccasion ? "New occasion" : "Add budget"}
-            disabled={!local.workspace}
-            icon="plus"
-            onPress={openAction}
-            size="compact"
-            variant="primary"
-          />
+          {readOnly ? null : (
+            <Button
+              accessibilityLabel={
+                tab === "occasions" && !inOccasion ? "New occasion" : "Add budget"
+              }
+              disabled={!local.workspace}
+              icon="plus"
+              onPress={openAction}
+              size="compact"
+              variant="primary"
+            />
+          )}
         </View>
       }
       onRefresh={handleRefresh}
@@ -307,7 +319,7 @@ export function BudgetsScreen() {
         />
       ) : (
         <>
-          <ScopeTabs onChange={setTab} value={tab} />
+          <ScopeTabs onChange={setTab} tabs={family ? FAMILY_TABS : TABS} value={tab} />
           {tab !== "every-month" ? (
             <MonthNavigator
               isCurrentMonth={isCurrentMonth}
@@ -348,6 +360,7 @@ export function BudgetsScreen() {
           ) : view.rows.length === 0 ? (
             <EmptyHint
               actionLabel="Add a budget"
+              disabled={readOnly}
               icon="chart-arc"
               onAction={openAdd}
               text={
@@ -447,14 +460,22 @@ export function BudgetsScreen() {
 }
 
 /** Month, Every month, Occasions: underlined text tabs, not a pill or a card. */
-function ScopeTabs({ value, onChange }: { value: Tab; onChange: (tab: Tab) => void }) {
+function ScopeTabs({
+  tabs,
+  value,
+  onChange,
+}: {
+  tabs: { id: Tab; label: string }[];
+  value: Tab;
+  onChange: (tab: Tab) => void;
+}) {
   const theme = useZoptionTheme();
   return (
     <View
       accessibilityRole="tablist"
       style={[styles.tabs, { borderBottomColor: theme.colors.border }]}
     >
-      {TABS.map((item) => {
+      {tabs.map((item) => {
         const selected = item.id === value;
         return (
           <Pressable

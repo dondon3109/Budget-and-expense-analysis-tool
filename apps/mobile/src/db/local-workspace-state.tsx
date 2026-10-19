@@ -15,6 +15,7 @@ import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 
 import { useLocalQuery } from "./local-workspace/use-local-query";
+import type { LocalRemittance, LocalRemittanceOverview } from "./remittance-queries";
 import {
   closeLocalWorkspace,
   describeWorkspaceOpenFailure,
@@ -217,6 +218,48 @@ export function useBudgetOccasions(month: string): {
     errorMessage: "Occasion budgets could not be read from encrypted local storage.",
   });
   return { occasions: data, error, retry };
+}
+
+/** A family's remittance card for `month` (`YYYY-MM-01`) in the workspace currency. */
+export function useRemittanceOverview(month: string): {
+  overview: LocalRemittanceOverview | null;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const currency = useWorkspaceCurrency();
+  const read = useCallback(
+    (current: LocalWorkspace) => current.repository.getRemittanceOverview(month, currency),
+    [month, currency],
+  );
+  const { data, error, retry } = useLocalQuery<LocalRemittanceOverview | null>(workspace, {
+    read,
+    tables: ["remittances", "transactions", "accounts"],
+    empty: null,
+    errorMessage: "Remittances could not be read from encrypted local storage.",
+  });
+  return { overview: data, error, retry };
+}
+
+export function useRemittance(id?: string): {
+  remittance: LocalRemittance | null;
+  loading: boolean;
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const read = useMemo(
+    () => (id ? (current: LocalWorkspace) => current.repository.getRemittance(id) : null),
+    [id],
+  );
+  const { data, loading, error, retry } = useLocalQuery(workspace, {
+    read,
+    tables: ["remittances", "transactions"],
+    empty: null,
+    errorMessage: "This remittance could not be read from encrypted local storage.",
+    initialLoading: Boolean(id),
+  });
+  return { remittance: data, loading, error, retry };
 }
 
 const readGoals = (workspace: LocalWorkspace) => workspace.repository.getGoals();

@@ -18,6 +18,12 @@ import { AppState, Platform } from "react-native";
 import { isSupabaseConfigured } from "@/config/public-config";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
 import { discardLocalWorkspace, inspectLocalWorkspaceForSignOut } from "@/db/workspace";
+import {
+  clearWorkspaceRecord,
+  EMPTY_WORKSPACE_RECORD,
+  loadWorkspaceRecord,
+  workspaceSubjects,
+} from "@/features/family/workspace-record";
 import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { clearPetNotifications } from "@/features/pet/pet-notifications";
 import { clearPetMoment } from "@/features/pet/use-pet-moment";
@@ -420,8 +426,15 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const signOut = useCallback(
     async (options: SignOutOptions = {}) => {
       const subject = subjectRef.current;
+      // Every family the person belongs to has its own file, and each one goes with the account.
+      const localSubjects = subject
+        ? workspaceSubjects(
+            subject,
+            (await loadWorkspaceRecord(subject).catch(() => null)) ?? EMPTY_WORKSPACE_RECORD,
+          )
+        : [];
       if (subject && !options.preserveLocalWorkspace) {
-        const risk = await inspectLocalWorkspaceForSignOut(subject);
+        const risk = await inspectLocalWorkspaceForSignOut(localSubjects);
         assertSignOutRiskAllowed(risk, options.discardUnsyncedChanges === true);
       }
 
@@ -467,7 +480,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
       setSignedInAccount(null);
 
       if (subject && !options.preserveLocalWorkspace) {
-        await discardLocalWorkspace(subject);
+        for (const localSubject of localSubjects) await discardLocalWorkspace(localSubject);
+        await clearWorkspaceRecord(subject).catch(() => undefined);
         await clearAppLock(subject);
       }
       subjectRef.current = null;

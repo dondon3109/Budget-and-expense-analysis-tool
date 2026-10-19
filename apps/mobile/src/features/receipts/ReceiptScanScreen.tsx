@@ -2,7 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
@@ -42,6 +42,8 @@ import {
   type ReceiptReviewItem,
 } from "./receipt-review";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { prepareReceiptPhoto } from "@/features/family/receipt-photo";
 
 const MIME_BY_EXTENSION: Record<string, "image/jpeg" | "image/png" | "image/webp"> = {
   jpg: "image/jpeg",
@@ -88,6 +90,10 @@ export function ReceiptScanScreen() {
   const [items, setItems] = useState<ReceiptReviewItem[]>([]);
   const [showRawText, setShowRawText] = useState(false);
   const [singleReceiptNoticeOpen, setSingleReceiptNoticeOpen] = useState(true);
+  // A family scan keeps its photo on every entry it saves, unless the person turns it off.
+  const inFamily = useActiveWorkspace().family !== null;
+  const [scannedPhoto, setScannedPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [keepPhoto, setKeepPhoto] = useState(true);
 
   const accounts = useMemo(
     () => formData.data?.accounts.filter((account) => !account.pending) ?? [],
@@ -219,6 +225,7 @@ export function ReceiptScanScreen() {
     setMessage(null);
     setDraft(null);
     setItems([]);
+    setScannedPhoto(asset);
     try {
       const extension =
         asset.fileName?.split(".").pop()?.toLowerCase() ?? asset.mimeType?.split("/")[1] ?? "";
@@ -357,7 +364,18 @@ export function ReceiptScanScreen() {
     setSaving(true);
     setMessage(null);
     try {
-      await local.workspace.transactionMutations.createTransactions(inputs);
+      const savedIds = await local.workspace.transactionMutations.createTransactions(inputs);
+      if (inFamily && keepPhoto && scannedPhoto) {
+        try {
+          const photo = await prepareReceiptPhoto(scannedPhoto);
+          await local.workspace.transactionMutations.queueReceiptUpload(savedIds, photo);
+        } catch (error) {
+          Alert.alert(
+            "Entries saved without the photo",
+            error instanceof Error ? error.message : "The receipt photo could not be kept.",
+          );
+        }
+      }
       sync.retry();
       router.back();
     } catch (error) {
@@ -741,6 +759,25 @@ export function ReceiptScanScreen() {
                 </Text>
               ) : null}
 
+              {inFamily ? (
+                <View style={styles.keepPhoto}>
+                  <View style={styles.noticeText}>
+                    <Text style={[typography.headline, { color: theme.colors.text }]}>
+                      Keep receipt photo
+                    </Text>
+                    <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                      The family sees it on every entry from this receipt.
+                    </Text>
+                  </View>
+                  <Switch
+                    accessibilityLabel="Keep receipt photo"
+                    onValueChange={setKeepPhoto}
+                    trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
+                    value={keepPhoto}
+                  />
+                </View>
+              ) : null}
+
               <Button
                 accessibilityLabel={`Save ${items.length} scanned ${items.length === 1 ? "item" : "items"}`}
                 disabled={saving}
@@ -760,6 +797,7 @@ export function ReceiptScanScreen() {
 
 const styles = StyleSheet.create({
   captureCard: { gap: spacing.md },
+  keepPhoto: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   notice: {
     borderRadius: radii.md,
     padding: spacing.md,

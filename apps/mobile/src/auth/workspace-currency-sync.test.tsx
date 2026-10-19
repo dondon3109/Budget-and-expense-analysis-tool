@@ -13,6 +13,9 @@ jest.mock("expo-secure-store", () => ({
 }));
 jest.mock("@/api/workspace-settings", () => ({ getWorkspaceSettings: jest.fn() }));
 jest.mock("./session-state", () => ({ useSessionSnapshot: jest.fn() }));
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: () => ({ family: null, writable: true }),
+}));
 
 const getSettings = getWorkspaceSettings as jest.Mock;
 const getSession = useSessionSnapshot as jest.Mock;

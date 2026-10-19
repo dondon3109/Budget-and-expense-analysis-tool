@@ -8,6 +8,7 @@ import { apiRequest } from "./authenticated";
 
 export interface WorkspaceSettingsApi {
   accessToken: string;
+  workspaceId?: string | null;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
 }

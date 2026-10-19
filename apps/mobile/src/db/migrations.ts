@@ -1,5 +1,7 @@
 import type { SQLiteDatabase } from "expo-sqlite";
 
+import { familyWorkspaceMigration } from "./family-migration";
+
 export interface MigrationTransaction {
   execAsync(source: string): Promise<void>;
 }
@@ -15,7 +17,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 17;
+export const LOCAL_SCHEMA_VERSION = 18;
 
 export const migrations: readonly Migration[] = [
   {
@@ -848,6 +850,7 @@ export const migrations: readonly Migration[] = [
         ON budgets(month, COALESCE(occasion_id, ''), category_id);
     `,
   },
+  familyWorkspaceMigration,
 ] as const;
 
 export async function applyLocalMigrations(database: MigrationDatabase): Promise<number> {

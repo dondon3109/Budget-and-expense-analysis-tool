@@ -99,12 +99,7 @@ async function assertWorkspaceSubject(database: SQLiteDatabase, subject: string)
   }
 }
 
-let current: {
-  subject: string;
-  alias: string;
-  generation: number;
-  workspace: LocalWorkspace;
-} | null = null;
+let current: { subject: string; workspace: LocalWorkspace } | null = null;
 let operation = Promise.resolve();
 
 function serialize<T>(task: () => Promise<T>): Promise<T> {
@@ -122,7 +117,12 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
     await current.workspace.database.closeAsync();
     current = null;
   }
+  const workspace = await openWorkspaceFile(subject);
+  current = { subject, workspace };
+  return workspace;
+}
 
+async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
   const alias = await workspaceAlias(subject);
   const generation = await getWorkspaceGeneration(alias);
   const name = databaseNameForGeneration(alias, generation);
@@ -173,7 +173,6 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
       schemaVersion,
       generation,
     };
-    current = { subject, alias, generation, workspace };
     return workspace;
   } catch (error) {
     await database.closeAsync().catch(() => undefined);
@@ -183,6 +182,27 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
 
 export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
   return serialize(() => openWorkspaceInternal(subject));
+}
+
+/**
+ * Runs `task` on the workspace file for `subject` without making it the open one: the open
+ * workspace is used as is, any other file gets its own connection, closed afterwards. Uploading
+ * a family the user switched away from and checking every family file at sign-out use this.
+ * `task` must not open, recover, or discard a workspace itself; those wait behind it.
+ */
+export function withDetachedWorkspace<T>(
+  subject: string,
+  task: (workspace: LocalWorkspace) => Promise<T>,
+): Promise<T> {
+  return serialize(async () => {
+    if (current?.subject === subject) return task(current.workspace);
+    const workspace = await openWorkspaceFile(subject);
+    try {
+      return await task(workspace);
+    } finally {
+      await workspace.database.closeAsync().catch(() => undefined);
+    }
+  });
 }
 
 const CORRUPT_DATABASE_PATTERN =
@@ -245,10 +265,14 @@ async function buildSnapshotGeneration({
   await database.closeAsync();
 }
 
+/**
+ * Rebuilds the workspace file for `subject` from a server snapshot and switches to it, dropping
+ * anything not yet uploaded. `workspaceId` names the family the file belongs to, if any.
+ */
 export function recoverLocalWorkspace(
   subject: string,
   accessToken: string,
-  fetchPage?: SnapshotPageFetcher,
+  workspaceId: string | null = null,
 ): Promise<void> {
   return serialize(async () => {
     const alias = await workspaceAlias(subject);
@@ -261,10 +285,8 @@ export function recoverLocalWorkspace(
       current?.subject === subject ? current.workspace : await openWorkspaceInternal(subject);
     const clientId = await workspace.transactionMutations.clientId();
 
-    const pageFetcher: SnapshotPageFetcher =
-      fetchPage ??
-      ((snapshotCursor, offset) =>
-        snapshotMobileSync({ accessToken, clientId, snapshotCursor, offset }));
+    const pageFetcher: SnapshotPageFetcher = (snapshotCursor, offset) =>
+      snapshotMobileSync({ accessToken, workspaceId, clientId, snapshotCursor, offset });
 
     await buildSnapshotGeneration({
       databaseName: name,
@@ -285,15 +307,19 @@ export function recoverLocalWorkspace(
   });
 }
 
+/** Adds up what signing out would lose across the given workspace files, open or not. */
 export async function inspectLocalWorkspaceForSignOut(
-  subject: string,
+  subjects: readonly string[],
 ): Promise<LocalWorkspaceSignOutRisk> {
-  const workspace = await openLocalWorkspace(subject);
-  const stats: LocalWorkspaceStats = await workspace.repository.getStats();
-  return {
-    unsyncedOperationCount: stats.unsyncedOperationCount,
-    unresolvedConflictCount: stats.unresolvedConflictCount,
-  };
+  const risk = { unsyncedOperationCount: 0, unresolvedConflictCount: 0 };
+  for (const subject of subjects) {
+    const stats: LocalWorkspaceStats = await withDetachedWorkspace(subject, (workspace) =>
+      workspace.repository.getStats(),
+    );
+    risk.unsyncedOperationCount += stats.unsyncedOperationCount;
+    risk.unresolvedConflictCount += stats.unresolvedConflictCount;
+  }
+  return risk;
 }
 
 export function closeLocalWorkspace(subject?: string): Promise<void> {

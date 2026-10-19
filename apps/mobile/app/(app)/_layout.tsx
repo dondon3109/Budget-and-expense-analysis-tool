@@ -220,6 +220,30 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="remittance"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Home",
+            presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            sheetGrabberVisible: Platform.OS === "ios",
+          }}
+        />
+        <Stack.Screen
+          name="family"
+          options={{
+            headerShown: true,
+            headerBackTitle: "Back",
+          }}
+        />
+        <Stack.Screen
+          name="family-deleted"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+            title: "Recently deleted",
+          }}
+        />
+        <Stack.Screen
           name="tutorials"
           options={{
             headerShown: true,

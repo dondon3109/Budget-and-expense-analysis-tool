@@ -12,6 +12,9 @@ jest.mock("@react-native-community/netinfo", () => ({
 }));
 
 jest.mock("@/auth/session-state", () => ({ useSessionSnapshot: jest.fn() }));
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: () => ({ family: null, writable: true }),
+}));
 jest.mock("@/auth/plan-state", () => ({
   usePlan: () => ({ plan: "free", status: "ready", retry: jest.fn() }),
 }));

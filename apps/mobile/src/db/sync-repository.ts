@@ -1,10 +1,12 @@
 import {
+  type mobileSyncEntityTypes,
   mobileSyncAccountSnapshotSchema,
   mobileSyncBudgetSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncDebtSnapshotSchema,
   mobileSyncEventSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
+  mobileSyncRemittanceSnapshotSchema,
   mobileSyncSubscriptionSnapshotSchema,
   mobileSyncPullResponseSchema,
   mobileSyncTransactionSnapshotSchema,
@@ -14,7 +16,9 @@ import {
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
-import { syncChangeTable } from "./entity-tables";
+import { SYNC_ENTITY_TABLES } from "./entity-tables";
+
+export type SyncEntityType = (typeof mobileSyncEntityTypes)[number];
 
 interface CursorRow {
   server_cursor: string | null;
@@ -53,7 +57,7 @@ async function currentEntityState(
   change: MobileSyncChange,
 ): Promise<EntityStateRow | null> {
   return database.getFirstAsync<EntityStateRow>(
-    `SELECT server_revision, sync_state FROM ${syncChangeTable(change.entityType)} WHERE id = ?`,
+    `SELECT server_revision, sync_state FROM ${SYNC_ENTITY_TABLES[change.entityType]} WHERE id = ?`,
     change.entityId,
   );
 }
@@ -178,9 +182,9 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
   await database.runAsync(
     `INSERT INTO transactions (
       id, account_id, category_id, date, description, amount_minor, currency, kind,
-      notes, transfer_group_id, transfer_fee_minor, import_fingerprint, debt_id,
+      notes, transfer_group_id, transfer_fee_minor, import_fingerprint, debt_id, author_user_id,
       server_revision, server_updated_at, deleted_at, sync_state
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
     ON CONFLICT(id) DO UPDATE SET
       account_id = excluded.account_id,
       category_id = excluded.category_id,
@@ -194,6 +198,7 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
       transfer_fee_minor = excluded.transfer_fee_minor,
       import_fingerprint = excluded.import_fingerprint,
       debt_id = excluded.debt_id,
+      author_user_id = excluded.author_user_id,
       server_revision = excluded.server_revision,
       server_updated_at = excluded.server_updated_at,
       deleted_at = NULL,
@@ -211,6 +216,7 @@ async function applyTransaction(database: SQLiteDatabase, change: MobileSyncChan
     transaction.transferFeeMinor,
     transaction.importFingerprint,
     transaction.debtId ?? null,
+    transaction.authorUserId ?? null,
     change.revision,
     change.serverUpdatedAt,
   );
@@ -382,6 +388,46 @@ async function applyEvent(database: SQLiteDatabase, change: MobileSyncChange): P
   );
 }
 
+async function applyRemittance(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
+  if (change.entityType !== "remittance" || !change.payload) {
+    throw new Error("invalid_remittance_change");
+  }
+  const remittance = mobileSyncRemittanceSnapshotSchema.parse(change.payload);
+  await database.runAsync(
+    `INSERT INTO remittances (
+      id, sent_by_user_id, sent_amount_minor, sent_currency, fee_minor, provider, sent_on, note,
+      transaction_id, received_by_user_id, server_revision, server_updated_at, deleted_at,
+      sync_state
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'synced')
+    ON CONFLICT(id) DO UPDATE SET
+      sent_by_user_id = excluded.sent_by_user_id,
+      sent_amount_minor = excluded.sent_amount_minor,
+      sent_currency = excluded.sent_currency,
+      fee_minor = excluded.fee_minor,
+      provider = excluded.provider,
+      sent_on = excluded.sent_on,
+      note = excluded.note,
+      transaction_id = excluded.transaction_id,
+      received_by_user_id = excluded.received_by_user_id,
+      server_revision = excluded.server_revision,
+      server_updated_at = excluded.server_updated_at,
+      deleted_at = NULL,
+      sync_state = 'synced'`,
+    remittance.id,
+    remittance.sentByUserId,
+    remittance.sentAmountMinor,
+    remittance.sentCurrency,
+    remittance.feeMinor,
+    remittance.provider,
+    remittance.sentOn,
+    remittance.note,
+    remittance.transactionId,
+    remittance.receivedByUserId,
+    change.revision,
+    change.serverUpdatedAt,
+  );
+}
+
 async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange): Promise<void> {
   await database.runAsync(
     `INSERT INTO sync_tombstones (
@@ -396,7 +442,7 @@ async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange
     change.serverUpdatedAt,
   );
   await database.runAsync(
-    `UPDATE ${syncChangeTable(change.entityType)}
+    `UPDATE ${SYNC_ENTITY_TABLES[change.entityType]}
      SET server_revision = ?, server_updated_at = ?, deleted_at = ?, sync_state = 'synced'
      WHERE id = ?`,
     change.revision,
@@ -442,6 +488,9 @@ async function applyChange(database: SQLiteDatabase, change: MobileSyncChange): 
     case "event":
       await applyEvent(database, change);
       return;
+    case "remittance":
+      await applyRemittance(database, change);
+      return;
   }
 }
 
@@ -477,6 +526,9 @@ export async function applySnapshotChange(
     case "event":
       await applyEvent(database, change);
       return;
+    case "remittance":
+      await applyRemittance(database, change);
+      return;
   }
 }
 
@@ -491,6 +543,14 @@ export class LocalSyncRepository {
       "SELECT server_cursor FROM sync_metadata WHERE singleton = 1",
     );
     return row?.server_cursor ?? null;
+  }
+
+  /** How many changes of each kind wait to upload, to tell the user what a refusal dropped. */
+  async pendingEntityCounts(): Promise<Partial<Record<SyncEntityType, number>>> {
+    const rows = await this.database.getAllAsync<{ entity_type: SyncEntityType; count: number }>(
+      "SELECT entity_type, count(*) AS count FROM sync_outbox GROUP BY entity_type",
+    );
+    return Object.fromEntries(rows.map((row) => [row.entity_type, row.count]));
   }
 
   recordAcknowledgement(cursor: string, retentionFloorCursor: string): Promise<void> {

@@ -19,6 +19,7 @@ import {
   type TransactionUpdate,
   type mobileSyncAccountSnapshotSchema,
   type mobileSyncCategorySnapshotSchema,
+  mobileSyncEntityTypes,
 } from "@zoption/shared";
 
 import { SYNC_ENTITY_TABLES } from "../entity-tables";
@@ -169,17 +170,7 @@ export const debtRowSchema = z.object({
 export const outboxRowSchema = z.object({
   operation_id: uuidSchema,
   idempotency_key: uuidSchema,
-  entity_type: z.enum([
-    "account",
-    "category",
-    "transaction",
-    "transfer",
-    "budget",
-    "goal",
-    "debt",
-    "subscription",
-    "event",
-  ]),
+  entity_type: z.enum(mobileSyncEntityTypes),
   entity_id: z.string(),
   operation_type: z.enum(["create", "update", "delete"]),
   base_revision: z.number().int().nonnegative().nullable(),
@@ -354,6 +345,7 @@ export class LocalMutationError extends Error {
       | "debt_missing"
       | "subscription_missing"
       | "event_missing"
+      | "remittance_missing"
       | "name_conflict"
       | "mutation_blocked"
       | "invalid_outbox",
@@ -369,9 +361,6 @@ export function syncEntityTable(entityType: MobileSyncPushOperation["entityType"
       "Transfers update two transaction rows and do not have a single entity table.",
       "invalid_outbox",
     );
-  }
-  if (entityType === "remittance") {
-    throw new LocalMutationError("This app does not sync remittances.", "invalid_outbox");
   }
   return SYNC_ENTITY_TABLES[entityType];
 }

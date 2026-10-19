@@ -114,12 +114,26 @@ Edits and deletes go into the family journal, so history and Undo work as on the
 expense runs the family alerts when it syncs. A result stored before the rules changed replays
 unchanged.
 
+On the phone each family is its own encrypted file, keyed by the person plus the family
+(`familySubject`, `apps/mobile/src/features/family/workspace-record.ts`), with the schema every
+workspace file shares. Only the shown workspace pulls; after it syncs, the phone pushes (never
+pulls) the outboxes of its other workspaces through a second connection, once per launch, switch,
+and background run. A family opens offline only after one sync has finished on that phone. When a
+family refuses this phone, the app lists the changes it is dropping, then deletes the family's file
+(`workspace_forbidden`, falling back to personal) or rebuilds it from a snapshot (viewer, closing).
+
 Remittances (`remittance`) sync only in a family. A create records a send by the pusher, and with
 `received` also its arrival; an update confirms the arrival; a delete cancels a send that has not
 arrived, by its sender or the owner. Confirming creates the income transaction under the
 `transactionId` the client chose, so the phone's own row and the server's match the way a
 transfer's legs do, and the family is notified as on the web. The payload carries the send and
 `transactionId`; the received amount, account, and date are that transaction's.
+
+On the phone the arrival is a local income row that never has an outbox row of its own: it uploads
+inside the remittance, and acknowledging the remittance marks it synced so the next pull can apply
+the server's copy over it. A refused or conflicting remittance change offers only "use the
+family's version", which restores the server copy (or the last synced state) and drops a local
+arrival that never uploaded (`apps/mobile/src/db/transaction-mutations/commands/remittances.ts`).
 
 ## Released app contracts
 

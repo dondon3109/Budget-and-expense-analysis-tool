@@ -8,7 +8,7 @@ jest.mock("./widget-voice-log", () => ({
   logWidgetVoiceNote: jest.fn(),
 }));
 jest.mock("@/auth/supabase-client", () => ({ getSupabaseClient: jest.fn() }));
-jest.mock("@/db/workspace", () => ({ openLocalWorkspace: jest.fn() }));
+jest.mock("@/db/workspace", () => ({ withDetachedWorkspace: jest.fn() }));
 jest.mock("@/api/ai-entry", () => ({ extractVoiceTransactionsFromTranscript: jest.fn() }));
 
 const mockedLog = logWidgetVoiceNote as jest.MockedFunction<typeof logWidgetVoiceNote>;

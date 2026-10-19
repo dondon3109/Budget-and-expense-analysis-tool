@@ -8,6 +8,7 @@ export const accountFeatures = {
   account: "Account settings",
   support: "Help & support",
   pet: "The pet companion",
+  family: "Family workspaces",
   "share-link": "Share links",
 } as const;
 
