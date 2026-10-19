@@ -26,7 +26,6 @@ import {
   ErrorState,
   OfflineBanner,
   Skeleton,
-  SyncPausedBanner,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -452,13 +451,6 @@ export function TransactionsScreen() {
       </View>
 
       <OfflineBanner />
-      {sync.message && sync.status !== "waiting" ? (
-        <SyncPausedBanner
-          message={sync.message}
-          onRetry={sync.retry}
-          style={styles.syncBannerInset}
-        />
-      ) : null}
       {local.error ? (
         <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
       ) : local.items === null ? (
@@ -726,7 +718,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   loading: { gap: spacing.xs, padding: spacing.md },
-  syncBannerInset: { width: "auto", marginHorizontal: spacing.md, marginVertical: spacing.sm },
   listContent: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
   fabPosition: {

@@ -16,7 +16,6 @@ export * from "./MoneyValue";
 export * from "./OfflineBanner";
 export * from "./SelectionField";
 export * from "./Skeleton";
-export * from "./SyncPausedBanner";
 export * from "./SyncStatus";
 export * from "./TransactionRow";
 export * from "./CurrencyCode";

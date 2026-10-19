@@ -17,7 +17,7 @@ import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { useSyncState } from "@/sync/sync-state";
-import { ErrorState, OfflineBanner, Skeleton, SyncPausedBanner, SyncStatus } from "@/ui/components";
+import { ErrorState, OfflineBanner, Skeleton, SyncStatus } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { spacing } from "@/ui/tokens";
 import type { CashflowTrend } from "@zoption/shared";
@@ -114,9 +114,6 @@ export function HomeScreen() {
       <FamilyClosingNotice />
       <FamilyHomeJustYouCard />
       <OfflineBanner />
-      {sync.message && sync.status !== "waiting" ? (
-        <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
-      ) : null}
       {menuView === "remittance" ? (
         <RemittanceCalculatorCard />
       ) : dashboard.error ? (
