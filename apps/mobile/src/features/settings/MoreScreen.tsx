@@ -91,6 +91,13 @@ export function MoreScreen() {
             onPress={() => openFeature("assistant", "/(app)/assistant")}
           />
         )}
+        {guest ? null : (
+          <MenuRow
+            icon="account-group-outline"
+            title={inFamily ? "Family members & settings" : "Families"}
+            onPress={() => router.push("/(app)/family")}
+          />
+        )}
         <MenuRow
           icon="wallet-outline"
           title="Accounts & categories"

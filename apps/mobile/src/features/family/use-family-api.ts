@@ -31,3 +31,14 @@ export function memberLabel(
   if (userId === me) return "You";
   return members.find((member) => member.userId === userId)?.email ?? "A former member";
 }
+
+export const ROLE_LABELS = { owner: "Owner", member: "Member", viewer: "Viewer" } as const;
+
+/** A server timestamp as a short local date with the year, for joins, invitations, and closing. */
+export function formatFamilyDate(timestamp: string): string {
+  return new Date(timestamp).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}

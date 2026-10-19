@@ -2,13 +2,19 @@ import {
   familyCommentListSchema,
   familyCommentSchema,
   familyDeletedEntryListSchema,
+  familyAlertSettingsSchema,
+  familyClosureSchema,
   familyDetailSchema,
   familyEntryHistorySchema,
+  type FamilyAlertSettings,
+  type FamilyClosure,
   type FamilyComment,
   type FamilyCommentSubject,
   type FamilyDeletedEntry,
   type FamilyDetail,
   type FamilyEntryEvent,
+  type FamilyInviteInput,
+  type FamilyMemberRole,
 } from "@zoption/shared";
 
 import { apiRequest } from "./authenticated";
@@ -112,5 +118,109 @@ export function restoreFamilyEntry(api: FamilyApi, transactionId: string): Promi
     method: "POST",
     fallback: "The entry could not be restored.",
     decode: ignoreBody,
+  });
+}
+
+export function inviteFamilyMember(api: FamilyApi, input: FamilyInviteInput): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/invitations",
+    method: "POST",
+    body: input,
+    fallback: "The invitation could not be sent.",
+    decode: ignoreBody,
+  });
+}
+
+export function resendFamilyInvitation(api: FamilyApi, invitationId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: `/api/app/family/invitations/${encodeURIComponent(invitationId)}/resend`,
+    method: "POST",
+    fallback: "The invitation could not be resent.",
+    decode: ignoreBody,
+  });
+}
+
+export function revokeFamilyInvitation(api: FamilyApi, invitationId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: `/api/app/family/invitations/${encodeURIComponent(invitationId)}`,
+    method: "DELETE",
+    fallback: "The invitation could not be revoked.",
+    decode: ignoreBody,
+  });
+}
+
+export function setFamilyMemberRole(
+  api: FamilyApi,
+  userId: string,
+  role: FamilyMemberRole,
+): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: `/api/app/family/members/${encodeURIComponent(userId)}`,
+    method: "PATCH",
+    body: { role },
+    fallback: "The role could not be changed.",
+    decode: ignoreBody,
+  });
+}
+
+/** Only after the owner has read the seat rules. */
+export function removeFamilyMember(api: FamilyApi, userId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: `/api/app/family/members/${encodeURIComponent(userId)}/remove`,
+    method: "POST",
+    body: { seatRulesAccepted: true },
+    fallback: "The member could not be removed.",
+    decode: ignoreBody,
+  });
+}
+
+export function transferFamily(api: FamilyApi, userId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/transfer",
+    method: "POST",
+    body: { userId },
+    fallback: "Ownership could not be handed over.",
+    decode: ignoreBody,
+  });
+}
+
+export function closeFamily(api: FamilyApi): Promise<FamilyClosure> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/close",
+    method: "POST",
+    fallback: "The family could not be closed.",
+    decode: (value) => familyClosureSchema.parse(value),
+  });
+}
+
+export function getFamilyAlertSettings(api: FamilyApi): Promise<FamilyAlertSettings> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/alerts",
+    method: "GET",
+    fallback: "The family's alerts could not be loaded.",
+    decode: (value) => familyAlertSettingsSchema.parse(value),
+  });
+}
+
+/** Owner only. */
+export function saveFamilyAlertSettings(
+  api: FamilyApi,
+  settings: FamilyAlertSettings,
+): Promise<FamilyAlertSettings> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/alerts",
+    method: "PUT",
+    body: settings,
+    fallback: "The alerts could not be saved.",
+    decode: (value) => familyAlertSettingsSchema.parse(value),
   });
 }
