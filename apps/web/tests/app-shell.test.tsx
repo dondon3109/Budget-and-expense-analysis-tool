@@ -152,10 +152,9 @@ describe("AppShell", () => {
     expect(screen.getByText("Signed in as")).toBeInTheDocument();
     expect(screen.getByText("Taylor")).toBeInTheDocument();
     expect(screen.queryByText("test@example.com")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Open profile settings" })).toHaveAttribute(
-      "href",
-      "/app/settings#profile-settings",
-    );
+    expect(
+      screen.getByRole("link", { name: "Signed in as Taylor, open profile settings" }),
+    ).toHaveAttribute("href", "/app/settings#profile-settings");
     expect(document.querySelector(".sidebar-profile img")).toHaveAttribute(
       "src",
       "/api/public/avatars/test-user/avatar.png",
@@ -170,7 +169,7 @@ describe("AppShell", () => {
     expect(
       screen.getAllByRole("button", { name: /choose theme\. current theme: (light|dark|coffee)/i }),
     ).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Open Zoption Support" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ask Zoption" })).toBeInTheDocument();
   });
 
   it("adds the admin console only for the platform administrator", () => {
@@ -270,7 +269,7 @@ describe("AppShell", () => {
       </ThemeProvider>,
     );
 
-    expect(screen.queryByRole("button", { name: "Open Zoption Support" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ask Zoption" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Assistant" })).toHaveClass("current");
   });
 
@@ -299,7 +298,7 @@ describe("AppShell", () => {
       "current",
     );
     expect(mobileNavigation.querySelector('a[href="/app/calendar"]')).toBeNull();
-    expect(screen.getByRole("button", { name: "Open menu" })).not.toHaveClass("current");
+    expect(screen.getByRole("button", { name: "More menu" })).not.toHaveClass("current");
 
     // Calendar only lost its tab slot, not its place in the drawer navigation.
     const drawerNavigation = screen.getByRole("navigation", { name: "Main navigation" });
@@ -323,7 +322,7 @@ describe("AppShell", () => {
       </ThemeProvider>,
     );
 
-    const menuButton = screen.getByRole("button", { name: "Open menu" });
+    const menuButton = screen.getByRole("button", { name: "More menu" });
     // Calendar is no longer a tab destination, so the More tab carries the current state.
     expect(menuButton).toHaveClass("current");
 
@@ -336,19 +335,21 @@ describe("AppShell", () => {
     const drawer = document.querySelector(".sidebar-drawer");
     if (!(drawer instanceof HTMLElement)) throw new Error("Drawer content was not rendered.");
     fireEvent.keyDown(drawer, { key: "Escape" });
-    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "More menu" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
     expect(document.querySelector(".sidebar")).not.toHaveClass("open");
 
-    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
-    fireEvent.click(screen.getByRole("link", { name: "Open profile settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "More menu" }));
+    fireEvent.click(
+      screen.getByRole("link", { name: "Signed in as Taylor, open profile settings" }),
+    );
     expect(screen.getByTestId("current-location")).toHaveTextContent(
       "/app/settings#profile-settings",
     );
     expect(document.querySelector(".sidebar")).not.toHaveClass("open");
-    expect(screen.getByRole("button", { name: "Open menu" })).toHaveAttribute(
+    expect(screen.getByRole("button", { name: "More menu" })).toHaveAttribute(
       "aria-expanded",
       "false",
     );
@@ -367,7 +368,7 @@ describe("AppShell", () => {
       </ThemeProvider>,
     );
 
-    const menuButton = screen.getByRole("button", { name: "Open menu" });
+    const menuButton = screen.getByRole("button", { name: "More menu" });
     fireEvent.click(menuButton);
 
     const drawer = document.querySelector(".sidebar-drawer");

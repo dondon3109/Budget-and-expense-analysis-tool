@@ -161,6 +161,7 @@ export function AppShell({ children }: AppShellProps) {
     typeof user?.user_metadata?.display_name === "string"
       ? user.user_metadata.display_name.trim()
       : "";
+  const accountName = displayName || user?.email || "Zoption user";
   const avatarPath = avatarPathFromMetadata(user?.user_metadata);
   const [menuOpen, setMenuOpen] = useState(false);
   const [navCollapsed, setNavCollapsed] = useState(() =>
@@ -370,7 +371,7 @@ export function AppShell({ children }: AppShellProps) {
             <Link
               className="sidebar-account-identity"
               to="/app/settings#profile-settings"
-              aria-label="Open profile settings"
+              aria-label={`Signed in as ${accountName}, open profile settings`}
               onClick={(event) => handleShellLinkClick(event, "/app/settings#profile-settings")}
             >
               <UserAvatar
@@ -380,10 +381,10 @@ export function AppShell({ children }: AppShellProps) {
                 alt=""
               />
               <div>
-                <span>Signed in as</span>
-                <strong title={displayName || user?.email}>
-                  {displayName || user?.email || "Zoption user"}
-                </strong>
+                {/* The space keeps the two words apart in the visible text axe matches against the
+                    aria-label; the grid already lays them out on separate lines. */}
+                <span>Signed in as</span>{" "}
+                <strong title={displayName || user?.email}>{accountName}</strong>
               </div>
             </Link>
             <div className="sidebar-profile-theme">
@@ -507,7 +508,7 @@ export function AppShell({ children }: AppShellProps) {
           className={`mobile-tab-item ${menuOpen || !mobilePrimaryRoute ? "current" : ""}`}
           type="button"
           onClick={() => setMenuOpen((open) => !open)}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
+          aria-label="More menu"
           aria-expanded={menuOpen}
           aria-controls="primary-navigation"
         >

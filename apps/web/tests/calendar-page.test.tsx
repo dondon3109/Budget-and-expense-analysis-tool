@@ -291,7 +291,7 @@ describe("CalendarPage month views", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: /View Next month meeting on .*August 5, 2026, 2:00 PM–3:00 PM/i,
+        name: /Next month meeting.*2:00 PM–3:00 PM, Wednesday, August 5, 2026/i,
       }),
     );
 
@@ -322,7 +322,8 @@ describe("CalendarPage month views", () => {
 
     renderPage();
 
-    expect(await screen.findByRole("button", { name: /View Current month event/i })).toBeVisible();
+    const upcoming = await screen.findByRole("list", { name: /Upcoming events for/i });
+    expect(within(upcoming).getByRole("button", { name: /Current month event/i })).toBeVisible();
     expect(screen.getByText("Some upcoming events could not be loaded.")).toBeVisible();
   });
 
@@ -444,7 +445,7 @@ describe("CalendarPage month views", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: /View Streaming plan, due Wednesday, August 26, 2026, ₱549/i,
+        name: /Streaming plan.*₱549.*, due Wednesday, August 26, 2026/i,
       }),
     );
     await waitFor(() => expect(screen.getByText("Selected date: 2026-08-26")).toBeVisible());
@@ -483,7 +484,7 @@ describe("CalendarPage month views", () => {
     renderPage();
 
     expect(
-      await screen.findByRole("button", { name: /View Current subscription, due/i }),
+      await screen.findByRole("button", { name: /Current subscription.*, due/i }),
     ).toBeVisible();
     expect(screen.getByText("Some subscription due dates could not be loaded.")).toBeVisible();
   });
