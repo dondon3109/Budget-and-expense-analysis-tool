@@ -22,7 +22,7 @@ describe("guest workspace", () => {
     await seedGuestWorkspace(database);
 
     expect(database.withTransactionAsync).toHaveBeenCalledTimes(1);
-    expect(statements.filter((sql) => sql.includes("INTO accounts"))).toHaveLength(3);
+    expect(statements.filter((sql) => sql.includes("INTO accounts"))).toHaveLength(4);
     expect(statements.filter((sql) => sql.includes("INTO categories"))).toHaveLength(7);
     expect(statements.some((sql) => sql.includes("sync_outbox"))).toBe(false);
   });
