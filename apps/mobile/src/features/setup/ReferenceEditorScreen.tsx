@@ -467,7 +467,7 @@ export function ReferenceEditorScreen() {
               </Text>
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
                 {retryableInterestFailure
-                  ? "If this interest setting was rejected while a recent Pro change was still processing, retry it after confirming your plan."
+                  ? "If this interest setting was rejected while a recent plan change was still processing, retry it after confirming your plan."
                   : "Zoption preserved this item, but editing is disabled until account/category recovery is available."}
               </Text>
               {retryableInterestFailure ? (
@@ -628,7 +628,7 @@ export function ReferenceEditorScreen() {
                           </>
                         ) : (
                           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                            Interest settings save with this account. The server confirms Pro access
+                            Interest settings save with this account. The server confirms your plan
                             when synchronization runs.
                           </Text>
                         )}

@@ -75,7 +75,7 @@ export function mapApiError(
   }
   if (status === 402 || code === "monthly_limit_reached" || code === "billing_required") {
     return new ApiTransportError(
-      errorMessage(body, "This needs a Zoption Pro plan."),
+      errorMessage(body, "This needs a paid Zoption plan."),
       "plan_limit",
       status,
       code,

@@ -31,6 +31,8 @@ jest.mock("@/api/family", () => ({
 jest.mock("./active-workspace", () => ({ useActiveWorkspace: jest.fn() }));
 // Alerts load their own settings; they are covered by family-alerts.test.ts.
 jest.mock("./FamilyAlertsCard", () => ({ FamilyAlertsCard: () => null }));
+// The plan loads its own billing; it is covered by FamilyPlanSection.test.tsx.
+jest.mock("./FamilyPlanSection", () => ({ FamilyPlanSection: () => null }));
 
 const detail: FamilyDetail = {
   id: "fam-1",
@@ -49,6 +51,7 @@ const detail: FamilyDetail = {
   seats: { limit: 6, used: 2, cooling: 0 },
   swaps: { limit: 3, used: 0 },
   closesAt: null,
+  plan: "active",
 };
 
 beforeEach(() => {
@@ -82,5 +85,13 @@ describe("FamilyManagerView", () => {
       "user-2",
       "viewer",
     );
+  });
+
+  it("keeps invitations closed until the family has a plan", async () => {
+    jest.mocked(getFamilyDetail).mockResolvedValue({ ...detail, plan: "unpaid" });
+    await render(<FamilyManagerView />);
+
+    expect(await screen.findByText("You")).toBeTruthy();
+    expect(screen.queryByText("Invite someone")).toBeNull();
   });
 });

@@ -227,7 +227,7 @@ export function MoneySetupScreen() {
                     ) : null}
                     <SetupRow
                       title={category.name}
-                      detail={`${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.requiredPlan === "zoption_pro" ? " · Pro" : ""}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`}
+                      detail={`${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`}
                       state={category.syncState}
                       icon="tag-outline"
                       iconColor={category.color}

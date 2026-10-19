@@ -13,7 +13,7 @@ describe("ThankYouHost", () => {
     expect(screen.queryByText("Continue")).toBeNull();
 
     await act(async () => showThankYou("pro"));
-    expect(screen.getByText("Thank you for upgrading to Zoption Pro!")).toBeTruthy();
+    expect(screen.getByText("Thank you for upgrading Zoption!")).toBeTruthy();
   });
 });
 

@@ -1,11 +1,12 @@
+import { billingTiers, type BillingTier } from "@zoption/shared";
 import { z } from "zod";
 
 import { publicConfig } from "@/config/public-config";
 
-export type Plan = "free" | "zoption_pro";
+export type Plan = BillingTier;
 
 const billingSummarySchema = z.object({
-  plan: z.enum(["free", "zoption_pro"]),
+  plan: z.enum(billingTiers),
 });
 
 export type PlanErrorCode =

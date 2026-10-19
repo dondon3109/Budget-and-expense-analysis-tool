@@ -102,7 +102,7 @@ describe("PetScreen", () => {
     jest.mocked(getPet).mockResolvedValue(babyPet);
     await render(<PetScreen />);
     expect(screen.getByText("Growing into a Juvenile needs Zoption Pro.")).toBeTruthy();
-    await fireEvent.press(screen.getByRole("button", { name: "See Zoption Pro" }));
+    await fireEvent.press(screen.getByRole("button", { name: "See paid plans" }));
     expect(mockPush).toHaveBeenCalledWith("/(app)/plan-billing");
   });
 

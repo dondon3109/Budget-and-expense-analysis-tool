@@ -71,11 +71,9 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
   const tones = useToneColors();
   const planState = usePlan();
   const stageStart = pet.stage === "egg" ? 0 : PET_STAGE_THRESHOLDS[pet.stage];
-  // Only once the plan is known, so a Pro user never sees the lock while it loads.
+  // Only once the plan is known, so a paid user never sees the lock while it loads.
   const lockedLine =
-    planState.status === "ready" && planState.plan !== "zoption_pro"
-      ? petGrowthLockedLine(pet)
-      : null;
+    planState.status === "ready" && planState.plan === "free" ? petGrowthLockedLine(pet) : null;
   return (
     <>
       {pet.nextStagePoints === null ? (
@@ -95,7 +93,7 @@ function HatchedPet({ pet }: { pet: PetView & { species: NonNullable<PetView["sp
         <>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>{lockedLine}</Text>
           <Button variant="secondary" onPress={() => router.push("/(app)/plan-billing")}>
-            See Zoption Pro
+            See paid plans
           </Button>
         </>
       ) : null}
