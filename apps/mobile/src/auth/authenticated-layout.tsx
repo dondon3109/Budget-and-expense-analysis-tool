@@ -17,6 +17,7 @@ import { UsageAnalyticsPromptHost } from "@/features/usage-analytics/UsageAnalyt
 import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { ActiveWorkspaceProvider, useActiveWorkspace } from "@/features/family/active-workspace";
+import { FamilyPushTapHandler } from "@/features/family/family-push-tap";
 import { SyncProvider } from "@/sync/sync-state";
 import { ScreenViewedTracker } from "@/telemetry/screen-viewed";
 import { ErrorState, LedgerLoader } from "@/ui/components";
@@ -117,6 +118,7 @@ function LocalWorkspaceGate({
       {children}
       <ScreenViewedTracker />
       <DailyReminderTapHandler />
+      <FamilyPushTapHandler />
       <PlanLimitHost />
       <ThankYouHost />
       <AccountPromptHost />

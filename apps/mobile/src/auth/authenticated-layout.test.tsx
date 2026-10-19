@@ -27,6 +27,7 @@ jest.mock("@/features/family/active-workspace", () => ({
   useActiveWorkspace: () => ({ status: "ready", workspaceSubject: "user-1" }),
 }));
 jest.mock("@/features/reminders/daily-reminder", () => ({ DailyReminderTapHandler: () => null }));
+jest.mock("@/features/family/family-push-tap", () => ({ FamilyPushTapHandler: () => null }));
 jest.mock("@/features/billing/PlanLimitDialog", () => ({ PlanLimitHost: () => null }));
 jest.mock("@/telemetry/screen-viewed", () => ({ ScreenViewedTracker: () => null }));
 jest.mock("@/sync/sync-state", () => ({
