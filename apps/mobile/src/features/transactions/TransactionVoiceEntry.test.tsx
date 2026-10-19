@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { render, screen, waitFor } from "@testing-library/react-native";
 
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
@@ -45,55 +45,18 @@ jest.mock("@/features/assistant/assistant-voice-hooks", () => ({
   },
 }));
 
-describe("TransactionVoiceEntry language support", () => {
+describe("TransactionVoiceEntry", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    useVoiceLanguageStore.setState({ language: "auto" });
   });
 
-  it("renders voice language toggles with Auto as default", async () => {
+  it("records in the voice language chosen in Settings", async () => {
+    useVoiceLanguageStore.setState({ language: "fil" });
     render(<TransactionVoiceEntry onDraft={jest.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Auto voice language")).toBeTruthy();
+      expect(screen.getByLabelText("Speak a transaction")).toBeTruthy();
     });
-
-    expect(screen.getByLabelText("English voice language")).toBeTruthy();
-    expect(screen.getByLabelText("Tagalog voice language")).toBeTruthy();
-
-    expect(screen.getByLabelText("Auto voice language").props.accessibilityState?.selected).toBe(
-      true,
-    );
-    expect(capturedRecorderOptions.language).toBe("auto");
-  });
-
-  it("switches language to Tagalog", async () => {
-    render(<TransactionVoiceEntry onDraft={jest.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Tagalog voice language")).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByLabelText("Tagalog voice language"));
-    });
-
-    expect(useVoiceLanguageStore.getState().language).toBe("fil");
     expect(capturedRecorderOptions.language).toBe("fil");
-  });
-
-  it("switches language to English", async () => {
-    render(<TransactionVoiceEntry onDraft={jest.fn()} />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("English voice language")).toBeTruthy();
-    });
-
-    await act(async () => {
-      fireEvent.press(screen.getByLabelText("English voice language"));
-    });
-
-    expect(useVoiceLanguageStore.getState().language).toBe("en");
-    expect(capturedRecorderOptions.language).toBe("en");
   });
 });

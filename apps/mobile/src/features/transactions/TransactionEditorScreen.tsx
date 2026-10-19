@@ -488,7 +488,7 @@ export function TransactionEditorScreen() {
           style={styles.safe}
         >
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[styles.content, voiceMode && !voiceDrafted && styles.centered]}
             contentInsetAdjustmentBehavior="automatic"
             keyboardShouldPersistTaps="handled"
           >
@@ -839,6 +839,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   // The form's wrapper keeps the content's gap between fields.
   form: { gap: spacing.lg },
+  // The voice hero sits in the middle of the screen until a draft replaces it with the form.
+  centered: { flexGrow: 1, justifyContent: "center" },
   content: {
     width: "100%",
     maxWidth: 760,

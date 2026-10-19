@@ -21,7 +21,6 @@ import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { useReduceMotion } from "@/ui/reduce-motion";
-import { VoiceLanguageToggleGroup } from "@/ui/voice-language-picker";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -48,7 +47,6 @@ export function TransactionVoiceEntry({
   const [showConsent, setShowConsent] = useState(false);
   const [consentBusy, setConsentBusy] = useState(false);
   const voiceLanguage = useVoiceLanguageStore((s) => s.language);
-  const setVoiceLanguage = useVoiceLanguageStore((s) => s.setLanguage);
 
   const withToken = useCallback(
     async <Result,>(operation: (accessToken: string) => Promise<Result>): Promise<Result> => {
@@ -168,6 +166,8 @@ export function TransactionVoiceEntry({
   const recording = recorder.phase === "recording";
   const busy = recorder.phase === "requesting" || recorder.phase === "transcribing";
   const loading = readiness === "checking" || busy;
+  // The mic speaks for itself when ready; the caption only shows a state worth reading.
+  const idle = readiness === "ready" && recorder.phase === "idle";
   const label =
     readiness === "checking"
       ? "Checking voice entry…"
@@ -195,12 +195,7 @@ export function TransactionVoiceEntry({
       >
         <Card style={styles.card}>
           <Text style={[typography.title, styles.center, { color: theme.colors.text }]}>
-            {recording ? "Listening…" : "Say it out loud"}
-          </Text>
-          <Text style={[typography.callout, styles.center, { color: theme.colors.textMuted }]}>
-            {recording
-              ? "Speak naturally, then tap stop to review."
-              : "Try “Lunch 250 from GCash” or “Salary 30,000”."}
+            {recording ? "Listening…" : "Tap the mic to start"}
           </Text>
           <View style={styles.micArea}>
             {recording ? <PulseRing color={theme.colors.danger} /> : null}
@@ -238,7 +233,7 @@ export function TransactionVoiceEntry({
             >
               {elapsedMinutes}:{elapsedRemainder}
             </Text>
-          ) : (
+          ) : idle ? null : (
             <Text style={[typography.label, styles.center, { color: theme.colors.textMuted }]}>
               {label}
             </Text>
@@ -254,12 +249,7 @@ export function TransactionVoiceEntry({
             >
               Cancel
             </Button>
-          ) : (
-            <VoiceLanguageToggleGroup
-              language={voiceLanguage}
-              onLanguageChange={setVoiceLanguage}
-            />
-          )}
+          ) : null}
           {message ? (
             <Text
               accessibilityRole="alert"
