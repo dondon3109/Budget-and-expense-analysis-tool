@@ -20,6 +20,24 @@ export interface AccountIconOption {
 const ROW_SLOTS = 4;
 
 /**
+ * Where an account sits in the picker: cash, then GCash, then bank accounts, then everything
+ * else. The starter GCash account is a General account, so only its name tells it apart.
+ */
+function entryRank(option: { label: string; type: AccountType }): number {
+  if (option.type === "cash") return 0;
+  if (option.label.trim().toLowerCase() === "gcash") return 1;
+  if (option.type === "checking" || option.type === "savings") return 2;
+  return 3;
+}
+
+/** Orders accounts for entry: cash, GCash, bank, then the rest; ties keep their name order. */
+export function entryAccountOrder<Option extends { label: string; type: AccountType }>(
+  options: readonly Option[],
+): Option[] {
+  return [...options].sort((a, b) => entryRank(a) - entryRank(b));
+}
+
+/**
  * The accounts shown in the row: all of them when they fit, otherwise the first few with the
  * chosen account swapped into the last one, so the choice is always visible.
  */

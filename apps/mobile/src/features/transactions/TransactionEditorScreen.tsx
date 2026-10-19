@@ -62,7 +62,7 @@ import { DebtPaymentField } from "./DebtPaymentField";
 import { EntryCurrencyField } from "./EntryCurrencyField";
 import { EditorCloseButton, EditorSaveButton } from "./EditorHeaderActions";
 import { EntryReveal } from "./EntryReveal";
-import { AccountIconPicker } from "./AccountIconPicker";
+import { AccountIconPicker, entryAccountOrder } from "./AccountIconPicker";
 import { AmountHero } from "./AmountHero";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
@@ -236,7 +236,7 @@ export function TransactionEditorScreen() {
       ) ?? [],
     [formData.data?.categories, values.kind],
   );
-  const accountOptions =
+  const accountOptions = entryAccountOrder(
     formData.data?.accounts
       .filter((account) => values.kind !== "transfer" || !account.pending)
       .map((account) => ({
@@ -244,7 +244,8 @@ export function TransactionEditorScreen() {
         label: account.name,
         detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
         type: account.type,
-      })) ?? [];
+      })) ?? [],
+  );
   const categoryOptions = sortCategoriesForPicker(categories, resolveCategoryEmoji).map(
     (category) => {
       const emoji = resolveCategoryEmoji(category);

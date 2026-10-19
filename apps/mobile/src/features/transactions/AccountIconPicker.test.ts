@@ -1,4 +1,4 @@
-import { rowAccounts } from "./AccountIconPicker";
+import { entryAccountOrder, rowAccounts } from "./AccountIconPicker";
 
 const accounts = ["cash", "bank", "gcash", "maya", "savings"].map((id) => ({ id }));
 
@@ -14,5 +14,26 @@ describe("rowAccounts", () => {
     const { shown, overflow } = rowAccounts(accounts, "savings");
     expect(overflow).toBe(true);
     expect(shown.map((account) => account.id)).toEqual(["cash", "bank", "savings"]);
+  });
+});
+
+describe("entryAccountOrder", () => {
+  it("puts cash, then GCash, then bank, then the rest in their given order", () => {
+    const sorted = entryAccountOrder([
+      { label: "Bank", type: "checking" as const },
+      { label: "Card", type: "credit" as const },
+      { label: "Cash", type: "cash" as const },
+      { label: "GCash", type: "other" as const },
+      { label: "Maya", type: "ewallet" as const },
+      { label: "Savings", type: "savings" as const },
+    ]);
+    expect(sorted.map((account) => account.label)).toEqual([
+      "Cash",
+      "GCash",
+      "Bank",
+      "Savings",
+      "Card",
+      "Maya",
+    ]);
   });
 });
