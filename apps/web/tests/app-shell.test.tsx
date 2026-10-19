@@ -153,7 +153,7 @@ describe("AppShell", () => {
     expect(screen.getByText("Taylor")).toBeInTheDocument();
     expect(screen.queryByText("test@example.com")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Signed in as Taylor, open profile settings" }),
+      screen.getByRole("link", { name: "Open profile settings Signed in as Taylor" }),
     ).toHaveAttribute("href", "/app/settings#profile-settings");
     expect(document.querySelector(".sidebar-profile img")).toHaveAttribute(
       "src",
@@ -343,7 +343,7 @@ describe("AppShell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More menu" }));
     fireEvent.click(
-      screen.getByRole("link", { name: "Signed in as Taylor, open profile settings" }),
+      screen.getByRole("link", { name: "Open profile settings Signed in as Taylor" }),
     );
     expect(screen.getByTestId("current-location")).toHaveTextContent(
       "/app/settings#profile-settings",
