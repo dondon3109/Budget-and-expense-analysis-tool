@@ -15,17 +15,22 @@ export interface ReceiptPhoto {
 
 /**
  * One photo per family transaction, stored in the private RECEIPTS bucket and served only
- * through the signed-in API. The row has no foreign key to the transaction, so a deleted entry
- * keeps its photo until `purgeExpired` runs after the restore window.
+ * through the signed-in API. The entries saved from one scanned receipt share a single object,
+ * which is deleted with the last row that uses it. The row has no foreign key to the
+ * transaction, so a deleted entry keeps its photo until `purgeExpired` runs after the restore
+ * window.
  */
 export interface FamilyReceiptRepository {
   read(env: Bindings, tenantId: string, transactionId: string): Promise<ReceiptPhoto | null>;
-  /** Stores the photo, replacing any earlier one. `access` is the edit rule for the entry. */
+  /**
+   * Stores one photo for every entry given, replacing any earlier one. `access` is the edit rule
+   * for the entries, and one the caller may not change refuses them all.
+   */
   attach(
     env: Bindings,
     tenantId: string,
     userId: string,
-    transactionId: string,
+    transactionIds: string[],
     photo: { bytes: ArrayBuffer; contentType: string },
     access?: EntryAccess,
   ): Promise<void>;
@@ -78,6 +83,41 @@ async function objectKeyOf(env: Bindings, tenantId: string, transactionId: strin
   return row?.objectKey ?? null;
 }
 
+/** Whether any entry other than `transactionId` still shows this object. */
+async function sharedElsewhere(
+  env: Bindings,
+  tenantId: string,
+  objectKey: string,
+  transactionId: string,
+): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT 1 AS found FROM family_receipts
+     WHERE tenant_id = ? AND object_key = ? AND transaction_id != ? LIMIT 1`,
+  )
+    .bind(tenantId, objectKey, transactionId)
+    .first<{ found: number }>();
+  return Boolean(row);
+}
+
+/**
+ * Drops one entry's photo row, and its object first when no other entry uses it, so a failure
+ * in between leaves a row whose photo reads as missing rather than an object nothing finds.
+ */
+async function release(
+  env: Bindings,
+  bucket: R2Bucket,
+  tenantId: string,
+  transactionId: string,
+  objectKey: string,
+): Promise<void> {
+  if (!(await sharedElsewhere(env, tenantId, objectKey, transactionId))) {
+    await bucket.delete(objectKey);
+  }
+  await env.DB.prepare("DELETE FROM family_receipts WHERE tenant_id = ? AND transaction_id = ?")
+    .bind(tenantId, transactionId)
+    .run();
+}
+
 export const familyReceiptRepository: FamilyReceiptRepository = {
   async read(env, tenantId, transactionId) {
     // A deleted entry's photo is kept for a restore but is not shown.
@@ -93,38 +133,57 @@ export const familyReceiptRepository: FamilyReceiptRepository = {
     return object ? { body: object.body, contentType: row.contentType } : null;
   },
 
-  async attach(env, tenantId, userId, transactionId, photo, access) {
+  async attach(env, tenantId, userId, transactionIds, photo, access) {
     if (!isAllowedImageType(photo.contentType)) throw new Error("Unsupported receipt type.");
     const bucket = bucketOf(env);
-    await assertCanChange(env, tenantId, transactionId, access);
-    const previous = await objectKeyOf(env, tenantId, transactionId);
-    const objectKey = `${KEY_PREFIX}${tenantId}/${transactionId}/${crypto.randomUUID()}.${
+    for (const transactionId of transactionIds) {
+      await assertCanChange(env, tenantId, transactionId, access);
+    }
+    const previous = new Map<string, string>();
+    for (const transactionId of transactionIds) {
+      const key = await objectKeyOf(env, tenantId, transactionId);
+      if (key) previous.set(transactionId, key);
+    }
+    const objectKey = `${KEY_PREFIX}${tenantId}/${crypto.randomUUID()}.${
       imageExtensions[photo.contentType]
     }`;
     await bucket.put(objectKey, photo.bytes, { httpMetadata: { contentType: photo.contentType } });
-    await env.DB.prepare(
-      `INSERT INTO family_receipts
-         (tenant_id, transaction_id, object_key, content_type, size_bytes, uploaded_by_user_id)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON CONFLICT (tenant_id, transaction_id) DO UPDATE SET
-         object_key = excluded.object_key, content_type = excluded.content_type,
-         size_bytes = excluded.size_bytes, uploaded_by_user_id = excluded.uploaded_by_user_id,
-         created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
-    )
-      .bind(tenantId, transactionId, objectKey, photo.contentType, photo.bytes.byteLength, userId)
-      .run();
-    if (previous) await bucket.delete(previous);
+    await env.DB.batch(
+      transactionIds.map((transactionId) =>
+        env.DB.prepare(
+          `INSERT INTO family_receipts
+             (tenant_id, transaction_id, object_key, content_type, size_bytes, uploaded_by_user_id)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (tenant_id, transaction_id) DO UPDATE SET
+             object_key = excluded.object_key, content_type = excluded.content_type,
+             size_bytes = excluded.size_bytes, uploaded_by_user_id = excluded.uploaded_by_user_id,
+             created_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,
+        ).bind(
+          tenantId,
+          transactionId,
+          objectKey,
+          photo.contentType,
+          photo.bytes.byteLength,
+          userId,
+        ),
+      ),
+    );
+    // A replaced photo goes once no entry uses it any more.
+    for (const key of new Set(previous.values())) {
+      const used = await env.DB.prepare(
+        "SELECT 1 AS found FROM family_receipts WHERE tenant_id = ? AND object_key = ? LIMIT 1",
+      )
+        .bind(tenantId, key)
+        .first<{ found: number }>();
+      if (!used) await bucket.delete(key);
+    }
   },
 
   async remove(env, tenantId, transactionId, access) {
     const bucket = bucketOf(env);
     await assertCanChange(env, tenantId, transactionId, access);
     const objectKey = await objectKeyOf(env, tenantId, transactionId);
-    if (!objectKey) return;
-    await env.DB.prepare("DELETE FROM family_receipts WHERE tenant_id = ? AND transaction_id = ?")
-      .bind(tenantId, transactionId)
-      .run();
-    await bucket.delete(objectKey);
+    if (objectKey) await release(env, bucket, tenantId, transactionId, objectKey);
   },
 
   async purgeExpired(env, limit) {
@@ -142,10 +201,7 @@ export const familyReceiptRepository: FamilyReceiptRepository = {
       .bind(limit)
       .all<{ tenantId: string; transactionId: string; objectKey: string }>();
     for (const row of results) {
-      await env.RECEIPTS.delete(row.objectKey);
-      await env.DB.prepare("DELETE FROM family_receipts WHERE tenant_id = ? AND transaction_id = ?")
-        .bind(row.tenantId, row.transactionId)
-        .run();
+      await release(env, env.RECEIPTS, row.tenantId, row.transactionId, row.objectKey);
     }
     return results.length;
   },

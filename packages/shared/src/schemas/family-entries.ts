@@ -60,3 +60,5 @@ export type FamilyDeletedEntryList = z.infer<typeof familyDeletedEntryListSchema
 
 /** A family receipt photo's size cap; the web app shrinks larger photos before upload. */
 export const FAMILY_RECEIPT_MAX_BYTES = 5 * 1024 * 1024;
+/** Entries one upload can share a photo across: the items saved from one scanned receipt. */
+export const FAMILY_RECEIPT_MAX_ENTRIES = 30;

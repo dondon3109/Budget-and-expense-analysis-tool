@@ -1,4 +1,4 @@
-import { FAMILY_RECEIPT_MAX_BYTES } from "@zoption/shared";
+import { FAMILY_RECEIPT_MAX_BYTES, FAMILY_RECEIPT_MAX_ENTRIES } from "@zoption/shared";
 import { Hono } from "hono";
 
 import { hasImageSignature, isAllowedImageType } from "../avatars";
@@ -32,13 +32,26 @@ export function createFamilyReceiptRoutes(receipts: FamilyReceiptRepository) {
     });
   });
 
-  // Multipart, so the path stays exact for the body-limit rule: `transactionId` and `file`.
+  // Multipart, so the path stays exact for the body-limit rule: `file` and one or more
+  // `transactionId` fields. Several ids share one photo, as for the entries of one scan.
   routes.post("/", async (context) => {
     const tenant = context.get("tenant");
     const tenantId = familyTenantId(tenant);
     const form = await context.req.formData();
-    const field = form.get("transactionId");
-    const transactionId = parsePathParameter(typeof field === "string" ? field : "");
+    const transactionIds = [
+      ...new Set(
+        form
+          .getAll("transactionId")
+          .map((field) => parsePathParameter(typeof field === "string" ? field : "")),
+      ),
+    ];
+    if (transactionIds.length === 0 || transactionIds.length > FAMILY_RECEIPT_MAX_ENTRIES) {
+      throw new HttpError(
+        400,
+        "invalid_request",
+        `Choose between 1 and ${FAMILY_RECEIPT_MAX_ENTRIES} entries for this photo.`,
+      );
+    }
     const file = form.get("file");
     if (!(file instanceof File) || file.size === 0) {
       throw new HttpError(400, "invalid_receipt_image", WRONG_TYPE);
@@ -59,7 +72,7 @@ export function createFamilyReceiptRoutes(receipts: FamilyReceiptRepository) {
       context.env,
       tenantId,
       userId,
-      transactionId,
+      transactionIds,
       { bytes, contentType },
       entryAccess(tenant, userId),
     );
