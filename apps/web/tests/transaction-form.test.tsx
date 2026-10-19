@@ -151,6 +151,9 @@ describe("TransactionForm", () => {
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ entryMethod: "voice" })),
     );
+    // The next new entry starts on the account this one was saved on.
+    const [saved] = onSubmit.mock.calls[0] as unknown as [{ accountId: string }];
+    expect(window.localStorage.getItem("zoption-default-spending-account")).toBe(saved.accountId);
   });
 
   it("prefills a new transaction with the selected calendar date", () => {
@@ -197,7 +200,7 @@ describe("TransactionForm", () => {
     await waitFor(() => expect(screen.getByLabelText("Account")).toHaveValue("account-cash"));
   });
 
-  it("defaults a new transaction to the default spending account over Cash", async () => {
+  it("starts a new transaction on the last used account over Cash", async () => {
     window.localStorage.setItem("zoption-default-spending-account", accounts[0]!.id);
     render(
       <TransactionForm
@@ -279,6 +282,8 @@ describe("TransactionForm", () => {
     expect(onSubmit).toHaveBeenCalledWith(
       expect.not.objectContaining({ entryMethod: expect.anything() }),
     );
+    // Editing an entry does not move where the next new one starts.
+    expect(window.localStorage.getItem("zoption-default-spending-account")).toBeNull();
   });
 
   it("relabels a category-labeled entry from notes added on edit", async () => {

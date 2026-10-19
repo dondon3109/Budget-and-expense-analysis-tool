@@ -54,7 +54,7 @@ import {
   isBillingEnforcementError,
   updateTransaction,
 } from "../lib/api";
-import { useDefaultSpendingAccountId } from "../lib/defaultSpendingAccount";
+import { useLastUsedAccountId } from "../lib/lastUsedAccount";
 import { formatMoney } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
@@ -226,7 +226,7 @@ export function TransactionsPage() {
   });
 
   const accounts = accountsQuery.data ?? [];
-  const defaultSpendingAccountId = useDefaultSpendingAccountId();
+  const lastUsedAccountId = useLastUsedAccountId();
   const debts = debtsQuery.data?.items ?? [];
   // The first page carries the freshest total; later pages may have been read before an edit.
   const total = feed?.pages[0]?.total;
@@ -326,7 +326,7 @@ export function TransactionsPage() {
           (a.name.toLowerCase().includes(parsed.account.replaceAll("*", "").toLowerCase()) ||
             a.id === parsed.account),
       ) ??
-      preferredTransactionAccount(accounts, defaultSpendingAccountId) ??
+      preferredTransactionAccount(accounts, lastUsedAccountId) ??
       accounts[0];
 
     const categoryId = matchedCategory?.id ?? categories.find((c) => c.kind === kind)?.id ?? "";

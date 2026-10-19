@@ -22,11 +22,11 @@ describe("transaction defaults", () => {
     expect(preferredTransactionAccount([])).toBeUndefined();
   });
 
-  it("prefers the default spending account over cash", () => {
+  it("prefers the last used account over cash", () => {
     expect(preferredTransactionAccount([cash, bank], "bank")).toBe(bank);
   });
 
-  it("ignores a default spending account that is no longer available", () => {
+  it("ignores a last used account that is no longer available", () => {
     expect(preferredTransactionAccount([bank, cash], "removed")).toBe(cash);
     expect(preferredTransactionAccount([bank, cash], null)).toBe(cash);
   });

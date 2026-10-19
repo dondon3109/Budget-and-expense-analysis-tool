@@ -6,7 +6,6 @@ import { BillingSettings } from "../components/account/BillingSettings";
 import { CurrencySettings } from "../components/account/CurrencySettings";
 import { DangerZoneSettings } from "../components/account/DangerZoneSettings";
 import { DataPortabilitySettings } from "../components/account/DataPortabilitySettings";
-import { DefaultSpendingAccountSettings } from "../components/account/DefaultSpendingAccountSettings";
 import { EmailSettings } from "../components/account/EmailSettings";
 import { HelpAndContactSettings } from "../components/account/HelpAndContactSettings";
 import { PasswordSettings } from "../components/account/PasswordSettings";
@@ -37,7 +36,6 @@ const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#contact": "contact",
   "#data-portability": "data-portability",
   "#shared-links": "shared-links",
-  "#default-spending-account": "default-spending-account",
   "#workspace-currency": "workspace-currency",
   "#primary-goal": "primary-goal",
   "#voice-language": "voice-language",
@@ -101,8 +99,6 @@ export function SettingsPage() {
           {user && <CurrencySettings workspace={userWorkspace(user)} />}
 
           {user && <GoalSettings workspace={userWorkspace(user)} />}
-
-          {user && <DefaultSpendingAccountSettings workspace={userWorkspace(user)} />}
 
           {user && <CustomerReviewSettings workspace={userWorkspace(user)} />}
 

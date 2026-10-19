@@ -48,10 +48,6 @@ vi.mock("../src/components/account/GoalSettings", () => ({
   GoalSettings: () => null,
 }));
 
-vi.mock("../src/components/account/DefaultSpendingAccountSettings", () => ({
-  DefaultSpendingAccountSettings: () => null,
-}));
-
 vi.mock("../src/components/sharing/SharedLinksSettings", () => ({
   SharedLinksSettings: () => null,
 }));

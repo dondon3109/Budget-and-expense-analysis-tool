@@ -27,7 +27,7 @@ All notable product changes are documented here.
 - Share one transaction or an account balance with anyone, even people without Zoption, on web and mobile. The link shows a frozen snapshot of only what you chose, works for 24 hours, 7 days, 30 days, or until you turn it off, and can be turned off any time in web Settings. Web can also save the snapshot as an image.
 - A Reduce motion switch keeps animations still across Zoption, on web and mobile, even if your device's own setting is off. Web also gains a Sound effects switch in Account Settings.
 - Mobile: pick a new transaction's date from a calendar pop-up instead of typing it.
-- Mobile: a new transaction, receipt scan, or mic-widget entry starts on the account your last transaction used, so the Default spending account setting is gone. An account you had chosen there is where your next entry starts.
+- A new transaction starts on the account your last new transaction used, on web and mobile (and for receipt scans and the mic widget on mobile), so the Default spending account setting and the account star are gone. An account you had chosen as default is where your next entry starts.
 
 ### Changed
 
