@@ -29,6 +29,7 @@ All notable product changes are documented here.
 - Mobile: pick a new transaction's date from a calendar pop-up instead of typing it.
 - Mobile: voice entry waits for you to tap the mic, and a spoken transaction no longer saves itself after a countdown. The mic opens as a dialog over the form and fades away once your words fill it in, so you can check it and tap Save.
 - Mobile: the transaction form lists Cash, then GCash, then your bank accounts before the rest.
+- Mobile: taps, saved entries, and errors give a short buzz alongside their sound. It follows the phone's touch feedback setting, so it stays on when sounds are off.
 - Mobile: switching between Home, Transactions, Budgets, and More slides the pages sideways instead of cutting between them. Reduce motion keeps the cut.
 - A new transaction starts on the account your last new transaction used, on web and mobile (and for receipt scans and the mic widget on mobile), so the Default spending account setting and the account star are gone. An account you had chosen as default is where your next entry starts.
 

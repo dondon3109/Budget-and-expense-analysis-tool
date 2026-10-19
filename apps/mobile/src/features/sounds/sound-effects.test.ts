@@ -1,3 +1,6 @@
+import * as Haptics from "expo-haptics";
+import { Platform } from "react-native";
+
 import { playSound, warmUpSounds, withTapSound } from "./sound-effects";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 
@@ -20,6 +23,13 @@ jest.mock("expo-audio", () => ({
 jest.mock("../../../assets/sounds/tap.wav", () => "tap");
 jest.mock("../../../assets/sounds/success.wav", () => "success");
 jest.mock("../../../assets/sounds/error.wav", () => "error");
+jest.mock("expo-haptics", () => ({
+  AndroidHaptics: { Virtual_Key: "virtual-key", Confirm: "confirm", Reject: "reject" },
+  NotificationFeedbackType: { Success: "success", Error: "error" },
+  performAndroidHapticsAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
+  notificationAsync: jest.fn(async () => undefined),
+}));
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => null),
   setItemAsync: jest.fn(async () => undefined),
@@ -65,6 +75,13 @@ describe("playSound", () => {
     playSound("success");
     await flush();
     expect(mockPlay).not.toHaveBeenCalled();
+  });
+
+  it("still buzzes with the native key click when sounds are off", () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    useSoundEffectsStore.setState({ enabled: false });
+    playSound("success");
+    expect(Haptics.performAndroidHapticsAsync).toHaveBeenCalledWith("confirm");
   });
 
   it("never throws when playback fails", async () => {

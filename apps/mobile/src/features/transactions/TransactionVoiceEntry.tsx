@@ -19,6 +19,7 @@ import { getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
+import { withTapSound } from "@/features/sounds/sound-effects";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Card, ConfirmationDialog } from "@/ui/components";
 import { useReduceMotion } from "@/ui/reduce-motion";
@@ -323,10 +324,10 @@ export function TransactionVoiceEntry({
                 accessibilityLabel="Cancel recording"
                 accessibilityRole="button"
                 hitSlop={spacing.sm}
-                onPress={() => {
+                onPress={withTapSound(() => {
                   setMessage(null);
                   void recorder.cancelRecording();
-                }}
+                })}
                 style={styles.outsideAction}
               >
                 <MaterialCommunityIcons color={ON_SCRIM} name="close" size={18} />
@@ -338,7 +339,7 @@ export function TransactionVoiceEntry({
                 accessibilityLabel="Enter details manually"
                 accessibilityRole="button"
                 hitSlop={spacing.sm}
-                onPress={close}
+                onPress={withTapSound(close)}
                 style={styles.outsideAction}
               >
                 <MaterialCommunityIcons color={ON_SCRIM} name="pencil-outline" size={18} />
@@ -419,7 +420,7 @@ function MicButton({
         accessibilityRole="button"
         accessibilityState={{ disabled, busy: loading }}
         disabled={disabled || loading}
-        onPress={onPress}
+        onPress={withTapSound(onPress)}
         style={[
           styles.mic,
           {
