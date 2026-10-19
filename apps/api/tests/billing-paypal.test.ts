@@ -106,6 +106,7 @@ describe("PayPal subscription gateway", () => {
       createPayPalSubscription(bindings(), {
         planId: "P-monthly",
         checkoutReference: "checkout-reference",
+        family: false,
       }),
     ).resolves.toMatchObject({
       id: "I-subscription",
@@ -137,6 +138,44 @@ describe("PayPal subscription gateway", () => {
     });
   });
 
+  it("returns a family plan's buyer to the family page", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(tokenResponse())
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "I-subscription",
+            status: "APPROVAL_PENDING",
+            plan_id: "P-family",
+            custom_id: "checkout-reference",
+            links: [
+              {
+                rel: "approve",
+                href: "https://www.sandbox.paypal.com/checkoutnow?token=example",
+              },
+            ],
+          }),
+          { status: 201 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createPayPalSubscription(bindings(), {
+      planId: "P-family",
+      checkoutReference: "checkout-reference",
+      family: true,
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)) as {
+      application_context: { return_url: string; cancel_url: string };
+    };
+    expect(body.application_context).toMatchObject({
+      return_url: "https://app.zoption.test/app/family?familyCheckout=completed",
+      cancel_url: "https://app.zoption.test/app/family?familyCheckout=cancelled",
+    });
+  });
+
   it("rejects an approval URL outside the configured PayPal host", async () => {
     vi.stubGlobal(
       "fetch",
@@ -160,6 +199,7 @@ describe("PayPal subscription gateway", () => {
       createPayPalSubscription(bindings(), {
         planId: "P-monthly",
         checkoutReference: "checkout-reference",
+        family: false,
       }),
     ).rejects.toEqual(
       new HttpError(

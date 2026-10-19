@@ -114,7 +114,8 @@ function isDodoCheckoutUrl(value: string): boolean {
   }
 }
 
-function applicationUrls(env: Bindings): { returnUrl: string; cancelUrl: string } {
+/** Plan and billing for a personal plan; the family page, which confirms it, for a family plan. */
+function applicationUrls(env: Bindings, family: boolean): { returnUrl: string; cancelUrl: string } {
   let base: URL;
   try {
     base = new URL(env.WEB_APP_URL?.trim() ?? "");
@@ -130,10 +131,12 @@ function applicationUrls(env: Bindings): { returnUrl: string; cancelUrl: string 
   }
 
   // No fragment: Dodo appends its own query parameters to the return URL.
-  const returnUrl = new URL("/app/settings", base);
-  returnUrl.searchParams.set("checkout", "completed");
-  const cancelUrl = new URL("/app/settings", base);
-  cancelUrl.searchParams.set("checkout", "cancelled");
+  const path = family ? "/app/family" : "/app/settings";
+  const parameter = family ? "familyCheckout" : "checkout";
+  const returnUrl = new URL(path, base);
+  returnUrl.searchParams.set(parameter, "completed");
+  const cancelUrl = new URL(path, base);
+  cancelUrl.searchParams.set(parameter, "cancelled");
   return { returnUrl: returnUrl.toString(), cancelUrl: cancelUrl.toString() };
 }
 
@@ -160,9 +163,9 @@ async function dodoFetch(env: Bindings, path: string, init: RequestInit = {}): P
 
 export async function createDodoCheckoutSession(
   env: Bindings,
-  input: { productId: string; checkoutReference: string },
+  input: { productId: string; checkoutReference: string; family: boolean },
 ): Promise<DodoCheckoutSession> {
-  const { returnUrl, cancelUrl } = applicationUrls(env);
+  const { returnUrl, cancelUrl } = applicationUrls(env, input.family);
   const payload = asRecord(
     await dodoFetch(env, "/checkouts", {
       method: "POST",

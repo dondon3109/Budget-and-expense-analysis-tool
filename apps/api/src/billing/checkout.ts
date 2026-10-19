@@ -80,6 +80,7 @@ export async function startCheckout(
     const session = await createDodoCheckoutSession(env, {
       productId: checkout.providerPlanId,
       checkoutReference: checkout.reference,
+      family: request.familyTenantId !== null,
     });
     await repository.bindCheckoutProviderSession(
       env,
@@ -97,6 +98,7 @@ export async function startCheckout(
     : await createPayPalSubscription(env, {
         planId: checkout.providerPlanId,
         checkoutReference: checkout.reference,
+        family: request.familyTenantId !== null,
       });
   if (
     subscription.planId !== checkout.providerPlanId ||
