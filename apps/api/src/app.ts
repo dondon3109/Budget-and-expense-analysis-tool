@@ -235,7 +235,14 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/debts", createDebtRoutes(dependencies.debts));
   app.route("/api/app/imports", createImportRoutes(dependencies.imports));
   app.route("/api/app/entry", createAiEntryRoutes(dependencies.aiEntryService));
-  app.route("/api/app/sync", createMobileSyncRoutes(dependencies.mobileSync));
+  app.route(
+    "/api/app/sync",
+    createMobileSyncRoutes(dependencies.mobileSync, {
+      journal: dependencies.familyJournal,
+      alerts: dependencies.familyAlerts,
+      notifier: dependencies.familyNotifier,
+    }),
+  );
   app.route("/api/app/receipts", createReceiptRoutes(dependencies.receiptService));
   app.route("/api/app/shares", createShareLinkRoutes(dependencies.shareLinks));
   app.route("/api/app/push", createPushRoutes(dependencies.push));

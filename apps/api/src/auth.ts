@@ -124,7 +124,11 @@ const FAMILY_WORKSPACE_PATHS = [
   "/api/app/settings",
   "/api/app/family",
   "/api/app/exports",
+  "/api/app/sync",
 ] as const;
+
+// Sync reads by POST; only its push writes.
+const SYNC_READS = ["/api/app/sync/pull", "/api/app/sync/snapshot", "/api/app/sync/acknowledge"];
 
 function acceptsFamilyWorkspace(path: string): boolean {
   return FAMILY_WORKSPACE_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
@@ -209,7 +213,8 @@ export function createAuthMiddleware(
             "This is not available in a family workspace.",
           );
         }
-        const reading = ["GET", "HEAD"].includes(context.req.method);
+        const reading =
+          ["GET", "HEAD"].includes(context.req.method) || SYNC_READS.includes(context.req.path);
         // Members leave a closed family through /api/app/families, which takes no header.
         if (tenant.membership.closing && !reading) {
           throw new HttpError(

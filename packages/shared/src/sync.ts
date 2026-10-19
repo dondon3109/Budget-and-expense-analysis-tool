@@ -18,6 +18,8 @@ import {
   resourceIdSchema,
   subscriptionInputSchema,
   debtLinkedTransferInputSchema,
+  familyRemittanceReceiveSchema,
+  familyRemittanceSendSchema,
   transactionInputSchema,
   transactionUpdateSchema,
 } from "./schemas";
@@ -52,6 +54,8 @@ export const mobileSyncFeatures = [
   "account-types-v3",
   // Budget rows may belong to an occasion (`occasionId`, a calendar event) instead of a month.
   "budget-scopes",
+  // The client can sync a family workspace: transactions and transfers carry `authorUserId`.
+  "family-workspaces",
 ] as const;
 export type MobileSyncFeature = (typeof mobileSyncFeatures)[number];
 
@@ -93,6 +97,8 @@ export const mobileSyncEntityTypes = [
   "debt",
   "subscription",
   "event",
+  // Family workspaces only: money sent home, and who confirmed it arrived.
+  "remittance",
 ] as const;
 export const mobileSyncOperationTypes = ["create", "update", "delete"] as const;
 
@@ -181,6 +187,8 @@ export const mobileSyncTransactionSnapshotSchema = z
     importFingerprint: z.string().max(200).nullable(),
     // Sent only to "debt-links" clients; on a transfer it sits on the sending leg.
     debtId: resourceIdSchema.nullable().optional(),
+    // Sent only to "family-workspaces" clients: who added a family row, null in a personal one.
+    authorUserId: z.string().min(1).max(255).nullable().optional(),
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })
@@ -201,6 +209,7 @@ export const mobileSyncTransferSnapshotSchema = z
     notes: z.string().max(500).nullable(),
     transferFeeMinor: z.number().int().safe().min(0),
     debtId: resourceIdSchema.nullable().optional(),
+    authorUserId: z.string().min(1).max(255).nullable().optional(),
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })
@@ -294,6 +303,24 @@ export const mobileSyncEventSnapshotSchema = z
   })
   .strict();
 
+/** A remittance; once received, `transactionId` is its income transaction in the same family. */
+export const mobileSyncRemittanceSnapshotSchema = z
+  .object({
+    id: resourceIdSchema,
+    sentByUserId: z.string().min(1).max(255),
+    sentAmountMinor: z.number().int().safe().positive(),
+    sentCurrency: z.enum(currencies),
+    feeMinor: z.number().int().safe().min(0),
+    provider: z.string().max(60).nullable(),
+    sentOn: isoDateSchema,
+    note: z.string().max(240).nullable(),
+    transactionId: resourceIdSchema.nullable(),
+    receivedByUserId: z.string().min(1).max(255).nullable(),
+    revision: serverRevisionSchema,
+    updatedAt: serverTimestampSchema,
+  })
+  .strict();
+
 export const mobileSyncSnapshotSchema = z.union([
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
@@ -304,6 +331,7 @@ export const mobileSyncSnapshotSchema = z.union([
   mobileSyncDebtSnapshotSchema,
   mobileSyncSubscriptionSnapshotSchema,
   mobileSyncEventSnapshotSchema,
+  mobileSyncRemittanceSnapshotSchema,
 ]);
 
 export const mobileSyncChangeSchema = z
@@ -344,7 +372,9 @@ export const mobileSyncChangeSchema = z
                     ? mobileSyncSubscriptionSnapshotSchema
                     : change.entityType === "event"
                       ? mobileSyncEventSnapshotSchema
-                      : mobileSyncTransactionSnapshotSchema;
+                      : change.entityType === "remittance"
+                        ? mobileSyncRemittanceSnapshotSchema
+                        : mobileSyncTransactionSnapshotSchema;
       if (!expectedSchema.safeParse(change.payload).success) {
         context.addIssue({
           code: "custom",
@@ -430,7 +460,8 @@ const createOperation = <
     | "goal"
     | "debt"
     | "subscription"
-    | "event",
+    | "event"
+    | "remittance",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -456,7 +487,8 @@ const updateOperation = <
     | "goal"
     | "debt"
     | "subscription"
-    | "event",
+    | "event"
+    | "remittance",
   T extends z.ZodType,
 >(
   entityType: TEntity,
@@ -481,7 +513,8 @@ const deleteOperation = <
     | "goal"
     | "debt"
     | "subscription"
-    | "event",
+    | "event"
+    | "remittance",
 >(
   entityType: TEntity,
 ) =>
@@ -494,6 +527,18 @@ const deleteOperation = <
       payload: z.object({}).strict(),
     })
     .strict();
+
+/**
+ * Confirming a remittance arrived also creates its income transaction under the client's id, so
+ * the phone's local row and the server's match, like a transfer's legs.
+ */
+const mobileSyncRemittanceReceiveSchema = familyRemittanceReceiveSchema
+  .extend({ transactionId: uuidSchema })
+  .strict();
+
+const mobileSyncRemittanceCreateSchema = familyRemittanceSendSchema
+  .extend({ received: mobileSyncRemittanceReceiveSchema.optional() })
+  .strict();
 
 const mobileSyncBudgetInputSchema = z
   .object({
@@ -580,6 +625,9 @@ export const mobileSyncPushOperationSchema = z
     ),
     updateOperation("transfer", z.object({ transfer: debtLinkedTransferInputSchema }).strict()),
     deleteOperation("transfer"),
+    createOperation("remittance", mobileSyncRemittanceCreateSchema),
+    updateOperation("remittance", mobileSyncRemittanceReceiveSchema),
+    deleteOperation("remittance"),
   ])
   .superRefine((operation, context) => {
     if (operation.dependencyIds.includes(operation.operationId)) {
@@ -728,7 +776,9 @@ export const mobileSyncPushResultSchema = z
                     ? mobileSyncSubscriptionSnapshotSchema
                     : result.entityType === "event"
                       ? mobileSyncEventSnapshotSchema
-                      : mobileSyncTransferSnapshotSchema;
+                      : result.entityType === "remittance"
+                        ? mobileSyncRemittanceSnapshotSchema
+                        : mobileSyncTransferSnapshotSchema;
     if (!expectedSchema.safeParse(result.serverPayload).success) {
       context.addIssue({
         code: "custom",

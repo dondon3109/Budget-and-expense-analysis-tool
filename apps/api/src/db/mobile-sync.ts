@@ -3,6 +3,7 @@ import {
   calendarEventInputSchema,
   mobileSyncEventSnapshotSchema,
   mobileSyncPushResultSchema,
+  mobileSyncRemittanceSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   type MobileSyncAcknowledgeRequest,
   type MobileSyncAcknowledgeResponse,
@@ -24,6 +25,7 @@ import {
   validateTransactionReferences,
   type DebtPayment,
 } from "./transactions";
+import { pushIntoFamily, type FamilyPushScope } from "./mobile-sync/family";
 import {
   shapeChangesForClient,
   shapePushResultsForClient,
@@ -42,6 +44,7 @@ import { categoryMutation } from "./mobile-sync/push/entities/category";
 import { debtMutation } from "./mobile-sync/push/entities/debt";
 import { eventMutation } from "./mobile-sync/push/entities/event";
 import { goalMutation } from "./mobile-sync/push/entities/goal";
+import { remittanceMutation } from "./mobile-sync/push/entities/remittance";
 import { subscriptionMutation } from "./mobile-sync/push/entities/subscription";
 import {
   transactionMutation,
@@ -108,11 +111,13 @@ export interface MobileSyncRepository {
     input: MobileSyncPullRequest,
     features?: MobileSyncFeatures,
   ): Promise<MobileSyncPullResponse>;
+  /** `family` is set when the request acts in a family workspace. */
   push(
     env: Bindings,
     tenantId: string,
     input: MobileSyncPushRequest,
     features?: MobileSyncFeatures,
+    family?: FamilyPushScope,
   ): Promise<MobileSyncPushResponse>;
 }
 
@@ -131,6 +136,7 @@ function entityMutation(
   previousPayment: DebtPayment,
   revision: number,
   timestamp: string,
+  authorUserId: string | null,
 ): EntityMutation {
   switch (operation.entityType) {
     case "account":
@@ -147,6 +153,17 @@ function entityMutation(
       return subscriptionMutation(env, tenantId, operation, current, timestamp);
     case "event":
       return eventMutation(env, tenantId, operation, current, timestamp);
+    case "remittance":
+      // Remittances reach here only in a family, where the author is the pusher.
+      return remittanceMutation(
+        env,
+        tenantId,
+        clientId,
+        operation,
+        authorUserId!,
+        current ? mobileSyncRemittanceSnapshotSchema.parse(current).provider : null,
+        timestamp,
+      );
     case "transaction":
       return transactionMutation(
         env,
@@ -157,6 +174,7 @@ function entityMutation(
         previousPayment,
         revision,
         timestamp,
+        authorUserId,
       );
   }
 }
@@ -185,8 +203,12 @@ export function createMobileSyncRepository(
       };
     },
 
-    async push(env, tenantId, input, features = new Set()) {
-      const response = await pushOperations(env, tenantId, input);
+    async push(env, tenantId, input, features = new Set(), family) {
+      const response = family
+        ? await pushIntoFamily(env, tenantId, input, family, (allowed) =>
+            pushOperations(env, tenantId, allowed, family.userId),
+          )
+        : await pushOperations(env, tenantId, input, null);
       return {
         ...response,
         results: await shapePushResultsForClient(env, tenantId, response.results, features),
@@ -198,9 +220,10 @@ export function createMobileSyncRepository(
     env: Bindings,
     tenantId: string,
     input: MobileSyncPushRequest,
+    authorUserId: string | null,
   ): Promise<MobileSyncPushResponse> {
     if (input.operations.some((operation) => operation.dependencyIds.length > 0)) {
-      return pushCreateDependencyGraph(env, tenantId, input, readEntitlement);
+      return pushCreateDependencyGraph(env, tenantId, input, readEntitlement, authorUserId);
     }
     const results: MobileSyncPushResult[] = [];
     for (const operation of input.operations) {
@@ -220,6 +243,7 @@ export function createMobileSyncRepository(
             operation,
             hash,
             readEntitlement,
+            authorUserId,
           ),
         );
         continue;
@@ -303,6 +327,63 @@ export function createMobileSyncRepository(
               operation,
               hash,
               conflictResult(operation, "entity_exists", existing),
+            ),
+          );
+          continue;
+        }
+      }
+
+      if (operation.entityType === "remittance" && !authorUserId) {
+        results.push(
+          await persistResult(
+            env,
+            tenantId,
+            input.clientId,
+            operation,
+            hash,
+            rejectedResult(
+              operation,
+              "unsupported_operation",
+              "Remittances belong to a family workspace.",
+            ),
+          ),
+        );
+        continue;
+      }
+
+      const arrival =
+        operation.entityType !== "remittance" || operation.operationType === "delete"
+          ? undefined
+          : operation.operationType === "create"
+            ? operation.payload.received
+            : operation.payload;
+      if (arrival) {
+        try {
+          await validateTransactionReferences(
+            env,
+            tenantId,
+            {
+              kind: "income",
+              accountId: arrival.accountId,
+              categoryId: arrival.categoryId,
+              date: arrival.date,
+              amountMinor: arrival.amountMinor,
+              description: "Remittance",
+              currency: "PHP",
+            },
+            undefined,
+            readEntitlement,
+          );
+        } catch (error) {
+          if (!(error instanceof HttpError)) throw error;
+          results.push(
+            await persistResult(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              transactionReferenceRejection(operation, error),
             ),
           );
           continue;
@@ -442,6 +523,7 @@ export function createMobileSyncRepository(
         previousPayment,
         revision,
         timestamp,
+        authorUserId,
       );
 
       try {

@@ -1,4 +1,4 @@
-import type { Currency, PushCategory } from "@zoption/shared";
+import type { Currency, FamilyRemittance, PushCategory } from "@zoption/shared";
 
 import { pushRepository, type PushRepository } from "./db/push";
 import { sendPush } from "./push";
@@ -28,6 +28,25 @@ export interface FamilyNotifier {
 /** Display only: the stored amount stays integer minor units. */
 export function noticeAmount(amountMinor: number, currency: Currency): string {
   return new Intl.NumberFormat("en-PH", { style: "currency", currency }).format(amountMinor / 100);
+}
+
+/** Tells the family a remittance arrived; null until it has. */
+export function arrivalNotice(
+  familyTenantId: string,
+  remittance: FamilyRemittance,
+): FamilyNotice | null {
+  if (!remittance.received) return null;
+  const { amountMinor, currency, byUserId } = remittance.received;
+  return {
+    familyTenantId,
+    category: "remittance_received",
+    title: "Remittance received",
+    body: `${noticeAmount(amountMinor, currency)} arrived from ${noticeAmount(
+      remittance.sentAmountMinor,
+      remittance.sentCurrency,
+    )} sent on ${remittance.sentOn}.`,
+    exceptUserId: byUserId,
+  };
 }
 
 export function createFamilyNotifier(

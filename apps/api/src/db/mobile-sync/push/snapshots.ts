@@ -5,6 +5,7 @@ import {
   mobileSyncDebtSnapshotSchema,
   mobileSyncEventSnapshotSchema,
   mobileSyncGoalSnapshotSchema,
+  mobileSyncRemittanceSnapshotSchema,
   mobileSyncSubscriptionSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
@@ -26,6 +27,7 @@ export type GoalSnapshot = ReturnType<typeof mobileSyncGoalSnapshotSchema.parse>
 export type DebtSnapshot = ReturnType<typeof mobileSyncDebtSnapshotSchema.parse>;
 export type SubscriptionSnapshot = ReturnType<typeof mobileSyncSubscriptionSnapshotSchema.parse>;
 export type EventSnapshot = ReturnType<typeof mobileSyncEventSnapshotSchema.parse>;
+export type RemittanceSnapshot = ReturnType<typeof mobileSyncRemittanceSnapshotSchema.parse>;
 export type EntitySnapshot =
   | AccountSnapshot
   | CategorySnapshot
@@ -35,7 +37,8 @@ export type EntitySnapshot =
   | GoalSnapshot
   | DebtSnapshot
   | SubscriptionSnapshot
-  | EventSnapshot;
+  | EventSnapshot
+  | RemittanceSnapshot;
 
 export function withCategoryLock(
   snapshot: EntitySnapshot | null,
@@ -73,6 +76,8 @@ function snapshotView(entityType: EntityType): string {
       return "mobile_sync_event_rows";
     case "transfer":
       return "mobile_sync_transfer_rows";
+    case "remittance":
+      return "mobile_sync_remittance_rows";
   }
 }
 
@@ -96,6 +101,8 @@ function parseSnapshot(entityType: EntityType, payload: unknown): EntitySnapshot
       return mobileSyncEventSnapshotSchema.parse(payload);
     case "transfer":
       return mobileSyncTransferSnapshotSchema.parse(payload);
+    case "remittance":
+      return mobileSyncRemittanceSnapshotSchema.parse(payload);
   }
 }
 

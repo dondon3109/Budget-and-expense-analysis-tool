@@ -170,7 +170,13 @@ describe("mobile sync route", () => {
       }),
     });
     expect(pushed.status).toBe(200);
-    expect(push).toHaveBeenCalledWith(undefined, "tenant-safe", expect.any(Object), new Set());
+    expect(push).toHaveBeenCalledWith(
+      undefined,
+      "tenant-safe",
+      expect.any(Object),
+      new Set(),
+      undefined,
+    );
 
     const forgedPush = await app.request("/api/app/sync/push", {
       method: "POST",

@@ -370,6 +370,9 @@ export function syncEntityTable(entityType: MobileSyncPushOperation["entityType"
       "invalid_outbox",
     );
   }
+  if (entityType === "remittance") {
+    throw new LocalMutationError("This app does not sync remittances.", "invalid_outbox");
+  }
   return SYNC_ENTITY_TABLES[entityType];
 }
 

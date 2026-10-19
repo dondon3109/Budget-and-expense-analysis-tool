@@ -103,9 +103,13 @@ async function setup() {
         env,
       )
     ).json()) as TransactionListItem;
-  const upload = (user: string, transactionId: string, bytes: Uint8Array<ArrayBuffer> = PNG) => {
+  const upload = (
+    user: string,
+    transactionId: string | string[],
+    bytes: Uint8Array<ArrayBuffer> = PNG,
+  ) => {
     const form = new FormData();
-    form.set("transactionId", transactionId);
+    for (const id of [transactionId].flat()) form.append("transactionId", id);
     form.set("file", new File([bytes], "receipt.png", { type: "image/png" }));
     return call(user, "POST", "/api/app/family/receipts", form);
   };
@@ -171,6 +175,23 @@ describe("family receipt photos", () => {
 
     await familyRepository.purgeClosed(env, 5);
 
+    expect(objects.size).toBe(0);
+  });
+
+  it("stores one photo for the entries of one scan and keeps it until the last one lets go", async () => {
+    const { objects, call, addRice, upload } = await setup();
+    const rice = await addRice("kuya");
+    const eggs = await addRice("kuya");
+
+    const shared = await upload("kuya", [rice.id, eggs.id]);
+    const storedOnce = objects.size;
+    await call("kuya", "DELETE", `/api/app/family/receipts/${rice.id}`);
+    const stillOnEggs = await call("lola", "GET", `/api/app/family/receipts/${eggs.id}`);
+    await call("kuya", "DELETE", `/api/app/family/receipts/${eggs.id}`);
+
+    expect(shared.status).toBe(204);
+    expect(storedOnce).toBe(1);
+    expect(stillOnEggs.status).toBe(200);
     expect(objects.size).toBe(0);
   });
 });

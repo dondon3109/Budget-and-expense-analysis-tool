@@ -14,7 +14,7 @@ import {
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
-import { SYNC_ENTITY_TABLES } from "./entity-tables";
+import { syncChangeTable } from "./entity-tables";
 
 interface CursorRow {
   server_cursor: string | null;
@@ -53,7 +53,7 @@ async function currentEntityState(
   change: MobileSyncChange,
 ): Promise<EntityStateRow | null> {
   return database.getFirstAsync<EntityStateRow>(
-    `SELECT server_revision, sync_state FROM ${SYNC_ENTITY_TABLES[change.entityType]} WHERE id = ?`,
+    `SELECT server_revision, sync_state FROM ${syncChangeTable(change.entityType)} WHERE id = ?`,
     change.entityId,
   );
 }
@@ -396,7 +396,7 @@ async function applyTombstone(database: SQLiteDatabase, change: MobileSyncChange
     change.serverUpdatedAt,
   );
   await database.runAsync(
-    `UPDATE ${SYNC_ENTITY_TABLES[change.entityType]}
+    `UPDATE ${syncChangeTable(change.entityType)}
      SET server_revision = ?, server_updated_at = ?, deleted_at = ?, sync_state = 'synced'
      WHERE id = ?`,
     change.revision,
