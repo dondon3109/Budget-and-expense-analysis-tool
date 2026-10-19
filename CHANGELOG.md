@@ -41,9 +41,11 @@ All notable product changes are documented here.
 - A Legend pet now dresses for the part, on web and mobile: each species wears its own golden outfit, like a panda in a bamboo hat holding a golden bamboo staff.
 - A hatched pet now gets three warnings before it passes away (at 24, 48, and 66 hours), down from six.
 - Web: pages drop their descriptive subtitles and most card frames in favor of flat sections divided by thin rules, with rounded corners on the surfaces that remain. The calendar has one place to add events.
+- Mobile: the Home dropdown beside Overview and Analytics now shows which workspace you are in and groups the Remittance calculator and Pet under Tools. Pick your workspace there again to leave the calculator.
 
 ### Fixed
 
+- Mobile: error messages sit centered with a calm title and a Try again button instead of a red heading on an empty page, and a screen that crashes now offers Try again and Go to Home, follows your theme, and no longer shows the raw error.
 - Mobile: the pet page loads again on Android Beta 0.2.53, which reached phones before the server that sends the pet's color.
 - Opening the app now counts toward your pet's egg streak and daily points again; the server had been turning away the check-in from both the phone and the web.
 - Mobile: signing in with Google on Android no longer reports "invalid flow state" when the sign-in actually succeeded.
