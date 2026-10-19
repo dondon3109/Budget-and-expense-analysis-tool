@@ -3,34 +3,40 @@ import {
   familyCreateSchema,
   type FamilyInvitation,
   type WorkspaceList,
-  type WorkspaceSummary,
 } from "@zoption/shared";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   acceptFamilyInvitation,
   createFamily,
   declineFamilyInvitation,
-  leaveFamily,
   listFamilyInvitations,
   listWorkspaces,
   type PersonalApi,
 } from "@/api/workspaces";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { Button, Card, ConfirmationDialog, ErrorState, FormField, Skeleton } from "@/ui/components";
+import { withTapSound } from "@/features/sounds/sound-effects";
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  FormField,
+  MenuGroup,
+  Skeleton,
+} from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
 import { useActiveWorkspace } from "./active-workspace";
+import { FamilyAvatar, RoleBadge, SectionLabel } from "./family-ui";
 import { SeatRulesDialog } from "./SeatRulesDialog";
 import { formatFamilyDate, ROLE_LABELS } from "./use-family-api";
 
-type Pending =
-  | { kind: "create"; name: string }
-  | { kind: "accept"; invitation: FamilyInvitation }
-  | { kind: "leave"; family: WorkspaceSummary };
+type Pending = { kind: "create"; name: string } | { kind: "accept"; invitation: FamilyInvitation };
 
 interface Directory {
   list: WorkspaceList;
@@ -39,7 +45,8 @@ interface Directory {
 
 /**
  * The person's side of families, shown from their personal workspace: invitations addressed to
- * them, the families they are in, and starting one. Needs a connection.
+ * them, the families they are in (a tap switches to one), and starting one. Leaving happens
+ * inside the family. Needs a connection.
  */
 export function FamilyDirectoryView() {
   const theme = useZoptionTheme();
@@ -99,13 +106,6 @@ export function FamilyDirectoryView() {
     setBusy(true);
     setMessage(null);
     try {
-      if (action.kind === "leave") {
-        await personal((api) => leaveFamily(api, action.family.id));
-        setPending(null);
-        await active.forgetFamily(action.family.id);
-        await load();
-        return;
-      }
       let familyId = "";
       if (action.kind === "create") {
         familyId = (await personal((api) => createFamily(api, action.name))).id;
@@ -119,7 +119,6 @@ export function FamilyDirectoryView() {
       active.refresh();
       open(familyId);
     } catch (error) {
-      if (action.kind === "leave") setPending(null);
       setMessage(error instanceof Error ? error.message : "The family could not be changed.");
     } finally {
       setBusy(false);
@@ -151,95 +150,10 @@ export function FamilyDirectoryView() {
     setPending({ kind: "create", name: parsed.data });
   };
 
+  const canCreate = directory.list.familiesAvailable && !ownsFamily;
+
   return (
-    <View style={{ gap: spacing.md }}>
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Invitations</Text>
-        {directory.invitations.length === 0 ? (
-          <Text style={[typography.callout, muted]}>No one has invited you to a family.</Text>
-        ) : null}
-        {directory.invitations.map((invitation) => (
-          <View key={invitation.id} style={{ gap: spacing.xxs }}>
-            <Text style={[typography.body, { color: theme.colors.text }]}>
-              {invitation.familyName}
-            </Text>
-            <Text style={[typography.callout, muted]}>
-              {ROLE_LABELS[invitation.role]}
-              {invitation.invitedBy ? ` · from ${invitation.invitedBy}` : ""} · until{" "}
-              {formatFamilyDate(invitation.expiresAt)}
-            </Text>
-            <View className="flex-row gap-2">
-              <Button
-                disabled={busy}
-                onPress={() => void decline(invitation.id)}
-                size="compact"
-                variant="secondary"
-              >
-                Decline
-              </Button>
-              <Button
-                disabled={busy}
-                onPress={() => {
-                  setMessage(null);
-                  setPending({ kind: "accept", invitation });
-                }}
-                size="compact"
-              >
-                Accept
-              </Button>
-            </View>
-          </View>
-        ))}
-      </Card>
-
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Your families</Text>
-        {families.length === 0 ? (
-          <Text style={[typography.callout, muted]}>You are not in a family yet.</Text>
-        ) : null}
-        {families.map((family) => (
-          <View key={family.id} style={{ gap: spacing.xxs }}>
-            <Text style={[typography.body, { color: theme.colors.text }]}>{family.name}</Text>
-            <Text style={[typography.callout, muted]}>{ROLE_LABELS[family.role]}</Text>
-            <View className="flex-row gap-2">
-              {family.role === "owner" ? null : (
-                <Button
-                  disabled={busy}
-                  onPress={() => setPending({ kind: "leave", family })}
-                  size="compact"
-                  variant="secondary"
-                >
-                  Leave
-                </Button>
-              )}
-              <Button disabled={busy} onPress={() => open(family.id)} size="compact">
-                Open
-              </Button>
-            </View>
-          </View>
-        ))}
-      </Card>
-
-      {directory.list.familiesAvailable && !ownsFamily ? (
-        <Card style={{ gap: spacing.sm }}>
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Start a family</Text>
-          <Text style={[typography.callout, muted]}>
-            Share one budget with up to {FAMILY_SEAT_LIMIT - 1} other people. Your personal budget
-            stays private.
-          </Text>
-          <FormField
-            error={nameError}
-            label="Family name"
-            maxLength={60}
-            onChangeText={setName}
-            value={name}
-          />
-          <Button disabled={busy} onPress={startCreate}>
-            Create family
-          </Button>
-        </Card>
-      ) : null}
-
+    <View style={{ gap: spacing.lg }}>
       {message && !pending ? (
         <Text
           accessibilityRole="alert"
@@ -249,17 +163,126 @@ export function FamilyDirectoryView() {
         </Text>
       ) : null}
 
-      {pending?.kind === "leave" ? (
-        <ConfirmationDialog
-          confirmLabel="Leave family"
-          destructive
-          message="You lose access right away, and this phone drops its copy of the family, including changes not yet synced. What you added stays in the family."
-          onCancel={() => setPending(null)}
-          onConfirm={() => void confirm(pending)}
-          title={`Leave ${pending.family.name}?`}
-          visible
-        />
-      ) : pending ? (
+      {directory.invitations.length > 0 ? (
+        <View style={{ gap: spacing.xs }}>
+          <SectionLabel>Invitations</SectionLabel>
+          {directory.invitations.map((invitation) => (
+            <Card key={invitation.id} style={{ gap: spacing.md }}>
+              <View style={styles.row}>
+                <FamilyAvatar label={invitation.familyName} size={44} />
+                <View style={styles.rowText}>
+                  <Text style={[typography.headline, { color: theme.colors.text }]}>
+                    {invitation.familyName}
+                  </Text>
+                  <Text style={[typography.callout, muted]}>
+                    {invitation.invitedBy
+                      ? `${invitation.invitedBy} invited you`
+                      : "You're invited"}{" "}
+                    as {ROLE_LABELS[invitation.role].toLowerCase()}
+                  </Text>
+                  <Text style={[typography.caption, muted]}>
+                    Expires {formatFamilyDate(invitation.expiresAt)}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.actions}>
+                <View style={styles.action}>
+                  <Button
+                    disabled={busy}
+                    onPress={() => void decline(invitation.id)}
+                    variant="secondary"
+                  >
+                    Decline
+                  </Button>
+                </View>
+                <View style={styles.action}>
+                  <Button
+                    disabled={busy}
+                    onPress={() => {
+                      setMessage(null);
+                      setPending({ kind: "accept", invitation });
+                    }}
+                  >
+                    Join
+                  </Button>
+                </View>
+              </View>
+            </Card>
+          ))}
+        </View>
+      ) : null}
+
+      {families.length > 0 ? (
+        <MenuGroup title="Your families">
+          {families.map((family) => (
+            <Pressable
+              key={family.id}
+              accessibilityHint="Switches to this family"
+              accessibilityLabel={`${family.name}, ${ROLE_LABELS[family.role]}`}
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={withTapSound(() => open(family.id))}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
+              })}
+            >
+              <View style={[styles.row, styles.familyRow]}>
+                <FamilyAvatar label={family.name} />
+                <View style={styles.rowText}>
+                  <Text
+                    numberOfLines={1}
+                    style={[typography.headline, { color: theme.colors.text }]}
+                  >
+                    {family.name}
+                  </Text>
+                  <RoleBadge role={family.role} />
+                </View>
+                <Text style={[typography.callout, { color: theme.colors.brand }]}>Open</Text>
+                <MaterialCommunityIcons
+                  color={String(theme.colors.brand)}
+                  name="chevron-right"
+                  size={20}
+                />
+              </View>
+            </Pressable>
+          ))}
+        </MenuGroup>
+      ) : (
+        <Card>
+          <EmptyState
+            description={
+              directory.list.familiesAvailable
+                ? `Share one budget with up to ${FAMILY_SEAT_LIMIT - 1} other people: shared spending, remittances home, and alerts. Your personal budget stays private.`
+                : "Starting a family isn't available yet. You can join one when someone invites you; the invitation shows up here."
+            }
+            icon="account-group-outline"
+            title="Budget together as a family"
+          />
+        </Card>
+      )}
+
+      {canCreate ? (
+        <View style={{ gap: spacing.xs }}>
+          <SectionLabel>
+            {families.length > 0 ? "Start your own family" : "Start a family"}
+          </SectionLabel>
+          <Card style={{ gap: spacing.sm }}>
+            <FormField
+              error={nameError}
+              label="Family name"
+              maxLength={60}
+              onChangeText={setName}
+              placeholder="e.g. Dela Cruz family"
+              value={name}
+            />
+            <Button disabled={busy} icon="plus" onPress={startCreate}>
+              Create family
+            </Button>
+          </Card>
+        </View>
+      ) : null}
+
+      {pending ? (
         <SeatRulesDialog
           busy={busy}
           confirmLabel={pending.kind === "create" ? "Create family" : "Join family"}
@@ -276,3 +299,11 @@ export function FamilyDirectoryView() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  rowText: { flex: 1, minWidth: 0, gap: spacing.xxs, alignItems: "flex-start" },
+  familyRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  actions: { flexDirection: "row", gap: spacing.sm },
+  action: { flex: 1 },
+});

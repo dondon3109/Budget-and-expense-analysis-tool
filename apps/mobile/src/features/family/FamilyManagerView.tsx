@@ -1,14 +1,14 @@
 import {
   FAMILY_CLOSING_DAYS,
   familyInviteSchema,
-  familyMemberRoles,
   type FamilyDetail,
   type FamilyMember,
   type FamilyMemberRole,
 } from "@zoption/shared";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
-import { Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   closeFamily,
@@ -22,20 +22,24 @@ import {
 } from "@/api/family";
 import { leaveFamily } from "@/api/workspaces";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { withTapSound } from "@/features/sounds/sound-effects";
 import {
+  BottomSheet,
   Button,
   Card,
   ConfirmationDialog,
   ErrorState,
   FormField,
-  SelectionField,
+  MenuGroup,
+  MenuRow,
   Skeleton,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { spacing, typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 
 import { useActiveWorkspace } from "./active-workspace";
 import { FamilyAlertsCard } from "./FamilyAlertsCard";
+import { FamilyAvatar, RoleBadge, RoleChooser, SectionLabel } from "./family-ui";
 import { SeatRulesDialog } from "./SeatRulesDialog";
 import { formatFamilyDate, ROLE_LABELS, useFamilyApi } from "./use-family-api";
 
@@ -44,8 +48,6 @@ type Pending =
   | { kind: "transfer"; member: FamilyMember }
   | { kind: "close" }
   | { kind: "leave" };
-
-const roleOptions = familyMemberRoles.map((role) => ({ id: role, label: ROLE_LABELS[role] }));
 
 function memberName(member: FamilyMember): string {
   return member.email ?? "Member without a confirmed email";
@@ -75,10 +77,14 @@ function confirmCopy(action: Exclude<Pending, { kind: "remove" }>, familyName: s
   };
 }
 
-/** The family shown: members, seats, and invitations, with the owner's controls. Needs a connection. */
+/**
+ * The family shown: a summary with seats, members (the owner taps one to manage it), invitations,
+ * alerts, and leaving or closing. Needs a connection.
+ */
 export function FamilyManagerView() {
   const theme = useZoptionTheme();
-  const { getAccessToken } = useSessionSnapshot();
+  const session = useSessionSnapshot();
+  const { getAccessToken } = session;
   const active = useActiveWorkspace();
   const familyApi = useFamilyApi();
   const [detail, setDetail] = useState<FamilyDetail | null>(null);
@@ -89,6 +95,7 @@ export function FamilyManagerView() {
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<FamilyMemberRole>("member");
   const [emailError, setEmailError] = useState<string>();
+  const [managedId, setManagedId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!familyApi) return;
@@ -167,6 +174,7 @@ export function FamilyManagerView() {
     });
     // The seat rules dialog shows its own error; the plain one closes so the error line shows.
     if (done || action.kind !== "remove") setPending(null);
+    if (done) setManagedId(null);
     // A new owner or a closing family changes what this phone may push.
     if (done) active.refresh();
   };
@@ -181,137 +189,64 @@ export function FamilyManagerView() {
     if (await write(() => familyApi((api) => inviteFamilyMember(api, parsed.data)))) setEmail("");
   };
 
-  return (
-    <View style={{ gap: spacing.md }}>
-      {closing ? (
-        <Card>
-          <Text
-            accessibilityRole="alert"
-            style={[typography.callout, { color: theme.colors.text }]}
-          >
-            This family closes on {formatFamilyDate(detail.closesAt!)}. Until then everyone can view
-            it, but nothing can change.
-          </Text>
-        </Card>
-      ) : null}
+  const me = session.subject;
+  const seatShare =
+    detail.seats.limit > 0 ? Math.min(1, detail.seats.used / detail.seats.limit) : 0;
+  const seatNotes = [
+    detail.seats.cooling > 0 ? `${detail.seats.cooling} cooling down` : null,
+    owner ? `${detail.swaps.used} of ${detail.swaps.limit} seat changes used this year` : null,
+  ].filter((note): note is string => note !== null);
+  // Read from the reloaded list, so the sheet follows a role change it just made.
+  const managed = managedId
+    ? (detail.members.find((member) => member.userId === managedId) ?? null)
+    : null;
 
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.headline, { color: theme.colors.text }]}>Members</Text>
-        <Text style={[typography.callout, muted]}>
-          {detail.seats.used} of {detail.seats.limit} seats taken
-          {detail.seats.cooling > 0 ? ` · ${detail.seats.cooling} cooling down` : ""}
-          {owner
-            ? ` · ${detail.swaps.used} of ${detail.swaps.limit} seat changes used this year`
-            : ""}
-        </Text>
-        {detail.members.map((member) => (
-          <View key={member.userId} style={{ gap: spacing.xxs }}>
-            <Text style={[typography.body, { color: theme.colors.text }]}>
-              {memberName(member)}
-            </Text>
-            <Text style={[typography.callout, muted]}>
-              {ROLE_LABELS[member.role]} · joined {formatFamilyDate(member.joinedAt)}
-            </Text>
-            {canManage && member.role !== "owner" ? (
-              <>
-                <SelectionField
-                  disabled={busy}
-                  label={`Role for ${memberName(member)}`}
-                  onSelect={(role) =>
-                    void write(() =>
-                      familyApi((api) =>
-                        setFamilyMemberRole(api, member.userId, role as FamilyMemberRole),
-                      ),
-                    )
-                  }
-                  options={roleOptions}
-                  placeholder="Role"
-                  sheetTitle="Role"
-                  value={member.role}
-                />
-                <View className="flex-row gap-2">
-                  <Button
-                    disabled={busy}
-                    onPress={() => setPending({ kind: "transfer", member })}
-                    size="compact"
-                    variant="secondary"
-                  >
-                    Make owner
-                  </Button>
-                  <Button
-                    disabled={busy}
-                    onPress={() => setPending({ kind: "remove", member })}
-                    size="compact"
-                    variant="danger"
-                  >
-                    Remove
-                  </Button>
-                </View>
-              </>
-            ) : null}
+  return (
+    <View style={{ gap: spacing.lg }}>
+      <Card style={{ gap: spacing.md }}>
+        <View style={styles.row}>
+          <FamilyAvatar label={detail.name} size={56} />
+          <View style={styles.rowText}>
+            <Text style={[typography.title, { color: theme.colors.text }]}>{detail.name}</Text>
+            <RoleBadge role={detail.role} />
           </View>
-        ))}
+        </View>
+        <View style={{ gap: spacing.xxs }}>
+          <View style={styles.between}>
+            <Text style={[typography.callout, { color: theme.colors.text }]}>Seats</Text>
+            <Text style={[typography.callout, muted]}>
+              {detail.seats.used} of {detail.seats.limit} taken
+            </Text>
+          </View>
+          <View
+            accessibilityElementsHidden
+            style={[styles.track, { backgroundColor: theme.colors.canvasMuted }]}
+          >
+            <View
+              style={[
+                styles.fill,
+                { width: `${seatShare * 100}%`, backgroundColor: theme.colors.brand },
+              ]}
+            />
+          </View>
+          {seatNotes.length > 0 ? (
+            <Text style={[typography.caption, muted]}>{seatNotes.join(" · ")}</Text>
+          ) : null}
+        </View>
+        {closing ? (
+          <View
+            accessibilityRole="alert"
+            style={[styles.notice, { backgroundColor: theme.colors.warningSoft }]}
+          >
+            <Text style={[typography.callout, { color: theme.colors.warning }]}>
+              Closes on {formatFamilyDate(detail.closesAt!)}. Until then everyone can view it, but
+              nothing can change.
+            </Text>
+          </View>
+        ) : null}
       </Card>
 
-      {canManage ? (
-        <Card style={{ gap: spacing.sm }}>
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Invitations</Text>
-          {detail.invitations.map((invitation) => (
-            <View key={invitation.id} style={{ gap: spacing.xxs }}>
-              <Text style={[typography.body, { color: theme.colors.text }]}>
-                {invitation.email}
-              </Text>
-              <Text style={[typography.callout, muted]}>
-                {ROLE_LABELS[invitation.role]} · until {formatFamilyDate(invitation.expiresAt)}
-              </Text>
-              <View className="flex-row gap-2">
-                <Button
-                  disabled={busy}
-                  onPress={() =>
-                    void write(() => familyApi((api) => resendFamilyInvitation(api, invitation.id)))
-                  }
-                  size="compact"
-                  variant="secondary"
-                >
-                  Resend
-                </Button>
-                <Button
-                  disabled={busy}
-                  onPress={() =>
-                    void write(() => familyApi((api) => revokeFamilyInvitation(api, invitation.id)))
-                  }
-                  size="compact"
-                  variant="danger"
-                >
-                  Revoke
-                </Button>
-              </View>
-            </View>
-          ))}
-          <FormField
-            autoCapitalize="none"
-            autoComplete="off"
-            error={emailError}
-            keyboardType="email-address"
-            label="Email"
-            onChangeText={setEmail}
-            value={email}
-          />
-          <SelectionField
-            label="Role"
-            onSelect={(role) => setInviteRole(role as FamilyMemberRole)}
-            options={roleOptions}
-            placeholder="Role"
-            sheetTitle="Role"
-            value={inviteRole}
-          />
-          <Button loading={busy} onPress={() => void invite()}>
-            Send invitation
-          </Button>
-        </Card>
-      ) : null}
-
-      {message ? (
+      {message && !pending ? (
         <Text
           accessibilityRole="alert"
           style={[typography.callout, { color: theme.colors.danger }]}
@@ -320,30 +255,179 @@ export function FamilyManagerView() {
         </Text>
       ) : null}
 
+      <MenuGroup title={`Members · ${detail.members.length}`}>
+        {detail.members.map((member) => {
+          const manageable = canManage && member.role !== "owner";
+          const name = member.userId === me ? "You" : memberName(member);
+          const row = (
+            <View style={[styles.row, styles.listRow]}>
+              <FamilyAvatar label={member.email ?? "?"} />
+              <View style={styles.rowText}>
+                <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
+                  {name}
+                </Text>
+                <Text style={[typography.caption, muted]}>
+                  Joined {formatFamilyDate(member.joinedAt)}
+                </Text>
+              </View>
+              <RoleBadge role={member.role} />
+              {manageable ? (
+                <MaterialCommunityIcons
+                  color={String(theme.colors.textMuted)}
+                  name="chevron-right"
+                  size={20}
+                />
+              ) : null}
+            </View>
+          );
+          if (!manageable) return <View key={member.userId}>{row}</View>;
+          return (
+            <Pressable
+              key={member.userId}
+              accessibilityHint="Change role, make owner, or remove"
+              accessibilityLabel={`${name}, ${ROLE_LABELS[member.role]}`}
+              accessibilityRole="button"
+              onPress={withTapSound(() => {
+                setMessage(null);
+                setManagedId(member.userId);
+              })}
+              style={({ pressed }) => ({
+                backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
+              })}
+            >
+              {row}
+            </Pressable>
+          );
+        })}
+      </MenuGroup>
+
+      {canManage ? (
+        <View style={{ gap: spacing.xs }}>
+          <SectionLabel>Invite someone</SectionLabel>
+          <Card style={{ gap: spacing.sm }}>
+            <FormField
+              autoCapitalize="none"
+              autoComplete="off"
+              error={emailError}
+              keyboardType="email-address"
+              label="Email"
+              onChangeText={setEmail}
+              placeholder="name@example.com"
+              value={email}
+            />
+            <RoleChooser disabled={busy} onChange={setInviteRole} value={inviteRole} />
+            <Button icon="email-fast-outline" loading={busy} onPress={() => void invite()}>
+              Send invitation
+            </Button>
+          </Card>
+        </View>
+      ) : null}
+
+      {canManage && detail.invitations.length > 0 ? (
+        <MenuGroup title="Waiting to join">
+          {detail.invitations.map((invitation) => (
+            <View key={invitation.id} style={[styles.row, styles.listRow]}>
+              <FamilyAvatar label={invitation.email} />
+              <View style={styles.rowText}>
+                <Text numberOfLines={1} style={[typography.headline, { color: theme.colors.text }]}>
+                  {invitation.email}
+                </Text>
+                <Text style={[typography.caption, muted]}>
+                  {ROLE_LABELS[invitation.role]} · expires {formatFamilyDate(invitation.expiresAt)}
+                </Text>
+              </View>
+              <Button
+                accessibilityLabel={`Resend invitation to ${invitation.email}`}
+                disabled={busy}
+                icon="refresh"
+                onPress={() =>
+                  void write(() => familyApi((api) => resendFamilyInvitation(api, invitation.id)))
+                }
+                size="compact"
+                variant="quiet"
+              />
+              <Button
+                accessibilityLabel={`Revoke invitation to ${invitation.email}`}
+                disabled={busy}
+                icon="close"
+                onPress={() =>
+                  void write(() => familyApi((api) => revokeFamilyInvitation(api, invitation.id)))
+                }
+                size="compact"
+                variant="quiet"
+              />
+            </View>
+          ))}
+        </MenuGroup>
+      ) : null}
+
       <FamilyAlertsCard canManage={canManage} />
 
-      <Card style={{ gap: spacing.sm }}>
-        <Text style={[typography.headline, { color: theme.colors.text }]}>
-          {owner ? "Close the family" : "Leave the family"}
-        </Text>
-        {owner ? (
-          <>
-            <Text style={[typography.callout, muted]}>
-              To hand the family on, make another member the owner. Closing keeps it read only for{" "}
-              {FAMILY_CLOSING_DAYS} days so everyone can export it, then deletes it.
-            </Text>
-            {closing ? null : (
-              <Button onPress={() => setPending({ kind: "close" })} variant="danger">
-                Close family
-              </Button>
-            )}
-          </>
-        ) : (
-          <Button onPress={() => setPending({ kind: "leave" })} variant="secondary">
-            Leave family
-          </Button>
-        )}
-      </Card>
+      {owner && closing ? null : (
+        <View style={{ gap: spacing.xs }}>
+          <MenuGroup title={owner ? "Close the family" : "Leave the family"}>
+            <MenuRow
+              icon={owner ? "close-circle-outline" : "logout"}
+              onPress={() => setPending(owner ? { kind: "close" } : { kind: "leave" })}
+              title={owner ? "Close family" : "Leave family"}
+              tone="danger"
+            />
+          </MenuGroup>
+          <Text style={[typography.caption, styles.footnote, muted]}>
+            {owner
+              ? `To hand the family on, make another member the owner. Closing keeps it read only for ${FAMILY_CLOSING_DAYS} days so everyone can export it, then deletes it.`
+              : "What you added stays in the family."}
+          </Text>
+        </View>
+      )}
+
+      {managed ? (
+        <BottomSheet
+          onDismiss={() => setManagedId(null)}
+          title={memberName(managed)}
+          visible={!pending}
+        >
+          <View style={{ gap: spacing.md }}>
+            <View style={{ gap: spacing.xs }}>
+              <Text style={[typography.label, muted]}>Role</Text>
+              <RoleChooser
+                disabled={busy}
+                onChange={(role) => {
+                  if (role === managed.role) return;
+                  void write(() =>
+                    familyApi((api) => setFamilyMemberRole(api, managed.userId, role)),
+                  );
+                }}
+                value={managed.role === "owner" ? "member" : managed.role}
+              />
+            </View>
+            {message ? (
+              <Text
+                accessibilityRole="alert"
+                style={[typography.callout, { color: theme.colors.danger }]}
+              >
+                {message}
+              </Text>
+            ) : null}
+            <Button
+              disabled={busy}
+              icon="crown-outline"
+              onPress={() => setPending({ kind: "transfer", member: managed })}
+              variant="secondary"
+            >
+              Make owner
+            </Button>
+            <Button
+              disabled={busy}
+              icon="account-remove-outline"
+              onPress={() => setPending({ kind: "remove", member: managed })}
+              variant="danger"
+            >
+              Remove from family
+            </Button>
+          </View>
+        </BottomSheet>
+      ) : null}
 
       {pending?.kind === "remove" ? (
         <SeatRulesDialog
@@ -366,3 +450,14 @@ export function FamilyManagerView() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  row: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  rowText: { flex: 1, minWidth: 0, gap: spacing.xxs, alignItems: "flex-start" },
+  listRow: { paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
+  between: { flexDirection: "row", justifyContent: "space-between" },
+  track: { height: 8, borderRadius: radii.round, overflow: "hidden" },
+  fill: { height: "100%", borderRadius: radii.round },
+  notice: { borderRadius: radii.md, padding: spacing.sm },
+  footnote: { paddingHorizontal: spacing.xs },
+});
