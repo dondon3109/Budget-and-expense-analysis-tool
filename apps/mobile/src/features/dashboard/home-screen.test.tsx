@@ -5,6 +5,7 @@ import { HomeScreen } from "./HomeScreen";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { usePlan } from "@/auth/plan-state";
 import { useSyncState } from "@/sync/sync-state";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { localIsoDate } from "./dashboard-view";
 
 jest.mock("expo-router", () => ({
@@ -40,6 +41,28 @@ jest.mock("@/auth/plan-state", () => ({
   usePlan: jest.fn(),
 }));
 
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: jest.fn(),
+}));
+
+const personal = {
+  status: "ready" as const,
+  family: null,
+  families: [],
+  synced: [],
+  workspaceSubject: "user-1",
+  switchTo: jest.fn(),
+  markSynced: jest.fn(),
+  forgetFamily: jest.fn(),
+  refresh: jest.fn(),
+};
+const family = {
+  id: "family-1",
+  kind: "family" as const,
+  name: "Santos family",
+  role: "member" as const,
+};
+
 describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -59,6 +82,28 @@ describe("HomeScreen", () => {
       error: null,
       retry: jest.fn(),
     });
+    jest.mocked(useActiveWorkspace).mockReturnValue(personal);
+  });
+
+  it("names the family shown and switches back to personal", async () => {
+    const switchTo = jest.fn();
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      ...personal,
+      family,
+      families: [family],
+      synced: ["family-1"],
+      switchTo,
+    });
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Workspace: Santos family" }));
+    await fireEvent.press(screen.getByRole("button", { name: /Personal/ }));
+    expect(switchTo).toHaveBeenCalledWith(null);
   });
 
   it("switches to the Remittance view from the title menu", async () => {

@@ -222,6 +222,22 @@ describe("fixed mobile synchronization transport", () => {
     ).rejects.toMatchObject({ code });
   });
 
+  it("names the family it syncs and recognizes why the family refused", async () => {
+    const fetchImpl = jest.fn((_input: URL | RequestInfo, _init?: RequestInit) =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "workspace_forbidden", message: "Not a member." }), {
+          status: 403,
+        }),
+      ),
+    );
+    await expect(
+      pullMobileSync({ accessToken: "token", workspaceId: "family-1", cursor: null, fetchImpl }),
+    ).rejects.toMatchObject({ code: "workspace_forbidden", message: "Not a member." });
+    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get("X-Zoption-Workspace")).toBe(
+      "family-1",
+    );
+  });
+
   it("recognizes a typed full-resync response", async () => {
     const fetchImpl = jest.fn(() =>
       Promise.resolve(

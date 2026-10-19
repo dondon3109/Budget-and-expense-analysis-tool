@@ -6,6 +6,8 @@ import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { WorkspaceSwitcher } from "@/features/family/WorkspaceSwitcher";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
 import { PetMomentModal } from "@/features/pet/PetMomentModal";
 import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
@@ -55,6 +57,8 @@ export function HomeScreen() {
   const guest = useSessionSnapshot().status === "guest";
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
+  // A family has no subscriptions, goals, or setup guide, so their cards stay personal.
+  const inFamily = useActiveWorkspace().family !== null;
   const [menuView, setMenuView] = useState<HomeMenuView>("home");
   const { openFeature } = useAccountGate();
   const [homeView, setHomeView] = useState<HomeViewName>("overview");
@@ -89,6 +93,7 @@ export function HomeScreen() {
       title="Home"
     >
       <PetMomentModal />
+      <WorkspaceSwitcher />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
         <View style={{ flex: 1, alignItems: "flex-start" }}>
           <HomeViewMenu
@@ -123,29 +128,35 @@ export function HomeScreen() {
       ) : (
         <View style={{ gap: spacing.md }}>
           <QuickActionBar />
-          <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
+          {inFamily ? null : (
+            <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
+          )}
           {hasTransactions ? (
             <>
               {homeView === "overview" ? (
                 <>
                   <BalanceCard summary={view.summary} />
-                  <SafeToSpendHero
-                    startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-                    subscriptions={subscriptions.subscriptions}
-                    remainingBudgetMinor={
-                      view.summary.budgetProgress.length > 0
-                        ? Math.max(
-                            0,
-                            view.summary.budgetProgress.reduce(
-                              (sum, item) => sum + item.remainingMinor,
-                              0,
-                            ),
-                          )
-                        : undefined
-                    }
-                    onViewRenewals={() => router.push("/(app)/subscriptions")}
-                  />
-                  <SubscriptionsSection subscriptions={subscriptions.subscriptions} />
+                  {inFamily ? null : (
+                    <>
+                      <SafeToSpendHero
+                        startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                        subscriptions={subscriptions.subscriptions}
+                        remainingBudgetMinor={
+                          view.summary.budgetProgress.length > 0
+                            ? Math.max(
+                                0,
+                                view.summary.budgetProgress.reduce(
+                                  (sum, item) => sum + item.remainingMinor,
+                                  0,
+                                ),
+                              )
+                            : undefined
+                        }
+                        onViewRenewals={() => router.push("/(app)/subscriptions")}
+                      />
+                      <SubscriptionsSection subscriptions={subscriptions.subscriptions} />
+                    </>
+                  )}
                   <TopCategorySection
                     summary={view.summary}
                     onViewAll={() => setHomeView("analytics")}
@@ -162,10 +173,12 @@ export function HomeScreen() {
                   />
                   <SpendingByCategory summary={view.summary} />
                   <BudgetCard summary={view.summary} />
-                  <CashflowForecastCard
-                    startingBalanceMinor={view.accountBalances.overallBalanceMinor}
-                    subscriptions={subscriptions.subscriptions}
-                  />
+                  {inFamily ? null : (
+                    <CashflowForecastCard
+                      startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                      subscriptions={subscriptions.subscriptions}
+                    />
+                  )}
                 </>
               )}
             </>

@@ -1,3 +1,5 @@
+import { WORKSPACE_HEADER } from "@zoption/shared";
+
 import { publicConfig } from "@/config/public-config";
 
 export type ApiTransportErrorCode =
@@ -129,6 +131,7 @@ export async function apiRequest<T>({
   method,
   body,
   headers,
+  workspaceId,
   signal,
   fetchImpl = fetch,
   decode,
@@ -141,6 +144,8 @@ export async function apiRequest<T>({
   method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   headers?: Record<string, string>;
+  /** A family to act in; without one the request acts in the personal workspace. */
+  workspaceId?: string | null;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
   decode: (value: unknown) => T;
@@ -169,6 +174,7 @@ export async function apiRequest<T>({
       headers: {
         ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${accessToken}`,
+        ...(workspaceId ? { [WORKSPACE_HEADER]: workspaceId } : {}),
         ...headers,
       },
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),

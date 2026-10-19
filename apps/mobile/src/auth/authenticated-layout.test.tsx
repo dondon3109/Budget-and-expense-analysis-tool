@@ -22,6 +22,10 @@ jest.mock("@/db/local-workspace-state", () => ({
   LocalWorkspaceProvider: ({ children }: { children: React.ReactNode }) => children,
   useLocalWorkspace: jest.fn(),
 }));
+jest.mock("@/features/family/active-workspace", () => ({
+  ActiveWorkspaceProvider: ({ children }: { children: React.ReactNode }) => children,
+  useActiveWorkspace: () => ({ status: "ready", workspaceSubject: "user-1" }),
+}));
 jest.mock("@/features/reminders/daily-reminder", () => ({ DailyReminderTapHandler: () => null }));
 jest.mock("@/features/billing/PlanLimitDialog", () => ({ PlanLimitHost: () => null }));
 jest.mock("@/telemetry/screen-viewed", () => ({ ScreenViewedTracker: () => null }));

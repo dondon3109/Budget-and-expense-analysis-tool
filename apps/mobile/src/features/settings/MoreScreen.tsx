@@ -11,6 +11,7 @@ import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-
 import { useSyncState } from "@/sync/sync-state";
 import { GuestAccountCard } from "@/features/account-prompt/GuestAccountCard";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { PreferenceCards } from "@/features/settings/PreferenceCards";
 import { UpdateSettingsCard } from "@/features/updates";
 import { ConfirmationDialog, MenuGroup, MenuRow } from "@/ui/components";
@@ -27,6 +28,8 @@ export function MoreScreen() {
   const theme = useZoptionTheme();
   const { openFeature } = useAccountGate();
   const guest = session.status === "guest";
+  // The assistant, imports, goals, debts, subscriptions, and calendar act on personal money only.
+  const inFamily = useActiveWorkspace().family !== null;
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
@@ -80,38 +83,48 @@ export function MoreScreen() {
     >
       <GuestAccountCard />
       <MenuGroup title="Tools">
-        <MenuRow
-          icon={isOffline ? "robot-off-outline" : "robot-happy-outline"}
-          title="AI Assistant"
-          value={isOffline ? "Offline" : undefined}
-          onPress={() => openFeature("assistant", "/(app)/assistant")}
-        />
+        {inFamily ? null : (
+          <MenuRow
+            icon={isOffline ? "robot-off-outline" : "robot-happy-outline"}
+            title="AI Assistant"
+            value={isOffline ? "Offline" : undefined}
+            onPress={() => openFeature("assistant", "/(app)/assistant")}
+          />
+        )}
         <MenuRow
           icon="wallet-outline"
           title="Accounts & categories"
           onPress={() => router.push("/(app)/money-setup")}
         />
-        <MenuRow
-          icon="file-document-outline"
-          title="Import transactions"
-          onPress={() => openFeature("import", "/(app)/import")}
-        />
-        <MenuRow icon="target" title="Savings goals" onPress={() => router.push("/(app)/goals")} />
-        <MenuRow
-          icon="credit-card-refund-outline"
-          title="Debts"
-          onPress={() => router.push("/(app)/debts")}
-        />
-        <MenuRow
-          icon="calendar-sync-outline"
-          title="Subscriptions"
-          onPress={() => router.push("/(app)/subscriptions")}
-        />
-        <MenuRow
-          icon="calendar-month-outline"
-          title="Calendar"
-          onPress={() => router.push("/(app)/calendar")}
-        />
+        {inFamily ? null : (
+          <>
+            <MenuRow
+              icon="file-document-outline"
+              title="Import transactions"
+              onPress={() => openFeature("import", "/(app)/import")}
+            />
+            <MenuRow
+              icon="target"
+              title="Savings goals"
+              onPress={() => router.push("/(app)/goals")}
+            />
+            <MenuRow
+              icon="credit-card-refund-outline"
+              title="Debts"
+              onPress={() => router.push("/(app)/debts")}
+            />
+            <MenuRow
+              icon="calendar-sync-outline"
+              title="Subscriptions"
+              onPress={() => router.push("/(app)/subscriptions")}
+            />
+            <MenuRow
+              icon="calendar-month-outline"
+              title="Calendar"
+              onPress={() => router.push("/(app)/calendar")}
+            />
+          </>
+        )}
       </MenuGroup>
 
       <PreferenceCards />

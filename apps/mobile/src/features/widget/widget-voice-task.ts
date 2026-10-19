@@ -3,7 +3,7 @@ import { AppRegistry, Platform } from "react-native";
 
 import { extractVoiceTransactionsFromTranscript } from "@/api/ai-entry";
 import { getSupabaseClient } from "@/auth/supabase-client";
-import { openLocalWorkspace } from "@/db/workspace";
+import { withDetachedWorkspace } from "@/db/workspace";
 import { telemetry } from "@/telemetry/telemetry";
 import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 
@@ -32,15 +32,20 @@ const deps: WidgetLogDeps = {
       return null;
     }
   },
-  async openWorkspace(subject) {
-    const workspace = await openLocalWorkspace(subject);
-    return {
-      readFormData: () => workspace.repository.getTransactionFormData(),
-      createTransactions: (inputs) =>
-        workspace.transactionMutations.createTransactions(
-          inputs.filter((input) => input.kind !== "transfer"),
+  // The widget logs to personal money. A detached connection leaves a family the app shows open.
+  openWorkspace(subject) {
+    return Promise.resolve({
+      readFormData: () =>
+        withDetachedWorkspace(subject, (workspace) =>
+          workspace.repository.getTransactionFormData(),
         ),
-    };
+      createTransactions: (inputs) =>
+        withDetachedWorkspace(subject, (workspace) =>
+          workspace.transactionMutations.createTransactions(
+            inputs.filter((input) => input.kind !== "transfer"),
+          ),
+        ),
+    });
   },
   async defaultAccountId() {
     // The store skips hydration, so a task that starts the runtime reads it itself.
