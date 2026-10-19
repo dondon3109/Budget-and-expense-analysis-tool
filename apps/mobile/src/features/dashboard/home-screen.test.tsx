@@ -89,7 +89,7 @@ describe("HomeScreen", () => {
     jest.mocked(useActiveWorkspace).mockReturnValue(personal);
   });
 
-  it("names the family shown and switches back to personal", async () => {
+  it("names the family shown, opens its settings, and switches back to personal", async () => {
     const switchTo = jest.fn();
     jest.mocked(useActiveWorkspace).mockReturnValue({
       ...personal,
@@ -105,12 +105,23 @@ describe("HomeScreen", () => {
     });
 
     await render(<HomeScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Santos family settings" }));
+    expect(router.push).toHaveBeenCalledWith("/(app)/family");
+
     await fireEvent.press(screen.getByRole("button", { name: "Workspace: Santos family" }));
-    await fireEvent.press(screen.getByRole("button", { name: /Personal/ }));
+    const items = screen.getAllByRole("menuitem").map((item) => item.props.accessibilityLabel);
+    expect(items).toEqual([
+      "Personal",
+      "Santos family",
+      "Start or join a family",
+      "Remittance calculator",
+      "Pet",
+    ]);
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Personal" }));
     expect(switchTo).toHaveBeenCalledWith(null);
   });
 
-  it("switches to the Remittance view from the title menu", async () => {
+  it("offers a family workspace from personal and opens the remittance calculator", async () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
       error: null,
@@ -118,29 +129,21 @@ describe("HomeScreen", () => {
     });
 
     await render(<HomeScreen />);
-    expect(screen.queryByLabelText("Remittance calculator")).toBeNull();
+    expect(screen.queryByRole("button", { name: /settings$/ })).toBeNull();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Home, change view" }));
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Remittance" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Workspace: Personal" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Family workspace" }));
+    expect(router.push).toHaveBeenCalledWith("/(app)/family");
 
+    await fireEvent.press(screen.getByRole("button", { name: "Workspace: Personal" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Remittance calculator" }));
     expect(screen.getByLabelText("Remittance calculator")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add transaction" })).toBeNull();
-  });
 
-  it("opens Families from the title menu, right under Home", async () => {
-    jest.mocked(useDashboardData).mockReturnValue({
-      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
-      error: null,
-      retry: jest.fn(),
-    });
-
-    await render(<HomeScreen />);
-    await fireEvent.press(screen.getByRole("button", { name: "Home, change view" }));
-    const items = screen.getAllByRole("menuitem").map((item) => item.props.accessibilityLabel);
-    expect(items.slice(0, 3)).toEqual(["Home", "Families", "Remittance"]);
-
-    await fireEvent.press(screen.getByRole("menuitem", { name: "Families" }));
-    expect(router.push).toHaveBeenCalledWith("/(app)/family");
+    // Choosing the workspace already shown returns to its dashboard.
+    await fireEvent.press(screen.getByRole("button", { name: "Workspace: Personal" }));
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Personal" }));
+    expect(screen.queryByLabelText("Remittance calculator")).toBeNull();
   });
 
   it("renders quick actions and onboarding step cards when workspace has no transactions", async () => {

@@ -232,7 +232,7 @@ export default function AuthenticatedLayout() {
           name="family"
           options={{
             headerShown: true,
-            headerBackTitle: "More",
+            headerBackTitle: "Back",
           }}
         />
         <Stack.Screen

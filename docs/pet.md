@@ -1,6 +1,6 @@
 # Pet companion
 
-A streak pet for signed-in users. On mobile it opens from the Pet entry in the Home view menu; on
+A streak pet for signed-in users. On mobile it opens from the Pet entry under Tools in the Home workspace menu; on
 the web it has its own page (`/app/pet`) in the sidebar. The rules live in
 `packages/shared/src/pet.ts`; the API in `apps/api/src/db/pet.ts` and `src/routes/pet.ts`.
 

@@ -10,7 +10,6 @@ import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { FamilyClosingNotice } from "@/features/family/FamilyClosingNotice";
 import { RemittanceCard } from "@/features/family/RemittanceCard";
 import { SharedBalancesCard } from "@/features/family/SharedBalancesCard";
-import { WorkspaceSwitcher } from "@/features/family/WorkspaceSwitcher";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
 import { PetMomentModal } from "@/features/pet/PetMomentModal";
 import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
@@ -28,7 +27,6 @@ import { CashflowCard } from "./CashflowCard";
 import { CashflowForecastCard } from "./CashflowForecastCard";
 import { buildDashboardView, localIsoDate } from "./dashboard-view";
 import { HomeEmptyView } from "./HomeEmptyView";
-import { HomeViewMenu, type HomeMenuView } from "./HomeViewMenu";
 import { HomeViewSwitch, type HomeViewName } from "./HomeViewSwitch";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
@@ -36,6 +34,7 @@ import { QuickStartGuideCard } from "./QuickStartGuideCard";
 import { SubscriptionsSection } from "./SubscriptionsSection";
 import { SafeToSpendHero } from "./SafeToSpendHero";
 import { TopCategorySection } from "./TopCategorySection";
+import { WorkspaceMenu, type HomeMenuView } from "./WorkspaceMenu";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { SpendingByCategory } from "./SpendingByCategory";
 
@@ -96,22 +95,24 @@ export function HomeScreen() {
       title="Home"
     >
       <PetMomentModal />
-      <WorkspaceSwitcher />
-      <FamilyClosingNotice />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-        <View style={{ flex: 1, alignItems: "flex-start" }}>
-          <HomeViewMenu
+        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
+          <WorkspaceMenu
             selected={menuView}
             onSelect={setMenuView}
-            onOpenFamily={() => openFeature("family", "/(app)/family")}
+            onOpenFamilies={() => openFeature("family", "/(app)/family")}
+            onOpenFamilySettings={() => router.push("/(app)/family")}
             onOpenPet={() => openFeature("pet", "/(app)/pet")}
           />
         </View>
-        {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
-        <View style={{ flex: 1, alignItems: "flex-end" }}>
-          <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
-        </View>
+        <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
       </View>
+      {showViewSwitch ? (
+        <View style={{ alignItems: "center" }}>
+          <HomeViewSwitch selected={homeView} onSelect={setHomeView} />
+        </View>
+      ) : null}
+      <FamilyClosingNotice />
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
         <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
