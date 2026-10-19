@@ -66,6 +66,7 @@ import { saveFamilyReceipt, useFamilyReceipt } from "@/features/family/use-famil
 import { TransactionPhotoField } from "./TransactionPhotoField";
 import { DebtPaymentField } from "./DebtPaymentField";
 import { EntryCurrencyField } from "./EntryCurrencyField";
+import { EditorCloseButton, EditorSaveButton } from "./EditorHeaderActions";
 import { EntryReveal } from "./EntryReveal";
 import { AccountIconPicker } from "./AccountIconPicker";
 import { AmountHero } from "./AmountHero";
@@ -545,7 +546,28 @@ export function TransactionEditorScreen() {
       edges={["bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      <Stack.Screen options={{ title }} />
+      <Stack.Screen
+        options={{
+          title,
+          headerLeft: () => <EditorCloseButton />,
+          headerRight: () =>
+            showForm ? (
+              <EditorSaveButton
+                accessibilityLabel={
+                  editing ? `Save ${values.kind} changes` : `Save new ${values.kind}`
+                }
+                disabled={!hasChoices || mutationBlocked}
+                saving={saving}
+                onPress={() => {
+                  if (voicePreviewState.status === "pending") {
+                    machineRef.current?.edit();
+                  }
+                  void save();
+                }}
+              />
+            ) : null,
+        }}
+      />
       <EntryReveal>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -705,6 +727,14 @@ export function TransactionEditorScreen() {
 
             {showForm ? (
               <>
+                {message ? (
+                  <Text
+                    accessibilityRole="alert"
+                    style={[typography.callout, { color: theme.colors.danger }]}
+                  >
+                    {message}
+                  </Text>
+                ) : null}
                 <AmountHero
                   autoFocus={!editing}
                   currency={currency.currency}
@@ -869,35 +899,6 @@ export function TransactionEditorScreen() {
                   />
                 ) : null}
 
-                {message ? (
-                  <Text
-                    accessibilityRole="alert"
-                    style={[typography.callout, { color: theme.colors.danger }]}
-                  >
-                    {message}
-                  </Text>
-                ) : null}
-                <Button
-                  accessibilityLabel={
-                    editing
-                      ? transfer
-                        ? "Save transfer changes"
-                        : "Save transaction changes"
-                      : transfer
-                        ? "Save new transfer"
-                        : "Save new transaction"
-                  }
-                  disabled={!hasChoices || mutationBlocked}
-                  loading={saving}
-                  onPress={() => {
-                    if (voicePreviewState.status === "pending") {
-                      machineRef.current?.edit();
-                    }
-                    void save();
-                  }}
-                >
-                  {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
-                </Button>
                 {id && !transfer && !family ? (
                   <ShareLinkButton
                     target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }}
