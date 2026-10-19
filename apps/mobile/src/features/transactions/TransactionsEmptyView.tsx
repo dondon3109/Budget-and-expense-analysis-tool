@@ -1,5 +1,4 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { TransactionKindFilter } from "@/db/view-models";
@@ -11,6 +10,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 
 import { kindLabels, monthStartForDate } from "./transaction-list-view";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "./AddTransactionPicker";
 
 export function TransactionsEmptyView({
   filtering,
@@ -90,7 +90,7 @@ export function TransactionsEmptyView({
       <View style={styles.emptyActions}>
         <Button
           accessibilityHint="Opens the new transaction form"
-          onPress={() => router.push("/(app)/add-transaction")}
+          onPress={openAddTransaction}
           variant="primary"
         >
           Add transaction

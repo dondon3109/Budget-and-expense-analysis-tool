@@ -8,6 +8,7 @@ import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "@/features/transactions/AddTransactionPicker";
 
 interface TutorialTopic {
   id: string;
@@ -97,7 +98,7 @@ export function TutorialsScreen() {
       summary:
         "Log purchases on the go in under 5 seconds with receipt scanning and AI voice input.",
       actionTitle: "Record transaction",
-      onAction: () => router.push("/(app)/add-transaction"),
+      onAction: () => openAddTransaction(),
       steps: [
         {
           title: "1. Camera Receipt Scanning",

@@ -195,7 +195,9 @@ describe("HomeScreen", () => {
     await render(<HomeScreen />);
 
     await fireEvent.press(screen.getByRole("button", { name: "Add transaction" }));
-    expect(router.push).toHaveBeenCalledWith("/(app)/add-transaction");
+    expect(router.push).toHaveBeenCalledWith(
+      expect.objectContaining({ pathname: "/(app)/add-transaction" }),
+    );
 
     await fireEvent.press(screen.getByRole("button", { name: "Scan receipt" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/receipt-scan");

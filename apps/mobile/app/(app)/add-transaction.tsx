@@ -1,1 +1,1 @@
-export { AddTransactionSheet as default } from "@/features/transactions/AddTransactionSheet";
+export { AddTransactionPicker as default } from "@/features/transactions/AddTransactionPicker";

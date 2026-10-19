@@ -45,6 +45,7 @@ import { CalendarMonthGrid } from "@/features/calendar/CalendarMonthGrid";
 import { calendarCellsFromTransactions } from "./transaction-calendar-cells";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "./AddTransactionPicker";
 
 type ViewMode = "daily" | "calendar" | "monthly" | "summary";
 
@@ -561,7 +562,7 @@ export function TransactionsScreen() {
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
             android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
-            onPress={withTapSound(() => router.push("/(app)/add-transaction"))}
+            onPress={withTapSound(openAddTransaction)}
             style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
           >
             <MaterialCommunityIcons

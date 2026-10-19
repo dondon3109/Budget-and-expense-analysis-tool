@@ -1,5 +1,4 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
@@ -7,6 +6,7 @@ import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "@/features/transactions/AddTransactionPicker";
 
 export function QuickActionBar() {
   const theme = useZoptionTheme();
@@ -21,7 +21,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens the new transaction form"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={withTapSound(() => router.push("/(app)/add-transaction"))}
+        onPress={withTapSound(openAddTransaction)}
         style={[
           styles.quickActionTile,
           styles.primaryTile,

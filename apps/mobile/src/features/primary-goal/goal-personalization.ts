@@ -8,7 +8,7 @@ import { useGoalProfileStore, useLeadGoal } from "@/stores/goal-profile-store";
 function hrefForTarget(goal: PrimaryGoal, target: GoalCtaTarget): Href {
   switch (target) {
     case "add_transaction":
-      return "/(app)/transaction";
+      return "/(app)/add-transaction";
     case "import_wizard":
       return { pathname: "/(app)/import", params: { firstRun: "1" } };
     case "/app/budgets":

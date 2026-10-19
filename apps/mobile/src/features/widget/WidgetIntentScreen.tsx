@@ -673,7 +673,10 @@ export function WidgetIntentScreen() {
               </View>
               <View className="flex-row items-center gap-3">
                 <View className="flex-1">
-                  <Button variant="secondary" onPress={() => router.replace("/(app)/transaction")}>
+                  <Button
+                    variant="secondary"
+                    onPress={() => router.replace("/(app)/add-transaction")}
+                  >
                     Open transaction form
                   </Button>
                 </View>

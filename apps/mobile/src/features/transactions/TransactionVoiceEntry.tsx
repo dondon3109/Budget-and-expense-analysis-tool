@@ -1,7 +1,16 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { CURRENT_RECEIPT_CONSENT_VERSION, type TransactionVoiceDraft } from "@zoption/shared";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type ColorValue,
+} from "react-native";
 
 import { extractVoiceTransaction, extractVoiceTransactionFromTranscript } from "@/api/ai-entry";
 import { ApiTransportError } from "@/api/authenticated";
@@ -11,8 +20,9 @@ import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
+import { useReduceMotion } from "@/ui/reduce-motion";
 import { VoiceLanguageToggleGroup } from "@/ui/voice-language-picker";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
@@ -178,79 +188,73 @@ export function TransactionVoiceEntry({
   return (
     <>
       <Card style={styles.card}>
-        <VoiceLanguageToggleGroup language={voiceLanguage} onLanguageChange={setVoiceLanguage} />
-        {recording ? (
-          <View
-            accessible
-            accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
+        <Text style={[typography.title, styles.center, { color: theme.colors.text }]}>
+          {recording ? "Listening…" : "Say it out loud"}
+        </Text>
+        <Text style={[typography.callout, styles.center, { color: theme.colors.textMuted }]}>
+          {recording
+            ? "Speak naturally, then tap stop to review."
+            : "Try “Lunch 250 from GCash” or “Salary 30,000”."}
+        </Text>
+        <View style={styles.micArea}>
+          {recording ? <PulseRing color={theme.colors.danger} /> : null}
+          <Pressable
+            accessibilityLabel={label}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: Boolean(disabled), busy: loading }}
+            disabled={disabled || loading}
+            onPress={action}
             style={[
-              styles.recordingStatus,
+              styles.mic,
               {
-                backgroundColor: theme.colors.dangerSoft,
-                borderColor: theme.colors.danger,
+                backgroundColor: recording ? theme.colors.danger : theme.colors.solid,
+                opacity: disabled ? 0.55 : 1,
               },
             ]}
           >
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.danger}
-              name="record-circle-outline"
-              size={20}
-            />
-            <View className="min-w-0 flex-1">
-              <Text style={[typography.label, { color: theme.colors.text }]}>Recording</Text>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                Speak naturally, then stop to review the draft.
-              </Text>
-            </View>
-            <Text style={[styles.timer, { color: theme.colors.danger }]}>
-              {elapsedMinutes}:{elapsedRemainder}
-            </Text>
-          </View>
-        ) : null}
+            {loading ? (
+              <ActivityIndicator color={theme.colors.onSolid} />
+            ) : (
+              <MaterialCommunityIcons
+                accessibilityElementsHidden
+                color={recording ? "#ffffff" : theme.colors.onSolid}
+                name={recording ? "stop" : "microphone"}
+                size={40}
+              />
+            )}
+          </Pressable>
+        </View>
         {recording ? (
-          <View className="flex-row items-center gap-2">
-            <View className="flex-1">
-              <Button
-                accessibilityLabel="Stop and review"
-                icon="stop"
-                loading={loading}
-                onPress={action}
-                size="large"
-                variant="danger"
-              >
-                Stop and review
-              </Button>
-            </View>
-            <Button
-              accessibilityLabel="Cancel recording"
-              onPress={() => {
-                setMessage(null);
-                void recorder.cancelRecording();
-              }}
-              size="large"
-              variant="secondary"
-            >
-              Cancel
-            </Button>
-          </View>
-        ) : (
-          <Button
-            accessibilityLabel={label}
-            disabled={disabled}
-            icon="microphone-outline"
-            loading={loading}
-            onPress={action}
-            size="large"
-            variant="primary"
+          <Text
+            accessible
+            accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
+            style={[styles.timer, styles.center, { color: theme.colors.danger }]}
           >
+            {elapsedMinutes}:{elapsedRemainder}
+          </Text>
+        ) : (
+          <Text style={[typography.label, styles.center, { color: theme.colors.textMuted }]}>
             {label}
+          </Text>
+        )}
+        {recording ? (
+          <Button
+            accessibilityLabel="Cancel recording"
+            onPress={() => {
+              setMessage(null);
+              void recorder.cancelRecording();
+            }}
+            variant="quiet"
+          >
+            Cancel
           </Button>
+        ) : (
+          <VoiceLanguageToggleGroup language={voiceLanguage} onLanguageChange={setVoiceLanguage} />
         )}
         {message ? (
           <Text
             accessibilityRole="alert"
-            style={[typography.caption, { color: theme.colors.textMuted }]}
+            style={[typography.caption, styles.center, { color: theme.colors.textMuted }]}
           >
             {message}
           </Text>
@@ -268,17 +272,63 @@ export function TransactionVoiceEntry({
   );
 }
 
+/** A ring that swells and fades behind the mic while it records. */
+function PulseRing({ color }: { color: ColorValue }) {
+  const reduceMotion = useReduceMotion();
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduceMotion !== false) return;
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [reduceMotion, pulse]);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.ring,
+        {
+          borderColor: color,
+          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
+          transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }],
+        },
+      ]}
+    />
+  );
+}
+
+const MIC_SIZE = 96;
+
 const styles = StyleSheet.create({
-  card: { gap: spacing.md },
-  recordingStatus: {
-    borderWidth: 1,
-    borderRadius: radii.md,
-    flexDirection: "row",
+  card: { gap: spacing.md, alignItems: "stretch", paddingVertical: spacing.xl },
+  center: { textAlign: "center" },
+  micArea: {
+    alignSelf: "center",
+    width: MIC_SIZE * 1.7,
+    height: MIC_SIZE * 1.7,
     alignItems: "center",
-    gap: spacing.sm,
-    minHeight: touchTarget,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+    justifyContent: "center",
+  },
+  mic: {
+    width: MIC_SIZE,
+    height: MIC_SIZE,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ring: {
+    position: "absolute",
+    width: MIC_SIZE,
+    height: MIC_SIZE,
+    borderRadius: radii.round,
+    borderWidth: 3,
   },
   timer: {
     ...typography.headline,
