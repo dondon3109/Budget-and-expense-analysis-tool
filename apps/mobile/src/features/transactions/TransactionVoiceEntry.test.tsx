@@ -52,7 +52,7 @@ describe("TransactionVoiceEntry", () => {
 
   it("records in the voice language chosen in Settings", async () => {
     useVoiceLanguageStore.setState({ language: "fil" });
-    render(<TransactionVoiceEntry onDraft={jest.fn()} />);
+    render(<TransactionVoiceEntry onClose={jest.fn()} onDraft={jest.fn()} />);
 
     await waitFor(() => {
       expect(screen.getByLabelText("Speak a transaction")).toBeTruthy();

@@ -21,26 +21,48 @@ import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { useReduceMotion } from "@/ui/reduce-motion";
-import { radii, spacing, typography } from "@/ui/tokens";
+import { elevation, radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
 
+/**
+ * The voice hero as a layer over the transaction form. A draft fills the form underneath at
+ * once, then the layer fades away to reveal it; "Type it instead" fades it without a draft.
+ * `onClose` runs once the layer is gone, and the editor then unmounts it.
+ */
 export function TransactionVoiceEntry({
   disabled,
   onDraft,
+  onClose,
   categories,
 }: {
   disabled?: boolean;
   onDraft: (draft: TransactionVoiceDraft) => void;
+  onClose: () => void;
   categories?: string[];
 }) {
   const session = useSessionSnapshot();
   const { requireAccount } = useAccountGate();
   const theme = useZoptionTheme();
   const reduceMotion = useReduceMotion();
-  // Shrinks and fades the card away once a draft arrives, before the form takes its place.
+  // Fades the scrim and shrinks the card away, uncovering the form.
   const leave = useRef(new Animated.Value(1)).current;
+  const leaving = useRef(false);
+  const close = (): void => {
+    if (leaving.current) return;
+    leaving.current = true;
+    if (reduceMotion) {
+      onClose();
+      return;
+    }
+    Animated.timing(leave, {
+      toValue: 0,
+      duration: 260,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(onClose);
+  };
   const mounted = useRef(true);
   const [readiness, setReadiness] = useState<EntryReadiness>("checking");
   const [message, setMessage] = useState<string | null>(null);
@@ -112,16 +134,8 @@ export function TransactionVoiceEntry({
       setMessage(`Listening: “${partial}”`);
     },
     onTranscribed: (draft) => {
-      if (reduceMotion) {
-        onDraft(draft);
-        return;
-      }
-      Animated.timing(leave, {
-        toValue: 0,
-        duration: 220,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }).start(() => onDraft(draft));
+      onDraft(draft);
+      close();
     },
     onError: (error) => setMessage(error.message),
   });
@@ -186,14 +200,22 @@ export function TransactionVoiceEntry({
   const elapsedRemainder = String(recorder.elapsedSeconds % 60).padStart(2, "0");
 
   return (
-    <>
+    <View style={styles.layer}>
       <Animated.View
-        style={{
-          opacity: leave,
-          transform: [{ scale: leave.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
-        }}
+        style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.overlay, opacity: leave }]}
+      />
+      <Animated.View
+        style={[
+          styles.panel,
+          {
+            opacity: leave,
+            transform: [
+              { scale: leave.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
+            ],
+          },
+        ]}
       >
-        <Card style={styles.card}>
+        <Card style={[styles.card, elevation.dialog]}>
           <Text style={[typography.title, styles.center, { color: theme.colors.text }]}>
             {recording ? "Listening…" : "Tap the mic to start"}
           </Text>
@@ -249,7 +271,16 @@ export function TransactionVoiceEntry({
             >
               Cancel
             </Button>
-          ) : null}
+          ) : (
+            <Button
+              accessibilityLabel="Enter details manually"
+              icon="pencil-outline"
+              onPress={close}
+              variant="quiet"
+            >
+              Type it instead
+            </Button>
+          )}
           {message ? (
             <Text
               accessibilityRole="alert"
@@ -268,7 +299,7 @@ export function TransactionVoiceEntry({
         onCancel={() => setShowConsent(false)}
         onConfirm={() => void acceptConsent()}
       />
-    </>
+    </View>
   );
 }
 
@@ -307,6 +338,8 @@ function PulseRing({ color }: { color: ColorValue }) {
 const MIC_SIZE = 96;
 
 const styles = StyleSheet.create({
+  layer: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "center" },
+  panel: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: spacing.md },
   card: { gap: spacing.md, alignItems: "stretch", paddingVertical: spacing.xl },
   center: { textAlign: "center" },
   micArea: {
