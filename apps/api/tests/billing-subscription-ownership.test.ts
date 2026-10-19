@@ -33,7 +33,9 @@ function repositoryEnvironment(options: RepositoryDatabaseOptions = {}) {
           first: vi.fn(async () => {
             if (sql.includes("FROM billing_webhook_events")) return null;
             if (sql.includes("FROM billing_subscriptions")) {
-              return options.existingSubscription ?? null;
+              return options.existingSubscription
+                ? { familyTenantId: null, ...options.existingSubscription }
+                : null;
             }
             if (sql.includes("FROM billing_checkout_references")) {
               return options.reference ?? null;

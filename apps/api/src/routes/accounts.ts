@@ -16,7 +16,7 @@ import type { AppEnvironment } from "../types";
  */
 export function createAccountRoutes(
   repository: AccountRepository,
-  billing: Pick<BillingRepository, "requirePro">,
+  billing: Pick<BillingRepository, "requirePaidPlan">,
 ) {
   const routes = new Hono<AppEnvironment>();
 
@@ -43,7 +43,11 @@ export function createAccountRoutes(
       "Check the account and interest details.",
     );
     if (input.interest?.enabled) {
-      await billing.requirePro(context.env, context.get("tenant").tenantId, "account_interest");
+      await billing.requirePaidPlan(
+        context.env,
+        context.get("tenant").tenantId,
+        "account_interest",
+      );
     }
     return context.json(
       await repository.update!(
@@ -71,7 +75,11 @@ export function createAccountRoutes(
       "Check the interest settings.",
     );
     if (input.enabled) {
-      await billing.requirePro(context.env, context.get("tenant").tenantId, "account_interest");
+      await billing.requirePaidPlan(
+        context.env,
+        context.get("tenant").tenantId,
+        "account_interest",
+      );
     }
     return context.json(
       await repository.updateInterest!(

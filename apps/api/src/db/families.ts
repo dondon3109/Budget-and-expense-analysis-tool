@@ -48,7 +48,7 @@ export interface FamilyRepository {
   /** The family the person owns and has not closed; a closing family no longer needs them. */
   ownedFamilyId(env: Bindings, userId: string): Promise<string | null>;
   create(env: Bindings, ownerId: string, name: string): Promise<string>;
-  detail(env: Bindings, tenantId: string, role: WorkspaceRole): Promise<FamilyDetail>;
+  detail(env: Bindings, tenantId: string, role: WorkspaceRole): Promise<Omit<FamilyDetail, "plan">>;
   memberRole(env: Bindings, tenantId: string, userId: string): Promise<WorkspaceRole | null>;
   /** Inserts the invitation only while a seat is free and the yearly swap cap is not reached. */
   invite(

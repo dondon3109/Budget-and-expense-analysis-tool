@@ -1,7 +1,6 @@
 import {
   interestUpdateSchema,
   mobileSyncAccountSnapshotSchema,
-  mobileSyncCategorySnapshotSchema,
   mobileSyncGoalSnapshotSchema,
   mobileSyncRemittanceSnapshotSchema,
   type MobileSyncPushOperation,
@@ -10,10 +9,16 @@ import {
 
 import { HttpError } from "../../../errors";
 import type { Bindings } from "../../../types";
-import { FREE_CUSTOM_CATEGORY_LIMIT } from "../../billing";
+import { isCategoryPlanAvailable, readTier } from "../../../billing/entitlements";
+import { getCustomCategoryAllowance } from "../../billing-usage";
 import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import { rejectedResult } from "./results";
-import type { AccountSnapshot, CategorySnapshot, EntitySnapshot } from "./snapshots";
+import {
+  storedCategorySnapshotSchema,
+  type AccountSnapshot,
+  type CategorySnapshot,
+  type EntitySnapshot,
+} from "./snapshots";
 
 function nameTable(entityType: "account" | "category" | "goal" | "debt"): string {
   switch (entityType) {
@@ -76,11 +81,11 @@ export async function validateSubscriptionReferences(
   if (!category || category.archived === 1 || category.kind !== "expense") {
     throw new HttpError(400, "invalid_subscription_category", "Choose an active expense category.");
   }
-  if (category.requiredPlan !== "free" && !(await readEntitlement(env, tenantId))) {
+  if (!isCategoryPlanAvailable(category.requiredPlan, await readEntitlement(env, tenantId))) {
     throw new HttpError(
       403,
       "category_requires_pro",
-      "This category requires an active Zoption Pro subscription.",
+      "This category needs a higher plan. Upgrade or archive other categories to use it.",
     );
   }
   const account = await env.DB.prepare(
@@ -93,29 +98,13 @@ export async function validateSubscriptionReferences(
   }
 }
 
-export async function hasEffectiveProEntitlementRow(
+/** How many more custom categories the tenant's tier allows; null when unlimited. */
+export async function remainingCustomCategorySlots(
   env: Bindings,
   tenantId: string,
-): Promise<boolean> {
-  const row = await env.DB.prepare(
-    "SELECT 1 AS entitled FROM effective_pro_access WHERE tenant_id = ? LIMIT 1",
-  )
-    .bind(tenantId)
-    .first<{ entitled: number }>();
-  return Boolean(row);
-}
-
-export async function activeFreeCustomCategoryCount(
-  env: Bindings,
-  tenantId: string,
-): Promise<number> {
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS count FROM categories
-     WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0`,
-  )
-    .bind(tenantId)
-    .first<{ count: number }>();
-  return Number(row?.count ?? 0);
+): Promise<number | null> {
+  const allowance = await getCustomCategoryAllowance(env, tenantId);
+  return allowance.limit === null ? null : Math.max(0, allowance.limit - allowance.used);
 }
 
 export async function businessRejection(
@@ -206,7 +195,7 @@ export async function businessRejection(
   const existing =
     operation.entityType === "account"
       ? current && mobileSyncAccountSnapshotSchema.parse(current)
-      : current && mobileSyncCategorySnapshotSchema.parse(current);
+      : current && storedCategorySnapshotSchema.parse(current);
   const name = operation.operationType === "delete" ? null : operation.payload.name;
   if (
     name &&
@@ -255,11 +244,11 @@ export async function businessRejection(
           "Only savings accounts earn interest.",
         );
       }
-      if (interest.enabled && !(await hasEffectiveProEntitlementRow(env, tenantId))) {
+      if (interest.enabled && (await readTier(env, tenantId)) === "free") {
         return rejectedResult(
           operation,
           "plan_limit",
-          "Automatic interest is a Zoption Pro feature.",
+          "Automatic interest needs Zoption Budget or Pro.",
         );
       }
     }
@@ -272,15 +261,8 @@ export async function businessRejection(
     category?.archived === true &&
     operation.payload.archived === false;
   if (operation.operationType !== "create" && !restoring) return null;
-  if (await hasEffectiveProEntitlementRow(env, tenantId)) return null;
-  if (category?.requiredPlan === "zoption_pro") {
-    return rejectedResult(
-      operation,
-      "plan_limit",
-      "Restore this category with an active Zoption Pro subscription.",
-    );
-  }
-  if ((await activeFreeCustomCategoryCount(env, tenantId)) >= FREE_CUSTOM_CATEGORY_LIMIT) {
+  // Creating or restoring takes a slot from the tier's custom category limit.
+  if ((await remainingCustomCategorySlots(env, tenantId)) === 0) {
     return rejectedResult(operation, "plan_limit", "You have reached your custom category limit.");
   }
   return null;

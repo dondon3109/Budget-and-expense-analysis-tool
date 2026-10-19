@@ -71,7 +71,7 @@ export function PlanUsageIndicator({
                 : `${remaining} remaining${reset ? ` · resets ${reset}` : resetPendingLabel ? ` · ${resetPendingLabel}` : ""}`}
             </small>
             {showUpgrade && (nearLimit || exhausted) && (
-              <Link to="/app/settings#plan-and-billing">View Pro limits</Link>
+              <Link to="/app/settings#plan-and-billing">View plan limits</Link>
             )}
           </span>
         )}
@@ -111,7 +111,7 @@ export function PlanUsageIndicator({
               : `${remaining} remaining${reset ? ` · resets ${reset}` : resetPendingLabel ? ` · ${resetPendingLabel}` : ""}`}
         </small>
         {showUpgrade && limit !== null && (nearLimit || exhausted) && (
-          <Link to="/app/settings#plan-and-billing">View Pro limits</Link>
+          <Link to="/app/settings#plan-and-billing">View plan limits</Link>
         )}
       </div>
       {detail && limit !== null && !compact && <p>{detail}</p>}

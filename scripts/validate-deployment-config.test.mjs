@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import { parseJsonc, validateWranglerDeploymentConfig } from "./validate-deployment-config.mjs";
 
+const PLAN_ID_KEYS = ["BUDGET", "PRO", "FAMILY_BUDGET", "FAMILY_PRO"].flatMap((plan) => [
+  `${plan}_MONTHLY`,
+  `${plan}_ANNUAL`,
+]);
+
+/** A distinct id for every plan and interval, such as PAYPAL_PRO_MONTHLY_PLAN_ID. */
+function planIds(provider, suffix, prefix) {
+  return Object.fromEntries(
+    PLAN_ID_KEYS.map((key) => [`${provider}_${key}_${suffix}`, `${prefix}${key}`]),
+  );
+}
+
 function environment({
   production = false,
   project = "shared-ref",
@@ -55,8 +67,7 @@ function environment({
       EMAIL_FROM: "hello@zoption.site",
       BUG_REPORT_TO: "support@zoption.site",
       PAYPAL_ENVIRONMENT: paypalEnvironment,
-      PAYPAL_PRO_MONTHLY_PLAN_ID: production ? "P-PRODUCTION-MONTHLY" : "P-PREVIEW-MONTHLY",
-      PAYPAL_PRO_ANNUAL_PLAN_ID: production ? "P-PRODUCTION-ANNUAL" : "P-PREVIEW-ANNUAL",
+      ...planIds("PAYPAL", "PLAN_ID", production ? "P-PRODUCTION-" : "P-PREVIEW-"),
       ASSISTANT_VOICE_ENABLED: "true",
       ASSISTANT_VOICE_REVIEW_REQUIRED: production ? "false" : "true",
       ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS: "30000",
@@ -129,16 +140,17 @@ describe("Wrangler deployment config validation", () => {
     );
   });
 
-  it.each(["PAYPAL_ENVIRONMENT", "PAYPAL_PRO_MONTHLY_PLAN_ID", "PAYPAL_PRO_ANNUAL_PLAN_ID"])(
-    "requires %s in every deployment environment",
-    (name) => {
-      const config = validConfig();
-      delete config.env.preview.vars[name];
-      expect(() => validateWranglerDeploymentConfig(config)).toThrow(
-        `preview is missing required ${name} configuration`,
-      );
-    },
-  );
+  it.each([
+    "PAYPAL_ENVIRONMENT",
+    "PAYPAL_BUDGET_MONTHLY_PLAN_ID",
+    "PAYPAL_FAMILY_PRO_ANNUAL_PLAN_ID",
+  ])("requires %s in every deployment environment", (name) => {
+    const config = validConfig();
+    delete config.env.preview.vars[name];
+    expect(() => validateWranglerDeploymentConfig(config)).toThrow(
+      `preview is missing required ${name} configuration`,
+    );
+  });
 
   it("allows Preview to intentionally use either PayPal Live or Sandbox", () => {
     expect(validateWranglerDeploymentConfig(validConfig())).toEqual(["preview", "production"]);
@@ -180,7 +192,7 @@ describe("Wrangler deployment config validation", () => {
     );
   });
 
-  it("requires non-placeholder distinct PayPal monthly and annual plan IDs", () => {
+  it("requires a non-placeholder, distinct PayPal plan ID for every plan", () => {
     const placeholder = validConfig();
     placeholder.env.preview.vars.PAYPAL_PRO_MONTHLY_PLAN_ID = "REPLACE_WITH_PAYPAL_MONTHLY_PLAN_ID";
     expect(() => validateWranglerDeploymentConfig(placeholder)).toThrow(
@@ -188,10 +200,10 @@ describe("Wrangler deployment config validation", () => {
     );
 
     const duplicate = validConfig();
-    duplicate.env.preview.vars.PAYPAL_PRO_ANNUAL_PLAN_ID =
+    duplicate.env.preview.vars.PAYPAL_FAMILY_PRO_MONTHLY_PLAN_ID =
       duplicate.env.preview.vars.PAYPAL_PRO_MONTHLY_PLAN_ID;
     expect(() => validateWranglerDeploymentConfig(duplicate)).toThrow(
-      "preview PAYPAL_PRO_MONTHLY_PLAN_ID and PAYPAL_PRO_ANNUAL_PLAN_ID must be distinct",
+      "preview PAYPAL_PRO_MONTHLY_PLAN_ID and PAYPAL_FAMILY_PRO_MONTHLY_PLAN_ID must be distinct",
     );
   });
 
@@ -199,8 +211,7 @@ describe("Wrangler deployment config validation", () => {
     const configured = validConfig();
     Object.assign(configured.env.production.vars, {
       DODO_PAYMENTS_ENVIRONMENT: "live_mode",
-      DODO_PRO_MONTHLY_PRODUCT_ID: "pdt_monthly",
-      DODO_PRO_ANNUAL_PRODUCT_ID: "pdt_annual",
+      ...planIds("DODO", "PRODUCT_ID", "pdt_"),
     });
     expect(() => validateWranglerDeploymentConfig(configured)).not.toThrow();
 
@@ -212,7 +223,7 @@ describe("Wrangler deployment config validation", () => {
     const partial = validConfig();
     partial.env.preview.vars.DODO_PAYMENTS_ENVIRONMENT = "test_mode";
     expect(() => validateWranglerDeploymentConfig(partial)).toThrow(
-      "preview is missing required DODO_PRO_MONTHLY_PRODUCT_ID configuration",
+      "preview is missing required DODO_BUDGET_MONTHLY_PRODUCT_ID configuration",
     );
   });
 

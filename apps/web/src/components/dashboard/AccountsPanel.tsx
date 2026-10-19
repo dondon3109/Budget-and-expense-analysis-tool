@@ -32,7 +32,7 @@ interface AccountsPanelProps {
   previousMetrics: DashboardSummary["metrics"] | undefined;
   netChangePercent: number;
   trendComparison: string;
-  isPro: boolean;
+  isPaid: boolean;
   onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
   /** Omitted where public links are not offered (a family workspace). */
   onShareBalance?: (account: AccountBalanceSummaryItem) => void;
@@ -61,7 +61,7 @@ export function AccountsPanel({
   previousMetrics,
   netChangePercent,
   trendComparison,
-  isPro,
+  isPaid,
   onAdjustBalance,
   onShareBalance,
   sharedTo,
@@ -393,7 +393,7 @@ export function AccountsPanel({
         <AccountFormModal
           accounts={accounts}
           editingAccount={editingAccount}
-          isPro={isPro}
+          isPaid={isPaid}
           onAdjustBalance={onAdjustBalance}
         />
       )}

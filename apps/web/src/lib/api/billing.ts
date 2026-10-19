@@ -1,10 +1,14 @@
-import type {
-  BillingCheckoutResponse,
-  BillingCheckoutReconciliation,
-  BillingInterval,
-  BillingProvider,
-  BillingProviderConfig,
-  BillingSummary,
+import {
+  isFamilyPlan,
+  type BillingCheckoutResponse,
+  type BillingCheckoutReconciliation,
+  type BillingInterval,
+  type BillingPlanChangeResponse,
+  type BillingPlanKey,
+  type BillingProvider,
+  type BillingProviderConfig,
+  type BillingSummary,
+  type FamilyBillingSummary,
 } from "@zoption/shared";
 
 import type { AuthenticatedWorkspace } from "../workspace";
@@ -24,14 +28,50 @@ export function reconcileBillingCheckout(
   });
 }
 
+export interface PlanChoice {
+  plan: BillingPlanKey;
+  interval: BillingInterval;
+}
+
+/** Personal plans are billed in the personal workspace; a family plan in the family it covers. */
+function planBillingPath(plan: BillingPlanKey): string {
+  return isFamilyPlan(plan) ? "/api/app/family/billing" : "/api/app/billing";
+}
+
 export function startBillingCheckout(
   workspace: AuthenticatedWorkspace,
-  interval: BillingInterval,
+  choice: PlanChoice,
   provider: BillingProvider = "paypal",
 ): Promise<BillingCheckoutResponse> {
-  return requestJson(workspace, "/api/app/billing/checkout", {
+  return requestJson(workspace, `${planBillingPath(choice.plan)}/checkout`, {
     method: "POST",
-    body: JSON.stringify({ interval, provider }),
+    body: JSON.stringify({ ...choice, provider }),
+  });
+}
+
+export function changeBillingPlan(
+  workspace: AuthenticatedWorkspace,
+  choice: PlanChoice,
+): Promise<BillingPlanChangeResponse> {
+  return requestJson(workspace, `${planBillingPath(choice.plan)}/change`, {
+    method: "POST",
+    body: JSON.stringify(choice),
+  });
+}
+
+/** The plan of the family `workspace` names; owner only. */
+export function getFamilyBillingSummary(
+  workspace: AuthenticatedWorkspace,
+): Promise<FamilyBillingSummary> {
+  return requestJson(workspace, "/api/app/family/billing");
+}
+
+export function cancelFamilyPlan(
+  workspace: AuthenticatedWorkspace,
+): Promise<{ cancellationRequested: true }> {
+  return requestJson(workspace, "/api/app/family/billing/cancel", {
+    method: "POST",
+    body: JSON.stringify({}),
   });
 }
 

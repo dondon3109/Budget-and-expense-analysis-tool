@@ -383,7 +383,7 @@ describe("TransactionForm", () => {
       />,
     );
 
-    expect(screen.getByRole("option", { name: "Pro food — Pro required" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "Pro food — upgrade required" })).toBeDisabled();
     expect(screen.getByLabelText("Category")).toHaveValue("food");
   });
 
@@ -487,7 +487,7 @@ describe("TransactionForm", () => {
     );
 
     expect(screen.getByLabelText("Category")).toHaveValue("pro-food");
-    expect(screen.getByRole("option", { name: "Pro food — Pro required" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "Pro food — upgrade required" })).toBeDisabled();
     await user.clear(screen.getByLabelText(/Notes/));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
     await waitFor(() =>

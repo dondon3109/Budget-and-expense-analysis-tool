@@ -69,7 +69,9 @@ describe("PayPal checkout redirects", () => {
       subscriptionId: "I-test",
     });
 
-    await expect(openBillingCheckout(workspace, "month")).rejects.toThrow(CHECKOUT_OPEN_ERROR);
+    await expect(
+      openBillingCheckout(workspace, { plan: "pro", interval: "month" }),
+    ).rejects.toThrow(CHECKOUT_OPEN_ERROR);
     expect(assign).not.toHaveBeenCalled();
 
     apiMocks.startBillingCheckout.mockResolvedValue({
@@ -77,7 +79,7 @@ describe("PayPal checkout redirects", () => {
       subscriptionId: "I-test",
     });
 
-    await openBillingCheckout(workspace, "month");
+    await openBillingCheckout(workspace, { plan: "pro", interval: "month" });
     expect(assign).toHaveBeenCalledWith(LIVE_APPROVAL_URL);
   });
 });

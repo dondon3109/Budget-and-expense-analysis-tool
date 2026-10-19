@@ -113,7 +113,7 @@ export function createVoiceStreamRoutes(assistantVoiceService: AssistantVoiceSer
     // A live platform-funded socket has no per-request boundary to meter, so it stays Pro-only
     // instead of drawing on the shared monthly AI pool. "ai_usage" is the capability the clients
     // know; this route is the one AI surface that still returns upgrade_required.
-    await billingRepository.requirePro(context.env, tenantId, "ai_usage");
+    await billingRepository.requirePaidPlan(context.env, tenantId, "ai_usage");
     const { ticket, expiresAt } = await voiceTicketRepository.mint(
       context.env,
       context.get("authUser").id,
@@ -132,7 +132,7 @@ export function createVoiceStreamRoutes(assistantVoiceService: AssistantVoiceSer
     // consent and entitlement gates before any provider lookup or socket upgrade. A live
     // platform-funded socket has no per-request boundary to meter, so it stays Pro-only.
     await assistantVoiceService.requireConsent(env, tenant.tenantId);
-    await billingRepository.requirePro(env, tenant.tenantId, "ai_usage");
+    await billingRepository.requirePaidPlan(env, tenant.tenantId, "ai_usage");
 
     // Check active STT config (global)
     const sttCfg = await providerRegistry.getActive(env, "stt");

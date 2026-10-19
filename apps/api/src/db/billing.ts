@@ -1,27 +1,37 @@
-import type {
-  BillingCapability,
-  BillingFeature,
-  BillingInterval,
-  BillingProvider,
-  BillingResourceAllowance,
-  BillingSubscriptionStatus,
-  BillingSummary,
-  ProEntitlementSource,
-  BillingUsage,
-  CategoryRequiredPlan,
+import {
+  billingPlanKeys,
+  isFamilyPlan,
+  type BillingCapability,
+  type BillingInterval,
+  type BillingPendingChange,
+  type BillingPlanKey,
+  type BillingProvider,
+  type BillingSubscriptionStatus,
+  type BillingSummary,
+  type FamilyBillingPlan,
+  type FamilyBillingSummary,
+  type FamilyPlanState,
 } from "@zoption/shared";
 
 import {
-  EFFECTIVE_PRO_ENTITLEMENT_CONDITION,
-  FREE_LIMITS,
-  PRO_LIMITS,
-} from "../billing/usage-limits";
+  FAMILY_PLAN_STATE_SQL,
+  monthlyLimit,
+  paidPlanRequiredError,
+  readEffectiveAccess,
+  readTier,
+} from "../billing/entitlements";
+import { configuredPlanId } from "../billing/plan-ids";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-
-export { EFFECTIVE_PRO_ENTITLEMENT_CONDITION } from "../billing/usage-limits";
-
-export const FREE_CUSTOM_CATEGORY_LIMIT = 4;
+import { applySubscriptionUpdate } from "./billing-apply";
+import {
+  buildMonthlyUsageStatement,
+  databaseMessage,
+  getCustomCategoryAllowance,
+  isMonthlyLimitDatabaseError,
+  monthlyFeatureUsage,
+  monthlyLimitError,
+} from "./billing-usage";
 
 export const PRO_BILLING_STATUSES = ["active", "trialing"] as const;
 export const NON_TERMINAL_BILLING_STATUSES = ["active", "trialing", "past_due", "paused"] as const;
@@ -62,123 +72,19 @@ export function isCheckoutBlockingSubscription(
   return hasEffectiveProEntitlement(status, currentPeriodEndsAt, now, cancelAtPeriodEnd);
 }
 
-export function isCategoryPlanAvailable(
-  requiredPlan: CategoryRequiredPlan,
-  hasPro: boolean,
-): boolean {
-  return requiredPlan === "free" || hasPro;
-}
-
-export function categoryRequiresProError(): HttpError {
-  return new HttpError(
-    403,
-    "category_requires_pro",
-    "This category requires an active Zoption Pro subscription.",
-    { requiredPlan: "zoption_pro", billingPath: "/app/settings" },
-  );
-}
-
-export function manilaMonth(now = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return `${values.year}-${values.month}-01`;
-}
-
-export function manilaMonthStart(now = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  const year = Number(values.year);
-  const month = Number(values.month);
-  return new Date(Date.UTC(year, month - 1, 0, 16)).toISOString();
-}
-
-export function nextManilaMonth(now = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Manila",
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(now);
-  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  const year = Number(values.year);
-  const month = Number(values.month);
-  return new Date(Date.UTC(year, month, 0, 16)).toISOString();
-}
-
-/** PayPal plan ids and Dodo product ids, keyed by interval. */
-function configuredPlans(
-  env: Bindings,
-  provider: BillingProvider,
-): { month?: string; year?: string; prefix: string } {
-  if (provider === "dodo") {
-    return {
-      month: env.DODO_PRO_MONTHLY_PRODUCT_ID,
-      year: env.DODO_PRO_ANNUAL_PRODUCT_ID,
-      prefix: "pdt_",
-    };
-  }
-  return {
-    month: env.PAYPAL_PRO_MONTHLY_PLAN_ID,
-    year: env.PAYPAL_PRO_ANNUAL_PLAN_ID,
-    prefix: "P-",
-  };
-}
-
-function configuredPlanId(
-  env: Bindings,
-  provider: BillingProvider,
-  interval: BillingInterval,
-): string {
-  const plans = configuredPlans(env, provider);
-  const value = plans[interval];
-  if (!value?.startsWith(plans.prefix)) {
-    throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
-  }
-  return value;
-}
-
-function configuredInterval(
-  env: Bindings,
-  provider: BillingProvider,
-  providerPlanId: string,
-): BillingInterval | null {
-  const plans = configuredPlans(env, provider);
-  if (providerPlanId === plans.month) return "month";
-  if (providerPlanId === plans.year) return "year";
-  return null;
-}
-
-function databaseMessage(error: unknown): string {
-  return error instanceof Error ? error.message.toLowerCase() : "";
-}
-
-export function isMonthlyLimitDatabaseError(error: unknown): boolean {
-  return databaseMessage(error).includes("billing_monthly_limit_reached");
-}
-
-function isWebhookDuplicateError(error: unknown): boolean {
-  const message = databaseMessage(error);
-  return (
-    message.includes("unique constraint failed") &&
-    (message.includes("billing_webhook_events.provider") ||
-      message.includes("billing_webhook_events.provider_event_id"))
-  );
-}
-
 interface SubscriptionSummaryRow {
   provider: BillingProvider;
+  providerSubscriptionId: string;
+  tenantId: string;
+  plan: BillingPlanKey | null;
   status: BillingSubscriptionStatus;
   interval: BillingInterval | null;
   currentPeriodEndsAt: string | null;
   scheduledChangeAt: string | null;
   cancelAtPeriodEnd: number;
+  entitledUntil: string | null;
+  pendingPlan: BillingPlanKey | null;
+  pendingInterval: BillingInterval | null;
 }
 
 export interface BillingSubscriptionEvent {
@@ -209,6 +115,9 @@ export interface BillingProviderSubscription {
   providerSubscriptionId: string;
   providerCustomerId: string | null;
   providerPlanId: string;
+  plan: BillingPlanKey | null;
+  interval: BillingInterval | null;
+  familyTenantId: string | null;
   status: BillingSubscriptionStatus;
   currentPeriodEndsAt: string | null;
   cancelAtPeriodEnd: boolean;
@@ -224,7 +133,10 @@ interface BillingProviderSubscriptionRow extends Omit<
 export interface BillingCheckoutReference {
   reference: string;
   provider: BillingProvider;
+  plan: BillingPlanKey;
   interval: BillingInterval;
+  /** The family a family plan checkout covers; null for a personal plan. */
+  familyTenantId: string | null;
   providerPlanId: string;
   providerSubscriptionId: string | null;
   /** Dodo's checkout session id; PayPal creates the subscription itself at checkout. */
@@ -247,23 +159,61 @@ export type BillingSubscriptionSnapshot = Omit<
   providerUpdateId: string;
 };
 
+export interface CheckoutRequest {
+  plan: BillingPlanKey;
+  interval: BillingInterval;
+  provider: BillingProvider;
+  /** Set for a family plan, which the owner pays from their personal workspace. */
+  familyTenantId: string | null;
+}
+
+/** What a plan change leaves on the subscription row until the provider confirms it. */
+export interface PlanChangeRecord {
+  plan: BillingPlanKey;
+  interval: BillingInterval;
+  providerPlanId: string;
+  /** The tier floor kept until `entitledUntil`: the old plan on a downgrade, the new on an upgrade. */
+  entitledPlan: BillingPlanKey;
+  entitledUntil: string | null;
+  /** Set on a downgrade, naming what the subscription becomes when the period ends. */
+  pending: { plan: BillingPlanKey; interval: BillingInterval } | null;
+}
+
 export interface BillingRepository {
   getSummary(env: Bindings, tenantId: string): Promise<BillingSummary>;
-  requirePro(env: Bindings, tenantId: string, capability: BillingCapability): Promise<void>;
+  requirePaidPlan(env: Bindings, tenantId: string, capability: BillingCapability): Promise<void>;
   createCheckoutReference(
     env: Bindings,
     tenantId: string,
-    interval: BillingInterval,
-    provider: BillingProvider,
+    request: CheckoutRequest,
   ): Promise<BillingCheckoutReference>;
   createMonthlyImportUsageStatement(env: Bindings, tenantId: string): D1PreparedStatement;
   rethrowMonthlyImportUsageError(env: Bindings, tenantId: string, error: unknown): Promise<never>;
+  /** Any live subscription the tenant pays for, personal or family; it blocks account deletion. */
   hasNonTerminalSubscription(env: Bindings, tenantId: string): Promise<boolean>;
+  /** The live subscription the tenant pays for one purpose: personal (null) or a family. */
   getProviderSubscription(
     env: Bindings,
     tenantId: string,
-    provider: BillingProvider,
+    familyTenantId: string | null,
   ): Promise<BillingProviderSubscription | null>;
+  recordPlanChange(
+    env: Bindings,
+    tenantId: string,
+    subscription: Pick<BillingProviderSubscription, "provider" | "providerSubscriptionId">,
+    change: PlanChangeRecord,
+  ): Promise<void>;
+  familyPlanState(env: Bindings, familyTenantId: string): Promise<FamilyPlanState>;
+  getFamilySummary(
+    env: Bindings,
+    familyTenantId: string,
+    ownerTenantId: string,
+  ): Promise<FamilyBillingSummary>;
+  /** Live subscriptions paying for a family, whoever pays them; renewals stop on a transfer. */
+  listFamilySubscriptions(
+    env: Bindings,
+    familyTenantId: string,
+  ): Promise<BillingProviderSubscription[]>;
   getPendingCheckout(env: Bindings, tenantId: string): Promise<BillingCheckoutReference | null>;
   listDuePendingCheckouts(env: Bindings, limit: number): Promise<BillingDueCheckout[]>;
   recordCheckoutReconciliation(
@@ -309,56 +259,76 @@ export interface BillingRepository {
   ): Promise<BillingSubscriptionApplyOutcome>;
 }
 
-async function currentSubscription(
-  env: Bindings,
-  tenantId: string,
-): Promise<SubscriptionSummaryRow | null> {
-  return env.DB.prepare(
-    `SELECT provider, status, interval, current_period_ends_at AS currentPeriodEndsAt,
-            scheduled_change_at AS scheduledChangeAt,
-            cancel_at_period_end AS cancelAtPeriodEnd
-     FROM billing_subscriptions
-     WHERE tenant_id = ?
-     ORDER BY CASE status
+const SUBSCRIPTION_SUMMARY_COLUMNS = `provider, provider_subscription_id AS providerSubscriptionId,
+  tenant_id AS tenantId, plan, status, interval,
+  current_period_ends_at AS currentPeriodEndsAt, scheduled_change_at AS scheduledChangeAt,
+  cancel_at_period_end AS cancelAtPeriodEnd, entitled_until AS entitledUntil,
+  pending_plan AS pendingPlan, pending_interval AS pendingInterval`;
+
+const SUBSCRIPTION_ORDER = `CASE status
        WHEN 'active' THEN 0
        WHEN 'trialing' THEN 1
        WHEN 'past_due' THEN 2
        WHEN 'paused' THEN 3
        WHEN 'canceled' THEN 4
        ELSE 5
-     END, last_provider_occurred_at DESC, last_provider_event_id DESC
+     END, last_provider_occurred_at DESC, last_provider_event_id DESC`;
+
+/** The personal subscription the tenant pays for; family plans it pays are left out. */
+async function currentSubscription(
+  env: Bindings,
+  tenantId: string,
+): Promise<SubscriptionSummaryRow | null> {
+  return env.DB.prepare(
+    `SELECT ${SUBSCRIPTION_SUMMARY_COLUMNS}
+     FROM billing_subscriptions
+     WHERE tenant_id = ? AND family_tenant_id IS NULL
+     ORDER BY ${SUBSCRIPTION_ORDER}
      LIMIT 1`,
   )
     .bind(tenantId)
     .first<SubscriptionSummaryRow>();
 }
 
-/**
- * `trial` stays internal: installed mobile apps parse the billing summary strictly, so a trial
- * is reported as a `trialing` status with no entitlement source.
- */
-type EntitlementViewSource = ProEntitlementSource | "trial";
-
-export async function getProEntitlementSource(
+/** The latest subscription paying for a family, from whichever owner bought it. */
+async function currentFamilySubscription(
   env: Bindings,
-  tenantId: string,
-): Promise<EntitlementViewSource | null> {
-  const row = await env.DB.prepare(
-    `SELECT source FROM effective_pro_access
-     WHERE tenant_id = ?
-     ORDER BY CASE source
-       WHEN 'paypal' THEN 0
-       WHEN 'dodo' THEN 1
-       WHEN 'platform_admin' THEN 2
-       WHEN 'sponsored' THEN 3
-       WHEN 'trial' THEN 4
-       ELSE 5
-     END
+  familyTenantId: string,
+): Promise<SubscriptionSummaryRow | null> {
+  return env.DB.prepare(
+    `SELECT ${SUBSCRIPTION_SUMMARY_COLUMNS}
+     FROM billing_subscriptions
+     WHERE family_tenant_id = ?
+     ORDER BY ${SUBSCRIPTION_ORDER}
      LIMIT 1`,
   )
-    .bind(tenantId)
-    .first<{ source: EntitlementViewSource }>();
-  return row?.source ?? null;
+    .bind(familyTenantId)
+    .first<SubscriptionSummaryRow>();
+}
+
+function pendingChange(
+  subscription: SubscriptionSummaryRow | null,
+  now = Date.now(),
+): BillingPendingChange | null {
+  if (!subscription?.pendingPlan || !subscription.pendingInterval || !subscription.entitledUntil) {
+    return null;
+  }
+  if (new Date(subscription.entitledUntil).getTime() <= now) return null;
+  return {
+    plan: subscription.pendingPlan,
+    interval: subscription.pendingInterval,
+    effectiveAt: subscription.entitledUntil,
+  };
+}
+
+/** A plan can change while it is paid and renewing; a cancelled one ends instead. */
+function canChangePlan(subscription: SubscriptionSummaryRow | null): boolean {
+  return Boolean(
+    subscription?.plan &&
+    subscription.interval &&
+    (subscription.status === "active" || subscription.status === "trialing") &&
+    !subscription.cancelAtPeriodEnd,
+  );
 }
 
 async function activeTrialEndsAt(env: Bindings, tenantId: string): Promise<string | null> {
@@ -369,10 +339,6 @@ async function activeTrialEndsAt(env: Bindings, tenantId: string): Promise<strin
     .bind(tenantId)
     .first<{ endsAt: string }>();
   return row?.endsAt ?? null;
-}
-
-export async function hasProEntitlement(env: Bindings, tenantId: string): Promise<boolean> {
-  return (await getProEntitlementSource(env, tenantId)) !== null;
 }
 
 async function canManageSponsoredSeats(env: Bindings, tenantId: string): Promise<boolean> {
@@ -391,22 +357,75 @@ async function canManageSponsoredSeats(env: Bindings, tenantId: string): Promise
 async function nonTerminalSubscriptionCount(env: Bindings, tenantId: string): Promise<number> {
   const row = await env.DB.prepare(
     `SELECT COUNT(*) AS count FROM billing_subscriptions
-     WHERE tenant_id = ? AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}`,
+     WHERE tenant_id = ? AND family_tenant_id IS NULL
+       AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}`,
   )
     .bind(tenantId)
     .first<{ count: number }>();
   return Number(row?.count ?? 0);
 }
 
+/**
+ * A family can be bought for while nothing renews for it. A previous owner's plan that runs to
+ * the end of its period does not block the new owner, who would otherwise wait for a lapse.
+ */
+const FAMILY_CHECKOUT_BLOCKING_CONDITION = `(
+  status IN ('active', 'trialing', 'past_due', 'paused') AND cancel_at_period_end = 0
+)`;
+
+async function hasBlockingSubscription(
+  env: Bindings,
+  tenantId: string,
+  familyTenantId: string | null,
+): Promise<boolean> {
+  if (!familyTenantId) return (await nonTerminalSubscriptionCount(env, tenantId)) > 0;
+  const row = await env.DB.prepare(
+    `SELECT 1 AS found FROM billing_subscriptions
+     WHERE family_tenant_id = ? AND ${FAMILY_CHECKOUT_BLOCKING_CONDITION}
+     LIMIT 1`,
+  )
+    .bind(familyTenantId)
+    .first<{ found: number }>();
+  return Boolean(row);
+}
+
+const PROVIDER_SUBSCRIPTION_COLUMNS = `provider, provider_subscription_id AS providerSubscriptionId,
+  provider_customer_id AS providerCustomerId, provider_plan_id AS providerPlanId, plan, interval,
+  family_tenant_id AS familyTenantId, status, current_period_ends_at AS currentPeriodEndsAt,
+  cancel_at_period_end AS cancelAtPeriodEnd`;
+
+/** The family and plan behind a member's family-granted tier. */
+async function familyCoverage(
+  env: Bindings,
+  familyTenantId: string,
+): Promise<BillingSummary["coveredBy"]> {
+  const row = await env.DB.prepare(
+    `SELECT tenant.name AS familyName, subscription.plan AS plan
+     FROM tenants AS tenant
+     JOIN billing_subscriptions AS subscription ON subscription.family_tenant_id = tenant.id
+     WHERE tenant.id = ? AND subscription.plan IN ('family_budget', 'family_pro')
+     ORDER BY CASE subscription.status WHEN 'active' THEN 0 ELSE 1 END,
+       subscription.last_provider_occurred_at DESC
+     LIMIT 1`,
+  )
+    .bind(familyTenantId)
+    .first<{ familyName: string; plan: FamilyBillingPlan }>();
+  if (!row) return null;
+  return { familyId: familyTenantId, familyName: row.familyName, plan: row.plan };
+}
+
+const CHECKOUT_REFERENCE_COLUMNS = `id AS reference, provider, plan, interval,
+  provider_plan_id AS providerPlanId, family_tenant_id AS familyTenantId,
+  provider_subscription_id AS providerSubscriptionId,
+  provider_checkout_id AS providerCheckoutId, created_at AS createdAt, expires_at AS expiresAt`;
+
+/** The tenant's open checkout already handed to a provider, for any purpose. */
 async function pendingCheckoutReference(
   env: Bindings,
   tenantId: string,
 ): Promise<BillingCheckoutReference | null> {
   const checkout = await env.DB.prepare(
-    `SELECT id AS reference, provider, interval, provider_plan_id AS providerPlanId,
-            provider_subscription_id AS providerSubscriptionId,
-            provider_checkout_id AS providerCheckoutId, created_at AS createdAt,
-            expires_at AS expiresAt
+    `SELECT ${CHECKOUT_REFERENCE_COLUMNS}
      FROM billing_checkout_references
      WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
        AND (provider_subscription_id IS NOT NULL OR provider_checkout_id IS NOT NULL)
@@ -418,358 +437,38 @@ async function pendingCheckoutReference(
   return checkout ?? null;
 }
 
-async function monthlyFeatureUsage(
-  env: Bindings,
-  tenantId: string,
-  feature: BillingFeature,
-  limit: number,
-  now = new Date(),
-): Promise<BillingUsage> {
-  const month = manilaMonth(now);
-  const row = await env.DB.prepare(
-    "SELECT count FROM billing_monthly_usage WHERE tenant_id = ? AND month = ? AND feature = ?",
-  )
-    .bind(tenantId, month, feature)
-    .first<{ count: number }>();
+function summaryPendingCheckout(
+  checkout: BillingCheckoutReference | null,
+  familyTenantId: string | null,
+): BillingSummary["pendingCheckout"] {
+  if (!checkout || checkout.familyTenantId !== familyTenantId) return null;
+  // A checkout the previous Worker opened sold Pro.
+  const plan = (billingPlanKeys as readonly string[]).includes(checkout.plan)
+    ? checkout.plan
+    : "pro";
   return {
-    feature,
-    used: Number(row?.count ?? 0),
-    limit,
-    periodKind: "calendar_month",
-    periodStartedAt: manilaMonthStart(now),
-    resetsAt: nextManilaMonth(now),
+    provider: checkout.provider,
+    plan,
+    interval: checkout.interval,
+    createdAt: checkout.createdAt,
+    expiresAt: checkout.expiresAt,
   };
-}
-
-export async function getCustomCategoryAllowance(
-  env: Bindings,
-  tenantId: string,
-  isPro?: boolean,
-): Promise<BillingResourceAllowance> {
-  const hasPro = isPro ?? (await hasProEntitlement(env, tenantId));
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS count FROM categories
-     WHERE tenant_id = ? AND origin = 'custom' AND archived = 0
-       AND (? = 1 OR required_plan = 'free')`,
-  )
-    .bind(tenantId, hasPro ? 1 : 0)
-    .first<{ count: number }>();
-  return {
-    resource: "custom_category",
-    used: Number(row?.count ?? 0),
-    limit: hasPro ? null : FREE_CUSTOM_CATEGORY_LIMIT,
-  };
-}
-
-export async function customCategoryLimitError(
-  env: Bindings,
-  tenantId: string,
-): Promise<HttpError> {
-  const allowance = await getCustomCategoryAllowance(env, tenantId, false);
-  return new HttpError(
-    409,
-    "resource_limit_reached",
-    "You have reached your custom category limit.",
-    {
-      resource: allowance.resource,
-      used: allowance.used,
-      limit: FREE_CUSTOM_CATEGORY_LIMIT,
-      billingPath: "/app/settings#plan-and-billing",
-    },
-  );
-}
-
-async function monthlyLimitError(
-  env: Bindings,
-  tenantId: string,
-  feature: BillingFeature,
-  message: string,
-): Promise<HttpError> {
-  const isPro = await hasProEntitlement(env, tenantId);
-  const limit = (isPro ? PRO_LIMITS : FREE_LIMITS)[feature];
-  const item = await monthlyFeatureUsage(env, tenantId, feature, limit);
-  return new HttpError(409, "monthly_limit_reached", message, {
-    feature: item.feature,
-    used: item.used,
-    limit,
-    periodKind: item.periodKind,
-    periodStartedAt: item.periodStartedAt,
-    resetsAt: item.resetsAt,
-    billingPath: "/app/settings#plan-and-billing",
-  });
-}
-
-function buildMonthlyUsageStatement(
-  env: Bindings,
-  tenantId: string,
-  feature: BillingFeature,
-): D1PreparedStatement {
-  return env.DB.prepare(
-    `INSERT INTO billing_monthly_usage (tenant_id, month, feature, count, allowance)
-     VALUES (
-       ?, ?, ?, 1,
-       CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN ? ELSE ? END
-     )
-     ON CONFLICT(tenant_id, month, feature) DO UPDATE SET
-       count = billing_monthly_usage.count + 1,
-       allowance = CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN ? ELSE ? END,
-       updated_at = datetime('now')`,
-  ).bind(
-    tenantId,
-    manilaMonth(),
-    feature,
-    tenantId,
-    PRO_LIMITS[feature],
-    FREE_LIMITS[feature],
-    tenantId,
-    PRO_LIMITS[feature],
-    FREE_LIMITS[feature],
-  );
-}
-
-/**
- * Draw one unit from the shared monthly AI pool. Every billable provider-backed AI request
- * (assistant generation, transcription, speech, receipt vision, PDF entry, voice entry) calls
- * this before its provider call, so a provider failure still consumes the unit. The BEFORE
- * INSERT/UPDATE triggers on billing_monthly_usage are the atomic cap; any other database error
- * propagates so the provider is never reached.
- */
-export async function consumeAiUsage(env: Bindings, tenantId: string): Promise<void> {
-  try {
-    await buildMonthlyUsageStatement(env, tenantId, "ai_usage").run();
-  } catch (error) {
-    if (isMonthlyLimitDatabaseError(error)) {
-      throw await monthlyLimitError(
-        env,
-        tenantId,
-        "ai_usage",
-        "You have reached your AI usage limit for this month.",
-      );
-    }
-    throw error;
-  }
-}
-
-async function applySubscriptionUpdate(
-  env: Bindings,
-  update: BillingSubscriptionSnapshot,
-  webhook?: { providerEventId: string; type: string },
-): Promise<BillingSubscriptionApplyOutcome> {
-  const configuredPlanInterval = configuredInterval(env, update.provider, update.providerPlanId);
-  if (
-    !update.revocation &&
-    (!configuredPlanInterval || (update.interval && update.interval !== configuredPlanInterval))
-  ) {
-    return "rejected_plan";
-  }
-  // A revocation of a subscription whose plan is no longer configured keeps the interval
-  // already recorded on its row instead of erasing it.
-  const interval = configuredPlanInterval ?? update.interval;
-
-  if (webhook) {
-    const existingEvent = await env.DB.prepare(
-      `SELECT 1 AS found FROM billing_webhook_events
-       WHERE provider = ? AND provider_event_id = ?`,
-    )
-      .bind(update.provider, webhook.providerEventId)
-      .first();
-    if (existingEvent) return "duplicate_or_stale";
-  }
-
-  const existingSubscription = await env.DB.prepare(
-    `SELECT tenant_id AS tenantId, provider_customer_id AS providerCustomerId,
-            last_provider_occurred_at AS lastProviderOccurredAt,
-            last_provider_event_id AS lastProviderEventId
-     FROM billing_subscriptions
-     WHERE provider = ? AND provider_subscription_id = ?`,
-  )
-    .bind(update.provider, update.providerSubscriptionId)
-    .first<{
-      tenantId: string;
-      providerCustomerId: string | null;
-      lastProviderOccurredAt: string;
-      lastProviderEventId: string;
-    }>();
-  if (
-    existingSubscription?.providerCustomerId &&
-    update.providerCustomerId &&
-    existingSubscription.providerCustomerId !== update.providerCustomerId
-  ) {
-    throw new HttpError(409, "invalid_webhook_ownership", "Invalid billing ownership.");
-  }
-  if (
-    existingSubscription &&
-    (update.occurredAt < existingSubscription.lastProviderOccurredAt ||
-      (update.occurredAt === existingSubscription.lastProviderOccurredAt &&
-        update.providerUpdateId <= existingSubscription.lastProviderEventId))
-  ) {
-    return "duplicate_or_stale";
-  }
-
-  const reference =
-    !existingSubscription && update.checkoutReference
-      ? await env.DB.prepare(
-          `SELECT tenant_id AS tenantId, provider_plan_id AS providerPlanId
-           FROM billing_checkout_references
-           WHERE id = ? AND provider = ? AND completed_at IS NULL
-             AND provider_plan_id = ?
-             AND (
-               provider_subscription_id = ?
-               OR (
-                 provider_subscription_id IS NULL
-                 AND datetime(?) >= datetime(created_at)
-                 AND datetime(?) <= datetime(expires_at)
-                 AND (superseded_at IS NULL OR datetime(?) <= datetime(superseded_at))
-               )
-             )`,
-        )
-          .bind(
-            update.checkoutReference,
-            update.provider,
-            update.providerPlanId,
-            update.providerSubscriptionId,
-            update.occurredAt,
-            update.occurredAt,
-            update.occurredAt,
-          )
-          .first<{ tenantId: string; providerPlanId: string }>()
-      : null;
-
-  const tenantId = existingSubscription?.tenantId ?? reference?.tenantId;
-  if (!tenantId) return "unmatched";
-
-  if (update.providerCustomerId) {
-    const customerLink = await env.DB.prepare(
-      `SELECT provider_customer_id AS providerCustomerId
-       FROM billing_customers
-       WHERE provider = ? AND tenant_id = ?`,
-    )
-      .bind(update.provider, tenantId)
-      .first<{ providerCustomerId: string | null }>();
-    if (
-      customerLink?.providerCustomerId &&
-      customerLink.providerCustomerId !== update.providerCustomerId
-    ) {
-      throw new HttpError(409, "invalid_webhook_ownership", "Invalid billing ownership.");
-    }
-  }
-
-  const statements: D1PreparedStatement[] = [];
-  if (webhook) {
-    statements.push(
-      env.DB.prepare(
-        `INSERT INTO billing_webhook_events
-           (provider, provider_event_id, event_type, occurred_at)
-         VALUES (?, ?, ?, ?)`,
-      ).bind(update.provider, webhook.providerEventId, webhook.type, update.occurredAt),
-    );
-  }
-  if (update.providerCustomerId) {
-    statements.push(
-      env.DB.prepare(
-        `INSERT INTO billing_customers (tenant_id, provider, provider_customer_id)
-         VALUES (?, ?, ?)
-         ON CONFLICT(tenant_id, provider) DO UPDATE SET
-           provider_customer_id = excluded.provider_customer_id,
-           updated_at = datetime('now')
-         WHERE billing_customers.provider_customer_id IS NULL
-            OR billing_customers.provider_customer_id = excluded.provider_customer_id`,
-      ).bind(tenantId, update.provider, update.providerCustomerId),
-    );
-  }
-  statements.push(
-    env.DB.prepare(
-      `INSERT INTO billing_subscriptions
-         (provider, provider_subscription_id, tenant_id, provider_customer_id,
-          provider_product_id, provider_plan_id, provider_status, status, interval,
-          current_period_ends_at, scheduled_change_at, cancel_at_period_end,
-          last_provider_occurred_at, last_provider_event_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(provider, provider_subscription_id) DO UPDATE SET
-         provider_customer_id = COALESCE(excluded.provider_customer_id, billing_subscriptions.provider_customer_id),
-         provider_product_id = COALESCE(excluded.provider_product_id, billing_subscriptions.provider_product_id),
-         provider_plan_id = excluded.provider_plan_id,
-         provider_status = excluded.provider_status,
-         status = excluded.status,
-         interval = excluded.interval,
-         current_period_ends_at = CASE
-           WHEN excluded.status = 'canceled'
-             AND excluded.cancel_at_period_end = 1
-             AND excluded.current_period_ends_at IS NULL
-           THEN billing_subscriptions.current_period_ends_at
-           ELSE excluded.current_period_ends_at
-         END,
-         scheduled_change_at = excluded.scheduled_change_at,
-         cancel_at_period_end = excluded.cancel_at_period_end,
-         last_provider_occurred_at = excluded.last_provider_occurred_at,
-         last_provider_event_id = excluded.last_provider_event_id,
-         updated_at = datetime('now')
-       WHERE excluded.last_provider_occurred_at > billing_subscriptions.last_provider_occurred_at
-          OR (
-            excluded.last_provider_occurred_at = billing_subscriptions.last_provider_occurred_at
-            AND excluded.last_provider_event_id > billing_subscriptions.last_provider_event_id
-          )`,
-    ).bind(
-      update.provider,
-      update.providerSubscriptionId,
-      tenantId,
-      update.providerCustomerId,
-      update.providerProductId,
-      update.providerPlanId,
-      update.providerStatus,
-      update.status,
-      interval,
-      update.currentPeriodEndsAt,
-      update.scheduledChangeAt,
-      update.cancelAtPeriodEnd ? 1 : 0,
-      update.occurredAt,
-      update.providerUpdateId,
-    ),
-  );
-  if (reference && update.checkoutReference) {
-    statements.push(
-      env.DB.prepare(
-        `UPDATE billing_checkout_references
-         SET completed_at = ?, updated_at = datetime('now')
-         WHERE id = ? AND provider = ? AND provider_subscription_id = ? AND completed_at IS NULL`,
-      ).bind(
-        update.occurredAt,
-        update.checkoutReference,
-        update.provider,
-        update.providerSubscriptionId,
-      ),
-    );
-  }
-
-  try {
-    await env.DB.batch(statements);
-  } catch (error) {
-    if (webhook && isWebhookDuplicateError(error)) return "duplicate_or_stale";
-    throw error;
-  }
-  return "applied";
 }
 
 export const billingRepository: BillingRepository = {
   async getSummary(env, tenantId) {
-    const [
-      subscription,
-      entitlementSource,
-      nonTerminalCount,
-      adminSeatManagement,
-      pendingCheckout,
-    ] = await Promise.all([
-      currentSubscription(env, tenantId),
-      getProEntitlementSource(env, tenantId),
-      nonTerminalSubscriptionCount(env, tenantId),
-      canManageSponsoredSeats(env, tenantId),
-      pendingCheckoutReference(env, tenantId),
-    ]);
-    const isPro = entitlementSource !== null;
-    const plan = isPro ? "zoption_pro" : "free";
-    const limits = isPro ? PRO_LIMITS : FREE_LIMITS;
+    const [subscription, access, nonTerminalCount, adminSeatManagement, pendingCheckout] =
+      await Promise.all([
+        currentSubscription(env, tenantId),
+        readEffectiveAccess(env, tenantId),
+        nonTerminalSubscriptionCount(env, tenantId),
+        canManageSponsoredSeats(env, tenantId),
+        pendingCheckoutReference(env, tenantId),
+      ]);
+    const tier = access.tier;
+    // A plan bought during the trial is reported over the trial that still outranks it.
     const trialEndsAt =
-      entitlementSource === "trial" ? await activeTrialEndsAt(env, tenantId) : null;
+      access.source === "trial" && !subscription ? await activeTrialEndsAt(env, tenantId) : null;
     const period = trialEndsAt
       ? {
           provider: null,
@@ -787,41 +486,43 @@ export const billingRepository: BillingRepository = {
           scheduledChangeAt: subscription?.scheduledChangeAt ?? null,
           cancelAtPeriodEnd: Boolean(subscription?.cancelAtPeriodEnd),
         };
+    const subscriptionPlan =
+      subscription?.plan === "budget" || subscription?.plan === "pro" ? subscription.plan : null;
     return {
-      plan,
-      entitlementSource: entitlementSource === "trial" ? null : entitlementSource,
+      plan: tier,
+      entitlementSource: access.source === "trial" ? null : access.source,
+      subscriptionPlan,
       ...period,
-      pendingCheckout: pendingCheckout
-        ? {
-            provider: pendingCheckout.provider,
-            interval: pendingCheckout.interval,
-            createdAt: pendingCheckout.createdAt,
-            expiresAt: pendingCheckout.expiresAt,
-          }
-        : null,
+      pendingChange: pendingChange(subscription),
+      pendingCheckout: summaryPendingCheckout(pendingCheckout, null),
+      coveredBy:
+        access.source === "family" && access.familyTenantId
+          ? await familyCoverage(env, access.familyTenantId)
+          : null,
       canCheckout: nonTerminalCount === 0 && pendingCheckout === null,
+      canChangePlan: canChangePlan(subscription),
       canManageBilling: Boolean(subscription),
       canManageSponsoredSeats: adminSeatManagement,
       nonTerminalSubscriptionCount: nonTerminalCount,
       usages: await Promise.all([
-        monthlyFeatureUsage(env, tenantId, "ai_usage", limits.ai_usage),
-        monthlyFeatureUsage(env, tenantId, "file_import", limits.file_import),
+        monthlyFeatureUsage(env, tenantId, "ai_usage", monthlyLimit(tier, "ai_usage")),
+        monthlyFeatureUsage(env, tenantId, "file_import", monthlyLimit(tier, "file_import")),
       ]),
-      allowances: [await getCustomCategoryAllowance(env, tenantId, isPro)],
+      allowances: [await getCustomCategoryAllowance(env, tenantId, tier)],
     };
   },
 
-  async requirePro(env, tenantId, capability) {
-    if (await hasProEntitlement(env, tenantId)) return;
-    throw new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.", {
-      capability,
-      requiredPlan: "zoption_pro",
-      billingPath: "/app/settings",
-    });
+  async requirePaidPlan(env, tenantId, capability) {
+    if ((await readTier(env, tenantId)) !== "free") return;
+    throw paidPlanRequiredError(capability);
   },
 
-  async createCheckoutReference(env, tenantId, interval, provider) {
-    if (await this.hasNonTerminalSubscription(env, tenantId)) {
+  async createCheckoutReference(env, tenantId, request) {
+    const { plan, interval, provider, familyTenantId } = request;
+    if (isFamilyPlan(plan) !== (familyTenantId !== null)) {
+      throw new HttpError(400, "invalid_request", "Choose a plan that matches the workspace.");
+    }
+    if (await hasBlockingSubscription(env, tenantId, familyTenantId)) {
       throw new HttpError(
         409,
         "subscription_already_exists",
@@ -842,19 +543,33 @@ export const billingRepository: BillingRepository = {
       .run();
 
     const id = crypto.randomUUID();
-    const selectedPlanId = configuredPlanId(env, provider, interval);
+    const selectedPlanId = configuredPlanId(env, provider, plan, interval);
     const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
     try {
+      // The personal guard re-checks atomically; a family's is checked above, since the
+      // subscription paying for it may sit on a previous owner's workspace.
       const result = await env.DB.prepare(
         `INSERT INTO billing_checkout_references
-           (id, tenant_id, provider, plan, interval, provider_plan_id, expires_at)
-         SELECT ?, ?, ?, 'zoption_pro', ?, ?, ?
-         WHERE NOT EXISTS (
+           (id, tenant_id, provider, plan, interval, provider_plan_id, family_tenant_id, expires_at)
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?
+         WHERE ? IS NOT NULL OR NOT EXISTS (
            SELECT 1 FROM billing_subscriptions
-           WHERE tenant_id = ? AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}
+           WHERE tenant_id = ? AND family_tenant_id IS NULL
+             AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}
          )`,
       )
-        .bind(id, tenantId, provider, interval, selectedPlanId, expiresAt, tenantId)
+        .bind(
+          id,
+          tenantId,
+          provider,
+          plan,
+          interval,
+          selectedPlanId,
+          familyTenantId,
+          expiresAt,
+          familyTenantId,
+          tenantId,
+        )
         .run();
       if ((result.meta.changes ?? 0) !== 1) {
         throw new HttpError(
@@ -871,10 +586,7 @@ export const billingRepository: BillingRepository = {
         message.includes("billing_checkout_references.tenant_id")
       ) {
         const existing = await env.DB.prepare(
-          `SELECT id, provider, interval, provider_plan_id AS providerPlanId,
-                  provider_subscription_id AS providerSubscriptionId,
-                  provider_checkout_id AS providerCheckoutId, created_at AS createdAt,
-                  expires_at AS expiresAt
+          `SELECT ${CHECKOUT_REFERENCE_COLUMNS}
            FROM billing_checkout_references
            WHERE tenant_id = ? AND completed_at IS NULL AND superseded_at IS NULL
              AND (
@@ -885,31 +597,15 @@ export const billingRepository: BillingRepository = {
            LIMIT 1`,
         )
           .bind(tenantId, now)
-          .first<{
-            id: string;
-            provider: BillingProvider;
-            interval: BillingInterval;
-            providerPlanId: string;
-            providerSubscriptionId: string | null;
-            providerCheckoutId: string | null;
-            createdAt: string;
-            expiresAt: string;
-          }>();
+          .first<BillingCheckoutReference>();
         if (
           existing?.provider === provider &&
+          existing.plan === plan &&
           existing.interval === interval &&
-          existing.providerPlanId === selectedPlanId
+          existing.providerPlanId === selectedPlanId &&
+          existing.familyTenantId === familyTenantId
         ) {
-          return {
-            reference: existing.id,
-            provider: existing.provider,
-            interval: existing.interval,
-            providerPlanId: existing.providerPlanId,
-            providerSubscriptionId: existing.providerSubscriptionId,
-            providerCheckoutId: existing.providerCheckoutId,
-            createdAt: existing.createdAt,
-            expiresAt: existing.expiresAt,
-          };
+          return existing;
         }
         throw new HttpError(
           409,
@@ -922,7 +618,9 @@ export const billingRepository: BillingRepository = {
     return {
       reference: id,
       provider,
+      plan,
       interval,
+      familyTenantId,
       providerPlanId: selectedPlanId,
       providerSubscriptionId: null,
       providerCheckoutId: null,
@@ -958,21 +656,92 @@ export const billingRepository: BillingRepository = {
     return Boolean(row);
   },
 
-  async getProviderSubscription(env, tenantId, provider) {
+  async getProviderSubscription(env, tenantId, familyTenantId) {
     const subscription = await env.DB.prepare(
-      `SELECT provider, provider_subscription_id AS providerSubscriptionId,
-              provider_customer_id AS providerCustomerId, provider_plan_id AS providerPlanId,
-              status, current_period_ends_at AS currentPeriodEndsAt,
-              cancel_at_period_end AS cancelAtPeriodEnd
+      `SELECT ${PROVIDER_SUBSCRIPTION_COLUMNS}
        FROM billing_subscriptions
-       WHERE tenant_id = ? AND provider = ? AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}
+       WHERE tenant_id = ? AND family_tenant_id IS ?
+         AND ${CHECKOUT_BLOCKING_SUBSCRIPTION_CONDITION}
        ORDER BY last_provider_occurred_at DESC, last_provider_event_id DESC
        LIMIT 1`,
     )
-      .bind(tenantId, provider)
+      .bind(tenantId, familyTenantId)
       .first<BillingProviderSubscriptionRow>();
     if (!subscription) return null;
     return { ...subscription, cancelAtPeriodEnd: Boolean(subscription.cancelAtPeriodEnd) };
+  },
+
+  async recordPlanChange(env, tenantId, subscription, change) {
+    await env.DB.prepare(
+      `UPDATE billing_subscriptions
+       SET provider_plan_id = ?, plan = ?, interval = ?,
+           entitled_plan = ?, entitled_until = ?, pending_plan = ?, pending_interval = ?,
+           updated_at = datetime('now')
+       WHERE tenant_id = ? AND provider = ? AND provider_subscription_id = ?`,
+    )
+      .bind(
+        change.providerPlanId,
+        change.plan,
+        change.interval,
+        change.entitledPlan,
+        change.entitledUntil,
+        change.pending?.plan ?? null,
+        change.pending?.interval ?? null,
+        tenantId,
+        subscription.provider,
+        subscription.providerSubscriptionId,
+      )
+      .run();
+  },
+
+  async familyPlanState(env, familyTenantId) {
+    const row = await env.DB.prepare(`SELECT ${FAMILY_PLAN_STATE_SQL} AS state`)
+      .bind(familyTenantId, familyTenantId)
+      .first<{ state: FamilyPlanState }>();
+    return row?.state ?? "unpaid";
+  },
+
+  async getFamilySummary(env, familyTenantId, ownerTenantId) {
+    const [subscription, state, blocked, pendingCheckout] = await Promise.all([
+      currentFamilySubscription(env, familyTenantId),
+      this.familyPlanState(env, familyTenantId),
+      hasBlockingSubscription(env, ownerTenantId, familyTenantId),
+      pendingCheckoutReference(env, ownerTenantId),
+    ]);
+    const plan =
+      subscription?.plan === "family_budget" || subscription?.plan === "family_pro"
+        ? subscription.plan
+        : null;
+    const paidByYou = subscription?.tenantId === ownerTenantId;
+    const checkout = summaryPendingCheckout(pendingCheckout, familyTenantId);
+    return {
+      state,
+      plan: state === "unpaid" ? null : plan,
+      interval: subscription?.interval ?? null,
+      provider: subscription?.provider ?? null,
+      status: subscription?.status ?? null,
+      currentPeriodEndsAt: subscription?.currentPeriodEndsAt ?? null,
+      cancelAtPeriodEnd: Boolean(subscription?.cancelAtPeriodEnd),
+      paidByYou,
+      pendingChange: paidByYou ? pendingChange(subscription) : null,
+      pendingCheckout: checkout,
+      canCheckout: !blocked && pendingCheckout === null,
+      canChangePlan: paidByYou && canChangePlan(subscription),
+    };
+  },
+
+  async listFamilySubscriptions(env, familyTenantId) {
+    const rows = await env.DB.prepare(
+      `SELECT ${PROVIDER_SUBSCRIPTION_COLUMNS}
+       FROM billing_subscriptions
+       WHERE family_tenant_id = ? AND ${FAMILY_CHECKOUT_BLOCKING_CONDITION}`,
+    )
+      .bind(familyTenantId)
+      .all<BillingProviderSubscriptionRow>();
+    return rows.results.map((row) => ({
+      ...row,
+      cancelAtPeriodEnd: Boolean(row.cancelAtPeriodEnd),
+    }));
   },
 
   async getPendingCheckout(env, tenantId) {
@@ -982,11 +751,7 @@ export const billingRepository: BillingRepository = {
   async listDuePendingCheckouts(env, limit) {
     const boundedLimit = Math.max(1, Math.min(100, Math.trunc(limit)));
     const rows = await env.DB.prepare(
-      `SELECT id AS reference, tenant_id AS tenantId, provider, interval,
-              provider_plan_id AS providerPlanId,
-              provider_subscription_id AS providerSubscriptionId,
-              provider_checkout_id AS providerCheckoutId,
-              created_at AS createdAt, expires_at AS expiresAt
+      `SELECT ${CHECKOUT_REFERENCE_COLUMNS}, tenant_id AS tenantId
        FROM billing_checkout_references
        WHERE completed_at IS NULL AND superseded_at IS NULL
          AND (provider_subscription_id IS NOT NULL OR provider_checkout_id IS NOT NULL)

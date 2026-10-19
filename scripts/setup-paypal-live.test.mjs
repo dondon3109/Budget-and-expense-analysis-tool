@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { PAYPAL_PLANS } from "./paypal-plans.mjs";
 import { setupPayPalLive } from "./setup-paypal-live.mjs";
 
 const eventTypes = [
@@ -33,17 +34,22 @@ function queuedFetch(responses) {
   return { calls, fetchImpl };
 }
 
+/** OAuth, an empty catalog, then a new product and every plan created in catalog order. */
+function createResponses() {
+  return [
+    json({ access_token: "live-access-token" }),
+    json({ products: [], total_pages: 1 }),
+    json({ id: "PROD-1" }, 201),
+    json({ plans: [], total_pages: 1 }),
+    ...PAYPAL_PLANS.map((entry) => json({ id: `P-${entry.variable}` }, 201)),
+  ];
+}
+
 describe("setupPayPalLive", () => {
   it("creates a webhook with the exact subscription event set", async () => {
     const webhookUrl = "https://api.zoption.site/api/billing/paypal/webhook";
     const { calls, fetchImpl } = queuedFetch([
-      json({ access_token: "live-access-token" }),
-      json({ products: [], total_pages: 1 }),
-      json({ id: "PROD-1" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-MONTHLY" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-ANNUAL" }, 201),
+      ...createResponses(),
       json({ webhooks: [] }),
       json({ id: "WH-LIVE" }, 201),
     ]);
@@ -60,6 +66,7 @@ describe("setupPayPalLive", () => {
       }),
     ).resolves.toMatchObject({
       mode: "apply",
+      plans: { PAYPAL_FAMILY_PRO_ANNUAL_PLAN_ID: "P-PAYPAL_FAMILY_PRO_ANNUAL_PLAN_ID" },
       webhooks: { [webhookUrl]: { id: "WH-LIVE", action: "create" } },
     });
 
@@ -77,13 +84,7 @@ describe("setupPayPalLive", () => {
     const webhookUrl =
       "https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook";
     const { calls, fetchImpl } = queuedFetch([
-      json({ access_token: "live-access-token" }),
-      json({ products: [], total_pages: 1 }),
-      json({ id: "PROD-1" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-MONTHLY" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-ANNUAL" }, 201),
+      ...createResponses(),
       json({
         webhooks: [
           {

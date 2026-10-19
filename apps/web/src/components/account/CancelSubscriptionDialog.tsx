@@ -72,7 +72,8 @@ function CancelSubscriptionDialogContent({
         <p className="eyebrow">Zoption Pro</p>
         <h2 id={titleId}>Cancel renewal?</h2>
         <p id={descriptionId}>
-          Renewal will stop. No automatic refund is issued, and Pro access remains available through
+          Renewal will stop. No automatic refund is issued, and paid access remains available
+          through
           {` ${paidThrough}`}.
         </p>
         <div className="form-modal-actions">

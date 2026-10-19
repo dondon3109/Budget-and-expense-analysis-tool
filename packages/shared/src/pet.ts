@@ -276,7 +276,7 @@ export function hatchPetEgg(state: PetState, at: number): PetState | null {
 /**
  * Applies one event, in time order. An egg only counts logins toward hatching. A hatched pet earns
  * the capped points, then eats points to refill the health it lost since its last activity. Without
- * `canGrow` (Pro) the points stop at `petFreePointsCap`; the rows are still kept, at the points
+ * `canGrow` (a paid plan) the points stop at `petFreePointsCap`; the rows are still kept, at the points
  * they actually added, so the daily caps and the variety bonus count them.
  */
 export function applyPetEvent(previous: PetState, event: PetEvent, canGrow: boolean): PetState {

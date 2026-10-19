@@ -23,7 +23,7 @@ describe("mobile sync subscription push repository", () => {
 
   it("creates, updates, cancels, reactivates, and removes a scheduled subscription idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     insertFreeCategory(database);
     const entityId = "50000000-0000-4000-8000-000000000002";
     const create = {
@@ -215,7 +215,7 @@ describe("mobile sync subscription push repository", () => {
 
   it("rejects a Pro category and an unowned account", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const proCategory = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -272,7 +272,7 @@ describe("mobile sync subscription push repository", () => {
 
   it("returns a stale revision conflict for an out-of-date subscription update", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     insertFreeCategory(database);
     database
       .prepare("UPDATE subscriptions SET name = ? WHERE id = ?")
@@ -315,7 +315,7 @@ describe("mobile sync event push repository", () => {
 
   it("creates, updates, and deletes a calendar event idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const entityId = "60000000-0000-4000-8000-000000000002";
     const create = {
       protocolVersion: 1 as const,
@@ -407,7 +407,7 @@ describe("mobile sync event push repository", () => {
 
   it("rejects an update whose merged times are invalid", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
 
     const badEnd = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -454,7 +454,7 @@ describe("mobile sync event push repository", () => {
 
   it("returns a stale revision conflict for an out-of-date event update", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database
       .prepare("UPDATE calendar_events SET title = ? WHERE id = ?")
       .run("Anniversary", "event-1");

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getCustomCategoryAllowance } from "../src/db/billing";
+import { getCustomCategoryAllowance } from "../src/db/billing-usage";
 import { categoryRepository } from "../src/db/categories";
 import type { Bindings } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
@@ -197,7 +197,8 @@ describe("categoryRepository entitlement enforcement", () => {
     });
   });
 
-  it("creates a fourth custom category for an effective-Pro tenant already using three", async () => {
+  // The lowest tier with a slot left tags each new category, so a downgrade keeps the earliest.
+  it("tags a Pro tenant's fourth custom category Free while a Free slot is left", async () => {
     const { binding, database } = createD1TestDatabase();
     const tenantId = "effective-pro-tenant";
     createTenant(database, tenantId);
@@ -217,7 +218,7 @@ describe("categoryRepository entitlement enforcement", () => {
     ).resolves.toMatchObject({
       name: "Pro D",
       origin: "custom",
-      requiredPlan: "zoption_pro",
+      requiredPlan: "free",
       locked: false,
     });
   });
@@ -238,7 +239,7 @@ describe("categoryRepository entitlement enforcement", () => {
     ).resolves.toMatchObject({
       name: "New Pro Category",
       origin: "custom",
-      requiredPlan: "zoption_pro",
+      requiredPlan: "free",
       locked: false,
     });
   });
@@ -261,7 +262,7 @@ describe("categoryRepository entitlement enforcement", () => {
     });
   });
 
-  it("restores an archived Pro custom category for a platform-admin Pro tenant", async () => {
+  it("restores an archived Pro custom category into a free slot", async () => {
     const { binding, database } = createD1TestDatabase();
     const tenantId = "restore-pro-tenant";
     createTenant(database, tenantId);
@@ -280,25 +281,27 @@ describe("categoryRepository entitlement enforcement", () => {
     ).resolves.toMatchObject({
       archived: false,
       origin: "custom",
-      requiredPlan: "zoption_pro",
+      requiredPlan: "free",
       locked: false,
     });
   });
 
-  it("keeps archived Pro custom categories locked for tenants without an entitlement", async () => {
+  it("keeps an archived custom category archived when the Free slots are full", async () => {
     const { binding, database } = createD1TestDatabase();
     const tenantId = "restore-free-tenant";
     createTenant(database, tenantId);
     insertArchivedProCategory(database, tenantId, "archived-pro-category");
+    const env = categoryEnvironment(binding);
+    for (const name of ["Free A", "Free B", "Free C", "Free D"]) {
+      await categoryRepository.create(env, tenantId, { name, kind: "expense", color: "#111111" });
+    }
 
     await expect(
-      categoryRepository.update(categoryEnvironment(binding), tenantId, "archived-pro-category", {
-        archived: false,
-      }),
+      categoryRepository.update(env, tenantId, "archived-pro-category", { archived: false }),
     ).rejects.toMatchObject({
-      status: 403,
-      code: "category_requires_pro",
-      details: { requiredPlan: "zoption_pro", billingPath: "/app/settings" },
+      status: 409,
+      code: "resource_limit_reached",
+      details: { resource: "custom_category", used: 4, limit: 4 },
     });
   });
 });

@@ -106,6 +106,9 @@ export const queryKeys = {
     [...queryKeys.workspace(personal), "family-invitations"] as const,
   /** A family workspace: its members, invitations, and seats. */
   family: (family: AuthenticatedWorkspace) => [...queryKeys.workspace(family), "family"] as const,
+  /** A family workspace: its plan, as the owner sees it. */
+  familyBilling: (family: AuthenticatedWorkspace) =>
+    [...queryKeys.family(family), "billing"] as const,
   /** A family workspace: the balances its members share into it. */
   familySharedBalances: (family: AuthenticatedWorkspace) =>
     [...queryKeys.family(family), "shared-balances"] as const,

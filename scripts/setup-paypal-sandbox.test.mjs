@@ -5,6 +5,7 @@ import {
   machineSetupResult,
   setupPayPalSandbox,
 } from "./setup-paypal-sandbox.mjs";
+import { PAYPAL_PLANS } from "./paypal-plans.mjs";
 
 const webhookUrl =
   "https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook";
@@ -36,17 +37,19 @@ function json(value, status = 200) {
 function product(overrides = {}) {
   return {
     id: "PROD-1",
-    name: "Zoption Pro",
+    name: "Zoption",
     type: "SERVICE",
     category: "SOFTWARE",
-    description: "Zoption Pro subscription",
+    description: "Zoption subscription plans",
     ...overrides,
   };
 }
 
-function plan(name, intervalUnit, fixedPrice, overrides = {}) {
+/** The plan PayPal would return for a catalog entry; its id is `P-<variable>`. */
+function plan(entry, overrides = {}) {
+  const { name, intervalUnit, fixedPrice } = entry;
   return {
-    id: `P-${name.includes("Monthly") ? "MONTHLY" : "ANNUAL"}`,
+    id: `P-${entry.variable}`,
     product_id: "PROD-1",
     name,
     status: "ACTIVE",
@@ -89,25 +92,33 @@ function queuedFetch(responses) {
   return { calls, fetchImpl };
 }
 
-function reuseResponses(webhookResponse = webhook()) {
-  const monthly = plan("Zoption Pro Monthly", "MONTH", "149");
-  const annual = plan("Zoption Pro Annual", "YEAR", "1299");
-  monthly.billing_cycles[0].pricing_scheme.fixed_price.value = "149.0";
-  monthly.payment_preferences.setup_fee.value = "0.0";
-  annual.billing_cycles[0].pricing_scheme.fixed_price.value = "1299.00";
-  annual.payment_preferences.setup_fee.value = "0.00";
-  const summaries = [
-    { id: monthly.id, name: monthly.name },
-    { id: annual.id, name: annual.name },
-  ];
+/** One value per catalog plan, keyed by its Worker variable. */
+function perPlan(value) {
+  return Object.fromEntries(PAYPAL_PLANS.map((entry) => [entry.variable, value(entry)]));
+}
+
+/** OAuth, an empty catalog, then a new product and every plan created in catalog order. */
+function createResponses() {
   return [
     json({ access_token: "sandbox-access-token" }),
-    json({ products: [{ id: "PROD-1", name: "Zoption Pro" }], total_pages: 1 }),
+    json({ products: [], total_pages: 1 }),
+    json({ id: "PROD-1" }, 201),
+    json({ plans: [], total_pages: 1 }),
+    ...PAYPAL_PLANS.map((entry) => json({ id: `P-${entry.variable}` }, 201)),
+  ];
+}
+
+function reuseResponses(webhookResponse = webhook()) {
+  const plans = PAYPAL_PLANS.map((entry) => plan(entry));
+  // PayPal may answer with trailing zeros; they still match.
+  plans[0].billing_cycles[0].pricing_scheme.fixed_price.value += ".0";
+  plans[0].payment_preferences.setup_fee.value = "0.00";
+  return [
+    json({ access_token: "sandbox-access-token" }),
+    json({ products: [{ id: "PROD-1", name: "Zoption" }], total_pages: 1 }),
     json(product()),
-    json({ plans: summaries, total_pages: 1 }),
-    json(monthly),
-    json({ plans: summaries, total_pages: 1 }),
-    json(annual),
+    json({ plans: plans.map(({ id, name }) => ({ id, name })), total_pages: 1 }),
+    ...plans.map((details) => json(details)),
     json({ webhooks: [webhookResponse] }),
   ];
 }
@@ -151,15 +162,9 @@ describe("setupPayPalSandbox", () => {
     await expect(setupPayPalSandbox({ env, fetchImpl })).resolves.toEqual({
       mode: "preflight",
       productId: null,
-      monthlyPlanId: null,
-      annualPlanId: null,
+      plans: perPlan(() => null),
       webhookId: null,
-      actions: {
-        product: "create",
-        monthlyPlan: "create",
-        annualPlan: "create",
-        webhook: "create",
-      },
+      actions: { product: "create", plans: perPlan(() => "create"), webhook: "create" },
     });
 
     expect(calls).toHaveLength(3);
@@ -173,40 +178,28 @@ describe("setupPayPalSandbox", () => {
 
   it("creates only the requested PHP Sandbox catalog and Preview webhook with --apply", async () => {
     const { calls, fetchImpl } = queuedFetch([
-      json({ access_token: "sandbox-access-token" }),
-      json({ products: [], total_pages: 1 }),
-      json({ id: "PROD-1" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-MONTHLY" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-ANNUAL" }, 201),
+      ...createResponses(),
       json({ webhooks: [] }),
       json({ id: "WH-SECRET" }, 201),
     ]);
-    const requestIds = ["uuid-product", "uuid-monthly", "uuid-annual", "uuid-webhook"];
+    let requestCount = 0;
 
     await expect(
       setupPayPalSandbox({
         env,
         fetchImpl,
-        randomUuid: () => requestIds.shift(),
+        randomUuid: () => `uuid-${(requestCount += 1)}`,
         apply: true,
       }),
     ).resolves.toEqual({
       mode: "apply",
       productId: "PROD-1",
-      monthlyPlanId: "P-MONTHLY",
-      annualPlanId: "P-ANNUAL",
+      plans: perPlan((entry) => `P-${entry.variable}`),
       webhookId: "WH-SECRET",
-      actions: {
-        product: "create",
-        monthlyPlan: "create",
-        annualPlan: "create",
-        webhook: "create",
-      },
+      actions: { product: "create", plans: perPlan(() => "create"), webhook: "create" },
     });
 
-    expect(calls).toHaveLength(9);
+    expect(calls).toHaveLength(6 + PAYPAL_PLANS.length);
     expect(calls.every((call) => call.url.startsWith("https://api-m.sandbox.paypal.com/"))).toBe(
       true,
     );
@@ -218,19 +211,21 @@ describe("setupPayPalSandbox", () => {
       (call) => call.url.endsWith("/v1/catalogs/products") && call.init.method === "POST",
     );
     expect(JSON.parse(createProduct.init.body)).toEqual({
-      name: "Zoption Pro",
+      name: "Zoption",
       type: "SERVICE",
       category: "SOFTWARE",
-      description: "Zoption Pro subscription",
+      description: "Zoption subscription plans",
     });
 
     const createPlans = calls.filter(
       (call) => call.url.endsWith("/v1/billing/plans") && call.init.method === "POST",
     );
-    expect(createPlans).toHaveLength(2);
+    expect(createPlans.map((call) => JSON.parse(call.init.body).name)).toEqual(
+      PAYPAL_PLANS.map((entry) => entry.name),
+    );
     expect(JSON.parse(createPlans[0].init.body)).toMatchObject({
       product_id: "PROD-1",
-      name: "Zoption Pro Monthly",
+      name: "Zoption Budget Monthly",
       billing_cycles: [
         {
           frequency: { interval_unit: "MONTH", interval_count: 1 },
@@ -240,12 +235,12 @@ describe("setupPayPalSandbox", () => {
         },
       ],
     });
-    expect(JSON.parse(createPlans[1].init.body)).toMatchObject({
-      name: "Zoption Pro Annual",
+    expect(JSON.parse(createPlans[7].init.body)).toMatchObject({
+      name: "Family Pro Annual",
       billing_cycles: [
         {
           frequency: { interval_unit: "YEAR", interval_count: 1 },
-          pricing_scheme: { fixed_price: { value: "1299", currency_code: "PHP" } },
+          pricing_scheme: { fixed_price: { value: "7990", currency_code: "PHP" } },
         },
       ],
     });
@@ -261,7 +256,7 @@ describe("setupPayPalSandbox", () => {
     const createIds = [createProduct, ...createPlans, createWebhook].map(
       (call) => call.init.headers["PayPal-Request-Id"],
     );
-    expect(new Set(createIds).size).toBe(4);
+    expect(new Set(createIds).size).toBe(2 + PAYPAL_PLANS.length);
   });
 
   it("reuses exact resources and reads canonical plan details", async () => {
@@ -270,19 +265,16 @@ describe("setupPayPalSandbox", () => {
     await expect(setupPayPalSandbox({ env, fetchImpl })).resolves.toEqual({
       mode: "preflight",
       productId: "PROD-1",
-      monthlyPlanId: "P-MONTHLY",
-      annualPlanId: "P-ANNUAL",
+      plans: perPlan((entry) => `P-${entry.variable}`),
       webhookId: "WH-1",
-      actions: {
-        product: "reuse",
-        monthlyPlan: "reuse",
-        annualPlan: "reuse",
-        webhook: "reuse",
-      },
+      actions: { product: "reuse", plans: perPlan(() => "reuse"), webhook: "reuse" },
     });
 
-    expect(calls.some((call) => call.url.endsWith("/v1/billing/plans/P-MONTHLY"))).toBe(true);
-    expect(calls.some((call) => call.url.endsWith("/v1/billing/plans/P-ANNUAL"))).toBe(true);
+    for (const entry of PAYPAL_PLANS) {
+      expect(calls.some((call) => call.url.endsWith(`/v1/billing/plans/P-${entry.variable}`))).toBe(
+        true,
+      );
+    }
     expect(
       calls.some((call) => call.init.method === "POST" && !call.url.endsWith("/v1/oauth2/token")),
     ).toBe(false);
@@ -313,13 +305,7 @@ describe("setupPayPalSandbox", () => {
 
   it("rejects duplicate target webhooks without mutating them", async () => {
     const { calls, fetchImpl } = queuedFetch([
-      json({ access_token: "sandbox-access-token" }),
-      json({ products: [], total_pages: 1 }),
-      json({ id: "PROD-1" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-MONTHLY" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-ANNUAL" }, 201),
+      ...createResponses(),
       json({ webhooks: [webhook(), webhook({ id: "WH-2" })] }),
     ]);
 
@@ -331,13 +317,7 @@ describe("setupPayPalSandbox", () => {
 
   it("rejects a mismatched webhook event set without mutating it", async () => {
     const { calls, fetchImpl } = queuedFetch([
-      json({ access_token: "sandbox-access-token" }),
-      json({ products: [], total_pages: 1 }),
-      json({ id: "PROD-1" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-MONTHLY" }, 201),
-      json({ plans: [], total_pages: 1 }),
-      json({ id: "P-ANNUAL" }, 201),
+      ...createResponses(),
       json({ webhooks: [webhook({ event_types: [{ name: eventTypes[0] }] })] }),
     ]);
 
@@ -350,7 +330,7 @@ describe("setupPayPalSandbox", () => {
   it("rejects same-name products that conflict with the required definition", async () => {
     const { calls, fetchImpl } = queuedFetch([
       json({ access_token: "sandbox-access-token" }),
-      json({ products: [{ id: "PROD-1", name: "Zoption Pro" }], total_pages: 1 }),
+      json({ products: [{ id: "PROD-1", name: "Zoption" }], total_pages: 1 }),
       json(product({ category: "BOOKS" })),
     ]);
 
@@ -363,13 +343,13 @@ describe("setupPayPalSandbox", () => {
   });
 
   it("rejects a conflicting target plan instead of mutating it", async () => {
-    const conflictingMonthly = plan("Zoption Pro Monthly", "MONTH", "199");
+    const conflicting = plan({ ...PAYPAL_PLANS[0], fixedPrice: "199" });
     const { calls, fetchImpl } = queuedFetch([
       json({ access_token: "sandbox-access-token" }),
-      json({ products: [{ id: "PROD-1", name: "Zoption Pro" }], total_pages: 1 }),
+      json({ products: [{ id: "PROD-1", name: "Zoption" }], total_pages: 1 }),
       json(product()),
-      json({ plans: [{ id: "P-MONTHLY", name: conflictingMonthly.name }], total_pages: 1 }),
-      json(conflictingMonthly),
+      json({ plans: [{ id: conflicting.id, name: conflicting.name }], total_pages: 1 }),
+      json(conflicting),
     ]);
 
     await expect(setupPayPalSandbox({ env, fetchImpl, apply: true })).rejects.toThrow(
@@ -393,24 +373,22 @@ describe("setupPayPalSandbox", () => {
     const result = {
       mode: "apply",
       productId: "PROD-1",
-      monthlyPlanId: "P-MONTHLY",
-      annualPlanId: "P-ANNUAL",
+      plans: { PAYPAL_BUDGET_MONTHLY_PLAN_ID: "P-BUDGET", PAYPAL_PRO_MONTHLY_PLAN_ID: null },
       webhookId: "WH-SECRET",
       actions: {
         product: "reuse",
-        monthlyPlan: "reuse",
-        annualPlan: "reuse",
+        plans: { PAYPAL_BUDGET_MONTHLY_PLAN_ID: "reuse", PAYPAL_PRO_MONTHLY_PLAN_ID: "create" },
         webhook: "create",
       },
     };
 
     expect(formatSetupResult(result)).toBe(
-      "Mode: apply\nProduct: reuse\nMonthly plan: reuse\nAnnual plan: reuse\nPreview webhook: create\nProduct ID: PROD-1\nMonthly plan ID: P-MONTHLY\nAnnual plan ID: P-ANNUAL",
+      "Mode: apply\nProduct: reuse\nPAYPAL_BUDGET_MONTHLY_PLAN_ID: reuse\nPAYPAL_PRO_MONTHLY_PLAN_ID: create\nPreview webhook: create\nProduct ID: PROD-1\nPAYPAL_BUDGET_MONTHLY_PLAN_ID=P-BUDGET",
     );
     expect(formatSetupResult(result)).not.toContain("WH-SECRET");
     expect(JSON.parse(machineSetupResult(result))).toMatchObject({
       webhook_id: "WH-SECRET",
-      monthly_plan_id: "P-MONTHLY",
+      plans: { PAYPAL_BUDGET_MONTHLY_PLAN_ID: "P-BUDGET" },
     });
   });
 });

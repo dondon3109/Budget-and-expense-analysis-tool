@@ -90,7 +90,7 @@ async function setup() {
   app.route(
     "/api/app/sync",
     createMobileSyncRoutes(
-      createMobileSyncRepository(async () => false),
+      createMobileSyncRepository(async () => "free" as const),
       {
         journal: familyJournal,
         alerts,

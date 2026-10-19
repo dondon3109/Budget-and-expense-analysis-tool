@@ -6,7 +6,7 @@ import {
   type ReceiptPreferences,
 } from "@zoption/shared";
 
-import { consumeAiUsage } from "../db/billing";
+import { consumeAiUsage } from "../db/billing-usage";
 import { loadWorkspaceCurrency } from "../db/workspace-settings";
 import type { ReceiptRepository } from "../db/receipts";
 import { HttpError } from "../errors";

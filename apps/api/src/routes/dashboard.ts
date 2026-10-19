@@ -39,7 +39,7 @@ export interface DashboardLoaders {
 
 export function createDashboardRoutes(
   { dashboardLoader, cashflowTrendLoader, transferFeeLoader }: DashboardLoaders,
-  billing: Pick<BillingRepository, "requirePro">,
+  billing: Pick<BillingRepository, "requirePaidPlan">,
 ) {
   const routes = new Hono<AppEnvironment>();
 
@@ -59,7 +59,11 @@ export function createDashboardRoutes(
       "Choose a valid cashflow trend view.",
     );
     if (input.view !== "weekly") {
-      await billing.requirePro(context.env, context.get("tenant").tenantId, "cashflow_analytics");
+      await billing.requirePaidPlan(
+        context.env,
+        context.get("tenant").tenantId,
+        "cashflow_analytics",
+      );
     }
     return context.json(
       await cashflowTrendLoader(context.env, context.get("tenant").tenantId, input),

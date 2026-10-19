@@ -92,7 +92,7 @@ describe.each(contracts)("released app $versionName", (contract) => {
 
   it("accepts a full snapshot and an incremental pull", async () => {
     const { env } = environment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
 
     const snapshot = await repository.snapshot(
       env,
@@ -114,7 +114,7 @@ describe.each(contracts)("released app $versionName", (contract) => {
 
   it("accepts the push it sends and the acknowledgement after it", async () => {
     const { env } = environment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
 
     const push = await repository.push(
       env,

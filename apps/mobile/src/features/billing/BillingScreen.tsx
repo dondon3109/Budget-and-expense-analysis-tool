@@ -1,26 +1,10 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import * as WebBrowser from "expo-web-browser";
-import type { BillingInterval, BillingProvider, BillingSummary } from "@zoption/shared";
+import { personalBillingPlans, type BillingSummary } from "@zoption/shared";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import {
-  ApiTransportError,
-  cancelBillingSubscription,
-  getBillingSummary,
-  reconcileBillingCheckout,
-  startBillingCheckout,
-} from "@/api/billing";
-import { useSessionSnapshot } from "@/auth/session-state";
-import {
-  Button,
-  Card,
-  ConfirmationDialog,
-  ErrorState,
-  SelectionField,
-  SkeletonLines,
-} from "@/ui/components";
-import { showThankYou } from "@/features/thank-you/ThankYouHost";
+import { ApiTransportError, cancelBillingSubscription, getBillingSummary } from "@/api/billing";
+import { Button, Card, ConfirmationDialog, ErrorState, SkeletonLines } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, typography } from "@/ui/tokens";
@@ -29,52 +13,37 @@ import {
   entitlementCopy,
   pendingCheckoutCopy,
   periodEndsCopy,
-  PLAN_PRICES,
   planName,
   planStatusCopy,
   usageResetsCopy,
   usageTitle,
 } from "./billing-copy";
-
-const RECONCILE_ATTEMPTS = 8;
-const RECONCILE_DELAY_MS = 1500;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { PlanPicker } from "./PlanPicker";
+import { usePlanCheckout } from "./use-plan-checkout";
 
 export function BillingScreen() {
   const theme = useZoptionTheme();
-  const session = useSessionSnapshot();
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [phase, setPhase] = useState<"loading" | "error" | "ready">("loading");
-  const [message, setMessage] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [interval, setIntervalChoice] = useState<BillingInterval>("month");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
 
-  const withToken = useCallback(
-    async <T,>(operation: (token: string) => Promise<T>): Promise<T> => {
-      try {
-        return await operation(await session.getAccessToken(false));
-      } catch (error) {
-        if (error instanceof ApiTransportError && error.code === "session_expired") {
-          return operation(await session.getAccessToken(true));
-        }
-        throw error;
-      }
-    },
-    [session],
-  );
+  // A plan change settles without a summary, so bumping this reloads it.
+  const [reloadToken, setReloadToken] = useState(0);
+  const settled = useCallback((next: BillingSummary | null) => {
+    if (next) setSummary(next);
+    else setReloadToken((value) => value + 1);
+  }, []);
+  const { busy, setBusy, message, setMessage, withToken, checkout, change, checkPayment } =
+    usePlanCheckout(null, settled);
 
   const load = useCallback(async () => {
-    setPhase("loading");
     try {
       const next = await withToken((token) => getBillingSummary({ accessToken: token }));
       setSummary(next);
       setPhase("ready");
     } catch (error) {
-      setMessage(
+      setLoadError(
         error instanceof ApiTransportError ? error.message : "Billing could not be loaded.",
       );
       setPhase("error");
@@ -83,59 +52,7 @@ export function BillingScreen() {
 
   useEffect(() => {
     void load();
-  }, [load]);
-
-  const reconcileLoop = useCallback(async (): Promise<void> => {
-    for (let attempt = 0; attempt < RECONCILE_ATTEMPTS; attempt += 1) {
-      try {
-        const result = await withToken((token) => reconcileBillingCheckout({ accessToken: token }));
-        setSummary(result.summary);
-        if (result.outcome === "confirmed") {
-          setMessage("Your subscription is active. Welcome to Zoption Pro.");
-          showThankYou("pro");
-          return;
-        }
-        if (result.outcome === "closed" || result.outcome === "none") {
-          setMessage("Payment was not confirmed yet. Try again or check back shortly.");
-          return;
-        }
-        if (result.outcome === "review_required") {
-          setMessage("Zoption is reviewing your payment. Pro access is pending.");
-          return;
-        }
-      } catch (error) {
-        setMessage(
-          error instanceof ApiTransportError ? error.message : "Payment status is unknown.",
-        );
-        return;
-      }
-      await sleep(RECONCILE_DELAY_MS);
-    }
-    setMessage("Payment confirmation is still in progress. Check back shortly.");
-  }, [withToken]);
-
-  const runCheckout = useCallback(
-    async (provider: BillingProvider) => {
-      setBusy(provider === "dodo" ? "dodo-checkout" : "checkout");
-      setMessage(null);
-      try {
-        const { approvalUrl } = await withToken((token) =>
-          startBillingCheckout({ accessToken: token }, interval, provider),
-        );
-        await WebBrowser.openBrowserAsync(approvalUrl, {
-          presentationStyle: WebBrowser.WebBrowserPresentationStyle.FULL_SCREEN,
-        });
-        await reconcileLoop();
-      } catch (error) {
-        setMessage(
-          error instanceof ApiTransportError ? error.message : "Checkout could not start.",
-        );
-      } finally {
-        setBusy(null);
-      }
-    },
-    [interval, reconcileLoop, withToken],
-  );
+  }, [load, reloadToken]);
 
   const runCancel = useCallback(async () => {
     setConfirmingCancel(false);
@@ -143,9 +60,8 @@ export function BillingScreen() {
     setMessage(null);
     try {
       await withToken((token) => cancelBillingSubscription({ accessToken: token }));
-      const next = await withToken((token) => getBillingSummary({ accessToken: token }));
-      setSummary(next);
-      setMessage("Renewal is off. Pro access stays until the end of the current period.");
+      await load();
+      setMessage("Renewal is off. Your plan stays until the end of the current period.");
     } catch (error) {
       setMessage(
         error instanceof ApiTransportError
@@ -155,7 +71,7 @@ export function BillingScreen() {
     } finally {
       setBusy(null);
     }
-  }, [withToken]);
+  }, [load, setBusy, setMessage, withToken]);
 
   if (phase === "loading") {
     return (
@@ -170,8 +86,11 @@ export function BillingScreen() {
       <Screen hasHeader title="Plan and billing">
         <ErrorState
           title="Plan unavailable"
-          message={message ?? "Billing could not be loaded."}
-          onRetry={() => void load()}
+          message={loadError ?? "Billing could not be loaded."}
+          onRetry={() => {
+            setPhase("loading");
+            void load();
+          }}
         />
       </Screen>
     );
@@ -187,9 +106,9 @@ export function BillingScreen() {
         <View className="gap-3">
           <View className="flex-row items-center gap-2">
             <MaterialCommunityIcons
-              name={summary.plan === "zoption_pro" ? "crown-outline" : "wallet-outline"}
+              name={summary.plan === "free" ? "wallet-outline" : "crown-outline"}
               size={20}
-              color={summary.plan === "zoption_pro" ? theme.colors.warning : theme.colors.textMuted}
+              color={summary.plan === "free" ? theme.colors.textMuted : theme.colors.warning}
             />
             <Text style={[typography.headline, { color: theme.colors.text }]}>
               {planName(summary)}
@@ -203,7 +122,8 @@ export function BillingScreen() {
           {summary.plan === "free" ? (
             <Text style={[typography.body, { color: theme.colors.textMuted }]}>
               The free plan includes 500 AI actions a month, shared across every AI feature, plus
-              one committed import. Upgrade for more.
+              one committed import. Budget unlocks every paid feature, and Pro adds bigger
+              allowances.
             </Text>
           ) : null}
           {periodEndsCopy(summary) ? (
@@ -267,49 +187,24 @@ export function BillingScreen() {
         </View>
       </Card>
 
-      {summary.canCheckout ? (
-        <Card accessibilityLabel="Upgrade">
+      {summary.canCheckout || summary.canChangePlan ? (
+        <Card accessibilityLabel={summary.canChangePlan ? "Change plan" : "Choose a plan"}>
           <View className="gap-3">
-            <Text style={[typography.headline, { color: theme.colors.text }]}>Upgrade to Pro</Text>
-            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              2,000 AI actions a month in the same shared pool, 10 imports per month and unlimited
-              custom categories.
+            <Text style={[typography.headline, { color: theme.colors.text }]}>
+              {summary.canChangePlan ? "Change plan" : "Choose a plan"}
             </Text>
-            <SelectionField
-              label="Billing interval"
-              value={interval}
-              options={PLAN_PRICES.map((plan) => ({
-                id: plan.interval,
-                label: plan.label,
-                detail: plan.priceLabel,
-              }))}
-              placeholder="Monthly"
-              sheetTitle="Billing interval"
-              onSelect={(value) => setIntervalChoice(value as BillingInterval)}
+            <PlanPicker
+              plans={personalBillingPlans}
+              suggestedPlan={summary.plan === "zoption_budget" ? "pro" : "budget"}
+              current={
+                summary.canChangePlan && summary.subscriptionPlan && summary.interval
+                  ? { plan: summary.subscriptionPlan, interval: summary.interval }
+                  : null
+              }
+              busy={busy}
+              onCheckout={(choice, provider) => void checkout(choice, provider)}
+              onChange={(choice) => void change(choice)}
             />
-            <Button
-              loading={busy === "dodo-checkout"}
-              disabled={busy !== null}
-              onPress={() => void runCheckout("dodo")}
-            >
-              Continue securely
-            </Button>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record for
-              this option.
-            </Text>
-            <Button
-              variant="secondary"
-              loading={busy === "checkout"}
-              disabled={busy !== null}
-              onPress={() => void runCheckout("paypal")}
-            >
-              Continue with PayPal
-            </Button>
-            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Checkout opens in your browser. Payment confirmation is verified by the Zoption server
-              before Pro access is granted.
-            </Text>
           </View>
         </Card>
       ) : null}
@@ -319,7 +214,7 @@ export function BillingScreen() {
           <View className="gap-3">
             <Text style={[typography.headline, { color: theme.colors.text }]}>Subscription</Text>
             <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-              Turn off automatic renewal. Pro access remains through the end of the current period,
+              Turn off automatic renewal. Your plan remains through the end of the current period,
               and no automatic refund is issued.
             </Text>
             <Button
@@ -340,7 +235,7 @@ export function BillingScreen() {
             <Button
               variant="secondary"
               loading={busy === "reconcile"}
-              onPress={() => void reconcileLoop()}
+              onPress={() => void checkPayment()}
             >
               Check payment status
             </Button>
@@ -367,7 +262,7 @@ export function BillingScreen() {
       <ConfirmationDialog
         visible={confirmingCancel}
         title="Cancel renewal?"
-        message="Renewal will stop. No automatic refund is issued, and Pro access remains available through the end of the current period."
+        message="Renewal will stop. No automatic refund is issued, and your plan remains available through the end of the current period."
         confirmLabel="Cancel renewal"
         destructive
         onCancel={() => setConfirmingCancel(false)}

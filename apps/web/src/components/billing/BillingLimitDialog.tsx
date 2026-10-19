@@ -57,16 +57,16 @@ function limitCopy(error: unknown): LimitCopy | undefined {
       key: details.resource,
       eyebrow: "Plan limit reached",
       title: `No ${label} remaining`,
-      description: `You’re using ${details.used} of ${details.limit} active ${label}. Archive one to free the slot, or upgrade for unlimited ${label}.`,
+      description: `You’re using ${details.used} of ${details.limit} active ${label}. Archive one to free the slot, or upgrade for more ${label}.`,
     };
   }
   if (isUpgradeRequiredError(error)) {
     const label = capabilityLabels[error.details.capability];
     return {
       key: error.details.capability,
-      eyebrow: "Zoption Pro",
-      title: "Zoption Pro is required",
-      description: `Upgrade to use ${label}. This request was not completed.`,
+      eyebrow: "Paid plans",
+      title: "A paid plan is required",
+      description: `Zoption Budget and Pro include ${label}. This request was not completed.`,
     };
   }
   return undefined;

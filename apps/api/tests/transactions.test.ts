@@ -74,9 +74,11 @@ function createSqliteEnvironment(): {
       status text NOT NULL DEFAULT 'active',
       updated_at text NOT NULL DEFAULT (datetime('now'))
     );
-    CREATE TABLE effective_pro_access (
+    CREATE TABLE effective_plan_access (
       tenant_id text NOT NULL,
-      source text NOT NULL
+      source text NOT NULL,
+      rank integer NOT NULL,
+      family_tenant_id text
     );
     CREATE TABLE transfer_groups (
       id text NOT NULL,

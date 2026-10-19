@@ -3,6 +3,7 @@ import { useCallback, useState } from "react";
 import { Text } from "react-native";
 
 import { useNetInfo } from "@react-native-community/netinfo";
+import type { Plan } from "@/api/plan";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
@@ -18,6 +19,13 @@ import { ConfirmationDialog, MenuGroup, MenuRow } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
+
+/** The short plan name on the Plan & billing row; nothing until the plan is known. */
+function planBadge(plan: Plan | null): string | undefined {
+  if (plan === "zoption_pro") return "PRO";
+  if (plan === "zoption_budget") return "BUDGET";
+  return plan === "free" ? "FREE" : undefined;
+}
 
 export function MoreScreen() {
   const demoEnabled = isDevelopmentAppVariant();
@@ -65,7 +73,6 @@ export function MoreScreen() {
     }
   };
 
-  const isPro = planState.plan === "zoption_pro";
   const netInfo = useNetInfo();
   const isOffline = netInfo.isConnected === false || netInfo.isInternetReachable === false;
   const sync = useSyncState();
@@ -148,7 +155,7 @@ export function MoreScreen() {
         <MenuRow
           icon="star-outline"
           title="Plan & billing"
-          badge={guest ? undefined : isPro ? "PRO" : "FREE"}
+          badge={guest ? undefined : planBadge(planState.plan)}
           onPress={() => openFeature("billing", "/(app)/plan-billing")}
         />
         <MenuRow

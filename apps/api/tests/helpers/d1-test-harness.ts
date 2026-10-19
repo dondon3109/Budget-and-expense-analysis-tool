@@ -183,6 +183,10 @@ export function createD1TestDatabase(options: D1TestDatabaseOptions = {}): {
 } {
   const database = new DatabaseSync(":memory:");
   database.exec("PRAGMA foreign_keys = ON");
+  // D1 refuses a compound SELECT of more than five terms, which a view can hit unnoticed. Node
+  // versions without `DatabaseSync.limits` skip the check.
+  const { limits } = database as { limits?: { compoundSelect: number } };
+  if (limits) limits.compoundSelect = 5;
   try {
     applyD1Migrations(database, options);
   } catch (error) {

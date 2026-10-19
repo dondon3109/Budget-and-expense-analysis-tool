@@ -2,24 +2,16 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
+import { PAYPAL_PLANS, PAYPAL_PRODUCT as PRODUCT } from "./paypal-plans.mjs";
+
 const LIVE_API_URL = "https://api-m.paypal.com";
 const REQUEST_TIMEOUT_MS = 15_000;
-const PRODUCT = {
-  name: "Zoption Pro",
-  type: "SERVICE",
-  category: "SOFTWARE",
-  description: "Zoption Pro subscription",
-};
 const PAYMENT_PREFERENCES = {
   auto_bill_outstanding: true,
   payment_failure_threshold: 3,
   setup_fee: { currency_code: "PHP", value: "0" },
   setup_fee_failure_action: "CANCEL",
 };
-const PLANS = [
-  { key: "monthlyPlanId", name: "Zoption Pro Monthly", intervalUnit: "MONTH", fixedPrice: "149" },
-  { key: "annualPlanId", name: "Zoption Pro Annual", intervalUnit: "YEAR", fixedPrice: "1299" },
-];
 const WEBHOOK_EVENT_TYPES = [
   "BILLING.SUBSCRIPTION.ACTIVATED",
   "BILLING.SUBSCRIPTION.UPDATED",
@@ -283,14 +275,7 @@ function isExpectedPlan(plan, productId, expected) {
   );
 }
 
-async function reconcilePlan(fetchImpl, accessTokenValue, productId, expected, apply) {
-  const plans = await listPages(
-    fetchImpl,
-    accessTokenValue,
-    "/v1/billing/plans",
-    "plans",
-    "listing plans",
-  );
+async function reconcilePlan(fetchImpl, accessTokenValue, productId, plans, expected, apply) {
   const candidates = plans.filter((item) => record(item, "listing plans").name === expected.name);
   if (candidates.length > 0) {
     if (candidates.length !== 1) throw new LiveSetupError("reconciling an existing plan");
@@ -417,18 +402,20 @@ export async function setupPayPalLive({
   const accessTokenValue = await accessToken(fetchImpl, clientId, clientSecret);
   const product = await reconcileProduct(fetchImpl, accessTokenValue, apply);
   const planResults = {};
-  if (product.id) {
-    for (const plan of PLANS) {
-      planResults[plan.key] = await reconcilePlan(
+  // Listed once: every plan lives under the one product.
+  const plans = product.id
+    ? await listPages(
         fetchImpl,
         accessTokenValue,
-        product.id,
-        plan,
-        apply,
-      );
-    }
-  } else {
-    for (const plan of PLANS) planResults[plan.key] = { id: null, action: "create" };
+        `/v1/billing/plans?product_id=${encodeURIComponent(product.id)}`,
+        "plans",
+        "listing plans",
+      )
+    : [];
+  for (const plan of PAYPAL_PLANS) {
+    planResults[plan.variable] = product.id
+      ? await reconcilePlan(fetchImpl, accessTokenValue, product.id, plans, plan, apply)
+      : { id: null, action: "create" };
   }
   const webhookResults = {};
   for (const url of webhookUrls) {
@@ -437,8 +424,9 @@ export async function setupPayPalLive({
   return {
     mode: apply ? "apply" : "preflight",
     productId: product.id,
-    monthlyPlanId: planResults.monthlyPlanId.id,
-    annualPlanId: planResults.annualPlanId.id,
+    plans: Object.fromEntries(
+      PAYPAL_PLANS.map(({ variable }) => [variable, planResults[variable].id]),
+    ),
     webhooks: Object.fromEntries(
       Object.entries(webhookResults).map(([url, result]) => [
         url,
@@ -447,8 +435,9 @@ export async function setupPayPalLive({
     ),
     actions: {
       product: product.action,
-      monthlyPlan: planResults.monthlyPlanId.action,
-      annualPlan: planResults.annualPlanId.action,
+      plans: Object.fromEntries(
+        PAYPAL_PLANS.map(({ variable }) => [variable, planResults[variable].action]),
+      ),
       ...Object.fromEntries(
         Object.entries(webhookResults).map(([url, result]) => [`webhook:${url}`, result.action]),
       ),

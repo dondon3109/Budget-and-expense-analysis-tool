@@ -20,7 +20,7 @@ describe("legal pages", () => {
     renderPage(<TermsOfServicePage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Terms of Service" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: October 7, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: October 19, 2026")).toBeInTheDocument();
     expect(
       screen.getByText(/does not currently connect directly to your bank/i),
     ).toBeInTheDocument();
@@ -44,7 +44,7 @@ describe("legal pages", () => {
     renderPage(<PrivacyPolicyPage />);
 
     expect(screen.getByRole("heading", { level: 1, name: "Privacy Policy" })).toBeInTheDocument();
-    expect(screen.getByText("Last updated: October 17, 2026")).toBeInTheDocument();
+    expect(screen.getByText("Last updated: October 19, 2026")).toBeInTheDocument();
     expect(screen.getByText(/Zoption does not sell user financial data/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Supabase/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/Cloudflare/i).length).toBeGreaterThan(0);
@@ -55,7 +55,11 @@ describe("legal pages", () => {
     expect(screen.getByText(/public storage link/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Full payment-card credentials/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/minimal verified-webhook event metadata/i)).toBeInTheDocument();
-    expect(screen.getByText(/plan tier, including Free or Zoption Pro/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /plan tier, including Free, Zoption Budget, or Zoption Pro, and any family plan/i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/only if you start checkout for or subscribe/i)).toBeInTheDocument();
     expect(screen.getByText(/transaction-derived balances/i)).toBeInTheDocument();
     expect(screen.getByText(/after separate AI entry consent: it/i)).toBeInTheDocument();

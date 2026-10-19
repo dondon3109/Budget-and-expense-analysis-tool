@@ -9,9 +9,13 @@ import {
   mobileSyncSubscriptionSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   mobileSyncTransferSnapshotSchema,
+  type BillingTier,
   type MobileSyncPushOperation,
+  type MobileSyncPushResult,
 } from "@zoption/shared";
+import { z } from "zod";
 
+import { isCategoryPlanAvailable, wireCategoryPlan } from "../../../billing/entitlements";
 import type { Bindings } from "../../../types";
 
 interface EntitySyncRow {
@@ -19,7 +23,14 @@ interface EntitySyncRow {
 }
 
 export type AccountSnapshot = ReturnType<typeof mobileSyncAccountSnapshotSchema.parse>;
-export type CategorySnapshot = ReturnType<typeof mobileSyncCategorySnapshotSchema.parse>;
+/**
+ * A category as stored. Its tag may be `zoption_budget`, which only the server sees:
+ * `withCategoryLock` turns it into the wire value and a `locked` flag before it leaves.
+ */
+export const storedCategorySnapshotSchema = mobileSyncCategorySnapshotSchema.extend({
+  requiredPlan: z.enum(["free", "zoption_budget", "zoption_pro"]),
+});
+export type CategorySnapshot = z.infer<typeof storedCategorySnapshotSchema>;
 export type TransactionSnapshot = ReturnType<typeof mobileSyncTransactionSnapshotSchema.parse>;
 export type TransferSnapshot = ReturnType<typeof mobileSyncTransferSnapshotSchema.parse>;
 export type BudgetSnapshot = ReturnType<typeof mobileSyncBudgetSnapshotSchema.parse>;
@@ -42,15 +53,27 @@ export type EntitySnapshot =
 
 export function withCategoryLock(
   snapshot: EntitySnapshot | null,
-  hasPro: boolean,
+  tier: BillingTier,
 ): EntitySnapshot | null {
-  const category = mobileSyncCategorySnapshotSchema.safeParse(snapshot);
+  const category = storedCategorySnapshotSchema.safeParse(snapshot);
   return category.success
     ? {
         ...category.data,
-        locked: category.data.requiredPlan === "zoption_pro" && !hasPro,
+        requiredPlan: wireCategoryPlan(category.data.requiredPlan),
+        locked: !isCategoryPlanAvailable(category.data.requiredPlan, tier),
       }
     : snapshot;
+}
+
+/** A snapshot as clients may see it: a stored Budget tag goes out as its wire value. */
+export function wireSnapshot(
+  snapshot: EntitySnapshot | null,
+): Extract<MobileSyncPushResult, { status: "conflict" }>["serverPayload"] {
+  const category = storedCategorySnapshotSchema.safeParse(snapshot);
+  if (!category.success) {
+    return snapshot as Extract<MobileSyncPushResult, { status: "conflict" }>["serverPayload"];
+  }
+  return { ...category.data, requiredPlan: wireCategoryPlan(category.data.requiredPlan) };
 }
 
 type EntityType = MobileSyncPushOperation["entityType"];
@@ -86,7 +109,7 @@ function parseSnapshot(entityType: EntityType, payload: unknown): EntitySnapshot
     case "account":
       return mobileSyncAccountSnapshotSchema.parse(payload);
     case "category":
-      return mobileSyncCategorySnapshotSchema.parse(payload);
+      return storedCategorySnapshotSchema.parse(payload);
     case "transaction":
       return mobileSyncTransactionSnapshotSchema.parse(payload);
     case "budget":

@@ -39,13 +39,18 @@ WITH cohort AS (
     OR EXISTS (SELECT 1 FROM goal_events
                  WHERE tenant_id = tenants.id AND name = 'onboarding_goal_shown')
 ),
+-- D1 allows at most five terms in one compound SELECT, so the sources are unioned in two groups.
 activity AS (
-  SELECT tenant_id, date(created_at) AS day FROM transactions WHERE deleted_at IS NULL
-  UNION SELECT tenant_id, date(created_at) FROM assistant_messages WHERE role = 'user'
-  UNION SELECT tenant_id, date(created_at) FROM budgets
-  UNION SELECT tenant_id, date(created_at) FROM financial_goals
-  UNION SELECT tenant_id, date(created_at) FROM debts
-  UNION SELECT tenant_id, date(created_at) FROM imports
+  SELECT tenant_id, day FROM (
+    SELECT tenant_id, date(created_at) AS day FROM transactions WHERE deleted_at IS NULL
+    UNION SELECT tenant_id, date(created_at) FROM assistant_messages WHERE role = 'user'
+    UNION SELECT tenant_id, date(created_at) FROM budgets
+  )
+  UNION SELECT tenant_id, day FROM (
+    SELECT tenant_id, date(created_at) AS day FROM financial_goals
+    UNION SELECT tenant_id, date(created_at) FROM debts
+    UNION SELECT tenant_id, date(created_at) FROM imports
+  )
 ),
 returned AS (
   SELECT

@@ -46,6 +46,9 @@ jest.mock("@/features/family/active-workspace", () => ({
   useActiveWorkspace: jest.fn(),
 }));
 
+// The card reads the family online; it is covered by FamilyPlanSection.test.tsx.
+jest.mock("@/features/family/JustYouCard", () => ({ FamilyHomeJustYouCard: () => null }));
+
 const personal = {
   status: "ready" as const,
   family: null,

@@ -14,13 +14,13 @@ import { createAssistantVoiceService } from "../src/assistant/voice-service";
 import type { AssistantVoiceProviders } from "../src/assistant/voice-provider";
 import type { AuthVerifier } from "../src/auth";
 import type { AssistantRepository } from "../src/db/assistant";
+import { billingRepository } from "../src/db/billing";
 import {
-  billingRepository,
   consumeAiUsage,
   manilaMonth,
   manilaMonthStart,
   nextManilaMonth,
-} from "../src/db/billing";
+} from "../src/db/billing-usage";
 import type { ImportRepository } from "../src/db/imports";
 import type { ReceiptRepository } from "../src/db/receipts";
 import type { TenantResolver } from "../src/db/tenants";

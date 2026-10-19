@@ -10,6 +10,7 @@ export default defineConfig({
     "./db/schema-push.ts",
     "./db/schema-family.ts",
     "./db/schema-sharing.ts",
+    "./db/schema-billing.ts",
   ],
   out: "./db/migrations",
 });

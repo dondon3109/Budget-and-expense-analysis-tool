@@ -1,3 +1,4 @@
+import { PLAN_PRICES_MINOR, type BillingPlanKey } from "@zoption/shared";
 import { ArrowRight, Check, Minus, ShieldCheck, Sparkles } from "lucide-react";
 
 import { LegalFooter } from "../../components/legal/LegalFooter";
@@ -6,64 +7,111 @@ import { PublicHeader } from "../../components/navigation/PublicHeader";
 import "./PricingPage.css";
 import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
-const COMPARISON_ROWS = [
+interface ComparisonFeature {
+  name: string;
+  free: string;
+  budget: string;
+  pro: string;
+}
+
+const COMPARISON_ROWS: { category: string; features: ComparisonFeature[] }[] = [
   {
     category: "Privacy & Data Ownership",
     features: [
       {
         name: "Zero bank credentials required",
         free: "Yes (100% private)",
+        budget: "Yes (100% private)",
         pro: "Yes (100% private)",
       },
-      { name: "Data storage", free: "Private cloud workspace", pro: "Private cloud workspace" },
-      { name: "No advertising or data monetization", free: "Guaranteed", pro: "Guaranteed" },
-      { name: "Filtered CSV transaction export", free: "Not included", pro: "Full access" },
+      {
+        name: "Data storage",
+        free: "Private cloud workspace",
+        budget: "Private cloud workspace",
+        pro: "Private cloud workspace",
+      },
+      {
+        name: "No advertising or data monetization",
+        free: "Guaranteed",
+        budget: "Guaranteed",
+        pro: "Guaranteed",
+      },
+      {
+        name: "Filtered CSV transaction export",
+        free: "Not included",
+        budget: "Full access",
+        pro: "Full access",
+      },
     ],
   },
   {
     category: "Transactions & Fast Entry",
     features: [
       {
-        name: "Speech-to-transaction voice entry",
+        name: "Voice, receipt photo, and PDF statement entry",
         free: "Included (shared AI pool)",
-        pro: "Included (shared AI pool)",
-      },
-      {
-        name: "Camera receipt photo scanning",
-        free: "Included (shared AI pool)",
-        pro: "Included (shared AI pool)",
-      },
-      {
-        name: "PDF bank statement AI entry",
-        free: "Included (shared AI pool)",
+        budget: "Included (shared AI pool)",
         pro: "Included (shared AI pool)",
       },
       {
         name: "Bank statement imports (CSV, XLS, XLSX)",
         free: "1 committed / month",
+        budget: "5 committed / month",
         pro: "10 committed / month",
       },
-      { name: "Transaction deduplication warnings", free: "Included", pro: "Included" },
-      { name: "Exact centavo integer math (no rounding drift)", free: "Included", pro: "Included" },
+      {
+        name: "Transaction deduplication warnings",
+        free: "Included",
+        budget: "Included",
+        pro: "Included",
+      },
+      {
+        name: "Exact centavo integer math (no rounding drift)",
+        free: "Included",
+        budget: "Included",
+        pro: "Included",
+      },
     ],
   },
   {
     category: "Accounts & Budgets",
     features: [
-      { name: "Starter accounts (Cash, GCash, Maya, Bank)", free: "Included", pro: "Included" },
-      { name: "Custom accounts (add, rename, remove)", free: "Unlimited", pro: "Unlimited" },
-      { name: "Custom budget categories", free: "4 custom + starters", pro: "Unlimited active" },
+      {
+        name: "Custom accounts (add, rename, remove)",
+        free: "Unlimited",
+        budget: "Unlimited",
+        pro: "Unlimited",
+      },
+      {
+        name: "Custom budget categories",
+        free: "4 custom + starters",
+        budget: "10 custom + starters",
+        pro: "Unlimited active",
+      },
       {
         name: "High-yield savings interest compounding",
         free: "Manual entry",
+        budget: "Automatic (daily/mo/yr)",
         pro: "Automatic (daily/mo/yr)",
+      },
+      {
+        name: "Cash flow analytics",
+        free: "Week view",
+        budget: "Week, month, and 6-month",
+        pro: "Week, month, and 6-month",
       },
       {
         name: "Interactive Renewal Calendar (Subscriptions)",
         free: "Basic list",
+        budget: "Interactive monthly grid",
         pro: "Interactive monthly grid",
       },
-      { name: "Streak pet", free: "Grows to Baby", pro: "Grows to Juvenile, Adult, and Legend" },
+      {
+        name: "Streak pet",
+        free: "Grows to Baby",
+        budget: "Grows to Legend",
+        pro: "Grows to Legend",
+      },
     ],
   },
   {
@@ -72,29 +120,36 @@ const COMPARISON_ROWS = [
       {
         name: "Shared AI usage pool (chat, voice chat, receipt scanning, PDF entry, transaction voice)",
         free: "500 AI actions / month",
+        budget: "1,000 AI actions / month",
         pro: "2,000 AI actions / month",
       },
       {
         name: "Live streaming voice chat",
         free: "Not included",
+        budget: "Included",
         pro: "Included",
       },
       {
         name: "Assistant permissions model",
         free: "Consented; you confirm every change",
+        budget: "Consented; you confirm every change",
         pro: "Consented; you confirm every change",
       },
-      { name: "Transparent reasoning & grounded citations", free: "Included", pro: "Included" },
     ],
   },
   {
     category: "Platforms & Support",
     features: [
-      { name: "Progressive Web App (PWA) with offline caching", free: "Included", pro: "Included" },
-      { name: "Official Android Beta Native APK", free: "Free download", pro: "Free download" },
+      {
+        name: "Progressive Web App (PWA) and Android Beta APK",
+        free: "Included",
+        budget: "Included",
+        pro: "Included",
+      },
       {
         name: "Customer support",
         free: "Community & documentation",
+        budget: "Direct support (< 48h response)",
         pro: "Direct priority support (< 24h response)",
       },
     ],
@@ -106,6 +161,16 @@ const PRICING_FAQS = [
     question: "Is there a free trial of Zoption Pro?",
     answer:
       "Yes. Every new account gets 7 days of Zoption Pro for free, with no card or payment setup. We email you when the trial starts, the day before it ends, and when it has ended. Afterwards you move to the Free plan automatically, nothing is charged, and all your data stays.",
+  },
+  {
+    question: "What is the difference between Budget and Pro?",
+    answer:
+      "Zoption Budget unlocks every paid feature: live voice chat, automatic interest, full cash flow analytics, export, the renewal calendar, and a streak pet that grows to Legend. Zoption Pro doubles the AI actions to 2,000 a month, raises imports to 10 a month, removes the custom category limit, and answers support within 24 hours.",
+  },
+  {
+    question: "How do the family plans work?",
+    answer:
+      "A family plan covers one shared family space for up to 6 people, the owner included. Family Budget gives every member Zoption Budget for their own Zoption too, and Family Pro gives everyone Zoption Pro. AI actions and imports stay personal. The owner can set up the family first and try it alone with Free limits; invitations open once a family plan is chosen.",
   },
   {
     question: "Can I use Zoption for free permanently?",
@@ -120,32 +185,157 @@ const PRICING_FAQS = [
   {
     question: "What currencies and billing methods are supported?",
     answer:
-      "You can track money in 47 common currencies, including PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, and AED, with a separate currency per account. Zoption Pro itself is billed in Philippine pesos (PHP). PayPal or Dodo Payments securely processes card payments and subscription approvals without Zoption ever touching your card data.",
+      "You can track money in 47 common currencies, including PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, and AED, with a separate currency per account. Paid plans are billed in Philippine pesos (PHP). PayPal or Dodo Payments securely processes card payments and subscription approvals without Zoption ever touching your card data.",
   },
   {
-    question: "Can I cancel my Pro subscription at any time?",
+    question: "Can I change or cancel my plan at any time?",
     answer:
-      "Yes. You can cancel your subscription renewal directly in your Account Settings under Plan & Billing at any time. You retain Pro access until the end of your prepaid period.",
+      "Yes. In Plan and billing you can move up right away, or move down and keep your current plan until the paid period ends. Cancelling stops renewal, and you keep the plan until the end of your prepaid period.",
   },
   {
     question: "How does the annual plan discount work?",
     answer:
-      "The Annual Pro plan is ₱1,299 per year, which saves you approximately 27% compared to paying ₱149 monthly across 12 months.",
+      "Every annual plan costs 10 times its monthly price, so a year is 2 months free. Zoption Budget is ₱1,490 a year instead of ₱1,788 paid monthly.",
   },
   {
     question: "What is your customer support response time?",
     answer:
-      "For general inquiries and bug reports, our team reviews and responds within 24 to 48 business hours. Pro subscribers receive priority support with responses typically under 24 hours. The built-in AI Support Assistant is available 24/7 for instant answers.",
+      "For general inquiries and bug reports, our team reviews and responds within 24 to 48 business hours. Budget subscribers get direct support within 48 hours, and Pro subscribers receive priority support with responses typically under 24 hours. The built-in AI Support Assistant is available 24/7 for instant answers.",
   },
 ];
 
+const wholePesos = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  maximumFractionDigits: 0,
+});
+
+/** Plan prices are whole pesos, so the division is exact. */
+function price(plan: BillingPlanKey, interval: "month" | "year"): string {
+  return wholePesos.format(PLAN_PRICES_MINOR[plan][interval] / 100);
+}
+
+interface PaidPlanCard {
+  plan: BillingPlanKey;
+  name: string;
+  badge?: string;
+  description: string;
+  cta: string;
+  inclusions: string[];
+}
+
+const BUDGET_CARD: PaidPlanCard = {
+  plan: "budget",
+  name: "Zoption Budget",
+  description: "Every paid feature for one person, with room for a busy month.",
+  cta: "Start with Budget",
+  inclusions: [
+    "1,000 AI actions a month in the same shared pool, plus live streaming voice chat",
+    "5 committed statement imports per month",
+    "10 custom categories",
+    "Automatic savings interest, full cash flow analytics, and the renewal calendar",
+    "Filtered CSV transaction export",
+    "A streak pet that grows all the way to Legend",
+    "Direct support within 48 hours",
+  ],
+};
+
+const PRO_CARD: PaidPlanCard = {
+  plan: "pro",
+  name: "Zoption Pro",
+  badge: "Power Tracker",
+  description: "Everything in Budget with double the AI actions and no category limit.",
+  cta: "Start with Pro",
+  inclusions: [
+    "2,000 AI actions a month in the same shared pool",
+    "10 committed statement imports per month",
+    "Unlimited custom categories",
+    "Direct priority support within 24 hours",
+  ],
+};
+
+const familyInclusions = (tier: string) => [
+  "Up to 6 people, the owner included",
+  `Everyone gets ${tier} for their own Zoption too`,
+  "Shared budgets, remittances, receipts, and comments",
+  "AI actions and imports stay personal to each member",
+];
+
+const FAMILY_BUDGET_CARD: PaidPlanCard = {
+  plan: "family_budget",
+  name: "Family Budget",
+  description: "One shared family space for up to 6 people, each with Zoption Budget.",
+  cta: "Start a family",
+  inclusions: familyInclusions("Zoption Budget"),
+};
+
+const FAMILY_PRO_CARD: PaidPlanCard = {
+  plan: "family_pro",
+  name: "Family Pro",
+  badge: "Whole household",
+  description: "One shared family space for up to 6 people, each with Zoption Pro.",
+  cta: "Start a family",
+  inclusions: familyInclusions("Zoption Pro"),
+};
+
+function PlanCard({ card, everything }: { card: PaidPlanCard; everything: string }) {
+  return (
+    <article className={card.badge ? "pricing-card featured" : "pricing-card"}>
+      {card.badge && <span className="pricing-card-badge">{card.badge}</span>}
+      <div className="pricing-card-header">
+        <h2>{card.name}</h2>
+        <p className="pricing-card-description">{card.description}</p>
+        <div className="pricing-card-price">
+          <strong data-interval-only="month">{price(card.plan, "month")}</strong>
+          <span data-interval-only="month">/ month</span>
+          <strong data-interval-only="year">{price(card.plan, "year")}</strong>
+          <span data-interval-only="year">/ year</span>
+        </div>
+        <div className="pricing-card-subtext">
+          <span data-interval-only="year">Billed annually, 2 months free</span>
+          <span data-interval-only="month">Billed monthly, cancel renewal anytime</span>
+        </div>
+      </div>
+
+      <div className="pricing-card-cta">
+        <a
+          className={card.badge ? "button primary" : "button secondary"}
+          href={appUrl("/signup")}
+          {...NEW_TAB}
+        >
+          {card.cta} <ArrowRight size={16} aria-hidden="true" />
+        </a>
+      </div>
+
+      <ul className="pricing-card-features" aria-label={`${card.name} inclusions`}>
+        <li className="pricing-card-feature-item">
+          <Sparkles size={18} className="pricing-check-icon" aria-hidden="true" />
+          <span>
+            <strong>Everything in {everything}</strong>, plus:
+          </span>
+        </li>
+        {card.inclusions.map((inclusion) => (
+          <li key={inclusion} className="pricing-card-feature-item">
+            <Check size={18} className="pricing-check-icon" aria-hidden="true" />
+            <span>{inclusion}</span>
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+function FeatureValue({ value }: { value: string }) {
+  return value === "Not included" ? <Minus size={16} aria-label="Not included" /> : <>{value}</>;
+}
+
 /**
- * Both billing intervals are in the HTML so crawlers read every price; the
- * toggle flips `data-active-interval` through `src/client/site.ts`.
+ * Both billing intervals and both plan scopes are in the HTML so crawlers read every price; the
+ * toggles flip `data-active-interval` and `data-active-scope` through `src/client/site.ts`.
  */
 export function PricingPage() {
   return (
-    <div className="pricing-page" data-active-interval="month">
+    <div className="pricing-page" data-active-interval="month" data-active-scope="personal">
       <PublicHeader
         navLabel="Main navigation"
         links={[
@@ -170,25 +360,48 @@ export function PricingPage() {
             or advertising monetization.
           </p>
 
-          <div className="pricing-interval-toggle" role="radiogroup" aria-label="Billing frequency">
-            <button
-              type="button"
-              role="radio"
-              aria-checked="true"
-              className="active"
-              data-interval-choice="month"
+          <div className="pricing-toggles">
+            <div className="pricing-interval-toggle" role="radiogroup" aria-label="Plans for">
+              <button
+                type="button"
+                role="radio"
+                aria-checked="true"
+                className="active"
+                data-scope-choice="personal"
+              >
+                Personal
+              </button>
+              <button type="button" role="radio" aria-checked="false" data-scope-choice="family">
+                Family
+              </button>
+            </div>
+            <div
+              className="pricing-interval-toggle"
+              role="radiogroup"
+              aria-label="Billing frequency"
             >
-              Monthly billing
-            </button>
-            <button type="button" role="radio" aria-checked="false" data-interval-choice="year">
-              Annual billing
-              <span className="pricing-discount-badge">Save 27%</span>
-            </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked="true"
+                className="active"
+                data-interval-choice="month"
+              >
+                Monthly billing
+              </button>
+              <button type="button" role="radio" aria-checked="false" data-interval-choice="year">
+                Annual billing
+                <span className="pricing-discount-badge">2 months free</span>
+              </button>
+            </div>
           </div>
         </section>
 
-        <section className="pricing-cards-grid" aria-label="Plan options">
-          {/* Free Plan */}
+        <section
+          className="pricing-cards-grid"
+          aria-label="Personal plan options"
+          data-scope-only="personal"
+        >
           <article className="pricing-card">
             <div className="pricing-card-header">
               <h2>Free Plan</h2>
@@ -236,82 +449,24 @@ export function PricingPage() {
               </li>
             </ul>
           </article>
-
-          {/* Pro Plan */}
-          <article className="pricing-card featured">
-            <span className="pricing-card-badge">Power Tracker</span>
-            <div className="pricing-card-header">
-              <h2>Zoption Pro</h2>
-              <p className="pricing-card-description">
-                For users who want automatic interest compounding, 2,000 AI actions a month, and
-                higher import limits.
-              </p>
-              <div className="pricing-card-price">
-                <strong data-interval-only="month">₱149</strong>
-                <span data-interval-only="month">/ month</span>
-                <strong data-interval-only="year">₱1,299</strong>
-                <span data-interval-only="year">/ year</span>
-              </div>
-              <div className="pricing-card-subtext">
-                <span data-interval-only="year">
-                  {"Billed annually (equals ~₱108/month, saving 27%)"}
-                </span>
-                <span data-interval-only="month">{"Billed monthly, cancel renewal anytime"}</span>
-              </div>
-            </div>
-
-            <div className="pricing-card-cta">
-              <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
-                Start with Pro <ArrowRight size={16} aria-hidden="true" />
-              </a>
-            </div>
-
-            <ul className="pricing-card-features" aria-label="Pro plan inclusions">
-              <li className="pricing-card-feature-item">
-                <Sparkles size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>
-                  <strong>Everything in Free</strong>, plus:
-                </span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>10 committed statement imports per month</span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>
-                  2,000 AI actions a month in the same shared pool, plus live streaming voice chat
-                </span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Automatic high-yield savings interest compounding</span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Interactive Visual Renewal Calendar for subscriptions</span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Unlimited custom categories</span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>A streak pet that grows past Baby, all the way to Legend</span>
-              </li>
-              <li className="pricing-card-feature-item">
-                <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Filtered CSV transaction data export</span>
-              </li>
-            </ul>
-          </article>
+          <PlanCard card={BUDGET_CARD} everything="Free" />
+          <PlanCard card={PRO_CARD} everything="Budget" />
         </section>
 
-        {/* Feature Comparison Table */}
+        <section
+          className="pricing-cards-grid"
+          aria-label="Family plan options"
+          data-scope-only="family"
+        >
+          <PlanCard card={FAMILY_BUDGET_CARD} everything="Zoption Budget" />
+          <PlanCard card={FAMILY_PRO_CARD} everything="Zoption Pro" />
+        </section>
+
         <section className="pricing-comparison-section" aria-labelledby="comparison-heading">
           <h2 id="comparison-heading">Detailed Plan Comparison</h2>
           <p className="pricing-comparison-lead">
-            Compare all features across Free and Pro tiers to pick what matches your tracking style.
+            Compare Free, Budget, and Pro to pick what matches your tracking style. Family Budget
+            and Family Pro give every member the Budget or Pro column for their own Zoption.
           </p>
 
           <div
@@ -325,6 +480,7 @@ export function PricingPage() {
                 <tr>
                   <th scope="col">Feature</th>
                   <th scope="col">Free</th>
+                  <th scope="col">Budget</th>
                   <th scope="col">Pro</th>
                 </tr>
               </thead>
@@ -332,21 +488,22 @@ export function PricingPage() {
                 {COMPARISON_ROWS.flatMap((group) => {
                   const headerRow = (
                     <tr key={group.category} className="category-header">
-                      <td colSpan={3}>{group.category}</td>
+                      <td colSpan={4}>{group.category}</td>
                     </tr>
                   );
                   const featureRows = group.features.map((feat) => (
                     <tr key={feat.name}>
                       <th scope="row">{feat.name}</th>
                       <td>
-                        {feat.free === "Not included" ? (
-                          <Minus size={16} aria-label="Not included" />
-                        ) : (
-                          feat.free
-                        )}
+                        <FeatureValue value={feat.free} />
                       </td>
                       <td>
-                        <strong>{feat.pro}</strong>
+                        <FeatureValue value={feat.budget} />
+                      </td>
+                      <td>
+                        <strong>
+                          <FeatureValue value={feat.pro} />
+                        </strong>
                       </td>
                     </tr>
                   ));
@@ -357,7 +514,6 @@ export function PricingPage() {
           </div>
         </section>
 
-        {/* Pricing FAQs */}
         <section className="pricing-faq-section" aria-labelledby="pricing-faq-heading">
           <h2 id="pricing-faq-heading">Frequently Asked Questions About Pricing</h2>
           <p className="pricing-faq-lead">
@@ -374,7 +530,6 @@ export function PricingPage() {
           </div>
         </section>
 
-        {/* Bottom Call to Action */}
         <section className="pricing-bottom-cta">
           <h2>Ready to bring clarity to your money?</h2>
           <p>

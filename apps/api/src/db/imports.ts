@@ -3,6 +3,7 @@ import {
   normalizeImportDate,
   normalizeSignedAmount,
   parseCsv,
+  type BillingTier,
   type ImportCommitRequest,
   type ImportCommitResult,
   type ImportPreview,
@@ -14,11 +15,13 @@ import { drizzle } from "drizzle-orm/d1";
 
 import { categories, importPreviews } from "../../../../db/schema";
 import {
-  EFFECTIVE_PRO_ENTITLEMENT_CONDITION,
-  hasProEntitlement,
+  categoryPlanRankSql,
+  EFFECTIVE_TIER_RANK_SQL,
   isCategoryPlanAvailable,
-  type BillingRepository,
-} from "./billing";
+  readTier,
+  wireCategoryPlan,
+} from "../billing/entitlements";
+import type { BillingRepository } from "./billing";
 import { HttpError } from "../errors";
 import { prepareImportRows, type PreparedImportRecord } from "../imports/prepare";
 import type { Bindings } from "../types";
@@ -31,7 +34,7 @@ const PREVIEW_LIFETIME_MS = 15 * 60 * 1000;
 
 export function buildImportTransactionInsertSql(requireNonSystemCategory: boolean): string {
   const systemConstraint = requireNonSystemCategory ? " AND system_key IS NULL" : "";
-  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind, import_id, import_row_number, entry_method) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND (required_plan = 'free' OR ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION})), ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?)`;
+  return `INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind, import_fingerprint, source_kind, import_id, import_row_number, entry_method) VALUES (?, ?, ?, (SELECT id FROM categories WHERE id = ? AND tenant_id = ? AND archived = 0 AND kind = ?${systemConstraint} AND ${categoryPlanRankSql("required_plan")} <= ${EFFECTIVE_TIER_RANK_SQL}), ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?)`;
 }
 
 export function assertImportFileSize(csvText: string): void {
@@ -130,7 +133,7 @@ interface OverrideCategory {
   kind: TransactionKind;
   archived: boolean;
   systemKey: string | null;
-  requiredPlan?: "free" | "zoption_pro";
+  requiredPlan?: string;
 }
 
 export async function applyKindOverridesToRows(
@@ -187,7 +190,7 @@ export function applyCategoryOverridesToRows(
   rows: PreparedImportRecord[],
   overrides: ImportCommitRequest["categoryOverrides"],
   availableCategories: OverrideCategory[],
-  hasPro = false,
+  tier: BillingTier = "free",
 ): PreparedImportRecord[] {
   if (overrides.length === 0) return rows;
 
@@ -205,7 +208,7 @@ export function applyCategoryOverridesToRows(
       category.archived ||
       category.systemKey !== null ||
       category.kind !== row.kind ||
-      !isCategoryPlanAvailable(category.requiredPlan ?? "free", hasPro)
+      !isCategoryPlanAvailable(category.requiredPlan ?? "free", tier)
     ) {
       throw new HttpError(
         400,
@@ -234,7 +237,7 @@ async function applyImportOverrides(
   if (input.categoryOverrides.length === 0 && input.kindOverrides.length === 0) return rows;
 
   const db = drizzle(env.DB);
-  const [availableCategories, hasPro] = await Promise.all([
+  const [availableCategories, tier] = await Promise.all([
     db
       .select({
         id: categories.id,
@@ -246,7 +249,7 @@ async function applyImportOverrides(
       })
       .from(categories)
       .where(eq(categories.tenantId, tenantId)),
-    hasProEntitlement(env, tenantId),
+    readTier(env, tenantId),
   ]);
   const kindAdjusted = await applyKindOverridesToRows(
     rows,
@@ -258,7 +261,7 @@ async function applyImportOverrides(
     kindAdjusted,
     input.categoryOverrides,
     availableCategories,
-    hasPro,
+    tier,
   );
 }
 
@@ -286,7 +289,7 @@ export function createImportRepository(
       assertImportRowCount(csv.rows.length);
 
       const db = drizzle(env.DB);
-      const [storedCategories, hasPro] = await Promise.all([
+      const [storedCategories, tier] = await Promise.all([
         db
           .select({
             id: categories.id,
@@ -300,13 +303,14 @@ export function createImportRepository(
           })
           .from(categories)
           .where(and(eq(categories.tenantId, tenantId), eq(categories.archived, false))),
-        hasProEntitlement(env, tenantId),
+        readTier(env, tenantId),
       ]);
       const categoryRows = storedCategories
         .map(({ systemKey, ...category }) => ({
           ...category,
+          requiredPlan: wireCategoryPlan(category.requiredPlan),
           system: systemKey !== null,
-          locked: !isCategoryPlanAvailable(category.requiredPlan, hasPro),
+          locked: !isCategoryPlanAvailable(category.requiredPlan, tier),
         }))
         .filter((category) => !category.locked);
       const transactionKinds: TransactionKind[] = ["income", "expense", "transfer"];

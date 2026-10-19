@@ -114,7 +114,8 @@ function isDodoCheckoutUrl(value: string): boolean {
   }
 }
 
-function applicationUrls(env: Bindings): { returnUrl: string; cancelUrl: string } {
+/** Plan and billing for a personal plan; the family page, which confirms it, for a family plan. */
+function applicationUrls(env: Bindings, family: boolean): { returnUrl: string; cancelUrl: string } {
   let base: URL;
   try {
     base = new URL(env.WEB_APP_URL?.trim() ?? "");
@@ -130,10 +131,12 @@ function applicationUrls(env: Bindings): { returnUrl: string; cancelUrl: string 
   }
 
   // No fragment: Dodo appends its own query parameters to the return URL.
-  const returnUrl = new URL("/app/settings", base);
-  returnUrl.searchParams.set("checkout", "completed");
-  const cancelUrl = new URL("/app/settings", base);
-  cancelUrl.searchParams.set("checkout", "cancelled");
+  const path = family ? "/app/family" : "/app/settings";
+  const parameter = family ? "familyCheckout" : "checkout";
+  const returnUrl = new URL(path, base);
+  returnUrl.searchParams.set(parameter, "completed");
+  const cancelUrl = new URL(path, base);
+  cancelUrl.searchParams.set(parameter, "cancelled");
   return { returnUrl: returnUrl.toString(), cancelUrl: cancelUrl.toString() };
 }
 
@@ -160,9 +163,9 @@ async function dodoFetch(env: Bindings, path: string, init: RequestInit = {}): P
 
 export async function createDodoCheckoutSession(
   env: Bindings,
-  input: { productId: string; checkoutReference: string },
+  input: { productId: string; checkoutReference: string; family: boolean },
 ): Promise<DodoCheckoutSession> {
-  const { returnUrl, cancelUrl } = applicationUrls(env);
+  const { returnUrl, cancelUrl } = applicationUrls(env, input.family);
   const payload = asRecord(
     await dodoFetch(env, "/checkouts", {
       method: "POST",
@@ -221,6 +224,28 @@ export async function getDodoSubscription(
     nextBillingDate: canonicalTimestamp(stringAt(payload, "next_billing_date")),
     cancelAtNextBillingDate: payload.cancel_at_next_billing_date === true,
   };
+}
+
+/**
+ * Switches a subscription's product. An upgrade (`prorated_immediately`) credits the unused time
+ * and charges the new plan now; a downgrade (`do_not_bill`) changes nothing until the next
+ * renewal bills the lower price. A failed charge leaves the old plan in place.
+ */
+export async function changeDodoSubscriptionPlan(
+  env: Bindings,
+  subscriptionId: string,
+  productId: string,
+  prorationBillingMode: "prorated_immediately" | "do_not_bill",
+): Promise<void> {
+  await dodoFetch(env, `/subscriptions/${encodeURIComponent(subscriptionId)}/change-plan`, {
+    method: "POST",
+    body: JSON.stringify({
+      product_id: productId,
+      quantity: 1,
+      proration_billing_mode: prorationBillingMode,
+      on_payment_failure: "prevent_change",
+    }),
+  });
 }
 
 /** Stops renewal; Dodo keeps the subscription active until the paid period ends. */

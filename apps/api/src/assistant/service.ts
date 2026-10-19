@@ -33,7 +33,7 @@ import { debtRepository } from "../db/debts";
 import { financialGoalRepository } from "../db/goals";
 import { subscriptionRepository } from "../db/subscriptions";
 import { transactionRepository, type TransactionRepository } from "../db/transactions";
-import { consumeAiUsage as defaultConsumeAiUsage } from "../db/billing";
+import { consumeAiUsage as defaultConsumeAiUsage } from "../db/billing-usage";
 import { HttpError } from "../errors";
 import { confirmAssistantAction, type AssistantActionDependencies } from "./action-confirm";
 import type { Bindings } from "../types";

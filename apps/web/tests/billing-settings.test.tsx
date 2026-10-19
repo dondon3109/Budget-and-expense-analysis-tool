@@ -68,6 +68,10 @@ function summary(
     currentPeriodEndsAt: status ? "2026-08-30T00:00:00.000Z" : null,
     scheduledChangeAt: null,
     cancelAtPeriodEnd: false,
+    subscriptionPlan: status ? "pro" : null,
+    pendingChange: null,
+    coveredBy: null,
+    canChangePlan: false,
     pendingCheckout: null,
     canCheckout: status === null || status === "canceled",
     canManageBilling: status !== null,
@@ -120,6 +124,7 @@ function renderSettings(
       ...value,
       pendingCheckout: {
         provider: "paypal",
+        plan: "pro",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2099-08-01T00:15:00.000Z",
@@ -198,7 +203,7 @@ describe("BillingSettings", () => {
 
     expect(await screen.findByText(/No card is needed/)).toBeInTheDocument();
     expect(screen.getByText(/Trial ends/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Choose a Pro plan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose a plan" })).toBeInTheDocument();
   });
 
   it("keeps the provider trial copy for a paid trial", async () => {
@@ -229,6 +234,7 @@ describe("BillingSettings", () => {
     const pending = summary(null, {
       pendingCheckout: {
         provider: "paypal",
+        plan: "pro",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2099-08-01T00:15:00.000Z",
@@ -239,7 +245,7 @@ describe("BillingSettings", () => {
 
     expect(await screen.findByText("Confirming your payment")).toBeInTheDocument();
     expect(screen.queryByText("You’re using the Free plan")).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Choose a Pro plan" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose a plan" })).not.toBeInTheDocument();
     expect(apiMocks.reconcileBillingCheckout).toHaveBeenCalledTimes(1);
   });
 
@@ -247,6 +253,7 @@ describe("BillingSettings", () => {
     const pending = summary(null, {
       pendingCheckout: {
         provider: "paypal",
+        plan: "pro",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2026-08-01T00:15:00.000Z",
@@ -266,6 +273,7 @@ describe("BillingSettings", () => {
     const pending = summary(null, {
       pendingCheckout: {
         provider: "paypal",
+        plan: "pro",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2026-08-01T00:15:00.000Z",
@@ -281,9 +289,7 @@ describe("BillingSettings", () => {
     const startButton = await screen.findByRole("button", { name: "Start a new checkout" });
     fireEvent.click(startButton);
 
-    expect(
-      await screen.findByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("dialog", { name: "Choose a plan" })).toBeInTheDocument();
   });
 
   it("automatically reflects an activated checkout in Plan and billing", async () => {
@@ -307,7 +313,7 @@ describe("BillingSettings", () => {
     );
     expect(screen.queryByText("Confirming your payment")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("dialog", { name: "Thank you for upgrading to Zoption Pro!" }),
+      screen.getByRole("dialog", { name: "Thank you for upgrading Zoption!" }),
     ).toBeInTheDocument();
   });
 
@@ -344,6 +350,7 @@ describe("BillingSettings", () => {
     const pending = summary(null, {
       pendingCheckout: {
         provider: "paypal",
+        plan: "pro",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2099-08-01T00:15:00.000Z",
@@ -392,6 +399,7 @@ describe("BillingSettings", () => {
     const pending = summary(null, {
       pendingCheckout: {
         provider: "paypal",
+        plan: "pro",
         interval: "month",
         createdAt: "2026-08-01T00:00:00.000Z",
         expiresAt: "2099-08-01T00:15:00.000Z",
@@ -477,32 +485,32 @@ describe("BillingSettings", () => {
     renderSettings(summary(null));
 
     expect(await screen.findByText("You’re using the Free plan")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Choose a Pro plan" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose a plan" })).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Upgrade monthly|Upgrade annually/ }),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Manage billing" })).not.toBeInTheDocument();
   });
 
-  it("opens the Pro plan chooser and returns focus to its Settings trigger", async () => {
+  it("opens the plan chooser and returns focus to its Settings trigger", async () => {
     renderSettings(summary(null));
 
-    const trigger = await screen.findByRole("button", { name: "Choose a Pro plan" });
+    const trigger = await screen.findByRole("button", { name: "Choose a plan" });
     trigger.focus();
     fireEvent.click(trigger);
 
     const dialog = await screen.findByRole("dialog", {
-      name: "Choose how you want to use Zoption Pro",
+      name: "Choose a plan",
     });
-    expect(screen.getByRole("button", { name: "Continue using free plan" })).toHaveFocus();
-    expect(screen.getByRole("radio", { name: "Monthly, ₱149/month" })).toBeChecked();
-    expect(screen.getByRole("radio", { name: "Annual, ₱1,299/year" })).toBeVisible();
-    expect(await screen.findByRole("button", { name: "Continue securely" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Not now" })).toHaveFocus();
+    expect(screen.getByRole("radio", { name: /^Monthly/ })).toBeChecked();
+    expect(screen.getByRole("radio", { name: /^Zoption Budget/ })).toBeChecked();
+    expect(
+      await screen.findByRole("button", { name: "Continue with Zoption Budget" }),
+    ).toBeVisible();
 
     fireEvent.keyDown(dialog, { key: "Escape" });
-    expect(
-      screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Choose a plan" })).not.toBeInTheDocument();
     expect(trigger).toHaveFocus();
   });
 
@@ -518,7 +526,7 @@ describe("BillingSettings", () => {
 
     const consoleLink = await screen.findByRole("link", { name: "Open admin console" });
     const comparisonSection = screen
-      .getByRole("heading", { name: "Free and Pro, side by side" })
+      .getByRole("heading", { name: "Free, Budget, and Pro, side by side" })
       .closest("section");
     const billingSection = screen
       .getByRole("heading", { name: "Plan and billing" })
@@ -535,7 +543,7 @@ describe("BillingSettings", () => {
   it("does not mount sponsored seat management for a non-administrator", async () => {
     renderSettings(summary(null));
 
-    await screen.findByText("Free and Pro, side by side");
+    await screen.findByText("Free, Budget, and Pro, side by side");
 
     expect(screen.queryByRole("heading", { name: "Platform admin" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Open admin console" })).not.toBeInTheDocument();
@@ -543,22 +551,26 @@ describe("BillingSettings", () => {
     expect(apiMocks.getSponsoredProSeats).not.toHaveBeenCalled();
   });
 
-  it("shows exact Free and Pro limits, including the category allowance", async () => {
+  it("shows exact Free, Budget, and Pro limits, including the category allowance", async () => {
     renderSettings(summary(null));
 
-    expect(await screen.findByText("Free and Pro, side by side")).toBeInTheDocument();
+    expect(await screen.findByText("Free, Budget, and Pro, side by side")).toBeInTheDocument();
     expect(screen.getByText("500 per month, shared across every AI feature")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "AI actions this month" })).toHaveAttribute(
       "aria-valuenow",
       "2",
     );
+    expect(screen.getByText("5 committed imports per month")).toBeInTheDocument();
     expect(screen.getByText("10 committed imports per month")).toBeInTheDocument();
+    expect(
+      screen.getByText("10 active custom categories, plus included starters"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("4 active custom categories, plus included starters"),
     ).toBeInTheDocument();
     expect(screen.getByText("Unlimited active custom categories")).toBeInTheDocument();
     expect(screen.getByText("Weekly cashflow view")).toBeInTheDocument();
-    expect(screen.getByText("Adds monthly and six-month cashflow views")).toBeInTheDocument();
+    expect(screen.getAllByText("Adds monthly and six-month cashflow views")).toHaveLength(2);
     expect(screen.getByRole("progressbar", { name: "Active custom categories" })).toHaveAttribute(
       "aria-valuenow",
       "1",
@@ -568,10 +580,12 @@ describe("BillingSettings", () => {
   it("labels the comparison and clearly identifies the Free plan as current", async () => {
     renderSettings(summary(null));
 
-    const regions = await screen.findAllByRole("region", { name: "Free and Pro, side by side" });
+    const regions = await screen.findAllByRole("region", {
+      name: "Free, Budget, and Pro, side by side",
+    });
     const comparison = regions.find((el) => el.getAttribute("tabindex") === "0")!;
     const table = within(comparison).getByRole("table", {
-      name: "Free and Zoption Pro plan feature comparison",
+      name: "Free, Zoption Budget, and Zoption Pro features",
     });
     const freeHeader = within(table).getByRole("columnheader", { name: /Free\s*Current plan/ });
     const proHeader = within(table).getByRole("columnheader", { name: "Zoption Pro" });
@@ -591,7 +605,7 @@ describe("BillingSettings", () => {
     renderSettings(summary("active"));
 
     const table = await screen.findByRole("table", {
-      name: "Free and Zoption Pro plan feature comparison",
+      name: "Free, Zoption Budget, and Zoption Pro features",
     });
     const freeHeader = within(table).getByRole("columnheader", { name: "Free" });
     const proHeader = within(table).getByRole("columnheader", {
@@ -612,7 +626,7 @@ describe("BillingSettings", () => {
     );
 
     expect(await screen.findByText(/new checkout is unavailable/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Choose a Pro plan" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose a plan" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancel renewal" })).not.toBeInTheDocument();
   });
 
@@ -678,7 +692,7 @@ describe("BillingSettings", () => {
     });
 
     expect(
-      screen.getByText("Your Pro access remains available until the paid period ends"),
+      screen.getByText("Your Zoption Pro access remains available until the paid period ends"),
     ).toBeInTheDocument();
     expect(screen.getByText("Period ends Aug 30, 2026")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancel renewal" })).not.toBeInTheDocument();

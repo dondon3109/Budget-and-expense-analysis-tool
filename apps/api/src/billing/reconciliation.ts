@@ -87,14 +87,17 @@ async function applyReconciledSubscription(
   if (snapshot.status === "canceled") return { outcome: "closed", summary };
 
   if (snapshot.status === "active") {
-    const persisted = await repository.getProviderSubscription(env, tenantId, snapshot.provider);
+    // A trial or a family may outrank the plan just bought, so the persisted row is the proof,
+    // not the summary's entitlement source.
+    const persisted = await repository.getProviderSubscription(
+      env,
+      tenantId,
+      checkout.familyTenantId,
+    );
     const confirmed =
       persisted?.providerSubscriptionId === snapshot.providerSubscriptionId &&
       persisted.status === "active" &&
       isFutureTimestamp(persisted.currentPeriodEndsAt) &&
-      summary.entitlementSource === snapshot.provider &&
-      summary.provider === snapshot.provider &&
-      summary.status === "active" &&
       summary.pendingCheckout === null;
     if (!confirmed) {
       throw new HttpError(

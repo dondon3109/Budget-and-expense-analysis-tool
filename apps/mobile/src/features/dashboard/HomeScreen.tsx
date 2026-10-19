@@ -8,6 +8,7 @@ import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { FamilyClosingNotice } from "@/features/family/FamilyClosingNotice";
+import { FamilyHomeJustYouCard } from "@/features/family/JustYouCard";
 import { RemittanceCard } from "@/features/family/RemittanceCard";
 import { SharedBalancesCard } from "@/features/family/SharedBalancesCard";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
@@ -78,7 +79,7 @@ export function HomeScreen() {
       (dashboard.data?.recentTransactions.length ?? 0) > 0 ||
       (dashboard.data?.accounts.length ?? 0) > 0),
   );
-  const isPro = planState.plan === "zoption_pro";
+  const isPaid = planState.plan !== null && planState.plan !== "free";
   const showViewSwitch = menuView === "home" && !dashboard.error && hasTransactions;
 
   const handleRefresh = useCallback(async () => {
@@ -111,6 +112,7 @@ export function HomeScreen() {
         </View>
       </View>
       <FamilyClosingNotice />
+      <FamilyHomeJustYouCard />
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
         <SyncPausedBanner message={sync.message} onRetry={sync.retry} />
@@ -177,7 +179,7 @@ export function HomeScreen() {
                   <MonthSummaryCard summary={view.summary} />
                   <CashflowCard
                     cashflow={view.cashflow}
-                    isPro={isPro}
+                    isPaid={isPaid}
                     onSelectView={setCashflowView}
                     selectedView={cashflowView}
                   />

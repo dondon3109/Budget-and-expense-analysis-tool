@@ -12,21 +12,21 @@ const CASHFLOW_VIEWS: {
   value: CashflowTrend["view"];
   label: string;
   title: string;
-  proOnly: boolean;
+  paidOnly: boolean;
 }[] = [
-  { value: "weekly", label: "7 days", title: "Cash flow · last 7 days", proOnly: false },
-  { value: "monthly", label: "Month", title: "Cash flow · last 30 days", proOnly: true },
-  { value: "sixMonth", label: "6 months", title: "Cash flow · last 6 months", proOnly: true },
+  { value: "weekly", label: "7 days", title: "Cash flow · last 7 days", paidOnly: false },
+  { value: "monthly", label: "Month", title: "Cash flow · last 30 days", paidOnly: true },
+  { value: "sixMonth", label: "6 months", title: "Cash flow · last 6 months", paidOnly: true },
 ];
 
 export function CashflowCard({
   cashflow,
-  isPro,
+  isPaid,
   onSelectView,
   selectedView,
 }: {
   cashflow: CashflowTrend;
-  isPro: boolean;
+  isPaid: boolean;
   onSelectView: (view: CashflowTrend["view"]) => void;
   selectedView: CashflowTrend["view"];
 }) {
@@ -41,14 +41,14 @@ export function CashflowCard({
     <ChartCard title={title} accessibleSummary={summary}>
       <View accessibilityRole="tablist" style={styles.segmented}>
         {CASHFLOW_VIEWS.map((option) => {
-          const locked = option.proOnly && !isPro;
+          const locked = option.paidOnly && !isPaid;
           const selected = option.value === selectedView;
           return (
             <Pressable
               key={option.value}
               accessibilityRole="tab"
               accessibilityState={{ selected, disabled: locked }}
-              accessibilityLabel={option.label + (locked ? ", requires Pro" : "")}
+              accessibilityLabel={option.label + (locked ? ", requires a paid plan" : "")}
               disabled={locked}
               onPress={withTapSound(() => onSelectView(option.value))}
               style={[
@@ -86,9 +86,9 @@ export function CashflowCard({
           );
         })}
       </View>
-      {!isPro ? (
+      {!isPaid ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          Month and 6-month cash flow are Pro features.
+          Month and 6-month cash flow come with Budget and Pro.
         </Text>
       ) : null}
       <CashflowChart cashflow={cashflow} />

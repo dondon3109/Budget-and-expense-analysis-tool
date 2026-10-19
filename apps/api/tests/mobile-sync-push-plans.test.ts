@@ -13,7 +13,7 @@ describe("mobile sync budget push repository", () => {
 
   it("creates and updates a month-scoped budget idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const entityId = "20000000-0000-4000-8000-000000000002";
     const create = {
       protocolVersion: 1 as const,
@@ -69,7 +69,7 @@ describe("mobile sync budget push repository", () => {
 
   it("rejects a duplicate month-category budget as an entity_exists conflict", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const duplicate = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -101,7 +101,7 @@ describe("mobile sync budget push repository", () => {
 
   it("rejects a budget for a category the tenant does not own", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const rejected = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -126,7 +126,7 @@ describe("mobile sync budget push repository", () => {
 
   it("returns a stale revision conflict for an out-of-date budget update", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database.prepare("UPDATE budgets SET limit_minor = ? WHERE id = ?").run(90_000, "budget-1");
 
     const stale = await repository.push(env, "tenant-1", {
@@ -159,7 +159,7 @@ describe("mobile sync financial goal push repository", () => {
 
   it("creates, updates, and deletes a goal idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const entityId = "30000000-0000-4000-8000-000000000002";
     const create = {
       protocolVersion: 1 as const,
@@ -244,7 +244,7 @@ describe("mobile sync financial goal push repository", () => {
 
   it("rejects a duplicate goal name", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const duplicate = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -275,7 +275,7 @@ describe("mobile sync financial goal push repository", () => {
 
   it("rejects an update whose current savings exceed the target", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const rejected = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -300,7 +300,7 @@ describe("mobile sync financial goal push repository", () => {
 
   it("returns a stale revision conflict for an out-of-date goal update", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database
       .prepare("UPDATE financial_goals SET current_amount_minor = ? WHERE id = ?")
       .run(50_000, "goal-1");
@@ -335,7 +335,7 @@ describe("mobile sync debt push repository", () => {
 
   it("creates, updates, and deletes a debt idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const entityId = "40000000-0000-4000-8000-000000000002";
     const create = {
       protocolVersion: 1 as const,
@@ -420,7 +420,7 @@ describe("mobile sync debt push repository", () => {
 
   it("rejects a duplicate debt name case-insensitively", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const duplicate = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -453,7 +453,7 @@ describe("mobile sync debt push repository", () => {
 
   it("returns a stale revision conflict for an out-of-date debt update", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database.prepare("UPDATE debts SET balance_minor = ? WHERE id = ?").run(450_000, "debt-1");
 
     const stale = await repository.push(env, "tenant-1", {

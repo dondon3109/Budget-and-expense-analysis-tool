@@ -1,6 +1,6 @@
 import type { MobileSyncPushOperation, MobileSyncPushResult } from "@zoption/shared";
 
-import type { EntitySnapshot } from "./snapshots";
+import { wireSnapshot, type EntitySnapshot } from "./snapshots";
 
 /**
  * The statements one applied single-entity operation writes. The facade batches them as
@@ -25,7 +25,7 @@ export function conflictResult(
     code,
     serverRevision: snapshot?.revision ?? null,
     serverUpdatedAt: snapshot?.updatedAt ?? null,
-    serverPayload: snapshot,
+    serverPayload: wireSnapshot(snapshot),
   };
 }
 

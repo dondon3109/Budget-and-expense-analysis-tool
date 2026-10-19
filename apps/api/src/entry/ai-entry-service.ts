@@ -21,7 +21,7 @@ import {
   AssistantVoiceProviderError,
   type AssistantVoiceTranscriptionProvider,
 } from "../assistant/voice-provider";
-import { consumeAiUsage } from "../db/billing";
+import { consumeAiUsage } from "../db/billing-usage";
 import { loadWorkspaceCurrency } from "../db/workspace-settings";
 import type { ImportRepository } from "../db/imports";
 import type { ReceiptRepository } from "../db/receipts";

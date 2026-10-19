@@ -19,7 +19,7 @@ import {
 
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { hasProEntitlement } from "./billing";
+import { readTier } from "../billing/entitlements";
 import {
   readTransactionDebtPayment,
   validateTransactionReferences,
@@ -180,7 +180,7 @@ function entityMutation(
 }
 
 export function createMobileSyncRepository(
-  readEntitlement: EntitlementReader = hasProEntitlement,
+  readEntitlement: EntitlementReader = readTier,
 ): MobileSyncRepository {
   return {
     async snapshot(env, tenantId, input, features = new Set()) {

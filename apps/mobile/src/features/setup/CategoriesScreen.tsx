@@ -28,7 +28,7 @@ function CategoryRow({ category, onPress }: { category: LocalCategoryItem; onPre
   const theme = useZoptionTheme();
   const status = statusText(category.syncState);
   const disabled = category.system || category.syncState === "failed";
-  const detail = `${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.requiredPlan === "zoption_pro" ? " · Pro" : ""}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`;
+  const detail = `${category.kind[0]!.toUpperCase()}${category.kind.slice(1)}${category.locked ? " · Locked" : ""}${category.system ? " · Permanent" : ""}`;
 
   return (
     <Pressable

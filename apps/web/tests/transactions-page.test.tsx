@@ -196,7 +196,7 @@ describe("TransactionsPage sorting", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Export CSV" }));
 
-    expect(await screen.findByRole("alert", { name: "Zoption Pro is required" })).toHaveTextContent(
+    expect(await screen.findByRole("alert", { name: "A paid plan is required" })).toHaveTextContent(
       "transaction exports",
     );
     expect(screen.getByText("0 transactions")).toBeInTheDocument();

@@ -40,6 +40,7 @@ import { radii, spacing, typography } from "@/ui/tokens";
 import { useActiveWorkspace } from "./active-workspace";
 import { FamilyAlertsCard } from "./FamilyAlertsCard";
 import { FamilyAvatar, RoleBadge, RoleChooser, SectionLabel } from "./family-ui";
+import { FamilyPlanSection } from "./FamilyPlanSection";
 import { SeatRulesDialog } from "./SeatRulesDialog";
 import { formatFamilyDate, ROLE_LABELS, useFamilyApi } from "./use-family-api";
 
@@ -126,7 +127,9 @@ export function FamilyManagerView() {
   const muted = { color: theme.colors.textMuted };
   const owner = detail.role === "owner";
   const closing = detail.closesAt !== null;
-  const canManage = owner && !closing;
+  // A lapsed family is read only for everyone; an unpaid one waits for a plan before invites.
+  const canManage = owner && !closing && detail.plan !== "lapsed";
+  const canInvite = canManage && detail.plan === "active";
 
   // Runs one change and reloads the family; the message line says why one failed.
   const write = async (task: () => Promise<unknown>): Promise<boolean> => {
@@ -246,6 +249,8 @@ export function FamilyManagerView() {
         ) : null}
       </Card>
 
+      {closing ? null : <FamilyPlanSection detail={detail} onChanged={() => void load()} />}
+
       {message && !pending ? (
         <Text
           accessibilityRole="alert"
@@ -301,7 +306,7 @@ export function FamilyManagerView() {
         })}
       </MenuGroup>
 
-      {canManage ? (
+      {canInvite ? (
         <View style={{ gap: spacing.xs }}>
           <SectionLabel>Invite someone</SectionLabel>
           <Card style={{ gap: spacing.sm }}>
@@ -323,7 +328,7 @@ export function FamilyManagerView() {
         </View>
       ) : null}
 
-      {canManage && detail.invitations.length > 0 ? (
+      {canInvite && detail.invitations.length > 0 ? (
         <MenuGroup title="Waiting to join">
           {detail.invitations.map((invitation) => (
             <View key={invitation.id} style={[styles.row, styles.listRow]}>

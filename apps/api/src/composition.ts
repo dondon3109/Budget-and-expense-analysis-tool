@@ -22,11 +22,8 @@ import {
 } from "./db/assistant-model-memory-usage";
 import { assistantActionRepository } from "./db/assistant-actions";
 import { assistantTransactionDraftRepository } from "./db/assistant-transaction-drafts";
-import {
-  billingRepository,
-  consumeAiUsage as defaultConsumeAiUsage,
-  type BillingRepository,
-} from "./db/billing";
+import { billingRepository, type BillingRepository } from "./db/billing";
+import { consumeAiUsage as defaultConsumeAiUsage } from "./db/billing-usage";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import {
   bugReportEgressAuditRepository,

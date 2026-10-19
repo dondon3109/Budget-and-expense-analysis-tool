@@ -4,20 +4,58 @@ import { z } from "zod";
 
 import {
   billingFeatures,
+  billingIntervals,
   billingProviders,
   billingUsagePeriodKinds,
   proEntitlementSources,
-} from "../types";
+} from "../billing";
+import {
+  billingPlanKeys,
+  billingTiers,
+  familyBillingPlans,
+  familyPlanStates,
+  personalBillingPlans,
+} from "../plans";
+
+const billingIntervalSchema = z.enum(billingIntervals);
 
 export const billingCheckoutRequestSchema = z
   .object({
-    interval: z.enum(["month", "year"]),
-    // Optional so clients released before Dodo Payments keep checking out through PayPal.
-    provider: z.enum(billingProviders).default("paypal"),
+    plan: z.enum(personalBillingPlans),
+    interval: billingIntervalSchema,
+    provider: z.enum(billingProviders),
   })
   .strict();
 
 export type BillingCheckoutRequest = z.infer<typeof billingCheckoutRequestSchema>;
+
+export const familyBillingCheckoutRequestSchema = z
+  .object({
+    plan: z.enum(familyBillingPlans),
+    interval: billingIntervalSchema,
+    provider: z.enum(billingProviders),
+  })
+  .strict();
+
+export type FamilyBillingCheckoutRequest = z.infer<typeof familyBillingCheckoutRequestSchema>;
+
+/** Switch the plan or interval of the subscription already paid for. */
+export const billingPlanChangeRequestSchema = z
+  .object({ plan: z.enum(billingPlanKeys), interval: billingIntervalSchema })
+  .strict();
+
+export type BillingPlanChangeRequest = z.infer<typeof billingPlanChangeRequestSchema>;
+
+export const billingPlanChangeResponseSchema = z
+  .object({
+    /** `scheduled` is a downgrade waiting for the period to end. */
+    outcome: z.enum(["applied", "scheduled", "approval_required"]),
+    /** PayPal only: a PayPal-balance subscriber approves the new price there. */
+    approvalUrl: z.string().url().nullable(),
+  })
+  .strict();
+
+export type BillingPlanChangeResponse = z.infer<typeof billingPlanChangeResponseSchema>;
 
 export const sponsoredSeatEmailRequestSchema = z
   .object({ email: z.string().trim().email().max(320) })
@@ -49,26 +87,55 @@ export const billingResourceAllowanceSchema = z
   })
   .strict();
 
+const billingSubscriptionStatusSchema = z.enum([
+  "active",
+  "trialing",
+  "past_due",
+  "paused",
+  "canceled",
+]);
+
+const billingPendingCheckoutSchema = z
+  .object({
+    provider: z.enum(billingProviders),
+    plan: z.enum(billingPlanKeys),
+    interval: billingIntervalSchema,
+    createdAt: z.iso.datetime(),
+    expiresAt: z.iso.datetime(),
+  })
+  .strict();
+
+const billingPendingChangeSchema = z
+  .object({
+    plan: z.enum(billingPlanKeys),
+    interval: billingIntervalSchema,
+    effectiveAt: z.iso.datetime(),
+  })
+  .strict();
+
 export const billingSummaryResponseSchema = z
   .object({
-    plan: z.enum(["free", "zoption_pro"]),
+    plan: z.enum(billingTiers),
     entitlementSource: z.enum(proEntitlementSources).nullable(),
+    subscriptionPlan: z.enum(personalBillingPlans).nullable(),
     provider: z.enum(billingProviders).nullable(),
-    status: z.enum(["active", "trialing", "past_due", "paused", "canceled"]).nullable(),
-    interval: z.enum(["month", "year"]).nullable(),
+    status: billingSubscriptionStatusSchema.nullable(),
+    interval: billingIntervalSchema.nullable(),
     currentPeriodEndsAt: z.iso.datetime().nullable(),
     scheduledChangeAt: z.iso.datetime().nullable(),
     cancelAtPeriodEnd: z.boolean(),
-    pendingCheckout: z
+    pendingChange: billingPendingChangeSchema.nullable(),
+    pendingCheckout: billingPendingCheckoutSchema.nullable(),
+    coveredBy: z
       .object({
-        provider: z.enum(billingProviders),
-        interval: z.enum(["month", "year"]),
-        createdAt: z.iso.datetime(),
-        expiresAt: z.iso.datetime(),
+        familyId: z.string().min(1).max(128),
+        familyName: z.string().min(1).max(200),
+        plan: z.enum(familyBillingPlans),
       })
       .strict()
       .nullable(),
     canCheckout: z.boolean(),
+    canChangePlan: z.boolean(),
     canManageBilling: z.boolean(),
     canManageSponsoredSeats: z.boolean(),
     nonTerminalSubscriptionCount: z.number().int().min(0),
@@ -106,6 +173,30 @@ export const billingCheckoutResponseSchema = z
   .strict();
 
 export type BillingCheckoutResponse = z.infer<typeof billingCheckoutResponseSchema>;
+
+/**
+ * A family's plan as its owner sees it in Family settings. `unpaid` was never paid for (the
+ * owner uses it alone, invites wait for a plan); `lapsed` was paid and ended, so it is read-only.
+ */
+export const familyBillingSummaryResponseSchema = z
+  .object({
+    state: z.enum(familyPlanStates),
+    plan: z.enum(familyBillingPlans).nullable(),
+    interval: billingIntervalSchema.nullable(),
+    provider: z.enum(billingProviders).nullable(),
+    status: billingSubscriptionStatusSchema.nullable(),
+    currentPeriodEndsAt: z.iso.datetime().nullable(),
+    cancelAtPeriodEnd: z.boolean(),
+    /** False when a previous owner pays: the plan ends with their period. */
+    paidByYou: z.boolean(),
+    pendingChange: billingPendingChangeSchema.nullable(),
+    pendingCheckout: billingPendingCheckoutSchema.nullable(),
+    canCheckout: z.boolean(),
+    canChangePlan: z.boolean(),
+  })
+  .strict();
+
+export type FamilyBillingSummary = z.infer<typeof familyBillingSummaryResponseSchema>;
 
 export const billingCancelResponseSchema = z
   .object({ cancellationRequested: z.literal(true) })

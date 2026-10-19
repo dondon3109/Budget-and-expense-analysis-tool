@@ -111,3 +111,9 @@
 .family-section > .button {
   justify-self: start;
 }
+
+.family-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

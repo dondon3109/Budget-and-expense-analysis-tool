@@ -100,7 +100,7 @@ const accountRows = [
     interestFrequency: "daily",
     interestPayDay: null,
     currency: "PHP",
-    hasPro: 1,
+    hasPaidPlan: 1,
   },
 ];
 
@@ -146,7 +146,7 @@ describe("creditDueInterest", () => {
         interestFrequency: "daily",
         interestPayDay: null,
         currency: "PHP",
-        hasPro: 1,
+        hasPaidPlan: 1,
       },
     ];
     const { statements, batchCalls, db } = createDatabase({
@@ -169,7 +169,7 @@ describe("creditDueInterest", () => {
         interestFrequency: "monthly",
         interestPayDay: 15,
         currency: "PHP",
-        hasPro: 1,
+        hasPaidPlan: 1,
       },
     ];
     const { batchCalls, db } = createDatabase({
@@ -191,7 +191,7 @@ describe("creditDueInterest", () => {
         interestFrequency: "monthly",
         interestPayDay: 15,
         currency: "PHP",
-        hasPro: 1,
+        hasPaidPlan: 1,
       },
     ];
     const { batchCalls, db } = createDatabase({
@@ -231,7 +231,7 @@ describe("creditDueInterest", () => {
 
   it("skips interest for a tenant without a Pro entitlement (Pro-only feature)", async () => {
     const { statements, batchCalls, db } = createDatabase({
-      accounts: [{ ...accountRows[0]!, hasPro: 0 }],
+      accounts: [{ ...accountRows[0]!, hasPaidPlan: 0 }],
       categoryId: "cat-interest",
       balance: 1_000_000,
     });
@@ -250,7 +250,7 @@ describe("creditDueInterest", () => {
       interestFrequency: "daily",
       interestPayDay: null,
       currency: "PHP",
-      hasPro: 1,
+      hasPaidPlan: 1,
     }));
     const { statements, batchCalls, db } = createDatabase({
       accounts: manyAccounts,
@@ -283,7 +283,7 @@ describe("creditDueInterest", () => {
           interestFrequency: "daily",
           interestPayDay: null,
           currency: "PHP",
-          hasPro: 1,
+          hasPaidPlan: 1,
         },
       ],
       categoryId: "c",

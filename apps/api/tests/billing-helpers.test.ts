@@ -1,31 +1,38 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { BillingTier } from "@zoption/shared";
+
+import { isCategoryPlanAvailable, wireCategoryPlan } from "../src/billing/entitlements";
 import {
   billingRepository,
-  customCategoryLimitError,
-  getCustomCategoryAllowance,
   hasEffectiveProEntitlement,
   isCheckoutBlockingSubscription,
-  isCategoryPlanAvailable,
-  isMonthlyLimitDatabaseError,
   isNonTerminalBillingStatus,
   isProBillingStatus,
+} from "../src/db/billing";
+import {
+  customCategoryLimitError,
+  getCustomCategoryAllowance,
+  isMonthlyLimitDatabaseError,
   manilaMonth,
   nextManilaMonth,
-} from "../src/db/billing";
+} from "../src/db/billing-usage";
 import type { Bindings } from "../src/types";
 
-function usageEnvironment(options: { pro: boolean; used: number }): Bindings {
+const TIER_RANK = { free: null, zoption_budget: 1, zoption_pro: 2 } as const;
+
+/** Answers the tier lookup with `tier` and every count with `count`. */
+function tierEnvironment(tier: BillingTier, count: number): Bindings {
   const database = {
     prepare: vi.fn((sql: string) => ({
       bind: vi.fn(() => ({
         first: vi.fn(async () => {
-          if (sql.includes("status IN ('active', 'trialing')")) {
-            return options.pro ? { found: 1 } : null;
+          if (sql.includes("FROM effective_plan_access")) {
+            const rank = TIER_RANK[tier];
+            return rank ? { source: "paypal", rank, familyTenantId: null } : null;
           }
-          if (sql.includes("FROM billing_monthly_usage")) return { count: options.used };
-          if (sql.includes("FROM effective_pro_access")) {
-            return options.pro ? { source: "paypal" } : null;
+          if (sql.includes("COUNT(*)") || sql.includes("FROM billing_monthly_usage")) {
+            return { count };
           }
           throw new Error(`Unexpected SQL in test: ${sql}`);
         }),
@@ -95,44 +102,35 @@ describe("billing time and status helpers", () => {
     );
   });
 
-  it("locks Pro-required categories when the entitlement is unavailable", () => {
-    expect(isCategoryPlanAvailable("free", false)).toBe(true);
-    expect(isCategoryPlanAvailable("zoption_pro", true)).toBe(true);
-    expect(isCategoryPlanAvailable("zoption_pro", false)).toBe(false);
+  it("unlocks a category's tag at its tier and above", () => {
+    expect(isCategoryPlanAvailable("free", "free")).toBe(true);
+    expect(isCategoryPlanAvailable("zoption_budget", "free")).toBe(false);
+    expect(isCategoryPlanAvailable("zoption_budget", "zoption_budget")).toBe(true);
+    expect(isCategoryPlanAvailable("zoption_pro", "zoption_budget")).toBe(false);
+    expect(isCategoryPlanAvailable("zoption_pro", "zoption_pro")).toBe(true);
+  });
+
+  it("sends a Budget tag to installed apps as Pro", () => {
+    expect(wireCategoryPlan("free")).toBe("free");
+    expect(wireCategoryPlan("zoption_budget")).toBe("zoption_pro");
+    expect(wireCategoryPlan("zoption_pro")).toBe("zoption_pro");
   });
 });
 
 describe("custom category allowances", () => {
-  function categoryEnvironment(used: number): Bindings {
-    return {
-      DB: {
-        prepare: vi.fn(() => ({
-          bind: vi.fn(() => ({ first: vi.fn(async () => ({ count: used })) })),
-        })),
-      } as unknown as D1Database,
-    };
-  }
-
-  it("returns four Free custom categories and unlimited Pro categories", async () => {
+  it.each([
+    ["free", 0, 4],
+    ["zoption_budget", 6, 10],
+    ["zoption_pro", 18, null],
+  ] as const)("gives %s a limit of %s custom categories", async (tier, used, limit) => {
     await expect(
-      getCustomCategoryAllowance(categoryEnvironment(0), "user:user-1", false),
-    ).resolves.toEqual({
-      resource: "custom_category",
-      used: 0,
-      limit: 4,
-    });
-    await expect(
-      getCustomCategoryAllowance(categoryEnvironment(8), "user:user-1", true),
-    ).resolves.toEqual({
-      resource: "custom_category",
-      used: 8,
-      limit: null,
-    });
+      getCustomCategoryAllowance(tierEnvironment(tier, used), "user:user-1"),
+    ).resolves.toEqual({ resource: "custom_category", used, limit });
   });
 
   it("returns a stable resource-limit response with current usage", async () => {
     await expect(
-      customCategoryLimitError(categoryEnvironment(2), "user:user-1"),
+      customCategoryLimitError(tierEnvironment("free", 2), "user:user-1"),
     ).resolves.toMatchObject({
       status: 409,
       code: "resource_limit_reached",
@@ -157,14 +155,15 @@ describe("billing usage error mapping", () => {
   });
 
   it.each([
-    { pro: false, used: 1, limit: 1 },
-    { pro: true, used: 10, limit: 10 },
-  ])(
+    { tier: "free", used: 1, limit: 1 },
+    { tier: "zoption_budget", used: 5, limit: 5 },
+    { tier: "zoption_pro", used: 10, limit: 10 },
+  ] as const)(
     "maps the database sentinel to the stable $limit-import response",
-    async ({ pro, used, limit }) => {
+    async ({ tier, used, limit }) => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date("2026-07-30T12:00:00.000Z"));
-      const environment = usageEnvironment({ pro, used });
+      const environment = tierEnvironment(tier, used);
 
       await expect(
         billingRepository.rethrowMonthlyImportUsageError(
@@ -190,7 +189,7 @@ describe("billing usage error mapping", () => {
   );
 
   it("rethrows unrelated database failures unchanged", async () => {
-    const environment = usageEnvironment({ pro: false, used: 0 });
+    const environment = tierEnvironment("free", 0);
     const failure = new Error("D1 unavailable");
 
     await expect(

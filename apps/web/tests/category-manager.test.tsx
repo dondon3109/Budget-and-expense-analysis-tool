@@ -64,6 +64,10 @@ describe("CategoryManager", () => {
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       cancelAtPeriodEnd: false,
+      subscriptionPlan: null,
+      pendingChange: null,
+      coveredBy: null,
+      canChangePlan: false,
       pendingCheckout: null,
       canCheckout: true,
       canManageBilling: false,
@@ -107,6 +111,10 @@ describe("CategoryManager", () => {
       currentPeriodEndsAt: null,
       scheduledChangeAt: null,
       cancelAtPeriodEnd: false,
+      subscriptionPlan: null,
+      pendingChange: null,
+      coveredBy: null,
+      canChangePlan: false,
       pendingCheckout: null,
       canCheckout: true,
       canManageBilling: false,
@@ -123,7 +131,7 @@ describe("CategoryManager", () => {
     ]);
 
     const usage = await screen.findByRole("progressbar", {
-      name: "Free plan custom categories",
+      name: "Free custom categories",
     });
     expect(usage).toHaveAttribute("aria-valuenow", "4");
     expect(usage).toHaveAttribute("aria-valuemax", "4");
@@ -161,6 +169,10 @@ describe("CategoryManager", () => {
       currentPeriodEndsAt: "2026-08-31T16:00:00.000Z",
       scheduledChangeAt: null,
       cancelAtPeriodEnd: false,
+      subscriptionPlan: null,
+      pendingChange: null,
+      coveredBy: null,
+      canChangePlan: false,
       pendingCheckout: null,
       canCheckout: false,
       canManageBilling: true,
@@ -189,11 +201,11 @@ describe("CategoryManager", () => {
       },
     ]);
 
-    expect(await screen.findByText(/Pro required/)).toBeInTheDocument();
+    expect(await screen.findByText(/Upgrade required/)).toBeInTheDocument();
     expect(screen.getByLabelText("Restore Pro category")).toBeDisabled();
     expect(screen.getByLabelText("Restore Pro category")).toHaveAttribute(
       "title",
-      "Upgrade to Zoption Pro before restoring this category.",
+      "Upgrade your plan before restoring this category.",
     );
   });
 

@@ -6,6 +6,10 @@ All notable product changes are documented here.
 
 ### Added
 
+- New paid plans, on web and mobile: Zoption Budget (₱149 a month) unlocks every paid feature with 1,000 AI actions, 5 imports a month, and 10 custom categories, and Zoption Pro (₱249 a month) doubles the AI actions, allows 10 imports, and removes the category limit. Yearly billing is 10 times the monthly price.
+- Family plans: Family Budget (₱499 a month) and Family Pro (₱799 a month) cover a family of up to 6 people and give everyone Budget or Pro for their own Zoption too. The owner can set up a family first and try it alone at Free limits; invitations open once a plan is chosen, and the owner buys, changes, or cancels it in Family settings.
+- Change your plan in Plan and billing on web and mobile: moving up starts right away, and moving down waits for the end of the paid period.
+- The pricing page has a Personal and Family switch and compares Free, Budget, and Pro side by side.
 - New accounts can be typed as an e-wallet, such as GCash or Maya, on web and mobile.
 - Bank and savings accounts can hold money in several currencies: pick the currency on each entry. Other accounts record only in their own currency.
 - Adjust balance on a bank or savings account picks the currency, so you can add a second currency (a USD balance in a PHP bank account) without a made-up entry. The mobile account editor lists the balance in every currency the account holds.
@@ -25,6 +29,8 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Zoption Pro is now ₱249 a month or ₱2,490 a year; the old ₱149 Pro plan is retired. A streak pet grows past Baby on either paid plan.
+- A family whose plan has ended is read only for everyone until its owner renews it.
 - Mobile: Home lists each account (Cash, GCash, bank, and the rest) with its balance below the Total Balance, as the web dashboard does. Archived accounts stay hidden.
 - PostHog analytics are now linked to your Zoption account while you are signed in: the web app (after you allow Analytics) and the mobile app (after you tap Allow when it asks, or turn on More, Usage analytics) send your user ID and email with their usage events and crash reports, so we can see how each account uses Zoption. They still never include amounts, categories, or text. The Privacy Policy, Cookie Policy, and the web app's cookie settings say so, and the web app asks for your Analytics choice again.
 - Zoption now notes how each new transaction was entered (typed, voice, the widget, a receipt, an SMS paste, a PDF statement, the assistant, or a file import) with your workspace, so it can see which entry features people rely on. It is never sent to analytics, and the Privacy Policy says so.

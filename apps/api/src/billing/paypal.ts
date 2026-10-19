@@ -138,7 +138,8 @@ function webhookId(env: Bindings): string {
   return value;
 }
 
-function applicationUrls(env: Bindings): { returnUrl: string; cancelUrl: string } {
+/** Plan and billing for a personal plan; the family page, which confirms it, for a family plan. */
+function applicationUrls(env: Bindings, family: boolean): { returnUrl: string; cancelUrl: string } {
   const value = env.WEB_APP_URL?.trim();
   if (!value) throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
 
@@ -156,6 +157,13 @@ function applicationUrls(env: Bindings): { returnUrl: string; cancelUrl: string 
     throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
   }
 
+  if (family) {
+    const returnUrl = new URL("/app/family", base);
+    returnUrl.searchParams.set("familyCheckout", "completed");
+    const cancelUrl = new URL("/app/family", base);
+    cancelUrl.searchParams.set("familyCheckout", "cancelled");
+    return { returnUrl: returnUrl.toString(), cancelUrl: cancelUrl.toString() };
+  }
   const returnUrl = new URL("/app/settings", base);
   returnUrl.searchParams.set("checkout", "completed");
   returnUrl.hash = "plan-and-billing";
@@ -414,9 +422,9 @@ function parseSubscription(env: Bindings, payload: unknown): PayPalSubscription 
 
 export async function createPayPalSubscription(
   env: Bindings,
-  input: { planId: string; checkoutReference: string },
+  input: { planId: string; checkoutReference: string; family: boolean },
 ): Promise<PayPalSubscription> {
-  const { returnUrl, cancelUrl } = applicationUrls(env);
+  const { returnUrl, cancelUrl } = applicationUrls(env, input.family);
   const response = await authenticatedProviderFetch(
     env,
     `${apiBaseUrl(env)}/v1/billing/subscriptions`,
@@ -454,6 +462,31 @@ export async function getPayPalSubscription(
   );
   if (!response.ok) throw providerError();
   return parseSubscription(env, await response.json().catch(() => null));
+}
+
+/**
+ * Moves a subscription to another plan of the same PayPal product. PayPal bills the new price
+ * from the next cycle and prorates nothing. A PayPal-balance subscriber must approve the change,
+ * in which case the approval link is returned and nothing changes until they do.
+ */
+export async function revisePayPalSubscription(
+  env: Bindings,
+  subscriptionId: string,
+  planId: string,
+): Promise<{ approvalUrl: string | null }> {
+  const response = await authenticatedProviderFetch(
+    env,
+    `${apiBaseUrl(env)}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}/revise`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId }),
+    },
+  );
+  if (!response.ok) throw providerError();
+  const payload = asRecord(await response.json().catch(() => null));
+  if (!payload) throw providerError();
+  return { approvalUrl: approvalUrl(env, payload) };
 }
 
 export async function cancelPayPalSubscription(

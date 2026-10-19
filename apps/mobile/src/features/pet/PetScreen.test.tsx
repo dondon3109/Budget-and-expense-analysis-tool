@@ -93,7 +93,7 @@ describe("PetScreen", () => {
     expect(screen.getByLabelText("120 of 350 points to grow")).toBeTruthy();
     expect(screen.getByLabelText("Health 100 of 100")).toBeTruthy();
     expect(screen.getByLabelText("Today 30 of 100 points")).toBeTruthy();
-    expect(screen.queryByText("Growing into a Juvenile needs Zoption Pro.")).toBeNull();
+    expect(screen.queryByText("Growing into a Juvenile needs a paid plan.")).toBeNull();
   });
 
   it("tells a free user their pet needs Pro to grow", async () => {
@@ -101,8 +101,8 @@ describe("PetScreen", () => {
     usePetStore.setState({ pet: babyPet });
     jest.mocked(getPet).mockResolvedValue(babyPet);
     await render(<PetScreen />);
-    expect(screen.getByText("Growing into a Juvenile needs Zoption Pro.")).toBeTruthy();
-    await fireEvent.press(screen.getByRole("button", { name: "See Zoption Pro" }));
+    expect(screen.getByText("Growing into a Juvenile needs a paid plan.")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "See paid plans" }));
     expect(mockPush).toHaveBeenCalledWith("/(app)/plan-billing");
   });
 

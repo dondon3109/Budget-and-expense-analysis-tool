@@ -4,8 +4,8 @@ export function TermsOfServicePage() {
   return (
     <LegalPageLayout
       title="Terms of Service"
-      summary="These terms explain the rules for using Zoption, including its Free and Pro plans, personal-finance workspace, file imports, exports, and optional AI assistant."
-      lastUpdated="October 7, 2026"
+      summary="These terms explain the rules for using Zoption, including its Free and paid plans, personal-finance workspace, file imports, exports, and optional AI assistant."
+      lastUpdated="October 19, 2026"
     >
       <section>
         <h2>1. Who operates Zoption</h2>
@@ -137,16 +137,20 @@ export function TermsOfServicePage() {
           and does not require a payment method, but it is subject to the feature and usage limits
           shown in Zoption. If you reach a limit, the affected action may remain unavailable until
           the relevant usage window resets, you free available capacity where supported, or you
-          upgrade to Zoption Pro. Free-plan features and limits may change as described in Section
+          upgrade to a paid plan. Free-plan features and limits may change as described in Section
           9.
         </p>
         <p>
-          Zoption Pro is an optional paid plan offered through monthly and annual PayPal
-          subscriptions or monthly and annual Dodo Payments subscriptions. Prices are charged in
-          Philippine pesos; the price, billing interval, and plan shown in PayPal approval or Dodo
-          Payments checkout apply to the subscription you confirm. Subscriptions renew automatically
-          for the selected interval unless you cancel renewal. Taxes may apply. When you subscribe
-          through Dodo Payments, Dodo Payments is the merchant of record for that purchase.
+          Zoption Budget, Zoption Pro, Family Budget, and Family Pro are optional paid plans offered
+          through monthly and annual PayPal subscriptions or monthly and annual Dodo Payments
+          subscriptions. A family plan is bought and managed by the family owner and covers the
+          family and up to six people in it, the owner included. Moving to a higher plan or from
+          monthly to annual billing takes effect right away; moving to a lower plan takes effect at
+          the end of the current paid period. Prices are charged in Philippine pesos; the price,
+          billing interval, and plan shown in PayPal approval or Dodo Payments checkout apply to the
+          subscription you confirm. Subscriptions renew automatically for the selected interval
+          unless you cancel renewal. Taxes may apply. When you subscribe through Dodo Payments, Dodo
+          Payments is the merchant of record for that purchase.
         </p>
 
         <p>

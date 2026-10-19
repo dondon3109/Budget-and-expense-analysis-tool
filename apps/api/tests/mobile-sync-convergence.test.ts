@@ -36,7 +36,7 @@ afterEach(() => {
 describe("mobile sync convergence", () => {
   it("converges two clients through retry, conflict, pull, and tombstone deletion", async () => {
     const { env, database } = environment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const clientA = "a0000000-0000-4000-8000-000000000001";
     const clientB = "b0000000-0000-4000-8000-000000000001";
     const transactionId = "a0000000-0000-4000-8000-000000000002";
@@ -171,7 +171,7 @@ describe("mobile sync convergence", () => {
 
   it("never exposes another tenant while bootstrapping a replica", async () => {
     const { env } = environment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const tenantOne = await repository.pull(env, "tenant-1", {
       protocolVersion: 1,
       cursor: null,

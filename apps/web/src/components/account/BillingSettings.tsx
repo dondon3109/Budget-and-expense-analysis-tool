@@ -1,8 +1,8 @@
-import type {
-  BillingProvider,
-  BillingSubscriptionStatus,
-  BillingSummary,
-  ProEntitlementSource,
+import {
+  PLAN_NAMES,
+  personalBillingPlans,
+  type BillingPlanChangeResponse,
+  type BillingSummary,
 } from "@zoption/shared";
 import type { User } from "@supabase/supabase-js";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,13 +14,24 @@ import { Link } from "react-router-dom";
 import { useBillingSummary } from "../../hooks/useBillingSummary";
 import { cancelBillingSubscription, reconcileBillingCheckout } from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
-import { planFeatures } from "../billing/billingPlans";
 import { ThankYouDialog } from "../common/ThankYouDialog";
 import { PlanUsageIndicator } from "../billing/PlanUsageIndicator";
-import { ProCheckoutDialog } from "../billing/ProCheckoutDialog";
+import {
+  PlanCheckoutDialog,
+  personalCheckoutUnavailable,
+  suggestedPersonalPlan,
+} from "../billing/PlanCheckoutDialog";
 import { useProPurchaseThankYou } from "../billing/useProPurchaseThankYou";
 import { userWorkspace } from "../../lib/workspace";
+import {
+  formatPlanDate,
+  isConfirmedPaidSummary,
+  paymentProviderLabel,
+  periodLabel,
+  statusCopy,
+} from "./billingStatus";
 import { CancelSubscriptionDialog } from "./CancelSubscriptionDialog";
+import { PlanComparison } from "./PlanComparison";
 import "./BillingSettings.css";
 
 const PAYMENT_FAST_CONFIRMATION_ATTEMPTS = 10;
@@ -30,163 +41,6 @@ const PAYMENT_SLOW_CONFIRMATION_INTERVAL_MS = 10_000;
 const PAYMENT_RECONCILIATION_INTERVAL_MS = 10_000;
 const CANCELLATION_CONFIRMATION_ATTEMPTS = 10;
 const CANCELLATION_CONFIRMATION_INTERVAL_MS = 2_000;
-
-function formatPlanDate(value: string): string {
-  return new Intl.DateTimeFormat("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "Asia/Manila",
-  }).format(new Date(value));
-}
-
-function paymentProviderLabel(provider: BillingProvider | null | undefined): string {
-  return provider === "dodo" ? "Dodo Payments" : "PayPal";
-}
-
-function isConfirmedPaidSummary(summary: BillingSummary | undefined): boolean {
-  return Boolean(
-    summary?.plan === "zoption_pro" &&
-    summary.provider !== null &&
-    summary.entitlementSource === summary.provider &&
-    (summary.status === "active" || summary.status === "trialing") &&
-    summary.pendingCheckout === null,
-  );
-}
-
-function statusCopy(
-  status: BillingSubscriptionStatus | null | undefined,
-  plan: BillingSummary["plan"] | undefined,
-  entitlementSource: ProEntitlementSource | null | undefined,
-  paymentPending: boolean,
-  paymentReviewRequired: boolean,
-  confirmingCancellation: boolean,
-  providerLabel: string,
-): { label: string; heading: string; description: string; tone: string } {
-  if (paymentPending) {
-    return paymentReviewRequired
-      ? {
-          label: "Payment review",
-          heading: `${providerLabel} confirmation needs more time`,
-          description: `No paid access has been granted yet. Zoption will continue checking ${providerLabel} securely, and a second checkout is blocked to prevent duplicate subscriptions.`,
-          tone: "warning",
-        }
-      : {
-          label: "Confirming payment",
-          heading: "Confirming your payment",
-          description: `${providerLabel} is confirming your subscription. Paid access begins only after Zoption receives a verified provider notification.`,
-          tone: "pending",
-        };
-  }
-
-  if (confirmingCancellation) {
-    return {
-      label: "Confirming cancellation",
-      heading: "Confirming your cancellation",
-      description: `${providerLabel} has received your cancellation request. Renewal stops after Zoption receives its verified provider notification.`,
-      tone: "pending",
-    };
-  }
-
-  if (entitlementSource === "platform_admin") {
-    return {
-      label: "Permanent Pro",
-      heading: "Your permanent complimentary Pro access is active",
-      description:
-        "Platform administration includes Pro limits and capabilities until trusted operations disable it.",
-      tone: "success",
-    };
-  }
-  if (entitlementSource === "sponsored") {
-    return {
-      label: "Sponsored Pro",
-      heading: "Your sponsored Pro access is active",
-      description:
-        "Your sponsor currently includes Pro limits and capabilities for this personal workspace.",
-      tone: "success",
-    };
-  }
-
-  switch (status) {
-    case "active":
-      return {
-        label: "Zoption Pro",
-        heading: "Zoption Pro is active",
-        description: "Your paid access is confirmed. Pro limits and capabilities are available.",
-        tone: "success",
-      };
-    case "trialing":
-      return {
-        label: "Pro trial",
-        heading: "Your Zoption Pro trial is active",
-        // No entitlement source means Zoption's own no-card trial rather than a provider trial.
-        description:
-          entitlementSource === null
-            ? "Your free trial includes Pro access and limits. No card is needed, and you move to the Free plan when it ends unless you choose a Pro plan."
-            : "Your trial currently includes Pro access and limits.",
-        tone: "success",
-      };
-    case "past_due":
-      return {
-        label: "Payment issue",
-        heading: "Your payment needs attention",
-        description: `${providerLabel} has reported a payment issue. Review your ${providerLabel} subscription to restore confirmed paid access.`,
-        tone: "warning",
-      };
-    case "paused":
-      return {
-        label: "Subscription paused",
-        heading: "Your subscription is paused",
-        description: `Pro access is not active while the subscription is paused. Review the subscription in ${providerLabel}.`,
-        tone: "warning",
-      };
-    case "canceled":
-      return plan === "zoption_pro"
-        ? {
-            label: "Renewal canceled",
-            heading: "Your Pro access remains available until the paid period ends",
-            description:
-              "Renewal is canceled. No automatic refund is issued for the current paid period.",
-            tone: "success",
-          }
-        : {
-            label: "Subscription ended",
-            heading: "Your previous subscription has ended",
-            description:
-              "You can continue on the Free plan or start a new Pro subscription when eligible.",
-            tone: "neutral",
-          };
-    default:
-      return plan === "zoption_pro"
-        ? {
-            label: "Zoption Pro",
-            heading: "Zoption Pro access is available",
-            description: "Your current plan includes Pro limits and capabilities.",
-            tone: "success",
-          }
-        : {
-            label: "Free plan",
-            heading: "You’re using the Free plan",
-            description:
-              "Core tracking stays free, with four custom categories. Pro adds higher AI and import limits plus advanced management and analytics.",
-            tone: "neutral",
-          };
-  }
-}
-
-function periodLabel(summary: BillingSummary): string | undefined {
-  if (summary.entitlementSource === "platform_admin" || summary.entitlementSource === "sponsored") {
-    return undefined;
-  }
-  if (summary.scheduledChangeAt) {
-    return `Change scheduled ${formatPlanDate(summary.scheduledChangeAt)}`;
-  }
-  if (!summary.currentPeriodEndsAt) return undefined;
-  if (summary.status === "trialing")
-    return `Trial ends ${formatPlanDate(summary.currentPeriodEndsAt)}`;
-  if (summary.status === "active") return `Renews ${formatPlanDate(summary.currentPeriodEndsAt)}`;
-  return `Period ends ${formatPlanDate(summary.currentPeriodEndsAt)}`;
-}
 
 export function BillingSettings({ user }: { user: User }) {
   const workspace = useMemo(() => userWorkspace(user), [user]);
@@ -203,6 +57,8 @@ export function BillingSettings({ user }: { user: User }) {
   const checkoutCancelled = searchParams.get("checkout") === "cancelled";
   const [error, setError] = useState<string>();
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
+  const [isPlanChangeOpen, setIsPlanChangeOpen] = useState(false);
+  const [planChangeNotice, setPlanChangeNotice] = useState<string>();
   const checkoutTriggerRef = useRef<HTMLButtonElement>(null);
   const cancellationTriggerRef = useRef<HTMLButtonElement>(null);
   const reconciliationAttemptRef = useRef<{ checkoutKey: string; attemptedAt: number } | undefined>(
@@ -320,7 +176,7 @@ export function BillingSettings({ user }: { user: User }) {
             setPaymentReviewRequired(false);
             setPaymentStatusNotice(
               reconciliation.outcome === "closed"
-                ? "The payment provider reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
+                ? "The payment provider reports that this checkout is no longer active. No paid access was started, and you can begin a new checkout."
                 : "Zoption could not find a payment awaiting confirmation. If your payment provider shows a completed charge, contact support with the transaction details.",
             );
             await refetchBilling();
@@ -598,7 +454,7 @@ export function BillingSettings({ user }: { user: User }) {
         setPaymentReviewRequired(false);
         setPaymentStatusNotice(
           reconciliation.outcome === "closed"
-            ? "The payment provider reports that this checkout is no longer active. No Pro access was started, and you can begin a new checkout."
+            ? "The payment provider reports that this checkout is no longer active. No paid access was started, and you can begin a new checkout."
             : "Zoption could not find a payment awaiting confirmation. If your payment provider shows a completed charge, contact support with the transaction details.",
         );
         const nextSearch = new URLSearchParams(location.search);
@@ -682,17 +538,13 @@ export function BillingSettings({ user }: { user: User }) {
   const providerLabel = paymentProviderLabel(
     summary?.pendingCheckout?.provider ?? summary?.provider,
   );
-  const presentation = statusCopy(
-    summary?.status,
-    summary?.plan,
-    summary?.entitlementSource,
+  const presentation = statusCopy(summary, {
     paymentPending,
     paymentReviewRequired,
     confirmingCancellation,
     providerLabel,
-  );
-  const isPro = summary?.plan === "zoption_pro";
-  const currentPlanKnown = !paymentPending;
+  });
+  const isPaid = summary !== undefined && summary.plan !== "free";
   const duplicateSubscriptions = (summary?.nonTerminalSubscriptionCount ?? 0) > 1;
   const aiUsage = summary?.usages.find((usage) => usage.feature === "ai_usage");
   const importUsage = summary?.usages.find((usage) => usage.feature === "file_import");
@@ -702,89 +554,25 @@ export function BillingSettings({ user }: { user: User }) {
   const canCheckout = summary?.canCheckout === true;
   const canManageBilling = summary?.canManageBilling === true;
   const billingPeriodLabel = summary ? periodLabel(summary) : undefined;
+  const currentPlan =
+    summary?.subscriptionPlan && summary.interval
+      ? { plan: summary.subscriptionPlan, interval: summary.interval }
+      : null;
+
+  async function planChanged(response: BillingPlanChangeResponse, target: string) {
+    const result = await refetchBilling();
+    const effectiveAt = result.data?.pendingChange?.effectiveAt;
+    setPlanChangeNotice(
+      response.outcome === "scheduled" && effectiveAt
+        ? `You move to ${target} on ${formatPlanDate(effectiveAt)}. Until then your current plan stays.`
+        : `You’re now on ${target}.`,
+    );
+  }
 
   return (
     <>
       {proThankYou.open && <ThankYouDialog flow="pro" onClose={proThankYou.close} />}
-      {summary && (
-        <section id="plan-comparison" className="settings-section billing-plan-comparison-section">
-          <div className="billing-plan-comparison-wrap">
-            <div className="billing-plan-comparison-heading">
-              <div>
-                <h2 id="billing-plan-comparison-title">Free and Pro, side by side</h2>
-                <p id="billing-plan-comparison-description">
-                  Transactions, budgets, recurring-expense tracking, calendar tools, and included
-                  starter data remain available on both plans.
-                </p>
-              </div>
-            </div>
-            <p id="billing-plan-scroll-hint" className="billing-plan-scroll-hint">
-              On narrow screens, each feature keeps Free and Pro together.
-            </p>
-            <div
-              className="billing-plan-table-wrap"
-              role="region"
-              aria-labelledby="billing-plan-comparison-title"
-              aria-describedby="billing-plan-comparison-description billing-plan-scroll-hint"
-              tabIndex={0}
-            >
-              <table className="billing-plan-comparison">
-                <caption className="sr-only">Free and Zoption Pro plan feature comparison</caption>
-                <thead>
-                  <tr>
-                    <th className="billing-plan-feature-heading" scope="col">
-                      Feature
-                    </th>
-                    <th
-                      scope="col"
-                      data-plan="free"
-                      data-current={(currentPlanKnown && !isPro) || undefined}
-                      aria-current={currentPlanKnown && !isPro ? "true" : undefined}
-                    >
-                      <span className="billing-plan-name">Free</span>
-                      {currentPlanKnown && !isPro && (
-                        <span className="billing-plan-current">Current plan</span>
-                      )}
-                    </th>
-                    <th
-                      scope="col"
-                      data-plan="pro"
-                      data-current={(currentPlanKnown && isPro) || undefined}
-                      aria-current={currentPlanKnown && isPro ? "true" : undefined}
-                    >
-                      <span className="billing-plan-name">Zoption Pro</span>
-                      {currentPlanKnown && isPro && (
-                        <span className="billing-plan-current">Current plan</span>
-                      )}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {planFeatures.map((item) => (
-                    <tr key={item.feature}>
-                      <th scope="row">{item.feature}</th>
-                      <td
-                        data-plan="free"
-                        data-plan-label="Free"
-                        data-current={(currentPlanKnown && !isPro) || undefined}
-                      >
-                        {item.free}
-                      </td>
-                      <td
-                        data-plan="pro"
-                        data-plan-label="Zoption Pro"
-                        data-current={(currentPlanKnown && isPro) || undefined}
-                      >
-                        {item.pro}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-      )}
+      {summary && <PlanComparison current={paymentPending ? null : summary.plan} />}
       <section
         id="plan-and-billing"
         className="settings-section billing-settings"
@@ -864,7 +652,21 @@ export function BillingSettings({ user }: { user: User }) {
                 disabled={paymentPending || confirmingCancellation}
                 onClick={() => setIsProCheckoutOpen(true)}
               >
-                Choose a Pro plan
+                Choose a plan
+              </button>
+            )}
+            {summary?.canChangePlan && currentPlan && (
+              <button
+                ref={checkoutTriggerRef}
+                className="button primary compact"
+                type="button"
+                disabled={paymentPending || confirmingCancellation}
+                onClick={() => {
+                  setPlanChangeNotice(undefined);
+                  setIsPlanChangeOpen(true);
+                }}
+              >
+                Change plan
               </button>
             )}
             {canManageBilling &&
@@ -888,13 +690,18 @@ export function BillingSettings({ user }: { user: User }) {
             </small>
           </div>
         )}
-        {summary && !isPro && !canCheckout && canManageBilling && (
+        {planChangeNotice && (
+          <p className="billing-payment-status-notice" role="status">
+            {planChangeNotice}
+          </p>
+        )}
+        {summary && !isPaid && !canCheckout && canManageBilling && (
           <p className="settings-helper">
             A new checkout is unavailable while this subscription state is being resolved. Review
             the subscription in {providerLabel} if action is needed.
           </p>
         )}
-        {summary && !isPro && !canCheckout && !canManageBilling && !paymentPending && (
+        {summary && !isPaid && !canCheckout && !canManageBilling && !paymentPending && (
           <p className="settings-helper">
             Upgrade and billing management are temporarily unavailable. Refresh the page or contact
             support if this continues.
@@ -955,12 +762,19 @@ export function BillingSettings({ user }: { user: User }) {
           </p>
         )}
         {summary && (
-          <ProCheckoutDialog
-            open={isProCheckoutOpen}
-            summary={summary}
+          <PlanCheckoutDialog
+            open={isProCheckoutOpen || isPlanChangeOpen}
             workspace={workspace}
+            plans={personalBillingPlans}
+            suggestedPlan={suggestedPersonalPlan(summary)}
+            unavailable={personalCheckoutUnavailable(summary)}
+            current={isPlanChangeOpen ? currentPlan : null}
             returnFocus={checkoutTriggerRef.current}
-            onClose={() => setIsProCheckoutOpen(false)}
+            onClose={() => {
+              setIsProCheckoutOpen(false);
+              setIsPlanChangeOpen(false);
+            }}
+            onChanged={(response, choice) => void planChanged(response, PLAN_NAMES[choice.plan])}
           />
         )}
       </section>

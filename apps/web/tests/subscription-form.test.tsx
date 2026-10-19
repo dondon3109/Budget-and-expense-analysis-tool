@@ -186,7 +186,9 @@ describe("SubscriptionForm", () => {
       />,
     );
 
-    expect(screen.getByRole("option", { name: "Pro entertainment — Pro required" })).toBeDisabled();
+    expect(
+      screen.getByRole("option", { name: "Pro entertainment — upgrade required" }),
+    ).toBeDisabled();
     expect(screen.getByLabelText("Category")).toHaveValue("entertainment");
   });
 

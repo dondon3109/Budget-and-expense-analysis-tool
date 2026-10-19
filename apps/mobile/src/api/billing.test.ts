@@ -22,14 +22,18 @@ function summaryPayload() {
   return {
     plan: "zoption_pro",
     entitlementSource: "paypal",
+    subscriptionPlan: "pro",
     provider: "paypal",
     status: "active",
     interval: "month",
     currentPeriodEndsAt: "2026-06-01T00:00:00.000Z",
     scheduledChangeAt: null,
     cancelAtPeriodEnd: false,
+    pendingChange: null,
     pendingCheckout: null,
+    coveredBy: null,
     canCheckout: false,
+    canChangePlan: true,
     canManageBilling: true,
     canManageSponsoredSeats: false,
     nonTerminalSubscriptionCount: 1,
@@ -66,26 +70,39 @@ describe("billing api transport", () => {
         201,
       ),
     );
-    const result = await startBillingCheckout({ accessToken: token, fetchImpl: fetchMock }, "year");
+    const result = await startBillingCheckout(
+      { accessToken: token, fetchImpl: fetchMock },
+      { plan: "pro", interval: "year" },
+    );
     expect(result.approvalUrl).toBe("https://paypal.example/approve");
     expect(result.subscriptionId).toBe("I-SUB123");
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe(apiBase + "/api/app/billing/checkout");
-    expect(JSON.parse(init.body as string)).toEqual({ interval: "year", provider: "paypal" });
+    expect(JSON.parse(init.body as string)).toEqual({
+      plan: "pro",
+      interval: "year",
+      provider: "paypal",
+    });
   });
 
-  it("starts a Dodo Payments checkout, whose response names no PayPal subscription", async () => {
+  it("starts a family plan's Dodo checkout in the family it covers", async () => {
     const fetchMock = jest.fn(async () =>
       jsonResponse({ approvalUrl: "https://checkout.dodopayments.com/session/cks_1" }, 201),
     );
     const result = await startBillingCheckout(
-      { accessToken: token, fetchImpl: fetchMock },
-      "month",
+      { accessToken: token, workspaceId: "family-1", fetchImpl: fetchMock },
+      { plan: "family_budget", interval: "month" },
       "dodo",
     );
     expect(result).toEqual({ approvalUrl: "https://checkout.dodopayments.com/session/cks_1" });
-    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
-    expect(JSON.parse(init.body as string)).toEqual({ interval: "month", provider: "dodo" });
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(apiBase + "/api/app/family/billing/checkout");
+    expect(new Headers(init.headers).get("X-Zoption-Workspace")).toBe("family-1");
+    expect(JSON.parse(init.body as string)).toEqual({
+      plan: "family_budget",
+      interval: "month",
+      provider: "dodo",
+    });
   });
 
   it("requests cancellation and decodes the confirmation", async () => {

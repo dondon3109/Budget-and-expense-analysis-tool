@@ -10,7 +10,7 @@ import type { AppEnvironment } from "../types";
 
 export function createExportRoutes(
   repository: TransactionRepository,
-  billing: Pick<BillingRepository, "requirePro">,
+  billing: Pick<BillingRepository, "requirePaidPlan">,
 ) {
   const routes = new Hono<AppEnvironment>();
 
@@ -34,7 +34,11 @@ export function createExportRoutes(
   });
 
   routes.get("/transactions.csv", async (context) => {
-    await billing.requirePro(context.env, context.get("tenant").tenantId, "transaction_export");
+    await billing.requirePaidPlan(
+      context.env,
+      context.get("tenant").tenantId,
+      "transaction_export",
+    );
     const input = parseInput(
       transactionExportQuerySchema,
       context.req.query(),

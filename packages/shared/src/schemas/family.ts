@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 
+import { familyPlanStates } from "../plans";
 import { currencies } from "../types";
 import { resourceIdSchema } from "./common";
 import { workspaceRoles } from "./membership";
@@ -80,6 +81,8 @@ export const familyDetailSchema = z
     swaps: z.object({ limit: z.number().int(), used: z.number().int() }).strict(),
     /** When a closed family is deleted; null while it is open. */
     closesAt: timestampSchema.nullable(),
+    /** Whether a family plan covers it; see `familyPlanStates`. */
+    plan: z.enum(familyPlanStates),
   })
   .strict();
 
