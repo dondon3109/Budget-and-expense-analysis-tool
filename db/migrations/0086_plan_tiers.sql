@@ -56,14 +56,13 @@ WHERE `current_period_ends_at` IS NOT NULL
   );
 --> statement-breakpoint
 -- One row per grant: rank 1 is Budget, 2 is Pro. A workspace's tier is its highest rank.
+-- D1 allows at most five terms in a compound SELECT, so a subscription's own row (its payer's
+-- personal plan, or the family it covers) is one term.
 CREATE VIEW `effective_plan_access` AS
-SELECT `tenant_id`, `provider` AS `source`, `rank`, NULL AS `family_tenant_id`
+SELECT COALESCE(`family_tenant_id`, `tenant_id`) AS `tenant_id`,
+       CASE WHEN `family_tenant_id` IS NULL THEN `provider` ELSE 'family' END AS `source`,
+       `rank`, `family_tenant_id`
 FROM `paid_plan_subscriptions`
-WHERE `family_tenant_id` IS NULL
-UNION ALL
-SELECT `family_tenant_id` AS `tenant_id`, 'family' AS `source`, `rank`, `family_tenant_id`
-FROM `paid_plan_subscriptions`
-WHERE `family_tenant_id` IS NOT NULL
 UNION ALL
 SELECT ut.`tenant_id`, 'family' AS `source`, paid.`rank`, paid.`family_tenant_id`
 FROM `paid_plan_subscriptions` AS paid
