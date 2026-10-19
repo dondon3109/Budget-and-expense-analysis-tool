@@ -29,6 +29,9 @@ All notable product changes are documented here.
 - Mobile: pick a new transaction's date from a calendar pop-up instead of typing it.
 - Mobile: voice entry waits for you to tap the mic, and a spoken transaction no longer saves itself after a countdown. The mic opens as a dialog over the form and fades away once your words fill it in, so you can check it and tap Save.
 - Mobile: the transaction form lists Cash, then GCash, then your bank accounts before the rest.
+- Mobile: adding an entry starts by picking income, expense, or transfer in a sheet that grows from the add button, then the form shows the account as icon tiles (one row, with More for the rest) and saves or closes from its header.
+- Every new workspace starts with a Maya e-wallet account next to Cash and GCash, on web and mobile.
+- Mobile: SMS paste moved into the Transactions header, and Home and Transactions no longer show the sync delayed banner.
 - Mobile: taps, saved entries, and errors give a short buzz alongside their sound. It follows the phone's touch feedback setting, so it stays on when sounds are off.
 - Mobile: first-run setup is one dialog over Home with numbered steps underneath: currency, cash, theme, streak pet, your egg, and your goals, ending in a thank-you. Tap a finished step's number to go back to it.
 - Mobile: thanks for choosing your goals now shows as a centered dialog, and dialogs dim the status and navigation bars too.

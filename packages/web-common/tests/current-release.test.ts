@@ -31,14 +31,18 @@ describe("current release notes", () => {
       "Change your plan any time",
       "Share a snapshot link",
       "Balances on mobile Home and a date picker",
-      "Android Beta 0.2.56",
+      "A faster way to add an entry on mobile",
+      "Voice entry you can review",
+      "A friendlier first run on mobile",
+      "Haptics and smoother screens",
+      "Android Beta 0.2.57",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/₱249 a month/);
-    expect(copy).toMatch(/Android Beta 0\.2\.56/);
+    expect(copy).toMatch(/Android Beta 0\.2\.57/);
   });
 
   it("keeps the pet, multi-currency, and assistant notes as 4.3.0", () => {
