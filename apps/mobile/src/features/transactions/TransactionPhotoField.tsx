@@ -1,10 +1,12 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import * as ImagePicker from "expo-image-picker";
-import { Image, StyleSheet, Text, View } from "react-native";
+import type { ComponentProps } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { prepareReceiptPhoto, type ReceiptPhoto } from "@/features/family/receipt-photo";
-import { Button } from "@/ui/components";
+import { withTapSound } from "@/features/sounds/sound-effects";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 
 /**
  * The editor's photo of an entry. A personal entry keeps a small picture on this device only; a
@@ -58,35 +60,128 @@ export function TransactionPhotoField({
   };
 
   return (
-    <View className="w-full gap-2">
+    <View style={styles.field}>
       <Text style={[typography.label, { color: theme.colors.text }]}>
-        {family ? "Receipt photo (shared with the family)" : "Photo (stays on this device)"}
+        {family ? "Receipt photo (shared with the family)" : "Photo"}
       </Text>
       {photoUri ? (
-        <Image
-          accessibilityLabel={family ? "Receipt photo" : "Transaction photo"}
-          resizeMode="contain"
-          source={{ uri: photoUri }}
-          style={styles.photo}
-        />
+        <View>
+          <Image
+            accessibilityLabel={family ? "Receipt photo" : "Transaction photo"}
+            resizeMode="cover"
+            source={{ uri: photoUri }}
+            style={[styles.photo, { backgroundColor: theme.colors.canvasMuted }]}
+          />
+          <Pressable
+            accessibilityLabel="Remove photo"
+            accessibilityRole="button"
+            disabled={disabled}
+            hitSlop={spacing.xs}
+            onPress={withTapSound(onRemove)}
+            style={[styles.remove, { backgroundColor: theme.colors.overlay }]}
+          >
+            {/* The overlay color is dark in every theme. */}
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color="#ffffff"
+              name="close"
+              size={18}
+            />
+          </Pressable>
+        </View>
       ) : null}
-      <View className="flex-row gap-3">
-        <Button disabled={disabled} onPress={() => void pick("camera")} variant="secondary">
-          Take photo
-        </Button>
-        <Button disabled={disabled} onPress={() => void pick("library")} variant="secondary">
-          Choose photo
-        </Button>
-        {photoUri ? (
-          <Button disabled={disabled} onPress={onRemove} variant="quiet">
-            Remove
-          </Button>
-        ) : null}
+      <View style={styles.row}>
+        <PhotoSourceTile
+          disabled={disabled}
+          icon="camera-outline"
+          label={photoUri ? "Retake" : "Take photo"}
+          onPress={() => void pick("camera")}
+        />
+        <PhotoSourceTile
+          disabled={disabled}
+          icon="image-outline"
+          label={photoUri ? "Replace" : "Choose photo"}
+          onPress={() => void pick("library")}
+        />
       </View>
     </View>
   );
 }
 
+/** One way to add the photo, styled like the editor's account tiles. */
+function PhotoSourceTile({
+  icon,
+  label,
+  disabled,
+  onPress,
+}: {
+  icon: ComponentProps<typeof MaterialCommunityIcons>["name"];
+  label: string;
+  disabled: boolean;
+  onPress: () => void;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={withTapSound(onPress)}
+      style={[
+        styles.tile,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          opacity: disabled ? 0.55 : 1,
+        },
+      ]}
+    >
+      <View style={[styles.icon, { backgroundColor: theme.colors.canvasMuted }]}>
+        <MaterialCommunityIcons
+          accessibilityElementsHidden
+          color={theme.colors.textMuted}
+          name={icon}
+          size={18}
+        />
+      </View>
+      <Text numberOfLines={1} style={[typography.label, { color: theme.colors.text }]}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  photo: { width: "100%", height: 220, borderRadius: 12 },
+  field: { gap: spacing.xs },
+  row: { flexDirection: "row", gap: spacing.xs },
+  tile: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  icon: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photo: { width: "100%", height: 200, borderRadius: radii.md },
+  remove: {
+    position: "absolute",
+    top: spacing.xs,
+    right: spacing.xs,
+    width: 32,
+    height: 32,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
