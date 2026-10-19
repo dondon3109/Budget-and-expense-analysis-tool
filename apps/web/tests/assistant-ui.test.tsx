@@ -627,7 +627,7 @@ describe("assistant UI", () => {
     expect(usage).toHaveAttribute("data-state", "exhausted");
     expect(usage).toHaveAttribute("aria-valuenow", "500");
     expect(usage).toHaveTextContent("Limit reached");
-    expect(screen.getByRole("link", { name: "View Pro limits" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "View plan limits" })).toHaveAttribute(
       "href",
       "/app/settings#plan-and-billing",
     );

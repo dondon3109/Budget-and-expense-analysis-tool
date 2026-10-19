@@ -59,7 +59,7 @@ describe("CancelSubscriptionDialog", () => {
     const cancel = screen.getByRole("button", { name: "Cancel renewal" });
 
     expect(dialog).toHaveAccessibleDescription(
-      /Pro access remains available through August 30, 2026/i,
+      /paid access remains available through August 30, 2026/i,
     );
     expect(keep).toHaveFocus();
     expect(root.inert).toBe(true);

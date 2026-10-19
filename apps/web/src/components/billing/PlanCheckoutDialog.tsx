@@ -4,33 +4,84 @@ import {
   usePayPal,
   usePayPalSubscriptionPaymentSession,
 } from "@paypal/react-paypal-js/sdk-v6";
-import type { BillingInterval, BillingProviderConfig, BillingSummary } from "@zoption/shared";
-import { Check, LockKeyhole, Minus, ShieldCheck, Wallet, X } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import {
+  FAMILY_SEAT_LIMIT,
+  PLAN_NAMES,
+  PLAN_TIER,
+  isFamilyPlan,
+  planChangeDirection,
+  type BillingInterval,
+  type BillingPlanChangeResponse,
+  type BillingPlanKey,
+  type BillingProviderConfig,
+  type BillingSummary,
+} from "@zoption/shared";
+import { Check, LockKeyhole, ShieldCheck, Wallet, X } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link } from "react-router-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
-import { getBillingProviderConfig, startBillingCheckout } from "../../lib/api";
+import {
+  changeBillingPlan,
+  getBillingProviderConfig,
+  startBillingCheckout,
+  type PlanChoice,
+} from "../../lib/api";
 import {
   CHECKOUT_OPEN_ERROR,
   openBillingCheckout,
   redirectToPaypalCheckout,
 } from "../../lib/billingCheckout";
-import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { paymentDisclosure, planFeatures, proCheckoutOptions } from "./billingPlans";
-import "./ProCheckoutDialog.css";
+import { personalWorkspace, type AuthenticatedWorkspace } from "../../lib/workspace";
+import {
+  YEARLY_SAVING_LABEL,
+  paymentDisclosure,
+  planFeatures,
+  planPrice,
+  planPriceLabel,
+} from "./billingPlans";
+import "./PlanCheckoutDialog.css";
 
-interface ProCheckoutDialogProps {
+interface PlanCheckoutDialogProps {
   open: boolean;
-  summary: BillingSummary;
+  /** The personal workspace for personal plans, or the family a family plan covers. */
   workspace: AuthenticatedWorkspace;
+  plans: readonly BillingPlanKey[];
+  /** Preselected and marked recommended: the cheapest plan that solves what sent the person here. */
+  suggestedPlan: BillingPlanKey;
+  /** Why a new checkout cannot start; null when it can. Ignored when switching plans. */
+  unavailable: string | null;
+  /** The plan being paid for. When set, the dialog switches plans instead of selling one. */
+  current?: PlanChoice | null;
   returnFocus?: HTMLElement | null;
   onClose: () => void;
+  onChanged?: (response: BillingPlanChangeResponse, choice: PlanChoice) => void;
 }
 
-function checkoutStatusUrl(status: "completed" | "cancelled"): string {
+/** Why a personal checkout cannot start, from the billing summary; null when it can. */
+export function personalCheckoutUnavailable(summary: BillingSummary): string | null {
+  if (summary.canCheckout && !summary.pendingCheckout) return null;
+  if (summary.pendingCheckout) {
+    return "Payment confirmation is already in progress. Check Plan and billing for the latest payment status.";
+  }
+  return summary.canManageBilling
+    ? "Review your existing subscription before starting another checkout."
+    : "Checkout is temporarily unavailable for this account.";
+}
+
+/** The next tier up from the one in effect, which is the cheapest plan that adds anything. */
+export function suggestedPersonalPlan(summary: BillingSummary | undefined): BillingPlanKey {
+  return summary?.plan === "zoption_budget" ? "pro" : "budget";
+}
+
+/** Where the provider sends the buyer back: Plan and billing, or the family it paid for. */
+function checkoutStatusUrl(plan: BillingPlanKey, status: "completed" | "cancelled"): string {
+  if (isFamilyPlan(plan)) {
+    const url = new URL("/app/family", window.location.origin);
+    url.searchParams.set("familyCheckout", status);
+    return url.toString();
+  }
   const url = new URL("/app/settings", window.location.origin);
   url.searchParams.set("checkout", status);
   url.hash = "plan-and-billing";
@@ -42,81 +93,22 @@ function checkoutErrorMessage(cause: unknown): string {
 }
 
 interface PayPalCheckoutActionProps {
-  interval: BillingInterval;
+  choice: PlanChoice;
   workspace: AuthenticatedWorkspace;
   onBusyChange: (busy: boolean) => void;
 }
 
-interface FreePlanCardProps {
-  busy: boolean;
-  initialActionRef: RefObject<HTMLButtonElement | null>;
-  onClose: () => void;
-}
-
-function FreePlanCard({ busy, initialActionRef, onClose }: FreePlanCardProps) {
-  return (
-    <section className="pro-checkout-plan pro-checkout-plan-free" aria-label="Free plan">
-      <div className="pro-checkout-plan-heading">
-        <div className="pro-checkout-plan-title-group">
-          <strong>Free</strong>
-          <span className="pro-checkout-plan-subtitle">Core budgeting tools</span>
-        </div>
-        <span className="pro-checkout-plan-status-badge">Current plan</span>
-      </div>
-      <div className="pro-checkout-plan-price" aria-label="Price: Free forever">
-        <span className="pro-checkout-amount">₱0</span>
-        <span className="pro-checkout-frequency">forever</span>
-      </div>
-      <ul className="pro-checkout-features" aria-label="Free plan features">
-        {planFeatures.map((feature) => {
-          const isExcluded = feature.free === "Not included";
-          return (
-            <li
-              key={feature.feature}
-              className={isExcluded ? "pro-checkout-feature-excluded" : undefined}
-            >
-              <span
-                className={`pro-checkout-check ${isExcluded ? "excluded" : "included"}`}
-                aria-hidden="true"
-              >
-                {isExcluded ? (
-                  <Minus size={11} strokeWidth={2.5} />
-                ) : (
-                  <Check size={12} strokeWidth={2.5} />
-                )}
-              </span>
-              <span>
-                <b>{feature.feature}</b>
-                {feature.free}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      <button
-        ref={initialActionRef}
-        className="button secondary pro-checkout-free-action"
-        type="button"
-        disabled={busy}
-        onClick={onClose}
-      >
-        Continue using free plan
-      </button>
-    </section>
-  );
-}
-
-function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheckoutActionProps) {
+function PayPalCheckoutAction({ choice, workspace, onBusyChange }: PayPalCheckoutActionProps) {
   const approvalUrlRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
   const createSubscription = useCallback(async () => {
-    const checkout = await startBillingCheckout(workspace, interval);
+    const checkout = await startBillingCheckout(workspace, choice);
     approvalUrlRef.current = checkout.approvalUrl;
     if (!checkout.subscriptionId) throw new Error(CHECKOUT_OPEN_ERROR);
     return { subscriptionId: checkout.subscriptionId };
-  }, [interval, workspace]);
+  }, [choice, workspace]);
 
   const {
     error: sdkError,
@@ -127,10 +119,10 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
     createSubscription,
     // eslint-disable-next-line @typescript-eslint/require-await
     onApprove: async () => {
-      window.location.assign(checkoutStatusUrl("completed"));
+      window.location.assign(checkoutStatusUrl(choice.plan, "completed"));
     },
     onCancel: () => {
-      window.location.assign(checkoutStatusUrl("cancelled"));
+      window.location.assign(checkoutStatusUrl(choice.plan, "cancelled"));
     },
     onError: (cause) => {
       setError(checkoutErrorMessage(cause));
@@ -166,7 +158,7 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
     setBusy(true);
     onBusyChange(true);
     try {
-      await openBillingCheckout(workspace, interval);
+      await openBillingCheckout(workspace, choice);
     } catch (cause) {
       setError(checkoutErrorMessage(cause));
     } finally {
@@ -205,7 +197,7 @@ function PayPalCheckoutAction({ interval, workspace, onBusyChange }: PayPalCheck
   );
 }
 
-function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalCheckoutActionProps) {
+function PayPalCheckoutBoundary({ choice, workspace, onBusyChange }: PayPalCheckoutActionProps) {
   const { sdkInstance, loadingStatus } = usePayPal();
   const [fallbackBusy, setFallbackBusy] = useState(false);
   const [fallbackError, setFallbackError] = useState<string>();
@@ -217,7 +209,7 @@ function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalChe
     setFallbackError(undefined);
     onBusyChange(true);
     try {
-      await openBillingCheckout(workspace, interval);
+      await openBillingCheckout(workspace, choice);
     } catch (cause) {
       setFallbackError(checkoutErrorMessage(cause));
     } finally {
@@ -228,7 +220,7 @@ function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalChe
 
   if (sdkReady) {
     return (
-      <PayPalCheckoutAction interval={interval} workspace={workspace} onBusyChange={onBusyChange} />
+      <PayPalCheckoutAction choice={choice} workspace={workspace} onBusyChange={onBusyChange} />
     );
   }
 
@@ -260,56 +252,114 @@ function PayPalCheckoutBoundary({ interval, workspace, onBusyChange }: PayPalChe
   );
 }
 
-interface ProCheckoutDialogContentProps {
-  summary: BillingSummary;
-  workspace: AuthenticatedWorkspace;
-  returnFocus?: HTMLElement | null;
-  onClose: () => void;
-}
-
-/** Narrow screens show the Pro plan first, so its selected interval is the better entry point. */
-function prefersCompactProAction(): boolean {
+function PlanOption({
+  plan,
+  interval,
+  selected,
+  recommended,
+  isCurrent,
+  disabled,
+  onSelect,
+}: {
+  plan: BillingPlanKey;
+  interval: BillingInterval;
+  selected: boolean;
+  recommended: boolean;
+  isCurrent: boolean;
+  disabled: boolean;
+  onSelect: () => void;
+}) {
+  const tier = PLAN_TIER[plan];
   return (
-    typeof window !== "undefined" && Boolean(window.matchMedia?.("(max-width: 700px)").matches)
+    <label className={selected ? "pro-checkout-plan selected" : "pro-checkout-plan"}>
+      <span className="pro-checkout-plan-heading">
+        <span className="pro-checkout-plan-title-group">
+          <span className="pro-checkout-plan-radio">
+            <input
+              type="radio"
+              name="plan-checkout-plan"
+              value={plan}
+              checked={selected}
+              disabled={disabled}
+              onChange={onSelect}
+            />
+            <strong>{PLAN_NAMES[plan]}</strong>
+          </span>
+          {isFamilyPlan(plan) && (
+            <span className="pro-checkout-plan-subtitle">
+              {FAMILY_SEAT_LIMIT} seats, you included
+            </span>
+          )}
+        </span>
+        {isCurrent ? (
+          <span className="pro-checkout-plan-status-badge">Current plan</span>
+        ) : (
+          recommended && <span className="pro-checkout-plan-recommended-badge">Recommended</span>
+        )}
+      </span>
+      <span className="pro-checkout-plan-price">
+        <span className="pro-checkout-amount">{planPrice(plan, interval)}</span>
+        <span className="pro-checkout-frequency">
+          {interval === "month" ? "/ month" : "/ year"}
+        </span>
+      </span>
+      <ul className="pro-checkout-features" aria-label={`${PLAN_NAMES[plan]} features`}>
+        {planFeatures.map((feature) => (
+          <li key={feature.feature}>
+            <span className="pro-checkout-check included" aria-hidden="true">
+              <Check size={12} strokeWidth={2.5} />
+            </span>
+            <span>
+              <b>{feature.feature}</b>
+              {feature[tier]}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </label>
   );
 }
 
-function ProCheckoutDialogContent({
-  summary,
+function PlanCheckoutDialogContent({
   workspace,
+  plans,
+  suggestedPlan,
+  unavailable,
+  current,
   returnFocus,
   onClose,
-}: ProCheckoutDialogContentProps) {
+  onChanged,
+}: Omit<PlanCheckoutDialogProps, "open">) {
   const dialogRef = useRef<HTMLElement>(null);
   const initialActionRef = useRef<HTMLButtonElement>(null);
-  const initialProActionRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [dodoBusy, setDodoBusy] = useState(false);
   const [error, setError] = useState<string>();
-  const [selectedInterval, setSelectedInterval] = useState<BillingInterval>("month");
+  const [interval, setBillingInterval] = useState<BillingInterval>(current?.interval ?? "month");
+  const [plan, setPlan] = useState<BillingPlanKey>(suggestedPlan);
   const [providerConfig, setProviderConfig] = useState<BillingProviderConfig>();
-  const canCheckout = summary.canCheckout && !summary.pendingCheckout;
-  const checkoutUnavailable = summary.pendingCheckout
-    ? "Payment confirmation is already in progress. Check Plan and billing for the latest payment status."
-    : summary.canManageBilling
-      ? "Review your existing subscription before starting another checkout."
-      : "Checkout is temporarily unavailable for this account.";
+  const choice = useMemo(() => ({ plan, interval }), [plan, interval]);
+  const changing = Boolean(current);
+  const canCheckout = !changing && unavailable === null;
+  const direction = current ? planChangeDirection(current, choice) : null;
+  const family = isFamilyPlan(plans[0] ?? suggestedPlan);
 
   useRootLock(true);
 
   const handleKeyDown = useFocusTrap(dialogRef, {
-    initialFocusRef: prefersCompactProAction() ? initialProActionRef : initialActionRef,
+    initialFocusRef: initialActionRef,
     returnFocus: returnFocus ?? null,
     onEscape: onClose,
   });
 
+  // PayPal's client id is the person's to read, so a family checkout asks the personal workspace.
   useEffect(() => {
     if (!canCheckout) return;
 
     let cancelled = false;
     setError(undefined);
     setProviderConfig(undefined);
-    void getBillingProviderConfig(workspace)
+    void getBillingProviderConfig(personalWorkspace(workspace))
       .then((config) => {
         if (!cancelled) setProviderConfig(config);
       })
@@ -329,26 +379,12 @@ function ProCheckoutDialogContent({
     }
   }, []);
 
-  async function handleFallbackCheckout() {
-    if (!canCheckout) return;
-
+  async function runCheckout(provider: "paypal" | "dodo") {
     setBusy(true);
+    setDodoBusy(provider === "dodo");
     setError(undefined);
     try {
-      await openBillingCheckout(workspace, selectedInterval);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDodoCheckout() {
-    setBusy(true);
-    setDodoBusy(true);
-    setError(undefined);
-    try {
-      await openBillingCheckout(workspace, selectedInterval, "dodo");
+      await openBillingCheckout(workspace, choice, provider);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Checkout could not be opened.");
     } finally {
@@ -357,8 +393,26 @@ function ProCheckoutDialogContent({
     }
   }
 
-  const titleId = "pro-checkout-title";
-  const descriptionId = "pro-checkout-description";
+  async function switchPlan() {
+    setBusy(true);
+    setError(undefined);
+    try {
+      const response = await changeBillingPlan(workspace, choice);
+      if (response.approvalUrl) {
+        redirectToPaypalCheckout(response.approvalUrl);
+        return;
+      }
+      onChanged?.(response, choice);
+      onClose();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The plan could not be changed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const titleId = "plan-checkout-title";
+  const descriptionId = "plan-checkout-description";
 
   return createPortal(
     <div
@@ -380,184 +434,192 @@ function ProCheckoutDialogContent({
         <div className="pro-checkout-header">
           <div className="pro-checkout-header-copy">
             <div className="pro-checkout-header-eyebrow-row">
-              <span className="pro-checkout-pill-tag">Membership</span>
+              <span className="pro-checkout-pill-tag">{family ? "Family" : "Membership"}</span>
               <p className="eyebrow">Zoption plans</p>
             </div>
-            <h2 id={titleId}>Choose how you want to use Zoption Pro</h2>
+            <h2 id={titleId}>
+              {changing ? "Change your plan" : family ? "Choose a family plan" : "Choose a plan"}
+            </h2>
           </div>
           <button
             className="icon-button compact pro-checkout-close-btn"
             type="button"
-            aria-label="Close subscription options"
-            disabled={Boolean(busy)}
+            aria-label="Close plan options"
+            disabled={busy}
             onClick={onClose}
           >
             <X size={16} aria-hidden="true" />
           </button>
         </div>
         <p id={descriptionId} className="pro-checkout-intro">
-          Pro unlocks monthly and six-month cashflow views. It does not add or move transactions
-          into the week currently displayed.
+          {family
+            ? "Everyone in the family gets the plan's limits for their own Zoption too, and the family workspace follows the same plan."
+            : "Budget unlocks every paid feature. Pro adds bigger AI and import allowances, unlimited categories, and priority support."}
         </p>
 
-        <div className="pro-checkout-plans">
-          <section
-            className="pro-checkout-plan pro-checkout-plan-pro"
-            aria-label="Zoption Pro plan"
-          >
-            <div className="pro-checkout-plan-heading">
-              <div className="pro-checkout-plan-title-group">
-                <strong>Zoption Pro</strong>
-                <span className="pro-checkout-plan-subtitle">More range, more room</span>
-              </div>
-              <span className="pro-checkout-plan-recommended-badge">Recommended</span>
+        <fieldset className="pro-checkout-intervals" disabled={busy}>
+          <legend>Billing interval</legend>
+          <div className="pro-checkout-interval-options">
+            {(["month", "year"] as const).map((option) => (
+              <label
+                key={option}
+                className={
+                  interval === option ? "pro-checkout-interval selected" : "pro-checkout-interval"
+                }
+              >
+                <input
+                  type="radio"
+                  name="plan-checkout-interval"
+                  value={option}
+                  checked={interval === option}
+                  onChange={() => setBillingInterval(option)}
+                />
+                <span className="pro-checkout-interval-content">
+                  <span className="pro-checkout-interval-label-row">
+                    <strong>{option === "month" ? "Monthly" : "Yearly"}</strong>
+                    {option === "year" && (
+                      <span className="pro-checkout-save-badge">{YEARLY_SAVING_LABEL}</span>
+                    )}
+                  </span>
+                  <small>{planPriceLabel(plan, option)}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="pro-checkout-plans" disabled={busy}>
+          <legend className="sr-only">Plan</legend>
+          {plans.map((option) => (
+            <PlanOption
+              key={option}
+              plan={option}
+              interval={interval}
+              selected={plan === option}
+              recommended={!changing && option === suggestedPlan}
+              isCurrent={current?.plan === option && current.interval === interval}
+              disabled={busy}
+              onSelect={() => setPlan(option)}
+            />
+          ))}
+        </fieldset>
+
+        {changing ? (
+          <div className="pro-checkout-payment">
+            <p className="pro-checkout-secure-note">
+              {direction === "downgrade"
+                ? "You keep your current plan until the paid period ends, then move to this one."
+                : direction === "upgrade"
+                  ? "The new plan starts now. Dodo Payments charges the difference today; PayPal bills the new price from your next renewal."
+                  : "This is the plan you already have."}
+            </p>
+            <div className="modal-actions">
+              <button
+                ref={initialActionRef}
+                className="button secondary"
+                type="button"
+                disabled={busy}
+                onClick={onClose}
+              >
+                Keep current plan
+              </button>
+              <button
+                className="button primary"
+                type="button"
+                disabled={busy || direction === "same"}
+                onClick={() => void switchPlan()}
+              >
+                {busy ? "Switching…" : `Switch to ${PLAN_NAMES[plan]}`}
+              </button>
             </div>
-            <div
-              className="pro-checkout-plan-price"
-              aria-label={`Price: ${selectedInterval === "month" ? "₱149 per month" : "₱1,299 per year"}`}
+          </div>
+        ) : canCheckout ? (
+          <div className="pro-checkout-payment">
+            <div className="pro-checkout-secure-action">
+              <button
+                className="button primary pro-checkout-continue"
+                type="button"
+                disabled={busy}
+                onClick={() => void runCheckout("dodo")}
+              >
+                <LockKeyhole size={15} aria-hidden="true" />
+                {dodoBusy ? "Opening secure payment…" : `Continue with ${PLAN_NAMES[plan]}`}
+              </button>
+              <p className="pro-checkout-secure-note">
+                Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record for
+                this option.
+              </p>
+            </div>
+
+            <section
+              className="pro-checkout-payment-methods"
+              aria-labelledby="paypal-payment-methods-title"
             >
-              <span className="pro-checkout-amount">
-                {selectedInterval === "month" ? "₱149" : "₱1,299"}
-              </span>
-              <span className="pro-checkout-frequency">
-                {selectedInterval === "month" ? "/ month" : "/ year"}
-                {selectedInterval === "year" && (
-                  <span className="pro-checkout-effective-rate"> · ₱108.25/mo</span>
-                )}
-              </span>
-            </div>
-            <ul className="pro-checkout-features" aria-label="Zoption Pro features">
-              {planFeatures.map((feature) => (
-                <li key={feature.feature}>
-                  <span className="pro-checkout-check included" aria-hidden="true">
-                    <Check size={12} strokeWidth={2.5} />
-                  </span>
-                  <span>
-                    <b>{feature.feature}</b>
-                    {feature.pro}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {canCheckout ? (
-              <div className="pro-checkout-payment">
-                <fieldset className="pro-checkout-intervals" disabled={busy}>
-                  <legend>Billing interval</legend>
-                  <div className="pro-checkout-interval-options">
-                    {proCheckoutOptions.map((option) => (
-                      <label
-                        key={option.interval}
-                        className={
-                          selectedInterval === option.interval
-                            ? "pro-checkout-interval selected"
-                            : "pro-checkout-interval"
-                        }
-                      >
-                        <input
-                          ref={option.interval === "month" ? initialProActionRef : undefined}
-                          type="radio"
-                          name="pro-billing-interval"
-                          value={option.interval}
-                          aria-label={`${option.label}, ${option.price}`}
-                          checked={selectedInterval === option.interval}
-                          onChange={() => setSelectedInterval(option.interval)}
-                        />
-                        <span className="pro-checkout-interval-content">
-                          <span className="pro-checkout-interval-label-row">
-                            <strong>{option.label}</strong>
-                            {option.interval === "year" && (
-                              <span className="pro-checkout-save-badge">Save 27%</span>
-                            )}
-                          </span>
-                          <small>{option.price}</small>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-
-                <div className="pro-checkout-secure-action">
-                  <button
-                    className="button primary pro-checkout-continue"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void handleDodoCheckout()}
-                  >
-                    <LockKeyhole size={15} aria-hidden="true" />
-                    {dodoBusy ? "Opening secure payment…" : "Continue securely"}
-                  </button>
-                  <p className="pro-checkout-secure-note">
-                    Pay by card, Apple Pay, or Google Pay. Dodo Payments is the merchant of record
-                    for this option.
-                  </p>
+              <div className="pro-checkout-payment-methods-header">
+                <div className="pro-checkout-payment-methods-title-row">
+                  <ShieldCheck size={15} className="pro-checkout-shield-icon" aria-hidden="true" />
+                  <strong id="paypal-payment-methods-title">Or pay with PayPal</strong>
                 </div>
-
-                <section
-                  className="pro-checkout-payment-methods"
-                  aria-labelledby="paypal-payment-methods-title"
+                <span>Pay with your PayPal balance or a card linked to PayPal.</span>
+              </div>
+              {providerConfig ? (
+                <PayPalProvider
+                  clientId={providerConfig.clientId}
+                  environment={providerConfig.environment}
+                  components={[
+                    "paypal-payments",
+                    "paypal-subscriptions",
+                    "paypal-guest-payments",
+                    "card-fields",
+                  ]}
+                  pageType="checkout"
                 >
-                  <div className="pro-checkout-payment-methods-header">
-                    <div className="pro-checkout-payment-methods-title-row">
-                      <ShieldCheck
-                        size={15}
-                        className="pro-checkout-shield-icon"
-                        aria-hidden="true"
-                      />
-                      <strong id="paypal-payment-methods-title">Or pay with PayPal</strong>
-                    </div>
-                    <span>Pay with your PayPal balance or a card linked to PayPal.</span>
-                  </div>
-                  {providerConfig ? (
-                    <PayPalProvider
-                      clientId={providerConfig.clientId}
-                      environment={providerConfig.environment}
-                      components={[
-                        "paypal-payments",
-                        "paypal-subscriptions",
-                        "paypal-guest-payments",
-                        "card-fields",
-                      ]}
-                      pageType="checkout"
-                    >
-                      <PayPalCheckoutBoundary
-                        interval={selectedInterval}
-                        workspace={workspace}
-                        onBusyChange={setBusy}
-                      />
-                    </PayPalProvider>
-                  ) : (
-                    <button
-                      className="button secondary pro-checkout-continue"
-                      type="button"
-                      disabled={!error || busy}
-                      onClick={() => void handleFallbackCheckout()}
-                    >
-                      <Wallet size={15} aria-hidden="true" />
-                      {busy && !dodoBusy
-                        ? "Opening PayPal…"
-                        : error
-                          ? "Continue on PayPal"
-                          : "Preparing PayPal…"}
-                    </button>
-                  )}
-                </section>
-              </div>
-            ) : (
-              <div className="pro-checkout-unavailable">
-                <strong>Checkout unavailable</strong>
-                <p>{checkoutUnavailable}</p>
-                <Link className="button secondary compact" to="/app/settings#plan-and-billing">
-                  Review Plan and billing
-                </Link>
-              </div>
-            )}
-          </section>
-          <FreePlanCard
-            busy={Boolean(busy)}
-            initialActionRef={initialActionRef}
-            onClose={onClose}
-          />
-        </div>
+                  <PayPalCheckoutBoundary
+                    choice={choice}
+                    workspace={workspace}
+                    onBusyChange={setBusy}
+                  />
+                </PayPalProvider>
+              ) : (
+                <button
+                  className="button secondary pro-checkout-continue"
+                  type="button"
+                  disabled={!error || busy}
+                  onClick={() => void runCheckout("paypal")}
+                >
+                  <Wallet size={15} aria-hidden="true" />
+                  {busy && !dodoBusy
+                    ? "Opening PayPal…"
+                    : error
+                      ? "Continue on PayPal"
+                      : "Preparing PayPal…"}
+                </button>
+              )}
+            </section>
+            <button
+              ref={initialActionRef}
+              className="button secondary pro-checkout-free-action"
+              type="button"
+              disabled={busy}
+              onClick={onClose}
+            >
+              Not now
+            </button>
+          </div>
+        ) : (
+          <div className="pro-checkout-unavailable">
+            <strong>Checkout unavailable</strong>
+            <p>{unavailable}</p>
+            <button
+              ref={initialActionRef}
+              className="button secondary compact"
+              type="button"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
+        )}
 
         {error && (
           <p className="pro-checkout-error" role="alert">
@@ -572,6 +634,6 @@ function ProCheckoutDialogContent({
 }
 
 /** Mounts the dialog only while open so the mount-only focus trap activates on every open. */
-export function ProCheckoutDialog({ open, ...props }: ProCheckoutDialogProps) {
-  return open ? <ProCheckoutDialogContent {...props} /> : null;
+export function PlanCheckoutDialog({ open, ...props }: PlanCheckoutDialogProps) {
+  return open ? <PlanCheckoutDialogContent {...props} /> : null;
 }

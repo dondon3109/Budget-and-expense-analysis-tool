@@ -59,7 +59,7 @@ function DashboardFormModal({
 interface AccountFormModalProps {
   accounts: AccountMutations;
   editingAccount: AccountBalanceSummaryItem;
-  isPro: boolean;
+  isPaid: boolean;
   onAdjustBalance: (account: AccountBalanceSummaryItem) => void;
 }
 
@@ -67,7 +67,7 @@ interface AccountFormModalProps {
 export function AccountFormModal({
   accounts,
   editingAccount,
-  isPro,
+  isPaid,
   onAdjustBalance,
 }: AccountFormModalProps) {
   const {
@@ -119,7 +119,7 @@ export function AccountFormModal({
             id: editingAccount.id,
             name: editName,
             type: editType,
-            ...(editType === "savings" && isPro
+            ...(editType === "savings" && isPaid
               ? {
                   interest: {
                     enabled: interestEnabled,
@@ -165,7 +165,7 @@ export function AccountFormModal({
         {editType === "savings" && (
           <fieldset className="account-interest-fieldset">
             <legend>Interest</legend>
-            {isPro ? (
+            {isPaid ? (
               <label className="checkbox-inline">
                 <input
                   type="checkbox"
@@ -179,7 +179,7 @@ export function AccountFormModal({
                 Earn automatic interest on this account
               </p>
             )}
-            {isPro ? (
+            {isPaid ? (
               interestEnabled && (
                 <div className="account-interest-settings">
                   <label>
@@ -241,9 +241,9 @@ export function AccountFormModal({
               )
             ) : (
               <p className="form-hint account-interest-pro-callout">
-                Automatic interest is a Pro feature.{" "}
-                <Link to="/app/settings#plan-and-billing">Upgrade to Zoption Pro</Link> to earn
-                interest on this savings account.
+                Automatic interest comes with Budget and Pro.{" "}
+                <Link to="/app/settings#plan-and-billing">Choose a plan</Link> to earn interest on
+                this savings account.
               </p>
             )}
           </fieldset>

@@ -36,8 +36,8 @@ interface Props {
   isLoading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
-  showSubscribeToPro?: boolean;
-  onSubscribeToPro?: (trigger: HTMLButtonElement) => void;
+  showUpgrade?: boolean;
+  onUpgrade?: (trigger: HTMLButtonElement) => void;
 }
 
 const NARROW_VIEWPORT_QUERY = "(max-width: 760px)";
@@ -74,8 +74,8 @@ export function MonthlyTrend({
   isLoading = false,
   error,
   onRetry,
-  showSubscribeToPro = false,
-  onSubscribeToPro,
+  showUpgrade = false,
+  onUpgrade,
 }: Props) {
   const reduceMotion = useReducedMotion();
   // The server converts other currencies into the workspace currency before it sums.
@@ -187,13 +187,13 @@ export function MonthlyTrend({
                 No transactions fall within {formatPeriod(data.range.from, data.range.to)}.
                 Transactions outside these displayed dates are not included in the weekly view.
               </p>
-              {showSubscribeToPro && onSubscribeToPro && (
+              {showUpgrade && onUpgrade && (
                 <button
                   className="button primary compact"
                   type="button"
-                  onClick={(event) => onSubscribeToPro(event.currentTarget)}
+                  onClick={(event) => onUpgrade(event.currentTarget)}
                 >
-                  Subscribe to Pro
+                  Choose a plan
                 </button>
               )}
             </>

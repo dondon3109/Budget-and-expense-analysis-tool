@@ -1,6 +1,6 @@
-import type { BillingInterval, BillingProvider } from "@zoption/shared";
+import type { BillingProvider } from "@zoption/shared";
 
-import { startBillingCheckout } from "./api";
+import { startBillingCheckout, type PlanChoice } from "./api";
 import type { AuthenticatedWorkspace } from "./workspace";
 
 /** Shown whenever a checkout target cannot be trusted or the SDK fails to open it. */
@@ -69,10 +69,10 @@ export function redirectToDodoCheckout(url: string): void {
 
 export async function openBillingCheckout(
   workspace: AuthenticatedWorkspace,
-  interval: BillingInterval,
+  choice: PlanChoice,
   provider: BillingProvider = "paypal",
 ) {
-  const checkout = await startBillingCheckout(workspace, interval, provider);
+  const checkout = await startBillingCheckout(workspace, choice, provider);
   if (provider === "dodo") redirectToDodoCheckout(checkout.approvalUrl);
   else redirectToPaypalCheckout(checkout.approvalUrl);
 }

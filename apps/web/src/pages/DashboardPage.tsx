@@ -1,4 +1,4 @@
-import { goalConfigFor, type GoalCtaAction } from "@zoption/shared";
+import { goalConfigFor, personalBillingPlans, type GoalCtaAction } from "@zoption/shared";
 import type {
   AccountBalanceSummaryItem,
   CashflowTrendView,
@@ -21,7 +21,11 @@ import { useAccountMutations } from "../components/dashboard/useAccountMutations
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import { AdjustBalanceModal } from "../components/account/AdjustBalanceModal";
 import { Skeleton, SkeletonStatus } from "../components/common/Skeleton";
-import { ProCheckoutDialog } from "../components/billing/ProCheckoutDialog";
+import {
+  PlanCheckoutDialog,
+  personalCheckoutUnavailable,
+  suggestedPersonalPlan,
+} from "../components/billing/PlanCheckoutDialog";
 import { ThankYouDialog } from "../components/common/ThankYouDialog";
 import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
@@ -42,6 +46,7 @@ import { useInitialDashboardExperience } from "../components/dashboard/InitialDa
 import { MonthlyTrend } from "../components/dashboard/MonthlyTrend";
 import { SpendingByCategory } from "../components/dashboard/SpendingByCategory";
 import { MonthSelector } from "../components/month/MonthSelector";
+import { JustYouCard } from "../components/family/JustYouCard";
 import { RemittanceCard } from "../components/family/RemittanceCard";
 import { SharedBalancesCard } from "../components/family/SharedBalancesCard";
 import { useActiveWorkspace } from "../components/layout/ActiveWorkspaceProvider";
@@ -60,7 +65,7 @@ import { calculatePercentageChange, isDashboardEmpty, trendState } from "../lib/
 import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { clearSignupThankYouPending, isSignupThankYouPending } from "../lib/thankYou";
-import { useMyBalanceShares } from "../queries/families";
+import { useFamily, useMyBalanceShares } from "../queries/families";
 import { useGoalProfile } from "../queries/goalProfile";
 import { transactionsQueryOptions } from "../queries/transactions";
 import "./DashboardPage.css";
@@ -88,9 +93,9 @@ export function DashboardPage() {
   const [sharingAccount, setSharingAccount] = useState<AccountBalanceSummaryItem>();
   const [chosenCashflowView, setCashflowView] = useState<CashflowTrendView>();
   const billingSummary = useBillingSummary(personal);
-  const isPro = billingSummary.data?.plan === "zoption_pro";
-  // Longer views need Pro on the workspace itself, which a family does not have until it is billed.
-  const cashflowView = chosenCashflowView ?? (isPro && !family ? "monthly" : "weekly");
+  const isPaid = billingSummary.data !== undefined && billingSummary.data.plan !== "free";
+  // Longer views need a paid plan on the workspace itself, and a family's comes from its own plan.
+  const cashflowView = chosenCashflowView ?? (isPaid && !family ? "monthly" : "weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
   const [signupThankYouOpen, setSignupThankYouOpen] = useState(isSignupThankYouPending);
@@ -99,6 +104,7 @@ export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const personalGoal = useGoalProfile(personal).data?.goal ?? null;
   const goal = family ? null : personalGoal;
+  const familyDetail = useFamily(family?.role === "owner" ? workspace : undefined).data;
   const goalConfig = goalConfigFor(goal);
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
   const handledPostAuthCheckoutIntentRef = useRef(false);
@@ -363,8 +369,8 @@ export function DashboardPage() {
         isLoading={cashflowTrendQuery.isPending}
         error={cashflowTrendQuery.error}
         onRetry={() => void cashflowTrendQuery.refetch()}
-        showSubscribeToPro={billingSummary.data?.plan === "free"}
-        onSubscribeToPro={(trigger) => {
+        showUpgrade={billingSummary.data?.plan === "free"}
+        onUpgrade={(trigger) => {
           subscribeTriggerRef.current = trigger;
           setIsProCheckoutOpen(true);
         }}
@@ -453,6 +459,9 @@ export function DashboardPage() {
           </>
         )}
 
+        {family && familyDetail?.plan === "unpaid" && (
+          <JustYouCard familyId={family.id} onPlanPage={false} />
+        )}
         {family && <RemittanceCard family={workspace} month={summaryMonth} />}
 
         <AccountsPanel
@@ -462,7 +471,7 @@ export function DashboardPage() {
           previousMetrics={previousMetrics}
           netChangePercent={netChangePercent}
           trendComparison={trendComparison}
-          isPro={isPro}
+          isPaid={isPaid}
           onAdjustBalance={setAdjustingAccount}
           onShareBalance={family ? undefined : setSharingAccount}
           sharedTo={family ? undefined : sharedTo}
@@ -582,10 +591,12 @@ export function DashboardPage() {
         )}
       </div>
       {billingSummary.data && (
-        <ProCheckoutDialog
+        <PlanCheckoutDialog
           open={isProCheckoutOpen}
-          summary={billingSummary.data}
           workspace={personal}
+          plans={personalBillingPlans}
+          suggestedPlan={suggestedPersonalPlan(billingSummary.data)}
+          unavailable={personalCheckoutUnavailable(billingSummary.data)}
           returnFocus={subscribeTriggerRef.current}
           onClose={closeProCheckout}
         />

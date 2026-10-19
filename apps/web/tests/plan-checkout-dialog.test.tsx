@@ -3,12 +3,13 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import type { BillingSummary } from "@zoption/shared";
+import { personalBillingPlans, type BillingPlanKey } from "@zoption/shared";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
+  changeBillingPlan: vi.fn(),
   getBillingProviderConfig: vi.fn(),
   startBillingCheckout: vi.fn(),
 }));
@@ -35,46 +36,36 @@ vi.mock("@paypal/react-paypal-js/sdk-v6", () => ({
   usePayPalSubscriptionPaymentSession: paypalMocks.useSubscriptionSession,
 }));
 
-import { ProCheckoutDialog } from "../src/components/billing/ProCheckoutDialog";
+import { PlanCheckoutDialog } from "../src/components/billing/PlanCheckoutDialog";
 
 const workspace = { key: "user:user-1" as const, userId: "user-1" };
 
-function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
-  const base = {
-    plan: "free",
-    entitlementSource: null,
-    provider: null,
-    status: null,
-    interval: null,
-    currentPeriodEndsAt: null,
-    scheduledChangeAt: null,
-    cancelAtPeriodEnd: false,
-    pendingCheckout: null,
-    canCheckout: true,
-    canManageBilling: false,
-    canManageSponsoredSeats: false,
-    nonTerminalSubscriptionCount: 0,
-    usages: [],
-    allowances: [],
-  } satisfies BillingSummary;
-  return {
-    ...base,
-    ...overrides,
-    entitlementSource: overrides.entitlementSource ?? base.entitlementSource,
-    canManageSponsoredSeats: overrides.canManageSponsoredSeats ?? base.canManageSponsoredSeats,
-  };
-}
-
-function renderDialog(value = summary(), onClose = vi.fn()) {
+function renderDialog(
+  options: {
+    unavailable?: string | null;
+    current?: { plan: BillingPlanKey; interval: "month" | "year" };
+    onChanged?: () => void;
+  } = {},
+) {
+  const onClose = vi.fn();
   render(
     <MemoryRouter>
-      <ProCheckoutDialog open summary={value} workspace={workspace} onClose={onClose} />
+      <PlanCheckoutDialog
+        open
+        workspace={workspace}
+        plans={personalBillingPlans}
+        suggestedPlan="budget"
+        unavailable={options.unavailable ?? null}
+        current={options.current}
+        onClose={onClose}
+        onChanged={options.onChanged}
+      />
     </MemoryRouter>,
   );
   return onClose;
 }
 
-describe("ProCheckoutDialog", () => {
+describe("PlanCheckoutDialog", () => {
   beforeEach(() => {
     paypalMocks.usePayPal.mockReturnValue({
       sdkInstance: {},
@@ -104,98 +95,58 @@ describe("ProCheckoutDialog", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
-    vi.unstubAllGlobals();
   });
 
-  it("starts Dodo Payments checkout from the primary action for the selected interval", async () => {
+  it("starts Dodo Payments checkout for the suggested plan and chosen interval", async () => {
     renderDialog();
 
-    fireEvent.click(screen.getByRole("radio", { name: /Annual/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Continue securely" }));
+    expect(screen.getByRole("radio", { name: /^Zoption Budget/ })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: /^Yearly/ }));
+    expect(screen.getByText("₱1,490")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue with Zoption Budget" }));
 
     await vi.waitFor(() =>
-      expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "year", "dodo"),
+      expect(openBillingCheckout).toHaveBeenCalledWith(
+        workspace,
+        { plan: "budget", interval: "year" },
+        "dodo",
+      ),
     );
     expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
   });
 
-  it("shows current plan and payment facts, then starts the selected PayPal subscription", async () => {
+  it("starts the PayPal subscription for the plan picked", async () => {
     renderDialog();
 
-    expect(
-      screen.getByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
-    ).toBeVisible();
-    expect(screen.getByText("Weekly cashflow view")).toBeInTheDocument();
-    expect(screen.getByText("Adds monthly and six-month cashflow views")).toBeInTheDocument();
-    expect(
-      screen.getByText(/does not add or move transactions into the week/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText("Payment handled by PayPal")).not.toBeInTheDocument();
-    expect(screen.getByText(/Pay by card, Apple Pay, or Google Pay/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("radio", { name: /^Zoption Pro/ }));
+    expect(screen.getByText("₱249")).toBeInTheDocument();
     const continueWithPayPal = await screen.findByRole("button", { name: "Continue with PayPal" });
     expect(paypalMocks.providerProps).toHaveBeenCalledWith(
-      expect.objectContaining({
-        clientId: "public-client-id",
-        components: [
-          "paypal-payments",
-          "paypal-subscriptions",
-          "paypal-guest-payments",
-          "card-fields",
-        ],
-        environment: "sandbox",
-      }),
+      expect.objectContaining({ clientId: "public-client-id", environment: "sandbox" }),
     );
-    expect(paypalMocks.providerProps.mock.calls.at(-1)?.[0]).not.toHaveProperty("locale");
-
-    fireEvent.click(screen.getByRole("radio", { name: "Annual, ₱1,299/year" }));
     fireEvent.click(continueWithPayPal);
 
-    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, "year");
+    expect(apiMocks.startBillingCheckout).toHaveBeenCalledWith(workspace, {
+      plan: "pro",
+      interval: "month",
+    });
     expect(openBillingCheckout).not.toHaveBeenCalled();
   });
 
-  it("confines Tab to the dialog", () => {
-    renderDialog();
-
-    const dialog = screen.getByRole("dialog", {
-      name: "Choose how you want to use Zoption Pro",
-    });
-    const close = screen.getByRole("button", { name: "Close subscription options" });
-    const continueFree = screen.getByRole("button", { name: "Continue using free plan" });
-
-    expect(continueFree).toHaveFocus();
-
-    fireEvent.keyDown(continueFree, { key: "Tab" });
-    expect(close).toHaveFocus();
-    expect(dialog.contains(document.activeElement)).toBe(true);
-  });
-
-  it("starts at the free-plan action and lets the user continue without checkout", () => {
+  it("starts at Not now, confines Tab to the dialog, and closes without checkout", () => {
     const onClose = renderDialog();
-    const continueButton = screen.getByRole("button", {
-      name: "Continue using free plan",
-    });
-    const freePlan = screen.getByRole("region", { name: "Free plan" });
+    const notNow = screen.getByRole("button", { name: "Not now" });
 
-    expect(freePlan.querySelector("ul")?.nextElementSibling).toBe(continueButton);
-    expect(continueButton).toHaveFocus();
-    fireEvent.click(continueButton);
+    expect(notNow).toHaveFocus();
+    fireEvent.keyDown(notNow, { key: "Tab" });
+    expect(screen.getByRole("button", { name: "Close plan options" })).toHaveFocus();
 
+    fireEvent.click(notNow);
     expect(onClose).toHaveBeenCalledOnce();
     expect(openBillingCheckout).not.toHaveBeenCalled();
-    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
   });
 
-  it("puts Pro first and focuses its selected interval on narrow screens", () => {
-    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
-    renderDialog();
-
-    const plans = screen.getByRole("region", { name: "Zoption Pro plan" }).parentElement;
-    expect(plans?.firstElementChild).toHaveAccessibleName("Zoption Pro plan");
-    expect(screen.getByRole("radio", { name: "Monthly, ₱149/month" })).toHaveFocus();
-  });
-
-  it("keeps the hosted PayPal checkout available when the embedded SDK cannot initialize", async () => {
+  it("keeps the hosted PayPal checkout available when the provider config fails", async () => {
     apiMocks.getBillingProviderConfig.mockRejectedValue(
       new Error("Secure checkout is unavailable."),
     );
@@ -204,8 +155,11 @@ describe("ProCheckoutDialog", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Continue on PayPal" }));
 
-    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "month");
-    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
+    expect(openBillingCheckout).toHaveBeenCalledWith(
+      workspace,
+      { plan: "budget", interval: "month" },
+      "paypal",
+    );
   });
 
   it("keeps SDK initialization pending without creating a subscription session early", async () => {
@@ -218,7 +172,6 @@ describe("ProCheckoutDialog", () => {
 
     expect(await screen.findByRole("button", { name: "Preparing PayPal…" })).toBeDisabled();
     expect(paypalMocks.useSubscriptionSession).not.toHaveBeenCalled();
-    expect(screen.queryByText("no sdk instance available")).not.toBeInTheDocument();
   });
 
   it("offers hosted checkout when the PayPal SDK provider fails", async () => {
@@ -233,41 +186,41 @@ describe("ProCheckoutDialog", () => {
     expect(
       await screen.findByText(/PayPal's secure payment window could not be prepared/i),
     ).toBeVisible();
-    expect(screen.queryByText("no sdk instance available")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue on PayPal" }));
 
-    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, "month");
-    expect(apiMocks.startBillingCheckout).not.toHaveBeenCalled();
+    expect(openBillingCheckout).toHaveBeenCalledWith(workspace, {
+      plan: "budget",
+      interval: "month",
+    });
   });
 
-  it("explains when payment confirmation is already pending", () => {
-    renderDialog(
-      summary({
-        canCheckout: false,
-        pendingCheckout: {
-          provider: "paypal",
-          interval: "month",
-          createdAt: "2026-08-01T00:00:00.000Z",
-          expiresAt: "2099-08-01T00:15:00.000Z",
-        },
-      }),
-    );
-
-    expect(screen.getByText(/Payment confirmation is already in progress/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Continue securely" })).not.toBeInTheDocument();
-  });
-
-  it("closes on Escape and explains unavailable checkout", () => {
-    const onClose = renderDialog(summary({ canCheckout: false, canManageBilling: true }));
+  it("explains why checkout is unavailable and closes on Escape", () => {
+    const onClose = renderDialog({ unavailable: "Payment confirmation is already in progress." });
 
     expect(screen.getByText("Checkout unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Review Plan and billing" })).toHaveAttribute(
-      "href",
-      "/app/settings#plan-and-billing",
-    );
-    expect(screen.queryByRole("button", { name: "Continue securely" })).not.toBeInTheDocument();
+    expect(screen.getByText("Payment confirmation is already in progress.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Continue with/ })).not.toBeInTheDocument();
 
     fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("switches a paid plan instead of selling a new one", async () => {
+    apiMocks.changeBillingPlan.mockResolvedValue({ outcome: "applied", approvalUrl: null });
+    const onChanged = vi.fn();
+    const onClose = renderDialog({ current: { plan: "budget", interval: "month" }, onChanged });
+
+    expect(screen.getByRole("radio", { name: /^Zoption Budget.*Current plan/ })).toBeChecked();
+    expect(screen.getByRole("button", { name: "Switch to Zoption Budget" })).toBeDisabled();
+    expect(apiMocks.getBillingProviderConfig).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("radio", { name: /^Zoption Pro/ }));
+    expect(screen.getByText(/The new plan starts now/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Switch to Zoption Pro" }));
+
+    const choice = { plan: "pro", interval: "month" };
+    await vi.waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(apiMocks.changeBillingPlan).toHaveBeenCalledWith(workspace, choice);
+    expect(onChanged).toHaveBeenCalledWith({ outcome: "applied", approvalUrl: null }, choice);
   });
 });

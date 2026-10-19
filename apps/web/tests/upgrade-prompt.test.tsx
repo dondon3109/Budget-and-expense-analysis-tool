@@ -34,7 +34,7 @@ describe("UpgradePrompt", () => {
 
     const alert = screen.getByRole("alert", { name: "Monthly plan limit reached" });
     expect(alert).toHaveTextContent("500 of 500 AI actions this month");
-    expect(alert).toHaveTextContent("Pro includes 2,000 AI actions a month");
+    expect(alert).toHaveTextContent("Budget includes 1,000 and Pro 2,000 AI actions a month");
     expect(alert).toHaveTextContent("Asia/Manila");
     expect(screen.getByRole("link", { name: /Plan and billing/ })).toHaveAttribute(
       "href",
@@ -42,7 +42,7 @@ describe("UpgradePrompt", () => {
     );
   });
 
-  it("does not pitch the Pro pool to a tenant already on it", () => {
+  it("does not pitch a larger pool to a tenant already on Pro", () => {
     renderPrompt(
       new ApiRequestError("Limit reached", 409, "monthly_limit_reached", {
         feature: "ai_usage",
@@ -78,7 +78,7 @@ describe("UpgradePrompt", () => {
       new ApiRequestError("Upgrade required", 403, "upgrade_required", { capability: 7 }),
     );
 
-    expect(screen.getByRole("alert", { name: "Zoption Pro is required" })).toHaveTextContent(
+    expect(screen.getByRole("alert", { name: "A paid plan is required" })).toHaveTextContent(
       "Upgrade to use this paid feature.",
     );
   });

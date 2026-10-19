@@ -537,7 +537,7 @@ export function TransactionForm({
                   <option key={category.id} value={category.id} disabled={category.locked}>
                     {category.iconEmoji ? `${category.iconEmoji} ` : ""}
                     {category.name}
-                    {category.locked ? " — Pro required" : ""}
+                    {category.locked ? " — upgrade required" : ""}
                   </option>
                 ),
               )}

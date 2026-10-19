@@ -1,0 +1,23 @@
+/* The unpaid family notice, shown on the family Home and the members screen. */
+
+.family-just-you {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border: 1px solid var(--action);
+  border-radius: var(--radius-lg);
+  background: var(--action-soft);
+}
+
+.family-just-you > div {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.family-just-you p {
+  margin: 0;
+  color: var(--ink);
+}

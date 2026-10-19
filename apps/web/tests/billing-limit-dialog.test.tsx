@@ -125,7 +125,7 @@ describe("BillingLimitDialog", () => {
     ).toHaveTextContent("5 of 5 active custom categories");
   });
 
-  it("explains a Pro-only action", () => {
+  it("explains a paid-only action", () => {
     render(
       <MemoryRouter>
         <BillingLimitDialog
@@ -139,7 +139,7 @@ describe("BillingLimitDialog", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("dialog", { name: "Zoption Pro is required" })).toHaveTextContent(
+    expect(screen.getByRole("dialog", { name: "A paid plan is required" })).toHaveTextContent(
       "transaction exports",
     );
   });

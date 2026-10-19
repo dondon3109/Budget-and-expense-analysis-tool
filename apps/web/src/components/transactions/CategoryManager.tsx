@@ -1,6 +1,7 @@
 import {
   categoryIconEmojiSchema,
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
+  TIER_NAMES,
   type CategoryInput,
   type CategoryRecord,
   type TransactionKind,
@@ -191,7 +192,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
     categoryAllowance?.limit !== null &&
     categoryAllowance?.limit !== undefined &&
     categoryAllowance.used >= categoryAllowance.limit;
-  const isFreePlan = billingQuery.data?.plan === "free";
+  const planName = TIER_NAMES[billingQuery.data?.plan ?? "free"];
   const createDisabled = createMutation.isPending || categoryAtLimit;
 
   function handleCreate(event: FormEvent) {
@@ -243,15 +244,15 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
         {categoryAllowance && (
           <div id="category-manager-limit-copy" className="category-manager-limit">
             <PlanUsageIndicator
-              label={isFreePlan ? "Free plan custom categories" : "Active custom categories"}
+              label={`${planName} custom categories`}
               used={categoryAllowance.used}
               limit={categoryAllowance.limit}
               detail={
-                isFreePlan
-                  ? "Free includes 4 active custom categories. Pro-required categories stay visible but cannot be used until you upgrade; archive a Free custom category to free the slot."
+                categoryAllowance.limit !== null
+                  ? `${planName} includes ${categoryAllowance.limit} active custom categories. Categories over that stay visible but locked until you upgrade; archive one to free a slot.`
                   : "Starter and protected Uncategorized categories do not count toward this allowance."
               }
-              showUpgrade={isFreePlan}
+              showUpgrade={categoryAllowance.limit !== null}
             />
           </div>
         )}
@@ -423,7 +424,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                     {category.archived ? " · Archived" : ""}
                     {category.origin === "starter" ? " · Included starter" : ""}
                     {category.origin === "custom" ? " · Custom" : ""}
-                    {category.requiredPlan === "zoption_pro" ? " · Pro required" : ""}
+                    {category.locked ? " · Upgrade required" : ""}
                     {systemCategoryNote(category)}
                   </span>
                 </div>
@@ -487,7 +488,7 @@ export function CategoryManager({ workspace, categories, onClose }: CategoryMana
                         aria-label={`${category.archived ? "Restore" : "Archive"} ${category.name}`}
                         title={
                           category.archived && category.locked
-                            ? "Upgrade to Zoption Pro before restoring this category."
+                            ? "Upgrade your plan before restoring this category."
                             : category.archived && category.origin === "custom" && categoryAtLimit
                               ? "Archive an active Free custom category or upgrade before restoring this one."
                               : undefined

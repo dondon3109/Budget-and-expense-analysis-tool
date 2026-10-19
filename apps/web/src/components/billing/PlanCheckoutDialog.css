@@ -1,4 +1,4 @@
-/* ProCheckoutDialog owns the subscription tier comparison, interval selection, and secure checkout UI. */
+/* PlanCheckoutDialog owns plan and interval selection and the secure checkout UI. */
 
 .form-modal.pro-checkout-dialog,
 .pro-checkout-backdrop .pro-checkout-dialog {
@@ -116,7 +116,10 @@
 }
 
 .pro-checkout-plans {
-  margin-top: 26px;
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 0;
+  border: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
@@ -135,19 +138,32 @@
     box-shadow 150ms ease;
 }
 
-.pro-checkout-plan-pro {
-  grid-column: 2;
-  grid-row: 1;
+.pro-checkout-plan {
+  cursor: pointer;
+}
+
+.pro-checkout-plan.selected {
   border: 2px solid var(--action);
   background: var(--paper);
   box-shadow: 0 4px 20px color-mix(in srgb, var(--action) 10%, transparent);
 }
 
-.pro-checkout-plan-free {
-  grid-column: 1;
-  grid-row: 1;
-  border: 1px solid var(--line-strong);
-  background: var(--surface-soft);
+.pro-checkout-plan:has(input:focus-visible) {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.pro-checkout-plan-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pro-checkout-plan-radio input {
+  width: 17px;
+  height: 17px;
+  margin: 0;
+  accent-color: var(--action);
 }
 
 .pro-checkout-plan-heading {
@@ -272,10 +288,6 @@
   font-weight: 650;
 }
 
-.pro-checkout-feature-excluded {
-  opacity: 0.65;
-}
-
 .pro-checkout-check {
   width: 22px;
   height: 22px;
@@ -289,11 +301,6 @@
 .pro-checkout-check.included {
   background: var(--action-soft);
   color: var(--action);
-}
-
-.pro-checkout-check.excluded {
-  background: var(--surface-hover);
-  color: var(--subtle);
 }
 
 .pro-checkout-plan li svg {
@@ -339,7 +346,7 @@
 
 .pro-checkout-intervals {
   min-width: 0;
-  margin: 0;
+  margin: 20px 0 0;
   padding: 0;
   border: 0;
 }
@@ -637,12 +644,6 @@
     overflow: visible;
     padding: 0;
     gap: 14px;
-  }
-
-  .pro-checkout-plan-pro,
-  .pro-checkout-plan-free {
-    grid-column: auto;
-    grid-row: auto;
   }
 
   .pro-checkout-plan {

@@ -29,6 +29,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useActiveWorkspace } from "../layout/ActiveWorkspaceProvider";
 import { ROLE_LABELS, formatFamilyDate } from "./familyLabels";
 import { FamilyAlertsSection } from "./FamilyAlertsSection";
+import { FamilyPlanSection } from "./FamilyPlanSection";
 import { SeatRulesDialog } from "./SeatRulesDialog";
 
 type Pending =
@@ -86,7 +87,7 @@ export function FamilyManager({ family }: { family: WorkspaceSummary }) {
   const data = detail.data;
   const owner = data.role === "owner";
   const closing = data.closesAt !== null;
-  const canManage = owner && !closing;
+  const canManage = owner && !closing && data.plan !== "lapsed";
   const writeError = write.error instanceof Error ? write.error.message : undefined;
   const confirmError = confirmed.error instanceof Error ? confirmed.error.message : undefined;
 
@@ -151,7 +152,9 @@ export function FamilyManager({ family }: { family: WorkspaceSummary }) {
         </ul>
       </section>
 
-      {canManage && (
+      {!closing && <FamilyPlanSection family={workspace} detail={data} />}
+
+      {canManage && data.plan === "active" && (
         <InvitationsSection
           detail={data}
           busy={write.isPending}

@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 describe("BillingLimitHost", () => {
-  it("opens for a resource limit and for a Pro-only action", () => {
+  it("opens for a resource limit and for a paid-only action", () => {
     render(
       <MemoryRouter>
         <BillingLimitHost />
@@ -29,7 +29,7 @@ describe("BillingLimitHost", () => {
         new ApiRequestError("Pro", 403, "upgrade_required", { capability: "transaction_export" }),
       ),
     );
-    expect(screen.getByRole("dialog", { name: "Zoption Pro is required" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "A paid plan is required" })).toBeInTheDocument();
 
     act(() => dismissBillingLimit());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();

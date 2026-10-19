@@ -267,7 +267,7 @@ describe("Dashboard checkout intent", () => {
     renderPage("/app?proCheckout=open&source=signup");
 
     const dialog = await screen.findByRole("dialog", {
-      name: "Choose how you want to use Zoption Pro",
+      name: "Choose a plan",
     });
     expect(screen.getByTestId("current-path")).toHaveTextContent(
       "/app?proCheckout=open&source=signup",
@@ -276,9 +276,7 @@ describe("Dashboard checkout intent", () => {
     fireEvent.keyDown(dialog, { key: "Escape" });
 
     await waitFor(() => {
-      expect(
-        screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Choose a plan" })).not.toBeInTheDocument();
       expect(screen.getByTestId("current-path")).toHaveTextContent("/app?source=signup");
     });
   });
@@ -288,9 +286,7 @@ describe("Dashboard checkout intent", () => {
     renderPage("/app?proCheckout=open");
 
     await waitFor(() => expect(screen.getByTestId("current-path")).toHaveTextContent("/app"));
-    expect(
-      screen.queryByRole("dialog", { name: "Choose how you want to use Zoption Pro" }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Choose a plan" })).not.toBeInTheDocument();
   });
 });
 
@@ -666,7 +662,9 @@ describe("Profile dashboard account management", () => {
     expect(
       within(dialog).queryByRole("checkbox", { name: "Earn automatic interest" }),
     ).not.toBeInTheDocument();
-    expect(within(dialog).getByText(/Automatic interest is a Pro feature/)).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/Automatic interest comes with Budget and Pro/),
+    ).toBeInTheDocument();
     expect(within(dialog).queryByLabelText("Annual interest rate (%)")).not.toBeInTheDocument();
 
     fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));

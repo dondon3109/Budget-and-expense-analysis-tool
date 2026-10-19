@@ -34,11 +34,11 @@ describe("ThankYouPage", () => {
     expect(screen.getByRole("link", { name: /Go to workspace/i })).toHaveAttribute("href", "/app");
   });
 
-  it("renders Pro subscription thank you content for flow=pro", () => {
+  it("renders paid plan thank you content for flow=pro", () => {
     renderThankYouPage("/thank-you?flow=pro");
 
     expect(
-      screen.getByRole("heading", { level: 1, name: /Thank you for upgrading to Zoption Pro!/i }),
+      screen.getByRole("heading", { level: 1, name: /Thank you for upgrading Zoption!/i }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Go to your workspace/i })).toHaveAttribute(
       "href",

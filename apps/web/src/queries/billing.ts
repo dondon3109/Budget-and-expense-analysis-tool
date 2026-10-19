@@ -1,7 +1,7 @@
 import { queryOptions, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 
-import { getBillingSummary } from "../lib/api";
+import { getBillingSummary, getFamilyBillingSummary } from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
@@ -12,6 +12,15 @@ export function billingSummaryQueryOptions(workspace: AuthenticatedWorkspace) {
   return queryOptions({
     queryKey: queryKeys.billing(workspace),
     queryFn: () => getBillingSummary(workspace),
+  });
+}
+
+/** The plan of the family `family` names; only its owner may read it. */
+export function useFamilyBillingSummary(family: AuthenticatedWorkspace, owner: boolean) {
+  return useQuery({
+    queryKey: queryKeys.familyBilling(family),
+    queryFn: () => getFamilyBillingSummary(family),
+    enabled: owner,
   });
 }
 

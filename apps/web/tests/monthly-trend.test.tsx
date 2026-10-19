@@ -65,7 +65,7 @@ describe("MonthlyTrend", () => {
   });
 
   it("explains an empty weekly range and offers eligible Free users subscription options", () => {
-    const onSubscribeToPro = vi.fn();
+    const onUpgrade = vi.fn();
     render(
       <MonthlyTrend
         data={{
@@ -76,8 +76,8 @@ describe("MonthlyTrend", () => {
         }}
         selectedView="weekly"
         onViewChange={vi.fn()}
-        showSubscribeToPro
-        onSubscribeToPro={onSubscribeToPro}
+        showUpgrade
+        onUpgrade={onUpgrade}
       />,
     );
 
@@ -87,9 +87,9 @@ describe("MonthlyTrend", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/outside these displayed dates are not included/i)).toBeInTheDocument();
 
-    const subscribe = screen.getByRole("button", { name: "Subscribe to Pro" });
+    const subscribe = screen.getByRole("button", { name: "Choose a plan" });
     fireEvent.click(subscribe);
-    expect(onSubscribeToPro).toHaveBeenCalledWith(subscribe);
+    expect(onUpgrade).toHaveBeenCalledWith(subscribe);
   });
 
   it("does not show subscription options without a confirmed Free plan", () => {
@@ -106,7 +106,7 @@ describe("MonthlyTrend", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "Subscribe to Pro" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Choose a plan" })).not.toBeInTheDocument();
   });
 });
 const weeklyData = {
