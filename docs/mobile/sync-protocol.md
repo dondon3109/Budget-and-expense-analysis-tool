@@ -90,12 +90,29 @@ unknown names ignored; the list is `mobileSyncFeatures` in `packages/shared/src/
 the Worker sends version 1 payloads as first shipped. Shaping happens at read time in
 `apps/api/src/db/mobile-sync/features.ts`, so the change log and its triggers stay unchanged.
 
-| Feature            | Adds                                                               | Without it                                              |
-| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------- |
-| `debt-links`       | `debtId` on transaction and transfer payloads, read from the row   | No `debtId` key                                         |
-| `account-types-v2` | Account types `virtual`, `investment`, `receivable`, `payable`     | Those accounts arrive as `other`                        |
-| `account-types-v3` | Account type `ewallet`                                             | Those accounts arrive as `other`                        |
-| `budget-scopes`    | `occasionId` on budget payloads: a budget row for a calendar event | No `occasionId` key; occasion rows arrive as tombstones |
+| Feature             | Adds                                                                                         | Without it                                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `debt-links`        | `debtId` on transaction and transfer payloads, read from the row                             | No `debtId` key                                                               |
+| `account-types-v2`  | Account types `virtual`, `investment`, `receivable`, `payable`                               | Those accounts arrive as `other`                                              |
+| `account-types-v3`  | Account type `ewallet`                                                                       | Those accounts arrive as `other`                                              |
+| `budget-scopes`     | `occasionId` on budget payloads: a budget row for a calendar event                           | No `occasionId` key; occasion rows arrive as tombstones                       |
+| `family-workspaces` | `authorUserId` on transaction and transfer payloads, read from the row, and syncing a family | No `authorUserId` key; a family request answers `400 workspace_not_supported` |
+
+## Family workspaces
+
+A client syncs a family by sending `X-Zoption-Workspace` with the family id on every sync request,
+and it keeps that family in its own local database. The family's change log, cursors, and
+snapshots are the family tenant's own. Pull, snapshot, and acknowledge are reads, so viewers and a
+closing family can use them; a viewer's push answers `403 workspace_read_only`, a closing family's
+`403 workspace_closing`, and someone no longer in the family `403 workspace_forbidden`.
+
+A push into a family runs the rules of its REST routes (`apps/api/src/db/mobile-sync/family.ts`):
+a new transaction or transfer records the pusher as its author; a member's update or delete of an
+entry someone else added is rejected with `invalid_operation`; goals, debts, subscriptions, and
+events are rejected with `unsupported_operation`, and any of these fails a whole dependency graph.
+Edits and deletes go into the family journal, so history and Undo work as on the web, and a new
+expense runs the family alerts when it syncs. A result stored before the rules changed replays
+unchanged.
 
 ## Released app contracts
 

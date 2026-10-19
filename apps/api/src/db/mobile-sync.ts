@@ -24,6 +24,7 @@ import {
   validateTransactionReferences,
   type DebtPayment,
 } from "./transactions";
+import { pushIntoFamily, type FamilyPushScope } from "./mobile-sync/family";
 import {
   shapeChangesForClient,
   shapePushResultsForClient,
@@ -108,11 +109,13 @@ export interface MobileSyncRepository {
     input: MobileSyncPullRequest,
     features?: MobileSyncFeatures,
   ): Promise<MobileSyncPullResponse>;
+  /** `family` is set when the request acts in a family workspace. */
   push(
     env: Bindings,
     tenantId: string,
     input: MobileSyncPushRequest,
     features?: MobileSyncFeatures,
+    family?: FamilyPushScope,
   ): Promise<MobileSyncPushResponse>;
 }
 
@@ -131,6 +134,7 @@ function entityMutation(
   previousPayment: DebtPayment,
   revision: number,
   timestamp: string,
+  authorUserId: string | null,
 ): EntityMutation {
   switch (operation.entityType) {
     case "account":
@@ -157,6 +161,7 @@ function entityMutation(
         previousPayment,
         revision,
         timestamp,
+        authorUserId,
       );
   }
 }
@@ -185,8 +190,12 @@ export function createMobileSyncRepository(
       };
     },
 
-    async push(env, tenantId, input, features = new Set()) {
-      const response = await pushOperations(env, tenantId, input);
+    async push(env, tenantId, input, features = new Set(), family) {
+      const response = family
+        ? await pushIntoFamily(env, tenantId, input, family, (allowed) =>
+            pushOperations(env, tenantId, allowed, family.userId),
+          )
+        : await pushOperations(env, tenantId, input, null);
       return {
         ...response,
         results: await shapePushResultsForClient(env, tenantId, response.results, features),
@@ -198,9 +207,10 @@ export function createMobileSyncRepository(
     env: Bindings,
     tenantId: string,
     input: MobileSyncPushRequest,
+    authorUserId: string | null,
   ): Promise<MobileSyncPushResponse> {
     if (input.operations.some((operation) => operation.dependencyIds.length > 0)) {
-      return pushCreateDependencyGraph(env, tenantId, input, readEntitlement);
+      return pushCreateDependencyGraph(env, tenantId, input, readEntitlement, authorUserId);
     }
     const results: MobileSyncPushResult[] = [];
     for (const operation of input.operations) {
@@ -220,6 +230,7 @@ export function createMobileSyncRepository(
             operation,
             hash,
             readEntitlement,
+            authorUserId,
           ),
         );
         continue;
@@ -442,6 +453,7 @@ export function createMobileSyncRepository(
         previousPayment,
         revision,
         timestamp,
+        authorUserId,
       );
 
       try {

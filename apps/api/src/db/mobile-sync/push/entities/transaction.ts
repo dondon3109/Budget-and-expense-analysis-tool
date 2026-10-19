@@ -49,6 +49,7 @@ function debtPayment(transaction: NonTransferTransactionInput | null): DebtPayme
 /**
  * `previousPayment` is the debt payment the stored row makes, so an update or delete gives it
  * back. The debt writes ride in `extraStatements` behind the operation's idempotency row.
+ * `authorUserId` is set on a family create and null in a personal workspace.
  */
 export function transactionMutation(
   env: Bindings,
@@ -59,6 +60,7 @@ export function transactionMutation(
   previousPayment: DebtPayment,
   revision: number,
   timestamp: string,
+  authorUserId: string | null,
 ): EntityMutation {
   const next = operation.operationType === "delete" ? null : debtPayment(transaction);
   const extraStatements = debtPaymentChanges(
@@ -72,8 +74,9 @@ export function transactionMutation(
     const mutation = env.DB.prepare(
       `INSERT INTO transactions (
         id, tenant_id, account_id, category_id, date, description, amount_minor,
-        currency, kind, notes, debt_id, source_kind, entry_method, revision, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, 1, ?)`,
+        currency, kind, notes, debt_id, source_kind, entry_method, revision, updated_at,
+        created_by_user_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, 1, ?, ?)`,
     ).bind(
       operation.entityId,
       tenantId,
@@ -88,6 +91,7 @@ export function transactionMutation(
       next?.debtId ?? null,
       transaction.entryMethod ?? null,
       timestamp,
+      authorUserId,
     );
     return { mutation, extraStatements };
   }

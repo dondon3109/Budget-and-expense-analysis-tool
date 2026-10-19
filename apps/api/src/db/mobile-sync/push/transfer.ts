@@ -36,6 +36,7 @@ export async function pushTransferOperation(
   operation: TransferOperation,
   hash: string,
   readEntitlement: EntitlementReader,
+  authorUserId: string | null,
 ): Promise<MobileSyncPushResult> {
   let current = await readEntitySnapshot(env, tenantId, "transfer", operation.entityId);
   const conflict = revisionConflict(operation, current);
@@ -115,8 +116,8 @@ export async function pushTransferOperation(
         `INSERT INTO transactions (
           id, tenant_id, account_id, category_id, date, description, amount_minor,
           currency, kind, notes, transfer_group_id, transfer_fee_minor, debt_id, source_kind,
-          entry_method, revision, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, 'manual', ?, 1, ?)`,
+          entry_method, revision, updated_at, created_by_user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, ?, 'manual', ?, 1, ?, ?)`,
       ).bind(
         payload.fromTransactionId,
         tenantId,
@@ -132,13 +133,14 @@ export async function pushTransferOperation(
         nextPayment?.debtId ?? null,
         payload.transfer.entryMethod ?? null,
         timestamp,
+        authorUserId,
       ),
       env.DB.prepare(
         `INSERT INTO transactions (
           id, tenant_id, account_id, category_id, date, description, amount_minor,
           currency, kind, notes, transfer_group_id, transfer_fee_minor, source_kind,
-          entry_method, revision, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', ?, 1, ?)`,
+          entry_method, revision, updated_at, created_by_user_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'transfer', ?, ?, ?, 'manual', ?, 1, ?, ?)`,
       ).bind(
         payload.toTransactionId,
         tenantId,
@@ -153,6 +155,7 @@ export async function pushTransferOperation(
         toLeg.transferFeeMinor,
         payload.transfer.entryMethod ?? null,
         timestamp,
+        authorUserId,
       ),
     );
   } else if (operation.operationType === "update") {

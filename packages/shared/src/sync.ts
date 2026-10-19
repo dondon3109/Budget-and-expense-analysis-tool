@@ -52,6 +52,8 @@ export const mobileSyncFeatures = [
   "account-types-v3",
   // Budget rows may belong to an occasion (`occasionId`, a calendar event) instead of a month.
   "budget-scopes",
+  // The client can sync a family workspace: transactions and transfers carry `authorUserId`.
+  "family-workspaces",
 ] as const;
 export type MobileSyncFeature = (typeof mobileSyncFeatures)[number];
 
@@ -181,6 +183,8 @@ export const mobileSyncTransactionSnapshotSchema = z
     importFingerprint: z.string().max(200).nullable(),
     // Sent only to "debt-links" clients; on a transfer it sits on the sending leg.
     debtId: resourceIdSchema.nullable().optional(),
+    // Sent only to "family-workspaces" clients: who added a family row, null in a personal one.
+    authorUserId: z.string().min(1).max(255).nullable().optional(),
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })
@@ -201,6 +205,7 @@ export const mobileSyncTransferSnapshotSchema = z
     notes: z.string().max(500).nullable(),
     transferFeeMinor: z.number().int().safe().min(0),
     debtId: resourceIdSchema.nullable().optional(),
+    authorUserId: z.string().min(1).max(255).nullable().optional(),
     revision: serverRevisionSchema,
     updatedAt: serverTimestampSchema,
   })

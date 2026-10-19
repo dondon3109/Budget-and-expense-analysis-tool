@@ -259,6 +259,7 @@ function createGraphMutation(
   tenantId: string,
   operation: CreateOperation,
   timestamp: string,
+  authorUserId: string | null,
 ): D1PreparedStatement {
   if (operation.entityType === "account") {
     const payload = accountInputSchema.parse({
@@ -346,8 +347,9 @@ function createGraphMutation(
   return env.DB.prepare(
     `INSERT INTO transactions (
       id, tenant_id, account_id, category_id, date, description, amount_minor,
-      currency, kind, notes, debt_id, source_kind, entry_method, revision, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, 1, ?)`,
+      currency, kind, notes, debt_id, source_kind, entry_method, revision, updated_at,
+      created_by_user_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'manual', ?, 1, ?, ?)`,
   ).bind(
     operation.entityId,
     tenantId,
@@ -362,6 +364,7 @@ function createGraphMutation(
     transaction.kind === "expense" ? (transaction.debtId ?? null) : null,
     transaction.entryMethod ?? null,
     timestamp,
+    authorUserId,
   );
 }
 
@@ -370,6 +373,7 @@ export async function pushCreateDependencyGraph(
   tenantId: string,
   input: MobileSyncPushRequest,
   readEntitlement: EntitlementReader,
+  authorUserId: string | null,
 ): Promise<MobileSyncPushResponse> {
   const operations = input.operations;
   const hashes = await Promise.all(operations.map(requestHash));
@@ -516,7 +520,7 @@ export async function pushCreateDependencyGraph(
     }),
   );
   const statements = createOperations.flatMap((operation, index) => [
-    createGraphMutation(env, tenantId, operation, timestamp),
+    createGraphMutation(env, tenantId, operation, timestamp, authorUserId),
     requiredIdempotencyInsert(
       env,
       tenantId,
