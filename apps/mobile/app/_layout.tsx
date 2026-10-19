@@ -6,7 +6,6 @@ import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -17,6 +16,7 @@ import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { warmUpSounds } from "@/features/sounds/sound-effects";
 import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
+import { CrashScreen } from "@/features/navigation/CrashScreen";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useReduceMotionStore } from "@/stores/reduce-motion-store";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
@@ -26,9 +26,7 @@ import { useDefaultSpendingAccountStore } from "@/stores/default-spending-accoun
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { registerBackgroundSyncTask } from "@/sync/background-sync-task";
 import { telemetry } from "@/telemetry/telemetry";
-import { Button } from "@/ui/components";
 import { ZoptionThemeProvider, useZoptionTheme } from "@/ui/theme-provider";
-import { spacing, typography } from "@/ui/tokens";
 
 // The splash auto-hides as soon as the first frame draws, which is the bare
 // spinner in SessionRedirectScreen. Holding it is only possible from module scope,
@@ -152,18 +150,7 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   return (
     <SafeAreaProvider>
       <ZoptionThemeProvider>
-        <View
-          className="flex-1 items-start justify-center gap-4 px-6"
-          style={{ padding: spacing.lg }}
-        >
-          <Text accessibilityRole="header" style={typography.title}>
-            Zoption couldn’t open this screen
-          </Text>
-          <Text accessibilityRole="alert" style={typography.body}>
-            {error.message || "An unexpected local error occurred."}
-          </Text>
-          <Button onPress={retry}>Try again</Button>
-        </View>
+        <CrashScreen error={error} retry={retry} />
       </ZoptionThemeProvider>
     </SafeAreaProvider>
   );
