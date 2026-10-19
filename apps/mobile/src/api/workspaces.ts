@@ -1,8 +1,10 @@
 import {
   familyInvitationListSchema,
+  myBalanceShareListSchema,
   workspaceListSchema,
   workspaceSummarySchema,
   type FamilyInvitation,
+  type MyBalanceShare,
   type WorkspaceList,
   type WorkspaceSummary,
 } from "@zoption/shared";
@@ -83,6 +85,29 @@ export function leaveFamily(api: PersonalApi, familyId: string): Promise<void> {
     path: `/api/app/families/${encodeURIComponent(familyId)}/leave`,
     method: "POST",
     fallback: "You could not leave the family.",
+    decode: ignoreBody,
+  });
+}
+
+/** The person's live balance shares, across every family. */
+export async function listMyBalanceShares(api: PersonalApi): Promise<MyBalanceShare[]> {
+  const list = await apiRequest({
+    ...api,
+    path: "/api/app/families/balance-shares",
+    method: "GET",
+    fallback: "Your shared balances could not be loaded.",
+    decode: (value) => myBalanceShareListSchema.parse(value),
+  });
+  return list.shares;
+}
+
+/** The family keeps the balance as it is now and stops seeing changes. */
+export function stopBalanceShare(api: PersonalApi, shareId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: `/api/app/families/balance-shares/${encodeURIComponent(shareId)}/stop`,
+    method: "POST",
+    fallback: "The balance could not stop sharing.",
     decode: ignoreBody,
   });
 }

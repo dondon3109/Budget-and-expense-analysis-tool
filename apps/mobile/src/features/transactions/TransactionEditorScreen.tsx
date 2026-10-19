@@ -60,6 +60,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { canChangeEntry } from "@/features/family/entry-access";
 import { FamilyEntryPanel } from "@/features/family/FamilyEntryPanel";
+import { ShareToFamilyButton } from "@/features/family/ShareToFamilyButton";
 import { useFamilyApi } from "@/features/family/use-family-api";
 import { saveFamilyReceipt, useFamilyReceipt } from "@/features/family/use-family-receipt";
 import { TransactionPhotoField } from "./TransactionPhotoField";
@@ -231,7 +232,8 @@ export function TransactionEditorScreen() {
     params.accountSuffix,
   ]);
 
-  const blockedState = formData.data?.transaction?.syncState;
+  const savedEntry = formData.data?.transaction ?? null;
+  const blockedState = savedEntry?.syncState;
   const familyLocked = !canChangeEntry(family, me, formData.data?.transaction ?? null);
   const mutationBlocked =
     blockedState === "failed" || blockedState === "conflicted" || familyLocked;
@@ -919,6 +921,21 @@ export function TransactionEditorScreen() {
           </Button>
           {id && !transfer && !family ? (
             <ShareLinkButton target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }} />
+          ) : null}
+          {id && savedEntry && savedEntry.input.kind !== "transfer" ? (
+            <ShareToFamilyButton
+              target={{
+                kind: "transaction",
+                id,
+                direction: savedEntry.input.kind,
+                categoryName:
+                  formData.data?.categories.find(
+                    (category) => category.id === savedEntry.input.categoryId,
+                  )?.name ?? "",
+                hasNote: Boolean(savedEntry.input.notes),
+                synced: savedEntry.syncState === "synced",
+              }}
+            />
           ) : null}
           {editing ? (
             <Button

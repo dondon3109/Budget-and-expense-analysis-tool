@@ -29,6 +29,7 @@ jest.mock("@/db/local-workspace-state", () => ({
   useSubscriptions: jest.fn(),
 }));
 
+jest.mock("@/features/family/ShareToFamilyButton", () => ({ ShareToFamilyButton: () => null }));
 jest.mock("@/sync/sync-state", () => ({
   useSyncState: () => ({ retry: jest.fn() }),
 }));

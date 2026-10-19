@@ -8,6 +8,7 @@ import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { RemittanceCard } from "@/features/family/RemittanceCard";
+import { SharedBalancesCard } from "@/features/family/SharedBalancesCard";
 import { WorkspaceSwitcher } from "@/features/family/WorkspaceSwitcher";
 import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt";
 import { PetMomentModal } from "@/features/pet/PetMomentModal";
@@ -129,7 +130,12 @@ export function HomeScreen() {
       ) : (
         <View style={{ gap: spacing.md }}>
           <QuickActionBar />
-          {inFamily ? <RemittanceCard month={`${today.slice(0, 7)}-01`} /> : null}
+          {inFamily ? (
+            <>
+              <RemittanceCard month={`${today.slice(0, 7)}-01`} />
+              <SharedBalancesCard />
+            </>
+          ) : null}
           {inFamily ? null : (
             <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
           )}

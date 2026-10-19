@@ -39,6 +39,7 @@ import {
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
+import { ShareToFamilyButton } from "@/features/family/ShareToFamilyButton";
 import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { useSyncState } from "@/sync/sync-state";
@@ -835,7 +836,10 @@ export function ReferenceEditorScreen() {
               />
             ) : null}
             {entityType === "account" && editing && id ? (
-              <ShareLinkButton disabled={saving} target={{ kind: "balance", id }} />
+              <>
+                <ShareLinkButton disabled={saving} target={{ kind: "balance", id }} />
+                <ShareToFamilyButton target={{ kind: "balance", id }} />
+              </>
             ) : null}
             {message ? (
               <Text

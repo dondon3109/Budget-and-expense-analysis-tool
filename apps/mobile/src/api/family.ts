@@ -5,6 +5,7 @@ import {
   familyAlertSettingsSchema,
   familyClosureSchema,
   familyDetailSchema,
+  familySharedBalanceListSchema,
   familyEntryHistorySchema,
   type FamilyAlertSettings,
   type FamilyClosure,
@@ -15,7 +16,11 @@ import {
   type FamilyEntryEvent,
   type FamilyInviteInput,
   type FamilyMemberRole,
+  type FamilySharedBalance,
+  type FamilyTransactionShareInput,
 } from "@zoption/shared";
+
+import { z } from "zod";
 
 import { apiRequest } from "./authenticated";
 
@@ -222,5 +227,85 @@ export function saveFamilyAlertSettings(
     body: settings,
     fallback: "The alerts could not be saved.",
     decode: (value) => familyAlertSettingsSchema.parse(value),
+  });
+}
+
+// Only what the share sheet picks from; the Worker sends more fields, which are dropped.
+const shareOptionsSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      archived: z.boolean(),
+      kind: z.enum(["income", "expense", "transfer"]).optional(),
+    }),
+  ),
+});
+export type FamilyShareOption = z.infer<typeof shareOptionsSchema>["items"][number];
+
+/** The family's open accounts and categories, for choosing where a shared copy lands. */
+export async function getFamilyShareOptions(
+  api: FamilyApi,
+): Promise<{ accounts: FamilyShareOption[]; categories: FamilyShareOption[] }> {
+  const read = (path: string) =>
+    apiRequest({
+      ...api,
+      path,
+      method: "GET",
+      fallback: "The family's accounts could not be loaded.",
+      decode: (value) => shareOptionsSchema.parse(value).items.filter((item) => !item.archived),
+    });
+  const [accounts, categories] = await Promise.all([
+    read("/api/app/accounts"),
+    read("/api/app/categories"),
+  ]);
+  return { accounts, categories };
+}
+
+/** Copies one of the person's own synced transactions into the family; the Worker reads the source. */
+export function shareTransactionToFamily(
+  api: FamilyApi,
+  input: FamilyTransactionShareInput,
+): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/shares/transactions",
+    method: "POST",
+    body: input,
+    fallback: "The entry could not be shared.",
+    decode: ignoreBody,
+  });
+}
+
+export function shareBalanceToFamily(api: FamilyApi, accountId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: "/api/app/family/shares/balances",
+    method: "POST",
+    body: { accountId },
+    fallback: "The balance could not be shared.",
+    decode: ignoreBody,
+  });
+}
+
+export async function getFamilySharedBalances(api: FamilyApi): Promise<FamilySharedBalance[]> {
+  const list = await apiRequest({
+    ...api,
+    path: "/api/app/family/shares/balances",
+    method: "GET",
+    fallback: "Shared balances could not be loaded.",
+    decode: (value) => familySharedBalanceListSchema.parse(value),
+  });
+  return list.balances;
+}
+
+/** Owner only. */
+export function removeFamilySharedBalance(api: FamilyApi, shareId: string): Promise<void> {
+  return apiRequest({
+    ...api,
+    path: `/api/app/family/shares/balances/${encodeURIComponent(shareId)}`,
+    method: "DELETE",
+    fallback: "The shared balance could not be removed.",
+    decode: ignoreBody,
   });
 }
