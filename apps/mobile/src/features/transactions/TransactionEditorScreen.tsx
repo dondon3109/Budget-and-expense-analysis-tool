@@ -49,12 +49,6 @@ import {
   type TransactionFormKind,
   type TransactionFormValues,
 } from "./transaction-form";
-import {
-  VOICE_PREVIEW_AUTO_SAVE_MS,
-  VoicePreviewMachine,
-  remainingSecondsFromMs,
-  type VoicePreviewState,
-} from "./voice-preview";
 import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
@@ -71,7 +65,6 @@ import { EntryReveal } from "./EntryReveal";
 import { AccountIconPicker } from "./AccountIconPicker";
 import { AmountHero } from "./AmountHero";
 import { NewCategoryInline } from "./NewCategoryInline";
-import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
 import { TransactionVoiceEntry } from "./TransactionVoiceEntry";
 
 function singleParam(value: string | string[] | undefined): string | undefined {
@@ -110,20 +103,16 @@ export function TransactionEditorScreen() {
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [voicePreviewState, setVoicePreviewState] = useState<VoicePreviewState>({ status: "idle" });
-  const [previewSummary, setPreviewSummary] = useState<VoicePreviewDraftSummary | null>(null);
   const [voiceDrafted, setVoiceDrafted] = useState(false);
   // The add sheet's Voice choice: listen first and show the form only once a draft fills it.
-  const [voiceMode, setVoiceMode] = useState(!id && singleParam(params.mode) === "voice");
+  const openedForVoice = !id && singleParam(params.mode) === "voice";
+  const [voiceMode, setVoiceMode] = useState(openedForVoice);
+  // Opened for voice, the form arrives after the mic (a draft, or Type it instead), so it
+  // reveals itself; otherwise the editor's own reveal already covers it.
+  const FormReveal = openedForVoice ? EntryReveal : View;
   const showForm = !voiceMode || voiceDrafted;
-  const kindParam = singleParam(params.kind);
-  const pickedKind: TransactionFormKind =
-    kindParam === "income" || kindParam === "transfer" ? kindParam : "expense";
   // Only the SMS paste opens the editor with a `channel` param.
   const entryMethod = voiceDrafted ? "voice" : singleParam(params.channel) ? "sms" : "manual";
-  const pendingValuesToSaveRef = useRef<TransactionFormValues | null>(null);
-  const valuesRef = useRef(values);
-  valuesRef.current = values;
   const [creatingCategory, setCreatingCategory] = useState(false);
   const storedPhoto = useTransactionPhoto(id);
   const { family, writable, closesAt } = useActiveWorkspace();
@@ -131,9 +120,6 @@ export function TransactionEditorScreen() {
   const familyReceipt = useFamilyReceipt(family ? id : undefined);
   const me = useSessionSnapshot().subject;
   const [photoDraft, setPhotoDraft] = useState<PhotoDraft>(undefined);
-  const saveRef = useRef<
-    ((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined
-  >(undefined);
 
   useEffect(() => {
     if (!formData.data) return;
@@ -299,17 +285,14 @@ export function TransactionEditorScreen() {
     key: Key,
     value: TransactionFormValues[Key],
   ): void => {
-    if (voicePreviewState.status === "pending") {
-      machineRef.current?.edit();
-    }
     setValues((current) => ({ ...current, [key]: value }));
     setErrors((current) => ({ ...current, [key]: undefined }));
     setMessage(null);
   };
 
-  const save = async (formValuesToSave?: TransactionFormValues): Promise<boolean> => {
+  const save = async (): Promise<boolean> => {
     if (!local.workspace || saving || mutationBlocked) return false;
-    const baseValues = formValuesToSave ?? valuesRef.current;
+    const baseValues = values;
     // The form has no description field; lists still need one, so an entry without one
     // (new, or a voice/receipt draft that left it empty) falls back to its notes or category.
     const targetValues: TransactionFormValues = {
@@ -391,76 +374,6 @@ export function TransactionEditorScreen() {
     } finally {
       setSaving(false);
     }
-  };
-  saveRef.current = save;
-
-  const machineRef = useRef<VoicePreviewMachine | null>(null);
-  if (!machineRef.current) {
-    machineRef.current = new VoicePreviewMachine({
-      autoSaveDurationMs: VOICE_PREVIEW_AUTO_SAVE_MS,
-      onStateChange: (nextState) => {
-        setVoicePreviewState(nextState);
-      },
-      onAutoSave: async () => {
-        const valuesToSave = pendingValuesToSaveRef.current ?? valuesRef.current;
-        const saveFn = saveRef.current;
-        const savedOk = saveFn ? await saveFn(valuesToSave) : false;
-        if (!savedOk) {
-          throw new Error("Could not save transaction. Check the highlighted details.");
-        }
-      },
-    });
-  }
-
-  useEffect(() => {
-    if (voicePreviewState.status !== "pending") return;
-    const timer = setInterval(() => {
-      machineRef.current?.tick(250);
-    }, 250);
-    return () => clearInterval(timer);
-  }, [voicePreviewState.status]);
-
-  useEffect(() => {
-    return () => {
-      machineRef.current?.reset();
-    };
-  }, []);
-
-  const handleEditVoicePreview = () => {
-    machineRef.current?.edit();
-    pendingValuesToSaveRef.current = null;
-  };
-
-  const handleCancelVoicePreview = () => {
-    machineRef.current?.cancel();
-    pendingValuesToSaveRef.current = null;
-    setPreviewSummary(null);
-    setVoiceDrafted(false);
-    const synchronizedAccounts =
-      formData.data?.accounts.filter((account) => !account.pending) ?? [];
-    const defaultAccount = preferredTransactionAccount(
-      synchronizedAccounts,
-      useLastUsedAccountStore.getState().accountId,
-    );
-    const defaultCategory = defaultTransactionCategory(
-      formData.data?.categories.filter((item) => !item.pending) ?? [],
-      pickedKind,
-    );
-    setValues({
-      kind: pickedKind,
-      accountId: defaultAccount?.id ?? "",
-      toAccountId: "",
-      categoryId: defaultCategory?.id ?? "",
-      date: localCalendarDate(),
-      description: "",
-      amount: "",
-      transferFee: "",
-      currency: defaultAccount?.currency ?? useWorkspaceCurrencyStore.getState().currency,
-      notes: "",
-      debtId: "",
-    });
-    setErrors({});
-    setMessage(null);
   };
 
   const remove = async (): Promise<void> => {
@@ -563,12 +476,7 @@ export function TransactionEditorScreen() {
                 }
                 disabled={!hasChoices || mutationBlocked}
                 saving={saving}
-                onPress={() => {
-                  if (voicePreviewState.status === "pending") {
-                    machineRef.current?.edit();
-                  }
-                  void save();
-                }}
+                onPress={() => void save()}
               />
             ) : null,
         }}
@@ -644,7 +552,6 @@ export function TransactionEditorScreen() {
 
             {voiceMode ? (
               <TransactionVoiceEntry
-                autoStart
                 disabled={!hasChoices || saving || mutationBlocked}
                 categories={formData.data?.categories
                   .filter((category) => !category.pending)
@@ -686,18 +593,6 @@ export function TransactionEditorScreen() {
                   setVoiceDrafted(true);
                   setErrors({});
                   setMessage(null);
-
-                  pendingValuesToSaveRef.current = nextValues;
-                  setPreviewSummary({
-                    amountMinor: draft.amountMinor,
-                    currency: entryCurrency(nextValues).currency,
-                    description: draft.description,
-                    categoryName:
-                      matchingCategory?.name ?? fallbackCategory?.name ?? draft.categoryName,
-                    accountName: fromAccount?.name,
-                    kind: nextKind,
-                  });
-                  machineRef.current?.start(draft, VOICE_PREVIEW_AUTO_SAVE_MS);
                 }}
               />
             ) : null}
@@ -712,26 +607,8 @@ export function TransactionEditorScreen() {
               </Button>
             ) : null}
 
-            {previewSummary &&
-            (voicePreviewState.status === "pending" ||
-              voicePreviewState.status === "saving" ||
-              voicePreviewState.status === "error") ? (
-              <VoicePreviewCard
-                draft={previewSummary}
-                remainingSeconds={
-                  voicePreviewState.status === "pending"
-                    ? remainingSecondsFromMs(voicePreviewState.remainingMs)
-                    : 0
-                }
-                saving={voicePreviewState.status === "saving" || saving}
-                error={voicePreviewState.status === "error" ? voicePreviewState.error : null}
-                onEdit={handleEditVoicePreview}
-                onCancel={handleCancelVoicePreview}
-              />
-            ) : null}
-
             {showForm ? (
-              <>
+              <FormReveal style={styles.form}>
                 {message ? (
                   <Text
                     accessibilityRole="alert"
@@ -924,7 +801,7 @@ export function TransactionEditorScreen() {
                     }}
                   />
                 ) : null}
-              </>
+              </FormReveal>
             ) : null}
             {editing ? (
               <Button
@@ -960,6 +837,8 @@ export function TransactionEditorScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  // The form's wrapper keeps the content's gap between fields.
+  form: { gap: spacing.lg },
   content: {
     width: "100%",
     maxWidth: 760,

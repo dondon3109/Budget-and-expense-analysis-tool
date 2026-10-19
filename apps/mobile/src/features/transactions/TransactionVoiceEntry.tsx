@@ -28,13 +28,10 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
 
 export function TransactionVoiceEntry({
-  autoStart,
   disabled,
   onDraft,
   categories,
 }: {
-  /** Start listening as soon as voice entry is ready, once; the add sheet's Voice choice. */
-  autoStart?: boolean;
   disabled?: boolean;
   onDraft: (draft: TransactionVoiceDraft) => void;
   categories?: string[];
@@ -42,6 +39,9 @@ export function TransactionVoiceEntry({
   const session = useSessionSnapshot();
   const { requireAccount } = useAccountGate();
   const theme = useZoptionTheme();
+  const reduceMotion = useReduceMotion();
+  // Shrinks and fades the card away once a draft arrives, before the form takes its place.
+  const leave = useRef(new Animated.Value(1)).current;
   const mounted = useRef(true);
   const [readiness, setReadiness] = useState<EntryReadiness>("checking");
   const [message, setMessage] = useState<string | null>(null);
@@ -114,19 +114,19 @@ export function TransactionVoiceEntry({
       setMessage(`Listening: “${partial}”`);
     },
     onTranscribed: (draft) => {
-      onDraft(draft);
-      setMessage(`Draft filled from: “${draft.transcript}”`);
+      if (reduceMotion) {
+        onDraft(draft);
+        return;
+      }
+      Animated.timing(leave, {
+        toValue: 0,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(() => onDraft(draft));
     },
     onError: (error) => setMessage(error.message),
   });
-
-  const autoStarted = useRef(false);
-  useEffect(() => {
-    if (!autoStart || autoStarted.current || disabled || readiness !== "ready") return;
-    if (recorder.phase !== "idle" || !requireAccount("voice")) return;
-    autoStarted.current = true;
-    void recorder.startRecording();
-  }, [autoStart, disabled, readiness, recorder, requireAccount]);
 
   const acceptConsent = async (): Promise<void> => {
     if (consentBusy) return;
@@ -187,79 +187,89 @@ export function TransactionVoiceEntry({
 
   return (
     <>
-      <Card style={styles.card}>
-        <Text style={[typography.title, styles.center, { color: theme.colors.text }]}>
-          {recording ? "Listening…" : "Say it out loud"}
-        </Text>
-        <Text style={[typography.callout, styles.center, { color: theme.colors.textMuted }]}>
-          {recording
-            ? "Speak naturally, then tap stop to review."
-            : "Try “Lunch 250 from GCash” or “Salary 30,000”."}
-        </Text>
-        <View style={styles.micArea}>
-          {recording ? <PulseRing color={theme.colors.danger} /> : null}
-          <Pressable
-            accessibilityLabel={label}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: Boolean(disabled), busy: loading }}
-            disabled={disabled || loading}
-            onPress={action}
-            style={[
-              styles.mic,
-              {
-                backgroundColor: recording ? theme.colors.danger : theme.colors.solid,
-                opacity: disabled ? 0.55 : 1,
-              },
-            ]}
-          >
-            {loading ? (
-              <ActivityIndicator color={theme.colors.onSolid} />
-            ) : (
-              <MaterialCommunityIcons
-                accessibilityElementsHidden
-                color={recording ? "#ffffff" : theme.colors.onSolid}
-                name={recording ? "stop" : "microphone"}
-                size={40}
-              />
-            )}
-          </Pressable>
-        </View>
-        {recording ? (
-          <Text
-            accessible
-            accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
-            style={[styles.timer, styles.center, { color: theme.colors.danger }]}
-          >
-            {elapsedMinutes}:{elapsedRemainder}
+      <Animated.View
+        style={{
+          opacity: leave,
+          transform: [{ scale: leave.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) }],
+        }}
+      >
+        <Card style={styles.card}>
+          <Text style={[typography.title, styles.center, { color: theme.colors.text }]}>
+            {recording ? "Listening…" : "Say it out loud"}
           </Text>
-        ) : (
-          <Text style={[typography.label, styles.center, { color: theme.colors.textMuted }]}>
-            {label}
+          <Text style={[typography.callout, styles.center, { color: theme.colors.textMuted }]}>
+            {recording
+              ? "Speak naturally, then tap stop to review."
+              : "Try “Lunch 250 from GCash” or “Salary 30,000”."}
           </Text>
-        )}
-        {recording ? (
-          <Button
-            accessibilityLabel="Cancel recording"
-            onPress={() => {
-              setMessage(null);
-              void recorder.cancelRecording();
-            }}
-            variant="quiet"
-          >
-            Cancel
-          </Button>
-        ) : (
-          <VoiceLanguageToggleGroup language={voiceLanguage} onLanguageChange={setVoiceLanguage} />
-        )}
-        {message ? (
-          <Text
-            accessibilityRole="alert"
-            style={[typography.caption, styles.center, { color: theme.colors.textMuted }]}
-          >
-            {message}
-          </Text>
-        ) : null}
-      </Card>
+          <View style={styles.micArea}>
+            {recording ? <PulseRing color={theme.colors.danger} /> : null}
+            <Pressable
+              accessibilityLabel={label}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: Boolean(disabled), busy: loading }}
+              disabled={disabled || loading}
+              onPress={action}
+              style={[
+                styles.mic,
+                {
+                  backgroundColor: recording ? theme.colors.danger : theme.colors.solid,
+                  opacity: disabled ? 0.55 : 1,
+                },
+              ]}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.onSolid} />
+              ) : (
+                <MaterialCommunityIcons
+                  accessibilityElementsHidden
+                  color={recording ? "#ffffff" : theme.colors.onSolid}
+                  name={recording ? "stop" : "microphone"}
+                  size={40}
+                />
+              )}
+            </Pressable>
+          </View>
+          {recording ? (
+            <Text
+              accessible
+              accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
+              style={[styles.timer, styles.center, { color: theme.colors.danger }]}
+            >
+              {elapsedMinutes}:{elapsedRemainder}
+            </Text>
+          ) : (
+            <Text style={[typography.label, styles.center, { color: theme.colors.textMuted }]}>
+              {label}
+            </Text>
+          )}
+          {recording ? (
+            <Button
+              accessibilityLabel="Cancel recording"
+              onPress={() => {
+                setMessage(null);
+                void recorder.cancelRecording();
+              }}
+              variant="quiet"
+            >
+              Cancel
+            </Button>
+          ) : (
+            <VoiceLanguageToggleGroup
+              language={voiceLanguage}
+              onLanguageChange={setVoiceLanguage}
+            />
+          )}
+          {message ? (
+            <Text
+              accessibilityRole="alert"
+              style={[typography.caption, styles.center, { color: theme.colors.textMuted }]}
+            >
+              {message}
+            </Text>
+          ) : null}
+        </Card>
+      </Animated.View>
       <ConfirmationDialog
         visible={showConsent}
         title="Enable AI-assisted entry?"
