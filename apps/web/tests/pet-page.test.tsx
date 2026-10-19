@@ -203,7 +203,7 @@ describe("pet on the web", () => {
     renderWithProviders(<PetPage />);
 
     expect(
-      await screen.findByText(/Growing into a Juvenile needs Zoption Pro\./),
+      await screen.findByText(/Growing into a Juvenile needs a paid plan\./),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See Zoption Pro" })).toHaveAttribute(
       "href",

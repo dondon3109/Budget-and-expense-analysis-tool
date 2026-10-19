@@ -72,13 +72,13 @@ export function petStatusLine(view: PetView): string {
 }
 
 /**
- * Why a pet without Pro stops short of its next stage (see `petFreePointsCap`), or null for a
+ * Why a pet without a paid plan stops short of its next stage (see `petFreePointsCap`), or null for a
  * Legend or an egg. Clients show it only once they know the plan is Free; the Worker enforces it.
  */
 export function petGrowthLockedLine(view: PetView): string | null {
   if (view.stage === "egg" || view.nextStagePoints === null) return null;
   const next = petStageForPoints(view.nextStagePoints);
-  return `Growing into ${next === "adult" ? "an" : "a"} ${petStageLabels[next]} needs Zoption Pro.`;
+  return `Growing into ${next === "adult" ? "an" : "a"} ${petStageLabels[next]} needs a paid plan.`;
 }
 
 /** The pet pop-up's title and message. */
