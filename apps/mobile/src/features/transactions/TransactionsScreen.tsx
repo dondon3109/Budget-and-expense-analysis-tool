@@ -1,4 +1,3 @@
-import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
@@ -21,7 +20,6 @@ import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
   BottomSheet,
-  Button,
   ConfirmationDialog,
   ErrorState,
   OfflineBanner,
@@ -104,7 +102,6 @@ export function TransactionsScreen() {
   const local = useLocalTransactions(deferredSearch, kind, month);
   const workspace = useLocalWorkspace().workspace;
   const sync = useSyncState();
-  const { openFeature } = useAccountGate();
   const theme = useZoptionTheme();
   const filtering = search.trim().length > 0 || kind !== "all";
 
@@ -241,14 +238,6 @@ export function TransactionsScreen() {
           );
         })}
       </View>
-      <Button
-        accessibilityHint="Opens the SMS quick-paste sheet to parse a bank notification"
-        icon="message-text-outline"
-        onPress={() => setSmsQuickPasteVisible(true)}
-        variant="secondary"
-      >
-        Paste SMS notification
-      </Button>
     </View>
   );
 
@@ -299,9 +288,9 @@ export function TransactionsScreen() {
           </Text>
           <View style={[styles.toolbarSide, styles.toolbarRight]}>
             <HeaderIcon
-              icon="line-scan"
-              label="Scan receipt"
-              onPress={() => openFeature("receipt-scan", "/(app)/receipt-scan")}
+              icon="message-text-outline"
+              label="Paste SMS notification"
+              onPress={() => setSmsQuickPasteVisible(true)}
             />
             <HeaderIcon
               icon="tag-outline"
