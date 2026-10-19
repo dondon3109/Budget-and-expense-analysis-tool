@@ -1,14 +1,17 @@
-import type { CategoryInput, CategoryRecord, CategoryUpdate } from "@zoption/shared";
+import type { BillingTier, CategoryInput, CategoryRecord, CategoryUpdate } from "@zoption/shared";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { categories } from "../../../../db/schema";
 import {
-  EFFECTIVE_PRO_ENTITLEMENT_CONDITION,
-  customCategoryLimitError,
-  FREE_CUSTOM_CATEGORY_LIMIT,
-  hasProEntitlement,
-} from "./billing";
+  categoryPlanRankSql,
+  EFFECTIVE_TIER_RANK_SQL,
+  isCategoryPlanAvailable,
+  NEXT_CUSTOM_CATEGORY_PLAN_SQL,
+  readTier,
+  wireCategoryPlan,
+} from "../billing/entitlements";
+import { customCategoryLimitError } from "./billing-usage";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -53,22 +56,31 @@ function rethrowCategoryWriteError(error: unknown): never {
 }
 
 function toCategoryRecord(
-  category: Omit<CategoryRecord, "system" | "locked" | "systemKey"> & { systemKey: string | null },
-  hasPro: boolean,
+  category: Omit<CategoryRecord, "system" | "locked" | "systemKey" | "requiredPlan"> & {
+    systemKey: string | null;
+    requiredPlan: string;
+  },
+  tier: BillingTier,
 ): CategoryRecord {
-  const { systemKey, ...record } = category;
+  const { systemKey, requiredPlan, ...record } = category;
   return {
     ...record,
+    requiredPlan: wireCategoryPlan(requiredPlan),
     systemKey,
     system: systemKey !== null,
-    locked: record.requiredPlan === "zoption_pro" && !hasPro,
+    locked: !isCategoryPlanAvailable(requiredPlan, tier),
   };
 }
+
+/** The new tag may only be one the tenant's tier covers. Binds the tenant id three times. */
+const NEXT_PLAN_FITS_TIER_SQL = `${categoryPlanRankSql(
+  `(${NEXT_CUSTOM_CATEGORY_PLAN_SQL})`,
+)} <= ${EFFECTIVE_TIER_RANK_SQL}`;
 
 export const categoryRepository: CategoryRepository = {
   async list(env, tenantId, includeArchived = false) {
     const db = drizzle(env.DB);
-    const [rows, hasPro] = await Promise.all([
+    const [rows, tier] = await Promise.all([
       db
         .select({
           id: categories.id,
@@ -88,9 +100,9 @@ export const categoryRepository: CategoryRepository = {
             : and(eq(categories.tenantId, tenantId), eq(categories.archived, false)),
         )
         .orderBy(asc(categories.kind), asc(categories.name)),
-      hasProEntitlement(env, tenantId),
+      readTier(env, tenantId),
     ]);
-    return rows.map((category) => toCategoryRecord(category, hasPro));
+    return rows.map((category) => toCategoryRecord(category, tier));
   },
 
   async create(env, tenantId, input) {
@@ -101,12 +113,8 @@ export const categoryRepository: CategoryRepository = {
     try {
       createdId = await env.DB.prepare(
         `INSERT INTO categories (id, tenant_id, name, kind, color, icon_emoji, origin, required_plan)
-         SELECT ?, ?, ?, ?, ?, ?, 'custom',
-           CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} THEN 'zoption_pro' ELSE 'free' END
-         WHERE ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION} OR (
-           SELECT COUNT(*) FROM categories
-           WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
-         ) < ?
+         SELECT ?, ?, ?, ?, ?, ?, 'custom', ${NEXT_CUSTOM_CATEGORY_PLAN_SQL}
+         WHERE ${NEXT_PLAN_FITS_TIER_SQL}
          RETURNING id`,
       )
         .bind(
@@ -119,14 +127,15 @@ export const categoryRepository: CategoryRepository = {
           tenantId,
           tenantId,
           tenantId,
-          FREE_CUSTOM_CATEGORY_LIMIT,
+          tenantId,
+          tenantId,
         )
         .first<string>("id");
     } catch (error) {
       rethrowCategoryWriteError(error);
     }
     if (!createdId) throw await customCategoryLimitError(env, tenantId);
-    const [created, hasPro] = await Promise.all([
+    const [created, tier] = await Promise.all([
       db
         .select({
           id: categories.id,
@@ -143,10 +152,10 @@ export const categoryRepository: CategoryRepository = {
         .where(and(eq(categories.id, id), eq(categories.tenantId, tenantId)))
         .limit(1)
         .then((rows) => rows[0]),
-      hasProEntitlement(env, tenantId),
+      readTier(env, tenantId),
     ]);
     if (!created) throw new Error("Created category could not be read back.");
-    return toCategoryRecord(created, hasPro);
+    return toCategoryRecord(created, tier);
   },
 
   async update(env, tenantId, id, input) {
@@ -183,57 +192,39 @@ export const categoryRepository: CategoryRepository = {
     const restoringCustom =
       existing.origin === "custom" && existing.archived && input.archived === false;
 
-    let updatedId: string | null;
+    // Restoring a custom category takes a fresh slot, like creating one, so it is tagged with
+    // the lowest tier that still has room and must fit the tenant's tier.
+    let updated: { id: string; requiredPlan: string } | null;
     try {
-      updatedId = await env.DB.prepare(
+      updated = await env.DB.prepare(
         `UPDATE categories
-         SET name = ?, color = ?, icon_emoji = ?, archived = ?, updated_at = datetime('now')
+         SET name = ?, color = ?, icon_emoji = ?, archived = ?, updated_at = datetime('now'),
+             required_plan = CASE WHEN ? = 1 THEN ${NEXT_CUSTOM_CATEGORY_PLAN_SQL}
+               ELSE required_plan END
          WHERE id = ? AND tenant_id = ?
-           AND (
-             ? = 0
-             OR (
-               ? = 'zoption_pro'
-               AND ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION}
-             )
-             OR (
-               ? = 'free'
-               AND (
-                 SELECT COUNT(*) FROM categories
-                 WHERE tenant_id = ? AND origin = 'custom' AND required_plan = 'free' AND archived = 0
-               ) < ?
-             )
-           )
-         RETURNING id`,
+           AND (? = 0 OR ${NEXT_PLAN_FITS_TIER_SQL})
+         RETURNING id, required_plan AS requiredPlan`,
       )
         .bind(
           nextName,
           nextColor,
           nextIconEmoji,
           nextArchived ? 1 : 0,
+          restoringCustom ? 1 : 0,
+          tenantId,
+          tenantId,
           id,
           tenantId,
           restoringCustom ? 1 : 0,
-          existing.requiredPlan,
           tenantId,
-          existing.requiredPlan,
           tenantId,
-          FREE_CUSTOM_CATEGORY_LIMIT,
+          tenantId,
         )
-        .first<string>("id");
+        .first<{ id: string; requiredPlan: string }>();
     } catch (error) {
       rethrowCategoryWriteError(error);
     }
-    if (!updatedId) {
-      if (restoringCustom && existing.requiredPlan === "zoption_pro") {
-        throw new HttpError(
-          403,
-          "category_requires_pro",
-          "Restore this category with an active Zoption Pro subscription.",
-          { requiredPlan: "zoption_pro", billingPath: "/app/settings" },
-        );
-      }
-      throw await customCategoryLimitError(env, tenantId);
-    }
+    if (!updated) throw await customCategoryLimitError(env, tenantId);
 
     return toCategoryRecord(
       {
@@ -245,9 +236,9 @@ export const categoryRepository: CategoryRepository = {
         archived: nextArchived,
         systemKey: existing.systemKey,
         origin: existing.origin,
-        requiredPlan: existing.requiredPlan,
+        requiredPlan: updated.requiredPlan,
       },
-      await hasProEntitlement(env, tenantId),
+      await readTier(env, tenantId),
     );
   },
 };

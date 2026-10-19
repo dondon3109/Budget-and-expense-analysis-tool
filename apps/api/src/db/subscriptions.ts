@@ -18,7 +18,11 @@ import { and, asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, categories, subscriptions } from "../../../../db/schema";
-import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
+import {
+  categoryRequiresPlanError,
+  isCategoryPlanAvailable,
+  readTier,
+} from "../billing/entitlements";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { loadWorkspaceCurrency } from "./workspace-settings";
@@ -190,8 +194,8 @@ async function validateCategory(env: Bindings, tenantId: string, categoryId: str
   if (!category || category.archived || category.kind !== "expense") {
     throw new HttpError(400, "invalid_subscription_category", "Choose an active expense category.");
   }
-  if (!isCategoryPlanAvailable(category.requiredPlan, await hasProEntitlement(env, tenantId))) {
-    throw categoryRequiresProError();
+  if (!isCategoryPlanAvailable(category.requiredPlan, await readTier(env, tenantId))) {
+    throw categoryRequiresPlanError();
   }
 }
 

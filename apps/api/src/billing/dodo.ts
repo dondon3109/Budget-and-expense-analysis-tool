@@ -223,6 +223,28 @@ export async function getDodoSubscription(
   };
 }
 
+/**
+ * Switches a subscription's product. An upgrade (`prorated_immediately`) credits the unused time
+ * and charges the new plan now; a downgrade (`do_not_bill`) changes nothing until the next
+ * renewal bills the lower price. A failed charge leaves the old plan in place.
+ */
+export async function changeDodoSubscriptionPlan(
+  env: Bindings,
+  subscriptionId: string,
+  productId: string,
+  prorationBillingMode: "prorated_immediately" | "do_not_bill",
+): Promise<void> {
+  await dodoFetch(env, `/subscriptions/${encodeURIComponent(subscriptionId)}/change-plan`, {
+    method: "POST",
+    body: JSON.stringify({
+      product_id: productId,
+      quantity: 1,
+      proration_billing_mode: prorationBillingMode,
+      on_payment_failure: "prevent_change",
+    }),
+  });
+}
+
 /** Stops renewal; Dodo keeps the subscription active until the paid period ends. */
 export async function cancelDodoSubscription(env: Bindings, subscriptionId: string): Promise<void> {
   await dodoFetch(env, `/subscriptions/${encodeURIComponent(subscriptionId)}`, {

@@ -386,6 +386,10 @@ export function createAllowedBillingRepository(): BillingRepository {
     getSummary: vi.fn(async () => ({
       plan: "zoption_pro" as const,
       entitlementSource: "paypal" as const,
+      subscriptionPlan: "pro" as const,
+      pendingChange: null,
+      coveredBy: null,
+      canChangePlan: true,
       provider: "paypal" as const,
       status: "active" as const,
       interval: "month" as const,
@@ -400,11 +404,13 @@ export function createAllowedBillingRepository(): BillingRepository {
       usages: [],
       allowances: [{ resource: "custom_category" as const, used: 0, limit: null }],
     })),
-    requirePro: vi.fn(async () => undefined),
+    requirePaidPlan: vi.fn(async () => undefined),
     createCheckoutReference: vi.fn(async () => ({
       reference: "reference",
       provider: "paypal" as const,
+      plan: "pro" as const,
       interval: "month" as const,
+      familyTenantId: null,
       providerPlanId: "P-test",
       providerSubscriptionId: null,
       providerCheckoutId: null,
@@ -426,6 +432,10 @@ export function createAllowedBillingRepository(): BillingRepository {
     linkCheckoutSubscription: vi.fn(async () => null),
     applySubscriptionEvent: vi.fn(async () => "applied" as const),
     applySubscriptionSnapshot: vi.fn(async () => "applied" as const),
+    recordPlanChange: vi.fn(async () => undefined),
+    familyPlanState: vi.fn(async () => "unpaid" as const),
+    getFamilySummary: vi.fn(),
+    listFamilySubscriptions: vi.fn(async () => []),
   };
 }
 

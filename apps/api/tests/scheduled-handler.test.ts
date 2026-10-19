@@ -22,7 +22,6 @@ vi.mock("../src/billing/trial-emails", () => ({
 vi.mock("../src/db/assistant", () => ({ assistantRepository: { cleanupExpired } }));
 vi.mock("../src/db/billing", () => ({
   billingRepository,
-  hasProEntitlement: vi.fn(async () => false),
 }));
 vi.mock("../src/interest/scheduled-credit", () => ({ creditDueInterest }));
 vi.mock("../src/account-deletion", () => ({

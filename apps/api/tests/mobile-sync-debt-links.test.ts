@@ -49,7 +49,7 @@ describe("mobile sync debt links", () => {
 
   it("pays down a debt from a pushed expense and gives it back on edit and delete", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
 
     await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -130,7 +130,7 @@ describe("mobile sync debt links", () => {
       INSERT INTO categories (id, tenant_id, name, kind, color)
         VALUES ('category-transfer', 'tenant-1', 'Transfer', 'transfer', '#008877');
     `);
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const groupId = "40000000-0000-4000-8000-000000000010";
     const transfer = {
       kind: "transfer" as const,
@@ -214,7 +214,7 @@ describe("mobile sync debt links", () => {
       INSERT INTO accounts (id, tenant_id, name, type) VALUES ('account-gcash', 'tenant-1', 'GCash', 'ewallet');
       UPDATE transactions SET debt_id = 'debt-1' WHERE id = 'transaction-1';
     `);
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const request = { protocolVersion: 1 as const, cursor: null, limit: 200 };
 
     const current = await repository.pull(env, "tenant-1", request, debtLinks);

@@ -132,8 +132,8 @@ describe("API ledger routes", () => {
 
   it("requires Pro to update interest settings", async () => {
     const accounts = createAccountStore();
-    const requirePro = vi.fn();
-    requirePro.mockRejectedValue(
+    const requirePaidPlan = vi.fn();
+    requirePaidPlan.mockRejectedValue(
       new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.", {
         requested: "account_interest",
         requiredPlan: "zoption_pro",
@@ -141,7 +141,7 @@ describe("API ledger routes", () => {
     );
     const billing: BillingRepository = {
       ...createAllowedBillingRepository(),
-      requirePro,
+      requirePaidPlan,
     };
     const app = createAppWithFakes({ accounts, billing });
     const response = await app.request("/api/app/accounts/account-1/interest", {

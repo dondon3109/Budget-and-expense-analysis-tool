@@ -23,12 +23,16 @@ describe("API dashboard routes", () => {
 
   it("loads Expense Breakdown for a Free tenant without requiring Pro", async () => {
     const loader = vi.fn().mockResolvedValue(dashboardFixture);
-    const requirePro = vi.fn(async () => undefined);
+    const requirePaidPlan = vi.fn(async () => undefined);
     const billing: BillingRepository = {
       ...createAllowedBillingRepository(),
       getSummary: vi.fn(async () => ({
         plan: "free" as const,
         entitlementSource: null,
+        subscriptionPlan: null,
+        pendingChange: null,
+        coveredBy: null,
+        canChangePlan: false,
         provider: null,
         status: null,
         interval: null,
@@ -43,7 +47,7 @@ describe("API dashboard routes", () => {
         usages: [],
         allowances: [{ resource: "custom_category" as const, used: 0, limit: 1 }],
       })),
-      requirePro,
+      requirePaidPlan,
     };
     const app = createAppWithFakes({ billing, dashboardLoader: loader });
     const response = await app.request("/api/app/dashboard?from=2026-07-01&to=2026-07-31", {
@@ -58,7 +62,7 @@ describe("API dashboard routes", () => {
       from: "2026-07-01",
       to: "2026-07-31",
     });
-    expect(requirePro).not.toHaveBeenCalled();
+    expect(requirePaidPlan).not.toHaveBeenCalled();
   });
 
   it("loads a validated cashflow view for the resolved tenant", async () => {

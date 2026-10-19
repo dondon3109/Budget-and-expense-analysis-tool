@@ -24,10 +24,10 @@ const mockTransaction: TransactionListItem = {
 
 describe("full account archive export (Data Portability)", () => {
   it("exports account-archive.json without requiring pro entitlement", async () => {
-    const requirePro = vi.fn(async () => {
-      throw new Error("requirePro should not be called for full account archive export!");
+    const requirePaidPlan = vi.fn(async () => {
+      throw new Error("requirePaidPlan should not be called for full account archive export!");
     });
-    const billing: Pick<BillingRepository, "requirePro"> = { requirePro };
+    const billing: Pick<BillingRepository, "requirePaidPlan"> = { requirePaidPlan };
 
     const transactionRepo: TransactionRepository = {
       list: vi.fn(),
@@ -74,7 +74,7 @@ describe("full account archive export (Data Portability)", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("application/json");
     expect(response.headers.get("Content-Disposition")).toContain("zoption-account-archive-");
-    expect(requirePro).not.toHaveBeenCalled();
+    expect(requirePaidPlan).not.toHaveBeenCalled();
 
     const data = (await response.json()) as Record<string, unknown>;
     expect(data).toMatchObject({

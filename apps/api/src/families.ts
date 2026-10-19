@@ -9,6 +9,8 @@ import {
 } from "@zoption/shared";
 
 import { escapeHtml } from "./account-email";
+import { cancelProviderSubscription } from "./billing/checkout";
+import { billingRepository, type BillingRepository } from "./db/billing";
 import { familyRepository, type FamilyRepository } from "./db/families";
 import { HttpError } from "./errors";
 import { configuredAppUrl, configuredSender } from "./platform-admin";
@@ -60,10 +62,31 @@ function requireOwner(tenant: TenantContext): void {
   }
 }
 
+/** Invitations open once a plan covers the family; an unpaid family is its owner's alone. */
+function familyPlanRequiredError(): HttpError {
+  return new HttpError(
+    403,
+    "family_plan_required",
+    "Choose a family plan before inviting anyone.",
+    { billingPath: "/app/settings#family" },
+  );
+}
+
 export function createFamilyService(
   repository: FamilyRepository = familyRepository,
   injectedSender?: EmailSender,
+  billing: BillingRepository = billingRepository,
 ): FamilyService {
+  /**
+   * Stops the family plan renewing when its owner hands it over or closes it. The paid period
+   * still runs out, and the new owner buys their own plan to keep the family going.
+   */
+  async function stopFamilyRenewals(env: Bindings, familyTenantId: string): Promise<void> {
+    for (const subscription of await billing.listFamilySubscriptions(env, familyTenantId)) {
+      await cancelProviderSubscription(env, subscription);
+    }
+  }
+
   async function requireVerifiedEmail(env: Bindings, user: AuthUser): Promise<string> {
     const email = await repository.verifiedEmail(env, user.id);
     if (!email) {
@@ -133,6 +156,7 @@ export function createFamilyService(
 
     async invite(env, tenant, user, input) {
       requireOwner(tenant);
+      if (tenant.membership!.plan !== "active") throw familyPlanRequiredError();
       const family = await repository.detail(env, tenant.tenantId, "owner");
       if (family.members.some((member) => member.email?.toLowerCase() === input.email)) {
         throw new HttpError(409, "already_member", "This person is already in the family.");
@@ -171,6 +195,7 @@ export function createFamilyService(
 
     async resend(env, tenant, invitationId) {
       requireOwner(tenant);
+      if (tenant.membership!.plan !== "active") throw familyPlanRequiredError();
       await deliver(env, tenant.tenantId, invitationId);
     },
 
@@ -203,6 +228,14 @@ export function createFamilyService(
       if (userId === user.id) {
         throw new HttpError(400, "invalid_transfer", "Choose another member to own the family.");
       }
+      // Checked before the plan stops renewing, so a transfer that cannot happen leaves it alone.
+      if ((await repository.memberRole(env, tenant.tenantId, userId)) === null) {
+        throw new HttpError(404, "member_not_found", "Only a current member can own the family.");
+      }
+      if (await repository.ownedFamilyId(env, userId)) {
+        throw new HttpError(409, "new_owner_owns_family", "This person already owns a family.");
+      }
+      await stopFamilyRenewals(env, tenant.tenantId);
       let moved: boolean;
       try {
         moved = await repository.transfer(env, tenant.tenantId, user.id, userId);
@@ -219,6 +252,7 @@ export function createFamilyService(
 
     async close(env, tenant, user) {
       requireOwner(tenant);
+      await stopFamilyRenewals(env, tenant.tenantId);
       return { closesAt: await repository.close(env, tenant.tenantId, user.id) };
     },
 
@@ -235,6 +269,13 @@ export function createFamilyService(
       }
       if (await repository.memberRole(env, tenantId, user.id)) {
         throw new HttpError(409, "already_member", "You are already in this family.");
+      }
+      if ((await billing.familyPlanState(env, tenantId)) !== "active") {
+        throw new HttpError(
+          409,
+          "family_plan_inactive",
+          "This family has no active plan. Ask its owner to renew it.",
+        );
       }
       if (await repository.hasRecentJoinElsewhere(env, user.id, tenantId)) {
         throw new HttpError(

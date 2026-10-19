@@ -24,7 +24,7 @@ import {
 
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
-import { hasProEntitlement } from "./billing";
+import { hasPaidPlan } from "../billing/entitlements";
 
 export interface PetRepository {
   /** The pet as of `now`, after crediting activity recorded since the last read. */
@@ -139,7 +139,7 @@ function fresh(now: Date): StoredPet {
 
 /**
  * Replays the activity recorded since the cursor. A disabled pet credits nothing and its clock
- * is paused, so the cursor just moves on. Growth needs Pro as of the read, not as of the activity.
+ * is paused, so the cursor just moves on. Growth needs a paid plan as of the read, not as of the activity.
  */
 async function catchUp(env: Bindings, tenantId: string, pet: StoredPet, now: Date) {
   const through = creditedThrough(now);
@@ -159,7 +159,7 @@ async function catchUp(env: Bindings, tenantId: string, pet: StoredPet, now: Dat
   }));
   // The UNION sorts text, and the two timestamp formats do not sort together.
   events.sort((a, b) => a.occurredAt - b.occurredAt);
-  const canGrow = events.length > 0 && (await hasProEntitlement(env, tenantId));
+  const canGrow = events.length > 0 && (await hasPaidPlan(env, tenantId));
   const state = events.reduce((next, event) => applyPetEvent(next, event, canGrow), pet.state);
   return { ...pet, state: petStateAt(state, now.getTime()), processedThrough: through };
 }
@@ -235,7 +235,7 @@ export const petRepository: PetRepository = {
         state: applyPetEvent(
           pet.state,
           { action: "login", occurredAt: now.getTime() },
-          await hasProEntitlement(env, tenantId),
+          await hasPaidPlan(env, tenantId),
         ),
       };
     }

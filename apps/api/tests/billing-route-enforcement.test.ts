@@ -99,8 +99,8 @@ function rateLimiter(): RateLimiter {
   };
 }
 
-function billing(requirePro: ReturnType<typeof vi.fn>): BillingRepository {
-  return { requirePro } as unknown as BillingRepository;
+function billing(requirePaidPlan: ReturnType<typeof vi.fn>): BillingRepository {
+  return { requirePaidPlan } as unknown as BillingRepository;
 }
 
 function accounts(): AccountRepository {
@@ -245,27 +245,27 @@ const POOLED_SERVICES = {
 
 describe("Pro route enforcement", () => {
   it("denies transaction export before its repository", async () => {
-    const requirePro = vi.fn(async () => {
+    const requirePaidPlan = vi.fn(async () => {
       throw new HttpError(403, "pro_plan_required", "Upgrade to Zoption Pro to use this feature.");
     });
     const transactionStore = transactions();
-    const app = testApp({ billing: billing(requirePro), transactions: transactionStore });
+    const app = testApp({ billing: billing(requirePaidPlan), transactions: transactionStore });
 
     const response = await app.request("/api/app/exports/transactions.csv", {
       headers: AUTHORIZATION,
     });
 
     expect(response.status).toBe(403);
-    expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "transaction_export");
+    expect(requirePaidPlan).toHaveBeenCalledWith(undefined, TENANT_ID, "transaction_export");
     expect(transactionStore.export).not.toHaveBeenCalled();
   });
 
   it("lets Free users load the weekly cashflow trend without a Pro check", async () => {
-    const requirePro = vi.fn(async () => {
+    const requirePaidPlan = vi.fn(async () => {
       throw new Error("weekly cashflow must not require Pro");
     });
     const loader = vi.fn(async () => cashflow);
-    const app = testApp({ billing: billing(requirePro), cashflowTrendLoader: loader });
+    const app = testApp({ billing: billing(requirePaidPlan), cashflowTrendLoader: loader });
 
     const response = await app.request(
       "/api/app/dashboard/cashflow-trend?view=weekly&anchorDate=2026-07-27",
@@ -273,7 +273,7 @@ describe("Pro route enforcement", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(requirePro).not.toHaveBeenCalled();
+    expect(requirePaidPlan).not.toHaveBeenCalled();
     expect(loader).toHaveBeenCalledWith(undefined, TENANT_ID, {
       view: "weekly",
       anchorDate: "2026-07-27",
@@ -283,7 +283,7 @@ describe("Pro route enforcement", () => {
   it.each(["monthly", "sixMonth"] as const)(
     "denies the %s cashflow trend before the loader",
     async (view) => {
-      const requirePro = vi.fn(async () => {
+      const requirePaidPlan = vi.fn(async () => {
         throw new HttpError(
           403,
           "pro_plan_required",
@@ -291,7 +291,7 @@ describe("Pro route enforcement", () => {
         );
       });
       const loader = vi.fn(async () => cashflow);
-      const app = testApp({ billing: billing(requirePro), cashflowTrendLoader: loader });
+      const app = testApp({ billing: billing(requirePaidPlan), cashflowTrendLoader: loader });
 
       const response = await app.request(
         `/api/app/dashboard/cashflow-trend?view=${view}&anchorDate=2026-07-27`,
@@ -299,15 +299,15 @@ describe("Pro route enforcement", () => {
       );
 
       expect(response.status).toBe(403);
-      expect(requirePro).toHaveBeenCalledWith(undefined, TENANT_ID, "cashflow_analytics");
+      expect(requirePaidPlan).toHaveBeenCalledWith(undefined, TENANT_ID, "cashflow_analytics");
       expect(loader).not.toHaveBeenCalled();
     },
   );
 
   it("validates cashflow trend queries before checking the plan", async () => {
-    const requirePro = vi.fn(async () => undefined);
+    const requirePaidPlan = vi.fn(async () => undefined);
     const loader = vi.fn(async () => cashflow);
-    const app = testApp({ billing: billing(requirePro), cashflowTrendLoader: loader });
+    const app = testApp({ billing: billing(requirePaidPlan), cashflowTrendLoader: loader });
 
     const response = await app.request(
       "/api/app/dashboard/cashflow-trend?view=yearly&anchorDate=2026-07-27",
@@ -315,18 +315,18 @@ describe("Pro route enforcement", () => {
     );
 
     expect(response.status).toBe(400);
-    expect(requirePro).not.toHaveBeenCalled();
+    expect(requirePaidPlan).not.toHaveBeenCalled();
     expect(loader).not.toHaveBeenCalled();
   });
 
   it("lets the category repository enforce its allowance and leaves account writes ungated", async () => {
-    const requirePro = vi.fn(async () => {
+    const requirePaidPlan = vi.fn(async () => {
       throw new Error("account and category writes must not require Pro");
     });
     const accountStore = accounts();
     const categoryStore = categories();
     const app = testApp({
-      billing: billing(requirePro),
+      billing: billing(requirePaidPlan),
       accounts: accountStore,
       categories: categoryStore,
     });
@@ -350,15 +350,15 @@ describe("Pro route enforcement", () => {
     });
     expect(accountResponse.status).toBe(201);
     expect(accountStore.create).toHaveBeenCalledOnce();
-    expect(requirePro).not.toHaveBeenCalled();
+    expect(requirePaidPlan).not.toHaveBeenCalled();
   });
 
   it("checks Pro before export repositories and paid cashflow loaders", async () => {
-    const requirePro = vi.fn(async () => undefined);
+    const requirePaidPlan = vi.fn(async () => undefined);
     const transactionStore = transactions();
     const loader = vi.fn(async () => cashflow);
     const app = testApp({
-      billing: billing(requirePro),
+      billing: billing(requirePaidPlan),
       transactions: transactionStore,
       cashflowTrendLoader: loader,
     });
@@ -373,22 +373,22 @@ describe("Pro route enforcement", () => {
 
     expect(exportResponse.status).toBe(200);
     expect(cashflowResponse.status).toBe(200);
-    expect(requirePro.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(requirePaidPlan.mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(transactionStore.export).mock.invocationCallOrder[0]!,
     );
-    expect(requirePro.mock.invocationCallOrder[1]).toBeLessThan(
+    expect(requirePaidPlan.mock.invocationCallOrder[1]).toBeLessThan(
       loader.mock.invocationCallOrder[0]!,
     );
   });
 
   it("keeps account and category reads available without a Pro check", async () => {
-    const requirePro = vi.fn(async () => {
+    const requirePaidPlan = vi.fn(async () => {
       throw new Error("reads must not require Pro");
     });
     const accountStore = accounts();
     const categoryStore = categories();
     const app = testApp({
-      billing: billing(requirePro),
+      billing: billing(requirePaidPlan),
       accounts: accountStore,
       categories: categoryStore,
     });
@@ -400,7 +400,7 @@ describe("Pro route enforcement", () => {
     expect(categoryResponse.status).toBe(200);
     expect(accountStore.list).toHaveBeenCalledWith(undefined, TENANT_ID);
     expect(categoryStore.list).toHaveBeenCalledWith(undefined, TENANT_ID, false);
-    expect(requirePro).not.toHaveBeenCalled();
+    expect(requirePaidPlan).not.toHaveBeenCalled();
   });
 });
 
@@ -408,15 +408,15 @@ describe("pooled AI route access", () => {
   it.each(POOLED_AI_ROUTES)(
     "serves $name to a Free tenant without a Pro gate",
     async ({ path, init, status }) => {
-      const requirePro = vi.fn(async () => {
+      const requirePaidPlan = vi.fn(async () => {
         throw new HttpError(403, "upgrade_required", "This feature requires Zoption Pro.");
       });
-      const app = testApp({ billing: billing(requirePro), ...POOLED_SERVICES });
+      const app = testApp({ billing: billing(requirePaidPlan), ...POOLED_SERVICES });
 
       const response = await app.request(path, init(), { ASSISTANT_ENABLED: "true" });
 
       expect(response.status).toBe(status);
-      expect(requirePro).not.toHaveBeenCalled();
+      expect(requirePaidPlan).not.toHaveBeenCalled();
     },
   );
 

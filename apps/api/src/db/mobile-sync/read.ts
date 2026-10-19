@@ -8,6 +8,7 @@ import {
   type MobileSyncPullResponse,
   type MobileSyncSnapshotRequest,
   type MobileSyncSnapshotResponse,
+  type BillingTier,
 } from "@zoption/shared";
 
 import { HttpError } from "../../errors";
@@ -22,7 +23,8 @@ import {
   type MobileSyncChangeRow,
 } from "./protocol";
 
-export type MobileSyncEntitlementReader = (env: Bindings, tenantId: string) => Promise<boolean>;
+/** Reads the tenant's tier, which decides each category's `locked` flag and plan-gated pushes. */
+export type MobileSyncEntitlementReader = (env: Bindings, tenantId: string) => Promise<BillingTier>;
 
 export async function snapshotMobileSync(
   env: Bindings,
@@ -121,10 +123,10 @@ export async function snapshotMobileSync(
     .bind(tenantId, snapshotSequence, input.offset, input.limit + 2)
     .all<MobileSyncChangeRow>();
   const page = atomicMobileSyncPage(result.results, input.limit);
-  const hasPro = page.some((change) => change.entityType === "category")
+  const tier = page.some((change) => change.entityType === "category")
     ? await readEntitlement(env, tenantId)
-    : false;
-  const changes = page.map((change) => decodeMobileSyncChange(change, hasPro));
+    : "free";
+  const changes = page.map((change) => decodeMobileSyncChange(change, tier));
   const snapshotCursor = encodeMobileSyncSnapshotCursor(snapshotSequence);
   return mobileSyncSnapshotResponseSchema.parse({
     protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
@@ -290,10 +292,10 @@ export async function pullMobileSyncChanges(
     }
   }
   const page = atomicMobileSyncPage(result.results, input.limit);
-  const hasPro = page.some((change) => change.entityType === "category")
+  const tier = page.some((change) => change.entityType === "category")
     ? await readEntitlement(env, tenantId)
-    : false;
-  const changes = page.map((change) => decodeMobileSyncChange(change, hasPro));
+    : "free";
+  const changes = page.map((change) => decodeMobileSyncChange(change, tier));
   const nextSequence = page.at(-1)?.sequence ?? cursorSequence;
 
   return {

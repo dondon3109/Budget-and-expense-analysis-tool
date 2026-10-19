@@ -1,10 +1,7 @@
-import {
-  mobileSyncCategorySnapshotSchema,
-  mobileSyncChangeSchema,
-  type MobileSyncChange,
-} from "@zoption/shared";
+import { mobileSyncChangeSchema, type BillingTier, type MobileSyncChange } from "@zoption/shared";
 
 import { HttpError } from "../../errors";
+import { storedCategorySnapshotSchema, withCategoryLock } from "./push/snapshots";
 
 export interface MobileSyncChangeRow {
   sequence: number;
@@ -61,7 +58,7 @@ export function decodeMobileSyncSnapshotCursor(cursor: string): number {
 
 export function decodeMobileSyncChange(
   row: MobileSyncChangeRow,
-  hasPro: boolean,
+  tier: BillingTier,
 ): MobileSyncChange {
   try {
     let payload: unknown = null;
@@ -69,11 +66,7 @@ export function decodeMobileSyncChange(
       if (!row.payloadJson) throw new Error("missing_payload");
       payload = JSON.parse(row.payloadJson) as unknown;
       if (row.entityType === "category") {
-        const category = mobileSyncCategorySnapshotSchema.parse(payload);
-        payload = {
-          ...category,
-          locked: category.requiredPlan === "zoption_pro" && !hasPro,
-        };
+        payload = withCategoryLock(storedCategorySnapshotSchema.parse(payload), tier);
       }
     }
     return mobileSyncChangeSchema.parse({

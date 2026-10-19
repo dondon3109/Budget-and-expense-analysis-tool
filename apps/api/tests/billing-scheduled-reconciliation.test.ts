@@ -27,7 +27,9 @@ function checkout(tenantId: string, reference: string, subscriptionId: string): 
     tenantId,
     reference,
     provider: "paypal",
+    plan: "pro",
     interval: "month",
+    familyTenantId: null,
     providerPlanId: "P-monthly",
     providerSubscriptionId: subscriptionId,
     providerCheckoutId: null,
@@ -40,6 +42,10 @@ function summary(active = false): BillingSummary {
   return {
     plan: active ? "zoption_pro" : "free",
     entitlementSource: active ? "paypal" : null,
+    subscriptionPlan: active ? "pro" : null,
+    pendingChange: null,
+    coveredBy: null,
+    canChangePlan: active,
     provider: active ? "paypal" : null,
     status: active ? "active" : null,
     interval: active ? "month" : null,
@@ -50,6 +56,7 @@ function summary(active = false): BillingSummary {
       ? null
       : {
           provider: "paypal",
+          plan: "pro",
           interval: "month",
           createdAt: "2026-08-01T00:00:00.000Z",
           expiresAt: "2099-08-01T00:15:00.000Z",

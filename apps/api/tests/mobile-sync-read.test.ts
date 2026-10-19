@@ -96,7 +96,7 @@ describe("mobile sync full snapshot", () => {
 
   it("keeps a stable server sequence across resumable pages", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const first = await repository.snapshot(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
@@ -174,7 +174,7 @@ describe("mobile sync retention compaction", () => {
 
   it("removes only old acknowledged superseded rows and tombstones", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const entityId = "00000000-0000-4000-8000-000000000010";
     await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -292,7 +292,7 @@ describe("mobile sync retention compaction", () => {
 describe("mobile sync pull repository", () => {
   it("bootstraps in bounded pages, derives locks, and isolates tenants", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
 
     const first = await repository.pull(env, "tenant-1", {
       protocolVersion: 1,
@@ -357,7 +357,7 @@ describe("mobile sync pull repository", () => {
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
 
     database.prepare("UPDATE accounts SET name = ? WHERE id = ?").run("Main wallet", "account-1");
     database.prepare("DELETE FROM transactions WHERE id = ?").run("transaction-1");
@@ -451,7 +451,7 @@ describe("mobile sync pull repository", () => {
 
   it("delivers a web-created subscription and its linked charge as adjacent group rows", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     database.exec(
       "BEGIN;" +
         "INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status) VALUES ('web-sub', 'tenant-1', 'account-1', 'category-1', 'Spotify', 19900, 'monthly', '2026-09-05', 'active');" +
@@ -555,7 +555,7 @@ describe("mobile sync pull repository", () => {
 
   it("does not expose corrupted financial payloads through validation errors", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     database
       .prepare(
         "UPDATE mobile_sync_changes SET payload_json = ? WHERE tenant_id = ? AND sequence = 3",
@@ -585,7 +585,7 @@ describe("mobile sync pull repository", () => {
 
   it("does not misclassify an unpaired historical transfer as an atomic group", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     database
       .prepare("INSERT INTO categories (id, tenant_id, name, kind, color) VALUES (?, ?, ?, ?, ?)")
       .run("category-transfer", "tenant-1", "Transfer", "transfer", "#008877");

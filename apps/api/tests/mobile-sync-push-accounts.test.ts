@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { readTier } from "../src/billing/entitlements";
 import { createMobileSyncRepository } from "../src/db/mobile-sync";
 import { d1FromSqlite } from "./helpers/d1-test-harness";
 import {
@@ -15,7 +16,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("creates, updates, and archives a client-ID account idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const entityId = "10000000-0000-4000-8000-000000000002";
     const create = {
       protocolVersion: 1 as const,
@@ -87,15 +88,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("updates automatic-interest settings atomically with account updates", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(async (bindings, tenantId) =>
-      Boolean(
-        await bindings.DB.prepare(
-          "SELECT 1 AS entitled FROM effective_pro_access WHERE tenant_id = ?",
-        )
-          .bind(tenantId)
-          .first(),
-      ),
-    );
+    const repository = createMobileSyncRepository(readTier);
     const interest = {
       enabled: true,
       annualRateBasisPoints: 500,
@@ -283,7 +276,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("protects account names, system rows, revisions, and tenant ownership", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database.prepare("UPDATE accounts SET system_key = ? WHERE id = ?").run("cash", "account-1");
 
     const duplicate = await repository.push(env, "tenant-1", {
@@ -374,15 +367,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("enforces Free and Pro category creation atomically and preserves archive semantics", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(async (bindings, tenantId) =>
-      Boolean(
-        await bindings.DB.prepare(
-          "SELECT 1 AS entitled FROM effective_pro_access WHERE tenant_id = ?",
-        )
-          .bind(tenantId)
-          .first(),
-      ),
-    );
+    const repository = createMobileSyncRepository(readTier);
     const freeCategoryId = "12000000-0000-4000-8000-000000000001";
     const free = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -483,7 +468,7 @@ describe("mobile sync account and category push repository", () => {
     expect(pro.results[0]).toMatchObject({ status: "acknowledged", revision: 1 });
     expect(
       database.prepare("SELECT required_plan FROM categories WHERE id = ?").get(proCategoryId),
-    ).toEqual({ required_plan: "zoption_pro" });
+    ).toEqual({ required_plan: "zoption_budget" });
 
     const archived = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -509,7 +494,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("rejects category name collisions, protected rows, and dependency graphs fail-closed", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database
       .prepare("UPDATE categories SET system_key = ? WHERE id = ?")
       .run("expense", "category-1");
@@ -581,7 +566,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("commits new references and their dependent transaction as one idempotent graph", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const accountId = "15000000-0000-4000-8000-000000000001";
     const categoryId = "15000000-0000-4000-8000-000000000002";
     const transactionId = "15000000-0000-4000-8000-000000000003";
@@ -659,7 +644,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("rejects disconnected dependency graphs as one unsupported atomic batch", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const accountIds = [crypto.randomUUID(), crypto.randomUUID()];
     const operations = accountIds.flatMap((accountId, index) => {
       const accountOperationId = crypto.randomUUID();
@@ -717,7 +702,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("rolls back every graph mutation when a guarded statement loses a race", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const accountId = "16000000-0000-4000-8000-000000000001";
     const accountOperationId = "16000000-0000-4000-8000-000000000002";
     let injectRace = true;
@@ -787,7 +772,7 @@ describe("mobile sync account and category push repository", () => {
 
   it("returns an entitlement-derived category snapshot for stale conflicts", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     database.prepare("UPDATE categories SET color = ? WHERE id = ?").run("#ABCDEF", "category-1");
 
     const stale = await repository.push(env, "tenant-1", {

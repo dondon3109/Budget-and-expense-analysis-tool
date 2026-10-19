@@ -1,4 +1,4 @@
-import type { WorkspaceRole } from "@zoption/shared";
+import type { FamilyPlanState, WorkspaceRole } from "@zoption/shared";
 
 export interface EmailSender {
   send(message: {
@@ -75,14 +75,27 @@ export interface Bindings {
   // Oldest app release sync still serves; it must match the oldest frozen sync contract.
   MOBILE_SYNC_MINIMUM_APP_VERSION?: string;
   PAYPAL_ENVIRONMENT?: "sandbox" | "production";
+  // One PayPal plan id per plan and interval; see `PLAN_ID_VARIABLES` in billing/plan-ids.ts.
+  PAYPAL_BUDGET_MONTHLY_PLAN_ID?: string;
+  PAYPAL_BUDGET_ANNUAL_PLAN_ID?: string;
   PAYPAL_PRO_MONTHLY_PLAN_ID?: string;
   PAYPAL_PRO_ANNUAL_PLAN_ID?: string;
+  PAYPAL_FAMILY_BUDGET_MONTHLY_PLAN_ID?: string;
+  PAYPAL_FAMILY_BUDGET_ANNUAL_PLAN_ID?: string;
+  PAYPAL_FAMILY_PRO_MONTHLY_PLAN_ID?: string;
+  PAYPAL_FAMILY_PRO_ANNUAL_PLAN_ID?: string;
   PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_WEBHOOK_ID?: string;
   DODO_PAYMENTS_ENVIRONMENT?: "test_mode" | "live_mode";
+  DODO_BUDGET_MONTHLY_PRODUCT_ID?: string;
+  DODO_BUDGET_ANNUAL_PRODUCT_ID?: string;
   DODO_PRO_MONTHLY_PRODUCT_ID?: string;
   DODO_PRO_ANNUAL_PRODUCT_ID?: string;
+  DODO_FAMILY_BUDGET_MONTHLY_PRODUCT_ID?: string;
+  DODO_FAMILY_BUDGET_ANNUAL_PRODUCT_ID?: string;
+  DODO_FAMILY_PRO_MONTHLY_PRODUCT_ID?: string;
+  DODO_FAMILY_PRO_ANNUAL_PRODUCT_ID?: string;
   DODO_PAYMENTS_API_KEY?: string;
   DODO_PAYMENTS_WEBHOOK_KEY?: string;
   OPS_EGRESS_TOKEN?: string;
@@ -105,6 +118,8 @@ export interface TenantContext {
     role: WorkspaceRole;
     /** A closed family is read only for everyone until it is deleted. */
     closing: boolean;
+    /** Unpaid families take no invitations; a lapsed family is read only until it is paid. */
+    plan: FamilyPlanState;
   };
 }
 

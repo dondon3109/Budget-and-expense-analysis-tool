@@ -456,6 +456,31 @@ export async function getPayPalSubscription(
   return parseSubscription(env, await response.json().catch(() => null));
 }
 
+/**
+ * Moves a subscription to another plan of the same PayPal product. PayPal bills the new price
+ * from the next cycle and prorates nothing. A PayPal-balance subscriber must approve the change,
+ * in which case the approval link is returned and nothing changes until they do.
+ */
+export async function revisePayPalSubscription(
+  env: Bindings,
+  subscriptionId: string,
+  planId: string,
+): Promise<{ approvalUrl: string | null }> {
+  const response = await authenticatedProviderFetch(
+    env,
+    `${apiBaseUrl(env)}/v1/billing/subscriptions/${encodeURIComponent(subscriptionId)}/revise`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId }),
+    },
+  );
+  if (!response.ok) throw providerError();
+  const payload = asRecord(await response.json().catch(() => null));
+  if (!payload) throw providerError();
+  return { approvalUrl: approvalUrl(env, payload) };
+}
+
 export async function cancelPayPalSubscription(
   env: Bindings,
   subscriptionId: string,

@@ -24,7 +24,6 @@ const EXEMPT = new Set([
 ]);
 
 export const OVERSIZE_CEILINGS = {
-  "apps/api/src/db/billing.ts": 1116,
   "apps/api/tests/voice-stream.test.ts": 1015,
   "apps/mobile/src/db/transaction-mutation-repository.test.ts": 2068,
   "apps/mobile/src/features/assistant/AssistantScreen.tsx": 1500,
@@ -35,7 +34,6 @@ export const OVERSIZE_CEILINGS = {
   "apps/web/src/pages/AssistantPage.css": 2947,
   "apps/web/src/pages/CalendarPage.css": 1124,
   "apps/web/src/pages/DashboardPage.css": 1048,
-  "db/schema.ts": 1081,
   "packages/shared/src/smsNotificationParser.ts": 1421,
 };
 

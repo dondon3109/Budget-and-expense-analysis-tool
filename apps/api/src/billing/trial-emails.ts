@@ -1,5 +1,5 @@
 import { escapeHtml, recipientAddress } from "../account-email";
-import { getProEntitlementSource } from "../db/billing";
+import { readEffectiveAccess } from "./entitlements";
 import { PRO_TRIAL_DAYS } from "../db/tenants";
 import { createResendSender, ResendError } from "../resend";
 import type { Bindings, EmailSender } from "../types";
@@ -197,8 +197,8 @@ export function createTrialEmailService(
         result.checked += 1;
         if (!(await claim(env, row.tenantId, kind, nowIso))) continue;
 
-        // A workspace that subscribed (or was granted Pro) needs no trial reminders.
-        const source = await getProEntitlementSource(env, row.tenantId);
+        // A workspace that subscribed (or was granted a paid tier) needs no trial reminders.
+        const { source } = await readEffectiveAccess(env, row.tenantId);
         if (source !== null && source !== "trial") {
           await claim(env, row.tenantId, "ended", nowIso);
           result.skipped += 1;

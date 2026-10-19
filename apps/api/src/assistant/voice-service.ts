@@ -8,7 +8,7 @@ import {
 } from "@zoption/shared";
 
 import type { AssistantRepository, AssistantVoiceRepository } from "../db/assistant";
-import { consumeAiUsage } from "../db/billing";
+import { consumeAiUsage } from "../db/billing-usage";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { CLOUDFLARE_WHISPER_MODEL } from "./cloudflare-whisper";

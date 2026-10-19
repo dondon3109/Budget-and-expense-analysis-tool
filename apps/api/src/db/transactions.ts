@@ -4,6 +4,7 @@ import {
   normalizeSignedAmount,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   transactionInputSchema,
+  type BillingTier,
   type Currency,
   type TransactionCalendarMonth,
   type TransactionCalendarQuery,
@@ -21,7 +22,11 @@ import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, categories, debts } from "../../../../db/schema";
-import { categoryRequiresProError, hasProEntitlement, isCategoryPlanAvailable } from "./billing";
+import {
+  categoryRequiresPlanError,
+  isCategoryPlanAvailable,
+  readTier,
+} from "../billing/entitlements";
 import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 
@@ -260,7 +265,7 @@ export async function validateTransactionReferences(
   tenantId: string,
   input: TransactionInput,
   existingCategoryId?: string,
-  readProEntitlement: (env: Bindings, tenantId: string) => Promise<boolean> = hasProEntitlement,
+  readPlanTier: (env: Bindings, tenantId: string) => Promise<BillingTier> = readTier,
 ): Promise<void> {
   const db = drizzle(env.DB);
   const [category] = await db
@@ -289,9 +294,9 @@ export async function validateTransactionReferences(
   }
   if (
     input.categoryId !== existingCategoryId &&
-    !isCategoryPlanAvailable(category.requiredPlan, await readProEntitlement(env, tenantId))
+    !isCategoryPlanAvailable(category.requiredPlan, await readPlanTier(env, tenantId))
   ) {
-    throw categoryRequiresProError();
+    throw categoryRequiresPlanError();
   }
 
   const accountIds =

@@ -83,7 +83,7 @@ describe("new accounts start in the workspace currency", () => {
     });
     expect(created.currency).toBe("PHP");
 
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const synced = "60000000-0000-4000-8000-000000000201";
     const result = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -104,7 +104,7 @@ describe("new accounts start in the workspace currency", () => {
   it("over mobile sync push, with and without interest settings", async () => {
     const { env, database } = usdWorkspace();
     grantMobileSyncTestPro(database, "tenant-1");
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const plain = "60000000-0000-4000-8000-000000000101";
     const withInterest = "60000000-0000-4000-8000-000000000102";
 
@@ -235,7 +235,7 @@ describe("subscriptions carry their own currency", () => {
 
   it("bills a synced create in the workspace currency unless the client names one", async () => {
     const { env, database } = usdWorkspace();
-    const repository = createMobileSyncRepository(vi.fn(async () => false));
+    const repository = createMobileSyncRepository(vi.fn(async () => "free" as const));
     const legacy = "60000000-0000-4000-8000-000000000201";
     const explicit = "60000000-0000-4000-8000-000000000202";
 

@@ -98,7 +98,12 @@ function stubDodo(
 }
 
 async function openDodoCheckout(env: Bindings) {
-  const checkout = await billingRepository.createCheckoutReference(env, TENANT_ID, "month", "dodo");
+  const checkout = await billingRepository.createCheckoutReference(env, TENANT_ID, {
+    plan: "pro",
+    interval: "month",
+    provider: "dodo",
+    familyTenantId: null,
+  });
   await billingRepository.bindCheckoutProviderSession(
     env,
     TENANT_ID,
@@ -213,7 +218,7 @@ describe("Dodo Payments subscriptions", () => {
     const response = await app.request("/billing/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ interval: "month", provider: "dodo" }),
+      body: JSON.stringify({ plan: "pro", interval: "month", provider: "dodo" }),
     });
 
     expect(response.status).toBe(201);
@@ -238,7 +243,7 @@ describe("Dodo Payments subscriptions", () => {
       app.request("/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval: "month", provider: "dodo" }),
+        body: JSON.stringify({ plan: "pro", interval: "month", provider: "dodo" }),
       });
 
     // An unpaid session cannot be reopened, so a repeat request replaces it.

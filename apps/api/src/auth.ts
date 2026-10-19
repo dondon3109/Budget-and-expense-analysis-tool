@@ -130,6 +130,13 @@ const FAMILY_WORKSPACE_PATHS = [
 // Sync reads by POST; only its push writes.
 const SYNC_READS = ["/api/app/sync/pull", "/api/app/sync/snapshot", "/api/app/sync/acknowledge"];
 
+// The writes a lapsed family still accepts: its plan, its ownership, and closing it.
+const LAPSED_FAMILY_WRITES = [
+  "/api/app/family/billing",
+  "/api/app/family/transfer",
+  "/api/app/family/close",
+];
+
 function acceptsFamilyWorkspace(path: string): boolean {
   return FAMILY_WORKSPACE_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
@@ -221,6 +228,21 @@ export function createAuthMiddleware(
             403,
             "workspace_closing",
             "This family is closed. You can still view and export it.",
+          );
+        }
+        // A lapsed family is read only until it is paid again. Its owner can still pay, hand it
+        // over, or close it, so a family is never stuck.
+        if (
+          tenant.membership.plan === "lapsed" &&
+          !reading &&
+          !LAPSED_FAMILY_WRITES.some(
+            (prefix) => context.req.path === prefix || context.req.path.startsWith(`${prefix}/`),
+          )
+        ) {
+          throw new HttpError(
+            403,
+            "workspace_lapsed",
+            "This family's plan has ended. You can still view and export it.",
           );
         }
         // Viewers read only. Per-entry rules for members land with the family entities.

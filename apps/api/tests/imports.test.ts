@@ -85,8 +85,8 @@ describe("import commit category guard", () => {
     expect(regularSql).toContain("tenant_id = ? AND archived = 0 AND kind = ?");
     expect(regularSql).not.toContain("system_key IS NULL");
     expect(overrideSql).toContain("system_key IS NULL");
-    expect(overrideSql).toContain("required_plan = 'free'");
-    expect(overrideSql).toContain("SELECT 1 FROM effective_pro_access WHERE tenant_id = ?");
+    expect(overrideSql).toContain("CASE required_plan WHEN 'free' THEN 0");
+    expect(overrideSql).toContain("FROM effective_plan_access WHERE tenant_id = ?");
     expect(overrideSql).toContain("(SELECT id FROM categories");
   });
 });
@@ -502,14 +502,14 @@ describe("import category overrides", () => {
     expect(rows[0]?.fingerprint).toBe(preparedUncategorizedRow.fingerprint);
   });
 
-  it("rejects Pro-required category overrides without an effective entitlement", () => {
+  it("rejects a Pro-tagged category override below Pro", () => {
     expect(
       captureError(() =>
         applyCategoryOverridesToRows(
           [preparedUncategorizedRow],
           [{ rowNumber: 2, categoryId: "food" }],
           [{ ...foodOverrideCategory, requiredPlan: "zoption_pro" }],
-          false,
+          "zoption_budget",
         ),
       ),
     ).toMatchObject({ status: 400, code: "invalid_category_override" });
@@ -519,7 +519,7 @@ describe("import category overrides", () => {
         [preparedUncategorizedRow],
         [{ rowNumber: 2, categoryId: "food" }],
         [{ ...foodOverrideCategory, requiredPlan: "zoption_pro" }],
-        true,
+        "zoption_pro",
       )[0],
     ).toMatchObject({ categoryId: "food", categoryIsUncategorized: false });
   });

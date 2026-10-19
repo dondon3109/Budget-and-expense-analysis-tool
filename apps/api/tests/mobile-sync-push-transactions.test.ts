@@ -43,7 +43,7 @@ describe("mobile sync transaction push repository", () => {
 
   it("creates a client-ID transaction and replays the same acknowledgement idempotently", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const input = createOperation();
 
     const first = await repository.push(env, "tenant-1", input);
@@ -63,7 +63,7 @@ describe("mobile sync transaction push repository", () => {
 
   it("stores the entry method a create names and leaves it out of pulled changes", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const input = createOperation();
     Object.assign(input.operations[0]!.payload, { entryMethod: "receipt" });
 
@@ -85,7 +85,7 @@ describe("mobile sync transaction push repository", () => {
 
   it("rejects reuse of one idempotency key with a different payload", async () => {
     const { env } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const input = createOperation();
     await repository.push(env, "tenant-1", input);
     input.operations[0]!.payload.description = "Changed request";
@@ -98,7 +98,7 @@ describe("mobile sync transaction push repository", () => {
 
   it("updates only the expected revision and returns the server snapshot for a stale edit", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     await repository.push(env, "tenant-1", createOperation());
     const update = {
       protocolVersion: 1 as const,
@@ -140,7 +140,7 @@ describe("mobile sync transaction push repository", () => {
 
   it("deletes once and emits a revisioned tombstone", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     await repository.push(env, "tenant-1", createOperation());
     const removed = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
@@ -222,7 +222,7 @@ describe("mobile sync atomic transfer repository", () => {
 
   it("creates, pages, updates, conflicts, and deletes both legs atomically", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     seedTransferReferences(database);
     const beforeCreate = Number(
       database
@@ -356,7 +356,7 @@ describe("mobile sync atomic transfer repository", () => {
 
   it("rolls back a partial create when either client leg ID collides", async () => {
     const { env, database } = createSyncEnvironment();
-    const repository = createMobileSyncRepository(vi.fn(async () => true));
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     seedTransferReferences(database);
     const create = createTransfer();
     create.operations[0]!.payload.toTransactionId = "transaction-1";

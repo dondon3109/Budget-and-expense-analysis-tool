@@ -20,7 +20,7 @@ interface InterestDueAccount {
   annualRateBasisPoints: number;
   interestFrequency: "daily" | "monthly" | "yearly";
   interestPayDay: number | null;
-  hasPro: number;
+  hasPaidPlan: number;
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -63,17 +63,17 @@ export async function creditDueInterest(
             interest_frequency AS interestFrequency,
             interest_pay_day AS interestPayDay,
             EXISTS (
-              SELECT 1 FROM effective_pro_access e WHERE e.tenant_id = accounts.tenant_id
-            ) AS hasPro
+              SELECT 1 FROM effective_plan_access e WHERE e.tenant_id = accounts.tenant_id
+            ) AS hasPaidPlan
      FROM accounts
      WHERE type = 'savings' AND interest_enabled = 1 AND archived = 0`,
   ).all<InterestDueAccount>();
 
-  // Interest is a Pro feature: free tenants stop accruing after downgrade.
+  // Interest is a paid feature (Budget or Pro): free tenants stop accruing after downgrade.
   const proAccounts: InterestDueAccount[] = [];
   for (const account of rows.results ?? []) {
     result.checked += 1;
-    if (!account.hasPro) {
+    if (!account.hasPaidPlan) {
       result.skipped += 1;
       continue;
     }
@@ -115,7 +115,7 @@ export async function creditDueInterest(
   if (categorized.length === 0) return result;
 
   // Balance lookups stay tenant-scoped like the original per-account SUM.
-  // Interest-enabled savings are a Pro feature, so tenants per run are few;
+  // Interest-enabled savings are a paid feature, so tenants per run are few;
   // each tenant's accounts still chunk under the D1 bind limit.
   const balanceByAccountId = new Map<string, number>();
   for (const [tenantId, accounts] of groupByTenant(categorized.map((c) => c.account))) {

@@ -51,6 +51,7 @@ import { createReceiptRoutes } from "./routes/receipts";
 import { createPushRoutes } from "./routes/push";
 import { createWorkspaceRoutes } from "./routes/workspaces";
 import { createFamilyAlertRoutes } from "./routes/family-alerts";
+import { createFamilyBillingRoutes } from "./routes/family-billing";
 import { createFamilyCommentRoutes } from "./routes/family-comments";
 import { createFamilyReceiptRoutes } from "./routes/family-receipts";
 import { createFamilyEntryRoutes } from "./routes/family-entries";
@@ -262,6 +263,7 @@ export function createApp(options: AppOptions = {}) {
     createFamilyCommentRoutes(dependencies.familyComments, dependencies.familyNotifier),
   );
   app.route("/api/app/family/alerts", createFamilyAlertRoutes(dependencies.familyAlerts));
+  app.route("/api/app/family/billing", createFamilyBillingRoutes(dependencies.billing));
   app.route("/api/app/family/receipts", createFamilyReceiptRoutes(dependencies.familyReceipts));
   app.route("/api/app/families", createFamilyRoutes(dependencies.families));
   app.route("/api/app/family", createActiveFamilyRoutes(dependencies.families));

@@ -80,7 +80,7 @@ function environment(providerPlanId = PLAN_ID): {
         .get(SUBSCRIPTION_ID) as Record<string, unknown> | undefined,
     entitlement: () => {
       const row = database
-        .prepare("SELECT COUNT(*) AS count FROM effective_pro_access WHERE tenant_id = ?")
+        .prepare("SELECT COUNT(*) AS count FROM effective_plan_access WHERE tenant_id = ?")
         .get(TENANT_ID) as { count: number } | undefined;
       return Number(row?.count ?? 0);
     },

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createTrialEmailService } from "../src/billing/trial-emails";
-import { billingRepository, hasProEntitlement } from "../src/db/billing";
+import { hasPaidPlan } from "../src/billing/entitlements";
+import { billingRepository } from "../src/db/billing";
 import { tenantBootstrapRepository } from "../src/db/tenants";
 import type { Bindings, EmailSender } from "../src/types";
 import { createD1TestDatabase } from "./helpers/d1-test-harness";
@@ -61,7 +62,7 @@ describe("7-day Pro trial", () => {
     const endsAt = trialEndsAt(database);
     expect(endsAt.getTime() - Date.now()).toBeGreaterThan(7 * DAY_MS - 60_000);
     expect(endsAt.getTime() - Date.now()).toBeLessThanOrEqual(7 * DAY_MS);
-    expect(await hasProEntitlement(env, tenantId)).toBe(true);
+    expect(await hasPaidPlan(env, tenantId)).toBe(true);
 
     const summary = await billingRepository.getSummary(env, tenantId);
     expect(summary).toMatchObject({
@@ -82,7 +83,7 @@ describe("7-day Pro trial", () => {
     );
 
     await tenantBootstrapRepository.bootstrap(env, { id: "user-1" });
-    expect(await hasProEntitlement(env, tenantId)).toBe(false);
+    expect(await hasPaidPlan(env, tenantId)).toBe(false);
     expect((await billingRepository.getSummary(env, tenantId)).plan).toBe("free");
   });
 

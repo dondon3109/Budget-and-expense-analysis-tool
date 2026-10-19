@@ -160,6 +160,8 @@ export interface AccountBalanceSummary {
 export const categoryOrigins = ["starter", "custom", "system"] as const;
 export type CategoryOrigin = (typeof categoryOrigins)[number];
 
+// The sync wire keeps two values for installed apps; a Budget-tagged category travels as
+// `zoption_pro` with `locked` computed from the person's real tier.
 export const categoryRequiredPlans = ["free", "zoption_pro"] as const;
 export type CategoryRequiredPlan = (typeof categoryRequiredPlans)[number];
 
@@ -431,106 +433,6 @@ export interface TransferFeeInsight {
   recentAverageTransfersPerWeek: number;
   /** Average fee-charged transfers per week across the weeks that had activity. */
   recentAverageFeeChargedTransfersPerWeek: number;
-}
-
-export const billingIntervals = ["month", "year"] as const;
-export type BillingInterval = (typeof billingIntervals)[number];
-
-export const billingProviders = ["paypal", "dodo"] as const;
-export type BillingProvider = (typeof billingProviders)[number];
-
-export const billingSubscriptionStatuses = [
-  "active",
-  "trialing",
-  "past_due",
-  "paused",
-  "canceled",
-] as const;
-export type BillingSubscriptionStatus = (typeof billingSubscriptionStatuses)[number];
-
-export type BillingPlan = "free" | "zoption_pro";
-/** Metered monthly allowances. `ai_usage` is the single pool every billable AI request draws on. */
-export const billingFeatures = ["ai_usage", "file_import"] as const;
-export type BillingFeature = (typeof billingFeatures)[number];
-export type BillingResource = "custom_category";
-export type BillingCapability =
-  | BillingFeature
-  | "category_management"
-  | "account_interest"
-  | "cashflow_analytics"
-  | "transaction_export";
-
-export const billingUsagePeriodKinds = ["calendar_month"] as const;
-export type BillingUsagePeriodKind = (typeof billingUsagePeriodKinds)[number];
-
-export interface BillingUsage {
-  feature: BillingFeature;
-  used: number;
-  limit: number;
-  periodKind: BillingUsagePeriodKind;
-  periodStartedAt: string | null;
-  resetsAt: string | null;
-}
-
-export interface BillingResourceAllowance {
-  resource: BillingResource;
-  used: number;
-  limit: number | null;
-}
-
-export const proEntitlementSources = ["paypal", "dodo", "platform_admin", "sponsored"] as const;
-export type ProEntitlementSource = (typeof proEntitlementSources)[number];
-
-export type SponsoredProSeatState = "pending" | "active";
-
-export interface SponsoredProSeat {
-  slotNumber: number;
-  state: SponsoredProSeatState;
-  beneficiaryUserId: string | null;
-  invitedAt: string | null;
-  assignedAt: string | null;
-  canResendInvitation: boolean;
-}
-
-export interface SponsoredProSeatSummary {
-  capacity: 5;
-  activeCount: number;
-  pendingCount: number;
-  availableCount: number;
-  seats: SponsoredProSeat[];
-}
-
-export interface BillingPendingCheckout {
-  provider: BillingProvider;
-  interval: BillingInterval;
-  createdAt: string;
-  expiresAt: string;
-}
-
-export interface BillingSummary {
-  plan: BillingPlan;
-  entitlementSource: ProEntitlementSource | null;
-  provider: BillingProvider | null;
-  status: BillingSubscriptionStatus | null;
-  interval: BillingInterval | null;
-  currentPeriodEndsAt: string | null;
-  scheduledChangeAt: string | null;
-  cancelAtPeriodEnd: boolean;
-  pendingCheckout: BillingPendingCheckout | null;
-  canCheckout: boolean;
-  canManageBilling: boolean;
-  canManageSponsoredSeats: boolean;
-  nonTerminalSubscriptionCount: number;
-  usages: BillingUsage[];
-  allowances: BillingResourceAllowance[];
-}
-
-export type BillingCheckoutReconciliationOutcome =
-  "confirmed" | "pending" | "review_required" | "closed" | "none";
-
-export interface BillingCheckoutReconciliation {
-  outcome: BillingCheckoutReconciliationOutcome;
-  summary: BillingSummary;
 }
 
 export type AssistantMessageRole = "user" | "assistant";

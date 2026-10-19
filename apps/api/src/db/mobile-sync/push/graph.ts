@@ -12,12 +12,18 @@ import {
   type MobileSyncPushRequest,
   type MobileSyncPushResponse,
   type MobileSyncPushResult,
+  type BillingTier,
   type TransactionInput,
 } from "@zoption/shared";
 
 import { HttpError } from "../../../errors";
 import type { Bindings } from "../../../types";
-import { EFFECTIVE_PRO_ENTITLEMENT_CONDITION, FREE_CUSTOM_CATEGORY_LIMIT } from "../../billing";
+import {
+  categoryPlanRankSql,
+  EFFECTIVE_TIER_RANK_SQL,
+  isCategoryPlanAvailable,
+  NEXT_CUSTOM_CATEGORY_PLAN_SQL,
+} from "../../../billing/entitlements";
 import { debtPaymentChanges } from "../../transactions";
 import { mobileSyncServerTimestamp as serverTimestamp } from "../protocol";
 import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
@@ -31,11 +37,7 @@ import {
   type IdempotencyRow,
 } from "./idempotency";
 import { conflictResult, rejectedResult } from "./results";
-import {
-  activeFreeCustomCategoryCount,
-  businessRejection,
-  hasEffectiveProEntitlementRow,
-} from "./rules";
+import { businessRejection, remainingCustomCategorySlots } from "./rules";
 import { readEntitySnapshot, withCategoryLock } from "./snapshots";
 
 type CreateOperation = MobileSyncPushOperation & { operationType: "create"; baseRevision: 0 };
@@ -72,7 +74,7 @@ function isTransactionCreate(operation: CreateOperation): operation is Transacti
 interface ExistingGraphCategory {
   kind: TransactionInput["kind"];
   archived: number;
-  requiredPlan: "free" | "zoption_pro";
+  requiredPlan: string;
 }
 
 function dependencyFailedResult(
@@ -170,7 +172,7 @@ async function validateGraphTransactionReferences(
   operation: TransactionCreateOperation,
   plannedAccounts: Map<string, AccountCreateOperation>,
   plannedCategories: Map<string, CategoryCreateOperation>,
-  hasPro: boolean,
+  tier: BillingTier,
 ): Promise<MobileSyncPushResult | null> {
   const transaction = operation.payload;
   if (transaction.kind === "transfer") {
@@ -234,11 +236,11 @@ async function validateGraphTransactionReferences(
         "The category type must match the transaction type.",
       );
     }
-    if (category.requiredPlan === "zoption_pro" && !hasPro) {
+    if (!isCategoryPlanAvailable(category.requiredPlan, tier)) {
       return rejectedResult(
         operation,
         "plan_limit",
-        "This category requires an active Zoption Pro subscription.",
+        "This category needs a higher plan. Upgrade or archive other categories to use it.",
       );
     }
   }
@@ -306,21 +308,12 @@ function createGraphMutation(
       `INSERT INTO categories (
          id, tenant_id, name, kind, color, icon_emoji, origin, required_plan, revision, updated_at
        )
-       SELECT ?, ?, ?, ?, ?, ?, 'custom',
-         CASE WHEN ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION}
-           THEN 'zoption_pro' ELSE 'free' END,
-         1, ?
+       SELECT ?, ?, ?, ?, ?, ?, 'custom', ${NEXT_CUSTOM_CATEGORY_PLAN_SQL}, 1, ?
        WHERE NOT EXISTS (
          SELECT 1 FROM categories WHERE tenant_id = ? AND lower(name) = lower(?)
        )
-         AND (
-           ${EFFECTIVE_PRO_ENTITLEMENT_CONDITION}
-           OR (
-             SELECT COUNT(*) FROM categories
-             WHERE tenant_id = ? AND origin = 'custom'
-               AND required_plan = 'free' AND archived = 0
-           ) < ?
-         )`,
+         AND ${categoryPlanRankSql(`(${NEXT_CUSTOM_CATEGORY_PLAN_SQL})`)}
+           <= ${EFFECTIVE_TIER_RANK_SQL}`,
     ).bind(
       operation.entityId,
       tenantId,
@@ -329,12 +322,13 @@ function createGraphMutation(
       payload.color,
       payload.iconEmoji ?? null,
       tenantId,
+      tenantId,
       timestamp,
       tenantId,
       payload.name,
       tenantId,
       tenantId,
-      FREE_CUSTOM_CATEGORY_LIMIT,
+      tenantId,
     );
   }
   if (operation.entityType === "transfer") {
@@ -421,11 +415,11 @@ export async function pushCreateDependencyGraph(
   }
 
   const failures = new Map<string, MobileSyncPushResult>();
-  const hasPro = await readEntitlement(env, tenantId);
+  const tier = await readEntitlement(env, tenantId);
   for (const operation of createOperations) {
     let current = await readEntitySnapshot(env, tenantId, operation.entityType, operation.entityId);
     if (operation.entityType === "category" && current) {
-      current = withCategoryLock(current, hasPro);
+      current = withCategoryLock(current, tier);
     }
     if (current)
       failures.set(operation.operationId, conflictResult(operation, "entity_exists", current));
@@ -468,12 +462,8 @@ export async function pushCreateDependencyGraph(
     if (rejected) failures.set(operation.operationId, rejected);
   }
 
-  const serverHasPro = await hasEffectiveProEntitlementRow(env, tenantId);
-  if (!serverHasPro) {
-    const available = Math.max(
-      0,
-      FREE_CUSTOM_CATEGORY_LIMIT - (await activeFreeCustomCategoryCount(env, tenantId)),
-    );
+  const available = await remainingCustomCategorySlots(env, tenantId);
+  if (available !== null) {
     Array.from(plannedCategories.values())
       .slice(available)
       .forEach((operation) =>
@@ -492,7 +482,7 @@ export async function pushCreateDependencyGraph(
       operation,
       plannedAccounts,
       plannedCategories,
-      hasPro,
+      tier,
     );
     if (rejected) failures.set(operation.operationId, rejected);
   }

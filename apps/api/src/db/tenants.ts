@@ -1,9 +1,11 @@
 import {
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  type FamilyPlanState,
   type WorkspaceRole,
 } from "@zoption/shared";
 
+import { FAMILY_PLAN_STATE_SQL } from "../billing/entitlements";
 import { HttpError } from "../errors";
 import type { AuthUser, Bindings, TenantContext } from "../types";
 
@@ -265,13 +267,13 @@ async function resolveFamily(
   workspaceId: string,
 ): Promise<TenantContext> {
   const member = await env.DB.prepare(
-    `SELECT tm.role AS role, fc.tenant_id IS NOT NULL AS closing
+    `SELECT tm.role AS role, fc.tenant_id IS NOT NULL AS closing, ${FAMILY_PLAN_STATE_SQL} AS plan
      FROM tenant_members tm JOIN tenants t ON t.id = tm.tenant_id
      LEFT JOIN family_closures fc ON fc.tenant_id = tm.tenant_id
      WHERE tm.tenant_id = ? AND tm.user_id = ? AND t.kind = 'family'`,
   )
-    .bind(workspaceId, user.id)
-    .first<{ role: WorkspaceRole; closing: number }>();
+    .bind(workspaceId, workspaceId, workspaceId, user.id)
+    .first<{ role: WorkspaceRole; closing: number; plan: FamilyPlanState }>();
   if (!member) {
     throw new HttpError(403, "workspace_forbidden", "You are not a member of this workspace.");
   }
@@ -280,7 +282,7 @@ async function resolveFamily(
     defaultAccountId: defaultAccountIdForTenant(workspaceId),
     // First-run onboarding belongs to the person's own workspace, never a shared one.
     onboardingComplete: true,
-    membership: { role: member.role, closing: Boolean(member.closing) },
+    membership: { role: member.role, closing: Boolean(member.closing), plan: member.plan },
   };
 }
 

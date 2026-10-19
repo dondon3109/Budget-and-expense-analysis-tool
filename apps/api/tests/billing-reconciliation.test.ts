@@ -24,6 +24,10 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
   return {
     plan: "free",
     entitlementSource: null,
+    subscriptionPlan: null,
+    pendingChange: null,
+    coveredBy: null,
+    canChangePlan: false,
     provider: null,
     status: null,
     interval: null,
@@ -32,6 +36,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
     cancelAtPeriodEnd: false,
     pendingCheckout: {
       provider: "paypal",
+      plan: "pro",
       interval: "month",
       createdAt: "2026-08-01T00:00:00.000Z",
       expiresAt: "2099-08-01T00:15:00.000Z",
@@ -49,7 +54,7 @@ function summary(overrides: Partial<BillingSummary> = {}): BillingSummary {
 function repository(summaryValue = summary()): BillingRepository {
   return {
     getSummary: vi.fn(async () => summaryValue),
-    requirePro: vi.fn(async () => undefined),
+    requirePaidPlan: vi.fn(async () => undefined),
     createCheckoutReference: vi.fn(),
     createMonthlyImportUsageStatement: vi.fn(() => ({}) as D1PreparedStatement),
     rethrowMonthlyImportUsageError: vi.fn(async (_env, _tenantId, error) => {
@@ -63,6 +68,9 @@ function repository(summaryValue = summary()): BillingRepository {
             providerSubscriptionId: "I-subscription",
             providerCustomerId: "payer-id",
             providerPlanId: "P-monthly",
+            plan: "pro" as const,
+            interval: "month" as const,
+            familyTenantId: null,
             status: "active" as const,
             currentPeriodEndsAt: "2099-09-01T00:00:00.000Z",
             cancelAtPeriodEnd: false,
@@ -72,7 +80,9 @@ function repository(summaryValue = summary()): BillingRepository {
     getPendingCheckout: vi.fn(async () => ({
       reference: "checkout-reference",
       provider: "paypal" as const,
+      plan: "pro" as const,
       interval: "month" as const,
+      familyTenantId: null,
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
       providerCheckoutId: null,
@@ -87,6 +97,10 @@ function repository(summaryValue = summary()): BillingRepository {
     linkCheckoutSubscription: vi.fn(async () => null),
     applySubscriptionEvent: vi.fn(async () => "applied" as const),
     applySubscriptionSnapshot: vi.fn(async () => "applied" as const),
+    recordPlanChange: vi.fn(async () => undefined),
+    familyPlanState: vi.fn(async () => "unpaid" as const),
+    getFamilySummary: vi.fn(),
+    listFamilySubscriptions: vi.fn(async () => []),
   };
 }
 
@@ -187,7 +201,9 @@ describe("billing checkout reconciliation", () => {
     vi.mocked(billing.getPendingCheckout).mockResolvedValueOnce({
       reference: "checkout-reference",
       provider: "paypal",
+      plan: "pro",
       interval: "month",
+      familyTenantId: null,
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
       providerCheckoutId: null,
@@ -225,7 +241,9 @@ describe("billing checkout reconciliation", () => {
     vi.mocked(billing.getPendingCheckout).mockResolvedValueOnce({
       reference: "checkout-reference",
       provider: "paypal",
+      plan: "pro",
       interval: "month",
+      familyTenantId: null,
       providerPlanId: "P-monthly",
       providerSubscriptionId: "I-subscription",
       providerCheckoutId: null,

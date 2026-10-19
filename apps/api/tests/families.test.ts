@@ -5,10 +5,15 @@ import { Hono } from "hono";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAccountDeletionService } from "../src/account-deletion";
+import { readTier } from "../src/billing/entitlements";
 import { createAuthMiddleware, type AuthVerifier } from "../src/auth";
 import type { AccountDeletionRepository } from "../src/db/account-deletion";
 import { familyRepository } from "../src/db/families";
-import { createTenantResolver, tenantBootstrapRepository } from "../src/db/tenants";
+import {
+  createTenantResolver,
+  tenantBootstrapRepository,
+  tenantIdForUser,
+} from "../src/db/tenants";
 import { HttpError } from "../src/errors";
 import { createFamilyService } from "../src/families";
 import { createActiveFamilyRoutes, createFamilyRoutes } from "../src/routes/families";
@@ -21,6 +26,7 @@ const databases: DatabaseSync[] = [];
 
 afterEach(() => {
   for (const database of databases.splice(0)) database.close();
+  vi.unstubAllGlobals();
 });
 
 /** Everyone has a personal workspace and a verified `<name>@example.com`. */
@@ -30,6 +36,8 @@ async function setup() {
   const env = {
     DB: binding,
     FAMILY_WORKSPACES_ENABLED: "true",
+    DODO_PAYMENTS_ENVIRONMENT: "test_mode",
+    DODO_PAYMENTS_API_KEY: "dodo-key",
     WEB_APP_URL: "https://app.zoption.site",
     EMAIL_FROM: "hello@zoption.site",
   } as unknown as Bindings;
@@ -74,12 +82,40 @@ async function setup() {
       env,
     );
 
-  async function createFamily(owner = "mama") {
+  /**
+   * A Family Pro plan the owner pays for. By default it is already set to end, so handing the
+   * family over or closing it has no renewal to stop at the provider.
+   */
+  function payFor(
+    family: string,
+    options: { owner?: string; renewing?: boolean; endsAt?: string } = {},
+  ) {
+    database
+      .prepare(
+        `INSERT INTO billing_subscriptions (
+           provider, provider_subscription_id, tenant_id, provider_customer_id, provider_plan_id,
+           plan, family_tenant_id, provider_status, status, interval, current_period_ends_at,
+           cancel_at_period_end, last_provider_occurred_at, last_provider_event_id
+         ) VALUES ('dodo', ?, ?, 'customer', 'pdt_family_pro', 'family_pro', ?, 'active', 'active',
+                   'month', ?, ?, '2026-08-01T00:00:00.000Z', 'event-1')`,
+      )
+      .run(
+        `sub_${family}`,
+        tenantIdForUser(options.owner ?? "mama"),
+        family,
+        options.endsAt ?? "2099-01-01T00:00:00.000Z",
+        options.renewing ? 0 : 1,
+      );
+  }
+
+  async function createFamily(owner = "mama", options: { paid?: boolean } = {}) {
     const response = await call(owner, "POST", "/families", {
       body: { name: "Dela Cruz", ...RULES },
     });
     expect(response.status).toBe(201);
-    return ((await response.json()) as { id: string }).id;
+    const family = ((await response.json()) as { id: string }).id;
+    if (options.paid ?? true) payFor(family, { owner });
+    return family;
   }
 
   async function invite(family: string, person: string, role = "member", owner = "mama") {
@@ -102,7 +138,7 @@ async function setup() {
     return familyDetailSchema.parse(await (await call(user, "GET", "/family", { family })).json());
   }
 
-  return { env, database, send, call, createFamily, invite, join, detail };
+  return { env, database, send, call, payFor, createFamily, invite, join, detail };
 }
 
 describe("families", () => {
@@ -294,6 +330,77 @@ describe("families", () => {
     expect(left("accounts")).toEqual({ count: 0 });
     // The join cooldown outlives the family.
     expect(left("family_seat_events")).toEqual({ count: 1 });
+  });
+});
+
+describe("family plans", () => {
+  it("keeps an unpaid family to its owner", async () => {
+    const { createFamily, invite } = await setup();
+    const family = await createFamily("mama", { paid: false });
+
+    await expect((await invite(family, "papa")).json()).resolves.toEqual({
+      error: "family_plan_required",
+    });
+  });
+
+  it("gives the family and every member the plan's tier", async () => {
+    const { env, database, createFamily, join } = await setup();
+    // New workspaces start on a Pro trial; end them so only the family plan grants a tier.
+    database.prepare("UPDATE pro_trials SET ends_at = '2000-01-01T00:00:00.000Z'").run();
+    const family = await createFamily();
+    await join(family, "lola");
+
+    for (const tenantId of [family, tenantIdForUser("mama"), tenantIdForUser("lola")]) {
+      expect(await readTier(env, tenantId)).toBe("zoption_pro");
+    }
+    expect(await readTier(env, tenantIdForUser("papa"))).toBe("free");
+  });
+
+  it("makes a lapsed family read only, except to pay for it, hand it over, or close it", async () => {
+    const { database, call, createFamily, join } = await setup();
+    const family = await createFamily();
+    await join(family, "lola");
+    database
+      .prepare(
+        "UPDATE billing_subscriptions SET current_period_ends_at = '2000-01-01T00:00:00.000Z'",
+      )
+      .run();
+
+    for (const user of ["mama", "lola"]) {
+      await expect(
+        (
+          await call(user, "PATCH", "/family/members/lola", { family, body: { role: "viewer" } })
+        ).json(),
+      ).resolves.toEqual({ error: "workspace_lapsed" });
+    }
+    expect((await call("lola", "GET", "/family", { family })).status).toBe(200);
+    expect((await call("mama", "POST", "/family/close", { family })).status).toBe(200);
+  });
+
+  it("stops the plan renewing when the owner hands the family over", async () => {
+    const { database, call, payFor, createFamily, join } = await setup();
+    const family = await createFamily("mama", { paid: false });
+    payFor(family, { renewing: true });
+    await join(family, "papa");
+    const fetchMock = vi.fn(async () => Response.json({}));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const moved = await call("mama", "POST", "/family/transfer", {
+      family,
+      body: { userId: "papa" },
+    });
+
+    expect(moved.status).toBe(204);
+    expect(fetchMock).toHaveBeenCalledWith(
+      `https://test.dodopayments.com/subscriptions/${encodeURIComponent(`sub_${family}`)}`,
+      expect.objectContaining({ method: "PATCH" }),
+    );
+    // The paid period still covers the family until the provider ends it.
+    expect(
+      database
+        .prepare("SELECT COUNT(*) AS count FROM effective_plan_access WHERE tenant_id = ?")
+        .get(family),
+    ).toEqual({ count: 1 });
   });
 });
 
