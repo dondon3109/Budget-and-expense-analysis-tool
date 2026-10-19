@@ -182,7 +182,14 @@ export function AssistantConsentModal({
     "Memory is kept until you delete it, and you can clear it anytime.",
   ];
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onDecline}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      onRequestClose={onDecline}
+    >
       <View style={[styles.consentBackdrop, { backgroundColor: theme.colors.overlay }]}>
         <ScrollView
           style={[
