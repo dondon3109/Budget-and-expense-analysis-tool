@@ -3,7 +3,6 @@ import { Share } from "react-native";
 
 import { AccountScreen } from "./AccountScreen";
 import { downloadAccountArchive } from "@/api/account";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
 
 jest.mock("@react-native-community/netinfo", () => ({
   useNetInfo: () => ({ isInternetReachable: true, isConnected: true }),
@@ -104,16 +103,5 @@ describe("AccountScreen", () => {
       expect(Share.share).toHaveBeenCalled();
       expect(screen.getByText("Account archive exported successfully.")).toBeTruthy();
     });
-  });
-
-  it("starts the default spending account on Cash and saves a new choice", async () => {
-    useDefaultSpendingAccountStore.setState({ accountId: null });
-    await render(<AccountScreen />);
-
-    await fireEvent.press(screen.getByRole("button", { name: /Account, Cash/ }));
-    await fireEvent.press(screen.getByLabelText("Bank"));
-
-    expect(useDefaultSpendingAccountStore.getState().accountId).toBe("a-bank");
-    expect(screen.getByRole("button", { name: /Account, Bank/ })).toBeTruthy();
   });
 });

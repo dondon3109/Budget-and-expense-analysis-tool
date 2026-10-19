@@ -27,6 +27,17 @@ All notable product changes are documented here.
 - Share one transaction or an account balance with anyone, even people without Zoption, on web and mobile. The link shows a frozen snapshot of only what you chose, works for 24 hours, 7 days, 30 days, or until you turn it off, and can be turned off any time in web Settings. Web can also save the snapshot as an image.
 - A Reduce motion switch keeps animations still across Zoption, on web and mobile, even if your device's own setting is off. Web also gains a Sound effects switch in Account Settings.
 - Mobile: pick a new transaction's date from a calendar pop-up instead of typing it.
+- Mobile: voice entry waits for you to tap the mic, and a spoken transaction no longer saves itself after a countdown. The mic opens as a dialog over the form and fades away once your words fill it in, so you can check it and tap Save.
+- Mobile: the transaction form lists Cash, then GCash, then your bank accounts before the rest.
+- Mobile: adding an entry starts by picking income, expense, or transfer in a sheet that grows from the add button, then the form shows the account as icon tiles (one row, with More for the rest) and saves or closes from its header.
+- Every new workspace starts with a Maya e-wallet account next to Cash and GCash, on web and mobile.
+- Mobile: SMS paste moved into the Transactions header, and Home and Transactions no longer show the sync delayed banner.
+- Mobile: taps, saved entries, and errors give a short buzz alongside their sound. It follows the phone's touch feedback setting, so it stays on when sounds are off.
+- Mobile: first-run setup is one dialog over Home with numbered steps underneath: currency, cash, theme, streak pet, your egg, and your goals, ending in a thank-you. Tap a finished step's number to go back to it.
+- Mobile: thanks for choosing your goals now shows as a centered dialog, and dialogs dim the status and navigation bars too.
+- Mobile: the "Help us improve Zoption" prompt is one sentence with a link to the Privacy Policy.
+- Mobile: switching between Home, Transactions, Budgets, and More slides the pages sideways instead of cutting between them. Reduce motion keeps the cut.
+- A new transaction starts on the account your last new transaction used, on web and mobile (and for receipt scans and the mic widget on mobile), so the Default spending account setting and the account star are gone. An account you had chosen as default is where your next entry starts.
 
 ### Changed
 

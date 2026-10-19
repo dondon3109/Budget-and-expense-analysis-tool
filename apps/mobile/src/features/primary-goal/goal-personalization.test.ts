@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 
 import { promptsForGoal, useGoalCta, useGoalPrompt } from "./goal-personalization";
 
@@ -15,6 +16,8 @@ describe("goal personalization", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useGoalProfileStore.getState().reset();
+    useOnboardingStore.getState().reset();
+    useOnboardingStore.getState().setState({ step: "complete", currency: "PHP" });
   });
 
   it("falls back to the default prompts without a goal, for other, and when skipped", () => {
@@ -56,5 +59,12 @@ describe("goal personalization", () => {
     await renderHook(() => useGoalPrompt());
     expect(router.push).toHaveBeenCalledTimes(1);
     expect(router.push).toHaveBeenCalledWith("/(app)/primary-goal");
+  });
+
+  it("waits for first-run setup to finish, since setup asks the goals itself", async () => {
+    useOnboardingStore.getState().setState({ step: "cash", currency: "PHP" });
+    useGoalProfileStore.getState().setProfile(profile(null));
+    await renderHook(() => useGoalPrompt());
+    expect(router.push).not.toHaveBeenCalled();
   });
 });

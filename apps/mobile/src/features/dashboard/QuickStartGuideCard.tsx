@@ -8,6 +8,7 @@ import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "@/features/transactions/AddTransactionPicker";
 
 const QUICK_START_GUIDE_DISMISSED_KEY = "zoption_quick_start_guide_dismissed";
 
@@ -182,11 +183,7 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
               Record expenses using manual input, camera receipt scanning, or AI voice dictation.
             </Text>
             <View style={styles.stepActionRow}>
-              <Button
-                variant="secondary"
-                size="compact"
-                onPress={() => router.push("/(app)/transaction")}
-              >
+              <Button variant="secondary" size="compact" onPress={openAddTransaction}>
                 Log transaction
               </Button>
             </View>

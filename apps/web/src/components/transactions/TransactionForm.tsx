@@ -27,7 +27,7 @@ import { createPortal } from "react-dom";
 
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useRootLock } from "../../hooks/useRootLock";
-import { useDefaultSpendingAccountId } from "../../lib/defaultSpendingAccount";
+import { setLastUsedAccountId, useLastUsedAccountId } from "../../lib/lastUsedAccount";
 import { personalWorkspace, type AuthenticatedWorkspace } from "../../lib/workspace";
 import "./TransactionForm.css";
 import { localIsoDate } from "../../lib/calendar";
@@ -144,10 +144,10 @@ export function TransactionForm({
   const dialogRef = useRef<HTMLElement>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const activeAccounts = useMemo(() => accounts.filter((account) => !account.archived), [accounts]);
-  const defaultSpendingAccountId = useDefaultSpendingAccountId();
+  const lastUsedAccountId = useLastUsedAccountId();
   const defaultAccount = useMemo(
-    () => preferredTransactionAccount(activeAccounts, defaultSpendingAccountId),
-    [activeAccounts, defaultSpendingAccountId],
+    () => preferredTransactionAccount(activeAccounts, lastUsedAccountId),
+    [activeAccounts, lastUsedAccountId],
   );
   const availableCategories = useMemo(
     () => categories.filter((category) => !category.archived && category.kind === kind),
@@ -312,6 +312,11 @@ export function TransactionForm({
       return;
     }
     await onSubmit(parsed.data);
+    if (!item) {
+      setLastUsedAccountId(
+        parsed.data.kind === "transfer" ? parsed.data.fromAccountId : parsed.data.accountId,
+      );
+    }
   }
 
   async function handleSubmit(event: FormEvent) {

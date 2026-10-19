@@ -443,7 +443,6 @@ describe("Profile dashboard account management", () => {
     );
 
     expect(names).toEqual(["Cash", "Bank", "Maya Wallet"]);
-    expect(within(accountManager).getByText("Default").closest("li")).toHaveTextContent("Cash");
     expect(
       within(accountManager).queryByRole("button", { name: "Edit Cash" }),
     ).not.toBeInTheDocument();
@@ -464,7 +463,7 @@ describe("Profile dashboard account management", () => {
     expect(within(accountManager).getByText("Old wallet")).toBeInTheDocument();
   });
 
-  it("ends every row's actions with star then adjust so they line up across rows", async () => {
+  it("ends every row's actions with adjust so they line up across rows", async () => {
     renderPage();
 
     const accountManager = await screen.findByRole("region", { name: "Account management" });
@@ -476,29 +475,8 @@ describe("Profile dashboard account management", () => {
       const labels = Array.from(actions.querySelectorAll("button")).map((button) =>
         button.getAttribute("aria-label"),
       );
-      expect(labels.slice(-2)).toEqual([
-        `Use ${name} as the default spending account`,
-        `Adjust balance for ${name}`,
-      ]);
+      expect(labels.at(-1)).toBe(`Adjust balance for ${name}`);
     }
-  });
-
-  it("moves the default spending account when another account is starred", async () => {
-    renderPage();
-
-    const accountManager = await screen.findByRole("region", { name: "Account management" });
-    const star = within(accountManager).getByRole("button", {
-      name: "Use Maya Wallet as the default spending account",
-    });
-    expect(star).toHaveAttribute("aria-pressed", "false");
-
-    fireEvent.click(star);
-
-    expect(star).toHaveAttribute("aria-pressed", "true");
-    expect(within(accountManager).getByText("Default").closest("li")).toHaveTextContent(
-      "Maya Wallet",
-    );
-    expect(window.localStorage.getItem("zoption-default-spending-account")).toBe("custom");
   });
 
   it("shows each account's PHP and USD balances in the breakdown", async () => {

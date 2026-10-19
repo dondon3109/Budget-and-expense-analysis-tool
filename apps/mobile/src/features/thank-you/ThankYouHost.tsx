@@ -1,25 +1,31 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useSyncExternalStore } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Button } from "@/ui/components";
+import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
-/** One message per finished task. Keep in step with apps/web/src/lib/thankYou.ts. */
+/**
+ * One message per finished task. Pro keeps in step with apps/web/src/lib/thankYou.ts; goal is
+ * mobile only. A new account is thanked by the Final step of first-run setup instead.
+ */
 const thankYouCopy = {
-  signup: {
-    icon: "check-circle-outline",
-    title: "Thank you for creating your account",
-    description:
-      "Your private financial workspace is ready. Start by logging an expense with voice, snapping a receipt, or mapping your first bank statement.",
-  },
   pro: {
     icon: "star-four-points-outline",
+    eyebrow: "Membership",
     title: "Thank you for upgrading Zoption!",
     description:
       "Your plan now includes more AI actions and statement imports, automatic interest compounding, the interactive renewal calendar, and direct support.",
+  },
+  goal: {
+    icon: "heart-outline",
+    eyebrow: "Your goals",
+    title: "Thank you!",
+    description:
+      "Thanks for taking a moment to tell us. We've set Zoption up around what matters to you.",
   },
 } as const;
 
@@ -45,16 +51,6 @@ export function showThankYou(flow: ThankYouFlow): void {
   publish(flow);
 }
 
-/**
- * A Supabase user whose first sign-in is the one that just happened was created by it.
- * Used after Google sign-in, the only way to create an account on mobile.
- */
-export function isNewAccount(user: { created_at: string; last_sign_in_at?: string }): boolean {
-  if (!user.last_sign_in_at) return false;
-  const gap = Date.parse(user.last_sign_in_at) - Date.parse(user.created_at);
-  return Number.isFinite(gap) && Math.abs(gap) < 60_000;
-}
-
 /** Whether the thank-you card is open, so another dialog can wait for it to close. */
 export function useThankYouOpen(): boolean {
   return useSyncExternalStore(subscribe, () => currentFlow) !== null;
@@ -63,39 +59,76 @@ export function useThankYouOpen(): boolean {
 /** Mounted once in the authenticated gate so every screen shares one card. */
 export function ThankYouHost() {
   const theme = useZoptionTheme();
+  const reduceMotion = useReduceMotion();
   const flow = useSyncExternalStore(subscribe, () => currentFlow);
   const copy = flow ? thankYouCopy[flow] : null;
   const close = () => publish(null);
+  const pop = useRef(new Animated.Value(0)).current;
+
+  // The card rises and settles while the scrim fades in, so it reads as a moment, not an alert.
+  useEffect(() => {
+    if (!flow) return;
+    if (reduceMotion) {
+      pop.setValue(1);
+      return;
+    }
+    pop.setValue(0);
+    Animated.spring(pop, { toValue: 1, friction: 7, tension: 60, useNativeDriver: true }).start();
+  }, [flow, pop, reduceMotion]);
 
   return (
-    <Modal animationType="fade" transparent visible={copy !== null} onRequestClose={close}>
+    <Modal
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      transparent
+      visible={copy !== null}
+      onRequestClose={close}
+    >
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={withTapSound(close)} />
+        <Pressable
+          accessibilityLabel="Close"
+          style={StyleSheet.absoluteFill}
+          onPress={withTapSound(close)}
+        />
         {copy && (
-          <View
+          <Animated.View
             accessibilityRole="alert"
             style={[
               styles.card,
               elevation.dialog,
-              { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+              {
+                backgroundColor: theme.colors.surfaceRaised,
+                borderColor: theme.colors.border,
+                opacity: pop,
+                transform: [
+                  { scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] }) },
+                  { translateY: pop.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
+                ],
+              },
             ]}
           >
             <View style={[styles.icon, { backgroundColor: theme.colors.brandSoft }]}>
-              <MaterialCommunityIcons name={copy.icon} size={28} color={theme.colors.brand} />
+              <MaterialCommunityIcons name={copy.icon} size={36} color={theme.colors.brand} />
             </View>
-            <Text
-              accessibilityRole="header"
-              style={[typography.title, styles.centered, { color: theme.colors.text }]}
-            >
-              {copy.title}
-            </Text>
-            <Text style={[typography.body, styles.centered, { color: theme.colors.textMuted }]}>
-              {copy.description}
-            </Text>
+            <View style={styles.copy}>
+              <Text style={[typography.label, styles.centered, { color: theme.colors.brand }]}>
+                {copy.eyebrow}
+              </Text>
+              <Text
+                accessibilityRole="header"
+                style={[typography.title, styles.centered, { color: theme.colors.text }]}
+              >
+                {copy.title}
+              </Text>
+              <Text style={[typography.body, styles.centered, { color: theme.colors.textMuted }]}>
+                {copy.description}
+              </Text>
+            </View>
             <Button variant="primary" onPress={close}>
               Continue
             </Button>
-          </View>
+          </Animated.View>
         )}
       </View>
     </Modal>
@@ -106,20 +139,23 @@ const styles = StyleSheet.create({
   layer: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.lg },
   card: {
     width: "100%",
-    maxWidth: 440,
+    maxWidth: 400,
     borderRadius: radii.lg,
     borderWidth: 1,
-    padding: spacing.lg,
-    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    gap: spacing.lg,
     alignItems: "stretch",
   },
   icon: {
     alignSelf: "center",
-    width: 56,
-    height: 56,
-    borderRadius: radii.lg,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     alignItems: "center",
     justifyContent: "center",
   },
+  copy: { gap: spacing.xs },
   centered: { textAlign: "center" },
 });

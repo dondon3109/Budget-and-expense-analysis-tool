@@ -2,9 +2,9 @@ import type { TransactionInput } from "./schemas";
 import type { AccountType, Currency } from "./types";
 
 /**
- * New entries prefer the account the user set as their default spending account,
- * then cash, then the first account. A default that is no longer in the list
- * (removed, or from another workspace) falls through instead of blocking entry.
+ * New entries prefer the account the last new entry used on this device, then
+ * cash, then the first account. An id that is no longer in the list (removed, or
+ * from another workspace) falls through instead of blocking entry.
  */
 export function preferredTransactionAccount<Account extends { id: string; type: AccountType }>(
   accounts: readonly Account[],

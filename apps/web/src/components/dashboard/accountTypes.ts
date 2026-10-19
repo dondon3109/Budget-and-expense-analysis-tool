@@ -1,9 +1,6 @@
 import { isLiabilityAccountType, type AccountInput } from "@zoption/shared";
 
-/**
- * Select options in picker order; "General" is the plain account a new one starts as. It is not
- * called "Default" because account rows already badge the default spending account that way.
- */
+/** Select options in picker order; "General" is the plain account a new one starts as. */
 export const accountTypes: Array<{ value: AccountInput["type"]; label: string }> = [
   { value: "other", label: "General" },
   { value: "cash", label: "Cash" },

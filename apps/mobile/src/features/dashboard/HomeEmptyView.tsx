@@ -8,6 +8,7 @@ import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "@/features/transactions/AddTransactionPicker";
 
 export function HomeEmptyView({ syncing }: { syncing: boolean }) {
   const theme = useZoptionTheme();
@@ -113,7 +114,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
               <Button
                 variant="secondary"
                 accessibilityHint="Opens manual transaction entry"
-                onPress={() => router.push("/(app)/transaction")}
+                onPress={openAddTransaction}
               >
                 Start fresh (Add transaction)
               </Button>
@@ -154,7 +155,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Step 2: Add your first transaction"
-          onPress={withTapSound(() => router.push("/(app)/transaction"))}
+          onPress={withTapSound(openAddTransaction)}
           style={[
             styles.stepCard,
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },

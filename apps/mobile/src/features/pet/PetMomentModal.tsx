@@ -27,7 +27,14 @@ export function PetMomentModal() {
     router.push("/(app)/pet");
   };
   return (
-    <Modal animationType="fade" transparent visible onRequestClose={close}>
+    <Modal
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      transparent
+      visible
+      onRequestClose={close}
+    >
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
         <Pressable
           accessibilityLabel="Close"

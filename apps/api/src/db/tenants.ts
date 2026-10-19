@@ -15,6 +15,7 @@ const SYSTEM_ACCOUNTS = [
   { suffix: "default", name: "Cash", type: "cash", systemKey: "account:cash" },
   { suffix: "bank", name: "Bank", type: "checking", systemKey: "account:bank" },
   { suffix: "gcash", name: "GCash", type: "other", systemKey: "account:gcash" },
+  { suffix: "maya", name: "Maya", type: "ewallet", systemKey: "account:maya" },
 ] as const;
 
 const DEFAULT_CATEGORIES = [

@@ -53,7 +53,14 @@ export function SeatRulesDialog({
   const text = { color: theme.colors.text };
 
   return (
-    <Modal animationType="fade" onRequestClose={busy ? undefined : onClose} transparent visible>
+    <Modal
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      onRequestClose={busy ? undefined : onClose}
+      transparent
+      visible
+    >
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
         <View
           style={[

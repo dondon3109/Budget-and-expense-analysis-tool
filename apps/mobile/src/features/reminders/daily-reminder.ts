@@ -22,8 +22,8 @@ export const DAILY_REMINDERS = [
 ] as const;
 const DAILY_REMINDER_CHANNEL_ID = "daily-reminder";
 
-/** Where a tap on the reminder lands: the new transaction editor. */
-const DAILY_REMINDER_ROUTE: Href = "/(app)/transaction";
+/** Where a tap on the reminder lands: the add picker, which leads to the editor. */
+const DAILY_REMINDER_ROUTE: Href = "/(app)/add-transaction";
 
 export type DailyReminderResult = "scheduled" | "off" | "denied";
 

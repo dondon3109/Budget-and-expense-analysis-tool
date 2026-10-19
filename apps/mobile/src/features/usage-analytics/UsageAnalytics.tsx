@@ -2,6 +2,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Linking, Modal, StyleSheet, Switch, Text, View } from "react-native";
 
 import { useThankYouOpen } from "@/features/thank-you/ThankYouHost";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { chooseAccountLink, useAccountLink } from "@/telemetry/account-link";
 import { Button, CollapsibleCard } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -9,11 +10,15 @@ import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens"
 
 const PRIVACY_POLICY_URL = "https://zoption.site/privacy-policy";
 
+/** The prompt's one-line gist; the Privacy Policy and the Preferences card hold the detail. */
+const SUMMARY =
+  "Link usage and crash reports to your account so we can help when you get stuck, never your amounts or what you type.";
+
 /** Keep in step with the web's Analytics consent copy (CookiePreferencesDialog). */
 const DESCRIPTION =
   "Zoption sends PostHog which screens you open, that you added or changed a record, and crash reports. Allow us to link them to your account ID and email so we can see where you get stuck and help when you contact support. Amounts, categories, and anything you type are never sent.";
 
-function PrivacyPolicyLink() {
+function PrivacyPolicyLink({ label = "Read the Privacy Policy" }: { label?: string }) {
   const theme = useZoptionTheme();
   return (
     <Text
@@ -21,7 +26,7 @@ function PrivacyPolicyLink() {
       onPress={() => void Linking.openURL(PRIVACY_POLICY_URL)}
       style={[typography.caption, { color: theme.colors.brand, textDecorationLine: "underline" }]}
     >
-      Read the Privacy Policy
+      {label}
     </Text>
   );
 }
@@ -29,17 +34,25 @@ function PrivacyPolicyLink() {
 /**
  * Asks a signed-in account once per device whether to link usage analytics to
  * it, like the web's Analytics consent. It waits for the thank-you card, since
- * two native modals cannot open at once.
+ * two native modals cannot open at once, and for first-run setup to close.
  */
 export function UsageAnalyticsPromptHost() {
   const theme = useZoptionTheme();
   const { needsChoice } = useAccountLink();
   const thankYouOpen = useThankYouOpen();
-  const visible = needsChoice && !thankYouOpen;
+  const setupOpen = useOnboardingStore((state) => state.open);
+  const visible = needsChoice && !thankYouOpen && !setupOpen;
   const decline = () => void chooseAccountLink("declined");
 
   return (
-    <Modal animationType="fade" transparent visible={visible} onRequestClose={decline}>
+    <Modal
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      transparent
+      visible={visible}
+      onRequestClose={decline}
+    >
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
         <View
           accessibilityViewIsModal
@@ -59,13 +72,10 @@ export function UsageAnalyticsPromptHost() {
             Help improve Zoption
           </Text>
           <Text style={[typography.body, styles.centered, { color: theme.colors.textMuted }]}>
-            {DESCRIPTION}
-          </Text>
-          <Text style={[typography.caption, styles.centered, { color: theme.colors.textMuted }]}>
-            You can change this any time in More, Usage analytics.
+            {SUMMARY}
           </Text>
           <View style={styles.centeredRow}>
-            <PrivacyPolicyLink />
+            <PrivacyPolicyLink label="Read more in the Privacy Policy" />
           </View>
           <Button variant="primary" onPress={() => void chooseAccountLink("granted")}>
             Allow

@@ -28,7 +28,6 @@ import { clearDailyReminder } from "@/features/reminders/daily-reminder";
 import { clearPetNotifications } from "@/features/pet/pet-notifications";
 import { clearPetMoment } from "@/features/pet/use-pet-moment";
 import { clearOverspendingNotification } from "@/features/reminders/overspending-notification";
-import { isNewAccount, showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
 import { useSheetStore } from "@/stores/sheet-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
@@ -39,7 +38,7 @@ import { telemetry } from "@/telemetry/telemetry";
 import { setSignedInAccount } from "@/telemetry/account-link";
 
 import { clearAppLock } from "./app-lock";
-import { exchangeCodeOnce, type CodeExchange } from "./code-exchange";
+import { exchangeCodeOnce } from "./code-exchange";
 import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
@@ -409,9 +408,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
       throw new Error("Google callback URL could not be parsed: " + result.url.slice(0, 200));
     }
     if ("error" in callback) throw new Error(callback.error);
-    let exchanged: CodeExchange;
     try {
-      exchanged = await exchangeCodeOnce(callback.code);
+      await exchangeCodeOnce(callback.code);
     } catch (exchangeError) {
       const failure = exchangeError as { name?: string; message?: string; code?: string };
       throw new Error(
@@ -420,7 +418,6 @@ export function SessionProvider({ children }: PropsWithChildren) {
         { cause: exchangeError },
       );
     }
-    if (exchanged.user && isNewAccount(exchanged.user)) showThankYou("signup");
   }, []);
 
   const signOut = useCallback(

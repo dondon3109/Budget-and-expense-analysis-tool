@@ -372,7 +372,7 @@ describe("daily reminder tap", () => {
 
     await render(createElement(DailyReminderTapHandler));
 
-    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+    expect(router.push).toHaveBeenCalledWith("/(app)/add-transaction");
     expect(notifications.clearLastNotificationResponse).toHaveBeenCalledTimes(1);
   });
 
@@ -383,7 +383,7 @@ describe("daily reminder tap", () => {
 
     listener?.(responseFor(NOON));
 
-    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+    expect(router.push).toHaveBeenCalledWith("/(app)/add-transaction");
   });
 
   it("opens the editor once when the launching tap also reaches the listener", async () => {
@@ -410,7 +410,7 @@ describe("daily reminder tap", () => {
     navigationState.mockReturnValue({ key: "root" } as ReturnType<typeof useRootNavigationState>);
     await view.rerender(createElement(DailyReminderTapHandler));
 
-    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+    expect(router.push).toHaveBeenCalledWith("/(app)/add-transaction");
   });
 
   it("opens the confirm screen when a widget review note is tapped", async () => {

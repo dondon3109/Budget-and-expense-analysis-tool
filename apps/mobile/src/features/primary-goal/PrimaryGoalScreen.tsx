@@ -1,9 +1,10 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Text } from "react-native";
 
 import { markGoalShown } from "@/api/goal-profile";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { Button } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -19,7 +20,6 @@ export function PrimaryGoalScreen() {
   const session = useSessionSnapshot();
   const profile = useGoalProfileStore((state) => state.profile);
   const actions = useGoalActions();
-  const [thanked, setThanked] = useState(false);
 
   useEffect(() => {
     // Best effort: the server records one "shown" row per workspace.
@@ -29,26 +29,17 @@ export function PrimaryGoalScreen() {
       .catch(() => undefined);
   }, [session]);
 
+  // Only a saved answer is thanked, over the screen it returns to: a failed save stays on the
+  // picker, and Skip just leaves.
   const choose = async (choice: GoalChoice) => {
-    if (await actions.save(choice)) setThanked(true);
+    if (!(await actions.save(choice))) return;
+    router.back();
+    showThankYou("goal");
   };
   const skip = async () => {
     await actions.skip();
     router.back();
   };
-
-  // Only a saved answer is thanked: a failed save stays on the picker, and Skip just leaves.
-  if (thanked) {
-    return (
-      <Screen title="Thank you!">
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Thanks for taking a moment to tell us. We&apos;ve set Zoption up around what matters to
-          you.
-        </Text>
-        <Button onPress={() => router.back()}>Continue</Button>
-      </Screen>
-    );
-  }
 
   return (
     <Screen title="What brings you to Zoption?">

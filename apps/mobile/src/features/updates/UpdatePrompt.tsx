@@ -47,7 +47,14 @@ export function AndroidUpdateOverlayView({ updates }: { updates: AndroidUpdateCo
   const notes = updates.latest ? normalizeReleaseNotes(updates.latest.notes) : [];
 
   return (
-    <Modal animationType="fade" transparent visible onRequestClose={() => void updates.later()}>
+    <Modal
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      transparent
+      visible
+      onRequestClose={() => void updates.later()}
+    >
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
         {promptVisible ? (
           <Pressable

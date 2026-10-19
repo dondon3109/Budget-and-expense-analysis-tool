@@ -18,7 +18,7 @@ import {
   useTransactionFormData,
 } from "@/db/local-workspace-state";
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { Button, Card, ErrorState, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -98,7 +98,7 @@ function TransactionConfirm({
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const formData = useTransactionFormData();
-  const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
+  const lastUsedAccountId = useLastUsedAccountStore((state) => state.accountId);
 
   const [kind, setKind] = useState(intent.type);
   const [description, setDescription] = useState<string | null>(null);
@@ -141,7 +141,7 @@ function TransactionConfirm({
   // The account and category the speaker named ("... dinner today using
   // cash") are recovered from the transcript: the account from the speaker's
   // own account names, the category from the shared semantic matcher. An
-  // unnamed account starts on the device's default spending account.
+  // unnamed account starts on the account the last entry used.
   const suggestedCategory = useMemo(
     () => matchCategory(categories, null, { kind, contextText: transcript }),
     [categories, kind, transcript],
@@ -149,7 +149,7 @@ function TransactionConfirm({
   const resolvedAccountId =
     accountId ??
     resolveWidgetAccountFromTranscript(accounts, transcript) ??
-    preferredTransactionAccount(accounts, defaultSpendingAccountId)?.id ??
+    preferredTransactionAccount(accounts, lastUsedAccountId)?.id ??
     "";
   const resolvedCategoryId =
     categoryId ?? suggestedCategory?.id ?? resolveWidgetCategory(categories, kind) ?? "";
@@ -673,7 +673,10 @@ export function WidgetIntentScreen() {
               </View>
               <View className="flex-row items-center gap-3">
                 <View className="flex-1">
-                  <Button variant="secondary" onPress={() => router.replace("/(app)/transaction")}>
+                  <Button
+                    variant="secondary"
+                    onPress={() => router.replace("/(app)/add-transaction")}
+                  >
                     Open transaction form
                   </Button>
                 </View>

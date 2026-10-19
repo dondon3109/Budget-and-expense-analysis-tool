@@ -1,9 +1,17 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Tabs } from "expo-router";
-import { Platform, StyleSheet, View, type ColorValue } from "react-native";
+import {
+  Easing,
+  Platform,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+  type ColorValue,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { playSound } from "@/features/sounds/sound-effects";
+import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, typography } from "@/ui/tokens";
 
@@ -52,6 +60,8 @@ const styles = StyleSheet.create({
 export default function TabLayout() {
   const theme = useZoptionTheme();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  const reduceMotion = useReduceMotion();
   const bottomInset = Math.max(insets.bottom, Platform.OS === "android" ? 24 : 12);
 
   return (
@@ -59,6 +69,30 @@ export default function TabLayout() {
       screenListeners={{ tabPress: () => playSound("tap") }}
       screenOptions={{
         headerShown: false,
+        // Tabs slide like pages: a tab's progress is -1 left of the focused one and 1 right of
+        // it, so the incoming page pushes the outgoing one off the side it came from. A custom
+        // spec animates even with animation "none", so reduce motion leaves all three out.
+        ...(reduceMotion
+          ? {}
+          : {
+              animation: "shift",
+              transitionSpec: {
+                animation: "timing",
+                config: { duration: 280, easing: Easing.out(Easing.cubic) },
+              },
+              sceneStyleInterpolator: ({ current }) => ({
+                sceneStyle: {
+                  transform: [
+                    {
+                      translateX: current.progress.interpolate({
+                        inputRange: [-1, 0, 1],
+                        outputRange: [-width, 0, width],
+                      }),
+                    },
+                  ],
+                },
+              }),
+            }),
         tabBarActiveTintColor: theme.colors.text,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarIconStyle: PILL,

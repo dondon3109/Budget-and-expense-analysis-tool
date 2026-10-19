@@ -370,10 +370,6 @@
   background: var(--action-soft);
 }
 
-.dashboard-account-actions .dashboard-account-default[aria-pressed="true"] {
-  color: var(--action);
-}
-
 .dashboard-account-actions button[aria-label^="Remove"]:hover {
   color: var(--danger);
   background: var(--danger-soft);

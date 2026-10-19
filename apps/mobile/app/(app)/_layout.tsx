@@ -55,11 +55,30 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="add-transaction"
+          options={{
+            presentation: "transparentModal",
+            // The picker animates itself, and the screen it opens over must stay visible.
+            animation: "none",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            presentation: "transparentModal",
+            // Setup is a dialog over Home, which must stay visible behind it.
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
           name="transaction"
           options={{
             headerShown: true,
             headerBackTitle: "Transactions",
             presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            animation: "slide_from_bottom",
             sheetGrabberVisible: Platform.OS === "ios",
           }}
         />

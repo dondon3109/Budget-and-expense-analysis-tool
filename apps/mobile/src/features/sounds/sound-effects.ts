@@ -1,4 +1,6 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from "expo-audio";
+import * as Haptics from "expo-haptics";
+import { Platform } from "react-native";
 
 import errorSource from "../../../assets/sounds/error.wav";
 import successSource from "../../../assets/sounds/success.wav";
@@ -58,12 +60,43 @@ function playerFor(source: ClipSource): AudioPlayer {
 }
 
 /**
- * Plays a short UI sound. Fire and forget: a missing audio module or a failed
- * play must never break the action that triggered it.
+ * Plays a short UI sound and its matching buzz. Fire and forget: a missing audio module or a
+ * failed play must never break the action that triggered it. The sound follows the Sound effects
+ * switch; the buzz follows the system's haptics setting instead, so muting sounds keeps it.
  */
 export function playSound(effect: SoundEffect): void {
+  playHaptic(effect);
   playClip(sources[effect]);
 }
+
+// Android uses the view's own haptic feedback rather than a vibrator waveform, because only
+// that honours the system "Touch feedback" switch, and it is the crisp click native keys use.
+function playHaptic(effect: SoundEffect): void {
+  try {
+    const buzz =
+      Platform.OS === "android"
+        ? Haptics.performAndroidHapticsAsync(androidHaptics[effect])
+        : effect === "tap"
+          ? Haptics.selectionAsync()
+          : Haptics.notificationAsync(iosNotification[effect]);
+    buzz.catch(() => {
+      // Haptics are decoration; a device without them stays quiet.
+    });
+  } catch {
+    // Haptics are decoration; ignore.
+  }
+}
+
+const androidHaptics = {
+  tap: Haptics.AndroidHaptics.Virtual_Key,
+  success: Haptics.AndroidHaptics.Confirm,
+  error: Haptics.AndroidHaptics.Reject,
+} as const satisfies Record<SoundEffect, Haptics.AndroidHaptics>;
+
+const iosNotification = {
+  success: Haptics.NotificationFeedbackType.Success,
+  error: Haptics.NotificationFeedbackType.Error,
+} as const;
 
 /**
  * Plays any bundled clip under the same rules as `playSound`: only while sounds are on, and fire

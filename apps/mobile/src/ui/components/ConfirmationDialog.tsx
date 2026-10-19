@@ -18,7 +18,14 @@ interface ConfirmationDialogProps {
 export function ConfirmationDialog(props: ConfirmationDialogProps) {
   const theme = useZoptionTheme();
   return (
-    <Modal animationType="fade" transparent visible={props.visible} onRequestClose={props.onCancel}>
+    <Modal
+      animationType="fade"
+      navigationBarTranslucent
+      statusBarTranslucent
+      transparent
+      visible={props.visible}
+      onRequestClose={props.onCancel}
+    >
       <View style={[styles.layer, { backgroundColor: theme.colors.overlay }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={withTapSound(props.onCancel)} />
         <View

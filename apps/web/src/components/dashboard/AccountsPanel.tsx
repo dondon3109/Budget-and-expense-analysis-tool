@@ -3,22 +3,17 @@ import {
   currencyMetadata,
   otherCurrenciesWithAmounts,
   parseAmountToMinor,
-  preferredTransactionAccount,
   type AccountBalanceSummaryItem,
   type AccountInput,
   type Currency,
   type DashboardSummary,
 } from "@zoption/shared";
-import { Pencil, Plus, Share2, SlidersHorizontal, Star, Trash2, WalletCards } from "lucide-react";
+import { Pencil, Plus, Share2, SlidersHorizontal, Trash2, WalletCards } from "lucide-react";
 import { useRef } from "react";
 
 import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
 import { trendState } from "../../lib/dashboard";
-import {
-  setDefaultSpendingAccountId,
-  useDefaultSpendingAccountId,
-} from "../../lib/defaultSpendingAccount";
 import { formatMoney } from "../../lib/formatters";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -92,11 +87,6 @@ export function AccountsPanel({
     removeAccountMutation,
   } = accounts;
   const accountListRef = useRef<HTMLUListElement>(null);
-  const defaultSpendingAccountId = useDefaultSpendingAccountId();
-  const defaultSpendingAccount = preferredTransactionAccount(
-    activeAccounts,
-    defaultSpendingAccountId,
-  );
   // Blank means no starting balance; text that is not an amount blocks the add.
   const startingBalanceMinor = parseOptionalAmount(accountStartingBalance);
   const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
@@ -262,14 +252,10 @@ export function AccountsPanel({
                 const isDefaultBank = account.name === "Bank";
                 const canEdit = !account.system || isDefaultBank;
                 const canRemove = !account.system;
-                const isDefaultSpending = account.id === defaultSpendingAccount?.id;
                 return (
                   <li key={account.id}>
                     <div className="dashboard-account-details">
-                      <span className="dashboard-account-name">
-                        {account.name}
-                        {isDefaultSpending && <em>Default</em>}
-                      </span>
+                      <span className="dashboard-account-name">{account.name}</span>
                       <span className="dashboard-account-meta">
                         {accountTypeLabel(account.type)}
                         {account.system && <em>Permanent</em>}
@@ -326,24 +312,6 @@ export function AccountsPanel({
                             <Share2 size={14} aria-hidden="true" />
                           </button>
                         )}
-                        <button
-                          type="button"
-                          className="dashboard-account-default"
-                          onClick={() => setDefaultSpendingAccountId(account.id)}
-                          aria-pressed={isDefaultSpending}
-                          aria-label={`Use ${account.name} as the default spending account`}
-                          title={
-                            isDefaultSpending
-                              ? `${account.name} is the default spending account`
-                              : `Use ${account.name} as the default spending account`
-                          }
-                        >
-                          <Star
-                            size={14}
-                            aria-hidden="true"
-                            fill={isDefaultSpending ? "currentColor" : "none"}
-                          />
-                        </button>
                         <button
                           type="button"
                           onClick={() => onAdjustBalance(account)}

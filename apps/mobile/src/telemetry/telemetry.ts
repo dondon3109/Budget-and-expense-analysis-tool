@@ -33,6 +33,8 @@
  * docs/mobile/security-and-privacy.md.
  */
 
+import { LogBox } from "react-native";
+
 export const DEFAULT_POSTHOG_HOST = "https://us.i.posthog.com";
 /** PostHog feature flag that must be truthy for reports to leave the device. */
 export const REMOTE_KILL_SWITCH_FLAG = "crash-telemetry-enabled";
@@ -493,6 +495,11 @@ async function createPostHogTransport(config: TelemetryConfig): Promise<Telemetr
     );
   }
   const posthog = await import("posthog-react-native");
+  if (__DEV__) {
+    // PostHog reports a failed background flush through console.error, which a dev build
+    // raises as a red error notice. A dropped flush is a network blip, not an app error.
+    LogBox.ignoreLogs(["Error while flushing PostHog"]);
+  }
   const client = new posthog.default(config.apiKey, createPostHogOptions(config.host));
 
   let gateListener: ((allowed: boolean) => void) | undefined;

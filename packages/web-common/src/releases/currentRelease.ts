@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 19, 2026",
+  releasedOn: "October 20, 2026",
   changes: [
     {
       title: "Family workspaces",
@@ -44,9 +44,29 @@ export const currentRelease: ProductRelease = {
         "Mobile Home lists each account with its balance below the Total Balance, and a new transaction's date is picked from a calendar pop-up.",
     },
     {
-      title: "Android Beta 0.2.56",
+      title: "A faster way to add an entry on mobile",
       description:
-        "The official Android Beta carries family workspaces, the new plans, snapshot links, and everything from 0.2.55. Install 0.2.56 over 0.2.55.",
+        "Pick income, expense, or transfer first, then choose the account from icon tiles with Cash, GCash, and your bank up front. New entries start on the account you used last, and the form saves or closes from its header.",
+    },
+    {
+      title: "Voice entry you can review",
+      description:
+        "On mobile, voice entry opens as a dialog over the form with sound bars while it listens, and you check the draft before it saves.",
+    },
+    {
+      title: "A friendlier first run on mobile",
+      description:
+        "Setup is one dialog over Home with numbered steps underneath, and you can tap a finished step to go back. It asks whether you want a streak pet before showing the eggs, and ends with a thank-you.",
+    },
+    {
+      title: "Haptics and smoother screens",
+      description:
+        "Taps, saves, and errors on mobile come with a light buzz, the bottom tabs slide like pages, and dialogs dim the whole screen. Every new workspace also starts with a Maya e-wallet account.",
+    },
+    {
+      title: "Android Beta 0.2.57",
+      description:
+        "The official Android Beta carries family workspaces, the new plans, snapshot links, the new entry form, and everything from 0.2.55. Install 0.2.57 over 0.2.55.",
     },
   ],
 };

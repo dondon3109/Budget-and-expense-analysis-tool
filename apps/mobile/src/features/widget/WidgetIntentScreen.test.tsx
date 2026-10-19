@@ -7,7 +7,7 @@ import {
 } from "@/db/local-workspace-state";
 import type { LocalDashboardData, TransactionFormData } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { WidgetIntentScreen } from "./WidgetIntentScreen";
 
@@ -205,7 +205,7 @@ describe("WidgetIntentScreen expense review", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchParams = { transcript };
-    useDefaultSpendingAccountStore.setState({ accountId: null });
+    useLastUsedAccountStore.setState({ accountId: null });
     jest
       .mocked(useSyncState)
       .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
@@ -260,17 +260,17 @@ describe("WidgetIntentScreen expense review", () => {
     expect(screen.getByRole("button", { name: "Category, Uncategorized" })).toBeTruthy();
   });
 
-  it("starts an unnamed account on the default spending account", async () => {
+  it("starts an unnamed account on the last used account", async () => {
     mockSearchParams = { transcript: "spent 150 pesos on misc" };
-    useDefaultSpendingAccountStore.setState({ accountId: "a-gcash" });
+    useLastUsedAccountStore.setState({ accountId: "a-gcash" });
 
     await render(<WidgetIntentScreen />);
 
     expect(screen.getByRole("button", { name: "Account, GCash, PHP" })).toBeTruthy();
   });
 
-  it("still honours an account the speaker named over the default", async () => {
-    useDefaultSpendingAccountStore.setState({ accountId: "a-gcash" });
+  it("still honours an account the speaker named over the last used one", async () => {
+    useLastUsedAccountStore.setState({ accountId: "a-gcash" });
 
     await render(<WidgetIntentScreen />);
 

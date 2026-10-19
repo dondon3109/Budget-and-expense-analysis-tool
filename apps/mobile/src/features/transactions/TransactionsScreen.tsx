@@ -1,4 +1,3 @@
-import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { useCallback, useDeferredValue, useMemo, useState } from "react";
@@ -21,12 +20,10 @@ import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
   BottomSheet,
-  Button,
   ConfirmationDialog,
   ErrorState,
   OfflineBanner,
   Skeleton,
-  SyncPausedBanner,
 } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -45,6 +42,7 @@ import { CalendarMonthGrid } from "@/features/calendar/CalendarMonthGrid";
 import { calendarCellsFromTransactions } from "./transaction-calendar-cells";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { openAddTransaction } from "./AddTransactionPicker";
 
 type ViewMode = "daily" | "calendar" | "monthly" | "summary";
 
@@ -104,7 +102,6 @@ export function TransactionsScreen() {
   const local = useLocalTransactions(deferredSearch, kind, month);
   const workspace = useLocalWorkspace().workspace;
   const sync = useSyncState();
-  const { openFeature } = useAccountGate();
   const theme = useZoptionTheme();
   const filtering = search.trim().length > 0 || kind !== "all";
 
@@ -241,14 +238,6 @@ export function TransactionsScreen() {
           );
         })}
       </View>
-      <Button
-        accessibilityHint="Opens the SMS quick-paste sheet to parse a bank notification"
-        icon="message-text-outline"
-        onPress={() => setSmsQuickPasteVisible(true)}
-        variant="secondary"
-      >
-        Paste SMS notification
-      </Button>
     </View>
   );
 
@@ -299,9 +288,9 @@ export function TransactionsScreen() {
           </Text>
           <View style={[styles.toolbarSide, styles.toolbarRight]}>
             <HeaderIcon
-              icon="line-scan"
-              label="Scan receipt"
-              onPress={() => openFeature("receipt-scan", "/(app)/receipt-scan")}
+              icon="message-text-outline"
+              label="Paste SMS notification"
+              onPress={() => setSmsQuickPasteVisible(true)}
             />
             <HeaderIcon
               icon="tag-outline"
@@ -451,13 +440,6 @@ export function TransactionsScreen() {
       </View>
 
       <OfflineBanner />
-      {sync.message && sync.status !== "waiting" ? (
-        <SyncPausedBanner
-          message={sync.message}
-          onRetry={sync.retry}
-          style={styles.syncBannerInset}
-        />
-      ) : null}
       {local.error ? (
         <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
       ) : local.items === null ? (
@@ -561,7 +543,7 @@ export function TransactionsScreen() {
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
             android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
-            onPress={withTapSound(() => router.push("/(app)/transaction"))}
+            onPress={withTapSound(openAddTransaction)}
             style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
           >
             <MaterialCommunityIcons
@@ -725,7 +707,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   loading: { gap: spacing.xs, padding: spacing.md },
-  syncBannerInset: { width: "auto", marginHorizontal: spacing.md, marginVertical: spacing.sm },
   listContent: { paddingBottom: 96 },
   emptyList: { flexGrow: 1 },
   fabPosition: {
