@@ -185,7 +185,7 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
               <Button
                 variant="secondary"
                 size="compact"
-                onPress={() => router.push("/(app)/transaction")}
+                onPress={() => router.push("/(app)/add-transaction")}
               >
                 Log transaction
               </Button>

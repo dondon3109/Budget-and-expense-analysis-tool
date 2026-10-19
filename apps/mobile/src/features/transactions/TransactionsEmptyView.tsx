@@ -90,7 +90,7 @@ export function TransactionsEmptyView({
       <View style={styles.emptyActions}>
         <Button
           accessibilityHint="Opens the new transaction form"
-          onPress={() => router.push("/(app)/transaction")}
+          onPress={() => router.push("/(app)/add-transaction")}
           variant="primary"
         >
           Add transaction

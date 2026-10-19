@@ -44,7 +44,7 @@ describe("QuickStartGuideCard", () => {
 
     const addTxBtn = screen.getByRole("button", { name: "Log transaction" });
     await fireEvent.press(addTxBtn);
-    expect(router.push).toHaveBeenCalledWith("/(app)/transaction");
+    expect(router.push).toHaveBeenCalledWith("/(app)/add-transaction");
 
     const tutorialsBtn = screen.getByRole("button", { name: "View tutorials" });
     await fireEvent.press(tutorialsBtn);

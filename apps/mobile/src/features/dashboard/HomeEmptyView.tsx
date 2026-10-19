@@ -113,7 +113,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
               <Button
                 variant="secondary"
                 accessibilityHint="Opens manual transaction entry"
-                onPress={() => router.push("/(app)/transaction")}
+                onPress={() => router.push("/(app)/add-transaction")}
               >
                 Start fresh (Add transaction)
               </Button>
@@ -154,7 +154,7 @@ export function HomeEmptyView({ syncing }: { syncing: boolean }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Step 2: Add your first transaction"
-          onPress={withTapSound(() => router.push("/(app)/transaction"))}
+          onPress={withTapSound(() => router.push("/(app)/add-transaction"))}
           style={[
             styles.stepCard,
             { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },

@@ -21,7 +21,7 @@ export function QuickActionBar() {
         accessibilityHint="Opens the new transaction form"
         accessibilityRole="button"
         android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={withTapSound(() => router.push("/(app)/transaction"))}
+        onPress={withTapSound(() => router.push("/(app)/add-transaction"))}
         style={[
           styles.quickActionTile,
           styles.primaryTile,

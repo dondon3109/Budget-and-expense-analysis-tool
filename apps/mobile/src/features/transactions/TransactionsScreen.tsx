@@ -561,7 +561,7 @@ export function TransactionsScreen() {
             accessibilityHint="Opens the new transaction form"
             accessibilityRole="button"
             android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 29 }}
-            onPress={withTapSound(() => router.push("/(app)/transaction"))}
+            onPress={withTapSound(() => router.push("/(app)/add-transaction"))}
             style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
           >
             <MaterialCommunityIcons

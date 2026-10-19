@@ -97,7 +97,7 @@ export function TutorialsScreen() {
       summary:
         "Log purchases on the go in under 5 seconds with receipt scanning and AI voice input.",
       actionTitle: "Record transaction",
-      onAction: () => router.push("/(app)/transaction"),
+      onAction: () => router.push("/(app)/add-transaction"),
       steps: [
         {
           title: "1. Camera Receipt Scanning",

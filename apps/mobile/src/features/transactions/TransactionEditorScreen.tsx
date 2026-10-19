@@ -66,6 +66,7 @@ import { saveFamilyReceipt, useFamilyReceipt } from "@/features/family/use-famil
 import { TransactionPhotoField } from "./TransactionPhotoField";
 import { DebtPaymentField } from "./DebtPaymentField";
 import { EntryCurrencyField } from "./EntryCurrencyField";
+import { EntryReveal } from "./EntryReveal";
 import { KindSelector } from "./KindSelector";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
@@ -88,6 +89,7 @@ export function TransactionEditorScreen() {
     description?: string | string[];
     date?: string | string[];
     kind?: string | string[];
+    mode?: string | string[];
     category?: string | string[];
     referenceNumber?: string | string[];
     channel?: string | string[];
@@ -542,258 +544,235 @@ export function TransactionEditorScreen() {
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
       <Stack.Screen options={{ title }} />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
-        style={styles.safe}
-      >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
+      <EntryReveal>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
+          style={styles.safe}
         >
-          {blockedState === "conflicted" ? (
-            <Card style={{ backgroundColor: theme.colors.warningSoft }}>
-              <Text style={[typography.headline, { color: theme.colors.text }]}>
-                Conflict preserved
-              </Text>
-              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Zoption kept both versions. Editing stays disabled until conflict resolution is
-                available.
-              </Text>
-              {id ? (
-                <Button
-                  onPress={() =>
-                    router.push({
-                      pathname: "/(app)/transaction-conflict",
-                      params: { id },
-                    })
-                  }
-                  variant="secondary"
-                >
-                  Review conflict
-                </Button>
-              ) : null}
-            </Card>
-          ) : blockedState === "failed" ? (
-            <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
-              <Text style={[typography.headline, { color: theme.colors.text }]}>
-                Sync needs repair
-              </Text>
-              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                This saved operation was rejected and remains protected on this device.
-              </Text>
-            </Card>
-          ) : familyLocked ? (
-            <Card>
-              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                {closesAt
-                  ? "This family is closing, so nothing in it can change."
-                  : family?.role === "viewer"
-                    ? "You can view this family but not change it."
-                    : "Only the person who added this entry, or the family's owner, can change it."}
-              </Text>
-            </Card>
-          ) : blockedState === "pending" ? (
-            <SyncStatus state="pending" />
-          ) : null}
+          <ScrollView
+            contentContainerStyle={styles.content}
+            contentInsetAdjustmentBehavior="automatic"
+            keyboardShouldPersistTaps="handled"
+          >
+            {blockedState === "conflicted" ? (
+              <Card style={{ backgroundColor: theme.colors.warningSoft }}>
+                <Text style={[typography.headline, { color: theme.colors.text }]}>
+                  Conflict preserved
+                </Text>
+                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                  Zoption kept both versions. Editing stays disabled until conflict resolution is
+                  available.
+                </Text>
+                {id ? (
+                  <Button
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(app)/transaction-conflict",
+                        params: { id },
+                      })
+                    }
+                    variant="secondary"
+                  >
+                    Review conflict
+                  </Button>
+                ) : null}
+              </Card>
+            ) : blockedState === "failed" ? (
+              <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
+                <Text style={[typography.headline, { color: theme.colors.text }]}>
+                  Sync needs repair
+                </Text>
+                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                  This saved operation was rejected and remains protected on this device.
+                </Text>
+              </Card>
+            ) : familyLocked ? (
+              <Card>
+                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                  {closesAt
+                    ? "This family is closing, so nothing in it can change."
+                    : family?.role === "viewer"
+                      ? "You can view this family but not change it."
+                      : "Only the person who added this entry, or the family's owner, can change it."}
+                </Text>
+              </Card>
+            ) : blockedState === "pending" ? (
+              <SyncStatus state="pending" />
+            ) : null}
 
-          {!hasChoices ? (
-            <Card>
-              <Text style={[typography.headline, { color: theme.colors.text }]}>
-                Account setup needed
-              </Text>
-              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                Add at least one active account and an available {values.kind} category before
-                saving.
-              </Text>
-            </Card>
-          ) : null}
+            {!hasChoices ? (
+              <Card>
+                <Text style={[typography.headline, { color: theme.colors.text }]}>
+                  Account setup needed
+                </Text>
+                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                  Add at least one active account and an available {values.kind} category before
+                  saving.
+                </Text>
+              </Card>
+            ) : null}
 
-          {!editing ? (
-            <TransactionVoiceEntry
-              disabled={!hasChoices || saving || mutationBlocked}
-              categories={formData.data?.categories
-                .filter((category) => !category.pending)
-                .map((category) => category.name)}
-              onDraft={(draft) => {
-                const nextKind = draft.kind;
-                const nextKindCategories =
+            {!editing ? (
+              <TransactionVoiceEntry
+                autoStart={singleParam(params.mode) === "voice"}
+                disabled={!hasChoices || saving || mutationBlocked}
+                categories={formData.data?.categories
+                  .filter((category) => !category.pending)
+                  .map((category) => category.name)}
+                onDraft={(draft) => {
+                  const nextKind = draft.kind;
+                  const nextKindCategories =
+                    formData.data?.categories.filter(
+                      (category) => category.kind === nextKind && !category.pending,
+                    ) ?? [];
+                  const matchingCategory = matchCategory(nextKindCategories, draft.categoryName, {
+                    kind: nextKind,
+                    contextText: draft.transcript,
+                  });
+                  const fallbackCategory = defaultTransactionCategory(nextKindCategories, nextKind);
+                  const activeAccounts =
+                    formData.data?.accounts.filter((account) => !account.pending) ?? [];
+                  const fromAccount =
+                    activeAccounts.find((account) => account.id === values.accountId) ??
+                    activeAccounts[0];
+                  const nextValues: TransactionFormValues = {
+                    ...values,
+                    kind: nextKind,
+                    accountId: fromAccount?.id ?? values.accountId,
+                    toAccountId:
+                      nextKind === "transfer"
+                        ? (activeAccounts.find((account) => account.id !== fromAccount?.id)?.id ??
+                          "")
+                        : "",
+                    categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? values.categoryId,
+                    date: draft.date,
+                    description: draft.description,
+                    amount: formatMinorForInput(draft.amountMinor),
+                    transferFee: "",
+                    currency: draft.currency,
+                    notes: values.notes,
+                  };
+                  setValues(nextValues);
+                  setVoiceDrafted(true);
+                  setErrors({});
+                  setMessage(null);
+
+                  pendingValuesToSaveRef.current = nextValues;
+                  setPreviewSummary({
+                    amountMinor: draft.amountMinor,
+                    currency: entryCurrency(nextValues).currency,
+                    description: draft.description,
+                    categoryName:
+                      matchingCategory?.name ?? fallbackCategory?.name ?? draft.categoryName,
+                    accountName: fromAccount?.name,
+                    kind: nextKind,
+                  });
+                  machineRef.current?.start(draft, VOICE_PREVIEW_AUTO_SAVE_MS);
+                }}
+              />
+            ) : null}
+
+            {previewSummary &&
+            (voicePreviewState.status === "pending" ||
+              voicePreviewState.status === "saving" ||
+              voicePreviewState.status === "error") ? (
+              <VoicePreviewCard
+                draft={previewSummary}
+                remainingSeconds={
+                  voicePreviewState.status === "pending"
+                    ? remainingSecondsFromMs(voicePreviewState.remainingMs)
+                    : 0
+                }
+                saving={voicePreviewState.status === "saving" || saving}
+                error={voicePreviewState.status === "error" ? voicePreviewState.error : null}
+                onEdit={handleEditVoicePreview}
+                onCancel={handleCancelVoicePreview}
+              />
+            ) : null}
+
+            <KindSelector
+              value={values.kind}
+              disabled={saving || mutationBlocked || editing}
+              onChange={(kind) => {
+                if (voicePreviewState.status === "pending") {
+                  machineRef.current?.edit();
+                }
+                const firstCategory = defaultTransactionCategory(
                   formData.data?.categories.filter(
-                    (category) => category.kind === nextKind && !category.pending,
-                  ) ?? [];
-                const matchingCategory = matchCategory(nextKindCategories, draft.categoryName, {
-                  kind: nextKind,
-                  contextText: draft.transcript,
+                    (category) => kind !== "transfer" || !category.pending,
+                  ) ?? [],
+                  kind,
+                );
+                setValues((current) => {
+                  const synchronizedAccounts =
+                    formData.data?.accounts.filter((account) => !account.pending) ?? [];
+                  const fromAccount =
+                    kind === "transfer"
+                      ? (synchronizedAccounts.find((account) => account.id === current.accountId) ??
+                        synchronizedAccounts[0])
+                      : formData.data?.accounts.find((account) => account.id === current.accountId);
+                  return {
+                    ...current,
+                    kind,
+                    accountId: fromAccount?.id ?? current.accountId,
+                    toAccountId:
+                      kind === "transfer"
+                        ? (synchronizedAccounts.find((account) => account.id !== fromAccount?.id)
+                            ?.id ?? "")
+                        : "",
+                    categoryId: firstCategory?.id ?? "",
+                    currency: fromAccount?.currency ?? current.currency,
+                    transferFee: kind === "transfer" ? current.transferFee : "",
+                  };
                 });
-                const fallbackCategory = defaultTransactionCategory(nextKindCategories, nextKind);
-                const activeAccounts =
-                  formData.data?.accounts.filter((account) => !account.pending) ?? [];
-                const fromAccount =
-                  activeAccounts.find((account) => account.id === values.accountId) ??
-                  activeAccounts[0];
-                const nextValues: TransactionFormValues = {
-                  ...values,
-                  kind: nextKind,
-                  accountId: fromAccount?.id ?? values.accountId,
-                  toAccountId:
-                    nextKind === "transfer"
-                      ? (activeAccounts.find((account) => account.id !== fromAccount?.id)?.id ?? "")
-                      : "",
-                  categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? values.categoryId,
-                  date: draft.date,
-                  description: draft.description,
-                  amount: formatMinorForInput(draft.amountMinor),
-                  transferFee: "",
-                  currency: draft.currency,
-                  notes: values.notes,
-                };
-                setValues(nextValues);
-                setVoiceDrafted(true);
-                setErrors({});
+                setErrors((current) => ({ ...current, categoryId: undefined }));
                 setMessage(null);
-
-                pendingValuesToSaveRef.current = nextValues;
-                setPreviewSummary({
-                  amountMinor: draft.amountMinor,
-                  currency: entryCurrency(nextValues).currency,
-                  description: draft.description,
-                  categoryName:
-                    matchingCategory?.name ?? fallbackCategory?.name ?? draft.categoryName,
-                  accountName: fromAccount?.name,
-                  kind: nextKind,
-                });
-                machineRef.current?.start(draft, VOICE_PREVIEW_AUTO_SAVE_MS);
               }}
             />
-          ) : null}
-
-          {previewSummary &&
-          (voicePreviewState.status === "pending" ||
-            voicePreviewState.status === "saving" ||
-            voicePreviewState.status === "error") ? (
-            <VoicePreviewCard
-              draft={previewSummary}
-              remainingSeconds={
-                voicePreviewState.status === "pending"
-                  ? remainingSecondsFromMs(voicePreviewState.remainingMs)
-                  : 0
-              }
-              saving={voicePreviewState.status === "saving" || saving}
-              error={voicePreviewState.status === "error" ? voicePreviewState.error : null}
-              onEdit={handleEditVoicePreview}
-              onCancel={handleCancelVoicePreview}
-            />
-          ) : null}
-
-          <KindSelector
-            value={values.kind}
-            disabled={saving || mutationBlocked || editing}
-            onChange={(kind) => {
-              if (voicePreviewState.status === "pending") {
-                machineRef.current?.edit();
-              }
-              const firstCategory = defaultTransactionCategory(
-                formData.data?.categories.filter(
-                  (category) => kind !== "transfer" || !category.pending,
-                ) ?? [],
-                kind,
-              );
-              setValues((current) => {
-                const synchronizedAccounts =
-                  formData.data?.accounts.filter((account) => !account.pending) ?? [];
-                const fromAccount =
-                  kind === "transfer"
-                    ? (synchronizedAccounts.find((account) => account.id === current.accountId) ??
-                      synchronizedAccounts[0])
-                    : formData.data?.accounts.find((account) => account.id === current.accountId);
-                return {
-                  ...current,
-                  kind,
-                  accountId: fromAccount?.id ?? current.accountId,
-                  toAccountId:
-                    kind === "transfer"
-                      ? (synchronizedAccounts.find((account) => account.id !== fromAccount?.id)
-                          ?.id ?? "")
-                      : "",
-                  categoryId: firstCategory?.id ?? "",
-                  currency: fromAccount?.currency ?? current.currency,
-                  transferFee: kind === "transfer" ? current.transferFee : "",
-                };
-              });
-              setErrors((current) => ({ ...current, categoryId: undefined }));
-              setMessage(null);
-            }}
-          />
-          <FormField
-            editable={!saving && !mutationBlocked}
-            autoFocus={!editing}
-            error={errors.amount}
-            keyboardType="decimal-pad"
-            label="Amount"
-            maxLength={18}
-            onChangeText={(value) => updateValue("amount", value)}
-            placeholder="0.00"
-            trailing={currencyTag}
-            value={values.amount}
-          />
-          {transfer ? (
             <FormField
               editable={!saving && !mutationBlocked}
-              error={errors.transferFee}
-              hint={netReceived ? `Receiver gets ${netReceived} ${currency.currency}.` : undefined}
+              autoFocus={!editing}
+              error={errors.amount}
               keyboardType="decimal-pad"
-              label="Transfer fee (optional)"
+              label="Amount"
               maxLength={18}
-              onChangeText={(value) => updateValue("transferFee", value)}
+              onChangeText={(value) => updateValue("amount", value)}
               placeholder="0.00"
               trailing={currencyTag}
-              value={values.transferFee}
+              value={values.amount}
             />
-          ) : null}
-          <SelectionField
-            disabled={saving || mutationBlocked}
-            error={errors.accountId}
-            label={transfer ? "From account" : "Account"}
-            onSelect={(accountId) => {
-              const account = formData.data?.accounts.find((item) => item.id === accountId);
-              setValues((current) => ({
-                ...current,
-                accountId,
-                // Picking the account already on the other side swaps the two sides.
-                toAccountId:
-                  transfer && accountId === current.toAccountId
-                    ? current.accountId
-                    : current.toAccountId,
-                currency: account?.currency ?? current.currency,
-              }));
-              setErrors((current) => ({
-                ...current,
-                accountId: undefined,
-                toAccountId: undefined,
-              }));
-              setMessage(null);
-            }}
-            options={accountOptions}
-            placeholder={transfer ? "Choose source account" : "Choose an account"}
-            sheetTitle={transfer ? "Choose source account" : "Choose account"}
-            value={values.accountId}
-          />
-          {transfer ? (
+            {transfer ? (
+              <FormField
+                editable={!saving && !mutationBlocked}
+                error={errors.transferFee}
+                hint={
+                  netReceived ? `Receiver gets ${netReceived} ${currency.currency}.` : undefined
+                }
+                keyboardType="decimal-pad"
+                label="Transfer fee (optional)"
+                maxLength={18}
+                onChangeText={(value) => updateValue("transferFee", value)}
+                placeholder="0.00"
+                trailing={currencyTag}
+                value={values.transferFee}
+              />
+            ) : null}
             <SelectionField
               disabled={saving || mutationBlocked}
-              error={errors.toAccountId}
-              label="To account"
-              onSelect={(toAccountId) => {
-                const swapped = toAccountId === values.accountId;
-                const source = swapped
-                  ? formData.data?.accounts.find((item) => item.id === values.toAccountId)
-                  : undefined;
+              error={errors.accountId}
+              label={transfer ? "From account" : "Account"}
+              onSelect={(accountId) => {
+                const account = formData.data?.accounts.find((item) => item.id === accountId);
                 setValues((current) => ({
                   ...current,
-                  toAccountId,
-                  accountId: swapped ? current.toAccountId : current.accountId,
-                  currency: source?.currency ?? current.currency,
+                  accountId,
+                  // Picking the account already on the other side swaps the two sides.
+                  toAccountId:
+                    transfer && accountId === current.toAccountId
+                      ? current.accountId
+                      : current.toAccountId,
+                  currency: account?.currency ?? current.currency,
                 }));
                 setErrors((current) => ({
                   ...current,
@@ -803,160 +782,193 @@ export function TransactionEditorScreen() {
                 setMessage(null);
               }}
               options={accountOptions}
-              placeholder="Choose destination account"
-              sheetTitle="Choose destination account"
-              value={values.toAccountId}
+              placeholder={transfer ? "Choose source account" : "Choose an account"}
+              sheetTitle={transfer ? "Choose source account" : "Choose account"}
+              value={values.accountId}
             />
-          ) : null}
-          {currency.choosable ? (
-            <EntryCurrencyField
+            {transfer ? (
+              <SelectionField
+                disabled={saving || mutationBlocked}
+                error={errors.toAccountId}
+                label="To account"
+                onSelect={(toAccountId) => {
+                  const swapped = toAccountId === values.accountId;
+                  const source = swapped
+                    ? formData.data?.accounts.find((item) => item.id === values.toAccountId)
+                    : undefined;
+                  setValues((current) => ({
+                    ...current,
+                    toAccountId,
+                    accountId: swapped ? current.toAccountId : current.accountId,
+                    currency: source?.currency ?? current.currency,
+                  }));
+                  setErrors((current) => ({
+                    ...current,
+                    accountId: undefined,
+                    toAccountId: undefined,
+                  }));
+                  setMessage(null);
+                }}
+                options={accountOptions}
+                placeholder="Choose destination account"
+                sheetTitle="Choose destination account"
+                value={values.toAccountId}
+              />
+            ) : null}
+            {currency.choosable ? (
+              <EntryCurrencyField
+                disabled={saving || mutationBlocked}
+                onChange={(code) => updateValue("currency", code)}
+                value={currency.currency}
+              />
+            ) : null}
+            <SelectionField
               disabled={saving || mutationBlocked}
-              onChange={(code) => updateValue("currency", code)}
-              value={currency.currency}
-            />
-          ) : null}
-          <SelectionField
-            disabled={saving || mutationBlocked}
-            error={errors.categoryId}
-            label="Category"
-            onSelect={(categoryId) => {
-              if (categoryId === NEW_CATEGORY_OPTION) {
-                setCreatingCategory(true);
-                return;
-              }
-              updateValue("categoryId", categoryId);
-            }}
-            options={
-              canCreateCategory
-                ? [...categoryOptions, { id: NEW_CATEGORY_OPTION, label: "+ New category" }]
-                : categoryOptions
-            }
-            placeholder="Choose a category"
-            sheetTitle={`Choose ${values.kind} category`}
-            value={values.categoryId}
-          />
-          {paysDebt ? (
-            <DebtPaymentField
-              debts={debts}
-              disabled={saving || mutationBlocked}
-              error={errors.debtId}
-              onChange={(debtId) => updateValue("debtId", debtId)}
-              required={debtRequired}
-              value={values.debtId}
-            />
-          ) : null}
-          {creatingCategory && canCreateCategory && localWorkspace ? (
-            <NewCategoryInline
-              kind={values.kind}
-              categoryCount={categories.length}
-              createCategory={(input) => localWorkspace.transactionMutations.createCategory(input)}
-              onCreated={(categoryId) => {
+              error={errors.categoryId}
+              label="Category"
+              onSelect={(categoryId) => {
+                if (categoryId === NEW_CATEGORY_OPTION) {
+                  setCreatingCategory(true);
+                  return;
+                }
                 updateValue("categoryId", categoryId);
-                setCreatingCategory(false);
-                sync.retry();
               }}
-              onCancel={() => setCreatingCategory(false)}
-            />
-          ) : null}
-          <DateField
-            disabled={saving || mutationBlocked}
-            error={errors.date}
-            label="Date"
-            onChange={(date) => updateValue("date", date)}
-            value={values.date}
-          />
-          <FormField
-            autoCapitalize="sentences"
-            editable={!saving && !mutationBlocked}
-            error={errors.notes}
-            label="Notes"
-            maxLength={500}
-            multiline
-            onChangeText={(value) => updateValue("notes", value)}
-            placeholder="Add context for yourself"
-            style={styles.notes}
-            textAlignVertical="top"
-            value={values.notes}
-          />
-          {!transfer ? (
-            <TransactionPhotoField
-              disabled={saving || mutationBlocked}
-              family={Boolean(familyApi)}
-              onError={setMessage}
-              onPick={(photo) => {
-                setPhotoDraft(photo);
-                setMessage(null);
-              }}
-              onRemove={() => setPhotoDraft(null)}
-              photoUri={photoUri}
-            />
-          ) : null}
-
-          {message ? (
-            <Text
-              accessibilityRole="alert"
-              style={[typography.callout, { color: theme.colors.danger }]}
-            >
-              {message}
-            </Text>
-          ) : null}
-          <Button
-            accessibilityLabel={
-              editing
-                ? transfer
-                  ? "Save transfer changes"
-                  : "Save transaction changes"
-                : transfer
-                  ? "Save new transfer"
-                  : "Save new transaction"
-            }
-            disabled={!hasChoices || mutationBlocked}
-            loading={saving}
-            onPress={() => {
-              if (voicePreviewState.status === "pending") {
-                machineRef.current?.edit();
+              options={
+                canCreateCategory
+                  ? [...categoryOptions, { id: NEW_CATEGORY_OPTION, label: "+ New category" }]
+                  : categoryOptions
               }
-              void save();
-            }}
-          >
-            {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
-          </Button>
-          {id && !transfer && !family ? (
-            <ShareLinkButton target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }} />
-          ) : null}
-          {id && savedEntry && savedEntry.input.kind !== "transfer" ? (
-            <ShareToFamilyButton
-              target={{
-                kind: "transaction",
-                id,
-                direction: savedEntry.input.kind,
-                categoryName:
-                  formData.data?.categories.find(
-                    (category) => category.id === savedEntry.input.categoryId,
-                  )?.name ?? "",
-                hasNote: Boolean(savedEntry.input.notes),
-                synced: savedEntry.syncState === "synced",
-              }}
+              placeholder="Choose a category"
+              sheetTitle={`Choose ${values.kind} category`}
+              value={values.categoryId}
             />
-          ) : null}
-          {editing ? (
+            {paysDebt ? (
+              <DebtPaymentField
+                debts={debts}
+                disabled={saving || mutationBlocked}
+                error={errors.debtId}
+                onChange={(debtId) => updateValue("debtId", debtId)}
+                required={debtRequired}
+                value={values.debtId}
+              />
+            ) : null}
+            {creatingCategory && canCreateCategory && localWorkspace ? (
+              <NewCategoryInline
+                kind={values.kind}
+                categoryCount={categories.length}
+                createCategory={(input) =>
+                  localWorkspace.transactionMutations.createCategory(input)
+                }
+                onCreated={(categoryId) => {
+                  updateValue("categoryId", categoryId);
+                  setCreatingCategory(false);
+                  sync.retry();
+                }}
+                onCancel={() => setCreatingCategory(false)}
+              />
+            ) : null}
+            <DateField
+              disabled={saving || mutationBlocked}
+              error={errors.date}
+              label="Date"
+              onChange={(date) => updateValue("date", date)}
+              value={values.date}
+            />
+            <FormField
+              autoCapitalize="sentences"
+              editable={!saving && !mutationBlocked}
+              error={errors.notes}
+              label="Notes"
+              maxLength={500}
+              multiline
+              onChangeText={(value) => updateValue("notes", value)}
+              placeholder="Add context for yourself"
+              style={styles.notes}
+              textAlignVertical="top"
+              value={values.notes}
+            />
+            {!transfer ? (
+              <TransactionPhotoField
+                disabled={saving || mutationBlocked}
+                family={Boolean(familyApi)}
+                onError={setMessage}
+                onPick={(photo) => {
+                  setPhotoDraft(photo);
+                  setMessage(null);
+                }}
+                onRemove={() => setPhotoDraft(null)}
+                photoUri={photoUri}
+              />
+            ) : null}
+
+            {message ? (
+              <Text
+                accessibilityRole="alert"
+                style={[typography.callout, { color: theme.colors.danger }]}
+              >
+                {message}
+              </Text>
+            ) : null}
             <Button
-              accessibilityLabel={transfer ? "Delete transfer" : "Delete transaction"}
-              disabled={mutationBlocked}
-              onPress={() => setConfirmDelete(true)}
-              variant="quiet"
+              accessibilityLabel={
+                editing
+                  ? transfer
+                    ? "Save transfer changes"
+                    : "Save transaction changes"
+                  : transfer
+                    ? "Save new transfer"
+                    : "Save new transaction"
+              }
+              disabled={!hasChoices || mutationBlocked}
+              loading={saving}
+              onPress={() => {
+                if (voicePreviewState.status === "pending") {
+                  machineRef.current?.edit();
+                }
+                void save();
+              }}
             >
-              Delete {transfer ? "transfer" : "transaction"}
+              {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
             </Button>
-          ) : null}
-          {family && id ? (
-            <FamilyEntryPanel
-              authorUserId={formData.data.transaction?.authorUserId ?? null}
-              subject={{ kind: "transaction", subjectId: id }}
-            />
-          ) : null}
-        </ScrollView>
-      </KeyboardAvoidingView>
+            {id && !transfer && !family ? (
+              <ShareLinkButton
+                target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }}
+              />
+            ) : null}
+            {id && savedEntry && savedEntry.input.kind !== "transfer" ? (
+              <ShareToFamilyButton
+                target={{
+                  kind: "transaction",
+                  id,
+                  direction: savedEntry.input.kind,
+                  categoryName:
+                    formData.data?.categories.find(
+                      (category) => category.id === savedEntry.input.categoryId,
+                    )?.name ?? "",
+                  hasNote: Boolean(savedEntry.input.notes),
+                  synced: savedEntry.syncState === "synced",
+                }}
+              />
+            ) : null}
+            {editing ? (
+              <Button
+                accessibilityLabel={transfer ? "Delete transfer" : "Delete transaction"}
+                disabled={mutationBlocked}
+                onPress={() => setConfirmDelete(true)}
+                variant="quiet"
+              >
+                Delete {transfer ? "transfer" : "transaction"}
+              </Button>
+            ) : null}
+            {family && id ? (
+              <FamilyEntryPanel
+                authorUserId={formData.data.transaction?.authorUserId ?? null}
+                subject={{ kind: "transaction", subjectId: id }}
+              />
+            ) : null}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </EntryReveal>
       <ConfirmationDialog
         confirmLabel="Delete"
         destructive

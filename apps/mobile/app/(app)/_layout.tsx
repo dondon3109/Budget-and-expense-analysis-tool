@@ -55,11 +55,16 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="add-transaction"
+          options={{ presentation: "transparentModal", animation: "none" }}
+        />
+        <Stack.Screen
           name="transaction"
           options={{
             headerShown: true,
             headerBackTitle: "Transactions",
             presentation: Platform.OS === "ios" ? "formSheet" : "card",
+            animation: "slide_from_bottom",
             sheetGrabberVisible: Platform.OS === "ios",
           }}
         />

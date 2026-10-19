@@ -18,10 +18,13 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
 
 export function TransactionVoiceEntry({
+  autoStart,
   disabled,
   onDraft,
   categories,
 }: {
+  /** Start listening as soon as voice entry is ready, once; the add sheet's Voice choice. */
+  autoStart?: boolean;
   disabled?: boolean;
   onDraft: (draft: TransactionVoiceDraft) => void;
   categories?: string[];
@@ -106,6 +109,14 @@ export function TransactionVoiceEntry({
     },
     onError: (error) => setMessage(error.message),
   });
+
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoStarted.current || disabled || readiness !== "ready") return;
+    if (recorder.phase !== "idle" || !requireAccount("voice")) return;
+    autoStarted.current = true;
+    void recorder.startRecording();
+  }, [autoStart, disabled, readiness, recorder, requireAccount]);
 
   const acceptConsent = async (): Promise<void> => {
     if (consentBusy) return;
