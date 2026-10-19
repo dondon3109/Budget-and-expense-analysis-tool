@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Modal,
   Easing,
   Pressable,
   StyleSheet,
@@ -58,7 +59,7 @@ export function TransactionVoiceEntry({
     }
     Animated.timing(leave, {
       toValue: 0,
-      duration: 260,
+      duration: 450,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(onClose);
@@ -199,98 +200,131 @@ export function TransactionVoiceEntry({
   const elapsedMinutes = Math.floor(recorder.elapsedSeconds / 60);
   const elapsedRemainder = String(recorder.elapsedSeconds % 60).padStart(2, "0");
 
+  // Tapping the mic floods the card with the solid color from the mic outward; it drains
+  // back if recording is cancelled or fails.
+  const active = recorder.phase !== "idle";
+  const onCard = active ? theme.colors.onSolid : theme.colors.text;
+  const fill = useRef(new Animated.Value(0)).current;
+  const [micCenter, setMicCenter] = useState<number | null>(null);
+  useEffect(() => {
+    if (reduceMotion !== false) {
+      fill.setValue(active ? 1 : 0);
+      return;
+    }
+    Animated.timing(fill, {
+      toValue: active ? 1 : 0,
+      duration: active ? 1260 : 600,
+      easing: active ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [active, reduceMotion, fill]);
+
   return (
-    <View style={styles.layer}>
+    <Modal
+      animationType="none"
+      navigationBarTranslucent
+      statusBarTranslucent
+      transparent
+      visible
+      onRequestClose={close}
+    >
       <Animated.View
         style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.overlay, opacity: leave }]}
       />
-      <Animated.View
-        style={[
-          styles.panel,
-          {
-            opacity: leave,
-            transform: [
-              { scale: leave.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
-            ],
-          },
-        ]}
-      >
-        <Card style={[styles.card, elevation.dialog]}>
-          <Text style={[typography.title, styles.center, { color: theme.colors.text }]}>
-            {recording ? "Listening…" : "Tap the mic to start"}
-          </Text>
-          <View style={styles.micArea}>
-            {recording ? <PulseRing color={theme.colors.danger} /> : null}
-            <Pressable
-              accessibilityLabel={label}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: Boolean(disabled), busy: loading }}
-              disabled={disabled || loading}
-              onPress={action}
-              style={[
-                styles.mic,
-                {
-                  backgroundColor: recording ? theme.colors.danger : theme.colors.solid,
-                  opacity: disabled ? 0.55 : 1,
-                },
-              ]}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.colors.onSolid} />
-              ) : (
-                <MaterialCommunityIcons
-                  accessibilityElementsHidden
-                  color={recording ? "#ffffff" : theme.colors.onSolid}
-                  name={recording ? "stop" : "microphone"}
-                  size={40}
-                />
-              )}
-            </Pressable>
-          </View>
-          {recording ? (
-            <Text
-              accessible
-              accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
-              style={[styles.timer, styles.center, { color: theme.colors.danger }]}
-            >
-              {elapsedMinutes}:{elapsedRemainder}
+      <View style={styles.layer}>
+        <Animated.View
+          style={[
+            styles.panel,
+            {
+              opacity: leave,
+              transform: [
+                { scale: leave.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] }) },
+              ],
+            },
+          ]}
+        >
+          <Card style={[styles.card, elevation.dialog]}>
+            {micCenter === null ? null : (
+              <Animated.View
+                pointerEvents="none"
+                style={[
+                  styles.fill,
+                  {
+                    top: micCenter - FILL_RADIUS,
+                    backgroundColor: theme.colors.solid,
+                    transform: [{ scale: fill }],
+                  },
+                ]}
+              />
+            )}
+            <Text style={[typography.title, styles.center, { color: onCard }]}>
+              {recording ? "Listening…" : active ? "One moment…" : "Tap the mic to start"}
             </Text>
-          ) : idle ? null : (
-            <Text style={[typography.label, styles.center, { color: theme.colors.textMuted }]}>
-              {label}
-            </Text>
-          )}
-          {recording ? (
-            <Button
-              accessibilityLabel="Cancel recording"
-              onPress={() => {
-                setMessage(null);
-                void recorder.cancelRecording();
+            <View
+              onLayout={(event) => {
+                const { y, height } = event.nativeEvent.layout;
+                setMicCenter(y + height / 2);
               }}
-              variant="quiet"
+              style={styles.micArea}
             >
-              Cancel
-            </Button>
-          ) : (
-            <Button
-              accessibilityLabel="Enter details manually"
-              icon="pencil-outline"
-              onPress={close}
-              variant="quiet"
-            >
-              Type it instead
-            </Button>
-          )}
-          {message ? (
-            <Text
-              accessibilityRole="alert"
-              style={[typography.caption, styles.center, { color: theme.colors.textMuted }]}
-            >
-              {message}
-            </Text>
-          ) : null}
-        </Card>
-      </Animated.View>
+              <MicButton
+                active={active}
+                breathing={idle}
+                disabled={Boolean(disabled)}
+                label={label}
+                loading={loading}
+                recording={recording}
+                onPress={action}
+              />
+            </View>
+            {recording ? (
+              <Text
+                accessible
+                accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
+                style={[styles.timer, styles.center, { color: onCard }]}
+              >
+                {elapsedMinutes}:{elapsedRemainder}
+              </Text>
+            ) : idle ? null : (
+              <Text style={[typography.label, styles.center, { color: onCard }]}>{label}</Text>
+            )}
+            {recording ? (
+              <Pressable
+                accessibilityLabel="Cancel recording"
+                accessibilityRole="button"
+                onPress={() => {
+                  setMessage(null);
+                  void recorder.cancelRecording();
+                }}
+                style={styles.cancel}
+              >
+                <Text style={[typography.label, { color: onCard }]}>Cancel</Text>
+              </Pressable>
+            ) : active ? null : (
+              <Button
+                accessibilityLabel="Enter details manually"
+                icon="pencil-outline"
+                onPress={close}
+                variant="quiet"
+              >
+                Type it instead
+              </Button>
+            )}
+            {message ? (
+              <Text
+                accessibilityRole="alert"
+                style={[
+                  typography.caption,
+                  styles.center,
+                  { color: active ? theme.colors.onSolid : theme.colors.textMuted },
+                ]}
+              >
+                {message}
+              </Text>
+            ) : null}
+          </Card>
+        </Animated.View>
+      </View>
       <ConfirmationDialog
         visible={showConsent}
         title="Enable AI-assisted entry?"
@@ -299,7 +333,91 @@ export function TransactionVoiceEntry({
         onCancel={() => setShowConsent(false)}
         onConfirm={() => void acceptConsent()}
       />
-    </View>
+    </Modal>
+  );
+}
+
+/**
+ * The mic. Ready and idle it breathes slowly to invite a tap; once the card turns solid it
+ * flips to the light color, shows stop while recording with a ring pulsing out of it, and
+ * a spinner while the draft is made.
+ */
+function MicButton({
+  active,
+  breathing,
+  disabled,
+  label,
+  loading,
+  recording,
+  onPress,
+}: {
+  active: boolean;
+  breathing: boolean;
+  disabled: boolean;
+  label: string;
+  loading: boolean;
+  recording: boolean;
+  onPress: () => void;
+}) {
+  const theme = useZoptionTheme();
+  const reduceMotion = useReduceMotion();
+  const breath = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    breath.setValue(0);
+    if (!breathing || reduceMotion !== false) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breath, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(breath, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [breathing, reduceMotion, breath]);
+
+  const face = active ? theme.colors.onSolid : theme.colors.solid;
+  const ink = active ? theme.colors.solid : theme.colors.onSolid;
+  return (
+    <>
+      {recording ? <PulseRing color={theme.colors.onSolid} /> : null}
+      <Animated.View
+        style={{
+          transform: [
+            { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) },
+          ],
+        }}
+      >
+        <Pressable
+          accessibilityLabel={label}
+          accessibilityRole="button"
+          accessibilityState={{ disabled, busy: loading }}
+          disabled={disabled || loading}
+          onPress={onPress}
+          style={[styles.mic, { backgroundColor: face, opacity: disabled ? 0.55 : 1 }]}
+        >
+          {loading ? (
+            <ActivityIndicator color={ink} />
+          ) : (
+            <MaterialCommunityIcons
+              accessibilityElementsHidden
+              color={ink}
+              name={recording ? "stop" : "microphone"}
+              size={40}
+            />
+          )}
+        </Pressable>
+      </Animated.View>
+    </>
   );
 }
 
@@ -336,11 +454,22 @@ function PulseRing({ color }: { color: ColorValue }) {
 }
 
 const MIC_SIZE = 96;
+// Wide enough that the fill, centered on the mic, reaches every corner of the widest card.
+const FILL_RADIUS = 640;
 
 const styles = StyleSheet.create({
-  layer: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, justifyContent: "center" },
+  layer: { flex: 1, justifyContent: "center" },
   panel: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: spacing.md },
-  card: { gap: spacing.md, alignItems: "stretch", paddingVertical: spacing.xl },
+  card: { gap: spacing.md, alignItems: "stretch", paddingVertical: spacing.xl, overflow: "hidden" },
+  fill: {
+    position: "absolute",
+    left: "50%",
+    marginLeft: -FILL_RADIUS,
+    width: FILL_RADIUS * 2,
+    height: FILL_RADIUS * 2,
+    borderRadius: FILL_RADIUS,
+  },
+  cancel: { alignSelf: "center", paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
   center: { textAlign: "center" },
   micArea: {
     alignSelf: "center",
