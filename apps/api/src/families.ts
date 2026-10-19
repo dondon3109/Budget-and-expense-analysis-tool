@@ -68,7 +68,7 @@ function familyPlanRequiredError(): HttpError {
     403,
     "family_plan_required",
     "Choose a family plan before inviting anyone.",
-    { billingPath: "/app/settings#family" },
+    { billingPath: "/app/family" },
   );
 }
 
@@ -151,7 +151,8 @@ export function createFamilyService(
       if (!tenant.membership) {
         throw new HttpError(400, "family_required", "Open a family workspace first.");
       }
-      return repository.detail(env, tenant.tenantId, tenant.membership.role);
+      const detail = await repository.detail(env, tenant.tenantId, tenant.membership.role);
+      return { ...detail, plan: tenant.membership.plan };
     },
 
     async invite(env, tenant, user, input) {

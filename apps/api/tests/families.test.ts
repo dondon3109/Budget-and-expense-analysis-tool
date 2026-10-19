@@ -335,9 +335,10 @@ describe("families", () => {
 
 describe("family plans", () => {
   it("keeps an unpaid family to its owner", async () => {
-    const { createFamily, invite } = await setup();
+    const { createFamily, invite, detail } = await setup();
     const family = await createFamily("mama", { paid: false });
 
+    expect((await detail(family)).plan).toBe("unpaid");
     await expect((await invite(family, "papa")).json()).resolves.toEqual({
       error: "family_plan_required",
     });
