@@ -67,6 +67,7 @@ import { TransactionPhotoField } from "./TransactionPhotoField";
 import { DebtPaymentField } from "./DebtPaymentField";
 import { EntryCurrencyField } from "./EntryCurrencyField";
 import { EntryReveal } from "./EntryReveal";
+import { AccountIconPicker } from "./AccountIconPicker";
 import { AmountHero } from "./AmountHero";
 import { NewCategoryInline } from "./NewCategoryInline";
 import { VoicePreviewCard, type VoicePreviewDraftSummary } from "./VoicePreviewCard";
@@ -260,6 +261,7 @@ export function TransactionEditorScreen() {
         id: account.id,
         label: account.name,
         detail: account.pending ? `${account.currency} · Pending setup` : account.currency,
+        type: account.type,
       })) ?? [];
   const categoryOptions = sortCategoriesForPicker(categories, resolveCategoryEmoji).map(
     (category) => {
@@ -728,7 +730,7 @@ export function TransactionEditorScreen() {
                     value={values.transferFee}
                   />
                 ) : null}
-                <SelectionField
+                <AccountIconPicker
                   disabled={saving || mutationBlocked}
                   error={errors.accountId}
                   label={transfer ? "From account" : "Account"}
@@ -752,12 +754,10 @@ export function TransactionEditorScreen() {
                     setMessage(null);
                   }}
                   options={accountOptions}
-                  placeholder={transfer ? "Choose source account" : "Choose an account"}
-                  sheetTitle={transfer ? "Choose source account" : "Choose account"}
                   value={values.accountId}
                 />
                 {transfer ? (
-                  <SelectionField
+                  <AccountIconPicker
                     disabled={saving || mutationBlocked}
                     error={errors.toAccountId}
                     label="To account"
@@ -780,8 +780,6 @@ export function TransactionEditorScreen() {
                       setMessage(null);
                     }}
                     options={accountOptions}
-                    placeholder="Choose destination account"
-                    sheetTitle="Choose destination account"
                     value={values.toAccountId}
                   />
                 ) : null}
