@@ -21,10 +21,9 @@ function open(id?: string): void {
  */
 export function RemittanceCard({ month }: { month: string }) {
   const theme = useZoptionTheme();
-  const role = useActiveWorkspace().family?.role;
+  const { family, writable: canWrite } = useActiveWorkspace();
   const { overview } = useRemittanceOverview(month);
-  if (!overview || !role) return null;
-  const canWrite = role !== "viewer";
+  if (!overview || !family) return null;
   const muted = { color: theme.colors.textMuted };
   const money = (amountMinor: number) => formatMoneyMinor(amountMinor, overview.currency);
 

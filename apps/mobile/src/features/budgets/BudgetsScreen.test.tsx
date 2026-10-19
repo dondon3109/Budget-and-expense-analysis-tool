@@ -35,7 +35,7 @@ jest.mock("@/db/local-workspace-state", () => ({
 }));
 
 jest.mock("@/features/family/active-workspace", () => ({
-  useActiveWorkspace: () => ({ family: null }),
+  useActiveWorkspace: () => ({ family: null, writable: true }),
 }));
 jest.mock("@/sync/sync-state", () => ({
   useSyncState: jest.fn(),

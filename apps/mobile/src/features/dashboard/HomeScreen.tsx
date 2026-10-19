@@ -7,6 +7,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { FamilyClosingNotice } from "@/features/family/FamilyClosingNotice";
 import { RemittanceCard } from "@/features/family/RemittanceCard";
 import { SharedBalancesCard } from "@/features/family/SharedBalancesCard";
 import { WorkspaceSwitcher } from "@/features/family/WorkspaceSwitcher";
@@ -96,6 +97,7 @@ export function HomeScreen() {
     >
       <PetMomentModal />
       <WorkspaceSwitcher />
+      <FamilyClosingNotice />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
         <View style={{ flex: 1, alignItems: "flex-start" }}>
           <HomeViewMenu

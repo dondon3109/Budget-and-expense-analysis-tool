@@ -37,7 +37,10 @@ export function ShareToFamilyButton({ target }: { target: FamilyShareTarget }) {
   const active = useActiveWorkspace();
   const guest = useSessionSnapshot().status === "guest";
   const [open, setOpen] = useState(false);
-  const families = active.families.filter((family) => family.role !== "viewer");
+  // A closing family refuses new entries and balances.
+  const families = active.families.filter(
+    (family) => family.role !== "viewer" && !active.closing[family.id],
+  );
   if (guest || active.family || families.length === 0) return null;
   const unsynced = target.kind === "transaction" && !target.synced;
 

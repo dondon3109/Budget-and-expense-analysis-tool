@@ -66,8 +66,8 @@ function emptyOccasion(month: string): OccasionEditorValue {
 export function BudgetsScreen() {
   const local = useLocalWorkspace();
   const sync = useSyncState();
-  const family = useActiveWorkspace().family;
-  const readOnly = family?.role === "viewer";
+  const { family, writable } = useActiveWorkspace();
+  const readOnly = !writable;
   // The calendar opens an occasion by id; the screen stays mounted in its tab, so follow the param.
   const params = useLocalSearchParams<{ occasion?: string | string[] }>();
   const requestedOccasion = Array.isArray(params.occasion) ? params.occasion[0] : params.occasion;

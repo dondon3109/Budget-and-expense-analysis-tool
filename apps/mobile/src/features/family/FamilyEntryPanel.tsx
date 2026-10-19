@@ -42,7 +42,8 @@ export function FamilyEntryPanel({
 }) {
   const theme = useZoptionTheme();
   const me = useSessionSnapshot().subject;
-  const role = useActiveWorkspace().family?.role ?? "viewer";
+  const { family, writable } = useActiveWorkspace();
+  const role = family?.role ?? "viewer";
   const familyApi = useFamilyApi();
   const [thread, setThread] = useState<Thread | null>(null);
   const [failed, setFailed] = useState(false);
@@ -145,7 +146,7 @@ export function FamilyEntryPanel({
                 <Text style={[typography.callout, muted]}>
                   {name(comment.userId)} · {formatFamilyTime(comment.createdAt)}
                 </Text>
-                {comment.userId === me || role === "owner" ? (
+                {writable && (comment.userId === me || role === "owner") ? (
                   <Button
                     accessibilityLabel="Remove comment"
                     onPress={() => void remove(comment.id)}
@@ -157,7 +158,7 @@ export function FamilyEntryPanel({
               </View>
             </View>
           ))}
-          {role === "viewer" ? null : (
+          {writable ? (
             <>
               <FormField
                 label="Add a comment"
@@ -173,7 +174,7 @@ export function FamilyEntryPanel({
                 Post comment
               </Button>
             </>
-          )}
+          ) : null}
         </>
       )}
       {message ? (

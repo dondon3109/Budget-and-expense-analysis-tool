@@ -19,12 +19,22 @@ const recordSchema = z
     families: z.array(workspaceSummarySchema),
     /** Families whose local copy finished one sync, so they can open offline. */
     synced: z.array(z.string().min(1)),
+    /**
+     * When a family the owner is closing closes, by family id, as last read online. A closing
+     * family refuses every change, so the phone shows it read only. Older records have none.
+     */
+    closing: z.record(z.string(), z.string()).default({}),
   })
   .strict();
 
 export type WorkspaceRecord = z.infer<typeof recordSchema>;
 
-export const EMPTY_WORKSPACE_RECORD: WorkspaceRecord = { active: null, families: [], synced: [] };
+export const EMPTY_WORKSPACE_RECORD: WorkspaceRecord = {
+  active: null,
+  families: [],
+  synced: [],
+  closing: {},
+};
 
 const storeOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
@@ -76,6 +86,7 @@ export function mergeWorkspaceList(
       active: record.active && ids.has(record.active) ? record.active : null,
       families,
       synced: record.synced.filter((id) => ids.has(id)),
+      closing: Object.fromEntries(Object.entries(record.closing).filter(([id]) => ids.has(id))),
     },
     gone,
   };

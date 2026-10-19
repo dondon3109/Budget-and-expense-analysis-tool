@@ -11,9 +11,9 @@ import { withTapSound } from "@/features/sounds/sound-effects";
 export function QuickActionBar() {
   const theme = useZoptionTheme();
   const { openFeature } = useAccountGate();
-  const family = useActiveWorkspace().family;
-  // A viewer adds nothing, and the assistant writes to personal money only.
-  if (family?.role === "viewer") return null;
+  const { family, writable } = useActiveWorkspace();
+  // A viewer or a closing family adds nothing, and the assistant writes to personal money only.
+  if (!writable) return null;
   return (
     <View accessibilityLabel="Quick actions" style={styles.quickActionsGrid}>
       <Pressable

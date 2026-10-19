@@ -10,7 +10,7 @@ import { SHARED_BUDGET_BASE_URL, ShareBudgetSheet } from "./ShareBudgetSheet";
 import type { BudgetMonthRow } from "./budget-month-view";
 
 jest.mock("@/features/family/active-workspace", () => ({
-  useActiveWorkspace: () => ({ family: null }),
+  useActiveWorkspace: () => ({ family: null, writable: true }),
 }));
 
 jest.mock("expo-router", () => ({

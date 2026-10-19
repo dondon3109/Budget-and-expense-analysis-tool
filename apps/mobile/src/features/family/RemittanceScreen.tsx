@@ -63,7 +63,7 @@ export function RemittanceScreen() {
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const me = useSessionSnapshot().subject ?? "";
-  const family = useActiveWorkspace().family;
+  const { family, writable } = useActiveWorkspace();
   const familyCurrency = useWorkspaceCurrency();
   const state = useRemittance(id);
   const reference = useLocalReferenceData();
@@ -106,7 +106,7 @@ export function RemittanceScreen() {
     });
 
   const remittance = state.remittance;
-  const canWrite = family !== null && family.role !== "viewer";
+  const canWrite = family !== null && writable;
   const canCancel =
     canWrite && remittance !== null && (family?.role === "owner" || remittance.sentByUserId === me);
   const refused = remittance?.syncState === "failed" || remittance?.syncState === "conflicted";

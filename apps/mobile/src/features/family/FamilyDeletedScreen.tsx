@@ -21,7 +21,8 @@ import { useFamilyApi } from "./use-family-api";
 export function FamilyDeletedScreen() {
   const theme = useZoptionTheme();
   const me = useSessionSnapshot().subject;
-  const role = useActiveWorkspace().family?.role;
+  const { family, writable } = useActiveWorkspace();
+  const role = family?.role;
   const familyApi = useFamilyApi();
   const sync = useSyncState();
   const [entries, setEntries] = useState<FamilyDeletedEntry[] | null>(null);
@@ -82,7 +83,7 @@ export function FamilyDeletedScreen() {
             {deleted.entry.categoryName} · {deleted.entry.accountName} · deleted{" "}
             {formatFamilyTime(deleted.deletedAt)}
           </Text>
-          {role === "owner" || (role !== "viewer" && deleted.deletedByUserId === me) ? (
+          {writable && (role === "owner" || deleted.deletedByUserId === me) ? (
             <Button
               loading={restoring === deleted.transactionId}
               onPress={() => void restore(deleted.transactionId)}

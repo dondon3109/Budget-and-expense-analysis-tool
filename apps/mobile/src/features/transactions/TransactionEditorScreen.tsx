@@ -116,7 +116,7 @@ export function TransactionEditorScreen() {
   valuesRef.current = values;
   const [creatingCategory, setCreatingCategory] = useState(false);
   const storedPhoto = useTransactionPhoto(id);
-  const family = useActiveWorkspace().family;
+  const { family, writable, closesAt } = useActiveWorkspace();
   const familyApi = useFamilyApi();
   const familyReceipt = useFamilyReceipt(family ? id : undefined);
   const me = useSessionSnapshot().subject;
@@ -234,7 +234,7 @@ export function TransactionEditorScreen() {
 
   const savedEntry = formData.data?.transaction ?? null;
   const blockedState = savedEntry?.syncState;
-  const familyLocked = !canChangeEntry(family, me, formData.data?.transaction ?? null);
+  const familyLocked = !writable || !canChangeEntry(family, me, formData.data?.transaction ?? null);
   const mutationBlocked =
     blockedState === "failed" || blockedState === "conflicted" || familyLocked;
   const categories = useMemo(
@@ -587,9 +587,11 @@ export function TransactionEditorScreen() {
           ) : familyLocked ? (
             <Card>
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                {family?.role === "viewer"
-                  ? "You can view this family but not change it."
-                  : "Only the person who added this entry, or the family's owner, can change it."}
+                {closesAt
+                  ? "This family is closing, so nothing in it can change."
+                  : family?.role === "viewer"
+                    ? "You can view this family but not change it."
+                    : "Only the person who added this entry, or the family's owner, can change it."}
               </Text>
             </Card>
           ) : blockedState === "pending" ? (

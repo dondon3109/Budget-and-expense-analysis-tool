@@ -11,6 +11,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
+import { getFamilyDetail } from "@/api/family";
 import { listWorkspaces } from "@/api/workspaces";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
@@ -32,6 +33,15 @@ interface ActiveWorkspaceValue {
   families: readonly WorkspaceSummary[];
   /** Families that finished one sync on this phone and so open offline. */
   synced: readonly string[];
+  /** When the family shown closes, once its owner has closed it; null otherwise. */
+  closesAt: string | null;
+  /** Closing dates of the families known to be closing, by family id. */
+  closing: Readonly<Record<string, string>>;
+  /**
+   * Whether changes can be made in what is shown: always in personal, and in a family unless the
+   * person only views it or it is closing.
+   */
+  writable: boolean;
   /** The local file subject for what is shown: the person, or the person plus the family. */
   workspaceSubject: string;
   switchTo: (familyId: string | null) => void;
@@ -107,6 +117,36 @@ export function ActiveWorkspaceProvider({
     return () => controller.abort();
   }, [commit, getAccessToken, listAttempt, loaded, reachable, sessionStatus, subject]);
 
+  // The family shown is re-read online on every list refresh, which a closing refusal from sync
+  // also asks for, so the phone learns it is closing and stops offering changes.
+  const activeId = record?.active ?? null;
+  useEffect(() => {
+    if (!activeId || sessionStatus !== "signed-in" || reachable === false) return;
+    const controller = new AbortController();
+    void (async () => {
+      try {
+        const detail = await getFamilyDetail({
+          accessToken: await getAccessToken(false),
+          workspaceId: activeId,
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        const known = recordRef.current.closing[activeId] ?? null;
+        if (known === detail.closesAt) return;
+        commit((current) => {
+          const { [activeId]: _previous, ...others } = current.closing;
+          return {
+            ...current,
+            closing: detail.closesAt ? { ...others, [activeId]: detail.closesAt } : others,
+          };
+        });
+      } catch {
+        // Offline or no longer a member: the list refresh handles losing access.
+      }
+    })();
+    return () => controller.abort();
+  }, [activeId, commit, getAccessToken, listAttempt, reachable, sessionStatus]);
+
   const switchTo = useCallback(
     (familyId: string | null) => commit((current) => ({ ...current, active: familyId })),
     [commit],
@@ -124,6 +164,9 @@ export function ActiveWorkspaceProvider({
         active: current.active === familyId ? null : current.active,
         families: current.families.filter((family) => family.id !== familyId),
         synced: current.synced.filter((id) => id !== familyId),
+        closing: Object.fromEntries(
+          Object.entries(current.closing).filter(([id]) => id !== familyId),
+        ),
       }));
       await discardLocalWorkspace(familySubject(subject, familyId)).catch(() => undefined);
     },
@@ -134,11 +177,15 @@ export function ActiveWorkspaceProvider({
   const value = useMemo<ActiveWorkspaceValue>(() => {
     const current = record ?? EMPTY_WORKSPACE_RECORD;
     const family = current.families.find((candidate) => candidate.id === current.active) ?? null;
+    const closesAt = family ? (current.closing[family.id] ?? null) : null;
     return {
       status: record ? "ready" : "loading",
       family,
       families: current.families,
       synced: current.synced,
+      closesAt,
+      closing: current.closing,
+      writable: !family || (family.role !== "viewer" && closesAt === null),
       workspaceSubject: family ? familySubject(subject, family.id) : subject,
       switchTo,
       markSynced,
