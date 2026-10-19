@@ -61,7 +61,7 @@ export function FamilyDeletedScreen() {
   return (
     <Screen
       description="Deleted family entries can be restored for 30 days."
-      edges={["bottom", "left", "right"]}
+      hasHeader
       title="Recently deleted"
     >
       {error ? <ErrorState message={error} onRetry={load} title="Not available offline" /> : null}
