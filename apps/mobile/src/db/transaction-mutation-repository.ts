@@ -22,6 +22,8 @@ import type {
   TransactionUpdate,
   TransferInput,
   Currency,
+  FamilyRemittanceReceiveInput,
+  FamilyRemittanceSendInput,
 } from "@zoption/shared";
 
 import { LocalDatabaseWriter } from "./database-writer";
@@ -49,6 +51,12 @@ import {
   updateTransaction,
 } from "./transaction-mutations/commands/transactions";
 import { updateTransfer } from "./transaction-mutations/commands/transfers";
+import {
+  cancelRemittance,
+  discardRemittanceChange,
+  receiveRemittance,
+  sendRemittance,
+} from "./transaction-mutations/commands/remittances";
 import type { LocalCommandContext } from "./transaction-mutations/context";
 import {
   LocalMutationError,
@@ -273,6 +281,28 @@ export class LocalTransactionMutationRepository {
         this.now().toISOString(),
       );
     });
+  }
+
+  /** Records a family remittance sent by `userId`, with its arrival when already known. */
+  sendRemittance(userId: string, value: FamilyRemittanceSendInput): Promise<string> {
+    return sendRemittance(this.commands, userId, value);
+  }
+
+  receiveRemittance(
+    userId: string,
+    id: string,
+    value: FamilyRemittanceReceiveInput,
+  ): Promise<void> {
+    return receiveRemittance(this.commands, userId, id, value);
+  }
+
+  cancelRemittance(id: string): Promise<void> {
+    return cancelRemittance(this.commands, id);
+  }
+
+  /** Drops a refused or conflicting remittance change and puts back the family's version. */
+  discardRemittanceChange(id: string): Promise<void> {
+    return discardRemittanceChange(this.commands, id);
   }
 
   /**

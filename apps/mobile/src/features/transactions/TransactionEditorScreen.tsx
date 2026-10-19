@@ -933,7 +933,7 @@ export function TransactionEditorScreen() {
           {family && id ? (
             <FamilyEntryPanel
               authorUserId={formData.data.transaction?.authorUserId ?? null}
-              transactionId={id}
+              subject={{ kind: "transaction", subjectId: id }}
             />
           ) : null}
         </ScrollView>

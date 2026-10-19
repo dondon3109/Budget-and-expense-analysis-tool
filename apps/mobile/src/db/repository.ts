@@ -33,6 +33,12 @@ import type {
   TransactionQuery,
 } from "./view-models";
 import { nextMonthStart, readBudgetOccasions, readBudgetPlan } from "./budget-queries";
+import {
+  readRemittance,
+  readRemittanceOverview,
+  type LocalRemittance,
+  type LocalRemittanceOverview,
+} from "./remittance-queries";
 import { readTransactionFormData } from "./transaction-form-data";
 
 const workspaceStatsRowSchema = z.object({
@@ -569,6 +575,15 @@ LIMIT ?`;
   /** Occasions on the calendar in `month`; see `readBudgetOccasions`. */
   getBudgetOccasions(month: string, currency: Currency = "PHP"): Promise<LocalBudgetOccasion[]> {
     return readBudgetOccasions(this.database, month, currency);
+  }
+
+  /** A family's Sent · Spent · Left card; see `readRemittanceOverview`. */
+  getRemittanceOverview(month: string, currency: Currency): Promise<LocalRemittanceOverview> {
+    return readRemittanceOverview(this.database, month, currency);
+  }
+
+  getRemittance(id: string): Promise<LocalRemittance | null> {
+    return readRemittance(this.database, id);
   }
 
   async getGoals(): Promise<LocalGoalItem[]> {

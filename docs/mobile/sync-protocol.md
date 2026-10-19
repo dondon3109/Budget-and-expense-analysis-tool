@@ -129,6 +129,12 @@ arrived, by its sender or the owner. Confirming creates the income transaction u
 transfer's legs do, and the family is notified as on the web. The payload carries the send and
 `transactionId`; the received amount, account, and date are that transaction's.
 
+On the phone the arrival is a local income row that never has an outbox row of its own: it uploads
+inside the remittance, and acknowledging the remittance marks it synced so the next pull can apply
+the server's copy over it. A refused or conflicting remittance change offers only "use the
+family's version", which restores the server copy (or the last synced state) and drops a local
+arrival that never uploaded (`apps/mobile/src/db/transaction-mutations/commands/remittances.ts`).
+
 ## Released app contracts
 
 `packages/shared/contracts/mobile-sync/<versionName>.json` records, for every app release still

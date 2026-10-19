@@ -25,6 +25,7 @@ jest.mock("@react-native-community/netinfo", () => ({
 jest.mock("@/db/local-workspace-state", () => ({
   useDashboardData: jest.fn(),
   useSubscriptions: jest.fn(),
+  useRemittanceOverview: () => ({ overview: null, error: null, retry: jest.fn() }),
 }));
 
 jest.mock("expo-secure-store", () => ({

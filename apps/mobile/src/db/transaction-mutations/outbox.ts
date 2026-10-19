@@ -266,6 +266,19 @@ export class LocalMutationOutbox {
                 result.entityId,
               );
             }
+            if (result.entityType === "remittance") {
+              // Its income entry landed with it; the next pull brings that entry's revision.
+              await this.database.runAsync(
+                `UPDATE transactions SET sync_state = 'synced'
+                 WHERE id = (SELECT transaction_id FROM remittances WHERE id = ?)
+                   AND sync_state = 'pending'
+                   AND NOT EXISTS (
+                     SELECT 1 FROM sync_outbox
+                     WHERE entity_type = 'transaction' AND entity_id = transactions.id
+                   )`,
+                result.entityId,
+              );
+            }
             await this.database.runAsync(
               "DELETE FROM sync_outbox WHERE operation_id = ?",
               result.operationId,

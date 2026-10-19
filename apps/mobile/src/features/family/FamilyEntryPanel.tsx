@@ -1,4 +1,9 @@
-import type { FamilyComment, FamilyEntryEvent, FamilyMember } from "@zoption/shared";
+import type {
+  FamilyComment,
+  FamilyCommentSubject,
+  FamilyEntryEvent,
+  FamilyMember,
+} from "@zoption/shared";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
@@ -25,15 +30,15 @@ interface Thread {
 }
 
 /**
- * Below a family entry: who added it, its edit history, and the family's comments on it. All of
- * it is read from the Worker, so it needs a connection.
+ * Below a family entry or remittance: the family's comments on it, and for an entry who added it
+ * and its edit history. All of it is read from the Worker, so it needs a connection.
  */
 export function FamilyEntryPanel({
-  transactionId,
-  authorUserId,
+  subject,
+  authorUserId = null,
 }: {
-  transactionId: string;
-  authorUserId: string | null;
+  subject: FamilyCommentSubject;
+  authorUserId?: string | null;
 }) {
   const theme = useZoptionTheme();
   const me = useSessionSnapshot().subject;
@@ -46,6 +51,7 @@ export function FamilyEntryPanel({
   const [posting, setPosting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { kind, subjectId } = subject;
   useEffect(() => {
     if (!familyApi) return;
     let live = true;
@@ -53,8 +59,8 @@ export function FamilyEntryPanel({
     void familyApi((api) =>
       Promise.all([
         getFamilyDetail(api),
-        getFamilyEntryHistory(api, transactionId),
-        getFamilyComments(api, { kind: "transaction", subjectId: transactionId }),
+        kind === "transaction" ? getFamilyEntryHistory(api, subjectId) : Promise.resolve([]),
+        getFamilyComments(api, { kind, subjectId }),
       ]),
     )
       .then(([detail, events, comments]) => {
@@ -66,7 +72,7 @@ export function FamilyEntryPanel({
     return () => {
       live = false;
     };
-  }, [attempt, familyApi, transactionId]);
+  }, [attempt, familyApi, kind, subjectId]);
 
   if (!familyApi) return null;
   const muted = { color: theme.colors.textMuted };
@@ -77,9 +83,7 @@ export function FamilyEntryPanel({
     setPosting(true);
     setMessage(null);
     try {
-      const comment = await familyApi((api) =>
-        addFamilyComment(api, { kind: "transaction", subjectId: transactionId }, draft.trim()),
-      );
+      const comment = await familyApi((api) => addFamilyComment(api, subject, draft.trim()));
       setThread((current) =>
         current ? { ...current, comments: [...current.comments, comment] } : current,
       );
@@ -110,7 +114,7 @@ export function FamilyEntryPanel({
       {failed ? (
         <View style={{ gap: spacing.xs }}>
           <Text style={[typography.callout, muted]}>
-            Connect to the internet to see who added this, its history, and comments.
+            Connect to the internet to see the family's history and comments.
           </Text>
           <Button onPress={() => setAttempt((value) => value + 1)} variant="quiet">
             Try again
@@ -120,9 +124,11 @@ export function FamilyEntryPanel({
         <Text style={[typography.callout, muted]}>Loading history and comments…</Text>
       ) : (
         <>
-          <Text style={[typography.callout, muted]}>
-            Added by {authorUserId ? name(authorUserId) : "the owner"}
-          </Text>
+          {subject.kind === "transaction" ? (
+            <Text style={[typography.callout, muted]}>
+              Added by {authorUserId ? name(authorUserId) : "the owner"}
+            </Text>
+          ) : null}
           {thread.events.map((event) => (
             <Text key={`${event.at}-${event.action}`} style={[typography.callout, muted]}>
               {name(event.userId)} {describeEntryEvent(event)} · {formatFamilyTime(event.at)}
@@ -158,7 +164,9 @@ export function FamilyEntryPanel({
                 maxLength={500}
                 multiline
                 onChangeText={setDraft}
-                placeholder="Ask about this entry"
+                placeholder={
+                  subject.kind === "transaction" ? "Ask about this entry" : "Say thanks, or ask"
+                }
                 value={draft}
               />
               <Button disabled={!draft.trim()} loading={posting} onPress={() => void post()}>

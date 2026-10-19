@@ -9,6 +9,10 @@ import { BudgetsScreen } from "./BudgetsScreen";
 import { SHARED_BUDGET_BASE_URL, ShareBudgetSheet } from "./ShareBudgetSheet";
 import type { BudgetMonthRow } from "./budget-month-view";
 
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: () => ({ family: null }),
+}));
+
 jest.mock("expo-router", () => ({
   router: {
     push: jest.fn(),
