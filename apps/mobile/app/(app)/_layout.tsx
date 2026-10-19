@@ -64,6 +64,15 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="onboarding"
+          options={{
+            presentation: "transparentModal",
+            // Setup is a dialog over Home, which must stay visible behind it.
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
           name="transaction"
           options={{
             headerShown: true,

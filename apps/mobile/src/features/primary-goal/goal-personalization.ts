@@ -3,6 +3,7 @@ import { router, type Href } from "expo-router";
 import { useEffect } from "react";
 
 import { useGoalProfileStore, useLeadGoal } from "@/stores/goal-profile-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 
 /** The shared config names web destinations; this maps each to its mobile screen. */
 function hrefForTarget(goal: PrimaryGoal, target: GoalCtaTarget): Href {
@@ -38,16 +39,18 @@ export function promptsForGoal(defaults: readonly string[], goal: PrimaryGoal | 
 /**
  * Opens the goal screen once per launch when the Worker says nothing was chosen or skipped.
  * A user who already chose or skipped, an offline launch (profile unknown), and the demo
- * workspace (never read) never see it.
+ * workspace (never read) never see it. It waits for first-run setup to finish, which asks the
+ * goals itself, so the two never stack.
  */
 export function useGoalPrompt(): void {
   const profile = useGoalProfileStore((state) => state.profile);
   const prompted = useGoalProfileStore((state) => state.prompted);
+  const setupDone = useOnboardingStore((state) => state.state?.step === "complete");
   const needsPrompt = Boolean(profile && profile.goals.length === 0 && !profile.skipped);
 
   useEffect(() => {
-    if (!needsPrompt || prompted) return;
+    if (!needsPrompt || prompted || !setupDone) return;
     useGoalProfileStore.getState().markPrompted();
     router.push("/(app)/primary-goal");
-  }, [needsPrompt, prompted]);
+  }, [needsPrompt, prompted, setupDone]);
 }

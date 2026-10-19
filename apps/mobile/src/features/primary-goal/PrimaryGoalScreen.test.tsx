@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react-nativ
 import { router } from "expo-router";
 
 import { markGoalShown, saveGoals, skipGoal } from "@/api/goal-profile";
+import { showThankYou } from "@/features/thank-you/ThankYouHost";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 
 import { PrimaryGoalScreen } from "./PrimaryGoalScreen";
@@ -15,6 +16,7 @@ jest.mock("@/api/goal-profile", () => ({
   saveGoals: jest.fn(),
   skipGoal: jest.fn(),
 }));
+jest.mock("@/features/thank-you/ThankYouHost", () => ({ showThankYou: jest.fn() }));
 
 const BUDGET = "Create and stick to a monthly budget";
 const DEBT = "Pay off debt / utang";
@@ -46,7 +48,7 @@ describe("PrimaryGoalScreen", () => {
     );
   });
 
-  it("saves several goals in tap order only on Continue, then thanks the user", async () => {
+  it("saves several goals in tap order only on Continue, then leaves with a thank-you", async () => {
     jest.mocked(saveGoals).mockResolvedValue(saved(["reduce_debt", "build_budget"]));
     await render(<PrimaryGoalScreen />);
 
@@ -56,16 +58,13 @@ describe("PrimaryGoalScreen", () => {
     expect(screen.getByText("Main focus")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
-    expect(await screen.findByText("Thank you!")).toBeTruthy();
+    await waitFor(() => expect(showThankYou).toHaveBeenCalledWith("goal"));
+    expect(router.back).toHaveBeenCalled();
     expect(saveGoals).toHaveBeenCalledWith(
       { accessToken: "token" },
       { goals: ["reduce_debt", "build_budget"], otherText: "" },
     );
     expect(useGoalProfileStore.getState().profile?.goals).toEqual(["reduce_debt", "build_budget"]);
-    expect(router.back).not.toHaveBeenCalled();
-
-    await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
-    expect(router.back).toHaveBeenCalled();
   });
 
   it("sends the optional note with Other", async () => {
@@ -76,7 +75,7 @@ describe("PrimaryGoalScreen", () => {
     await fireEvent.changeText(screen.getByLabelText("Tell us more (optional)"), "pets");
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
 
-    await screen.findByText("Thank you!");
+    await waitFor(() => expect(showThankYou).toHaveBeenCalled());
     expect(saveGoals).toHaveBeenCalledWith(
       { accessToken: "token" },
       { goals: ["other"], otherText: "pets" },
@@ -92,7 +91,7 @@ describe("PrimaryGoalScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Skip for now" }));
 
     await waitFor(() => expect(router.back).toHaveBeenCalled());
-    expect(screen.queryByText("Thank you!")).toBeNull();
+    expect(showThankYou).not.toHaveBeenCalled();
     expect(useGoalProfileStore.getState().profile?.skipped).toBe(true);
   });
 
@@ -104,7 +103,8 @@ describe("PrimaryGoalScreen", () => {
     await fireEvent.press(screen.getByRole("checkbox", { name: DEBT }));
     await fireEvent.press(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("You are offline.")).toBeTruthy();
-    expect(screen.queryByText("Thank you!")).toBeNull();
+    expect(showThankYou).not.toHaveBeenCalled();
+    expect(router.back).not.toHaveBeenCalled();
     expect(useGoalProfileStore.getState().profile?.goals).toEqual([]);
 
     await fireEvent.press(screen.getByRole("button", { name: "Skip for now" }));

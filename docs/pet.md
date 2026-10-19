@@ -80,8 +80,9 @@ Settings for that browser). Reduced motion, from the system or the in-app switch
 and the burst but keeps the voice. Petting is local only: it never reaches the Worker and
 earns nothing.
 
-New accounts are asked at the end of first-run setup whether they want a pet. A yes opens the egg
-picker; a no turns the pet off (`PUT /api/app/pet/settings`).
+New accounts are asked during first-run setup whether they want a pet. A yes opens the egg
+picker (on mobile, the next setup step, which can be skipped); a no turns the pet off
+(`PUT /api/app/pet/settings`).
 
 ## Pop-up
 
