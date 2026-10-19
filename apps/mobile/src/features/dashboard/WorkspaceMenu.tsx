@@ -17,9 +17,10 @@ export type HomeMenuView = "home" | "remittance";
 type IconName = keyof typeof MaterialCommunityIcons.glyphMap;
 
 /**
- * Home's one way to say where you are and go elsewhere: the button names the workspace shown,
- * and its list switches between personal and each family, starts or joins a family, and opens the
- * tools. Inside a family a gear beside it opens that family's members and settings.
+ * Home's one way to say where you are and go elsewhere: a compact button beside the Overview and
+ * Analytics tabs whose icon says personal or family, and whose list names the workspace shown,
+ * switches between personal and each family, opens the family's settings inside one, starts or
+ * joins a family, and opens the tools.
  */
 export function WorkspaceMenu({
   selected,
@@ -75,7 +76,7 @@ export function WorkspaceMenu({
   ];
 
   return (
-    <View style={styles.bar}>
+    <>
       <Pressable
         ref={buttonRef}
         accessibilityHint="Switches workspace or opens a tool"
@@ -92,33 +93,14 @@ export function WorkspaceMenu({
         <MaterialCommunityIcons
           color={String(theme.colors.brand)}
           name={active.family ? "account-group" : "account"}
-          size={20}
+          size={22}
         />
-        <Text
-          numberOfLines={1}
-          style={[typography.headline, styles.buttonLabel, { color: theme.colors.text }]}
-        >
-          {name}
-        </Text>
         <MaterialCommunityIcons
           color={String(theme.colors.textMuted)}
           name="chevron-down"
-          size={18}
+          size={16}
         />
       </Pressable>
-      {active.family ? (
-        <Pressable
-          accessibilityLabel={`${active.family.name} settings`}
-          accessibilityRole="button"
-          onPress={withTapSound(onOpenFamilySettings)}
-          style={[
-            styles.gear,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <MaterialCommunityIcons color={String(theme.colors.text)} name="cog-outline" size={20} />
-        </Pressable>
-      ) : null}
       <Modal
         animationType="fade"
         onRequestClose={close}
@@ -158,6 +140,17 @@ export function WorkspaceMenu({
                 selected={selected === "home" && workspace.id === shownId}
               />
             ))}
+            {active.family ? (
+              <MenuItem
+                icon="cog-outline"
+                label="Family settings"
+                detail="Members, invitations, and alerts"
+                onPress={() => {
+                  close();
+                  onOpenFamilySettings();
+                }}
+              />
+            ) : null}
             <MenuItem
               icon="plus"
               label={active.families.length > 0 ? "Start or join a family" : "Family workspace"}
@@ -189,7 +182,7 @@ export function WorkspaceMenu({
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 
@@ -248,26 +241,15 @@ function MenuItem({
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: "row", alignItems: "center", gap: spacing.xs, flexShrink: 1 },
   button: {
-    minHeight: 44,
-    maxWidth: 240,
-    flexShrink: 1,
+    height: 44,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
+    gap: 2,
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.xs,
     borderRadius: radii.round,
     borderWidth: 1,
-  },
-  buttonLabel: { flexShrink: 1 },
-  gear: {
-    width: 44,
-    height: 44,
-    borderRadius: radii.round,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
   list: {
     position: "absolute",

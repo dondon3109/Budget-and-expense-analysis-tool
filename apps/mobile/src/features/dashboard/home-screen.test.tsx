@@ -105,18 +105,20 @@ describe("HomeScreen", () => {
     });
 
     await render(<HomeScreen />);
-    await fireEvent.press(screen.getByRole("button", { name: "Santos family settings" }));
-    expect(router.push).toHaveBeenCalledWith("/(app)/family");
-
     await fireEvent.press(screen.getByRole("button", { name: "Workspace: Santos family" }));
     const items = screen.getAllByRole("menuitem").map((item) => item.props.accessibilityLabel);
     expect(items).toEqual([
       "Personal",
       "Santos family",
+      "Family settings",
       "Start or join a family",
       "Remittance calculator",
       "Pet",
     ]);
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Family settings" }));
+    expect(router.push).toHaveBeenCalledWith("/(app)/family");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Workspace: Santos family" }));
     await fireEvent.press(screen.getByRole("menuitem", { name: "Personal" }));
     expect(switchTo).toHaveBeenCalledWith(null);
   });
@@ -129,8 +131,6 @@ describe("HomeScreen", () => {
     });
 
     await render(<HomeScreen />);
-    expect(screen.queryByRole("button", { name: /settings$/ })).toBeNull();
-
     await fireEvent.press(screen.getByRole("button", { name: "Workspace: Personal" }));
     await fireEvent.press(screen.getByRole("menuitem", { name: "Family workspace" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/family");

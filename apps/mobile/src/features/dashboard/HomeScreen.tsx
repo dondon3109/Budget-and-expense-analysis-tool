@@ -96,7 +96,7 @@ export function HomeScreen() {
     >
       <PetMomentModal />
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-        <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
+        <View style={{ flex: 1, alignItems: "flex-start" }}>
           <WorkspaceMenu
             selected={menuView}
             onSelect={setMenuView}
@@ -105,13 +105,11 @@ export function HomeScreen() {
             onOpenPet={() => openFeature("pet", "/(app)/pet")}
           />
         </View>
-        <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
-      </View>
-      {showViewSwitch ? (
-        <View style={{ alignItems: "center" }}>
-          <HomeViewSwitch selected={homeView} onSelect={setHomeView} />
+        {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
+        <View style={{ flex: 1, alignItems: "flex-end" }}>
+          <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
         </View>
-      ) : null}
+      </View>
       <FamilyClosingNotice />
       <OfflineBanner />
       {sync.message && sync.status !== "waiting" ? (
