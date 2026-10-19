@@ -6,6 +6,13 @@ import { pathToFileURL } from "node:url";
 const repositoryRoot = resolve(import.meta.dirname, "..");
 const defaultConfigPath = resolve(repositoryRoot, "apps/api/wrangler.deploy.jsonc");
 const requiredEnvironments = ["preview", "production"];
+// One PayPal plan and one Dodo product per paid plan and interval (apps/api/src/billing/plan-ids.ts).
+const PLAN_ID_KEYS = ["BUDGET", "PRO", "FAMILY_BUDGET", "FAMILY_PRO"].flatMap((plan) => [
+  `${plan}_MONTHLY`,
+  `${plan}_ANNUAL`,
+]);
+const PAYPAL_PLAN_ID_VARIABLES = PLAN_ID_KEYS.map((key) => `PAYPAL_${key}_PLAN_ID`);
+const DODO_PRODUCT_ID_VARIABLES = PLAN_ID_KEYS.map((key) => `DODO_${key}_PRODUCT_ID`);
 // Every R2 binding a deployed Worker needs; each environment must use its own buckets.
 const R2_BINDINGS = ["AVATARS", "RECEIPTS"];
 const requiredVariables = [
@@ -17,8 +24,7 @@ const requiredVariables = [
   "EMAIL_FROM",
   "BUG_REPORT_TO",
   "PAYPAL_ENVIRONMENT",
-  "PAYPAL_PRO_MONTHLY_PLAN_ID",
-  "PAYPAL_PRO_ANNUAL_PLAN_ID",
+  ...PAYPAL_PLAN_ID_VARIABLES,
   "ASSISTANT_VOICE_ENABLED",
   "ASSISTANT_VOICE_REVIEW_REQUIRED",
   "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS",
@@ -53,32 +59,32 @@ const productionWebOrigins = [
 ];
 const productionAppOrigin = "https://app.zoption.site";
 
-/** Dodo Payments is optional: checkout answers billing_not_configured until all three are set. */
+/** Each plan needs its own id; a repeat would sell one plan under another's name. */
+function requireDistinct(vars, names, environment) {
+  const seen = new Map();
+  for (const name of names) {
+    const earlier = seen.get(vars[name]);
+    if (earlier) throw new Error(`${environment} ${earlier} and ${name} must be distinct.`);
+    seen.set(vars[name], name);
+  }
+}
+
+/** Dodo Payments is optional: checkout answers billing_not_configured until all are set. */
 function validateDodoConfig(vars, environment) {
-  const names = [
-    "DODO_PAYMENTS_ENVIRONMENT",
-    "DODO_PRO_MONTHLY_PRODUCT_ID",
-    "DODO_PRO_ANNUAL_PRODUCT_ID",
-  ];
+  const names = ["DODO_PAYMENTS_ENVIRONMENT", ...DODO_PRODUCT_ID_VARIABLES];
   if (!names.some((name) => vars[name] !== undefined)) return;
 
-  const [mode, monthlyProductId, annualProductId] = names.map((name) =>
-    requiredString(vars, name, environment),
-  );
+  const [mode, ...productIds] = names.map((name) => requiredString(vars, name, environment));
   if (mode !== "test_mode" && mode !== "live_mode") {
     throw new Error(`${environment} DODO_PAYMENTS_ENVIRONMENT must be test_mode or live_mode.`);
   }
   if (environment === "production" && mode !== "live_mode") {
     throw new Error("production DODO_PAYMENTS_ENVIRONMENT must be live_mode.");
   }
-  if (!monthlyProductId.startsWith("pdt_") || !annualProductId.startsWith("pdt_")) {
+  if (!productIds.every((productId) => productId.startsWith("pdt_"))) {
     throw new Error(`${environment} Dodo product IDs must start with pdt_.`);
   }
-  if (monthlyProductId === annualProductId) {
-    throw new Error(
-      `${environment} DODO_PRO_MONTHLY_PRODUCT_ID and DODO_PRO_ANNUAL_PRODUCT_ID must be distinct.`,
-    );
-  }
+  requireDistinct(vars, DODO_PRODUCT_ID_VARIABLES, environment);
 }
 
 function stripJsonComments(value) {
@@ -291,13 +297,8 @@ function validateEnvironment(environment, config) {
   if (environment === "production" && paypalEnvironment !== "production") {
     throw new Error("production PAYPAL_ENVIRONMENT must be production.");
   }
-  const monthlyPlanId = requiredString(vars, "PAYPAL_PRO_MONTHLY_PLAN_ID", environment);
-  const annualPlanId = requiredString(vars, "PAYPAL_PRO_ANNUAL_PLAN_ID", environment);
-  if (monthlyPlanId === annualPlanId) {
-    throw new Error(
-      `${environment} PAYPAL_PRO_MONTHLY_PLAN_ID and PAYPAL_PRO_ANNUAL_PLAN_ID must be distinct.`,
-    );
-  }
+  for (const name of PAYPAL_PLAN_ID_VARIABLES) requiredString(vars, name, environment);
+  requireDistinct(vars, PAYPAL_PLAN_ID_VARIABLES, environment);
 
   validateDodoConfig(vars, environment);
 

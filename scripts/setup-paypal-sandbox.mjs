@@ -2,36 +2,18 @@ import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 import { pathToFileURL } from "node:url";
 
+import { PAYPAL_PLANS, PAYPAL_PRODUCT as PRODUCT } from "./paypal-plans.mjs";
+
 const PAYPAL_SANDBOX_API_URL = "https://api-m.sandbox.paypal.com";
 const PREVIEW_WEBHOOK_URL =
   "https://budget-expense-api-preview.dondon3109.workers.dev/api/billing/paypal/webhook";
 const REQUEST_TIMEOUT_MS = 15_000;
-const PRODUCT = {
-  name: "Zoption Pro",
-  type: "SERVICE",
-  category: "SOFTWARE",
-  description: "Zoption Pro subscription",
-};
 const PAYMENT_PREFERENCES = {
   auto_bill_outstanding: true,
   payment_failure_threshold: 3,
   setup_fee: { currency_code: "PHP", value: "0" },
   setup_fee_failure_action: "CANCEL",
 };
-const PLANS = [
-  {
-    key: "monthlyPlanId",
-    name: "Zoption Pro Monthly",
-    intervalUnit: "MONTH",
-    fixedPrice: "149",
-  },
-  {
-    key: "annualPlanId",
-    name: "Zoption Pro Annual",
-    intervalUnit: "YEAR",
-    fixedPrice: "1299",
-  },
-];
 const WEBHOOK_EVENT_TYPES = [
   "BILLING.SUBSCRIPTION.ACTIVATED",
   "BILLING.SUBSCRIPTION.UPDATED",
@@ -325,14 +307,15 @@ async function planDetails(fetchImpl, accessTokenValue, planId) {
   );
 }
 
-async function reconcilePlan(fetchImpl, accessTokenValue, productId, expected, randomUuid, apply) {
-  const plans = await listPages(
-    fetchImpl,
-    accessTokenValue,
-    `/v1/billing/plans?product_id=${encodeURIComponent(productId)}`,
-    "plans",
-    "listing plans",
-  );
+async function reconcilePlan(
+  fetchImpl,
+  accessTokenValue,
+  productId,
+  plans,
+  expected,
+  randomUuid,
+  apply,
+) {
   const candidates = plans.filter((item) => record(item, "listing plans").name === expected.name);
 
   if (candidates.length > 0) {
@@ -466,19 +449,20 @@ export async function setupPayPalSandbox({
   const product = await reconcileProduct(fetchImpl, accessTokenValue, randomUuid, apply);
 
   const planResults = {};
-  if (product.id) {
-    for (const plan of PLANS) {
-      planResults[plan.key] = await reconcilePlan(
+  // Listed once: every plan lives under the one product.
+  const plans = product.id
+    ? await listPages(
         fetchImpl,
         accessTokenValue,
-        product.id,
-        plan,
-        randomUuid,
-        apply,
-      );
-    }
-  } else {
-    for (const plan of PLANS) planResults[plan.key] = { id: null, action: "create" };
+        `/v1/billing/plans?product_id=${encodeURIComponent(product.id)}`,
+        "plans",
+        "listing plans",
+      )
+    : [];
+  for (const plan of PAYPAL_PLANS) {
+    planResults[plan.variable] = product.id
+      ? await reconcilePlan(fetchImpl, accessTokenValue, product.id, plans, plan, randomUuid, apply)
+      : { id: null, action: "create" };
   }
 
   const webhook = await reconcileWebhook(
@@ -492,29 +476,32 @@ export async function setupPayPalSandbox({
   return {
     mode: apply ? "apply" : "preflight",
     productId: product.id,
-    monthlyPlanId: planResults.monthlyPlanId.id,
-    annualPlanId: planResults.annualPlanId.id,
+    plans: Object.fromEntries(
+      PAYPAL_PLANS.map(({ variable }) => [variable, planResults[variable].id]),
+    ),
     webhookId: webhook.id,
     actions: {
       product: product.action,
-      monthlyPlan: planResults.monthlyPlanId.action,
-      annualPlan: planResults.annualPlanId.action,
+      plans: Object.fromEntries(
+        PAYPAL_PLANS.map(({ variable }) => [variable, planResults[variable].action]),
+      ),
       webhook: webhook.action,
     },
   };
 }
 
+/** Readable output; plan ids print as Worker variable lines ready to paste. */
 export function formatSetupResult(result) {
   const lines = [
     `Mode: ${result.mode}`,
     `Product: ${result.actions.product}`,
-    `Monthly plan: ${result.actions.monthlyPlan}`,
-    `Annual plan: ${result.actions.annualPlan}`,
+    ...Object.entries(result.actions.plans).map(([variable, action]) => `${variable}: ${action}`),
     `Preview webhook: ${result.actions.webhook}`,
   ];
   if (result.productId) lines.push(`Product ID: ${result.productId}`);
-  if (result.monthlyPlanId) lines.push(`Monthly plan ID: ${result.monthlyPlanId}`);
-  if (result.annualPlanId) lines.push(`Annual plan ID: ${result.annualPlanId}`);
+  for (const [variable, id] of Object.entries(result.plans)) {
+    if (id) lines.push(`${variable}=${id}`);
+  }
   return lines.join("\n");
 }
 
@@ -522,8 +509,7 @@ export function machineSetupResult(result) {
   return JSON.stringify({
     mode: result.mode,
     product_id: result.productId,
-    monthly_plan_id: result.monthlyPlanId,
-    annual_plan_id: result.annualPlanId,
+    plans: result.plans,
     webhook_id: result.webhookId,
     actions: result.actions,
   });
