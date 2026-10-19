@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { StatusBar } from "expo-status-bar";
-import { useRef, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -21,15 +21,18 @@ const OPTIONS: {
 const BUTTON_SIZE = 44;
 
 // An icon button that opens the view list as an overlay, so opening it never
-// moves the page content. The view names appear only inside the list. Pet is a
-// link to its own page rather than a view.
+// moves the page content. The view names appear only inside the list. Families
+// and Pet are links to their own pages rather than views; Families sits right under
+// Home because it is how a person reaches their family workspaces.
 export function HomeViewMenu({
   selected,
   onSelect,
+  onOpenFamily,
   onOpenPet,
 }: {
   selected: HomeMenuView;
   onSelect: (view: HomeMenuView) => void;
+  onOpenFamily: () => void;
   onOpenPet: () => void;
 }) {
   const theme = useZoptionTheme();
@@ -95,55 +98,83 @@ export function HomeViewMenu({
               const active = option.value === selected;
               const color = active ? theme.colors.brand : theme.colors.text;
               return (
-                <Pressable
-                  key={option.value}
-                  accessibilityLabel={option.label}
-                  accessibilityRole="menuitem"
-                  accessibilityState={{ selected: active }}
-                  onPress={withTapSound(() => {
-                    onSelect(option.value);
-                    close();
-                  })}
-                  style={styles.item}
-                >
-                  <MaterialCommunityIcons color={String(color)} name={option.icon} size={20} />
-                  <Text
-                    style={[
-                      typography.body,
-                      styles.itemLabel,
-                      { color, fontWeight: active ? "600" : "400" },
-                    ]}
+                <Fragment key={option.value}>
+                  <Pressable
+                    accessibilityLabel={option.label}
+                    accessibilityRole="menuitem"
+                    accessibilityState={{ selected: active }}
+                    onPress={withTapSound(() => {
+                      onSelect(option.value);
+                      close();
+                    })}
+                    style={styles.item}
                   >
-                    {option.label}
-                  </Text>
-                  {active ? (
-                    <MaterialCommunityIcons
-                      color={String(theme.colors.brand)}
-                      name="check"
-                      size={18}
+                    <MaterialCommunityIcons color={String(color)} name={option.icon} size={20} />
+                    <Text
+                      style={[
+                        typography.body,
+                        styles.itemLabel,
+                        { color, fontWeight: active ? "600" : "400" },
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    {active ? (
+                      <MaterialCommunityIcons
+                        color={String(theme.colors.brand)}
+                        name="check"
+                        size={18}
+                      />
+                    ) : null}
+                  </Pressable>
+                  {option.value === "home" ? (
+                    <MenuLink
+                      icon="account-group-outline"
+                      label="Families"
+                      onPress={() => {
+                        close();
+                        onOpenFamily();
+                      }}
                     />
                   ) : null}
-                </Pressable>
+                </Fragment>
               );
             })}
-            <Pressable
-              accessibilityLabel="Pet"
-              accessibilityRole="menuitem"
-              onPress={withTapSound(() => {
+            <MenuLink
+              icon="paw"
+              label="Pet"
+              onPress={() => {
                 close();
                 onOpenPet();
-              })}
-              style={styles.item}
-            >
-              <MaterialCommunityIcons color={String(theme.colors.text)} name="paw" size={20} />
-              <Text style={[typography.body, styles.itemLabel, { color: theme.colors.text }]}>
-                Pet
-              </Text>
-            </Pressable>
+              }}
+            />
           </View>
         </View>
       </Modal>
     </>
+  );
+}
+
+function MenuLink({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: "account-group-outline" | "paw";
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="menuitem"
+      onPress={withTapSound(onPress)}
+      style={styles.item}
+    >
+      <MaterialCommunityIcons color={String(theme.colors.text)} name={icon} size={20} />
+      <Text style={[typography.body, styles.itemLabel, { color: theme.colors.text }]}>{label}</Text>
+    </Pressable>
   );
 }
 

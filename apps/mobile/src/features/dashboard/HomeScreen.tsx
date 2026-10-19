@@ -103,6 +103,7 @@ export function HomeScreen() {
           <HomeViewMenu
             selected={menuView}
             onSelect={setMenuView}
+            onOpenFamily={() => openFeature("family", "/(app)/family")}
             onOpenPet={() => openFeature("pet", "/(app)/pet")}
           />
         </View>

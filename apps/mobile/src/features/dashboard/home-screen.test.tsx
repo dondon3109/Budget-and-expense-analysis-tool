@@ -127,6 +127,22 @@ describe("HomeScreen", () => {
     expect(screen.queryByRole("button", { name: "Add transaction" })).toBeNull();
   });
 
+  it("opens Families from the title menu, right under Home", async () => {
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Home, change view" }));
+    const items = screen.getAllByRole("menuitem").map((item) => item.props.accessibilityLabel);
+    expect(items.slice(0, 3)).toEqual(["Home", "Families", "Remittance"]);
+
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Families" }));
+    expect(router.push).toHaveBeenCalledWith("/(app)/family");
+  });
+
   it("renders quick actions and onboarding step cards when workspace has no transactions", async () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
