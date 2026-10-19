@@ -4,6 +4,8 @@
 
 import { z } from "zod";
 
+import { familyCommentSubjectKinds } from "./family-comments";
+
 /** Server push topics; each one can be turned off per person. Family features send them. */
 export const pushCategories = [
   "remittance_received",
@@ -38,6 +40,18 @@ export const pushPreferenceUpdateSchema = z
   .object({ category: z.enum(pushCategories), enabled: z.boolean() })
   .strict();
 
+/**
+ * The data on a family push: the family it came from and, when it is about one, the entry or
+ * remittance. A tap switches to that family and opens it.
+ */
+export const familyPushDataSchema = z.object({
+  path: z.literal("/family"),
+  workspaceId: z.string().min(1),
+  subjectKind: z.enum(familyCommentSubjectKinds).optional(),
+  subjectId: z.string().min(1).optional(),
+});
+
+export type FamilyPushData = z.infer<typeof familyPushDataSchema>;
 export type PushDeviceRegisterInput = z.infer<typeof pushDeviceRegisterSchema>;
 export type PushPreferences = z.infer<typeof pushPreferencesSchema>;
 export type PushPreferenceUpdate = z.infer<typeof pushPreferenceUpdateSchema>;

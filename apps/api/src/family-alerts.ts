@@ -76,6 +76,7 @@ export function createFamilyAlerts(
             body: `${noticeAmount(spent, item.currency)} for ${item.description}.`,
             exceptUserId: userId,
             ownerOnly: true,
+            subject: { kind: "transaction", subjectId: item.id },
           });
         }
         if (lowBalanceMinor === null) return;
@@ -87,6 +88,7 @@ export function createFamilyAlerts(
             category: "low_balance",
             title: "Family money is running low",
             body: `${noticeAmount(left, item.currency)} left after ${item.description}.`,
+            subject: { kind: "transaction", subjectId: item.id },
           });
         }
       } catch (error) {

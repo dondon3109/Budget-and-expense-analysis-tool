@@ -82,7 +82,7 @@ describe("sendPush", () => {
         category: "remittance_received",
         title: "Money received",
         body: "₱5,000 from Don",
-        path: "/family",
+        data: { path: "/family" },
       },
       fetcher as typeof fetch,
     );

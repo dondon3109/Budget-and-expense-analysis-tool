@@ -42,6 +42,7 @@ export function createFamilyCommentRoutes(
           title: `New comment on ${added.subjectLabel}`,
           body: preview,
           onlyUserIds: added.audience,
+          subject,
         }),
       );
     }

@@ -1,4 +1,10 @@
-import type { Currency, FamilyRemittance, PushCategory } from "@zoption/shared";
+import type {
+  Currency,
+  FamilyCommentSubject,
+  FamilyPushData,
+  FamilyRemittance,
+  PushCategory,
+} from "@zoption/shared";
 
 import { pushRepository, type PushRepository } from "./db/push";
 import { sendPush } from "./push";
@@ -15,6 +21,8 @@ export interface FamilyNotice {
   onlyUserIds?: string[];
   /** Only the family's owner. */
   ownerOnly?: boolean;
+  /** The entry or remittance it is about; a tap on the phone opens it. */
+  subject?: FamilyCommentSubject;
 }
 
 /**
@@ -46,6 +54,7 @@ export function arrivalNotice(
       remittance.sentCurrency,
     )} sent on ${remittance.sentOn}.`,
     exceptUserId: byUserId,
+    subject: { kind: "remittance", subjectId: remittance.id },
   };
 }
 
@@ -67,12 +76,19 @@ export function createFamilyNotifier(
           .filter((userId) => userId !== notice.exceptUserId)
           .filter((userId) => !notice.onlyUserIds || notice.onlyUserIds.includes(userId));
         if (userIds.length === 0) return;
+        const data: FamilyPushData = {
+          path: "/family",
+          workspaceId: notice.familyTenantId,
+          ...(notice.subject
+            ? { subjectKind: notice.subject.kind, subjectId: notice.subject.subjectId }
+            : {}),
+        };
         await send(env, push, {
           userIds,
           category: notice.category,
           title: notice.title,
           body: notice.body,
-          path: "/family",
+          data,
         });
       } catch (error) {
         console.log(

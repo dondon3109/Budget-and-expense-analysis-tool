@@ -14,8 +14,8 @@ export interface PushMessage {
   category: PushCategory;
   title: string;
   body: string;
-  /** In-app path the notification opens, such as `/family`. */
-  path?: string;
+  /** What a tap opens in the app, such as `FamilyPushData`. */
+  data?: Record<string, string>;
 }
 
 interface ExpoTicket {
@@ -53,7 +53,7 @@ export async function sendPush(
           body: message.body,
           sound: "default",
           channelId: PUSH_ANDROID_CHANNEL,
-          data: message.path ? { path: message.path } : {},
+          data: message.data ?? {},
         })),
       ),
     });
