@@ -20,9 +20,9 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
-import { Button, Card, ConfirmationDialog } from "@/ui/components";
+import { Card, ConfirmationDialog } from "@/ui/components";
 import { useReduceMotion } from "@/ui/reduce-motion";
-import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { elevation, radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
@@ -295,30 +295,6 @@ export function TransactionVoiceEntry({
               />
             </View>
             <View style={styles.region}>
-              <View style={styles.action}>
-                {recording ? (
-                  <Pressable
-                    accessibilityLabel="Cancel recording"
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setMessage(null);
-                      void recorder.cancelRecording();
-                    }}
-                    style={styles.cancel}
-                  >
-                    <Text style={[typography.label, { color: onCard }]}>Cancel</Text>
-                  </Pressable>
-                ) : active ? null : (
-                  <Button
-                    accessibilityLabel="Enter details manually"
-                    icon="pencil-outline"
-                    onPress={close}
-                    variant="quiet"
-                  >
-                    Type it instead
-                  </Button>
-                )}
-              </View>
               <View style={styles.message}>
                 {message ? (
                   <Text
@@ -336,6 +312,40 @@ export function TransactionVoiceEntry({
               </View>
             </View>
           </Card>
+          {/* One quiet action under the card: type instead while idle, cancel while recording.
+              It is hidden rather than removed while a draft is made, so the card never shifts. */}
+          <View
+            pointerEvents={active && !recording ? "none" : "auto"}
+            style={[styles.outside, { opacity: active && !recording ? 0 : 1 }]}
+          >
+            {recording ? (
+              <Pressable
+                accessibilityLabel="Cancel recording"
+                accessibilityRole="button"
+                hitSlop={spacing.sm}
+                onPress={() => {
+                  setMessage(null);
+                  void recorder.cancelRecording();
+                }}
+                style={styles.outsideAction}
+              >
+                <MaterialCommunityIcons color={ON_SCRIM} name="close" size={18} />
+                <Text style={[typography.label, { color: ON_SCRIM }]}>Cancel</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityElementsHidden={active}
+                accessibilityLabel="Enter details manually"
+                accessibilityRole="button"
+                hitSlop={spacing.sm}
+                onPress={close}
+                style={styles.outsideAction}
+              >
+                <MaterialCommunityIcons color={ON_SCRIM} name="pencil-outline" size={18} />
+                <Text style={[typography.label, { color: ON_SCRIM }]}>Type it instead</Text>
+              </Pressable>
+            )}
+          </View>
         </Animated.View>
       </View>
       <ConfirmationDialog
@@ -486,6 +496,8 @@ function SoundBars({ color }: { color: ColorValue }) {
 }
 
 const MIC_SIZE = 76;
+// The scrim is dark in every theme, so text set straight on it is white.
+const ON_SCRIM = "#ffffff";
 // Wide enough that the fill, centered on the mic, reaches every corner of the card.
 const FILL_RADIUS = 360;
 
@@ -502,14 +514,14 @@ const styles = StyleSheet.create({
     borderRadius: FILL_RADIUS,
   },
   region: {
-    height: touchTarget + spacing.sm + typography.caption.lineHeight * 2,
+    height: typography.title.lineHeight + spacing.sm + typography.headline.lineHeight,
     justifyContent: "center",
     gap: spacing.sm,
   },
   status: { height: typography.headline.lineHeight, justifyContent: "center" },
-  action: { height: touchTarget, alignItems: "center", justifyContent: "center" },
   message: { height: typography.caption.lineHeight * 2, justifyContent: "center" },
-  cancel: { alignSelf: "center", paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
+  outside: { alignItems: "center", marginTop: spacing.lg },
+  outsideAction: { flexDirection: "row", alignItems: "center", gap: spacing.xxs },
   center: { textAlign: "center" },
   micArea: {
     alignSelf: "center",
