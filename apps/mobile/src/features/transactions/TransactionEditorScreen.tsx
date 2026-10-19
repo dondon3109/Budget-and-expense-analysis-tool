@@ -1,15 +1,6 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as ImagePicker from "expo-image-picker";
-import {
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   defaultTransactionCategory,
@@ -65,6 +56,13 @@ import {
   type VoicePreviewState,
 } from "./voice-preview";
 import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
+import { useSessionSnapshot } from "@/auth/session-state";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { canChangeEntry } from "@/features/family/entry-access";
+import { FamilyEntryPanel } from "@/features/family/FamilyEntryPanel";
+import { useFamilyApi } from "@/features/family/use-family-api";
+import { saveFamilyReceipt, useFamilyReceipt } from "@/features/family/use-family-receipt";
+import { TransactionPhotoField } from "./TransactionPhotoField";
 import { DebtPaymentField } from "./DebtPaymentField";
 import { EntryCurrencyField } from "./EntryCurrencyField";
 import { KindSelector } from "./KindSelector";
@@ -117,6 +115,10 @@ export function TransactionEditorScreen() {
   valuesRef.current = values;
   const [creatingCategory, setCreatingCategory] = useState(false);
   const storedPhoto = useTransactionPhoto(id);
+  const family = useActiveWorkspace().family;
+  const familyApi = useFamilyApi();
+  const familyReceipt = useFamilyReceipt(family ? id : undefined);
+  const me = useSessionSnapshot().subject;
   const [photoDraft, setPhotoDraft] = useState<PhotoDraft>(undefined);
   const saveRef = useRef<
     ((formValuesToSave?: TransactionFormValues) => Promise<boolean>) | undefined
@@ -230,7 +232,9 @@ export function TransactionEditorScreen() {
   ]);
 
   const blockedState = formData.data?.transaction?.syncState;
-  const mutationBlocked = blockedState === "failed" || blockedState === "conflicted";
+  const familyLocked = !canChangeEntry(family, me, formData.data?.transaction ?? null);
+  const mutationBlocked =
+    blockedState === "failed" || blockedState === "conflicted" || familyLocked;
   const categories = useMemo(
     () =>
       formData.data?.categories.filter(
@@ -345,7 +349,11 @@ export function TransactionEditorScreen() {
         });
       }
       if (savedId && photoDraft !== undefined && parsed.input.kind !== "transfer") {
-        await local.workspace.transactionMutations.setTransactionPhoto(savedId, photoDraft);
+        if (!familyApi) {
+          await local.workspace.transactionMutations.setTransactionPhoto(savedId, photoDraft);
+        } else if (photoDraft || familyReceipt) {
+          await saveFamilyReceipt(local.workspace, familyApi, savedId, photoDraft);
+        }
       }
       void telemetry.capture(id ? "transaction_updated" : "transaction_created", {
         transaction_kind: parsed.input.kind,
@@ -460,31 +468,11 @@ export function TransactionEditorScreen() {
     }
   };
 
-  const addPhoto = async (source: "camera" | "library"): Promise<void> => {
-    const options: ImagePicker.ImagePickerOptions = {
-      mediaTypes: ["images"],
-      quality: 0.4,
-      base64: true,
-    };
-    if (source === "camera") {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        setMessage("Allow camera access in Settings to take a picture.");
-        return;
-      }
-    }
-    const result =
-      source === "camera"
-        ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
-    const asset = result.canceled ? undefined : result.assets[0];
-    if (!asset?.base64) return;
-    setPhotoDraft({ mimeType: asset.mimeType ?? "image/jpeg", base64: asset.base64 });
-    setMessage(null);
-  };
   const photoUri =
     photoDraft === undefined
-      ? storedPhoto.photo
+      ? familyApi
+        ? familyReceipt
+        : storedPhoto.photo
       : photoDraft && `data:${photoDraft.mimeType};base64,${photoDraft.base64}`;
 
   const transfer = values.kind === "transfer";
@@ -592,6 +580,14 @@ export function TransactionEditorScreen() {
               </Text>
               <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
                 This saved operation was rejected and remains protected on this device.
+              </Text>
+            </Card>
+          ) : familyLocked ? (
+            <Card>
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                {family?.role === "viewer"
+                  ? "You can view this family but not change it."
+                  : "Only the person who added this entry, or the family's owner, can change it."}
               </Text>
             </Card>
           ) : blockedState === "pending" ? (
@@ -879,44 +875,17 @@ export function TransactionEditorScreen() {
             value={values.notes}
           />
           {!transfer ? (
-            <View className="w-full gap-2">
-              <Text style={[typography.label, { color: theme.colors.text }]}>
-                Photo (stays on this device)
-              </Text>
-              {photoUri ? (
-                <Image
-                  accessibilityLabel="Transaction photo"
-                  resizeMode="contain"
-                  source={{ uri: photoUri }}
-                  style={styles.photo}
-                />
-              ) : null}
-              <View className="flex-row gap-3">
-                <Button
-                  disabled={saving || mutationBlocked}
-                  onPress={() => void addPhoto("camera")}
-                  variant="secondary"
-                >
-                  Take photo
-                </Button>
-                <Button
-                  disabled={saving || mutationBlocked}
-                  onPress={() => void addPhoto("library")}
-                  variant="secondary"
-                >
-                  Choose photo
-                </Button>
-                {photoUri ? (
-                  <Button
-                    disabled={saving || mutationBlocked}
-                    onPress={() => setPhotoDraft(null)}
-                    variant="quiet"
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </View>
-            </View>
+            <TransactionPhotoField
+              disabled={saving || mutationBlocked}
+              family={Boolean(familyApi)}
+              onError={setMessage}
+              onPick={(photo) => {
+                setPhotoDraft(photo);
+                setMessage(null);
+              }}
+              onRemove={() => setPhotoDraft(null)}
+              photoUri={photoUri}
+            />
           ) : null}
 
           {message ? (
@@ -948,7 +917,7 @@ export function TransactionEditorScreen() {
           >
             {editing ? "Save changes" : transfer ? "Save transfer" : "Save transaction"}
           </Button>
-          {id && !transfer ? (
+          {id && !transfer && !family ? (
             <ShareLinkButton target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }} />
           ) : null}
           {editing ? (
@@ -960,6 +929,12 @@ export function TransactionEditorScreen() {
             >
               Delete {transfer ? "transfer" : "transaction"}
             </Button>
+          ) : null}
+          {family && id ? (
+            <FamilyEntryPanel
+              authorUserId={formData.data.transaction?.authorUserId ?? null}
+              transactionId={id}
+            />
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
@@ -988,5 +963,4 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   notes: { minHeight: 104 },
-  photo: { width: "100%", height: 220, borderRadius: 12 },
 });

@@ -256,6 +256,7 @@ describe("encrypted local workspace repository", () => {
           debt_id: null,
           deleted_at: null,
           sync_state: "pending",
+          author_user_id: null,
         }),
       ),
     };
@@ -290,6 +291,7 @@ describe("encrypted local workspace repository", () => {
           debtId: null,
         },
         syncState: "pending",
+        authorUserId: null,
       },
       unavailableReason: null,
     });
@@ -336,6 +338,7 @@ describe("encrypted local workspace repository", () => {
             debt_id: null,
             deleted_at: null,
             sync_state: "synced",
+            author_user_id: null,
           },
           {
             id: "transaction-2",
@@ -352,6 +355,7 @@ describe("encrypted local workspace repository", () => {
             debt_id: null,
             deleted_at: null,
             sync_state: "synced",
+            author_user_id: null,
           },
         ]),
       getFirstAsync: jest.fn(() =>
@@ -370,6 +374,7 @@ describe("encrypted local workspace repository", () => {
           debt_id: null,
           deleted_at: null,
           sync_state: "synced",
+          author_user_id: null,
         }),
       ),
     };

@@ -1,5 +1,6 @@
 import * as Crypto from "expo-crypto";
 import type { SQLiteDatabase } from "expo-sqlite";
+import { z } from "zod";
 
 import type {
   MobileSyncPushRequest,
@@ -271,6 +272,72 @@ export class LocalTransactionMutationRepository {
         photo.base64,
         this.now().toISOString(),
       );
+    });
+  }
+
+  /**
+   * Keeps a family receipt photo in this encrypted file until its entries have synced; the sync
+   * loop then uploads it once for all of them. Several entries share one photo, as for a scan.
+   */
+  async queueReceiptUpload(
+    transactionIds: readonly string[],
+    photo: { mimeType: string; base64: string },
+  ): Promise<void> {
+    await this.commands.writer.run(async () => {
+      await this.database.runAsync(
+        `INSERT INTO receipt_uploads (id, transaction_ids_json, mime_type, data_base64, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        Crypto.randomUUID(),
+        JSON.stringify(transactionIds),
+        photo.mimeType,
+        photo.base64,
+        this.now().toISOString(),
+      );
+    });
+  }
+
+  /**
+   * Queued photos whose entries are all on the server, named by the entries still alive. A photo
+   * whose entries were all deleted is dropped, and one with an entry still uploading waits.
+   */
+  async readyReceiptUploads(): Promise<
+    { id: string; transactionIds: string[]; mimeType: string; base64: string }[]
+  > {
+    const rows = await this.database.getAllAsync<{
+      id: string;
+      transaction_ids_json: string;
+      mime_type: string;
+      data_base64: string;
+    }>("SELECT id, transaction_ids_json, mime_type, data_base64 FROM receipt_uploads");
+    const ready = [];
+    for (const row of rows) {
+      const ids = z.array(z.string()).parse(JSON.parse(row.transaction_ids_json));
+      const entries =
+        ids.length === 0
+          ? []
+          : await this.database.getAllAsync<{ id: string; sync_state: string }>(
+              `SELECT id, sync_state FROM transactions
+         WHERE deleted_at IS NULL AND id IN (${ids.map(() => "?").join(", ")})`,
+              ...ids,
+            );
+      if (entries.length === 0) {
+        await this.finishReceiptUpload(row.id);
+        continue;
+      }
+      if (entries.some((entry) => entry.sync_state !== "synced")) continue;
+      ready.push({
+        id: row.id,
+        transactionIds: entries.map((entry) => entry.id),
+        mimeType: row.mime_type,
+        base64: row.data_base64,
+      });
+    }
+    return ready;
+  }
+
+  async finishReceiptUpload(id: string): Promise<void> {
+    await this.commands.writer.run(async () => {
+      await this.database.runAsync("DELETE FROM receipt_uploads WHERE id = ?", id);
     });
   }
 

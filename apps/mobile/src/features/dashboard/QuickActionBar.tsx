@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
@@ -10,6 +11,9 @@ import { withTapSound } from "@/features/sounds/sound-effects";
 export function QuickActionBar() {
   const theme = useZoptionTheme();
   const { openFeature } = useAccountGate();
+  const family = useActiveWorkspace().family;
+  // A viewer adds nothing, and the assistant writes to personal money only.
+  if (family?.role === "viewer") return null;
   return (
     <View accessibilityLabel="Quick actions" style={styles.quickActionsGrid}>
       <Pressable
@@ -50,31 +54,33 @@ export function QuickActionBar() {
         </Text>
       </Pressable>
 
-      <Pressable
-        accessibilityLabel="AI Assistant"
-        accessibilityHint="Opens financial AI assistant"
-        accessibilityRole="button"
-        android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
-        onPress={withTapSound(() => openFeature("assistant", "/(app)/assistant"))}
-        style={[
-          styles.quickActionTile,
-          { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
-        ]}
-      >
-        <View
-          accessibilityElementsHidden
-          style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+      {family ? null : (
+        <Pressable
+          accessibilityLabel="AI Assistant"
+          accessibilityHint="Opens financial AI assistant"
+          accessibilityRole="button"
+          android_ripple={{ color: "rgba(10, 117, 86, 0.16)", borderless: false }}
+          onPress={withTapSound(() => openFeature("assistant", "/(app)/assistant"))}
+          style={[
+            styles.quickActionTile,
+            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+          ]}
         >
-          <MaterialCommunityIcons
-            name="chat-processing-outline"
-            size={20}
-            color={theme.colors.brand}
-          />
-        </View>
-        <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
-          Assistant
-        </Text>
-      </Pressable>
+          <View
+            accessibilityElementsHidden
+            style={[styles.quickActionIconWrap, { backgroundColor: theme.colors.brandSoft }]}
+          >
+            <MaterialCommunityIcons
+              name="chat-processing-outline"
+              size={20}
+              color={theme.colors.brand}
+            />
+          </View>
+          <Text style={[typography.caption, { color: theme.colors.text, fontWeight: "600" }]}>
+            Assistant
+          </Text>
+        </Pressable>
+      )}
     </View>
   );
 }

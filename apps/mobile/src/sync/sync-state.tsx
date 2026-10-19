@@ -27,6 +27,7 @@ import { LocalSyncApplyError } from "@/db/sync-repository";
 import { reportPlanLimit } from "@/features/billing/PlanLimitDialog";
 import { recoverLocalWorkspace, withDetachedWorkspace, type LocalWorkspace } from "@/db/workspace";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { uploadQueuedReceipts } from "@/features/family/receipt-uploads";
 import { describeRefusedChanges } from "@/features/family/refused-changes";
 import { familySubject } from "@/features/family/workspace-record";
 
@@ -266,9 +267,17 @@ export function SyncProvider({
       for (const target of drainTargetsRef.current) {
         if (stale()) return;
         try {
-          await withDetachedWorkspace(target.subject, (other) =>
-            pushOutbox(other, target.workspaceId, auth, controller.signal, stale),
-          );
+          await withDetachedWorkspace(target.subject, async (other) => {
+            if (!(await pushOutbox(other, target.workspaceId, auth, controller.signal, stale))) {
+              return;
+            }
+            if (target.workspaceId) {
+              await uploadQueuedReceipts(other, {
+                accessToken: auth.token,
+                workspaceId: target.workspaceId,
+              });
+            }
+          });
         } catch (error) {
           // Each stays queued for its own next sync; only a lost membership is settled here.
           if (target.workspaceId && isWorkspaceRefusal(error)) {
@@ -330,7 +339,13 @@ export function SyncProvider({
               acknowledgement.retentionFloorCursor,
             );
             // From here the family opens offline (the switcher allows it).
-            if (familyId) markSynced(familyId);
+            if (familyId) {
+              markSynced(familyId);
+              await uploadQueuedReceipts(workspace, {
+                accessToken: auth.token,
+                workspaceId: familyId,
+              }).catch(() => undefined);
+            }
             if (requestRef.current === requestId) {
               const schedule = await scheduleOutstandingRetry();
               if (!stale()) {

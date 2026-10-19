@@ -96,6 +96,13 @@ export function MoreScreen() {
           title="Accounts & categories"
           onPress={() => router.push("/(app)/money-setup")}
         />
+        {inFamily ? (
+          <MenuRow
+            icon="delete-restore"
+            title="Recently deleted"
+            onPress={() => router.push("/(app)/family-deleted")}
+          />
+        ) : null}
         {inFamily ? null : (
           <>
             <MenuRow

@@ -51,6 +51,7 @@ const editableTransactionRowSchema = z.object({
   debt_id: z.string().nullable(),
   deleted_at: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+  author_user_id: z.string().nullable(),
 });
 
 /** What the transaction editor needs: pickable accounts and categories, and the row being edited. */
@@ -93,7 +94,7 @@ export async function readTransactionFormData(
     id
       ? database.getFirstAsync(
           `SELECT id, account_id, category_id, date, description, amount_minor, currency,
-            kind, notes, transfer_group_id, transfer_fee_minor, debt_id, deleted_at, sync_state
+            kind, notes, transfer_group_id, transfer_fee_minor, debt_id, deleted_at, sync_state, author_user_id
            FROM transactions WHERE id = ?`,
           id,
         )
@@ -130,7 +131,7 @@ export async function readTransactionFormData(
     const pair = z.array(editableTransactionRowSchema).parse(
       await database.getAllAsync(
         `SELECT id, account_id, category_id, date, description, amount_minor, currency,
-          kind, notes, transfer_group_id, transfer_fee_minor, debt_id, deleted_at, sync_state
+          kind, notes, transfer_group_id, transfer_fee_minor, debt_id, deleted_at, sync_state, author_user_id
          FROM transactions WHERE transfer_group_id = ? ORDER BY amount_minor, id`,
         decoded.data.transfer_group_id,
       ),
@@ -178,6 +179,7 @@ export async function readTransactionFormData(
               : from.sync_state === "pending" || to.sync_state === "pending"
                 ? "pending"
                 : "synced",
+        authorUserId: from.author_user_id,
       },
       unavailableReason: null,
     };
@@ -208,6 +210,7 @@ export async function readTransactionFormData(
         notes: decoded.data.notes ?? undefined,
       },
       syncState: decoded.data.sync_state,
+      authorUserId: decoded.data.author_user_id,
     },
     unavailableReason: null,
   };

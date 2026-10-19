@@ -220,6 +220,14 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="family-deleted"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+            title: "Recently deleted",
+          }}
+        />
+        <Stack.Screen
           name="tutorials"
           options={{
             headerShown: true,

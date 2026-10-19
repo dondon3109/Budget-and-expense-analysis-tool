@@ -60,6 +60,8 @@ export interface EditableLocalTransaction {
   id: string;
   input: TransactionInput;
   syncState: LocalSyncState;
+  /** Who added a family entry, once the Worker has confirmed it; null in a personal workspace. */
+  authorUserId: string | null;
 }
 
 export interface TransactionFormData {
