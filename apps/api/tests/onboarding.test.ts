@@ -177,6 +177,7 @@ describe("cash step", () => {
       { name: "Bank", currency: "USD" },
       { name: "Cash", currency: "USD" },
       { name: "GCash", currency: "USD" },
+      { name: "Maya", currency: "USD" },
     ]);
     expect(rows("SELECT account_id, amount_minor, currency, kind, date FROM transactions")).toEqual(
       [

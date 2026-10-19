@@ -16,6 +16,7 @@ const GUEST_ACCOUNTS = [
   { id: "guest-account-cash", name: "Cash", type: "cash" },
   { id: "guest-account-bank", name: "Bank", type: "checking" },
   { id: "guest-account-gcash", name: "GCash", type: "other" },
+  { id: "guest-account-maya", name: "Maya", type: "ewallet" },
 ] as const;
 
 const GUEST_CATEGORIES = [
