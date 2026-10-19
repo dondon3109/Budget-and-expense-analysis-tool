@@ -19,7 +19,7 @@ import {
   useTransactionPhoto,
 } from "@/db/local-workspace-state";
 import { playSound } from "@/features/sounds/sound-effects";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
 import {
@@ -178,7 +178,7 @@ export function TransactionEditorScreen() {
       : (matchedParamAccount ??
         preferredTransactionAccount(
           formData.data.accounts,
-          useDefaultSpendingAccountStore.getState().accountId,
+          useLastUsedAccountStore.getState().accountId,
         ));
 
     const matchedCategory =
@@ -360,6 +360,11 @@ export function TransactionEditorScreen() {
           ...parsed.input,
           entryMethod,
         });
+        useLastUsedAccountStore
+          .getState()
+          .setAccountId(
+            parsed.input.kind === "transfer" ? parsed.input.fromAccountId : parsed.input.accountId,
+          );
       }
       if (savedId && photoDraft !== undefined && parsed.input.kind !== "transfer") {
         if (!familyApi) {
@@ -435,7 +440,7 @@ export function TransactionEditorScreen() {
       formData.data?.accounts.filter((account) => !account.pending) ?? [];
     const defaultAccount = preferredTransactionAccount(
       synchronizedAccounts,
-      useDefaultSpendingAccountStore.getState().accountId,
+      useLastUsedAccountStore.getState().accountId,
     );
     const defaultCategory = defaultTransactionCategory(
       formData.data?.categories.filter((item) => !item.pending) ?? [],

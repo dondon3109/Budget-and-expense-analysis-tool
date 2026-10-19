@@ -5,7 +5,7 @@ import { extractVoiceTransactionsFromTranscript } from "@/api/ai-entry";
 import { getSupabaseClient } from "@/auth/supabase-client";
 import { withDetachedWorkspace } from "@/db/workspace";
 import { telemetry } from "@/telemetry/telemetry";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 
 import { parseWidgetTranscriptToIntent } from "./widget-intent";
 import { WIDGET_REVIEW_NOTIFICATION_ID, WIDGET_NOTIFICATION_PREFIX } from "./widget-notifications";
@@ -49,8 +49,8 @@ const deps: WidgetLogDeps = {
   },
   async defaultAccountId() {
     // The store skips hydration, so a task that starts the runtime reads it itself.
-    await useDefaultSpendingAccountStore.persist.rehydrate();
-    return useDefaultSpendingAccountStore.getState().accountId;
+    await useLastUsedAccountStore.persist.rehydrate();
+    return useLastUsedAccountStore.getState().accountId;
   },
   extract: (accessToken, transcript, categoryNames) =>
     extractVoiceTransactionsFromTranscript(accessToken, transcript, undefined, categoryNames),

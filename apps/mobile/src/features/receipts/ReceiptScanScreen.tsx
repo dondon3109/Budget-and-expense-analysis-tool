@@ -18,7 +18,7 @@ import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "@/ap
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import { localCalendarDate, parseTransactionForm } from "@/features/transactions/transaction-form";
-import { useDefaultSpendingAccountStore } from "@/stores/default-spending-account-store";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
@@ -86,7 +86,7 @@ export function ReceiptScanScreen() {
   const [date, setDate] = useState(localCalendarDate());
   const [kind, setKind] = useState<ReceiptKind>("expense");
   const [accountId, setAccountId] = useState("");
-  const defaultSpendingAccountId = useDefaultSpendingAccountStore((state) => state.accountId);
+  const lastUsedAccountId = useLastUsedAccountStore((state) => state.accountId);
   const [items, setItems] = useState<ReceiptReviewItem[]>([]);
   const [showRawText, setShowRawText] = useState(false);
   const [singleReceiptNoticeOpen, setSingleReceiptNoticeOpen] = useState(true);
@@ -140,9 +140,9 @@ export function ReceiptScanScreen() {
   }, []);
 
   useEffect(() => {
-    const defaultAccount = preferredTransactionAccount(accounts, defaultSpendingAccountId);
+    const defaultAccount = preferredTransactionAccount(accounts, lastUsedAccountId);
     if (!accountId && defaultAccount) setAccountId(defaultAccount.id);
-  }, [accountId, accounts, defaultSpendingAccountId]);
+  }, [accountId, accounts, lastUsedAccountId]);
 
   useEffect(() => {
     const fallback = defaultCategoryId(categories, kind);
