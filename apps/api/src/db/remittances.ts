@@ -89,7 +89,11 @@ function normalize(row: RemittanceRow): FamilyRemittance {
   };
 }
 
-async function find(env: Bindings, tenantId: string, id: string): Promise<FamilyRemittance> {
+export async function findRemittance(
+  env: Bindings,
+  tenantId: string,
+  id: string,
+): Promise<FamilyRemittance> {
   const row = await env.DB.prepare(`${REMITTANCE_SELECT} WHERE r.tenant_id = ? AND r.id = ?`)
     .bind(tenantId, id)
     .first<RemittanceRow>();
@@ -194,7 +198,7 @@ export const remittanceRepository: RemittanceRepository = {
         transactionId,
       ),
     ]);
-    return find(env, tenantId, id);
+    return findRemittance(env, tenantId, id);
   },
 
   async receive(env, tenantId, userId, remittanceId, input) {
@@ -242,7 +246,7 @@ export const remittanceRepository: RemittanceRepository = {
         .run();
       throw error;
     }
-    return find(env, tenantId, remittanceId);
+    return findRemittance(env, tenantId, remittanceId);
   },
 
   async cancel(env, tenantId, remittanceId, senderOnly) {

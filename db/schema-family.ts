@@ -170,6 +170,9 @@ export const familyRemittances = sqliteTable(
     createdAt: text("created_at")
       .notNull()
       .default(sql`(strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`),
+    // Sync revision, bumped by the change-log trigger; updatedAt is null until the first change.
+    revision: integer("revision").notNull().default(1),
+    updatedAt: text("updated_at"),
   },
   (table) => [
     index("family_remittances_tenant_idx").on(table.tenantId, table.sentOn),

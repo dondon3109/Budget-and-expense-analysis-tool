@@ -8,8 +8,10 @@ import {
 } from "@zoption/shared";
 
 import type { FamilyAlerts } from "../../family-alerts";
+import { arrivalNotice, type FamilyNotifier } from "../../family-notifier";
 import type { Bindings } from "../../types";
 import type { Capture, FamilyJournal } from "../family-journal";
+import { findRemittance } from "../remittances";
 import { findTransaction } from "../transactions";
 import { persistResult, readIdempotency, requestHash } from "./push/idempotency";
 import { rejectedResult } from "./push/results";
@@ -23,11 +25,14 @@ export interface FamilyPushScope {
   role: Exclude<WorkspaceRole, "viewer">;
   journal: FamilyJournal;
   alerts: FamilyAlerts;
+  notifier: FamilyNotifier;
   /** Runs follow-up work (alerts) after the response, like the REST routes do. */
   defer(work: Promise<void>): Promise<void>;
 }
 
 type Run = (input: MobileSyncPushRequest) => Promise<MobileSyncPushResponse>;
+
+const NOT_YOUR_SEND = "Only the person who sent it, or the family owner, can cancel it.";
 
 // A family has no goals, debts, subscriptions, or events, the same as its REST surface.
 const PERSONAL_ONLY = new Set(["goal", "debt", "subscription", "event"]);
@@ -66,7 +71,18 @@ async function familyRejection(
   if (PERSONAL_ONLY.has(operation.entityType)) {
     return rejectedResult(operation, "unsupported_operation", "This is not available in a family.");
   }
-  if (scope.role === "owner" || !changesEntry(operation)) return null;
+  if (scope.role === "owner") return null;
+  if (operation.entityType === "remittance" && operation.operationType === "delete") {
+    const send = await env.DB.prepare(
+      "SELECT sent_by_user_id AS senderId FROM family_remittances WHERE tenant_id = ? AND id = ?",
+    )
+      .bind(tenantId, operation.entityId)
+      .first<{ senderId: string }>();
+    return send && send.senderId !== scope.userId
+      ? rejectedResult(operation, "invalid_operation", NOT_YOUR_SEND)
+      : null;
+  }
+  if (!changesEntry(operation)) return null;
   // A missing row falls through to the usual entity_missing conflict.
   const author = await authorOf(env, tenantId, operation);
   if (author === undefined || author === scope.userId) return null;
@@ -90,8 +106,8 @@ async function journalId(
 
 /**
  * Runs a push into a family under the rules its REST routes enforce: members change only their
- * own entries, personal-only entities are refused, edits and deletes are journaled, and a new
- * expense runs the family alerts. Refused operations get a rejected result; in a dependency
+ * own entries and cancel only their own sends, personal-only entities are refused, edits and
+ * deletes are journaled, a new expense runs the family alerts, and an arrival tells the family. Refused operations get a rejected result; in a dependency
  * graph, which applies all or nothing, the rest fail with it.
  */
 export async function pushIntoFamily(
@@ -174,6 +190,13 @@ export async function pushIntoFamily(
       if (created?.kind === "expense") {
         await scope.defer(scope.alerts.afterExpense(env, tenantId, scope.userId, created));
       }
+    }
+    if (operation.entityType === "remittance" && operation.operationType !== "delete") {
+      const notice = arrivalNotice(
+        tenantId,
+        await findRemittance(env, tenantId, operation.entityId),
+      );
+      if (notice) await scope.defer(scope.notifier.notify(env, notice));
     }
   }
   return { protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION, results };

@@ -83,6 +83,7 @@ async function setup() {
 
   const alerts = { ...createFamilyAlerts({ notify: async () => undefined }) };
   alerts.afterExpense = vi.fn(async () => undefined);
+  const notifier = { notify: vi.fn(async () => undefined) };
   const verifier: AuthVerifier = { verify: async (_env, token) => ({ id: token }) };
   const app = new Hono<AppEnvironment>();
   app.use("/api/app/*", createAuthMiddleware(verifier, createTenantResolver()));
@@ -93,6 +94,7 @@ async function setup() {
       {
         journal: familyJournal,
         alerts,
+        notifier,
       },
     ),
   );
@@ -125,7 +127,7 @@ async function setup() {
     (await (
       await call(user, "pull", { protocolVersion: 1, cursor: null })
     ).json()) as MobileSyncPullResponse;
-  return { database, alerts, call, push, pull };
+  return { database, alerts, notifier, call, push, pull };
 }
 
 describe("mobile sync in a family", () => {
@@ -255,5 +257,93 @@ describe("mobile sync in a family", () => {
     expect(viewerPush.status).toBe(403);
     expect(goal.results[0]).toMatchObject({ status: "rejected", code: "unsupported_operation" });
     expect(olderApp.status).toBe(400);
+  });
+
+  it("syncs a remittance from sent to received and tells the family it arrived", async () => {
+    const { database, notifier, push, pull } = await setup();
+    const send = "50000000-0000-4000-8000-000000000401";
+    const mamasSend = "50000000-0000-4000-8000-000000000402";
+    const income = "50000000-0000-4000-8000-000000000403";
+    const sent = {
+      sentAmountMinor: 20_000,
+      sentCurrency: "USD" as const,
+      provider: "Remitly",
+      sentOn: "2026-10-15",
+    };
+    await push(
+      "kuya",
+      operation({
+        entityType: "remittance",
+        entityId: send,
+        operationType: "create",
+        payload: sent,
+      }),
+    );
+    await push(
+      "mama",
+      operation({
+        entityType: "remittance",
+        entityId: mamasSend,
+        operationType: "create",
+        payload: sent,
+      }),
+    );
+
+    const received = await push(
+      "mama",
+      operation({
+        entityType: "remittance",
+        entityId: send,
+        operationType: "update",
+        baseRevision: 1,
+        payload: {
+          transactionId: income,
+          amountMinor: 1_120_000,
+          accountId: defaultAccountIdForTenant(FAMILY),
+          categoryId: defaultCategoryIdForTenant(FAMILY, "salary"),
+          date: "2026-10-17",
+        },
+      }),
+    );
+    const cancels = await push(
+      "kuya",
+      operation({
+        entityType: "remittance",
+        entityId: send,
+        operationType: "delete",
+        baseRevision: 2,
+        payload: {},
+      }),
+      operation({
+        entityType: "remittance",
+        entityId: mamasSend,
+        operationType: "delete",
+        baseRevision: 1,
+        payload: {},
+      }),
+    );
+    const changes = (await pull("lola")).changes;
+
+    expect(received.results[0]?.status).toBe("acknowledged");
+    expect(cancels.results.map((result) => result.status)).toEqual(["rejected", "rejected"]);
+    expect(changes.filter((change) => change.entityId === send).at(-1)?.payload).toMatchObject({
+      sentByUserId: "kuya",
+      transactionId: income,
+      receivedByUserId: "mama",
+      revision: 2,
+    });
+    expect(changes.find((change) => change.entityId === income)?.payload).toMatchObject({
+      kind: "income",
+      amountMinor: 1_120_000,
+      description: "Remittance via Remitly",
+      authorUserId: "mama",
+    });
+    expect(notifier.notify).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ category: "remittance_received", exceptUserId: "mama" }),
+    );
+    expect(database.prepare("SELECT COUNT(*) AS count FROM family_remittances").get()).toEqual({
+      count: 2,
+    });
   });
 });

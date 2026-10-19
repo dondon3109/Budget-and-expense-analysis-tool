@@ -240,6 +240,7 @@ export function createApp(options: AppOptions = {}) {
     createMobileSyncRoutes(dependencies.mobileSync, {
       journal: dependencies.familyJournal,
       alerts: dependencies.familyAlerts,
+      notifier: dependencies.familyNotifier,
     }),
   );
   app.route("/api/app/receipts", createReceiptRoutes(dependencies.receiptService));

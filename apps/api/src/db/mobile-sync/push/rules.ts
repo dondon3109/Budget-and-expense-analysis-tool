@@ -3,6 +3,7 @@ import {
   mobileSyncAccountSnapshotSchema,
   mobileSyncCategorySnapshotSchema,
   mobileSyncGoalSnapshotSchema,
+  mobileSyncRemittanceSnapshotSchema,
   type MobileSyncPushOperation,
   type MobileSyncPushResult,
 } from "@zoption/shared";
@@ -166,6 +167,18 @@ export async function businessRejection(
   }
 
   if (operation.entityType === "event") {
+    return null;
+  }
+
+  if (operation.entityType === "remittance") {
+    const stored = current ? mobileSyncRemittanceSnapshotSchema.parse(current) : null;
+    if (operation.operationType === "delete" && stored?.transactionId) {
+      return rejectedResult(
+        operation,
+        "invalid_operation",
+        "Only a send that has not arrived can be cancelled.",
+      );
+    }
     return null;
   }
 

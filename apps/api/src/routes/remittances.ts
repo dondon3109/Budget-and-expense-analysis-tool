@@ -8,7 +8,7 @@ import { Hono, type Context } from "hono";
 
 import type { RemittanceRepository } from "../db/remittances";
 import { HttpError } from "../errors";
-import { noticeAmount, type FamilyNotifier } from "../family-notifier";
+import { arrivalNotice, type FamilyNotifier } from "../family-notifier";
 import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment, TenantContext } from "../types";
 
@@ -37,21 +37,8 @@ export function createRemittanceRoutes(
   const routes = new Hono<AppEnvironment>();
 
   async function announceArrival(context: Context<AppEnvironment>, remittance: FamilyRemittance) {
-    if (!remittance.received) return;
-    const { amountMinor, currency, byUserId } = remittance.received;
-    await afterResponse(
-      context,
-      notifier.notify(context.env, {
-        familyTenantId: context.get("tenant").tenantId,
-        category: "remittance_received",
-        title: "Remittance received",
-        body: `${noticeAmount(amountMinor, currency)} arrived from ${noticeAmount(
-          remittance.sentAmountMinor,
-          remittance.sentCurrency,
-        )} sent on ${remittance.sentOn}.`,
-        exceptUserId: byUserId,
-      }),
-    );
+    const notice = arrivalNotice(context.get("tenant").tenantId, remittance);
+    if (notice) await afterResponse(context, notifier.notify(context.env, notice));
   }
 
   routes.get("/", async (context) => {

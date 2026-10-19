@@ -3,6 +3,7 @@ import {
   calendarEventInputSchema,
   mobileSyncEventSnapshotSchema,
   mobileSyncPushResultSchema,
+  mobileSyncRemittanceSnapshotSchema,
   mobileSyncTransactionSnapshotSchema,
   type MobileSyncAcknowledgeRequest,
   type MobileSyncAcknowledgeResponse,
@@ -43,6 +44,7 @@ import { categoryMutation } from "./mobile-sync/push/entities/category";
 import { debtMutation } from "./mobile-sync/push/entities/debt";
 import { eventMutation } from "./mobile-sync/push/entities/event";
 import { goalMutation } from "./mobile-sync/push/entities/goal";
+import { remittanceMutation } from "./mobile-sync/push/entities/remittance";
 import { subscriptionMutation } from "./mobile-sync/push/entities/subscription";
 import {
   transactionMutation,
@@ -151,6 +153,17 @@ function entityMutation(
       return subscriptionMutation(env, tenantId, operation, current, timestamp);
     case "event":
       return eventMutation(env, tenantId, operation, current, timestamp);
+    case "remittance":
+      // Remittances reach here only in a family, where the author is the pusher.
+      return remittanceMutation(
+        env,
+        tenantId,
+        clientId,
+        operation,
+        authorUserId!,
+        current ? mobileSyncRemittanceSnapshotSchema.parse(current).provider : null,
+        timestamp,
+      );
     case "transaction":
       return transactionMutation(
         env,
@@ -314,6 +327,63 @@ export function createMobileSyncRepository(
               operation,
               hash,
               conflictResult(operation, "entity_exists", existing),
+            ),
+          );
+          continue;
+        }
+      }
+
+      if (operation.entityType === "remittance" && !authorUserId) {
+        results.push(
+          await persistResult(
+            env,
+            tenantId,
+            input.clientId,
+            operation,
+            hash,
+            rejectedResult(
+              operation,
+              "unsupported_operation",
+              "Remittances belong to a family workspace.",
+            ),
+          ),
+        );
+        continue;
+      }
+
+      const arrival =
+        operation.entityType !== "remittance" || operation.operationType === "delete"
+          ? undefined
+          : operation.operationType === "create"
+            ? operation.payload.received
+            : operation.payload;
+      if (arrival) {
+        try {
+          await validateTransactionReferences(
+            env,
+            tenantId,
+            {
+              kind: "income",
+              accountId: arrival.accountId,
+              categoryId: arrival.categoryId,
+              date: arrival.date,
+              amountMinor: arrival.amountMinor,
+              description: "Remittance",
+              currency: "PHP",
+            },
+            undefined,
+            readEntitlement,
+          );
+        } catch (error) {
+          if (!(error instanceof HttpError)) throw error;
+          results.push(
+            await persistResult(
+              env,
+              tenantId,
+              input.clientId,
+              operation,
+              hash,
+              transactionReferenceRejection(operation, error),
             ),
           );
           continue;

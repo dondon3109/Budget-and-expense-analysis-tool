@@ -14,6 +14,7 @@ import type { FamilyJournal } from "../db/family-journal";
 import type { MobileSyncRepository } from "../db/mobile-sync";
 import { HttpError } from "../errors";
 import type { FamilyAlerts } from "../family-alerts";
+import type { FamilyNotifier } from "../family-notifier";
 import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 import { afterResponse } from "./remittances";
@@ -21,7 +22,7 @@ import { afterResponse } from "./remittances";
 /** `family` holds the hooks a push into a family runs, the same ones its REST routes run. */
 export function createMobileSyncRoutes(
   repository: MobileSyncRepository,
-  family: { journal: FamilyJournal; alerts: FamilyAlerts },
+  family: { journal: FamilyJournal; alerts: FamilyAlerts; notifier: FamilyNotifier },
 ) {
   const routes = new Hono<AppEnvironment>();
   const features = (context: { req: { header(name: string): string | undefined } }) =>

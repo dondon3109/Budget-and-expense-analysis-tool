@@ -114,6 +114,13 @@ Edits and deletes go into the family journal, so history and Undo work as on the
 expense runs the family alerts when it syncs. A result stored before the rules changed replays
 unchanged.
 
+Remittances (`remittance`) sync only in a family. A create records a send by the pusher, and with
+`received` also its arrival; an update confirms the arrival; a delete cancels a send that has not
+arrived, by its sender or the owner. Confirming creates the income transaction under the
+`transactionId` the client chose, so the phone's own row and the server's match the way a
+transfer's legs do, and the family is notified as on the web. The payload carries the send and
+`transactionId`; the received amount, account, and date are that transaction's.
+
 ## Released app contracts
 
 `packages/shared/contracts/mobile-sync/<versionName>.json` records, for every app release still
