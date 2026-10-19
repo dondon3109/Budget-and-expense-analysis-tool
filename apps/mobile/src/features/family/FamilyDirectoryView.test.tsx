@@ -29,12 +29,13 @@ jest.mock("./active-workspace", () => ({ useActiveWorkspace: jest.fn() }));
 
 const personal = { id: "user-1", kind: "user", name: "Personal", role: "owner" } as const;
 const switchTo = jest.fn();
+const refresh = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useActiveWorkspace).mockReturnValue({
     switchTo,
-    refresh: jest.fn(),
+    refresh,
   } as unknown as ReturnType<typeof useActiveWorkspace>);
   jest.mocked(listFamilyInvitations).mockResolvedValue([]);
 });
@@ -49,6 +50,7 @@ describe("FamilyDirectoryView", () => {
     await render(<FamilyDirectoryView />);
     await fireEvent.press(await screen.findByRole("button", { name: "Dela Cruz, Owner" }));
 
+    expect(refresh).toHaveBeenCalled();
     expect(switchTo).toHaveBeenCalledWith("fam-1");
     expect(router.replace).toHaveBeenCalledWith("/(app)/(tabs)");
     // Owning a family already means there is nothing to start, and no empty invitations card.

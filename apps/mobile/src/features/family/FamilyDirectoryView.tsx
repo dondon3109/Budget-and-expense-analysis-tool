@@ -97,6 +97,9 @@ export function FamilyDirectoryView() {
   const ownsFamily = families.some((family) => family.role === "owner");
 
   const open = (familyId: string) => {
+    // The switcher knows only the families its last list read returned, which may have failed
+    // or predate this one; the refresh brings it in, and the family shows once it lands.
+    active.refresh();
     active.switchTo(familyId);
     router.replace("/(app)/(tabs)");
   };
@@ -115,8 +118,6 @@ export function FamilyDirectoryView() {
       }
       setPending(null);
       setName("");
-      // The switcher learns the new family from the list this refresh fetches.
-      active.refresh();
       open(familyId);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "The family could not be changed.");
