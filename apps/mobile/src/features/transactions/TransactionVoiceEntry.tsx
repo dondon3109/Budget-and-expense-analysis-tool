@@ -22,7 +22,7 @@ import { useVoiceRecorder } from "@/features/assistant/assistant-voice-hooks";
 import { useVoiceLanguageStore } from "@/stores/voice-language-store";
 import { Button, Card, ConfirmationDialog } from "@/ui/components";
 import { useReduceMotion } from "@/ui/reduce-motion";
-import { elevation, radii, spacing, typography } from "@/ui/tokens";
+import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 type EntryReadiness = "checking" | "needs-consent" | "ready" | "unavailable";
@@ -257,9 +257,26 @@ export function TransactionVoiceEntry({
                 ]}
               />
             )}
-            <Text style={[typography.title, styles.center, { color: onCard }]}>
-              {recording ? "Listening…" : active ? "One moment…" : "Tap the mic to start"}
-            </Text>
+            {/* Two equal fixed regions hold the mic in the middle and keep the card one size
+                in every state, so it never jumps on a tap. */}
+            <View style={styles.region}>
+              <Text style={[typography.title, styles.center, { color: onCard }]}>
+                {recording ? "Listening…" : active ? "One moment…" : "Tap the mic to start"}
+              </Text>
+              <View style={styles.status}>
+                {recording ? (
+                  <Text
+                    accessible
+                    accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
+                    style={[styles.timer, styles.center, { color: onCard }]}
+                  >
+                    {elapsedMinutes}:{elapsedRemainder} · Tap to finish
+                  </Text>
+                ) : idle ? null : (
+                  <Text style={[typography.label, styles.center, { color: onCard }]}>{label}</Text>
+                )}
+              </View>
+            </View>
             <View
               onLayout={(event) => {
                 const { y, height } = event.nativeEvent.layout;
@@ -277,51 +294,47 @@ export function TransactionVoiceEntry({
                 onPress={action}
               />
             </View>
-            {recording ? (
-              <Text
-                accessible
-                accessibilityLabel={`Recording, ${elapsedMinutes} minutes ${recorder.elapsedSeconds % 60} seconds`}
-                style={[styles.timer, styles.center, { color: onCard }]}
-              >
-                {elapsedMinutes}:{elapsedRemainder}
-              </Text>
-            ) : idle ? null : (
-              <Text style={[typography.label, styles.center, { color: onCard }]}>{label}</Text>
-            )}
-            {recording ? (
-              <Pressable
-                accessibilityLabel="Cancel recording"
-                accessibilityRole="button"
-                onPress={() => {
-                  setMessage(null);
-                  void recorder.cancelRecording();
-                }}
-                style={styles.cancel}
-              >
-                <Text style={[typography.label, { color: onCard }]}>Cancel</Text>
-              </Pressable>
-            ) : active ? null : (
-              <Button
-                accessibilityLabel="Enter details manually"
-                icon="pencil-outline"
-                onPress={close}
-                variant="quiet"
-              >
-                Type it instead
-              </Button>
-            )}
-            {message ? (
-              <Text
-                accessibilityRole="alert"
-                style={[
-                  typography.caption,
-                  styles.center,
-                  { color: active ? theme.colors.onSolid : theme.colors.textMuted },
-                ]}
-              >
-                {message}
-              </Text>
-            ) : null}
+            <View style={styles.region}>
+              <View style={styles.action}>
+                {recording ? (
+                  <Pressable
+                    accessibilityLabel="Cancel recording"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setMessage(null);
+                      void recorder.cancelRecording();
+                    }}
+                    style={styles.cancel}
+                  >
+                    <Text style={[typography.label, { color: onCard }]}>Cancel</Text>
+                  </Pressable>
+                ) : active ? null : (
+                  <Button
+                    accessibilityLabel="Enter details manually"
+                    icon="pencil-outline"
+                    onPress={close}
+                    variant="quiet"
+                  >
+                    Type it instead
+                  </Button>
+                )}
+              </View>
+              <View style={styles.message}>
+                {message ? (
+                  <Text
+                    accessibilityRole="alert"
+                    numberOfLines={2}
+                    style={[
+                      typography.caption,
+                      styles.center,
+                      { color: active ? theme.colors.onSolid : theme.colors.textMuted },
+                    ]}
+                  >
+                    {message}
+                  </Text>
+                ) : null}
+              </View>
+            </View>
           </Card>
         </Animated.View>
       </View>
@@ -338,9 +351,9 @@ export function TransactionVoiceEntry({
 }
 
 /**
- * The mic. Ready and idle it breathes slowly to invite a tap; once the card turns solid it
- * flips to the light color, shows stop while recording with a ring pulsing out of it, and
- * a spinner while the draft is made.
+ * The mic. Ready and idle it breathes slowly to invite a tap. Once the card turns solid the
+ * circle gives way to light sound bars that bounce while it records (a tap stops it), then
+ * to a spinner while the draft is made.
  */
 function MicButton({
   active,
@@ -385,82 +398,101 @@ function MicButton({
     return () => loop.stop();
   }, [breathing, reduceMotion, breath]);
 
-  const face = active ? theme.colors.onSolid : theme.colors.solid;
-  const ink = active ? theme.colors.solid : theme.colors.onSolid;
-  return (
-    <>
-      {recording ? <PulseRing color={theme.colors.onSolid} /> : null}
-      <Animated.View
-        style={{
-          transform: [
-            { scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) },
-          ],
-        }}
-      >
-        <Pressable
-          accessibilityLabel={label}
-          accessibilityRole="button"
-          accessibilityState={{ disabled, busy: loading }}
-          disabled={disabled || loading}
-          onPress={onPress}
-          style={[styles.mic, { backgroundColor: face, opacity: disabled ? 0.55 : 1 }]}
-        >
-          {loading ? (
-            <ActivityIndicator color={ink} />
-          ) : (
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={ink}
-              name={recording ? "stop" : "microphone"}
-              size={40}
-            />
-          )}
-        </Pressable>
-      </Animated.View>
-    </>
-  );
-}
-
-/** A ring that swells and fades behind the mic while it records. */
-function PulseRing({ color }: { color: ColorValue }) {
-  const reduceMotion = useReduceMotion();
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (reduceMotion !== false) return;
-    const loop = Animated.loop(
-      Animated.timing(pulse, {
-        toValue: 1,
-        duration: 1200,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [reduceMotion, pulse]);
   return (
     <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.ring,
-        {
-          borderColor: color,
-          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 0] }),
-          transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.6] }) }],
-        },
-      ]}
-    />
+      style={{
+        transform: [{ scale: breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.07] }) }],
+      }}
+    >
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        accessibilityState={{ disabled, busy: loading }}
+        disabled={disabled || loading}
+        onPress={onPress}
+        style={[
+          styles.mic,
+          {
+            backgroundColor: active ? "transparent" : theme.colors.solid,
+            opacity: disabled ? 0.55 : 1,
+          },
+        ]}
+      >
+        {loading ? (
+          <ActivityIndicator color={theme.colors.onSolid} size="large" />
+        ) : recording ? (
+          <SoundBars color={theme.colors.onSolid} />
+        ) : (
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.onSolid}
+            name="microphone"
+            size={32}
+          />
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 
-const MIC_SIZE = 96;
-// Wide enough that the fill, centered on the mic, reaches every corner of the widest card.
-const FILL_RADIUS = 640;
+// Each bar's swing time; uneven so the bars never fall into step.
+const BAR_DURATIONS = [420, 560, 380, 620, 480];
+
+/** Bars that rise and fall out of step, like a level meter, while the mic records. */
+function SoundBars({ color }: { color: ColorValue }) {
+  const reduceMotion = useReduceMotion();
+  const levels = useRef(BAR_DURATIONS.map(() => new Animated.Value(0))).current;
+  useEffect(() => {
+    if (reduceMotion !== false) return;
+    const loops = levels.map((level, index) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(level, {
+            toValue: 1,
+            duration: BAR_DURATIONS[index],
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+          Animated.timing(level, {
+            toValue: 0,
+            duration: BAR_DURATIONS[index],
+            easing: Easing.inOut(Easing.quad),
+            useNativeDriver: true,
+          }),
+        ]),
+      ),
+    );
+    loops.forEach((loop) => loop.start());
+    return () => loops.forEach((loop) => loop.stop());
+  }, [reduceMotion, levels]);
+  return (
+    <View accessibilityElementsHidden style={styles.bars}>
+      {levels.map((level, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.bar,
+            {
+              backgroundColor: color,
+              transform: [
+                { scaleY: level.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }) },
+              ],
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const MIC_SIZE = 76;
+// Wide enough that the fill, centered on the mic, reaches every corner of the card.
+const FILL_RADIUS = 360;
 
 const styles = StyleSheet.create({
   layer: { flex: 1, justifyContent: "center" },
-  panel: { width: "100%", maxWidth: 760, alignSelf: "center", paddingHorizontal: spacing.md },
-  card: { gap: spacing.md, alignItems: "stretch", paddingVertical: spacing.xl, overflow: "hidden" },
+  panel: { width: "100%", maxWidth: 320, alignSelf: "center", paddingHorizontal: spacing.lg },
+  card: { gap: spacing.sm, alignItems: "stretch", paddingVertical: spacing.lg, overflow: "hidden" },
   fill: {
     position: "absolute",
     left: "50%",
@@ -469,12 +501,20 @@ const styles = StyleSheet.create({
     height: FILL_RADIUS * 2,
     borderRadius: FILL_RADIUS,
   },
+  region: {
+    height: touchTarget + spacing.sm + typography.caption.lineHeight * 2,
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  status: { height: typography.headline.lineHeight, justifyContent: "center" },
+  action: { height: touchTarget, alignItems: "center", justifyContent: "center" },
+  message: { height: typography.caption.lineHeight * 2, justifyContent: "center" },
   cancel: { alignSelf: "center", paddingVertical: spacing.sm, paddingHorizontal: spacing.lg },
   center: { textAlign: "center" },
   micArea: {
     alignSelf: "center",
-    width: MIC_SIZE * 1.7,
-    height: MIC_SIZE * 1.7,
+    width: MIC_SIZE * 1.6,
+    height: MIC_SIZE * 1.6,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -485,13 +525,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  ring: {
-    position: "absolute",
-    width: MIC_SIZE,
-    height: MIC_SIZE,
-    borderRadius: radii.round,
-    borderWidth: 3,
-  },
+  bars: { flexDirection: "row", alignItems: "center", gap: 6, height: MIC_SIZE * 0.7 },
+  bar: { width: 8, height: "100%", borderRadius: radii.round },
   timer: {
     ...typography.headline,
     fontVariant: ["tabular-nums"],
