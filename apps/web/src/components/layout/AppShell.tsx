@@ -371,9 +371,12 @@ export function AppShell({ children }: AppShellProps) {
             <Link
               className="sidebar-account-identity"
               to="/app/settings#profile-settings"
-              aria-label={`Signed in as ${accountName}, open profile settings`}
               onClick={(event) => handleShellLinkClick(event, "/app/settings#profile-settings")}
             >
+              {/* Spoken instead of an aria-label: axe's label-in-name rule would compare one
+                  against the visible initials avatar, which the label cannot sensibly repeat. It
+                  also names the link when the collapsed sidebar hides the text below. */}
+              <span className="sr-only">Open profile settings</span>
               <UserAvatar
                 avatarPath={avatarPath}
                 displayName={displayName}
@@ -381,8 +384,7 @@ export function AppShell({ children }: AppShellProps) {
                 alt=""
               />
               <div>
-                {/* The space keeps the two words apart in the visible text axe matches against the
-                    aria-label; the grid already lays them out on separate lines. */}
+                {/* The grid lays these on separate lines; the space keeps them apart when read. */}
                 <span>Signed in as</span>{" "}
                 <strong title={displayName || user?.email}>{accountName}</strong>
               </div>
