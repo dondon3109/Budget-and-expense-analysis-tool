@@ -371,9 +371,11 @@ export function AppShell({ children }: AppShellProps) {
             <Link
               className="sidebar-account-identity"
               to="/app/settings#profile-settings"
-              aria-label={`Signed in as ${accountName}, open profile settings`}
               onClick={(event) => handleShellLinkClick(event, "/app/settings#profile-settings")}
             >
+              {/* No aria-label: the name comes from the content. Without a photo the avatar
+                  shows initials, which axe counts as visible text, so any aria-label that
+                  leaves them out fails label-content-name-mismatch. */}
               <UserAvatar
                 avatarPath={avatarPath}
                 displayName={displayName}
@@ -381,11 +383,13 @@ export function AppShell({ children }: AppShellProps) {
                 alt=""
               />
               <div>
-                {/* The space keeps the two words apart in the visible text axe matches against the
-                    aria-label; the grid already lays them out on separate lines. */}
+                {/* The space keeps the two words apart in the accessible name; the grid already
+                    lays them out on separate lines. */}
                 <span>Signed in as</span>{" "}
                 <strong title={displayName || user?.email}>{accountName}</strong>
               </div>
+              {/* Outside the div so the collapsed sidebar, which hides it, still names the link. */}
+              <span className="sr-only">Open profile settings</span>
             </Link>
             <div className="sidebar-profile-theme">
               <span>Appearance</span>

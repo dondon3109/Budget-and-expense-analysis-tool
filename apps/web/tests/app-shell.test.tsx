@@ -153,12 +153,20 @@ describe("AppShell", () => {
     expect(screen.getByText("Taylor")).toBeInTheDocument();
     expect(screen.queryByText("test@example.com")).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Signed in as Taylor, open profile settings" }),
+      screen.getByRole("link", { name: "Signed in as Taylor Open profile settings" }),
     ).toHaveAttribute("href", "/app/settings#profile-settings");
     expect(document.querySelector(".sidebar-profile img")).toHaveAttribute(
       "src",
       "/api/public/avatars/test-user/avatar.png",
     );
+    // Without a photo the avatar shows initials, which axe's label-content-name-mismatch counts
+    // as visible text, so the link takes its name from its content instead of an aria-label.
+    fireEvent.error(document.querySelector(".sidebar-profile img")!);
+    const profileLink = screen.getByRole("link", {
+      name: "Signed in as Taylor Open profile settings",
+    });
+    expect(profileLink.querySelector(".user-avatar-fallback")).toHaveTextContent("T");
+    expect(profileLink).not.toHaveAttribute("aria-label");
     expect(profile.querySelector(".theme-menu")).not.toBeNull();
     expect(document.querySelector(".sidebar-account .theme-menu")).toBeNull();
     expect(document.querySelector(".sidebar-profile-divider")).not.toBeNull();
@@ -343,7 +351,7 @@ describe("AppShell", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "More menu" }));
     fireEvent.click(
-      screen.getByRole("link", { name: "Signed in as Taylor, open profile settings" }),
+      screen.getByRole("link", { name: "Signed in as Taylor Open profile settings" }),
     );
     expect(screen.getByTestId("current-location")).toHaveTextContent(
       "/app/settings#profile-settings",
