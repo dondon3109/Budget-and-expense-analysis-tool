@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useCallback, useState } from "react";
-import { FlatList, type ListRenderItemInfo, Pressable, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { playSound } from "@/features/sounds/sound-effects";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -42,60 +42,55 @@ export function SelectionField({
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.id === value);
 
-  // Stable renderItem identity so the sheet list does not re-render rows on
-  // unrelated parent renders.
-  const renderOption = useCallback(
-    ({ item }: ListRenderItemInfo<SelectionOption>) => {
-      const isSelected = item.id === value;
-      return (
-        <Pressable
-          accessibilityRole="radio"
-          accessibilityState={{ checked: isSelected }}
-          accessibilityLabel={item.label}
-          accessibilityHint={item.detail}
-          android_ripple={{
-            color: theme.colors.brandSoft ? "rgba(10, 117, 86, 0.12)" : "rgba(0,0,0,0.06)",
-            borderless: false,
-          }}
-          onPress={() => {
-            playSound("tap");
-            onSelect(item.id);
-            setOpen(false);
-          }}
-          style={[
-            styles.option,
-            {
-              backgroundColor: isSelected ? theme.colors.brandSoft : "transparent",
-            },
-          ]}
-        >
-          {item.color ? (
-            <View
-              accessibilityElementsHidden
-              style={[styles.dot, { backgroundColor: item.color }]}
-            />
+  // The sheet already scrolls, so its options are plain rows: a FlatList inside
+  // that ScrollView would be a nested VirtualizedList.
+  const renderOption = (item: SelectionOption) => {
+    const isSelected = item.id === value;
+    return (
+      <Pressable
+        key={item.id}
+        accessibilityRole="radio"
+        accessibilityState={{ checked: isSelected }}
+        accessibilityLabel={item.label}
+        accessibilityHint={item.detail}
+        android_ripple={{
+          color: theme.colors.brandSoft ? "rgba(10, 117, 86, 0.12)" : "rgba(0,0,0,0.06)",
+          borderless: false,
+        }}
+        onPress={() => {
+          playSound("tap");
+          onSelect(item.id);
+          setOpen(false);
+        }}
+        style={[
+          styles.option,
+          {
+            backgroundColor: isSelected ? theme.colors.brandSoft : "transparent",
+          },
+        ]}
+      >
+        {item.color ? (
+          <View accessibilityElementsHidden style={[styles.dot, { backgroundColor: item.color }]} />
+        ) : null}
+        <View className="min-w-0 flex-1">
+          <Text style={[typography.body, { color: theme.colors.text }]}>{item.label}</Text>
+          {item.detail ? (
+            <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+              {item.detail}
+            </Text>
           ) : null}
-          <View className="min-w-0 flex-1">
-            <Text style={[typography.body, { color: theme.colors.text }]}>{item.label}</Text>
-            {item.detail ? (
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                {item.detail}
-              </Text>
-            ) : null}
-          </View>
-          {isSelected ? (
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.brand}
-              name="check"
-              size={22}
-            />
-          ) : null}
-        </Pressable>
-      );
-    },
-    [onSelect, theme, value],
-  );
+        </View>
+        {isSelected ? (
+          <MaterialCommunityIcons
+            accessibilityElementsHidden
+            color={theme.colors.brand}
+            name="check"
+            size={22}
+          />
+        ) : null}
+      </Pressable>
+    );
+  };
   return (
     <View className="w-full gap-2">
       <Text style={[typography.label, { color: theme.colors.text }]}>{label}</Text>
@@ -177,68 +172,12 @@ export function SelectionField({
             },
           ]}
         >
-          {options.map((option) => {
-            const isSelected = option.id === value;
-            return (
-              <Pressable
-                key={option.id}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: isSelected }}
-                accessibilityLabel={option.label}
-                accessibilityHint={option.detail}
-                android_ripple={{
-                  color: theme.colors.brandSoft ? "rgba(10, 117, 86, 0.12)" : "rgba(0,0,0,0.06)",
-                  borderless: false,
-                }}
-                onPress={() => {
-                  playSound("tap");
-                  onSelect(option.id);
-                  setOpen(false);
-                }}
-                style={[
-                  styles.option,
-                  {
-                    backgroundColor: isSelected ? theme.colors.brandSoft : "transparent",
-                  },
-                ]}
-              >
-                {option.color ? (
-                  <View
-                    accessibilityElementsHidden
-                    style={[styles.dot, { backgroundColor: option.color }]}
-                  />
-                ) : null}
-                <View className="min-w-0 flex-1">
-                  <Text style={[typography.body, { color: theme.colors.text }]}>
-                    {option.label}
-                  </Text>
-                  {option.detail ? (
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      {option.detail}
-                    </Text>
-                  ) : null}
-                </View>
-                {isSelected ? (
-                  <MaterialCommunityIcons
-                    accessibilityElementsHidden
-                    color={theme.colors.brand}
-                    name="check"
-                    size={22}
-                  />
-                ) : null}
-              </Pressable>
-            );
-          })}
+          {options.map(renderOption)}
         </View>
       ) : null}
       {!inSheet ? (
         <BottomSheet visible={open} title={sheetTitle} onDismiss={() => setOpen(false)}>
-          <FlatList
-            data={options}
-            keyExtractor={(option) => option.id}
-            keyboardShouldPersistTaps="handled"
-            renderItem={renderOption}
-          />
+          <View accessibilityRole="radiogroup">{options.map(renderOption)}</View>
         </BottomSheet>
       ) : null}
     </View>
