@@ -38,19 +38,33 @@ const CLOSE_MS = 180;
 const GAP = 12;
 
 /**
- * Opens the add picker growing out of the pressed control. The touch point is the origin; a call
- * without an event (a tutorial action, a notification) grows it from the bottom of the screen.
+ * Opens the add picker growing out of the pressed control. The touch point is the scale origin and
+ * the control's measured edges place the panel clear of it; a call without an event (a tutorial
+ * action, a notification) grows it from the bottom of the screen.
  */
 export function openAddTransaction(event?: GestureResponderEvent): void {
   const touch = event?.nativeEvent;
-  router.push(
-    touch && Number.isFinite(touch.pageX) && Number.isFinite(touch.pageY)
-      ? {
-          pathname: "/(app)/add-transaction",
-          params: { x: String(Math.round(touch.pageX)), y: String(Math.round(touch.pageY)) },
-        }
-      : "/(app)/add-transaction",
-  );
+  if (!touch || !Number.isFinite(touch.pageX) || !Number.isFinite(touch.pageY)) {
+    router.push("/(app)/add-transaction");
+    return;
+  }
+  const { pageX, pageY } = touch;
+  const open = (top: number, bottom: number) =>
+    router.push({
+      pathname: "/(app)/add-transaction",
+      params: {
+        x: String(Math.round(pageX)),
+        y: String(Math.round(pageY)),
+        top: String(Math.round(top)),
+        bottom: String(Math.round(bottom)),
+      },
+    });
+  const target = event.currentTarget as unknown as Partial<View> | null;
+  if (typeof target?.measureInWindow !== "function") {
+    open(pageY, pageY);
+    return;
+  }
+  target.measureInWindow((_x, top, _width, height) => open(top, top + height));
 }
 
 /**
@@ -64,7 +78,7 @@ export function AddTransactionPicker() {
   const reduceMotion = useReduceMotion();
   const window = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ x?: string; y?: string }>();
+  const params = useLocalSearchParams<{ x?: string; y?: string; top?: string; bottom?: string }>();
   const [mode, setMode] = useState<EntryMode>("manual");
   const [pillWidth, setPillWidth] = useState(0);
   const [leaving, setLeaving] = useState(false);
@@ -77,11 +91,13 @@ export function AddTransactionPicker() {
   const origin = hasOrigin
     ? { x: originX, y: originY }
     : { x: window.width / 2, y: window.height - insets.bottom };
+  const controlTop = Number(params.top ?? origin.y);
+  const controlBottom = Number(params.bottom ?? origin.y);
   // Open below a control in the top half of the screen, above one in the bottom half.
   const below = hasOrigin && origin.y < window.height / 2;
   const placement = below
-    ? { top: Math.max(insets.top + GAP, origin.y + GAP) }
-    : { bottom: Math.max(insets.bottom + GAP, window.height - origin.y + GAP) };
+    ? { top: Math.max(insets.top + GAP, controlBottom + GAP) }
+    : { bottom: Math.max(insets.bottom + GAP, window.height - controlTop + GAP) };
 
   const sheet = useRef(new Animated.Value(0)).current;
   const cards = useRef(KINDS.map(() => new Animated.Value(0))).current;

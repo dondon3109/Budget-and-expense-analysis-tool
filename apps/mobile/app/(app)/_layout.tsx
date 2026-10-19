@@ -56,7 +56,12 @@ export default function AuthenticatedLayout() {
         />
         <Stack.Screen
           name="add-transaction"
-          options={{ presentation: "transparentModal", animation: "none" }}
+          options={{
+            presentation: "transparentModal",
+            // The picker animates itself, and the screen it opens over must stay visible.
+            animation: "none",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
         />
         <Stack.Screen
           name="transaction"
