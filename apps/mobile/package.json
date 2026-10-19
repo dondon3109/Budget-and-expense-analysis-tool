@@ -1,6 +1,6 @@
 {
   "name": "@zoption/mobile",
-  "version": "0.2.55-beta",
+  "version": "0.2.56-beta",
   "private": true,
   "main": "index.ts",
   "scripts": {

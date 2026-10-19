@@ -25,31 +25,25 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Several purchases in one message",
-      "Updated assistant consent",
-      "A calmer Home and Analytics",
-      "Budgets for a month, every month, or an occasion",
-      "A tidier assistant on Android and iOS",
-      "Fixes",
-      "A pet that grows with your streak",
-      "A Fun theme and a personalized start",
-      "E-wallets and several currencies per account",
-      "Flatter pages",
-      "More fixes",
-      "Pick your pet's color",
-      "A pet that answers back",
-      "Your top spending category on mobile Home",
-      "Analytics linked to your account",
-      "Pets that sound like animals",
-      "Crash reports from the web app",
-      "Android Beta 0.2.55",
+      "Family workspaces",
+      "Zoption Budget and a new Zoption Pro",
+      "Family plans",
+      "Change your plan any time",
+      "Share a snapshot link",
+      "Balances on mobile Home and a date picker",
+      "Android Beta 0.2.56",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/several purchases/i);
-    expect(copy).toMatch(/Android Beta 0\.2\.55/);
+    expect(copy).toMatch(/₱249 a month/);
+    expect(copy).toMatch(/Android Beta 0\.2\.56/);
+  });
+
+  it("keeps the pet, multi-currency, and assistant notes as 4.3.0", () => {
+    expect(titles("4.3.0")).toContain("A pet that grows with your streak");
+    expect(notes("4.3.0")).toMatch(/Android Beta 0\.2\.55/);
   });
 
   it("keeps the compact layout and guides notes as 3.7.0", () => {
@@ -229,6 +223,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "4.3.0",
       "3.7.0",
       "3.6.0",
       "3.4.0",

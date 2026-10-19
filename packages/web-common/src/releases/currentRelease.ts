@@ -11,97 +11,42 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 17, 2026",
+  releasedOn: "October 19, 2026",
   changes: [
     {
-      title: "Several purchases in one message",
+      title: "Family workspaces",
       description:
-        'Tell the AI Assistant about several purchases at once, like "50 for gas and 40 for gym", and it prepares a draft for each one with its own Save button.',
+        "Create a family and invite up to 5 people into one shared space. Share a transaction or an account balance into it, record remittances, attach receipt photos, and comment on entries, with alerts when something changes. Switch between your own Zoption and a family on web, and use a family offline on the phone.",
     },
     {
-      title: "Updated assistant consent",
+      title: "Zoption Budget and a new Zoption Pro",
       description:
-        "The consent screen now says the assistant can propose changes to your records and that only your Save or Confirm tap applies them. Everyone is asked to accept it once.",
+        "Zoption Budget (₱149 a month) unlocks every paid feature with 1,000 AI actions, 5 imports a month, and 10 custom categories. Zoption Pro (₱249 a month) doubles the AI actions, allows 10 imports, and removes the category limit. Yearly billing is 10 times the monthly price, and the old ₱149 Pro plan is retired.",
     },
     {
-      title: "A calmer Home and Analytics",
+      title: "Family plans",
       description:
-        "On mobile, Home lists your upcoming subscriptions below Safe to spend, and Home and Analytics now sit on the page with simple dividers instead of a card around everything.",
+        "Family Budget (₱499 a month) and Family Pro (₱799 a month) cover up to 6 people and give everyone Budget or Pro for their own Zoption too. Set up a family first and try it alone at Free limits; invitations open once the owner picks a plan in Family settings.",
     },
     {
-      title: "Budgets for a month, every month, or an occasion",
+      title: "Change your plan any time",
       description:
-        "Set a budget for one month, for every month, or for an occasion such as a birthday party. A month uses your every-month limit for any category it does not set itself, an occasion counts only spending on its day, and occasions show on the calendar. On mobile, the calendar is now a full-width month grid with the month's income, expenses, and budget left above it.",
+        "Move between plans in Plan and billing on web and mobile. Moving up starts right away, and moving down waits for the end of the paid period.",
     },
     {
-      title: "A tidier assistant on Android and iOS",
+      title: "Share a snapshot link",
       description:
-        "The consent screen is a compact one over your conversations, with a Privacy Policy link and a Not now button. History is split into Text chats and Voice chats, the voice screen's orb and bars now move while it listens and speaks, and the message box no longer has a language pill.",
+        "Share one transaction or an account balance with anyone, even people without Zoption. The link shows only what you chose, works for 24 hours, 7 days, 30 days, or until you turn it off, and web can save it as an image.",
     },
     {
-      title: "Fixes",
+      title: "Balances on mobile Home and a date picker",
       description:
-        "Android Beta 0.2.48 could open to a blank screen; that is fixed. The collapsed sidebar on the web assistant page now has readable link names for screen readers. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
+        "Mobile Home lists each account with its balance below the Total Balance, and a new transaction's date is picked from a calendar pop-up.",
     },
     {
-      title: "A pet that grows with your streak",
+      title: "Android Beta 0.2.56",
       description:
-        "Pick an egg and name it, tap it 10 times to hatch it, and watch your pet grow from Baby to Legend as you keep your streak. Pets have their own page on web and a Pet entry in the Home menu on mobile, with pop-ups when it hatches, grows, gets sick, or passes away. Growing past Baby is part of Zoption Pro.",
-    },
-    {
-      title: "A Fun theme and a personalized start",
-      description:
-        "A new Fun theme brings candy colors and chunky buttons that press down. New accounts finish setup by picking a theme and choosing whether to raise a pet.",
-    },
-    {
-      title: "E-wallets and several currencies per account",
-      description:
-        "Add GCash or Maya as an e-wallet account. Bank and savings accounts can hold money in several currencies, and Adjust balance lets you add a second currency, like a USD balance in a PHP bank account.",
-    },
-    {
-      title: "Flatter pages",
-      description:
-        "Web pages drop their subtitles and most card frames for flat sections, and the mobile More tab starts higher without its large title.",
-    },
-    {
-      title: "More fixes",
-      description:
-        "Opening the app counts toward your pet's streak again, signing in with Google on Android no longer reports \"invalid flow state\" after it succeeded, and the web account list scrolls to an account you just added. Mobile crash reports now say where in Zoption's code a crash happened, still without error messages or your data.",
-    },
-    {
-      title: "Pick your pet's color",
-      description:
-        "Choose Pink, Mint, Sky, Lilac, Peach, or the original when you pick an egg, and change it any time on the web pet page or in mobile Settings. If you already have a pet, the pet page asks you once.",
-    },
-    {
-      title: "A pet that answers back",
-      description:
-        "Pet your pet and it replies in its own voice, and tap five times quickly for a dance. A new Reduce motion switch keeps animations still across Zoption, and web gains a Sound effects switch in Account Settings.",
-    },
-    {
-      title: "Your top spending category on mobile Home",
-      description:
-        "The Home overview now shows the category you spent the most on this month, with its amount and share, in place of Recent activity. View all opens Analytics.",
-    },
-    {
-      title: "Analytics linked to your account",
-      description:
-        "While you are signed in, usage analytics and crash reports are linked to your Zoption account, on web after you allow Analytics and on mobile after you tap Allow or turn on More, Usage analytics. They still never include amounts, categories, or text, and the web app asks for your Analytics choice again.",
-    },
-    {
-      title: "Pets that sound like animals",
-      description:
-        "Your pet's voice now sounds like the real animal: the pig oinks and grunts, the hamster squeaks, the hedgehog snuffles, the hippo honks, the panda bleats, and the penguin brays, on web and mobile.",
-    },
-    {
-      title: "Crash reports from the web app",
-      description:
-        "After you allow Analytics, the web app reports its errors to us with only the error type and where in the code it happened, never the error message or your data, so we can fix them sooner. The web app and site ask for your Analytics choice again.",
-    },
-    {
-      title: "Android Beta 0.2.55",
-      description:
-        "The official Android Beta carries the new pet voices and everything from 0.2.54. Install 0.2.55 over 0.2.54.",
+        "The official Android Beta carries family workspaces, the new plans, snapshot links, and everything from 0.2.55. Install 0.2.56 over 0.2.55.",
     },
   ],
 };
@@ -116,6 +61,102 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.3.0",
+    releasedOn: "October 17, 2026",
+    changes: [
+      {
+        title: "Several purchases in one message",
+        description:
+          'Tell the AI Assistant about several purchases at once, like "50 for gas and 40 for gym", and it prepares a draft for each one with its own Save button.',
+      },
+      {
+        title: "Updated assistant consent",
+        description:
+          "The consent screen now says the assistant can propose changes to your records and that only your Save or Confirm tap applies them. Everyone is asked to accept it once.",
+      },
+      {
+        title: "A calmer Home and Analytics",
+        description:
+          "On mobile, Home lists your upcoming subscriptions below Safe to spend, and Home and Analytics now sit on the page with simple dividers instead of a card around everything.",
+      },
+      {
+        title: "Budgets for a month, every month, or an occasion",
+        description:
+          "Set a budget for one month, for every month, or for an occasion such as a birthday party. A month uses your every-month limit for any category it does not set itself, an occasion counts only spending on its day, and occasions show on the calendar. On mobile, the calendar is now a full-width month grid with the month's income, expenses, and budget left above it.",
+      },
+      {
+        title: "A tidier assistant on Android and iOS",
+        description:
+          "The consent screen is a compact one over your conversations, with a Privacy Policy link and a Not now button. History is split into Text chats and Voice chats, the voice screen's orb and bars now move while it listens and speaks, and the message box no longer has a language pill.",
+      },
+      {
+        title: "Fixes",
+        description:
+          "Android Beta 0.2.48 could open to a blank screen; that is fixed. The collapsed sidebar on the web assistant page now has readable link names for screen readers. The keyboard no longer covers the amount and Save button in Add budget, Budgets offers every active expense category, adding notes to a transaction titled by its category now updates its title, the cash flow chart shows even for a period with no records, and the status bar stays readable while the Home dropdown is open.",
+      },
+      {
+        title: "A pet that grows with your streak",
+        description:
+          "Pick an egg and name it, tap it 10 times to hatch it, and watch your pet grow from Baby to Legend as you keep your streak. Pets have their own page on web and a Pet entry in the Home menu on mobile, with pop-ups when it hatches, grows, gets sick, or passes away. Growing past Baby is part of Zoption Pro.",
+      },
+      {
+        title: "A Fun theme and a personalized start",
+        description:
+          "A new Fun theme brings candy colors and chunky buttons that press down. New accounts finish setup by picking a theme and choosing whether to raise a pet.",
+      },
+      {
+        title: "E-wallets and several currencies per account",
+        description:
+          "Add GCash or Maya as an e-wallet account. Bank and savings accounts can hold money in several currencies, and Adjust balance lets you add a second currency, like a USD balance in a PHP bank account.",
+      },
+      {
+        title: "Flatter pages",
+        description:
+          "Web pages drop their subtitles and most card frames for flat sections, and the mobile More tab starts higher without its large title.",
+      },
+      {
+        title: "More fixes",
+        description:
+          "Opening the app counts toward your pet's streak again, signing in with Google on Android no longer reports \"invalid flow state\" after it succeeded, and the web account list scrolls to an account you just added. Mobile crash reports now say where in Zoption's code a crash happened, still without error messages or your data.",
+      },
+      {
+        title: "Pick your pet's color",
+        description:
+          "Choose Pink, Mint, Sky, Lilac, Peach, or the original when you pick an egg, and change it any time on the web pet page or in mobile Settings. If you already have a pet, the pet page asks you once.",
+      },
+      {
+        title: "A pet that answers back",
+        description:
+          "Pet your pet and it replies in its own voice, and tap five times quickly for a dance. A new Reduce motion switch keeps animations still across Zoption, and web gains a Sound effects switch in Account Settings.",
+      },
+      {
+        title: "Your top spending category on mobile Home",
+        description:
+          "The Home overview now shows the category you spent the most on this month, with its amount and share, in place of Recent activity. View all opens Analytics.",
+      },
+      {
+        title: "Analytics linked to your account",
+        description:
+          "While you are signed in, usage analytics and crash reports are linked to your Zoption account, on web after you allow Analytics and on mobile after you tap Allow or turn on More, Usage analytics. They still never include amounts, categories, or text, and the web app asks for your Analytics choice again.",
+      },
+      {
+        title: "Pets that sound like animals",
+        description:
+          "Your pet's voice now sounds like the real animal: the pig oinks and grunts, the hamster squeaks, the hedgehog snuffles, the hippo honks, the panda bleats, and the penguin brays, on web and mobile.",
+      },
+      {
+        title: "Crash reports from the web app",
+        description:
+          "After you allow Analytics, the web app reports its errors to us with only the error type and where in the code it happened, never the error message or your data, so we can fix them sooner. The web app and site ask for your Analytics choice again.",
+      },
+      {
+        title: "Android Beta 0.2.55",
+        description:
+          "The official Android Beta carries the new pet voices and everything from 0.2.54. Install 0.2.55 over 0.2.54.",
+      },
+    ],
+  },
   {
     version: "3.7.0",
     releasedOn: "October 8, 2026",
