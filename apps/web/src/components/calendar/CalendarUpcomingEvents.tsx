@@ -73,7 +73,6 @@ export function CalendarUpcomingEvents({
                   <button
                     type="button"
                     className="calendar-upcoming-event"
-                    aria-label={`View ${event.title} on ${fullDate}, ${timeLabel}`}
                     onClick={() => onSelectDate(event.date)}
                   >
                     <span className="calendar-upcoming-date">
@@ -83,6 +82,7 @@ export function CalendarUpcomingEvents({
                       <strong title={event.title}>{event.title}</strong>
                       <small>{timeLabel}</small>
                     </span>
+                    <span className="sr-only">, {fullDate}</span>
                   </button>
                 </li>
               );
@@ -130,7 +130,6 @@ export function CalendarUpcomingEvents({
                   <button
                     type="button"
                     className="calendar-upcoming-event calendar-subscription-event"
-                    aria-label={`View ${subscription.name}, due ${fullDate}, ${amount}`}
                     onClick={() => onSelectDate(billingDate)}
                   >
                     <span className="calendar-upcoming-date">
@@ -148,6 +147,7 @@ export function CalendarUpcomingEvents({
                       </small>
                     </span>
                     <strong className="calendar-subscription-amount">{amount}</strong>
+                    <span className="sr-only">, due {fullDate}</span>
                   </button>
                 </li>
               );

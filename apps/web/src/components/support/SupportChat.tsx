@@ -500,7 +500,8 @@ export function SupportChat({ surface, workspace }: SupportChatProps) {
         className="support-chat-launcher"
         type="button"
         onClick={() => setOpen((current) => !current)}
-        aria-label={open ? "Close Zoption Support" : "Open Zoption Support"}
+        // The label repeats the visible text because narrow screens hide it, leaving only the icon.
+        aria-label="Ask Zoption"
         aria-expanded={open}
       >
         {open ? (

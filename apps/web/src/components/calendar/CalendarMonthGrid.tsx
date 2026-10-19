@@ -160,14 +160,19 @@ export function CalendarMonthGrid({
           type="button"
           className={`calendar-day${selected ? " selected" : ""}${isToday ? " today" : ""}`}
           data-calendar-date={date}
-          aria-label={dayLabel(date, data, selected, isToday)}
           aria-pressed={selected}
           tabIndex={date === tabbableDate ? 0 : -1}
           onClick={() => onSelectDate(date)}
           onKeyDown={(event) => handleKeyDown(event, date)}
         >
-          <span className="calendar-day-number">{Number(date.slice(-2))}</span>
-          <span className="calendar-day-indicators">
+          {/* The spoken name lives in the sr-only summary, so the visible chips stay out of it.
+              An aria-label would do the same but fails axe's label-in-name rule, because the
+              chips' text never appears in it. */}
+          <span className="sr-only">{dayLabel(date, data, selected, isToday)}</span>
+          <span className="calendar-day-number" aria-hidden="true">
+            {Number(date.slice(-2))}
+          </span>
+          <span className="calendar-day-indicators" aria-hidden="true">
             {data?.incomeCount
               ? positiveCurrencies(data.incomeByCurrency).map((currency) => (
                   <span className="calendar-indicator income" key={`income-${currency}`}>

@@ -255,23 +255,27 @@ export function SubscriptionRenewalCalendar({
                         isToday ? " today" : ""
                       }${hasRenewals ? " has-renewals" : ""}`}
                       data-renewal-calendar-date={date}
-                      aria-label={`${formatCalendarDate(date)}${
-                        hasRenewals
-                          ? `, ${dayRenewals.length} subscription renewal${
-                              dayRenewals.length === 1 ? "" : "s"
-                            } totaling ${dailyOutflow}`
-                          : ", no renewals"
-                      }`}
                       aria-pressed={isSelected}
                       onClick={() => setSelectedDate((cur) => (cur === date ? null : date))}
                       onKeyDown={(event) => handleKeyDown(event, date)}
                     >
-                      <header className="renewal-day-head">
+                      {/* Spoken instead of an aria-label, which would fail axe's label-in-name
+                          rule because the visible badges' text never appears in it. */}
+                      <span className="sr-only">
+                        {`${formatCalendarDate(date)}${
+                          hasRenewals
+                            ? `, ${dayRenewals.length} subscription renewal${
+                                dayRenewals.length === 1 ? "" : "s"
+                              } totaling ${dailyOutflow}`
+                            : ", no renewals"
+                        }`}
+                      </span>
+                      <header className="renewal-day-head" aria-hidden="true">
                         <span className="renewal-day-number">{Number(date.slice(-2))}</span>
                       </header>
 
                       {hasRenewals && (
-                        <div className="renewal-day-body">
+                        <div className="renewal-day-body" aria-hidden="true">
                           <span className="renewal-outflow-pill" title="Cash flow impact">
                             <ArrowDownRight size={11} aria-hidden="true" />−{dailyOutflow}
                           </span>

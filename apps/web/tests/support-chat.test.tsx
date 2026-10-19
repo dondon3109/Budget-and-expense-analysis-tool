@@ -84,7 +84,7 @@ describe("Zoption Support chat", () => {
     );
     renderSupport("/app/import", "app");
 
-    const launcher = screen.getByRole("button", { name: "Open Zoption Support" });
+    const launcher = screen.getByRole("button", { name: "Ask Zoption" });
     fireEvent.click(launcher);
 
     expect(screen.getByRole("dialog", { name: "Zoption Support" })).toBeInTheDocument();
@@ -161,7 +161,7 @@ describe("Zoption Support chat", () => {
       );
 
     renderSupport("/app/calendar", "app");
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     fireEvent.click(screen.getByRole("button", { name: "Report a problem" }));
 
     expect(await screen.findByRole("heading", { name: "Bug report draft" })).toBeInTheDocument();
@@ -190,7 +190,7 @@ describe("Zoption Support chat", () => {
       ),
     );
     renderSupport();
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     fireEvent.change(screen.getByLabelText("Ask Zoption Support"), {
       target: { value: "Show **my imports**." },
     });
@@ -213,7 +213,7 @@ describe("Zoption Support chat", () => {
       ),
     );
     renderSupport("/app", "app");
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     fireEvent.change(screen.getByLabelText("Ask Zoption Support"), {
       target: { value: "Where can I get help?" },
     });
@@ -262,7 +262,7 @@ describe("Zoption Support chat", () => {
         }),
       );
     renderSupport();
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     fireEvent.change(screen.getByLabelText("Ask Zoption Support"), {
       target: { value: "Where are budgets?" },
     });
@@ -278,7 +278,7 @@ describe("Zoption Support chat", () => {
   it("focuses the composer on open and confines Tab to the panel", () => {
     renderSupport();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     const panel = screen.getByRole("dialog", { name: "Zoption Support" });
     expect(screen.getByLabelText("Ask Zoption Support")).toHaveFocus();
 
@@ -292,7 +292,7 @@ describe("Zoption Support chat", () => {
   it("closes on Escape pressed inside the panel and returns focus to the launcher", () => {
     renderSupport();
 
-    const launcher = screen.getByRole("button", { name: "Open Zoption Support" });
+    const launcher = screen.getByRole("button", { name: "Ask Zoption" });
     launcher.focus();
     fireEvent.click(launcher);
     const panel = screen.getByRole("dialog", { name: "Zoption Support" });
@@ -316,7 +316,7 @@ describe("Zoption Support chat", () => {
       { container: root },
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     const panel = screen.getByRole("dialog", { name: "Zoption Support" });
 
     // SupportChat is deliberately non-modal (aria-modal="false") and renders
@@ -336,7 +336,7 @@ describe("Zoption Support chat", () => {
       }),
     );
     const view = renderSupport();
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     fireEvent.change(screen.getByLabelText("Ask Zoption Support"), {
       target: { value: "Tell me about Zoption." },
     });
@@ -349,12 +349,12 @@ describe("Zoption Support chat", () => {
     );
 
     fireEvent.keyDown(window, { key: "Escape" });
-    const launcher = screen.getByRole("button", { name: "Open Zoption Support" });
+    const launcher = screen.getByRole("button", { name: "Ask Zoption" });
     expect(launcher).toHaveFocus();
 
     view.unmount();
     renderSupport("/app", "app");
-    fireEvent.click(screen.getByRole("button", { name: "Open Zoption Support" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ask Zoption" }));
     expect(screen.getByText("Tell me about Zoption.")).toBeInTheDocument();
     expect(screen.getByText("Your answer is here.")).toBeInTheDocument();
   });
