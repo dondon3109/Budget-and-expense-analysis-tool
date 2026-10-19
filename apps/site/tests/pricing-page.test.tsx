@@ -25,21 +25,27 @@ describe("PricingPage", () => {
     ).toBeInTheDocument();
 
     expect(screen.getByRole("heading", { level: 2, name: /Free Plan/i })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { level: 2, name: /Zoption Pro/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Zoption Budget" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Zoption Pro" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 2, name: "Family Pro" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 2, name: /Detailed Plan Comparison/i }),
     ).toBeInTheDocument();
   });
 
-  it("ships both billing intervals in the HTML with monthly on show", () => {
+  it("ships every interval and scope in the HTML with personal monthly on show", () => {
     const { container } = renderPricingPage();
 
-    expect(container.querySelector("[data-active-interval]")).toHaveAttribute(
-      "data-active-interval",
-      "month",
-    );
+    const root = container.querySelector("[data-active-interval]");
+    expect(root).toHaveAttribute("data-active-interval", "month");
+    expect(root).toHaveAttribute("data-active-scope", "personal");
     expect(screen.getByText("₱149")).toHaveAttribute("data-interval-only", "month");
-    expect(screen.getByText("₱1,299")).toHaveAttribute("data-interval-only", "year");
+    expect(screen.getByText("₱1,490")).toHaveAttribute("data-interval-only", "year");
+    expect(screen.getByText("₱799")).toHaveAttribute("data-interval-only", "month");
+    expect(screen.getByRole("region", { name: "Family plan options" })).toHaveAttribute(
+      "data-scope-only",
+      "family",
+    );
     expect(screen.getByRole("radio", { name: /Monthly billing/i })).toHaveAttribute(
       "aria-checked",
       "true",

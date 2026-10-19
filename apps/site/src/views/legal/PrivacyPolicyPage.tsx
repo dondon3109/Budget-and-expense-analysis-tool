@@ -5,7 +5,7 @@ export function PrivacyPolicyPage() {
     <LegalPageLayout
       title="Privacy Policy"
       summary="This policy describes how Zoption handles account, profile, financial, plan, billing, import, AI entry, assistant, mobile-device, consent, and operational information."
-      lastUpdated="October 17, 2026"
+      lastUpdated="October 19, 2026"
     >
       <section>
         <h2>1. Controller and contact</h2>
@@ -54,13 +54,13 @@ export function PrivacyPolicyPage() {
             if you set an app lock, a salted hash of the app lock PIN rather than the PIN itself.
           </li>
           <li>
-            <strong>Plan and billing:</strong> plan tier, including Free or Zoption Pro, plus
-            feature usage and allowance records used to apply plan limits. If you start a Pro
-            checkout or subscribe, this also includes PayPal payer or Dodo Payments customer,
-            checkout session, subscription, plan, and checkout-reference identifiers; subscription
-            status and billing interval; current-period and scheduled-change timestamps; and minimal
-            verified-webhook event metadata needed to process an event and avoid processing it
-            twice.
+            <strong>Plan and billing:</strong> plan tier, including Free, Zoption Budget, or Zoption
+            Pro, and any family plan, plus feature usage and allowance records used to apply plan
+            limits. If you start a paid checkout or subscribe, this also includes PayPal payer or
+            Dodo Payments customer, checkout session, subscription, plan, and checkout-reference
+            identifiers; subscription status and billing interval; current-period and
+            scheduled-change timestamps; and minimal verified-webhook event metadata needed to
+            process an event and avoid processing it twice.
           </li>
           <li>
             <strong>Assistant:</strong> versioned consent state, display-name preferences, response
@@ -268,13 +268,13 @@ export function PrivacyPolicyPage() {
             generated audio in D1.
           </li>
           <li>
-            <strong>PayPal</strong> only if you start checkout for or subscribe to Zoption Pro.
+            <strong>PayPal</strong> only if you start checkout for or subscribe to a paid plan.
             PayPal handles payment details in its interfaces and sends billing webhooks that Zoption
             verifies on its server before reconciling subscription state and paid access.
           </li>
           <li>
-            <strong>Dodo Payments</strong> only if you choose it to check out for or subscribe to
-            Zoption Pro. Dodo Payments acts as merchant of record for that purchase, handles payment
+            <strong>Dodo Payments</strong> only if you choose it to check out for or subscribe to a
+            paid plan. Dodo Payments acts as merchant of record for that purchase, handles payment
             details in its hosted checkout, and sends signed billing webhooks that Zoption verifies
             on its server before reconciling subscription state and paid access.
           </li>

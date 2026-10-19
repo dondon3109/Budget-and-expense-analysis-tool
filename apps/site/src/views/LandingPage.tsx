@@ -596,8 +596,8 @@ export function LandingPage({
               <summary>Can I use Zoption for free?</summary>
               <p className="faq-answer">
                 Yes. Create an account and use Zoption&rsquo;s Free plan without paying. It includes
-                core tracking features with plan limits; upgrade to Pro only if you want higher
-                limits and additional features.
+                core tracking features with plan limits; choose Budget or Pro only if you want
+                higher limits and additional features.
               </p>
             </details>
             <details className="faq-item">

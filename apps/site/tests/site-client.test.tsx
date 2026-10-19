@@ -9,7 +9,7 @@ import { readConsentRecord } from "@zoption/web-common/consent-storage";
 import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { setupConsent, setupFilters, setupPricingInterval } from "../src/client/site";
+import { setupConsent, setupFilters, setupPricingToggles } from "../src/client/site";
 import { CookieConsent } from "../src/components/consent/CookieConsent";
 import { PricingPage } from "../src/views/pricing/PricingPage";
 import { TutorialsPage } from "../src/views/tutorials/TutorialsPage";
@@ -30,11 +30,29 @@ afterEach(() => {
   resetConsentGateForTests();
 });
 
-describe("pricing interval toggle", () => {
+describe("pricing toggles", () => {
+  it("switches between personal and family plans", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<PricingPage />);
+    setupPricingToggles();
+
+    await user.click(screen.getByRole("radio", { name: "Family" }));
+
+    expect(container.querySelector("[data-active-scope]")).toHaveAttribute(
+      "data-active-scope",
+      "family",
+    );
+    expect(screen.getByRole("radio", { name: "Family" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Personal" })).toHaveAttribute(
+      "aria-checked",
+      "false",
+    );
+  });
+
   it("switches the prices on show and the checked radio", async () => {
     const user = userEvent.setup();
     const { container } = render(<PricingPage />);
-    setupPricingInterval();
+    setupPricingToggles();
 
     await user.click(screen.getByRole("radio", { name: /Annual billing/i }));
 

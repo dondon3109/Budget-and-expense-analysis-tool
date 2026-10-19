@@ -184,19 +184,22 @@ export function setupFilters() {
   }
 }
 
-export function setupPricingInterval() {
+/** The pricing page's billing interval and Personal/Family switches; every state is in the HTML. */
+export function setupPricingToggles() {
   const root = document.querySelector<HTMLElement>("[data-active-interval]");
   if (!root) return;
-  const choices = [...root.querySelectorAll<HTMLButtonElement>("[data-interval-choice]")];
-  for (const choice of choices) {
-    choice.addEventListener("click", () => {
-      root.dataset.activeInterval = choice.dataset.intervalChoice;
-      for (const other of choices) {
-        const active = other === choice;
-        other.classList.toggle("active", active);
-        other.setAttribute("aria-checked", String(active));
-      }
-    });
+  for (const name of ["interval", "scope"] as const) {
+    const choices = [...root.querySelectorAll<HTMLButtonElement>(`[data-${name}-choice]`)];
+    for (const choice of choices) {
+      choice.addEventListener("click", () => {
+        root.setAttribute(`data-active-${name}`, choice.getAttribute(`data-${name}-choice`) ?? "");
+        for (const other of choices) {
+          const active = other === choice;
+          other.classList.toggle("active", active);
+          other.setAttribute("aria-checked", String(active));
+        }
+      });
+    }
   }
 }
 
@@ -292,7 +295,7 @@ export function startSite() {
   setupThemeMenu();
   setupDrawer();
   setupFilters();
-  setupPricingInterval();
+  setupPricingToggles();
   setupDisclosureAnchors();
   setupStickyCta();
   if (document.body.dataset.analytics !== "off") {

@@ -102,6 +102,13 @@
   margin: 0 0 32px;
 }
 
+.pricing-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
 .pricing-interval-toggle {
   display: inline-flex;
   align-items: center;
@@ -145,7 +152,7 @@
 /* Pricing Cards Grid */
 .pricing-cards-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 28px;
   margin-bottom: 72px;
 }
@@ -451,8 +458,10 @@
   }
 }
 
-/* Both intervals ship in the HTML; the page root names the one on show. */
+/* Both intervals and both scopes ship in the HTML; the page root names the ones on show. */
 [data-active-interval="month"] [data-interval-only="year"],
-[data-active-interval="year"] [data-interval-only="month"] {
+[data-active-interval="year"] [data-interval-only="month"],
+[data-active-scope="personal"] [data-scope-only="family"],
+[data-active-scope="family"] [data-scope-only="personal"] {
   display: none;
 }

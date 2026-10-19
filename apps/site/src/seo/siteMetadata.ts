@@ -144,7 +144,7 @@ const FAQ_ITEMS: FaqItem[] = [
   {
     question: "Can I use Zoption for free?",
     answer:
-      "Yes. Create an account and use Zoption's Free plan without paying. It includes core tracking features with plan limits; upgrade to Pro only if you want higher limits and additional features.",
+      "Yes. Create an account and use Zoption's Free plan without paying. It includes core tracking features with plan limits; choose Budget or Pro only if you want higher limits and additional features.",
   },
   {
     question: "Does Zoption connect to my bank?",
@@ -296,8 +296,8 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-10-10";
-const PRICING_LAST_MODIFIED = "2026-10-14";
+const LANDING_LAST_MODIFIED = "2026-10-19";
+const PRICING_LAST_MODIFIED = "2026-10-19";
 const GUIDES_LAST_MODIFIED = "2026-10-17";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
@@ -331,8 +331,8 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
 }
 const FAQ_LAST_MODIFIED = "2026-10-07";
 const CHANGELOG_LAST_MODIFIED = "2026-10-17";
-const TERMS_LAST_MODIFIED = "2026-10-07";
-const PRIVACY_LAST_MODIFIED = "2026-10-17";
+const TERMS_LAST_MODIFIED = "2026-10-19";
+const PRIVACY_LAST_MODIFIED = "2026-10-19";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-10-17";
 const IMPORT_LAST_MODIFIED = "2026-10-03";
 const TOOLS_LAST_MODIFIED = "2026-09-29";
@@ -348,7 +348,7 @@ function pricingPageStructuredData(): StructuredDataGraph {
     "@id": `${url}#webpage`,
     name: "Pricing & Plans — Zoption",
     description:
-      "Explore Zoption Free and Pro plans. Track personal finances with zero bank credentials, speech-to-transaction logging, receipt scanning, and bank statement imports.",
+      "Explore Zoption Free, Budget, Pro, and family plans. Track personal finances with zero bank credentials, speech-to-transaction logging, receipt scanning, and bank statement imports.",
     url,
     dateModified: PRICING_LAST_MODIFIED,
     inLanguage: "en",
@@ -490,7 +490,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/pricing": {
     title: "Pricing & Plans — Zoption",
     description:
-      "Start for free or upgrade to Pro for ₱149/month. Private budget tracking, voice and receipt entry, bank statement imports, and no direct bank credential sharing.",
+      "Start for free, or choose Budget for ₱149/month, Pro for ₱249/month, or a family plan. Private budget tracking, voice and receipt entry, bank statement imports, and no direct bank credential sharing.",
     canonical: `${SITE_ORIGIN}/pricing`,
     robots: "index,follow",
     structuredData: pricingPageStructuredData(),
@@ -503,12 +503,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/terms-of-service": {
     title: "Terms of Service — Zoption",
     description:
-      "Read the terms that govern Zoption Free and Pro plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
+      "Read the terms that govern Zoption's Free and paid plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
     canonical: `${SITE_ORIGIN}/terms-of-service`,
     robots: "index,follow",
     structuredData: contentPageStructuredData(
       "Terms of Service — Zoption",
-      "The terms that govern Zoption Free and Pro plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
+      "The terms that govern Zoption's Free and paid plans, accounts, budgeting features, transaction imports, exports, subscriptions, and the optional AI assistant.",
       `${SITE_ORIGIN}/terms-of-service`,
       TERMS_LAST_MODIFIED,
     ),

@@ -19,14 +19,27 @@
   - Universal bank statement importer (1 committed import per month).
   - Starter accounts (Cash, GCash, Maya, Bank), unlimited custom accounts, and 4 custom budget categories.
   - Offline PWA and native Android Beta APK access.
-- **Pro Plan (₱149 / month or ₱1,299 / year — save 27%)**:
-  - 10 committed statement imports per month.
-  - 2,000 AI actions per month in the same shared pool, plus live streaming voice chat (Pro-only: a live platform-funded socket has no per-request boundary to meter).
-  - Unlimited custom categories.
+- **Zoption Budget (₱149 / month or ₱1,490 / year — 2 months free)**:
+  - 1,000 AI actions per month in the same shared pool, plus live streaming voice chat (paid plans only: a live platform-funded socket has no per-request boundary to meter).
+  - 5 committed statement imports per month.
+  - 10 custom categories.
   - Automatic high-yield savings interest compounding calculation (daily, monthly, yearly).
+  - Full cash flow analytics (week, month, and 6-month views).
   - Visual Renewal Calendar for subscription tracking and cash-flow impact.
   - Filtered CSV transaction data export.
-  - Priority support.
+  - Streak pet growth to Legend.
+  - Direct support within 48 hours.
+- **Zoption Pro (₱249 / month or ₱2,490 / year — 2 months free)**:
+  - Everything in Budget.
+  - 2,000 AI actions per month in the same shared pool.
+  - 10 committed statement imports per month.
+  - Unlimited custom categories.
+  - Priority support within 24 hours.
+- **Family Budget (₱499 / month or ₱4,990 / year)** and **Family Pro (₱799 / month or ₱7,990 / year)**:
+  - One shared family space for up to 6 people, the owner included.
+  - Every member gets Zoption Budget (Family Budget) or Zoption Pro (Family Pro) for their own Zoption; AI actions and imports stay personal.
+  - The owner can create the family before paying and use it alone with Free limits; invitations open once a family plan is chosen.
+- New accounts get a 7-day Zoption Pro trial with no card. Upgrades take effect right away; downgrades take effect at the end of the paid period.
 
 ## Supported File Import Formats
 - Bank statement CSVs with built-in column detection for: BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Any other bank works through the generic preset, which matches the common Date, Description, Amount, Debit, and Credit headings.
