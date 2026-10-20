@@ -14,24 +14,19 @@ export const currentRelease: ProductRelease = {
   releasedOn: "October 20, 2026",
   changes: [
     {
-      title: "Start a family",
+      title: "A new look for the assistant chat",
       description:
-        "Creating a family is now open on web and mobile, so you can set one up, try it alone at Free limits, and pick Family Budget or Family Pro in Family settings to invite people.",
+        'On mobile, replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked. A new chat opens with starter questions as chips, the message box is one slim row, and a button jumps back to the newest message.',
     },
     {
-      title: "Maya for every workspace",
+      title: "Chat boxes stay on the keyboard",
       description:
-        "Workspaces created before Maya became a starter account now get the Maya e-wallet account too, unless you already added your own.",
+        "On Android, the assistant and support chat message boxes sit right on the keyboard instead of floating halfway up the screen, and the header no longer slides under the status bar.",
     },
     {
-      title: "Lighter haptics",
+      title: "Android Beta 0.2.59",
       description:
-        "On mobile, choices, toggles, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click, so the buzz matches what you did.",
-    },
-    {
-      title: "Android Beta 0.2.58",
-      description:
-        "The official Android Beta carries the lighter haptics and everything from 0.2.57. Install 0.2.58 over 0.2.57.",
+        "The official Android Beta carries the new assistant chat and everything from 0.2.58. Install 0.2.59 over 0.2.58.",
     },
   ],
 };
@@ -46,6 +41,32 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.4.1",
+    releasedOn: "October 20, 2026",
+    changes: [
+      {
+        title: "Start a family",
+        description:
+          "Creating a family is now open on web and mobile, so you can set one up, try it alone at Free limits, and pick Family Budget or Family Pro in Family settings to invite people.",
+      },
+      {
+        title: "Maya for every workspace",
+        description:
+          "Workspaces created before Maya became a starter account now get the Maya e-wallet account too, unless you already added your own.",
+      },
+      {
+        title: "Lighter haptics",
+        description:
+          "On mobile, choices, toggles, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click, so the buzz matches what you did.",
+      },
+      {
+        title: "Android Beta 0.2.58",
+        description:
+          "The official Android Beta carries the lighter haptics and everything from 0.2.57. Install 0.2.58 over 0.2.57.",
+      },
+    ],
+  },
   {
     version: "4.4.0",
     releasedOn: "October 20, 2026",
