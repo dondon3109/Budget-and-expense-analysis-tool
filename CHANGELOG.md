@@ -41,6 +41,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile haptics follow the action: choices, toggles, expanders, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click or double click.
 - Mobile: haptic feedback is softer and matches the action: a faint tick for picking, toggling, or expanding, a light tap for buttons and rows, and a distinct buzz when a save succeeds or fails.
 - Zoption Pro is now ₱249 a month or ₱2,490 a year; the old ₱149 Pro plan is retired. A streak pet grows past Baby on either paid plan.
 - A family whose plan has ended is read only for everyone until its owner renews it.
