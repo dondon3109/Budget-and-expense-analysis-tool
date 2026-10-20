@@ -1348,7 +1348,8 @@ const styles = StyleSheet.create({
   newChatButtons: { flexDirection: "row", gap: spacing.sm },
   newChatButton: { flex: 1 },
   chat: { flex: 1 },
-  chatContent: { padding: spacing.md, paddingBottom: spacing.md },
+  // Grows to the list height so the empty state can center itself.
+  chatContent: { flexGrow: 1, padding: spacing.md, paddingBottom: spacing.md },
   bannerWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
   thinkingWrap: { paddingVertical: spacing.sm },
   chatTitle: { flex: 1, textAlign: "center" },

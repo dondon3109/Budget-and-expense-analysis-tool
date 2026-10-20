@@ -41,7 +41,7 @@ All notable product changes are documented here.
 
 ### Changed
 
-- The phone assistant chat has a new look: replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked, the message box floats at the bottom with the microphone and send buttons beneath your text, and a button jumps back to the newest message after you scroll up.
+- The phone assistant chat has a new look: replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked, a new chat opens on the Zoption mark with starter questions as chips, the message box is one slim row with the microphone and send buttons, and a button jumps back to the newest message after you scroll up.
 - Mobile haptics follow the action: choices, toggles, expanders, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click or double click.
 - Mobile: haptic feedback is softer and matches the action: a faint tick for picking, toggling, or expanding, a light tap for buttons and rows, and a distinct buzz when a save succeeds or fails.
 - Zoption Pro is now ₱249 a month or ₱2,490 a year; the old ₱149 Pro plan is retired. A streak pet grows past Baby on either paid plan.

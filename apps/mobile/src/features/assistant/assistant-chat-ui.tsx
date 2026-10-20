@@ -1,13 +1,22 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import type { ReactNode } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
+import brandIcon from "../../../assets/zoption-icon.png";
 import { promptsForGoal } from "@/features/primary-goal/goal-personalization";
 import { useLeadGoal } from "@/stores/goal-profile-store";
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
-import { formatRecordingElapsed } from "./assistant-ui";
+import { COMPOSER_BUTTON, COMPOSER_HIT_SLOP, formatRecordingElapsed } from "./assistant-ui";
 import type { RecordingPhase } from "./assistant-voice-hooks";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
@@ -17,33 +26,38 @@ const SUGGESTED_QUESTIONS = [
   "Which debt should I pay first?",
 ];
 
-/** Empty-chat prompt with starter questions; tapping one fills the message box. */
+/** Empty chat: the Zoption mark and a greeting centered, starter questions beneath as chips. */
 export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => void }) {
   const theme = useZoptionTheme();
   const goal = useLeadGoal();
   return (
-    <View style={styles.suggestions}>
-      <Text accessibilityRole="header" style={[typography.title, { color: theme.colors.text }]}>
+    <View style={styles.empty}>
+      <Image accessibilityElementsHidden source={brandIcon} style={styles.emptyMark} />
+      <Text
+        accessibilityRole="header"
+        style={[typography.display, styles.centered, { color: theme.colors.text }]}
+      >
         Ask anything about your money
       </Text>
-      <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-        Tap a question to start, or type your own.
+      <Text style={[typography.body, styles.emptyBody, { color: theme.colors.textMuted }]}>
+        Answers come from your own records, and nothing is saved until you confirm it.
       </Text>
-      {promptsForGoal(SUGGESTED_QUESTIONS, goal).map((question) => (
-        <Pressable
-          key={question}
-          accessibilityRole="button"
-          accessibilityLabel={question}
-          onPress={withTapSound(() => onPick(question))}
-          style={[
-            styles.suggestion,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[typography.body, { color: theme.colors.text, flex: 1 }]}>{question}</Text>
-          <MaterialCommunityIcons name="arrow-top-right" size={18} color={theme.colors.textMuted} />
-        </Pressable>
-      ))}
+      <View style={styles.suggestions}>
+        {promptsForGoal(SUGGESTED_QUESTIONS, goal).map((question) => (
+          <Pressable
+            key={question}
+            accessibilityRole="button"
+            accessibilityLabel={question}
+            onPress={withTapSound(() => onPick(question))}
+            style={[
+              styles.suggestion,
+              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+            ]}
+          >
+            <Text style={[typography.callout, { color: theme.colors.text }]}>{question}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 }
@@ -196,42 +210,53 @@ export function AssistantComposer({
         multiline
         value={draft}
         onChangeText={onChangeDraft}
-        placeholder="Ask anything"
+        placeholder="Ask anything…"
         placeholderTextColor={theme.colors.textMuted}
         maxLength={maxLength}
         style={[styles.input, { color: theme.colors.text }]}
       />
-      <View style={styles.composerActions}>
-        {voiceButton}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Send message"
-          accessibilityState={{ disabled: !canSend }}
-          disabled={!canSend}
-          onPress={withTapSound(onSend)}
-          style={[
-            styles.sendButton,
-            { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
-          ]}
-        >
-          <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
-        </Pressable>
-      </View>
+      {voiceButton}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Send message"
+        accessibilityState={{ disabled: !canSend }}
+        disabled={!canSend}
+        hitSlop={COMPOSER_HIT_SLOP}
+        onPress={withTapSound(onSend)}
+        style={[
+          styles.sendButton,
+          { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
+        ]}
+      >
+        <MaterialCommunityIcons name="arrow-up" size={20} color={theme.colors.onBrand} />
+      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  suggestions: { gap: spacing.sm, paddingTop: spacing.md },
-  suggestion: {
-    flexDirection: "row",
+  empty: {
+    flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     gap: spacing.sm,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minHeight: touchTarget,
+  },
+  emptyMark: { width: 72, height: 72, borderRadius: radii.xl, marginBottom: spacing.sm },
+  centered: { textAlign: "center" },
+  emptyBody: { textAlign: "center", maxWidth: 300 },
+  suggestions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: spacing.xs,
+    marginTop: spacing.md,
+  },
+  suggestion: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.round,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
   },
   voiceStatus: {
     flexDirection: "row",
@@ -265,32 +290,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   composer: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: spacing.xs,
     marginHorizontal: spacing.md,
     marginTop: spacing.xs,
     marginBottom: spacing.sm,
     borderWidth: StyleSheet.hairlineWidth,
     borderRadius: radii.xl,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    gap: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingRight: 6,
+    paddingVertical: 6,
   },
   input: {
-    minHeight: 40,
-    maxHeight: 140,
+    flex: 1,
+    minHeight: COMPOSER_BUTTON,
+    maxHeight: 120,
     fontSize: 16,
-    paddingVertical: 4,
-    textAlignVertical: "top",
-  },
-  composerActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: spacing.xs,
+    paddingVertical: 7,
+    textAlignVertical: "center",
   },
   sendButton: {
-    width: touchTarget,
-    height: touchTarget,
+    width: COMPOSER_BUTTON,
+    height: COMPOSER_BUTTON,
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",

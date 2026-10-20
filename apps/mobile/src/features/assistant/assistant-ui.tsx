@@ -711,6 +711,11 @@ export function MemoryPreferencesBlock({
   );
 }
 
+// The composer's round buttons sit inside a slim bar; the hit slop keeps each touch area at
+// the platform minimum.
+export const COMPOSER_BUTTON = 36;
+export const COMPOSER_HIT_SLOP = (touchTarget - COMPOSER_BUTTON) / 2;
+
 const styles = StyleSheet.create({
   consentBackdrop: { flex: 1, justifyContent: "center", padding: spacing.md },
   consentSheet: {
@@ -779,8 +784,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   recordButton: {
-    width: touchTarget,
-    height: touchTarget,
+    width: COMPOSER_BUTTON,
+    height: COMPOSER_BUTTON,
     borderRadius: radii.round,
     alignItems: "center",
     justifyContent: "center",
@@ -876,6 +881,7 @@ export function VoiceRecordButton({ phase, onPress }: VoiceRecordButtonProps) {
       accessibilityLabel={label}
       accessibilityState={{ disabled: loading, busy: loading }}
       disabled={loading}
+      hitSlop={COMPOSER_HIT_SLOP}
       onPress={withTapSound(onPress)}
       style={[
         styles.recordButton,
@@ -887,7 +893,7 @@ export function VoiceRecordButton({ phase, onPress }: VoiceRecordButtonProps) {
       ) : (
         <MaterialCommunityIcons
           name="microphone-outline"
-          size={22}
+          size={20}
           color={recording ? theme.colors.onBrand : theme.colors.brand}
         />
       )}
