@@ -132,6 +132,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       allowBackup: false,
       // Keep the activity height stable when the keyboard opens. Android pans
       // the focused field into view instead of reflowing the whole screen.
+      // Chat screens (assistant, support) switch to resize only while their
+      // react-native-keyboard-controller KeyboardAvoidingView is mounted.
       softwareKeyboardLayoutMode: "pan",
       // Predictive back is disabled: with enableOnBackInvokedCallback the
       // system finished the activity instead of popping the native stack,

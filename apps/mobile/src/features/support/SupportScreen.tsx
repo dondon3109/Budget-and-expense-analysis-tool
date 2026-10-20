@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   type ListRenderItemInfo,
   Platform,
   Pressable,
@@ -15,6 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 
 import {
   ApiTransportError,
@@ -279,11 +279,7 @@ export function SupportScreen() {
       </View>
 
       {section === "ask" ? (
-        <KeyboardAvoidingView
-          style={styles.chat}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
-        >
+        <KeyboardAvoidingView style={styles.chat} behavior="padding" automaticOffset>
           {draft ? (
             // The review gets the whole panel: squeezed under the chat and composer, its
             // five text fields were too small to read and edit on a phone.

@@ -7,6 +7,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { SessionProvider, useSessionSnapshot } from "@/auth/session-state";
@@ -125,17 +126,21 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <SessionProvider>
-          <SplashRelease />
-          <DailyReminderSession />
-          <WorkerIdentityProvider>
-            <ZoptionThemeProvider>
-              <AndroidUpdateProvider>
-                <RootNavigator />
-              </AndroidUpdateProvider>
-            </ZoptionThemeProvider>
-          </WorkerIdentityProvider>
-        </SessionProvider>
+        {/* Android keeps the manifest's pan mode; only a chat screen's KeyboardAvoidingView
+            switches to resize while it is mounted, so the composer sits on the keyboard. */}
+        <KeyboardProvider>
+          <SessionProvider>
+            <SplashRelease />
+            <DailyReminderSession />
+            <WorkerIdentityProvider>
+              <ZoptionThemeProvider>
+                <AndroidUpdateProvider>
+                  <RootNavigator />
+                </AndroidUpdateProvider>
+              </ZoptionThemeProvider>
+            </WorkerIdentityProvider>
+          </SessionProvider>
+        </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

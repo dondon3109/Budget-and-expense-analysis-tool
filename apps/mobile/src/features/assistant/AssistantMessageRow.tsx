@@ -12,17 +12,8 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
 import { AssistantActionCard } from "./AssistantActionCard";
-import { ASSISTANT_AVATAR_SIZE, AssistantMessageBubble } from "./assistant-ui";
-
-function evidenceLabelFor(message: AssistantWireMessage): string | undefined {
-  const metadata = message.metadata as
-    { sources?: Array<{ label?: unknown; period?: { label?: unknown } }> } | undefined;
-  const sources = Array.isArray(metadata?.sources) ? metadata.sources : [];
-  const first = sources[0];
-  if (!first || typeof first.label !== "string") return undefined;
-  const period = typeof first.period?.label === "string" ? " · " + first.period.label : "";
-  return "Grounded in " + first.label + period;
-}
+import { AssistantReplySteps, replySteps } from "./AssistantReplySteps";
+import { AssistantMessageBubble } from "./assistant-ui";
 
 /** Drafts a later correction replaced, as `messageId:slot`; those can no longer be saved. */
 export function replacedDraftKeys(messages: readonly AssistantWireMessage[]): Set<string> {
@@ -42,6 +33,8 @@ export function AssistantMessageRow({
   message,
   replacedDrafts,
   latestActionId,
+  thoughtSeconds,
+  stepsExpanded,
   onDraftSaved,
 }: {
   message: AssistantWireMessage;
@@ -49,16 +42,26 @@ export function AssistantMessageRow({
   replacedDrafts?: ReadonlySet<string>;
   /** The newest proposed subscription, goal, or debt change in the chat; only it can be confirmed. */
   latestActionId?: string;
+  /** How long the reply took, from `replyThoughtSeconds`. */
+  thoughtSeconds?: number;
+  /** Opens the records-checked timeline at first; the newest reply shows it. */
+  stepsExpanded?: boolean;
   onDraftSaved: (saved: AssistantWireMessage) => void;
 }) {
   return (
     <View>
+      {message.role === "assistant" && message.status === "completed" ? (
+        <AssistantReplySteps
+          steps={replySteps(message)}
+          thoughtSeconds={thoughtSeconds}
+          defaultExpanded={stepsExpanded}
+        />
+      ) : null}
       <AssistantMessageBubble
         role={message.role}
         content={message.content}
         status={message.status}
         createdAt={message.createdAt}
-        evidenceLabel={evidenceLabelFor(message)}
       />
       {message.role === "assistant" ? (
         <>
@@ -196,8 +199,6 @@ function AssistantDraftCard({
 const styles = StyleSheet.create({
   card: {
     marginTop: spacing.sm,
-    marginLeft: ASSISTANT_AVATAR_SIZE + spacing.xs,
-    maxWidth: "86%",
     padding: spacing.md,
     gap: spacing.sm,
     borderRadius: radii.md,
