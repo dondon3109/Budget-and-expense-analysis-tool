@@ -25,17 +25,21 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Start a family",
-      "Maya for every workspace",
-      "Lighter haptics",
-      "Android Beta 0.2.58",
+      "A new look for the assistant chat",
+      "Chat boxes stay on the keyboard",
+      "Android Beta 0.2.59",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Family Budget or Family Pro/);
-    expect(copy).toMatch(/Android Beta 0\.2\.58/);
+    expect(copy).toMatch(/Thought for N seconds/);
+    expect(copy).toMatch(/Android Beta 0\.2\.59/);
+  });
+
+  it("keeps the family opening and haptics notes as 4.4.1", () => {
+    expect(titles("4.4.1")).toContain("Start a family");
+    expect(notes("4.4.1")).toMatch(/Android Beta 0\.2\.58/);
   });
 
   it("keeps the family, tiers, and new entry form notes as 4.4.0", () => {
@@ -225,6 +229,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "4.4.1",
       "4.4.0",
       "4.3.0",
       "3.7.0",
