@@ -10,8 +10,6 @@ import { Button } from "@/ui/components/Button";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 
-import { ASSISTANT_AVATAR_SIZE } from "./assistant-ui";
-
 const DONE_LABEL: Record<string, string> = {
   create: "Added",
   update: "Changed",
@@ -128,8 +126,6 @@ export function AssistantActionCard({
 const styles = StyleSheet.create({
   card: {
     marginTop: spacing.sm,
-    marginLeft: ASSISTANT_AVATAR_SIZE + spacing.xs,
-    maxWidth: "86%",
     padding: spacing.md,
     gap: spacing.sm,
     borderRadius: radii.md,

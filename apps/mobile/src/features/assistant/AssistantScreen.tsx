@@ -13,18 +13,18 @@ import {
   ActivityIndicator,
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   type ListRenderItemInfo,
-  Platform,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   SectionList,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   ApiTransportError,
@@ -59,7 +59,7 @@ import {
 import { BrandMark } from "@/ui/brand-mark";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { spacing, typography } from "@/ui/tokens";
 
 import {
   MAX_ASSISTANT_MESSAGE_LENGTH,
@@ -78,10 +78,17 @@ import {
   MemoryPreferencesBlock,
   VoiceRecordButton,
 } from "./assistant-ui";
-import { AssistantEmptyChat, VoiceStatusBanner } from "./assistant-chat-ui";
+import {
+  AssistantComposer,
+  AssistantEmptyChat,
+  ChatHeaderButton,
+  ScrollToLatestButton,
+  VoiceStatusBanner,
+} from "./assistant-chat-ui";
 import { useAssistantRecorder } from "./assistant-voice-hooks";
 import { latestActionMessageId } from "./AssistantActionCard";
 import { AssistantMessageRow, replacedDraftKeys } from "./AssistantMessageRow";
+import { replyThoughtSeconds } from "./AssistantReplySteps";
 import { AssistantVoiceConversation } from "./AssistantVoiceConversation";
 import { CheckingRecordsIndicator } from "./CheckingRecordsIndicator";
 import { withTapSound } from "@/features/sounds/sound-effects";
@@ -142,6 +149,8 @@ export function AssistantScreen() {
   const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
 
   const listRef = useRef<FlatList<AssistantWireMessage>>(null);
+  const insets = useSafeAreaInsets();
+  const [awayFromLatest, setAwayFromLatest] = useState(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -759,12 +768,16 @@ export function AssistantScreen() {
   // Text chat is mic-in / text-out: assistant answers are never spoken here.
   const replacedDrafts = useMemo(() => replacedDraftKeys(messages), [messages]);
   const latestActionId = useMemo(() => latestActionMessageId(messages), [messages]);
+  const thoughtSeconds = useMemo(() => replyThoughtSeconds(messages), [messages]);
+  const latestReplyId = messages.findLast((message) => message.role === "assistant")?.id;
   const renderMessage = useCallback(
     ({ item }: ListRenderItemInfo<AssistantWireMessage>) => (
       <AssistantMessageRow
         message={item}
         replacedDrafts={replacedDrafts}
         latestActionId={latestActionId}
+        thoughtSeconds={thoughtSeconds.get(item.id)}
+        stepsExpanded={item.id === latestReplyId}
         onDraftSaved={(saved) =>
           setMessages((previous) =>
             previous.map((message) => (message.id === saved.id ? saved : message)),
@@ -772,8 +785,15 @@ export function AssistantScreen() {
         }
       />
     ),
-    [replacedDrafts, latestActionId],
+    [replacedDrafts, latestActionId, thoughtSeconds, latestReplyId],
   );
+  // Past one screen of scrolling up, a button offers the way back to the newest message.
+  const handleChatScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    setAwayFromLatest(
+      contentSize.height - layoutMeasurement.height - contentOffset.y > layoutMeasurement.height,
+    );
+  }, []);
 
   const settingsAction = (
     <Pressable
@@ -847,44 +867,49 @@ export function AssistantScreen() {
       edges={["top", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      {view !== "voice" ? (
+      {view === "chat" ? (
+        <View style={styles.header}>
+          <ChatHeaderButton
+            icon="arrow-left"
+            label="Back to conversations"
+            onPress={() => {
+              setView("threads");
+              setActiveThreadId(null);
+              setMessages([]);
+            }}
+          />
+          <Text
+            accessibilityRole="header"
+            numberOfLines={1}
+            style={[typography.label, styles.chatTitle, { color: theme.colors.text }]}
+          >
+            {threads.find((thread) => thread.id === activeThreadId)?.title ?? "New chat"}
+          </Text>
+          <ChatHeaderButton icon="cog-outline" label="Assistant settings" onPress={openSettings} />
+        </View>
+      ) : view === "threads" ? (
         <View style={styles.header}>
           <View className="flex-1" style={styles.headerLeading}>
             <View className="flex-row items-center gap-2">
-              {view === "chat" ? (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Back to conversations"
-                  onPress={withTapSound(() => {
-                    setView("threads");
-                    setActiveThreadId(null);
-                    setMessages([]);
-                  })}
-                  hitSlop={8}
-                >
-                  <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
-                </Pressable>
-              ) : (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Back"
-                  onPress={withTapSound(() => {
-                    if (router.canGoBack?.()) {
-                      router.back();
-                    } else {
-                      router.replace("/(app)/(tabs)");
-                    }
-                  })}
-                  hitSlop={8}
-                >
-                  <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
-                </Pressable>
-              )}
-              {view === "threads" ? <BrandMark /> : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Back"
+                onPress={withTapSound(() => {
+                  if (router.canGoBack?.()) {
+                    router.back();
+                  } else {
+                    router.replace("/(app)/(tabs)");
+                  }
+                })}
+                hitSlop={8}
+              >
+                <MaterialCommunityIcons name="arrow-left" size={22} color={theme.colors.text} />
+              </Pressable>
+              <BrandMark />
             </View>
           </View>
           <View style={styles.headerActions}>
-            {view === "threads" && threads.length > 0 ? (
+            {threads.length > 0 ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={
@@ -1013,62 +1038,48 @@ export function AssistantScreen() {
           ) : null}
         </View>
       ) : (
+        // The composer's own bottom inset already clears the system bar, so the keyboard lifts it
+        // by that much less.
         <KeyboardAvoidingView
           style={styles.chat}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 92 : 0}
+          behavior="padding"
+          automaticOffset
+          keyboardVerticalOffset={-insets.bottom}
         >
-          <FlatList
-            ref={listRef}
-            data={messages}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.chatContent}
-            renderItem={renderMessage}
-            ItemSeparatorComponent={MessageListSeparator}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            ListEmptyComponent={
-              loadingMessages ? (
-                <ActivityIndicator color={theme.colors.brand} />
-              ) : (
-                <AssistantEmptyChat onPick={setDraft} />
-              )
-            }
-            ListFooterComponent={
-              sending ? (
-                <View style={styles.thinkingWrap}>
-                  <View
-                    style={[
-                      styles.thinkingBubble,
-                      {
-                        backgroundColor: theme.colors.surface,
-                        borderColor: theme.colors.border,
-                      },
-                    ]}
-                  >
-                    <View style={styles.captionSpeakerRow}>
-                      <MaterialCommunityIcons
-                        name="creation"
-                        size={13}
-                        color={theme.colors.brand}
-                      />
-                      <Text
-                        style={[
-                          typography.caption,
-                          styles.captionSpeaker,
-                          { color: theme.colors.textMuted },
-                        ]}
-                      >
-                        {preferences?.assistantName ?? "Assistant"}
-                      </Text>
-                    </View>
+          <View style={styles.chat}>
+            <FlatList
+              ref={listRef}
+              data={messages}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.chatContent}
+              renderItem={renderMessage}
+              ItemSeparatorComponent={MessageListSeparator}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              ListEmptyComponent={
+                loadingMessages ? (
+                  <ActivityIndicator color={theme.colors.brand} />
+                ) : (
+                  <AssistantEmptyChat onPick={setDraft} />
+                )
+              }
+              ListFooterComponent={
+                sending ? (
+                  <View style={styles.thinkingWrap}>
                     <CheckingRecordsIndicator size="small" />
                   </View>
-                </View>
-              ) : null
-            }
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-          />
+                ) : null
+              }
+              onScroll={handleChatScroll}
+              scrollEventThrottle={100}
+              onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+            />
+            {awayFromLatest ? (
+              <ScrollToLatestButton
+                onPress={() => listRef.current?.scrollToEnd({ animated: true })}
+              />
+            ) : null}
+          </View>
           {voiceError ? (
             <VoiceStatusBanner
               kind="error"
@@ -1083,51 +1094,27 @@ export function AssistantScreen() {
               liveUnavailable={recorder.liveStatus === "unavailable"}
             />
           ) : null}
-          <View
-            style={[
-              styles.composer,
-              { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
-            ]}
-          >
-            <TextInput
-              accessibilityLabel="Message the assistant"
-              multiline
-              value={draft}
-              onChangeText={setDraft}
-              placeholder="Ask anything"
-              placeholderTextColor={theme.colors.textMuted}
+          <SafeAreaView edges={["bottom"]}>
+            <AssistantComposer
+              draft={draft}
+              onChangeDraft={setDraft}
               maxLength={MAX_ASSISTANT_MESSAGE_LENGTH + 200}
-              style={[styles.input, { color: theme.colors.text }]}
+              canSend={draftValid && !sending}
+              onSend={() => void handleSend()}
+              voiceButton={
+                voicePreferences?.enabled === true ? (
+                  <VoiceRecordButton
+                    phase={recorder.phase}
+                    onPress={() => {
+                      if (recorder.phase === "recording") void recorder.stopAndTranscribe();
+                      else if (voicePreferences.consentedAt === null) void enableVoice();
+                      else if (recorder.phase === "idle") void recorder.startRecording();
+                    }}
+                  />
+                ) : undefined
+              }
             />
-            {voicePreferences?.enabled === true ? (
-              <>
-                <VoiceRecordButton
-                  phase={recorder.phase}
-                  onPress={() => {
-                    if (recorder.phase === "recording") void recorder.stopAndTranscribe();
-                    else if (voicePreferences.consentedAt === null) void enableVoice();
-                    else if (recorder.phase === "idle") void recorder.startRecording();
-                  }}
-                />
-              </>
-            ) : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Send message"
-              accessibilityState={{ disabled: !draftValid || sending }}
-              disabled={!draftValid || sending}
-              onPress={withTapSound(() => void handleSend())}
-              style={[
-                styles.sendButton,
-                {
-                  backgroundColor:
-                    draftValid && !sending ? theme.colors.brand : theme.colors.border,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
-            </Pressable>
-          </View>
+          </SafeAreaView>
         </KeyboardAvoidingView>
       )}
 
@@ -1348,7 +1335,6 @@ const styles = StyleSheet.create({
     gap: spacing.xxs,
   },
   iconButton: { padding: spacing.xs },
-  headerTitle: { flexShrink: 1 },
   listContent: { padding: spacing.md, paddingBottom: spacing.xl },
   threadsPane: { flex: 1 },
   sectionLabel: { paddingTop: spacing.sm, paddingBottom: spacing.xs },
@@ -1364,70 +1350,6 @@ const styles = StyleSheet.create({
   chat: { flex: 1 },
   chatContent: { padding: spacing.md, paddingBottom: spacing.md },
   bannerWrap: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm },
-  composer: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: spacing.xs,
-    margin: spacing.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: radii.lg,
-    padding: spacing.sm,
-  },
-  input: {
-    flex: 1,
-    minHeight: touchTarget,
-    maxHeight: 120,
-    fontSize: 16,
-    paddingTop: Platform.OS === "ios" ? 10 : 8,
-    paddingBottom: Platform.OS === "ios" ? 10 : 8,
-    paddingHorizontal: 4,
-  },
-  sendButton: {
-    width: touchTarget,
-    height: touchTarget,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  thinkingWrap: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-  },
-  thinkingBubble: {
-    alignSelf: "flex-start",
-    maxWidth: "90%",
-    borderRadius: radii.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    gap: 4,
-  },
-  captionSpeakerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  captionSpeaker: {
-    textTransform: "uppercase",
-    fontSize: 11,
-    fontWeight: "600",
-    opacity: 0.85,
-  },
-  thinking: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-  },
-  chatStatusRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xxs,
-    marginTop: 2,
-  },
-  chatStatusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: radii.round,
-  },
+  thinkingWrap: { paddingVertical: spacing.sm },
+  chatTitle: { flex: 1, textAlign: "center" },
 });

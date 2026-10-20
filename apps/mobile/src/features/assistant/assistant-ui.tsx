@@ -29,9 +29,6 @@ import type { RecordingPhase } from "./assistant-voice-hooks";
 import { formatThreadTime, validateIdentityName } from "./assistant-forms";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
-/** Width of the assistant avatar, shared so a draft card can indent to the bubble. */
-export const ASSISTANT_AVATAR_SIZE = 28;
-
 export function AssistantStatusBadge({
   status = "available",
   label,
@@ -313,7 +310,6 @@ export function AssistantMessageBubble({
   content,
   status,
   createdAt,
-  evidenceLabel,
   listening,
   onListen,
 }: {
@@ -321,46 +317,17 @@ export function AssistantMessageBubble({
   content: string;
   status: "pending" | "completed" | "failed";
   createdAt: string;
-  evidenceLabel?: string;
   listening?: boolean;
   onListen?: () => void;
 }) {
   const theme = useZoptionTheme();
   const isUser = role === "user";
-  const bubble = (
-    <View
-      style={[
-        styles.bubble,
-        isUser ? styles.bubbleUser : styles.bubbleAssistant,
-        {
-          backgroundColor: isUser ? theme.colors.brand : theme.colors.surface,
-          borderColor: isUser ? theme.colors.brand : theme.colors.border,
-        },
-      ]}
-    >
-      <Text style={[typography.body, { color: isUser ? theme.colors.onBrand : theme.colors.text }]}>
-        {content}
-      </Text>
-    </View>
-  );
   const meta = (
     <View style={styles.bubbleMeta}>
       {status === "failed" ? (
         <Text style={[typography.caption, { color: theme.colors.danger }]}>
           Not sent. Try asking again.
         </Text>
-      ) : null}
-      {!isUser && status === "completed" && evidenceLabel ? (
-        <View className="flex-row items-center gap-1">
-          <MaterialCommunityIcons
-            name="file-document-check-outline"
-            size={12}
-            color={theme.colors.textMuted}
-          />
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            {evidenceLabel}
-          </Text>
-        </View>
       ) : null}
       {!isUser && status === "completed" && onListen ? (
         <Pressable
@@ -384,26 +351,25 @@ export function AssistantMessageBubble({
   if (isUser) {
     return (
       <View className="items-end">
-        {bubble}
+        <View
+          style={[
+            styles.bubble,
+            { backgroundColor: theme.colors.brand, borderColor: theme.colors.brand },
+          ]}
+        >
+          <Text style={[typography.body, { color: theme.colors.onBrand }]}>{content}</Text>
+        </View>
         {meta}
       </View>
     );
   }
-  // The avatar sits beside the bubble; its width plus gap is the indent other
-  // assistant content (the draft card) lines up with.
+  // Replies read as the page itself, full width with no bubble, so long answers stay legible.
   return (
-    <View style={styles.assistantRow}>
-      <View
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={[styles.avatar, { backgroundColor: theme.colors.brandSoft }]}
-      >
-        <MaterialCommunityIcons name="creation" size={16} color={theme.colors.brand} />
-      </View>
-      <View style={styles.assistantColumn}>
-        {bubble}
-        {meta}
-      </View>
+    <View>
+      {content ? (
+        <Text style={[typography.body, styles.reply, { color: theme.colors.text }]}>{content}</Text>
+      ) : null}
+      {meta}
     </View>
   );
 }
@@ -756,32 +722,19 @@ const styles = StyleSheet.create({
   consentContent: { padding: spacing.lg, gap: spacing.md },
   consentAction: { flex: 1 },
   bubble: {
-    maxWidth: "88%",
+    maxWidth: "85%",
     borderRadius: radii.xl,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm + 2,
   },
-  // The corner nearest the speaker is tight, so each bubble reads as a speech tail.
-  bubbleUser: { borderBottomRightRadius: radii.sm / 2 },
-  bubbleAssistant: { borderBottomLeftRadius: radii.sm / 2 },
+  reply: { fontSize: 16, lineHeight: 24 },
   bubbleMeta: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.xs,
     marginTop: spacing.xxs,
     marginHorizontal: spacing.xs,
-  },
-  assistantRow: { flexDirection: "row", alignItems: "flex-end", gap: spacing.xs },
-  assistantColumn: { flexShrink: 1, alignItems: "flex-start" },
-  avatar: {
-    width: ASSISTANT_AVATAR_SIZE,
-    height: ASSISTANT_AVATAR_SIZE,
-    borderRadius: radii.round,
-    alignItems: "center",
-    justifyContent: "center",
-    // Lines up with the bubble, not the timestamp row beneath it.
-    marginBottom: 22,
   },
   listen: { padding: 2 },
   threadRow: {

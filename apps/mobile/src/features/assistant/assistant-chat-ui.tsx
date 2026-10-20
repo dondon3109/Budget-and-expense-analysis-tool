@@ -1,9 +1,10 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import type { ReactNode } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { promptsForGoal } from "@/features/primary-goal/goal-personalization";
 import { useLeadGoal } from "@/stores/goal-profile-store";
-import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
+import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
 import { formatRecordingElapsed } from "./assistant-ui";
@@ -119,6 +120,107 @@ export function VoiceStatusBanner(props: VoiceStatusBannerProps) {
   );
 }
 
+/** Round header button of the chat view, one each side of the conversation title. */
+export function ChatHeaderButton({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={withTapSound(onPress)}
+      style={[
+        styles.headerButton,
+        elevation.card,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+      ]}
+    >
+      <MaterialCommunityIcons name={icon} size={22} color={theme.colors.text} />
+    </Pressable>
+  );
+}
+
+/** Floating button that returns to the newest message once the reader scrolls up. */
+export function ScrollToLatestButton({ onPress }: { onPress: () => void }) {
+  const theme = useZoptionTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Scroll to latest message"
+      onPress={withTapSound(onPress)}
+      style={[
+        styles.scrollButton,
+        elevation.card,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+      ]}
+    >
+      <MaterialCommunityIcons name="arrow-down" size={20} color={theme.colors.text} />
+    </Pressable>
+  );
+}
+
+/** The message box: text on top, the voice and send buttons on a row beneath it. */
+export function AssistantComposer({
+  draft,
+  onChangeDraft,
+  maxLength,
+  canSend,
+  onSend,
+  voiceButton,
+}: {
+  draft: string;
+  onChangeDraft: (text: string) => void;
+  maxLength: number;
+  canSend: boolean;
+  onSend: () => void;
+  voiceButton?: ReactNode;
+}) {
+  const theme = useZoptionTheme();
+  return (
+    <View
+      style={[
+        styles.composer,
+        elevation.card,
+        { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+      ]}
+    >
+      <TextInput
+        accessibilityLabel="Message the assistant"
+        multiline
+        value={draft}
+        onChangeText={onChangeDraft}
+        placeholder="Ask anything"
+        placeholderTextColor={theme.colors.textMuted}
+        maxLength={maxLength}
+        style={[styles.input, { color: theme.colors.text }]}
+      />
+      <View style={styles.composerActions}>
+        {voiceButton}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
+          accessibilityState={{ disabled: !canSend }}
+          disabled={!canSend}
+          onPress={withTapSound(onSend)}
+          style={[
+            styles.sendButton,
+            { backgroundColor: canSend ? theme.colors.brand : theme.colors.border },
+          ]}
+        >
+          <MaterialCommunityIcons name="arrow-up" size={22} color={theme.colors.onBrand} />
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   suggestions: { gap: spacing.sm, paddingTop: spacing.md },
   suggestion: {
@@ -143,4 +245,54 @@ const styles = StyleSheet.create({
   },
   voiceStatusText: { flex: 1, gap: 2 },
   recordingDot: { width: 10, height: 10, borderRadius: radii.round },
+  headerButton: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: radii.round,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scrollButton: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: spacing.sm,
+    width: 40,
+    height: 40,
+    borderRadius: radii.round,
+    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  composer: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radii.xl,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  input: {
+    minHeight: 40,
+    maxHeight: 140,
+    fontSize: 16,
+    paddingVertical: 4,
+    textAlignVertical: "top",
+  },
+  composerActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: spacing.xs,
+  },
+  sendButton: {
+    width: touchTarget,
+    height: touchTarget,
+    borderRadius: radii.round,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
