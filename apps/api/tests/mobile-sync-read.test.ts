@@ -105,12 +105,15 @@ describe("mobile sync full snapshot", () => {
       limit: 2,
     });
     expect(first).toMatchObject({
-      snapshotCursor: "s1.c",
+      snapshotCursor: "s1.d",
       nextOffset: 2,
       hasMore: true,
-      resumeCursor: "v1.c",
+      resumeCursor: "v1.d",
     });
-    expect(first.changes.map((change) => change.entityId)).toEqual(["account-1", "category-1"]);
+    expect(first.changes.map((change) => change.entityId)).toEqual([
+      "account-1",
+      "tenant-1:account:maya",
+    ]);
 
     database
       .prepare("INSERT INTO accounts (id, tenant_id, name, type) VALUES (?, ?, ?, ?)")
@@ -122,11 +125,11 @@ describe("mobile sync full snapshot", () => {
       offset: first.nextOffset,
       limit: 2,
     });
-    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.c" });
-    // A snapshot groups rows by entity, so the second category page precedes the budget.
+    expect(second).toMatchObject({ nextOffset: 4, hasMore: true, resumeCursor: "v1.d" });
+    // A snapshot groups rows by entity, so every account precedes the first category.
     expect(second.changes.map((change) => change.entityId)).toEqual([
+      "category-1",
       "tenant-1:category:debt-payment",
-      "tenant-1:category:opening-balance",
     ]);
     expect(JSON.stringify(second)).not.toContain("account-after-snapshot");
   });
@@ -344,7 +347,7 @@ describe("mobile sync pull repository", () => {
       cursor: fifth.nextCursor,
       limit: 2,
     });
-    expect(sixth).toMatchObject({ hasMore: false });
+    expect(sixth).toMatchObject({ hasMore: true });
     expect(sixth.changes.map((change) => change.entityId)).toEqual([
       "tenant-1:category:debt-payment",
       "tenant-1:category:opening-balance",
@@ -353,6 +356,14 @@ describe("mobile sync pull repository", () => {
       systemKey: "opening:income",
       archived: true,
     });
+    // 0087 backfills Maya into workspaces created before it was a starter account.
+    const seventh = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: sixth.nextCursor,
+      limit: 2,
+    });
+    expect(seventh).toMatchObject({ hasMore: false });
+    expect(seventh.changes.map((change) => change.entityId)).toEqual(["tenant-1:account:maya"]);
   });
 
   it("captures web updates and deletion tombstones without device timestamps", async () => {
@@ -433,6 +444,13 @@ describe("mobile sync pull repository", () => {
       },
       {
         entityType: "account",
+        entityId: "tenant-1:account:maya",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Maya" },
+      },
+      {
+        entityType: "account",
         entityId: "account-1",
         revision: 2,
         operation: "upsert",
@@ -446,7 +464,7 @@ describe("mobile sync pull repository", () => {
         payload: null,
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.e");
+    expect(pulled.nextCursor).toBe("v1.f");
   });
 
   it("delivers a web-created subscription and its linked charge as adjacent group rows", async () => {
@@ -494,6 +512,13 @@ describe("mobile sync pull repository", () => {
         payload: { name: "Opening balance", systemKey: "opening:income" },
       },
       {
+        entityType: "account",
+        entityId: "tenant-1:account:maya",
+        revision: 1,
+        operation: "upsert",
+        payload: { name: "Maya" },
+      },
+      {
         entityType: "subscription",
         entityId: "web-sub",
         revision: 1,
@@ -508,7 +533,7 @@ describe("mobile sync pull repository", () => {
         payload: { description: "Spotify", amountMinor: -19900 },
       },
     ]);
-    expect(pulled.nextCursor).toBe("v1.e");
+    expect(pulled.nextCursor).toBe("v1.f");
     expect(pulled.hasMore).toBe(false);
 
     const snapshot = await repository.snapshot(env, "tenant-1", {
