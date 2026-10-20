@@ -726,7 +726,7 @@ export function ReceiptScanScreen() {
                         : "Show text read from the photo"
                     }
                     accessibilityState={{ expanded: showRawText }}
-                    onPress={withTapSound(() => setShowRawText((current) => !current))}
+                    onPress={withTapSound(() => setShowRawText((current) => !current), "select")}
                     style={({ pressed }) => [
                       styles.rawToggle,
                       { backgroundColor: pressed ? theme.colors.canvasMuted : "transparent" },

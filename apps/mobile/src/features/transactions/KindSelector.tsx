@@ -37,7 +37,7 @@ export function KindSelector({
               accessibilityLabel={label}
               accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
               disabled={disabled}
-              onPress={withTapSound(() => onChange(kind))}
+              onPress={withTapSound(() => onChange(kind), "select")}
               style={[
                 styles.segment,
                 {

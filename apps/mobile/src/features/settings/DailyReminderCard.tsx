@@ -54,7 +54,7 @@ export function DailyReminderCard() {
           accessibilityLabel="Remind me daily"
           disabled={busy}
           value={enabled}
-          onValueChange={withTapSound((next) => void toggle(next))}
+          onValueChange={withTapSound((next) => void toggle(next), "select")}
           trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
         />
       </View>

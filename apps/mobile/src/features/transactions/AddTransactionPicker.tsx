@@ -143,7 +143,7 @@ export function AddTransactionPicker() {
                   accessibilityRole="radio"
                   accessibilityLabel={option === "manual" ? "Manual entry" : "Voice entry"}
                   accessibilityState={{ checked: selected }}
-                  onPress={withTapSound(() => setMode(option))}
+                  onPress={withTapSound(() => setMode(option), "select")}
                   style={styles.pillOption}
                 >
                   <MaterialCommunityIcons

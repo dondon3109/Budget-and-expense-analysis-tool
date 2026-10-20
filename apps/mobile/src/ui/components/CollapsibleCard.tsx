@@ -29,7 +29,7 @@ export function CollapsibleCard({ title, summary, icon, children }: CollapsibleC
         accessibilityState={{ expanded }}
         className="w-full"
         onPress={() => {
-          playSound("tap");
+          playSound("select");
           setExpanded((current) => !current);
         }}
       >

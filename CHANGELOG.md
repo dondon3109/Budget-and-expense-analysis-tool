@@ -41,6 +41,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: haptic feedback is softer and matches the action: a faint tick for picking, toggling, or expanding, a light tap for buttons and rows, and a distinct buzz when a save succeeds or fails.
 - Zoption Pro is now ₱249 a month or ₱2,490 a year; the old ₱149 Pro plan is retired. A streak pet grows past Baby on either paid plan.
 - A family whose plan has ended is read only for everyone until its owner renews it.
 - Mobile: Home lists each account (Cash, GCash, bank, and the rest) with its balance below the Total Balance, as the web dashboard does. Archived accounts stay hidden.

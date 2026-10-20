@@ -54,7 +54,7 @@ export function VoiceLanguagePicker({
               color: selected ? "rgba(10, 117, 86, 0.16)" : "rgba(0, 0, 0, 0.06)",
               borderless: false,
             }}
-            onPress={withTapSound(() => handleSelect(option.code))}
+            onPress={withTapSound(() => handleSelect(option.code), "select")}
             className="w-full flex-row items-center justify-between"
             style={[
               styles.option,
@@ -161,7 +161,7 @@ export function VoiceLanguageToggleGroup({
             accessibilityLabel={`${opt.label} voice language`}
             accessibilityState={{ selected: isSelected, disabled: Boolean(disabled) }}
             disabled={disabled}
-            onPress={withTapSound(() => select(opt.code))}
+            onPress={withTapSound(() => select(opt.code), "select")}
             style={[
               styles.toggleButton,
               isSelected && [

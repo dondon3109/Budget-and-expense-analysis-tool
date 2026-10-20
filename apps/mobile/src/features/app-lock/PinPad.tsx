@@ -120,7 +120,7 @@ export function PinPadScreen({
                   accessibilityElementsHidden={hidden}
                   importantForAccessibility={hidden ? "no-hide-descendants" : "auto"}
                   disabled={disabled || hidden}
-                  onPress={withTapSound(() => press(key))}
+                  onPress={withTapSound(() => press(key), "select")}
                   onLongPress={key === "delete" ? () => change("") : undefined}
                   onPressIn={() => setPressedKey(key)}
                   onPressOut={() => setPressedKey(null)}

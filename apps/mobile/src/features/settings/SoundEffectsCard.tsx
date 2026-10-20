@@ -14,7 +14,7 @@ export function SoundEffectsCard() {
 
   const toggle = (next: boolean) => {
     setEnabled(next);
-    playSound("tap");
+    playSound("select");
   };
 
   return (

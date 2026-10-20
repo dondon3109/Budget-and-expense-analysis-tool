@@ -24,10 +24,17 @@ jest.mock("../../../assets/sounds/tap.wav", () => "tap");
 jest.mock("../../../assets/sounds/success.wav", () => "success");
 jest.mock("../../../assets/sounds/error.wav", () => "error");
 jest.mock("expo-haptics", () => ({
-  AndroidHaptics: { Virtual_Key: "virtual-key", Confirm: "confirm", Reject: "reject" },
-  NotificationFeedbackType: { Success: "success", Error: "error" },
+  AndroidHaptics: {
+    Clock_Tick: "clock-tick",
+    Context_Click: "context-click",
+    Confirm: "confirm",
+    Reject: "reject",
+  },
+  ImpactFeedbackStyle: { Light: "light" },
+  NotificationFeedbackType: { Success: "success", Warning: "warning" },
   performAndroidHapticsAsync: jest.fn(async () => undefined),
   selectionAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
   notificationAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-secure-store", () => ({
@@ -84,6 +91,28 @@ describe("playSound", () => {
     expect(Haptics.performAndroidHapticsAsync).toHaveBeenCalledWith("confirm");
   });
 
+  it("grades the Android buzz by action, lightest for a selection", () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    playSound("select");
+    playSound("tap");
+    playSound("error");
+    expect(jest.mocked(Haptics.performAndroidHapticsAsync).mock.calls.slice(-3)).toEqual([
+      ["clock-tick"],
+      ["context-click"],
+      ["reject"],
+    ]);
+  });
+
+  it("keeps iOS buzzes subtle: selection tick, light tap, warning for an error", () => {
+    jest.replaceProperty(Platform, "OS", "ios");
+    playSound("select");
+    playSound("tap");
+    playSound("error");
+    expect(Haptics.selectionAsync).toHaveBeenCalled();
+    expect(Haptics.impactAsync).toHaveBeenCalledWith("light");
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith("warning");
+  });
+
   it("never throws when playback fails", async () => {
     mockPlay.mockImplementationOnce(() => {
       throw new Error("no audio");
@@ -104,8 +133,10 @@ describe("playSound", () => {
 
   it("runs the wrapped handler at once, and wraps nothing for a missing one", () => {
     const handler = jest.fn();
-    withTapSound(handler)?.();
+    jest.replaceProperty(Platform, "OS", "android");
+    withTapSound(handler, "select")?.();
     expect(handler).toHaveBeenCalledTimes(1);
+    expect(Haptics.performAndroidHapticsAsync).toHaveBeenLastCalledWith("clock-tick");
     expect(withTapSound(undefined)).toBeUndefined();
   });
 });

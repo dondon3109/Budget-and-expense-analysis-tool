@@ -200,7 +200,7 @@ function AccountTile({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
       disabled={disabled}
-      onPress={withTapSound(onPress)}
+      onPress={withTapSound(onPress, "select")}
       style={[
         styles.tile,
         {
