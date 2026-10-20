@@ -63,6 +63,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Workspaces created before Maya became a starter account now get the Maya e-wallet account too, on web and mobile, unless they already track their own Maya account.
 - Mobile: error messages sit centered with a calm title and a Try again button instead of a red heading on an empty page, and a screen that crashes now offers Try again and Go to Home, follows your theme, and no longer shows the raw error.
 - Mobile: the pet page loads again on Android Beta 0.2.53, which reached phones before the server that sends the pet's color.
 - Opening the app now counts toward your pet's egg streak and daily points again; the server had been turning away the check-in from both the phone and the web.
