@@ -1,12 +1,12 @@
 {
   "packageId": "site.zoption.android",
-  "versionName": "0.2.57-beta",
-  "versionCode": 20357,
-  "filename": "zoption-beta-0.2.57.apk",
-  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.57.apk",
-  "sha256": "32b102bc955d9a1df828419b5f322eaccf9b90cc746a86442301aa24d20dc408",
-  "sizeBytes": 144858057,
-  "sizeLabel": "144,858,057 bytes (138.15 MiB)",
+  "versionName": "0.2.58-beta",
+  "versionCode": 20358,
+  "filename": "zoption-beta-0.2.58.apk",
+  "downloadPath": "https://downloads.zoption.site/android/zoption-beta-0.2.58.apk",
+  "sha256": "630a379b012d764d8663d7c41634034b9c7c143a00f611556a322beca30922b1",
+  "sizeBytes": 144848749,
+  "sizeLabel": "144,848,749 bytes (138.14 MiB)",
   "releaseDate": "2026-10-20",
   "releaseDateLabel": "October 20, 2026",
   "minimumAndroid": "Android 7.0 or newer (API 24+)",
@@ -14,8 +14,7 @@
   "certificateSha256": "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
   "reinstallRequired": false,
   "notes": [
-    "Family workspaces you can use offline on the phone",
-    "Zoption Budget, Zoption Pro, and Family plans",
-    "A new entry form, voice review, and setup"
+    "Backfill Maya for existing workspaces and turn on family workspaces",
+    "Grade haptic feedback by action"
   ]
 }
