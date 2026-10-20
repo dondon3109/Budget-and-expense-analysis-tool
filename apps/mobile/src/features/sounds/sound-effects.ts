@@ -7,7 +7,13 @@ import successSource from "../../../assets/sounds/success.wav";
 import tapSource from "../../../assets/sounds/tap.wav";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 
-const sources = { tap: tapSource, success: successSource, error: errorSource } as const;
+// `select` shares the tap clip; only its buzz is lighter.
+const sources = {
+  select: tapSource,
+  tap: tapSource,
+  success: successSource,
+  error: errorSource,
+} as const;
 
 export type SoundEffect = keyof typeof sources;
 
@@ -63,22 +69,27 @@ function playerFor(source: ClipSource): AudioPlayer {
  * Plays a short UI sound and its matching buzz. Fire and forget: a missing audio module or a
  * failed play must never break the action that triggered it. The sound follows the Sound effects
  * switch; the buzz follows the system's haptics setting instead, so muting sounds keeps it.
+ *
+ * Pick the effect by what the press does, so the buzz stays subtle and graded: `select` for
+ * picking, toggling, expanding, or keying a choice (the faintest tick), `tap` for a button or row
+ * that acts or navigates, and `success` / `error` for the outcome of a save.
  */
 export function playSound(effect: SoundEffect): void {
   playHaptic(effect);
   playClip(sources[effect]);
 }
 
-// Android uses the view's own haptic feedback rather than a vibrator waveform, because only
-// that honours the system "Touch feedback" switch, and it is the crisp click native keys use.
-function playHaptic(effect: SoundEffect): void {
+/**
+ * Buzzes for an effect without its sound, for a press that plays its own clip (the pet's voice).
+ * Android uses the view's own haptic feedback rather than a vibrator waveform, because only that
+ * honours the system "Touch feedback" switch and keeps the native, subtle intensities.
+ */
+export function playHaptic(effect: SoundEffect): void {
   try {
     const buzz =
       Platform.OS === "android"
         ? Haptics.performAndroidHapticsAsync(androidHaptics[effect])
-        : effect === "tap"
-          ? Haptics.selectionAsync()
-          : Haptics.notificationAsync(iosNotification[effect]);
+        : iosHaptic(effect);
     buzz.catch(() => {
       // Haptics are decoration; a device without them stays quiet.
     });
@@ -87,16 +98,25 @@ function playHaptic(effect: SoundEffect): void {
   }
 }
 
+// Lightest to strongest: Clock_Tick is the texture tick a picker wheel makes, Context_Click a
+// short tick, Confirm a single click, Reject a double click. The two ticks exist on every Android
+// version; Confirm and Reject need API 30, and older phones skip that buzz (the call rejects).
 const androidHaptics = {
-  tap: Haptics.AndroidHaptics.Virtual_Key,
+  select: Haptics.AndroidHaptics.Clock_Tick,
+  tap: Haptics.AndroidHaptics.Context_Click,
   success: Haptics.AndroidHaptics.Confirm,
   error: Haptics.AndroidHaptics.Reject,
 } as const satisfies Record<SoundEffect, Haptics.AndroidHaptics>;
 
-const iosNotification = {
-  success: Haptics.NotificationFeedbackType.Success,
-  error: Haptics.NotificationFeedbackType.Error,
-} as const;
+// An error uses the warning pattern: the error one is a heavy triple buzz, too harsh for a
+// failed save the screen already explains.
+function iosHaptic(effect: SoundEffect): Promise<void> {
+  if (effect === "select") return Haptics.selectionAsync();
+  if (effect === "tap") return Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  if (effect === "success")
+    return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  return Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+}
 
 /**
  * Plays any bundled clip under the same rules as `playSound`: only while sounds are on, and fire
@@ -130,14 +150,16 @@ export function playClip(
 
 /**
  * Wraps a press handler so the tap sound plays first, for a raw `Pressable` or `Switch` that is
- * not a `Button`. A missing handler stays missing, so a disabled control remains silent.
+ * not a `Button`. Pass `select` for a choice, toggle, or expander. A missing handler stays
+ * missing, so a disabled control remains silent.
  */
 export function withTapSound<Args extends unknown[]>(
   handler: ((...args: Args) => void) | null | undefined,
+  effect: "tap" | "select" = "tap",
 ): ((...args: Args) => void) | undefined {
   if (!handler) return undefined;
   return (...args) => {
-    playSound("tap");
+    playSound(effect);
     handler(...args);
   };
 }

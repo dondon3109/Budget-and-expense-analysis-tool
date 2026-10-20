@@ -32,7 +32,7 @@ export function ItemKindSelector({
               accessibilityRole="radio"
               accessibilityState={{ checked: selected, disabled: Boolean(disabled) }}
               disabled={disabled}
-              onPress={withTapSound(() => onChange(option))}
+              onPress={withTapSound(() => onChange(option), "select")}
               style={[
                 styles.kindOption,
                 {

@@ -185,7 +185,10 @@ export function TutorialsScreen() {
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`${topic.title}, ${isExpanded ? "collapse" : "expand"}`}
-                onPress={withTapSound(() => setExpandedTopicId(isExpanded ? null : topic.id))}
+                onPress={withTapSound(
+                  () => setExpandedTopicId(isExpanded ? null : topic.id),
+                  "select",
+                )}
                 style={styles.topicHeader}
               >
                 <View

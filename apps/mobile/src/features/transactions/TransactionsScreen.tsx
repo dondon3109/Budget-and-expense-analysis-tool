@@ -217,7 +217,7 @@ export function TransactionsScreen() {
               key={filter}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              onPress={withTapSound(() => setKind(filter))}
+              onPress={withTapSound(() => setKind(filter), "select")}
               style={[
                 styles.chip,
                 {
@@ -383,7 +383,7 @@ export function TransactionsScreen() {
               key={tab.key}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              onPress={withTapSound(() => setView(tab.key))}
+              onPress={withTapSound(() => setView(tab.key), "select")}
               style={[styles.viewTab, selected && { borderBottomColor: theme.colors.brand }]}
             >
               <Text

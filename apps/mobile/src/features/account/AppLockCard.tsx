@@ -161,7 +161,7 @@ export function AppLockCard({ subject }: { subject: string }) {
                 <Switch
                   accessibilityLabel="Unlock with biometrics"
                   value={biometricEnabled}
-                  onValueChange={withTapSound((next) => void toggleBiometrics(next))}
+                  onValueChange={withTapSound((next) => void toggleBiometrics(next), "select")}
                   trackColor={{ true: theme.colors.brand, false: theme.colors.border }}
                 />
               </View>

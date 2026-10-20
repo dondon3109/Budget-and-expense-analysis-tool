@@ -43,7 +43,7 @@ export function DateField({ label, value, error, hint, disabled, onChange }: Dat
   const weeks = visibleMonth ? calendarMonthWeeks(visibleMonth) : [];
 
   function select(date: string) {
-    playSound("tap");
+    playSound("select");
     onChange(date);
     setVisibleMonth(null);
   }
@@ -108,7 +108,10 @@ export function DateField({ label, value, error, hint, disabled, onChange }: Dat
                 <Pressable
                   accessibilityLabel="Previous month"
                   accessibilityRole="button"
-                  onPress={withTapSound(() => setVisibleMonth(shiftMonthStart(visibleMonth, -1)))}
+                  onPress={withTapSound(
+                    () => setVisibleMonth(shiftMonthStart(visibleMonth, -1)),
+                    "select",
+                  )}
                   style={styles.navButton}
                 >
                   <MaterialCommunityIcons
@@ -120,7 +123,10 @@ export function DateField({ label, value, error, hint, disabled, onChange }: Dat
                 <Pressable
                   accessibilityLabel="Next month"
                   accessibilityRole="button"
-                  onPress={withTapSound(() => setVisibleMonth(shiftMonthStart(visibleMonth, 1)))}
+                  onPress={withTapSound(
+                    () => setVisibleMonth(shiftMonthStart(visibleMonth, 1)),
+                    "select",
+                  )}
                   style={styles.navButton}
                 >
                   <MaterialCommunityIcons

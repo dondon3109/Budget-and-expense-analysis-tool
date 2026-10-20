@@ -41,7 +41,7 @@ export function ThemePicker() {
               color: selected ? "rgba(10, 117, 86, 0.16)" : "rgba(0, 0, 0, 0.06)",
               borderless: false,
             }}
-            onPress={withTapSound(() => setPreference(option.value))}
+            onPress={withTapSound(() => setPreference(option.value), "select")}
             className="w-full flex-row items-center justify-between"
             style={[
               styles.option,

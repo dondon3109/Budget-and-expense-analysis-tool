@@ -58,7 +58,7 @@ export function SelectionField({
           borderless: false,
         }}
         onPress={() => {
-          playSound("tap");
+          playSound("select");
           onSelect(item.id);
           setOpen(false);
         }}
