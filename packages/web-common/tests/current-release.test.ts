@@ -25,24 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Family workspaces",
-      "Zoption Budget and a new Zoption Pro",
-      "Family plans",
-      "Change your plan any time",
-      "Share a snapshot link",
-      "Balances on mobile Home and a date picker",
-      "A faster way to add an entry on mobile",
-      "Voice entry you can review",
-      "A friendlier first run on mobile",
-      "Haptics and smoother screens",
-      "Android Beta 0.2.57",
+      "Start a family",
+      "Maya for every workspace",
+      "Lighter haptics",
+      "Android Beta 0.2.58",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/₱249 a month/);
-    expect(copy).toMatch(/Android Beta 0\.2\.57/);
+    expect(copy).toMatch(/Family Budget or Family Pro/);
+    expect(copy).toMatch(/Android Beta 0\.2\.58/);
+  });
+
+  it("keeps the family, tiers, and new entry form notes as 4.4.0", () => {
+    expect(titles("4.4.0")).toContain("Family workspaces");
+    expect(notes("4.4.0")).toMatch(/Android Beta 0\.2\.57/);
   });
 
   it("keeps the pet, multi-currency, and assistant notes as 4.3.0", () => {
@@ -227,6 +225,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "4.4.0",
       "4.3.0",
       "3.7.0",
       "3.6.0",

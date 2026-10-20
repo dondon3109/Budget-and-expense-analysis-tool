@@ -14,59 +14,24 @@ export const currentRelease: ProductRelease = {
   releasedOn: "October 20, 2026",
   changes: [
     {
-      title: "Family workspaces",
+      title: "Start a family",
       description:
-        "Create a family and invite up to 5 people into one shared space. Share a transaction or an account balance into it, record remittances, attach receipt photos, and comment on entries, with alerts when something changes. Switch between your own Zoption and a family on web, and use a family offline on the phone.",
+        "Creating a family is now open on web and mobile, so you can set one up, try it alone at Free limits, and pick Family Budget or Family Pro in Family settings to invite people.",
     },
     {
-      title: "Zoption Budget and a new Zoption Pro",
+      title: "Maya for every workspace",
       description:
-        "Zoption Budget (₱149 a month) unlocks every paid feature with 1,000 AI actions, 5 imports a month, and 10 custom categories. Zoption Pro (₱249 a month) doubles the AI actions, allows 10 imports, and removes the category limit. Yearly billing is 10 times the monthly price, and the old ₱149 Pro plan is retired.",
+        "Workspaces created before Maya became a starter account now get the Maya e-wallet account too, unless you already added your own.",
     },
     {
-      title: "Family plans",
+      title: "Lighter haptics",
       description:
-        "Family Budget (₱499 a month) and Family Pro (₱799 a month) cover up to 6 people and give everyone Budget or Pro for their own Zoption too. Set up a family first and try it alone at Free limits; invitations open once the owner picks a plan in Family settings.",
+        "On mobile, choices, toggles, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click, so the buzz matches what you did.",
     },
     {
-      title: "Change your plan any time",
+      title: "Android Beta 0.2.58",
       description:
-        "Move between plans in Plan and billing on web and mobile. Moving up starts right away, and moving down waits for the end of the paid period.",
-    },
-    {
-      title: "Share a snapshot link",
-      description:
-        "Share one transaction or an account balance with anyone, even people without Zoption. The link shows only what you chose, works for 24 hours, 7 days, 30 days, or until you turn it off, and web can save it as an image.",
-    },
-    {
-      title: "Balances on mobile Home and a date picker",
-      description:
-        "Mobile Home lists each account with its balance below the Total Balance, and a new transaction's date is picked from a calendar pop-up.",
-    },
-    {
-      title: "A faster way to add an entry on mobile",
-      description:
-        "Pick income, expense, or transfer first, then choose the account from icon tiles with Cash, GCash, and your bank up front. New entries start on the account you used last, and the form saves or closes from its header.",
-    },
-    {
-      title: "Voice entry you can review",
-      description:
-        "On mobile, voice entry opens as a dialog over the form with sound bars while it listens, and you check the draft before it saves.",
-    },
-    {
-      title: "A friendlier first run on mobile",
-      description:
-        "Setup is one dialog over Home with numbered steps underneath, and you can tap a finished step to go back. It asks whether you want a streak pet before showing the eggs, and ends with a thank-you.",
-    },
-    {
-      title: "Haptics and smoother screens",
-      description:
-        "Taps, saves, and errors on mobile come with a light buzz, the bottom tabs slide like pages, and dialogs dim the whole screen. Every new workspace also starts with a Maya e-wallet account.",
-    },
-    {
-      title: "Android Beta 0.2.57",
-      description:
-        "The official Android Beta carries family workspaces, the new plans, snapshot links, the new entry form, and everything from 0.2.55. Install 0.2.57 over 0.2.55.",
+        "The official Android Beta carries the lighter haptics and everything from 0.2.57. Install 0.2.58 over 0.2.57.",
     },
   ],
 };
@@ -81,6 +46,67 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.4.0",
+    releasedOn: "October 20, 2026",
+    changes: [
+      {
+        title: "Family workspaces",
+        description:
+          "Create a family and invite up to 5 people into one shared space. Share a transaction or an account balance into it, record remittances, attach receipt photos, and comment on entries, with alerts when something changes. Switch between your own Zoption and a family on web, and use a family offline on the phone.",
+      },
+      {
+        title: "Zoption Budget and a new Zoption Pro",
+        description:
+          "Zoption Budget (₱149 a month) unlocks every paid feature with 1,000 AI actions, 5 imports a month, and 10 custom categories. Zoption Pro (₱249 a month) doubles the AI actions, allows 10 imports, and removes the category limit. Yearly billing is 10 times the monthly price, and the old ₱149 Pro plan is retired.",
+      },
+      {
+        title: "Family plans",
+        description:
+          "Family Budget (₱499 a month) and Family Pro (₱799 a month) cover up to 6 people and give everyone Budget or Pro for their own Zoption too. Set up a family first and try it alone at Free limits; invitations open once the owner picks a plan in Family settings.",
+      },
+      {
+        title: "Change your plan any time",
+        description:
+          "Move between plans in Plan and billing on web and mobile. Moving up starts right away, and moving down waits for the end of the paid period.",
+      },
+      {
+        title: "Share a snapshot link",
+        description:
+          "Share one transaction or an account balance with anyone, even people without Zoption. The link shows only what you chose, works for 24 hours, 7 days, 30 days, or until you turn it off, and web can save it as an image.",
+      },
+      {
+        title: "Balances on mobile Home and a date picker",
+        description:
+          "Mobile Home lists each account with its balance below the Total Balance, and a new transaction's date is picked from a calendar pop-up.",
+      },
+      {
+        title: "A faster way to add an entry on mobile",
+        description:
+          "Pick income, expense, or transfer first, then choose the account from icon tiles with Cash, GCash, and your bank up front. New entries start on the account you used last, and the form saves or closes from its header.",
+      },
+      {
+        title: "Voice entry you can review",
+        description:
+          "On mobile, voice entry opens as a dialog over the form with sound bars while it listens, and you check the draft before it saves.",
+      },
+      {
+        title: "A friendlier first run on mobile",
+        description:
+          "Setup is one dialog over Home with numbered steps underneath, and you can tap a finished step to go back. It asks whether you want a streak pet before showing the eggs, and ends with a thank-you.",
+      },
+      {
+        title: "Haptics and smoother screens",
+        description:
+          "Taps, saves, and errors on mobile come with a light buzz, the bottom tabs slide like pages, and dialogs dim the whole screen. Every new workspace also starts with a Maya e-wallet account.",
+      },
+      {
+        title: "Android Beta 0.2.57",
+        description:
+          "The official Android Beta carries family workspaces, the new plans, snapshot links, the new entry form, and everything from 0.2.55. Install 0.2.57 over 0.2.55.",
+      },
+    ],
+  },
   {
     version: "4.3.0",
     releasedOn: "October 17, 2026",
