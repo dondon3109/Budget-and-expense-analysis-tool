@@ -66,6 +66,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile voice chat: tapping stop now switches the button to a busy state while your words are transcribed, instead of leaving a stop button that seemed not to respond.
 - On Android, the assistant and support chat message boxes now sit right on the keyboard instead of floating halfway up the screen, and the chat header no longer slides under the status bar while typing.
 - Workspaces created before Maya became a starter account now get the Maya e-wallet account too, on web and mobile, unless they already track their own Maya account.
 - Mobile: error messages sit centered with a calm title and a Try again button instead of a red heading on an empty page, and a screen that crashes now offers Try again and Go to Home, follows your theme, and no longer shows the raw error.

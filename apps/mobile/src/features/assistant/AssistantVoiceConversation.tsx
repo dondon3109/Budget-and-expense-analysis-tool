@@ -472,6 +472,12 @@ export function AssistantVoiceConversation({
     threadIdRef.current = null;
   }, [recorder, setVoiceStatus]);
 
+  // After a stop tap (or silence auto-stop) the recorder finalizes the live
+  // transcript and may fall back to a batch upload before the turn starts.
+  // Show that wait as busy, not as a stop button that no longer responds.
+  const transcribing = status === "listening" && recorder.phase === "transcribing";
+  const stageStatus: VoiceStatus = transcribing ? "thinking" : status;
+
   if (!preferences && prefsError === null) {
     return (
       <View style={styles.centered}>
@@ -883,40 +889,42 @@ export function AssistantVoiceConversation({
 
       <View style={[styles.stage, { borderTopColor: theme.colors.border }]}>
         <VoiceEqualizer
-          status={status}
+          status={stageStatus}
           activeColor={theme.colors.brand}
           restColor={theme.colors.border}
         />
 
         <VoiceOrbMotion
-          status={status}
+          status={stageStatus}
           size={76}
           color={theme.colors.brand}
           behind={
-            status === "thinking" ? <RadarWaveRings color={theme.colors.brand} size={76} /> : null
+            stageStatus === "thinking" ? (
+              <RadarWaveRings color={theme.colors.brand} size={76} />
+            ) : null
           }
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              status === "listening"
+              stageStatus === "listening"
                 ? "Stop listening"
-                : status === "preparing"
+                : stageStatus === "preparing"
                   ? "Preparing microphone"
-                  : status === "thinking"
+                  : stageStatus === "thinking"
                     ? "Assistant is thinking"
-                    : status === "speaking"
+                    : stageStatus === "speaking"
                       ? "Stop speaking"
                       : "Start talking"
             }
             accessibilityHint={
-              status === "idle"
+              stageStatus === "idle"
                 ? "Starts the microphone"
-                : status === "speaking"
+                : stageStatus === "speaking"
                   ? "Stops audio playback"
                   : undefined
             }
-            disabled={status === "thinking" || historyLoading}
+            disabled={stageStatus === "thinking" || historyLoading}
             onPress={withTapSound(handleOrbPress)}
             style={[
               styles.orb,
@@ -926,14 +934,14 @@ export function AssistantVoiceConversation({
               },
             ]}
           >
-            {status === "thinking" ? (
+            {stageStatus === "thinking" ? (
               <ThinkingSphereCore color={theme.colors.onBrand} />
             ) : (
               <MaterialCommunityIcons
                 name={
-                  status === "listening"
+                  stageStatus === "listening"
                     ? "stop"
-                    : status === "speaking"
+                    : stageStatus === "speaking"
                       ? "volume-high"
                       : "microphone"
                 }
@@ -943,18 +951,21 @@ export function AssistantVoiceConversation({
             )}
           </Pressable>
         </VoiceOrbMotion>
-        <Text style={[typography.label, { color: theme.colors.text }]}>{STATUS_LABEL[status]}</Text>
+        <Text style={[typography.label, { color: theme.colors.text }]}>
+          {STATUS_LABEL[stageStatus]}
+        </Text>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {status === "idle" &&
+          {stageStatus === "idle" &&
             (voiceLanguage === "fil"
               ? "Tap to speak in Tagalog or English"
               : voiceLanguage === "auto"
                 ? "Tap to speak in English or Tagalog"
                 : "Tap to speak with your assistant")}
-          {status === "preparing" && "Warming up the microphone…"}
-          {status === "listening" && "Tap button when done"}
-          {status === "thinking" && "Looking up financial records…"}
-          {status === "speaking" && "Tap orb to interrupt playback"}
+          {stageStatus === "preparing" && "Warming up the microphone…"}
+          {stageStatus === "listening" && "Tap button when done"}
+          {stageStatus === "thinking" &&
+            (transcribing ? "Finishing what you said…" : "Looking up financial records…")}
+          {stageStatus === "speaking" && "Tap orb to interrupt playback"}
         </Text>
       </View>
     </View>
