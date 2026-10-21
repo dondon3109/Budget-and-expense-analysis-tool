@@ -473,6 +473,11 @@
     scrollbar-width: thin;
   }
 
+  /* Fades the row cut by the bottom edge so it reads as "scroll for more", not a clipped amount. */
+  .dashboard-account-breakdown > ul[data-rows-below="true"] {
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 56px), transparent);
+  }
+
   .dashboard-account-breakdown:has(> .dashboard-account-form) {
     contain: none;
   }
