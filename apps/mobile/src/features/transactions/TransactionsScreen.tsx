@@ -41,6 +41,7 @@ import { CategorySummaryRow, DateHeader, TotalsValue, TransactionItemRow } from 
 import { CalendarMonthGrid } from "@/features/calendar/CalendarMonthGrid";
 import { calendarCellsFromTransactions } from "./transaction-calendar-cells";
 import { TransactionsEmptyView } from "./TransactionsEmptyView";
+import { ViewSwitchReveal } from "./ViewSwitchReveal";
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { openAddTransaction } from "./AddTransactionPicker";
 
@@ -91,6 +92,7 @@ export function TransactionsScreen() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [kind, setKind] = useState<TransactionKindFilter>("all");
   const [view, setView] = useState<ViewMode>("daily");
+  const [viewDirection, setViewDirection] = useState<-1 | 0 | 1>(0);
   const [selectedDate, setSelectedDate] = useState(() => todayIso());
   const [smsQuickPasteVisible, setSmsQuickPasteVisible] = useState(false);
   const [netInfoVisible, setNetInfoVisible] = useState(false);
@@ -191,6 +193,13 @@ export function TransactionsScreen() {
       setDeleting(false);
       if (deleted.size > 0) sync.retry();
     }
+  };
+
+  const switchView = (next: ViewMode) => {
+    if (next === view) return;
+    const order = viewTabs.map((tab) => tab.key);
+    setViewDirection(order.indexOf(next) > order.indexOf(view) ? 1 : -1);
+    setView(next);
   };
 
   const emptyState = (
@@ -383,7 +392,7 @@ export function TransactionsScreen() {
               key={tab.key}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              onPress={withTapSound(() => setView(tab.key), "select")}
+              onPress={withTapSound(() => switchView(tab.key), "select")}
               style={[styles.viewTab, selected && { borderBottomColor: theme.colors.brand }]}
             >
               <Text
@@ -440,101 +449,106 @@ export function TransactionsScreen() {
       </View>
 
       <OfflineBanner />
-      {local.error ? (
-        <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
-      ) : local.items === null ? (
-        <View accessibilityLabel="Loading transactions" style={styles.loading}>
-          <Skeleton height={72} />
-          <Skeleton height={72} />
-          <Skeleton height={72} />
-        </View>
-      ) : view === "daily" ? (
-        <SectionList
-          alwaysBounceVertical
-          contentContainerStyle={[styles.listContent, dateGroups.length === 0 && styles.emptyList]}
-          sections={dateGroups.map((group) => ({ ...group, data: group.items }))}
-          keyExtractor={(item) => item.transaction.id}
-          keyboardShouldPersistTaps="handled"
-          ListEmptyComponent={emptyState}
-          ListHeaderComponent={filterPanel}
-          refreshControl={refreshControl}
-          renderItem={({ item }) => (
-            <TransactionItemRow
-              item={item}
-              onToggleSelect={toggleSelected}
-              selected={selectedIds.includes(item.transaction.id)}
-              selecting={selecting}
-            />
-          )}
-          extraData={selectedIds}
-          renderSectionHeader={({ section }) => <DateHeader section={section} />}
-          showsVerticalScrollIndicator={false}
-          stickySectionHeadersEnabled
-        />
-      ) : view === "calendar" ? (
-        <FlatList
-          alwaysBounceVertical
-          contentContainerStyle={styles.listContent}
-          data={activeDayItems}
-          extraData={selectedIds}
-          keyExtractor={(item) => item.transaction.id}
-          ListHeaderComponent={
-            <CalendarMonthGrid
-              cells={calendarCells}
-              month={month}
-              onSelectDate={setSelectedDate}
-              selectedDate={activeDate}
-              today={todayIso()}
-            />
-          }
-          refreshControl={refreshControl}
-          renderItem={({ item }) => (
-            <TransactionItemRow
-              item={item}
-              onToggleSelect={toggleSelected}
-              selected={selectedIds.includes(item.transaction.id)}
-              selecting={selecting}
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-        />
-      ) : view === "summary" ? (
-        <FlatList
-          alwaysBounceVertical
-          contentContainerStyle={[
-            styles.listContent,
-            summaryItems.length === 0 && styles.emptyList,
-          ]}
-          data={summaryItems}
-          keyExtractor={(item) => item.key}
-          ListEmptyComponent={emptyState}
-          ListHeaderComponent={filterPanel}
-          refreshControl={refreshControl}
-          renderItem={({ item }) => <CategorySummaryRow item={item} />}
-          showsVerticalScrollIndicator={false}
-        />
-      ) : (
-        <FlatList
-          alwaysBounceVertical
-          contentContainerStyle={[styles.listContent, items.length === 0 && styles.emptyList]}
-          data={items}
-          keyExtractor={(item) => item.transaction.id}
-          ListEmptyComponent={emptyState}
-          ListHeaderComponent={filterPanel}
-          refreshControl={refreshControl}
-          extraData={selectedIds}
-          renderItem={({ item }) => (
-            <TransactionItemRow
-              item={item}
-              onToggleSelect={toggleSelected}
-              selected={selectedIds.includes(item.transaction.id)}
-              selecting={selecting}
-              showDate
-            />
-          )}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      <ViewSwitchReveal key={view} direction={viewDirection}>
+        {local.error ? (
+          <ErrorState message={local.error} onRetry={local.retry} title="Local data unavailable" />
+        ) : local.items === null ? (
+          <View accessibilityLabel="Loading transactions" style={styles.loading}>
+            <Skeleton height={72} />
+            <Skeleton height={72} />
+            <Skeleton height={72} />
+          </View>
+        ) : view === "daily" ? (
+          <SectionList
+            alwaysBounceVertical
+            contentContainerStyle={[
+              styles.listContent,
+              dateGroups.length === 0 && styles.emptyList,
+            ]}
+            sections={dateGroups.map((group) => ({ ...group, data: group.items }))}
+            keyExtractor={(item) => item.transaction.id}
+            keyboardShouldPersistTaps="handled"
+            ListEmptyComponent={emptyState}
+            ListHeaderComponent={filterPanel}
+            refreshControl={refreshControl}
+            renderItem={({ item }) => (
+              <TransactionItemRow
+                item={item}
+                onToggleSelect={toggleSelected}
+                selected={selectedIds.includes(item.transaction.id)}
+                selecting={selecting}
+              />
+            )}
+            extraData={selectedIds}
+            renderSectionHeader={({ section }) => <DateHeader section={section} />}
+            showsVerticalScrollIndicator={false}
+            stickySectionHeadersEnabled
+          />
+        ) : view === "calendar" ? (
+          <FlatList
+            alwaysBounceVertical
+            contentContainerStyle={styles.listContent}
+            data={activeDayItems}
+            extraData={selectedIds}
+            keyExtractor={(item) => item.transaction.id}
+            ListHeaderComponent={
+              <CalendarMonthGrid
+                cells={calendarCells}
+                month={month}
+                onSelectDate={setSelectedDate}
+                selectedDate={activeDate}
+                today={todayIso()}
+              />
+            }
+            refreshControl={refreshControl}
+            renderItem={({ item }) => (
+              <TransactionItemRow
+                item={item}
+                onToggleSelect={toggleSelected}
+                selected={selectedIds.includes(item.transaction.id)}
+                selecting={selecting}
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : view === "summary" ? (
+          <FlatList
+            alwaysBounceVertical
+            contentContainerStyle={[
+              styles.listContent,
+              summaryItems.length === 0 && styles.emptyList,
+            ]}
+            data={summaryItems}
+            keyExtractor={(item) => item.key}
+            ListEmptyComponent={emptyState}
+            ListHeaderComponent={filterPanel}
+            refreshControl={refreshControl}
+            renderItem={({ item }) => <CategorySummaryRow item={item} />}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <FlatList
+            alwaysBounceVertical
+            contentContainerStyle={[styles.listContent, items.length === 0 && styles.emptyList]}
+            data={items}
+            keyExtractor={(item) => item.transaction.id}
+            ListEmptyComponent={emptyState}
+            ListHeaderComponent={filterPanel}
+            refreshControl={refreshControl}
+            extraData={selectedIds}
+            renderItem={({ item }) => (
+              <TransactionItemRow
+                item={item}
+                onToggleSelect={toggleSelected}
+                selected={selectedIds.includes(item.transaction.id)}
+                selecting={selecting}
+                showDate
+              />
+            )}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </ViewSwitchReveal>
 
       {selecting ? null : (
         <View pointerEvents="box-none" style={styles.fabPosition}>
