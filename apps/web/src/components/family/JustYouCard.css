@@ -21,3 +21,8 @@
   margin: 0;
   color: var(--ink);
 }
+
+/* On the family Home it sits straight under the page header, which carries no bottom margin. */
+.dashboard-header + .family-just-you {
+  margin-top: 24px;
+}

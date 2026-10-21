@@ -11,6 +11,16 @@ export function formatFamilyDate(timestamp: string): string {
   }).format(new Date(timestamp));
 }
 
+/** Calendar dates (`YYYY-MM-DD`, no time zone) as a short date, read as written. */
+export function formatEntryDate(date: string): string {
+  return new Intl.DateTimeFormat("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
 /**
  * A member as a sentence names them: "you", their email, or "a former member". `start`
  * capitalizes the phrases (never an email) for the start of a sentence.

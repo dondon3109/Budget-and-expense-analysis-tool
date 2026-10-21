@@ -9,7 +9,7 @@ import {
   type DashboardSummary,
 } from "@zoption/shared";
 import { Pencil, Plus, Share2, SlidersHorizontal, Trash2, WalletCards } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
@@ -87,6 +87,16 @@ export function AccountsPanel({
     removeAccountMutation,
   } = accounts;
   const accountListRef = useRef<HTMLUListElement>(null);
+  // The list scrolls inside the balance card's height, so its last visible row can sit across the
+  // bottom edge. Marking when rows sit below lets CSS fade that edge instead of slicing the row.
+  useEffect(() => {
+    const list = accountListRef.current;
+    if (!list || typeof ResizeObserver === "undefined") return undefined;
+    markRowsBelow(list);
+    const observer = new ResizeObserver(() => markRowsBelow(list));
+    observer.observe(list);
+    return () => observer.disconnect();
+  }, [activeAccounts]);
   // Blank means no starting balance; text that is not an amount blocks the add.
   const startingBalanceMinor = parseOptionalAmount(accountStartingBalance);
   const accountActionError = updateAccountMutation.error ?? removeAccountMutation.error;
@@ -247,7 +257,7 @@ export function AccountsPanel({
                 )}
               </form>
             )}
-            <ul ref={accountListRef}>
+            <ul ref={accountListRef} onScroll={(event) => markRowsBelow(event.currentTarget)}>
               {activeAccounts.map((account) => {
                 const isDefaultBank = account.name === "Bank";
                 const canEdit = !account.system || isDefaultBank;
@@ -406,4 +416,9 @@ function AccountBalances({ account }: { account: AccountBalanceSummaryItem }) {
       ))}
     </span>
   );
+}
+
+function markRowsBelow(list: HTMLUListElement) {
+  // One pixel of slack absorbs fractional scroll positions at the end of the list.
+  list.dataset.rowsBelow = String(list.scrollTop + list.clientHeight < list.scrollHeight - 1);
 }

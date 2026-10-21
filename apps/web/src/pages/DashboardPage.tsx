@@ -462,8 +462,6 @@ export function DashboardPage() {
         {family && familyDetail?.plan === "unpaid" && (
           <JustYouCard familyId={family.id} onPlanPage={false} />
         )}
-        {family && <RemittanceCard family={workspace} month={summaryMonth} />}
-
         <AccountsPanel
           accounts={accountMutations}
           accountBalances={accountBalances}
@@ -478,6 +476,7 @@ export function DashboardPage() {
         />
 
         {family && <SharedBalancesCard family={workspace} />}
+        {family && <RemittanceCard family={workspace} month={summaryMonth} />}
 
         {sharingAccount && (
           <ShareLinkModal

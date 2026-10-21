@@ -1,21 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { FamilyDetail } from "@zoption/shared";
+import type { FamilySharedBalance } from "@zoption/shared";
 import { X } from "lucide-react";
+import { useState } from "react";
 
 import { removeFamilySharedBalance } from "../../lib/api";
 import { formatMoney } from "../../lib/formatters";
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { useFamily, useFamilySharedBalances } from "../../queries/families";
-import { formatFamilyDate } from "./familyLabels";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { formatFamilyDate, memberName } from "./familyLabels";
 import "./SharedBalancesCard.css";
-
-function sharerLabel(detail: FamilyDetail | undefined, userId: string, me: string): string {
-  if (userId === me) return "You";
-  const member = detail?.members.find((item) => item.userId === userId);
-  if (!member) return "A former member";
-  return member.email ?? "A family member";
-}
 
 /**
  * Personal balances members chose to show the family. They sit beside the family's own
@@ -26,10 +21,13 @@ export function SharedBalancesCard({ family }: { family: AuthenticatedWorkspace 
   const balances = useFamilySharedBalances(family).data ?? [];
   const detail = useFamily(family).data;
   const me = family.userId;
+  const [removing, setRemoving] = useState<FamilySharedBalance>();
   const remove = useMutation({
     mutationFn: (shareId: string) => removeFamilySharedBalance(family, shareId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.familySharedBalances(family) }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.familySharedBalances(family) });
+      setRemoving(undefined);
+    },
   });
 
   if (balances.length === 0) return null;
@@ -45,7 +43,7 @@ export function SharedBalancesCard({ family }: { family: AuthenticatedWorkspace 
             <div>
               <strong>{balance.accountName}</strong>
               <span>
-                {sharerLabel(detail, balance.sharedByUserId, me)}
+                {memberName(detail, balance.sharedByUserId, me, true)}
                 {balance.stoppedAt
                   ? ` · stopped sharing ${formatFamilyDate(balance.stoppedAt)}`
                   : ""}
@@ -58,8 +56,10 @@ export function SharedBalancesCard({ family }: { family: AuthenticatedWorkspace 
               <button
                 type="button"
                 className="shared-balances-remove"
-                onClick={() => remove.mutate(balance.id)}
-                disabled={remove.isPending}
+                onClick={() => {
+                  remove.reset();
+                  setRemoving(balance);
+                }}
                 aria-label={`Remove ${balance.accountName} from the family`}
                 title="Remove from the family"
               >
@@ -69,10 +69,17 @@ export function SharedBalancesCard({ family }: { family: AuthenticatedWorkspace 
           </li>
         ))}
       </ul>
-      {remove.error && (
-        <p className="form-error" role="alert">
-          {remove.error.message}
-        </p>
+      {removing && (
+        <ConfirmDialog
+          title={`Remove ${removing.accountName}?`}
+          consequence={`The family stops seeing ${removing.sharedByUserId === me ? "your" : `${memberName(detail, removing.sharedByUserId, me)}'s`} ${removing.accountName} balance. The account itself is untouched and can be shared again.`}
+          confirmLabel="Remove from family"
+          busyLabel="Removing…"
+          busy={remove.isPending}
+          error={remove.error?.message}
+          onConfirm={() => remove.mutate(removing.id)}
+          onClose={() => setRemoving(undefined)}
+        />
       )}
     </section>
   );

@@ -63,6 +63,7 @@ All notable product changes are documented here.
 - A hatched pet now gets three warnings before it passes away (at 24, 48, and 66 hours), down from six.
 - Web: pages drop their descriptive subtitles and most card frames in favor of flat sections divided by thin rules, with rounded corners on the surfaces that remain. The calendar has one place to add events.
 - Mobile: the Home dropdown beside Overview and Analytics now shows which workspace you are in and groups the Remittance calculator and Pet under Tools. Pick your workspace there again to leave the calculator.
+- Web: the family Home leads with the family's balances, then shared balances and money sent home, all in the same flat layout as the rest of the dashboard. Remittance dates read as dates, and cancelling a send or removing a shared balance asks first.
 
 ### Fixed
 
@@ -75,6 +76,7 @@ All notable product changes are documented here.
 - Mobile: signing in with Google on Android no longer reports "invalid flow state" when the sign-in actually succeeded.
 - Web: the Occasions budget list no longer shows another plan's category editor after switching tabs.
 - Web: focus rings on form fields no longer cover the text beneath them, the edit-account form lays out its grouped fields, and the dashboard no longer scrolls sideways on phones.
+- Web: the dashboard's account list no longer slices a row in half at the bottom of the balance card; the row fades out to show there is more to scroll.
 
 ## 3.10.0 — 2026-10-10
 
