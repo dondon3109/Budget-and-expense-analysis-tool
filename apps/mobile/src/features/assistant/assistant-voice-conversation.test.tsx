@@ -590,4 +590,37 @@ describe("AssistantVoiceConversation", () => {
     fireEvent.press(screen.getByLabelText("Preparing microphone"));
     expect(await screen.findByText("Tap to speak with your assistant")).toBeTruthy();
   });
+
+  it("shows the stop tap as busy while the take is transcribed, then sends it", async () => {
+    const m = mocks();
+    const { recorder, captured } = installHookMocks();
+    const { rerender } = await render(<AssistantVoiceConversation {...baseProps} />);
+    await waitFor(() => expect(recorder.startRecording).toHaveBeenCalledTimes(1));
+    // Mutate the shared recorder rather than setRecorderPhase, whose
+    // mockReturnValue would outlive this test.
+    recorder.phase = "recording";
+    rerender(<AssistantVoiceConversation {...baseProps} />);
+
+    fireEvent.press(await screen.findByLabelText("Stop listening"));
+    expect(recorder.stopAndTranscribe).toHaveBeenCalledTimes(1);
+
+    // Finalizing the transcript takes a moment: the stop button must not linger.
+    recorder.phase = "transcribing";
+    rerender(<AssistantVoiceConversation {...baseProps} />);
+    expect(await screen.findByText("Finishing what you said…")).toBeTruthy();
+    expect(screen.queryByLabelText("Stop listening")).toBeNull();
+
+    await captured.transcript?.("How much did I spend?");
+    await waitFor(() =>
+      expect(m.createAssistantThreadTurn).toHaveBeenCalledWith(
+        { accessToken: "token" },
+        expect.objectContaining({ message: "How much did I spend?" }),
+      ),
+    );
+    // Settle the turn so no reply playback outlives this test.
+    recorder.phase = "idle";
+    expect(await screen.findByText("Speaking…")).toBeTruthy();
+    captured.ended?.();
+    expect(await screen.findByLabelText("Start talking")).toBeTruthy();
+  });
 });
