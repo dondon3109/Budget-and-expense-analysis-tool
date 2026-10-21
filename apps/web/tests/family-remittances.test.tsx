@@ -13,11 +13,13 @@ vi.mock("../src/lib/api", async () =>
     "getAccounts",
     "getCategories",
     "receiveRemittance",
+    "cancelRemittance",
   ]),
 );
 
 import { RemittanceCard } from "../src/components/family/RemittanceCard";
 import {
+  cancelRemittance,
   getAccounts,
   getCategories,
   getFamily,
@@ -80,5 +82,19 @@ describe("RemittanceCard", () => {
       "remit-1",
       { amountMinor: 2_815_000, accountId: "cash", categoryId: "padala", date: expect.any(String) },
     ]);
+  });
+
+  it("cancels a pending send only after the person confirms", async () => {
+    vi.mocked(getRemittanceOverview).mockResolvedValue(OVERVIEW);
+    vi.mocked(getFamily).mockResolvedValue({ role: "owner", members: [], closesAt: null } as never);
+    vi.mocked(cancelRemittance).mockResolvedValue(undefined as never);
+
+    renderWithProviders(<RemittanceCard family={family} month="2026-10" />);
+    expect(await screen.findByText(/on Oct 2, 2026 via Wise/u)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(cancelRemittance).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Cancel send" }));
+    await vi.waitFor(() => expect(cancelRemittance).toHaveBeenCalledWith(family, "remit-1"));
   });
 });

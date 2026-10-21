@@ -37,11 +37,16 @@
   margin: 0;
 }
 
+/* Flat figures split by hairlines, like the overview stat bar below the balances. */
 .remittance-totals > div {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  min-width: 0;
+  padding: 2px 0 2px 20px;
+  border-left: 1px solid var(--line);
+}
+
+.remittance-totals > div:first-child {
+  padding-left: 0;
+  border-left: 0;
 }
 
 .remittance-totals dt {
@@ -51,15 +56,14 @@
 }
 
 .remittance-totals dd {
-  margin: 4px 0 0;
-  font-size: 20px;
+  margin: 6px 0 0;
+  font-size: 24px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .remittance-list {
   display: grid;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -71,10 +75,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  background: var(--surface);
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
 }
 
 .remittance-list li > div:first-child {
@@ -126,8 +128,21 @@
 }
 
 @media (max-width: 680px) {
-  .remittance-totals,
   .remittance-prompt {
     grid-template-columns: 1fr;
+  }
+
+  /* The three figures stay on one line on a phone, so the card does not fill the screen. */
+  .remittance-totals > div {
+    padding-left: 10px;
+  }
+
+  .remittance-totals dt {
+    font-size: 11px;
+  }
+
+  .remittance-totals dd {
+    font-size: 17px;
+    overflow-wrap: anywhere;
   }
 }

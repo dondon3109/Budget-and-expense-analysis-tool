@@ -8,7 +8,8 @@ import { formatMoney, formatMonth } from "../../lib/formatters";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { useFamily } from "../../queries/families";
 import { invalidateAfterRemittanceWrite, useRemittanceOverview } from "../../queries/remittances";
-import { memberName } from "./familyLabels";
+import { ConfirmDialog } from "../common/ConfirmDialog";
+import { formatEntryDate, memberName } from "./familyLabels";
 import { FamilyThreadDialog } from "./FamilyThreadDialog";
 import { RemittanceDialog } from "./RemittanceDialog";
 import "./RemittanceCard.css";
@@ -30,9 +31,13 @@ export function RemittanceCard({
   const detail = useFamily(family).data;
   const [dialog, setDialog] = useState<{ remittance?: FamilyRemittance }>();
   const [threadOf, setThreadOf] = useState<FamilyRemittance>();
+  const [cancelling, setCancelling] = useState<FamilyRemittance>();
   const cancel = useMutation({
     mutationFn: (remittanceId: string) => cancelRemittance(family, remittanceId),
-    onSuccess: () => invalidateAfterRemittanceWrite(queryClient, family),
+    onSuccess: async () => {
+      await invalidateAfterRemittanceWrite(queryClient, family);
+      setCancelling(undefined);
+    },
   });
 
   if (!overview) return null;
@@ -101,7 +106,7 @@ export function RemittanceCard({
               <div>
                 <strong>{formatMoney(item.sentAmountMinor, item.sentCurrency)} on the way</strong>
                 <span>
-                  Sent by {label(item.sentByUserId)} on {item.sentOn}
+                  Sent by {label(item.sentByUserId)} on {formatEntryDate(item.sentOn)}
                   {item.provider ? ` via ${item.provider}` : ""}
                 </span>
               </div>
@@ -120,8 +125,10 @@ export function RemittanceCard({
                       <button
                         className="button secondary compact"
                         type="button"
-                        disabled={cancel.isPending}
-                        onClick={() => cancel.mutate(item.id)}
+                        onClick={() => {
+                          cancel.reset();
+                          setCancelling(item);
+                        }}
                       >
                         Cancel
                       </button>
@@ -133,12 +140,6 @@ export function RemittanceCard({
           ))}
         </ul>
       )}
-      {cancel.error && (
-        <p className="form-error" role="alert">
-          {cancel.error.message}
-        </p>
-      )}
-
       {overview.recent.length > 0 && (
         <details className="remittance-history">
           <summary>Recent and earlier months</summary>
@@ -152,7 +153,7 @@ export function RemittanceCard({
                   <span>
                     {formatMoney(item.sentAmountMinor, item.sentCurrency)} from{" "}
                     {label(item.sentByUserId)}, confirmed by {label(item.received!.byUserId)} on{" "}
-                    {item.received!.date}
+                    {formatEntryDate(item.received!.date)}
                   </span>
                 </div>
                 {commentsButton(item)}
@@ -184,11 +185,24 @@ export function RemittanceCard({
         </details>
       )}
       {dialogElement}
+      {cancelling && (
+        <ConfirmDialog
+          title="Cancel this send?"
+          consequence={`The ${formatMoney(cancelling.sentAmountMinor, cancelling.sentCurrency)} sent on ${formatEntryDate(cancelling.sentOn)} leaves the family's list. It never arrived, so no balance changes. This cannot be undone.`}
+          confirmLabel="Cancel send"
+          busyLabel="Cancelling…"
+          cancelLabel="Keep it"
+          busy={cancel.isPending}
+          error={cancel.error?.message}
+          onConfirm={() => cancel.mutate(cancelling.id)}
+          onClose={() => setCancelling(undefined)}
+        />
+      )}
       {threadOf && (
         <FamilyThreadDialog
           family={family}
           subject={{ kind: "remittance", subjectId: threadOf.id }}
-          title={`${formatMoney(threadOf.sentAmountMinor, threadOf.sentCurrency)} sent on ${threadOf.sentOn}`}
+          title={`${formatMoney(threadOf.sentAmountMinor, threadOf.sentCurrency)} sent on ${formatEntryDate(threadOf.sentOn)}`}
           onClose={() => setThreadOf(undefined)}
         />
       )}
