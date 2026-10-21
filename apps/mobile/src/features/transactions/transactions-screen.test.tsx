@@ -96,6 +96,18 @@ describe("TransactionsScreen month totals", () => {
     expect(screen.getByText(/Total Balance on Home/)).toBeTruthy();
     expect(screen.getByText(/balance adjustment counts as income or an expense/i)).toBeTruthy();
   });
+
+  it("switches views from the tabs and keeps the selected tab marked", async () => {
+    await render(<TransactionsScreen />);
+
+    await fireEvent.press(screen.getByRole("tab", { name: "Summary" }));
+    expect(screen.getByRole("tab", { name: "Summary" }).props.accessibilityState).toEqual({
+      selected: true,
+    });
+
+    await fireEvent.press(screen.getByRole("tab", { name: "Daily" }));
+    expect(screen.getByText("salary")).toBeTruthy();
+  });
 });
 
 describe("TransactionsScreen select mode", () => {
