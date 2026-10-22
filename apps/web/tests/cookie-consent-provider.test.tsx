@@ -11,6 +11,7 @@ import {
   createConsentRecord,
   type ConsentPreferences,
 } from "@zoption/web-common/consent";
+import { persistConsentRecord, readConsentRecord } from "@zoption/web-common/consent-storage";
 import { CookieConsentProvider, useCookieConsent } from "../src/consent/CookieConsentProvider";
 import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
 
@@ -77,7 +78,7 @@ describe("CookieConsentProvider", () => {
 
     await user.click(screen.getByRole("button", { name: "Accept" }));
     expect(screen.getByTestId("preferences")).toHaveTextContent("true:true");
-    expect(JSON.parse(window.localStorage.getItem(CONSENT_STORAGE_KEY) ?? "null")).toMatchObject({
+    expect(readConsentRecord()).toMatchObject({
       source: "accept_all",
       preferences: { analytics: true, marketing: true },
     });
@@ -86,10 +87,8 @@ describe("CookieConsentProvider", () => {
     expect(screen.getByTestId("preferences")).toHaveTextContent("true:false");
   });
 
-  it("keeps the current-tab decision when storage persistence fails", async () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("Storage unavailable");
-    });
+  it("keeps the current-tab decision when the browser refuses the cookie", async () => {
+    vi.spyOn(Document.prototype, "cookie", "set").mockImplementation(() => {});
     const user = userEvent.setup();
     renderProvider();
 
@@ -99,7 +98,7 @@ describe("CookieConsentProvider", () => {
     expect(screen.getByTestId("preferences")).toHaveTextContent("false:false");
   });
 
-  it("synchronizes valid decisions and stale-policy resets from another tab", () => {
+  it("picks up a decision made on the public site or another tab when it regains focus", () => {
     renderProvider();
     const record = createConsentRecord(
       { analytics: false, marketing: true },
@@ -107,24 +106,18 @@ describe("CookieConsentProvider", () => {
       "2026-07-28T09:00:00.000Z",
     );
 
+    persistConsentRecord(record);
     act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: CONSENT_STORAGE_KEY,
-          newValue: JSON.stringify(record),
-        }),
-      );
+      window.dispatchEvent(new Event("focus"));
     });
     expect(screen.getByTestId("decision")).toHaveTextContent("decided");
     expect(screen.getByTestId("preferences")).toHaveTextContent("false:true");
 
+    document.cookie = `${CONSENT_STORAGE_KEY}=${encodeURIComponent(
+      JSON.stringify({ ...record, policyVersion: "stale" }),
+    )}; Path=/`;
     act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", {
-          key: CONSENT_STORAGE_KEY,
-          newValue: JSON.stringify({ ...record, policyVersion: "stale" }),
-        }),
-      );
+      window.dispatchEvent(new Event("focus"));
     });
     expect(screen.getByTestId("decision")).toHaveTextContent("undecided");
     expect(screen.getByTestId("preferences")).toHaveTextContent("false:false");

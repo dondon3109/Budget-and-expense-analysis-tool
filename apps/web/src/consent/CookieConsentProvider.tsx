@@ -10,18 +10,13 @@ import {
 } from "react";
 
 import {
-  CONSENT_STORAGE_KEY,
   DENIED_OPTIONAL_CONSENT,
   createConsentRecord,
   type ConsentPreferences,
   type ConsentRecord,
 } from "@zoption/web-common/consent";
 import { updateConsentGate } from "@zoption/web-common/consent-gate";
-import {
-  parseConsentRecord,
-  persistConsentRecord,
-  readConsentRecord,
-} from "@zoption/web-common/consent-storage";
+import { persistConsentRecord, readConsentRecord } from "@zoption/web-common/consent-storage";
 
 interface CookieConsentContextValue {
   consent: ConsentRecord | null;
@@ -52,14 +47,16 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     updateConsentGate(preferences);
   }, [preferences]);
 
+  // The decision is a cookie shared with the public site, which fires no event when another
+  // tab or zoption.site changes it, so it is read again whenever this tab regains focus.
   useEffect(() => {
-    function syncConsent(event: StorageEvent) {
-      if (event.key !== CONSENT_STORAGE_KEY) return;
-      setConsent(parseConsentRecord(event.newValue));
+    function syncConsent() {
+      const next = readConsentRecord();
+      setConsent((current) => (JSON.stringify(current) === JSON.stringify(next) ? current : next));
     }
 
-    window.addEventListener("storage", syncConsent);
-    return () => window.removeEventListener("storage", syncConsent);
+    window.addEventListener("focus", syncConsent);
+    return () => window.removeEventListener("focus", syncConsent);
   }, []);
 
   const closePreferences = useCallback((options: { restoreFocus?: boolean } = {}) => {

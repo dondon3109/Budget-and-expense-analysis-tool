@@ -41,26 +41,78 @@ export function parseConsentRecord(value: string | null): ConsentRecord | null {
   }
 }
 
-export function readConsentRecord(storage?: Pick<Storage, "getItem">) {
-  const resolvedStorage =
-    storage ?? (typeof window !== "undefined" ? window.localStorage : undefined);
-  if (!resolvedStorage) return null;
+/**
+ * The consent record lives in one first-party cookie scoped to the registrable domain, so
+ * zoption.site and app.zoption.site read and write the same decision: a visitor who chose on
+ * the public site is not asked again in the app, and a withdrawal on either applies to both.
+ * Preview and local hosts keep a host-only cookie of their own.
+ */
+const SHARED_CONSENT_DOMAIN = "zoption.site";
+const CONSENT_COOKIE_MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
+
+function readConsentCookie(): string | null {
+  for (const part of document.cookie.split(";")) {
+    const separator = part.indexOf("=");
+    if (separator === -1 || part.slice(0, separator).trim() !== CONSENT_STORAGE_KEY) continue;
+    return decodeURIComponent(part.slice(separator + 1));
+  }
+  return null;
+}
+
+function consentCookieAttributes(): string {
+  const { hostname, protocol } = window.location;
+  const shared =
+    hostname === SHARED_CONSENT_DOMAIN || hostname.endsWith(`.${SHARED_CONSENT_DOMAIN}`);
+  return [
+    "Path=/",
+    `Max-Age=${CONSENT_COOKIE_MAX_AGE_SECONDS}`,
+    "SameSite=Lax",
+    shared ? `Domain=${SHARED_CONSENT_DOMAIN}` : "",
+    protocol === "https:" ? "Secure" : "",
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
+/**
+ * Reads the shared decision. A record that only exists in this origin's localStorage (where
+ * every decision lived before the cookie) is moved into the cookie on first read, so an
+ * earlier choice carries over instead of asking again. Anything unreadable counts as no
+ * decision.
+ */
+export function readConsentRecord(): ConsentRecord | null {
+  if (typeof document === "undefined") return null;
 
   try {
-    return parseConsentRecord(resolvedStorage.getItem(CONSENT_STORAGE_KEY));
+    const record = parseConsentRecord(readConsentCookie());
+    if (record) return record;
+  } catch {
+    // An unreadable cookie falls through to the earlier per-origin record.
+  }
+
+  try {
+    const legacy = parseConsentRecord(window.localStorage.getItem(CONSENT_STORAGE_KEY));
+    if (legacy) persistConsentRecord(legacy);
+    return legacy;
   } catch {
     return null;
   }
 }
 
-export function persistConsentRecord(
-  record: ConsentRecord,
-  storage: Pick<Storage, "setItem"> = window.localStorage,
-): boolean {
+/** Saves the decision for both sites. Returns false when the browser refused the cookie. */
+export function persistConsentRecord(record: ConsentRecord): boolean {
+  const value = JSON.stringify(record);
   try {
-    storage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(record));
-    return true;
+    document.cookie = `${CONSENT_STORAGE_KEY}=${encodeURIComponent(value)}; ${consentCookieAttributes()}`;
+    if (readConsentCookie() !== value) return false;
   } catch {
     return false;
   }
+  try {
+    // The earlier per-origin copy would otherwise come back once the cookie expires.
+    window.localStorage.removeItem(CONSENT_STORAGE_KEY);
+  } catch {
+    // The cookie is read first, so a leftover copy cannot override it.
+  }
+  return true;
 }
