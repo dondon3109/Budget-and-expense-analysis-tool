@@ -62,7 +62,7 @@ export function TransactionItemRow({
   /** Select mode is on: a tap toggles the row instead of opening it. */
   selecting?: boolean;
   selected?: boolean;
-  /** Long press starts select mode; while selecting, a tap toggles. */
+  /** Long press starts select mode; while selecting, a tap or long press toggles. */
   onToggleSelect?: (id: string) => void;
 }) {
   const theme = useZoptionTheme();
@@ -101,7 +101,11 @@ export function TransactionItemRow({
       }}
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       delayLongPress={450}
-      onLongPress={selecting ? undefined : () => onToggleSelect?.(transaction.id)}
+      // Keep onLongPress set while selecting: Pressable only suppresses the
+      // release's onPress when a long-press handler exists, so clearing it on
+      // the re-render that enters select mode made lifting the finger toggle
+      // the row straight back off.
+      onLongPress={onToggleSelect ? () => onToggleSelect(transaction.id) : undefined}
       onPress={withTapSound(() =>
         selecting
           ? onToggleSelect?.(transaction.id)
