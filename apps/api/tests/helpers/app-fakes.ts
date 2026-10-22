@@ -33,6 +33,7 @@ import type { ImportRepository } from "../../src/db/imports";
 import type { SubscriptionRepository } from "../../src/db/subscriptions";
 import type { TenantResolver } from "../../src/db/tenants";
 import type { TransactionRepository } from "../../src/db/transactions";
+import type { SubscriptionRenewalService } from "../../src/subscriptions/renewals";
 import type { Bindings } from "../../src/types";
 import { allowedRateLimiter } from "./rate-limiter";
 
@@ -439,6 +440,16 @@ export function createAllowedBillingRepository(): BillingRepository {
   };
 }
 
+/** Records the settle a transaction write runs; the real one needs a D1 binding. */
+export function createSubscriptionRenewals(): SubscriptionRenewalService {
+  return {
+    runDueRenewals: vi.fn(),
+    settleTenantRenewals: vi.fn(async () => 0),
+    retryNotification: vi.fn(async () => false),
+    retryPendingNotifications: vi.fn(async () => ({ claimed: 0, sent: 0, failed: 0 })),
+  };
+}
+
 /**
  * The full createApp stack (auth, tenancy, body and rate limits, routing) over fake
  * repositories: a Pro tenant, an allow-all rate limiter, and a readiness check that passes.
@@ -452,6 +463,7 @@ export function createAppWithFakes(options: AppOptions = {}) {
     tenantResolver: createTenantResolver(),
     rateLimiter: allowedRateLimiter(),
     billing: createAllowedBillingRepository(),
+    subscriptionRenewals: createSubscriptionRenewals(),
     ...options,
   });
 }

@@ -24,5 +24,7 @@ export function invalidateAfterAccountWrite(
     queryClient.invalidateQueries({ queryKey: queryKeys.accounts(workspace) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.allTransactions(workspace) }),
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
+    // A balance adjustment that covers a held-back subscription charges it during the write.
+    queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) }),
   ]);
 }
