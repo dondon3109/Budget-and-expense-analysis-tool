@@ -5,7 +5,11 @@ import type { AuthVerifier } from "../src/auth";
 import type { MobileSyncRepository } from "../src/db/mobile-sync";
 import type { TenantResolver } from "../src/db/tenants";
 import type { RateLimiter } from "../src/rate-limit";
-import { createAppWithFakes, privateHeaders } from "./helpers/app-fakes";
+import {
+  createAppWithFakes,
+  createSubscriptionRenewals,
+  privateHeaders,
+} from "./helpers/app-fakes";
 
 describe("mobile sync route", () => {
   it("derives the tenant and rejects ownership fields", async () => {
@@ -64,8 +68,10 @@ describe("mobile sync route", () => {
         retryAfterSeconds: 60,
       })),
     };
+    const subscriptionRenewals = createSubscriptionRenewals();
     const app = createApp({
       mobileSync,
+      subscriptionRenewals,
       authVerifier,
       tenantResolver,
       rateLimiter,
@@ -176,6 +182,11 @@ describe("mobile sync route", () => {
       expect.any(Object),
       new Set(),
       undefined,
+    );
+    // The pull the app runs next has to carry a subscription charge the pushed balance covered.
+    expect(subscriptionRenewals.settleTenantRenewals).toHaveBeenCalledWith(
+      undefined,
+      "tenant-safe",
     );
 
     const forgedPush = await app.request("/api/app/sync/push", {

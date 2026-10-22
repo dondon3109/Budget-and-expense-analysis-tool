@@ -41,6 +41,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- A subscription held back because its account could not cover it is now charged the moment you top up or adjust that account's balance, on web and mobile, instead of on the next renewal check. Each due cycle the new balance covers is recorded as an expense and deducted.
 - On the phone, switching between Daily, Calendar, Monthly, and Summary on Transactions now slides the new view in from the side of its tab. Reduce Motion keeps it still.
 - The phone assistant chat has a new look: replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked, a new chat opens on the Zoption mark with starter questions as chips, the message box is one slim row with the microphone and send buttons, and a button jumps back to the newest message after you scroll up.
 - Mobile haptics follow the action: choices, toggles, expanders, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click or double click.
