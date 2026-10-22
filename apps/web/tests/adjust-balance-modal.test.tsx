@@ -149,10 +149,14 @@ describe("AdjustBalanceModal", () => {
       },
     });
 
-    fireEvent.change(screen.getByLabelText(/^Currency/), { target: { value: "USD" } });
-    expect(screen.getByText("Current USD balance")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Currency/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Add currency" }));
+    const newCurrency = screen.getByLabelText(/^New currency/);
+    // Only currencies the account does not hold yet are offered.
+    expect(screen.queryByRole("option", { name: "Philippine Peso (PHP)" })).not.toBeInTheDocument();
+    fireEvent.change(newCurrency, { target: { value: "USD" } });
     fireEvent.change(screen.getByPlaceholderText("0.00"), { target: { value: "200" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save adjustment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add USD balance" }));
 
     await waitFor(() => {
       expect(apiMocks.createTransaction).toHaveBeenCalledWith(
@@ -170,7 +174,16 @@ describe("AdjustBalanceModal", () => {
   it("keeps a non-bank account in its own currency", () => {
     renderModal();
 
-    expect(screen.queryByLabelText(/^Currency/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add currency" })).not.toBeInTheDocument();
+  });
+
+  it("adjusts any currency a bank account already holds", () => {
+    renderModal({
+      account: { ...mockAccount, type: "savings", balancesByCurrency: { PHP: 10_000, USD: 5_000 } },
+    });
+
+    fireEvent.change(screen.getByLabelText(/^Currency/), { target: { value: "USD" } });
+    expect(screen.getByText("Current USD balance")).toBeInTheDocument();
   });
 
   it("focuses the balance field, traps Tab, and closes on Escape", async () => {
