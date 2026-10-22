@@ -153,6 +153,24 @@ pnpm --filter @zoption/api exec wrangler d1 execute budget-expense-production \
 
 `apps/api/tests/feature-usage-by-user-query.test.ts` runs the file against seeded workspaces.
 
+### 2.8 Weekly Growth KPIs (D1, first-party)
+
+PostHog undercounts signups: the app's events need their own Analytics consent on `app.zoption.site` (section 2.1), so most signups are never captured. The growth numbers therefore come from D1. `docs/queries/weekly-kpis.sql` is a read-only query returning the last 12 weeks (Monday to Sunday, UTC), one row each, in the column order of the growth tracker's **Weekly KPIs** tab: `week_of`, `site_visitors` (always empty; take it from PostHog web analytics), `signups`, `activated`, `paying_customers`, `mrr_php`, `new_paid`, `churned`. Its header defines each column. In short:
+
+- **Signups** are personal workspaces created that week; **activated** are those who entered 3 or more transactions within 7 days, so the latest two weeks can still rise.
+- **Paying customers and MRR** are paid subscriptions live at the week's end, annual plans counted as a twelfth. D1 keeps only each subscription's latest state, so past weeks are reconstructed from `created_at` and the last update of a canceled or paused subscription.
+- Platform admin accounts are left out of every count.
+
+Run it against production, read-only, from the repository root (`--command` rather than `--file`, so a remote run returns rows):
+
+```bash
+pnpm --filter @zoption/api exec wrangler d1 execute budget-expense-production \
+  --remote --config wrangler.deploy.jsonc --env production \
+  --command "$(cat docs/queries/weekly-kpis.sql)"
+```
+
+`apps/api/tests/weekly-kpis-query.test.ts` runs the file against seeded workspaces and pins its plan prices to `PLAN_PRICES_MINOR`.
+
 ---
 
 ## 3. Free Tier Capacity & Quota Management
