@@ -136,7 +136,7 @@ describe("TransactionsScreen select mode", () => {
     expect(screen.getByText("1 selected")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Add transaction" })).toBeNull();
 
-    await fireEvent.press(screen.getByRole("checkbox", { name: /^coffee,/ }));
+    await fireEvent(screen.getByRole("checkbox", { name: /^coffee,/ }), "longPress");
     expect(screen.getByText("2 selected")).toBeTruthy();
     expect(router.push).not.toHaveBeenCalled();
 
