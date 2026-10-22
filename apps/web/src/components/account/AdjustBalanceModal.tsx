@@ -14,7 +14,7 @@ import {
   type AccountRecord,
   type Currency,
 } from "@zoption/shared";
-import { Check, RotateCcw, SlidersHorizontal, X } from "lucide-react";
+import { Check, Plus, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -34,6 +34,11 @@ export interface AdjustBalanceModalProps {
   onClose: () => void;
 }
 
+/**
+ * Books the difference to an account's current balance as an Uncategorized adjustment, with
+ * Undo. A bank account picks which held currency to adjust, and "Add currency" opens a
+ * balance in one it does not hold yet by booking its opening balance.
+ */
 export function AdjustBalanceModal({
   account,
   accounts,
@@ -46,6 +51,8 @@ export function AdjustBalanceModal({
   const [newBalance, setNewBalance] = useState("");
   // Null follows the account's own currency; only a bank account offers another one.
   const [chosenCurrency, setChosenCurrency] = useState<Currency | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newCurrency, setNewCurrency] = useState<Currency | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
@@ -53,14 +60,25 @@ export function AdjustBalanceModal({
   const undoAdjustmentRef = useRef<HTMLButtonElement>(null);
 
   const multiCurrency = holdsMultipleCurrencies(account.type);
-  const currency = (multiCurrency ? chosenCurrency : null) ?? account.currency ?? "PHP";
-  const currentBalanceMinor =
-    account.balancesByCurrency?.[currency] ??
-    (currency === account.currency && account.balanceMinor != null ? account.balanceMinor : 0);
   const held = heldCurrencies({
     currency: account.currency ?? "PHP",
     balancesByCurrency: account.balancesByCurrency,
   });
+  const addable = currencies.filter((code) => !held.includes(code));
+  const currency: Currency | null = adding
+    ? newCurrency
+    : ((multiCurrency ? chosenCurrency : null) ?? account.currency ?? "PHP");
+  const currentBalanceMinor = !currency
+    ? 0
+    : (account.balancesByCurrency?.[currency] ??
+      (currency === account.currency && account.balanceMinor != null ? account.balanceMinor : 0));
+
+  const startAdding = (value: boolean): void => {
+    setAdding(value);
+    setNewCurrency(null);
+    setNewBalance("");
+    setErrorMessage(null);
+  };
 
   const categoriesQuery = useQuery({
     queryKey: workspace
@@ -84,12 +102,13 @@ export function AdjustBalanceModal({
       ? null
       : computeBalanceAdjustment(currentBalanceMinor, parsedNewBalance);
 
-  const hasChanges = preview !== null && preview.kind !== null;
+  const hasChanges = currency !== null && preview !== null && preview.kind !== null;
 
   const adjustMutation = useMutation({
     mutationFn: async () => {
       if (!workspace) throw new Error("Workspace not available.");
       if (parsedNewBalance == null) throw new Error("Please enter a valid amount.");
+      if (!currency) throw new Error("Choose a currency to add.");
 
       const categories =
         categoriesQuery.data && categoriesQuery.data.length > 0
@@ -178,7 +197,9 @@ export function AdjustBalanceModal({
         <header className="modal-header">
           <div>
             <p className="eyebrow">Account balance</p>
-            <h2 id="adjust-balance-title">Adjust current balance</h2>
+            <h2 id="adjust-balance-title">
+              {adding ? "Add a currency balance" : "Adjust current balance"}
+            </h2>
           </div>
           <button
             className="icon-button"
@@ -202,8 +223,7 @@ export function AdjustBalanceModal({
                   if (selected) {
                     onSelectAccount(selected);
                     setChosenCurrency(null);
-                    setNewBalance("");
-                    setErrorMessage(null);
+                    startAdding(false);
                   }
                 }}
                 disabled={adjustMutation.isPending}
@@ -221,11 +241,11 @@ export function AdjustBalanceModal({
             </label>
           )}
 
-          {multiCurrency && !adjustmentId && (
+          {multiCurrency && !adding && !adjustmentId && held.length > 1 && (
             <label className="adjust-balance-field">
               <span>Currency</span>
               <select
-                value={currency}
+                value={currency ?? ""}
                 onChange={(e) => {
                   if (!isCurrency(e.target.value)) return;
                   setChosenCurrency(e.target.value);
@@ -234,16 +254,39 @@ export function AdjustBalanceModal({
                 }}
                 disabled={adjustMutation.isPending}
               >
-                {currencies.map((code) => (
+                {held.map((code) => (
                   <option key={code} value={code}>
-                    {held.includes(code)
-                      ? `${currencyMetadata[code].label} · ${formatMoney(account.balancesByCurrency?.[code] ?? 0, code)}`
-                      : currencyMetadata[code].label}
+                    {`${currencyMetadata[code].label} · ${formatMoney(account.balancesByCurrency?.[code] ?? 0, code)}`}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {adding && !adjustmentId && (
+            <label className="adjust-balance-field">
+              <span>New currency</span>
+              <select
+                autoFocus
+                value={newCurrency ?? ""}
+                onChange={(e) => {
+                  if (!isCurrency(e.target.value)) return;
+                  setNewCurrency(e.target.value);
+                  setErrorMessage(null);
+                }}
+                disabled={adjustMutation.isPending}
+              >
+                <option value="" disabled>
+                  Choose a currency
+                </option>
+                {addable.map((code) => (
+                  <option key={code} value={code}>
+                    {currencyMetadata[code].label}
                   </option>
                 ))}
               </select>
               <small className="adjust-balance-hint">
-                Bank accounts can hold several currencies. Pick a new one to add its balance.
+                The account keeps a separate balance for each currency.
               </small>
             </label>
           )}
@@ -253,13 +296,27 @@ export function AdjustBalanceModal({
               <span className="adjust-balance-label">Account</span>
               <strong className="adjust-balance-account-name">{account.name}</strong>
             </div>
-            <div className="adjust-balance-current-value">
-              <span className="adjust-balance-label">
-                {multiCurrency ? `Current ${currency} balance` : "Current Ledger Balance"}
-              </span>
-              <strong>{formatMoney(currentBalanceMinor, currency)}</strong>
-            </div>
+            {currency && !adding ? (
+              <div className="adjust-balance-current-value">
+                <span className="adjust-balance-label">
+                  {multiCurrency ? `Current ${currency} balance` : "Current Ledger Balance"}
+                </span>
+                <strong>{formatMoney(currentBalanceMinor, currency)}</strong>
+              </div>
+            ) : null}
           </div>
+
+          {multiCurrency && !adding && !adjustmentId && addable.length > 0 && (
+            <button
+              type="button"
+              className="button secondary compact adjust-balance-add-currency"
+              onClick={() => startAdding(true)}
+              disabled={adjustMutation.isPending}
+            >
+              <Plus size={15} aria-hidden="true" />
+              Add currency
+            </button>
+          )}
 
           {adjustmentId ? (
             <div className="adjust-balance-success-state" role="status">
@@ -296,7 +353,7 @@ export function AdjustBalanceModal({
               className="adjust-balance-form"
             >
               <label className="adjust-balance-field">
-                <span>New actual balance</span>
+                <span>{adding ? "Opening balance" : "New actual balance"}</span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -312,7 +369,7 @@ export function AdjustBalanceModal({
                 />
               </label>
 
-              {preview && preview.kind ? (
+              {currency && preview && preview.kind ? (
                 <div className="adjust-balance-preview">
                   <div className="adjust-balance-preview-row">
                     <span>Preview</span>
@@ -361,17 +418,25 @@ export function AdjustBalanceModal({
                 <button
                   type="button"
                   className="button secondary"
-                  onClick={onClose}
+                  onClick={() => {
+                    if (!adding) return onClose();
+                    startAdding(false);
+                    newBalanceRef.current?.focus();
+                  }}
                   disabled={adjustMutation.isPending}
                 >
-                  Cancel
+                  {adding ? "Back" : "Cancel"}
                 </button>
                 <button
                   type="submit"
                   className="button primary"
                   disabled={!hasChanges || adjustMutation.isPending}
                 >
-                  {adjustMutation.isPending ? "Saving…" : "Save adjustment"}
+                  {adjustMutation.isPending
+                    ? "Saving…"
+                    : adding
+                      ? `Add ${currency ?? "currency"} balance`
+                      : "Save adjustment"}
                 </button>
               </div>
             </form>
