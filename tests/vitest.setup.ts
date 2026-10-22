@@ -1,3 +1,5 @@
+import { afterEach } from "vitest";
+
 if (typeof window !== "undefined") {
   const storeMap = new WeakMap<Storage, Map<string, string>>();
 
@@ -88,5 +90,16 @@ if (typeof window !== "undefined") {
     value: sessionStorageInstance,
     configurable: true,
     writable: true,
+  });
+}
+
+// jsdom keeps one cookie jar for the whole file, so a consent cookie set by one test
+// would otherwise decide for the next.
+if (typeof document !== "undefined") {
+  afterEach(() => {
+    for (const part of document.cookie.split(";")) {
+      const name = part.split("=")[0]?.trim();
+      if (name) document.cookie = `${name}=; Max-Age=0; Path=/`;
+    }
   });
 }

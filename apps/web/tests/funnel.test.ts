@@ -27,7 +27,8 @@ import {
   type FunnelEventProperties,
 } from "../src/analytics/funnel";
 import { resetPostHogForTests } from "../src/analytics/PostHogAnalytics";
-import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
+import { createConsentRecord } from "@zoption/web-common/consent";
+import { persistConsentRecord } from "@zoption/web-common/consent-storage";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
 
@@ -77,12 +78,12 @@ const EVENT_ENTRIES = Object.entries(EVENT_PROPERTIES) as Array<
   [FunnelEventName, FunnelEventProperties[FunnelEventName]]
 >;
 
-/** The funnel is gated on the stored analytics preference, so every case starts from a decision. */
+/**
+ * The funnel is gated on the stored analytics preference, so every case starts from a
+ * decision, saved the way the public site saves it: the shared consent cookie.
+ */
 function storeAnalyticsConsent(analytics: boolean) {
-  localStorage.setItem(
-    CONSENT_STORAGE_KEY,
-    JSON.stringify(createConsentRecord({ analytics, marketing: false }, "custom")),
-  );
+  persistConsentRecord(createConsentRecord({ analytics, marketing: false }, "custom"));
 }
 
 beforeEach(() => {

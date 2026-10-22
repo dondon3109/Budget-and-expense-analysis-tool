@@ -20,7 +20,7 @@ beforeEach(() => {
 });
 
 describe("consent storage", () => {
-  it("round-trips a current versioned record", () => {
+  it("round-trips a current versioned record through the consent cookie", () => {
     const record = createConsentRecord(
       { analytics: true, marketing: false },
       "custom",
@@ -28,6 +28,20 @@ describe("consent storage", () => {
     );
 
     expect(persistConsentRecord(record)).toBe(true);
+    expect(document.cookie).toContain(`${CONSENT_STORAGE_KEY}=`);
+    expect(readConsentRecord()).toEqual(record);
+  });
+
+  it("moves a decision stored before the cookie into it and drops the old copy", () => {
+    const record = createConsentRecord(
+      { analytics: true, marketing: true },
+      "accept_all",
+      "2026-10-18T09:00:00.000Z",
+    );
+    window.localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(record));
+
+    expect(readConsentRecord()).toEqual(record);
+    expect(window.localStorage.getItem(CONSENT_STORAGE_KEY)).toBeNull();
     expect(readConsentRecord()).toEqual(record);
   });
 
@@ -64,7 +78,7 @@ describe("consent storage", () => {
       }),
     ],
   ])("fails closed for %s", (_label, value) => {
-    window.localStorage.setItem(CONSENT_STORAGE_KEY, value);
+    document.cookie = `${CONSENT_STORAGE_KEY}=${encodeURIComponent(value)}; Path=/`;
 
     expect(readConsentRecord()).toBeNull();
   });
@@ -77,10 +91,8 @@ describe("consent storage", () => {
     expect(readConsentRecord()).toBeNull();
   });
 
-  it("reports persistence failure without throwing", () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("Storage unavailable");
-    });
+  it("reports a refused cookie without throwing", () => {
+    vi.spyOn(Document.prototype, "cookie", "set").mockImplementation(() => {});
 
     expect(
       persistConsentRecord(
