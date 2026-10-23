@@ -1,5 +1,7 @@
 import {
   assistantReplyDrafts,
+  assistantSkillForMessage,
+  type AssistantSkillId,
   type AssistantCompliancePosture,
   type AssistantComplianceTopic,
   type AssistantDateRange,
@@ -10,6 +12,7 @@ import {
 import type { AssistantHistoryMessage } from "../db/assistant";
 import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
+import { ASSISTANT_SKILL_PLANS } from "./skills";
 
 /** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
 export const ASSISTANT_PROMPT_VERSION = "expert-v8";
@@ -40,6 +43,8 @@ export interface AssistantTurnPolicy {
   requiredToolGroups: RequiredToolGroup[];
   /** The user is creating, changing, or deleting a subscription, goal, or debt. */
   actionFlow?: boolean;
+  /** A built-in skill: its groups are read before the first provider call. */
+  skill?: AssistantSkillId;
   deterministicResponse?: string;
   disclaimer?: {
     text: string;
@@ -322,6 +327,28 @@ export function createAssistantTurnPolicy(input: {
         ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
         : {}),
     };
+  }
+
+  const skill = assistantSkillForMessage(input.message);
+  if (skill) {
+    const plan = ASSISTANT_SKILL_PLANS[skill.id];
+    const period = plan.period
+      ? resolveAssistantPeriod([], plan.period, input.currentDate, input.transactionBounds, true)
+      : {};
+    const base: AssistantTurnPolicy = {
+      currentDate: input.currentDate,
+      timeZone: input.timeZone,
+      compliance: { posture: compliance.posture, topics: compliance.topics },
+      requiredToolGroups: plan.groups,
+      skill: skill.id,
+    };
+    // A workspace with no records in the period gets the same deterministic reply a typed
+    // question would.
+    const deterministic = period.clarification ?? period.deterministicResponse;
+    if (deterministic) {
+      return { ...base, requiredToolGroups: [], deterministicResponse: deterministic };
+    }
+    return { ...base, ...(period.period ? { resolvedPeriod: period.period } : {}) };
   }
 
   if (

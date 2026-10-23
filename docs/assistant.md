@@ -103,6 +103,12 @@ There is no SQL, D1, arbitrary HTTP, environment, credential, secret, or import 
 
 `list_transactions` reads exactly the trusted period when one resolved. With no period it may read only the undated newest-first page, so "show my recent transactions" is answerable while the model still cannot pick its own date window.
 
+## Built-in skills
+
+The chat's starter chips include one-tap check-ups defined in `packages/shared/src/assistantSkills.ts`: Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up. A chip sends its prompt as an ordinary message. When the turn policy sees a skill's exact prompt (ignoring case, spacing, and end punctuation), it skips text classification and uses the skill's plan in `apps/api/src/assistant/skills.ts`: fixed required tool groups and, for period-based skills, "this month" or "last month" resolved like the user's own words, so a skill never asks which month.
+
+The Worker reads a skill's groups before the first provider call and hands them to the model as tool results, so a skill answers in one provider call instead of a lookup round and an answer round. The skill's guidance goes in the turn context, not the shared rules, so it never breaks the cached prefix. A skill keeps every other rule: compliance classification runs first, answers are still validated against the tool results, and the model may still call further tools. Every skill group must have a backend read (`TOOL_FOR_GROUP` in `answer-validation.ts`), so payoff and savings projections, which need the user's inputs, are not skills.
+
 ## Logging transactions
 
 A message that asks to log something ("log my lunch", "pa-record ng gastos ko") or states spending with a figure or a place ("I spent 250 at Jollibee", "300 na lang natira sa GCash ko") gets the `transaction_entry` tool group instead of the reporting groups, so it never triggers a "which month?" clarification. A stated day is passed along as context. Replies in that flow carry `transactionEntry: true` in their metadata, and the next short answer continues the flow. It ends once the draft is saved, and a follow-up that asks for other records, asks for an explanation, or touches a regulated topic leaves it. Entry turns keep the classified compliance posture and disclaimer.

@@ -416,6 +416,9 @@ export function createAssistantOrchestrator(
       };
 
       try {
+        // A skill's reads are fixed, so the backend makes them up front and the model can
+        // answer in its first call instead of spending one asking for them.
+        if (policy.skill) await closeRequiredGroups(policy.requiredToolGroups);
         for (let invocation = 0; invocation < MAX_PROVIDER_CALLS; invocation += 1) {
           let missingRequiredGroups = policy.requiredToolGroups.filter(
             (group) => !satisfiedGroups.has(group),

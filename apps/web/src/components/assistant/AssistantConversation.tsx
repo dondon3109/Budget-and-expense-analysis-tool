@@ -1,11 +1,13 @@
 import {
   assistantActionSchema,
   assistantReplyDrafts,
+  assistantSkills,
   assistantTransactionDraftSchema,
   goalConfigFor,
   otherCurrenciesWithAmounts,
 } from "@zoption/shared";
 import type {
+  AssistantSkillId,
   Currency,
   PrimaryGoal,
   AssistantMessage,
@@ -34,36 +36,21 @@ import { renderInlineEmphasis } from "../chat/renderInlineEmphasis";
 import { AssistantActionCard } from "./AssistantActionCard";
 import "./AssistantTransactionDraft.css";
 
+const SKILL_ICONS: Record<AssistantSkillId, typeof Scale> = {
+  monthly_checkin: TrendingUp,
+  last_month_review: Scale,
+  bills_due: ReceiptText,
+  find_savings: PiggyBank,
+  goals_checkup: Sparkles,
+};
+
+// The built-in skills lead; the Worker runs a skill's fixed reads when it sees its prompt.
 const QUICK_PROMPTS: { prompt: string; title: string; icon: typeof Scale }[] = [
-  {
-    prompt: "How much did I spend this month?",
-    title: "Where did my money go?",
-    icon: TrendingUp,
-  },
-  {
-    prompt: "Why did I overspend last month?",
-    title: "What pushed me over budget?",
-    icon: Scale,
-  },
-  {
-    prompt: "Which debt should I pay first?",
-    title: "Which debt should I pay first?",
-    icon: PiggyBank,
-  },
-  {
-    prompt: "How much should I save monthly for my goal?",
-    title: "How much should I save each month?",
-    icon: Sparkles,
-  },
+  ...assistantSkills.map(({ id, prompt, title }) => ({ prompt, title, icon: SKILL_ICONS[id] })),
   {
     prompt: "Help me log an expense",
     title: "Log what I just spent",
     icon: NotebookPen,
-  },
-  {
-    prompt: "I only know how much is left in my wallet. Help me log my spending.",
-    title: "I only know what's left",
-    icon: ReceiptText,
   },
 ];
 

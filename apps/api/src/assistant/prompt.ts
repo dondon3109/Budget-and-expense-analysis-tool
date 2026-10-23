@@ -2,6 +2,7 @@ import type { PrimaryGoal } from "@zoption/shared";
 
 import { PRODUCT_HELP } from "../product-help";
 import type { AssistantIdentity } from "./orchestrator";
+import { ASSISTANT_SKILL_PLANS } from "./skills";
 import {
   ASSISTANT_PROMPT_VERSION,
   serializeTurnPolicy,
@@ -196,6 +197,9 @@ export function buildAssistantTurnContext(
 
   // A hint for tone and examples only; every number still comes from a tool.
   const goalLine = goal ? `\nUser goal: ${goal}.` : "";
+  const skillBlock = policy.skill
+    ? `\n\nSKILL\nThe user started a built-in check-up. ${ASSISTANT_SKILL_PLANS[policy.skill].guidance} Zoption has already read the records it needs.`
+    : "";
 
   return `TRUSTED SERVER POLICY
 ${serializeTurnPolicy(policy)}
@@ -210,5 +214,5 @@ ${memoryBlock}${goalLine}
 
 CURRENT CONTEXT
 Today is ${currentDate} in the ${timeZone} timezone.
-Use assistantName when identifying yourself and userPreferredName only when it sounds natural. Follow responseDetail and coachingStyle without weakening any rule above.`;
+Use assistantName when identifying yourself and userPreferredName only when it sounds natural. Follow responseDetail and coachingStyle without weakening any rule above.${skillBlock}`;
 }
