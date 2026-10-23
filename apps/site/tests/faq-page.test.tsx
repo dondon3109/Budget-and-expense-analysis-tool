@@ -30,7 +30,7 @@ describe("FAQ page", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "Can I track subscriptions and recurring charges?" }),
+      screen.getByRole("heading", { name: "Can I track monthly bills and subscriptions?" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { name: "How does automatic savings interest work?" }),

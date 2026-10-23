@@ -525,8 +525,8 @@ export function LandingPage({
               <span className="step-n">03</span>
               <h3>Decide what&rsquo;s next</h3>
               <p>
-                Budgets, subscriptions, savings interest, and an assistant — all pointing at the
-                same monthly view, ready for one next move.
+                Budgets, bills, savings interest, and an assistant — all pointing at the same
+                monthly view, ready for one next move.
               </p>
             </article>
           </div>
@@ -587,9 +587,9 @@ export function LandingPage({
               <p className="faq-answer">
                 The assistant answers questions about your real numbers with grounded evidence and
                 verified mathematical calculations. It operates only with your explicit consent. It
-                can also log transactions and prepare changes to your subscriptions, goals, debts,
-                accounts, categories, budgets, and existing transactions, but nothing is applied
-                until you tap Save or Confirm.
+                can also log transactions and prepare changes to your bills, goals, debts, accounts,
+                categories, budgets, and existing transactions, but nothing is applied until you tap
+                Save or Confirm.
               </p>
             </details>
             <details className="faq-item">
