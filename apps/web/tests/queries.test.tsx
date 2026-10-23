@@ -56,6 +56,7 @@ describe("query invalidation helpers", () => {
         queryKeys.accounts(workspace),
         queryKeys.allTransactions(workspace),
         queryKeys.dashboard(workspace),
+        queryKeys.allSubscriptions(workspace),
       ],
     ],
     [
@@ -66,6 +67,7 @@ describe("query invalidation helpers", () => {
         queryKeys.accounts(workspace),
         queryKeys.dashboard(workspace),
         queryKeys.debts(workspace),
+        queryKeys.allSubscriptions(workspace),
       ],
     ],
     [

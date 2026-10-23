@@ -437,6 +437,73 @@ describe("subscription renewals", () => {
     ).toEqual({ date: "2026-10-25" });
   });
 
+  it("charges a held-back subscription as soon as a write tops up its account", async () => {
+    const { env, database } = renewalEnvironment();
+    dueSubscription(database, 60_000);
+    database.exec(`
+      UPDATE subscriptions SET next_billing_date = '2026-08-25',
+        renewal_blocked_reason = 'insufficient_balance' WHERE id = 'subscription-1';
+      INSERT INTO tenants (id, kind, name) VALUES ('tenant-2', 'user', 'Two');
+      INSERT INTO accounts (id, tenant_id, name, type) VALUES ('account-2', 'tenant-2', 'Bank', 'bank');
+      INSERT INTO categories (id, tenant_id, name, kind, color, required_plan)
+        VALUES ('category-2', 'tenant-2', 'Bills', 'expense', '#123456', 'free');
+      INSERT INTO transactions (
+        id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind
+      ) VALUES ('other-balance', 'tenant-2', 'account-2', 'category-2', '2026-08-01', 'Opening', 100000, 'PHP', 'income');
+      INSERT INTO subscriptions (
+        id, tenant_id, account_id, category_id, name, amount_minor, currency,
+        billing_cycle, next_billing_date, status
+      ) VALUES ('subscription-2', 'tenant-2', 'account-2', 'category-2', 'Other', 1000, 'PHP', 'monthly', '2026-09-25', 'active');
+    `);
+    const send = vi.fn(async () => undefined);
+    const service = createSubscriptionRenewalService(subscriptionRepository, {
+      sender: { send },
+      fetcher: recipientFetcher(),
+    });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-26T08:00:00+08:00"));
+
+    // Two cycles are due and the 1,000 balance covers only one: that one is charged, the other
+    // waits for the sweep, which owns the blocked state and its email.
+    await expect(service.settleTenantRenewals(env, "tenant-1")).resolves.toBe(1);
+    expect(send).not.toHaveBeenCalled();
+    expect(
+      database
+        .prepare(
+          "SELECT next_billing_date AS date, renewal_blocked_reason AS reason FROM subscriptions WHERE id = 'subscription-1'",
+        )
+        .get(),
+    ).toEqual({ date: "2026-09-25", reason: null });
+
+    database.exec(
+      `INSERT INTO transactions (
+         id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind
+       ) VALUES ('top-up', 'tenant-1', 'account-1', 'category-1', '2026-09-26', 'Balance adjustment', 50000, 'PHP', 'income')`,
+    );
+    await expect(service.settleTenantRenewals(env, "tenant-1")).resolves.toBe(1);
+    expect(
+      database
+        .prepare(
+          "SELECT date, amount_minor AS amountMinor FROM transactions WHERE tenant_id = 'tenant-1' AND description = 'Rent' ORDER BY date",
+        )
+        .all(),
+    ).toEqual([
+      { date: "2026-08-25", amountMinor: -60_000 },
+      { date: "2026-09-25", amountMinor: -60_000 },
+    ]);
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-1'")
+        .get(),
+    ).toEqual({ date: "2026-10-25" });
+    // Another tenant's due subscription is left to the sweep.
+    expect(
+      database
+        .prepare("SELECT next_billing_date AS date FROM subscriptions WHERE id = 'subscription-2'")
+        .get(),
+    ).toEqual({ date: "2026-09-25" });
+  });
+
   it("states a dollar plan's missed renewal in dollars, as it was when queued", async () => {
     const { env, database } = renewalEnvironment();
     dueSubscription(database, 1_500);

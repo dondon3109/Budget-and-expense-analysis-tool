@@ -4,8 +4,12 @@ import "@testing-library/jest-dom/vitest";
 
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { CONSENT_POLICY_VERSION, CONSENT_STORAGE_KEY } from "@zoption/web-common/consent";
-import { readConsentRecord } from "@zoption/web-common/consent-storage";
+import {
+  CONSENT_POLICY_VERSION,
+  CONSENT_STORAGE_KEY,
+  createConsentRecord,
+} from "@zoption/web-common/consent";
+import { persistConsentRecord, readConsentRecord } from "@zoption/web-common/consent-storage";
 import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -122,6 +126,17 @@ describe("cookie consent", () => {
     expect(readConsentRecord()?.preferences).toEqual({ analytics: true, marketing: false });
     expect(readConsentRecord()?.source).toBe("custom");
     expect(document.querySelector("dialog")).not.toHaveAttribute("open");
+  });
+
+  it("hides the banner when the app records a decision while this tab is in the background", () => {
+    render(<CookieConsent />);
+    setupConsent();
+    expect(document.querySelector("[data-consent-banner]")).toBeVisible();
+
+    persistConsentRecord(createConsentRecord({ analytics: true, marketing: false }, "custom"));
+    window.dispatchEvent(new Event("focus"));
+
+    expect(document.querySelector("[data-consent-banner]")).not.toBeVisible();
   });
 
   it("keeps the banner hidden once this browser has decided", () => {

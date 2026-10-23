@@ -35,6 +35,8 @@ export function invalidateAfterTransactionWrite(
     queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(workspace) }),
     // A saved debt payment moves the linked debt's balance, so the planning page reads it fresh.
     queryClient.invalidateQueries({ queryKey: queryKeys.debts(workspace) }),
+    // A balance that now covers a held-back subscription charges it during the same write.
+    queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) }),
     // In a family it also moves the entry history, the deleted list, and the remittance card.
     ...(workspace.familyId
       ? [queryClient.invalidateQueries({ queryKey: queryKeys.family(workspace) })]

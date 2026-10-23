@@ -16,13 +16,18 @@ import { HttpError } from "../errors";
 import type { FamilyAlerts } from "../family-alerts";
 import type { FamilyNotifier } from "../family-notifier";
 import { parseInput, readJson } from "../request";
+import type { SubscriptionRenewalService } from "../subscriptions/renewals";
 import type { AppEnvironment } from "../types";
 import { afterResponse } from "./remittances";
 
-/** `family` holds the hooks a push into a family runs, the same ones its REST routes run. */
+/**
+ * `family` holds the hooks a push into a family runs, the same ones its REST routes run.
+ * `renewals` charges a personal subscription held back for balance once a push covers it.
+ */
 export function createMobileSyncRoutes(
   repository: MobileSyncRepository,
   family: { journal: FamilyJournal; alerts: FamilyAlerts; notifier: FamilyNotifier },
+  renewals?: Pick<SubscriptionRenewalService, "settleTenantRenewals">,
 ) {
   const routes = new Hono<AppEnvironment>();
   const features = (context: { req: { header(name: string): string | undefined } }) =>
@@ -111,9 +116,18 @@ export function createMobileSyncRoutes(
             defer: (work: Promise<void>) => afterResponse(context, work),
           }
         : undefined;
-    return context.json(
-      await repository.push(context.env, tenant.tenantId, input, features(context), scope),
+    const result = await repository.push(
+      context.env,
+      tenant.tenantId,
+      input,
+      features(context),
+      scope,
     );
+    // Before the response, so the pull the app runs right after the push carries the charge.
+    if (renewals && !tenant.membership) {
+      await renewals.settleTenantRenewals(context.env, tenant.tenantId);
+    }
+    return context.json(result);
   });
 
   return routes;

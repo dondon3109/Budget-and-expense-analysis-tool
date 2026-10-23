@@ -213,10 +213,11 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/assistant", createAssistantRoutes(dependencies.assistantService));
   app.route(
     "/api/app/transactions",
-    createTransactionRoutes(dependencies.transactions, {
-      journal: dependencies.familyJournal,
-      alerts: dependencies.familyAlerts,
-    }),
+    createTransactionRoutes(
+      dependencies.transactions,
+      { journal: dependencies.familyJournal, alerts: dependencies.familyAlerts },
+      dependencies.subscriptionRenewals,
+    ),
   );
   app.route(
     "/api/app/reviews",
@@ -238,11 +239,15 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/entry", createAiEntryRoutes(dependencies.aiEntryService));
   app.route(
     "/api/app/sync",
-    createMobileSyncRoutes(dependencies.mobileSync, {
-      journal: dependencies.familyJournal,
-      alerts: dependencies.familyAlerts,
-      notifier: dependencies.familyNotifier,
-    }),
+    createMobileSyncRoutes(
+      dependencies.mobileSync,
+      {
+        journal: dependencies.familyJournal,
+        alerts: dependencies.familyAlerts,
+        notifier: dependencies.familyNotifier,
+      },
+      dependencies.subscriptionRenewals,
+    ),
   );
   app.route("/api/app/receipts", createReceiptRoutes(dependencies.receiptService));
   app.route("/api/app/shares", createShareLinkRoutes(dependencies.shareLinks));

@@ -16,6 +16,8 @@ import { createResendSender, ResendError } from "../resend";
 import type { Bindings, EmailSender } from "../types";
 
 const SWEEP_LIMIT = 100;
+/** Bounds one write's catch-up: each pass charges at most one overdue cycle per subscription. */
+const TENANT_SETTLE_PASSES = 12;
 const MANILA_OFFSET_MS = 8 * 60 * 60 * 1_000;
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -38,6 +40,7 @@ export interface SubscriptionRenewalSweepResult {
 
 export interface SubscriptionRenewalService {
   runDueRenewals(env: Bindings, limit?: number): Promise<SubscriptionRenewalSweepResult>;
+  settleTenantRenewals(env: Bindings, tenantId: string): Promise<number>;
   retryNotification(env: Bindings, notificationId: string): Promise<boolean>;
   retryPendingNotifications(
     env: Bindings,
@@ -263,6 +266,37 @@ export function createSubscriptionRenewalService(
         }
       }
       return result;
+    },
+
+    /**
+     * Charges the due cycles a balance change now covers, right after the write that changed it,
+     * so a top-up pays a held-back subscription without waiting for the sweep. A cycle that still
+     * cannot be charged is left to the sweep, which owns the blocked state and its one email.
+     * Never throws: the write that called it has already succeeded.
+     */
+    async settleTenantRenewals(env, tenantId) {
+      const today = manilaDate();
+      let charged = 0;
+      try {
+        for (let pass = 0; pass < TENANT_SETTLE_PASSES; pass += 1) {
+          const due = await repository.listDueRenewals(env, today, SWEEP_LIMIT, tenantId);
+          let progressed = false;
+          for (const renewal of due) {
+            const outcome = await settleRenewal(env, renewal);
+            if (outcome === "charged") charged += 1;
+            if (outcome === "charged" || outcome === "rolled") progressed = true;
+          }
+          if (!progressed) break;
+        }
+      } catch (error) {
+        console.error(
+          JSON.stringify({
+            message: "Subscription settlement after a balance change failed",
+            errorCode: error instanceof Error ? error.name : "unknown_error",
+          }),
+        );
+      }
+      return charged;
     },
 
     async retryNotification(env, notificationId) {
