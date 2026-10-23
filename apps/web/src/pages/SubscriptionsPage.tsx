@@ -289,20 +289,20 @@ export function SubscriptionsPage() {
         <header className="dashboard-header transaction-header">
           <div>
             <p className="eyebrow">Recurring costs</p>
-            <h1>Monthly subscriptions</h1>
+            <h1>Monthly bills</h1>
           </div>
           <div className="header-actions subscriptions-header-actions">
-            <MonthSelector label="Subscription month" value={month} onChange={setMonth} />
+            <MonthSelector label="Bill month" value={month} onChange={setMonth} />
             <button className="button primary" type="button" onClick={openForm}>
-              <Plus size={17} aria-hidden="true" /> Add a subscription
+              <Plus size={17} aria-hidden="true" /> Add a bill
             </button>
           </div>
         </header>
 
-        {subscriptionsQuery.isPending && <InlineLoader label="Loading your subscriptions" />}
+        {subscriptionsQuery.isPending && <InlineLoader label="Loading your bills" />}
         {subscriptionsQuery.isError && (
           <div className="table-status error" role="alert">
-            <strong>Subscriptions could not be loaded.</strong>
+            <strong>Bills could not be loaded.</strong>
             <span>{subscriptionsQuery.error.message}</span>
             <button type="button" onClick={() => void subscriptionsQuery.refetch()}>
               Try again
@@ -314,7 +314,7 @@ export function SubscriptionsPage() {
           <>
             <section
               className="subscription-summary"
-              aria-label={`${formatFullMonth(month)} subscription summary`}
+              aria-label={`${formatFullMonth(month)} bill summary`}
             >
               <MetricCard
                 label="Total monthly cost"
@@ -329,15 +329,11 @@ export function SubscriptionsPage() {
               <div className="transactions-panel-heading">
                 <div>
                   <strong>
-                    {data.items.length} subscription{data.items.length === 1 ? "" : "s"}
+                    {data.items.length} bill{data.items.length === 1 ? "" : "s"}
                   </strong>
                 </div>
                 <div className="subscriptions-panel-actions">
-                  <div
-                    className="subscriptions-view-toggle"
-                    role="group"
-                    aria-label="Subscriptions view"
-                  >
+                  <div className="subscriptions-view-toggle" role="group" aria-label="Bills view">
                     <button
                       className={`view-toggle-button ${viewMode === "table" ? "active" : ""}`}
                       type="button"
@@ -353,10 +349,10 @@ export function SubscriptionsPage() {
                       type="button"
                       onClick={() => selectView("calendar")}
                       aria-pressed={viewMode === "calendar"}
-                      title="Visual Renewal Calendar"
+                      title="Bill calendar"
                     >
                       <CalendarDays size={14} aria-hidden="true" />
-                      <span>Renewal calendar</span>
+                      <span>Bill calendar</span>
                     </button>
                     <button
                       className={`view-toggle-button ${viewMode === "forecast" ? "active" : ""}`}
@@ -399,11 +395,11 @@ export function SubscriptionsPage() {
                   <p className="eyebrow">A clean starting point</p>
                   <strong>Start with your recurring charges</strong>
                   <p>
-                    Add the services and memberships you pay for, and Zoption will show their
-                    monthly cost in one place.
+                    Add utilities, internet, rent, and the services you pay for, and Zoption will
+                    show their monthly cost in one place.
                   </p>
                   <button className="button primary" type="button" onClick={openForm}>
-                    <Plus size={16} aria-hidden="true" /> Add a subscription
+                    <Plus size={16} aria-hidden="true" /> Add a bill
                   </button>
                 </div>
               ) : viewMode === "calendar" ? (
@@ -446,8 +442,8 @@ export function SubscriptionsPage() {
       {subscriptionToDelete && (
         <ConfirmDialog
           title={`Delete “${subscriptionToDelete.name}”?`}
-          consequence="This permanently removes the subscription and its renewal reminders. Transactions you already recorded stay in your history. This cannot be undone."
-          confirmLabel="Delete subscription"
+          consequence="This permanently removes the bill and its due date reminders. Transactions you already recorded stay in your history. This cannot be undone."
+          confirmLabel="Delete bill"
           busyLabel="Deleting…"
           busy={deleteMutation.isPending}
           error={deleteMutation.error?.message}

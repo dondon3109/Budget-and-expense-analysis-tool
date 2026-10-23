@@ -297,8 +297,8 @@ describe("Import auto-detection of recurring charges", () => {
     expect(screen.getByText("Netflix", { selector: ".suggestion-merchant" })).toBeInTheDocument();
     expect(screen.getByText(/Monthly billing/i)).toBeInTheDocument();
     expect(screen.getByText(/3 times in 3 months/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Track as subscription/i })).toBeInTheDocument();
-    expect(screen.getAllByText(/Renewal Calendar/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: /Track as bill/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Bill calendar/).length).toBeGreaterThan(0);
   });
 
   it("does not show banner for non-recurring single row", async () => {
@@ -372,7 +372,7 @@ describe("Import auto-detection of recurring charges", () => {
     ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("bank.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
-    const trackButton = await screen.findByRole("button", { name: /Track as subscription/i });
+    const trackButton = await screen.findByRole("button", { name: /Track as bill/i });
     await waitFor(() => expect(trackButton).toBeEnabled());
 
     await user.click(trackButton);
@@ -381,7 +381,7 @@ describe("Import auto-detection of recurring charges", () => {
     expect(within(dialog).getByDisplayValue("Netflix")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Amount")).toHaveValue("549");
 
-    await user.click(screen.getByRole("button", { name: "Add subscription" }));
+    await user.click(screen.getByRole("button", { name: "Add bill" }));
     await waitFor(() =>
       expect(createSubscription).toHaveBeenCalledWith(
         expect.any(Object),
@@ -389,7 +389,7 @@ describe("Import auto-detection of recurring charges", () => {
       ),
     );
     await waitFor(() =>
-      expect(screen.getByText(/is now tracked as an active subscription/)).toBeInTheDocument(),
+      expect(screen.getByText(/is now tracked as a recurring bill/)).toBeInTheDocument(),
     );
   });
 
@@ -405,7 +405,7 @@ describe("Import auto-detection of recurring charges", () => {
     ].join("\n");
     await user.upload(fileInput(container), fileWithBuffer("bank.csv", csv, "text/csv"));
     await user.click(screen.getByRole("button", { name: "Preview import" }));
-    await screen.findByRole("button", { name: /Track as subscription/i });
+    await screen.findByRole("button", { name: /Track as bill/i });
 
     await user.click(screen.getByRole("button", { name: "Dismiss Netflix" }));
     expect(

@@ -12,7 +12,7 @@ import { withTapSound } from "@/features/sounds/sound-effects";
 const VISIBLE_ROWS = 4;
 
 // Active subscriptions, soonest renewal first. The full list, with canceled
-// and paused ones, lives on the Subscriptions screen behind "View all".
+// and paused ones, lives on the Bills screen behind "View all".
 export function SubscriptionsSection({
   subscriptions,
 }: {
@@ -26,10 +26,10 @@ export function SubscriptionsSection({
   if (upcoming.length === 0) return null;
 
   return (
-    <View accessibilityLabel="Subscriptions" style={{ gap: spacing.xs }}>
+    <View accessibilityLabel="Bills" style={{ gap: spacing.xs }}>
       <SectionHeader
-        title="Subscriptions"
-        actionLabel="View all subscriptions"
+        title="Bills"
+        actionLabel="View all bills"
         onAction={() => router.push("/(app)/subscriptions")}
       />
       <View>

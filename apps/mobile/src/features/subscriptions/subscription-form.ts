@@ -69,7 +69,7 @@ export function parseSubscriptionForm(values: SubscriptionFormValues):
   const errors: SubscriptionFormErrors = {};
   const name = values.name.trim();
   if (!name) {
-    errors.name = "Give this subscription a name.";
+    errors.name = "Give this bill a name.";
   } else if (name.length > 120) {
     errors.name = "Keep the name under 120 characters.";
   }
@@ -84,11 +84,11 @@ export function parseSubscriptionForm(values: SubscriptionFormValues):
   }
 
   if (!values.categoryId) {
-    errors.categoryId = "Choose an expense category for this subscription.";
+    errors.categoryId = "Choose an expense category for this bill.";
   }
 
   if (!values.accountId) {
-    errors.accountId = "Choose the account this subscription is charged to.";
+    errors.accountId = "Choose the account this bill is charged to.";
   }
 
   if (Object.keys(errors).length > 0) return { success: false, errors };

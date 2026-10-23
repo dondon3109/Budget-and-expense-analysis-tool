@@ -429,7 +429,7 @@ describe("CalendarPage month views", () => {
     renderPage();
 
     const list = await screen.findByRole("list", {
-      name: /Subscriptions to pay for July 2026–August 2026/i,
+      name: /Bills to pay for July 2026–August 2026/i,
     });
     const rows = Array.from(list.querySelectorAll("button"));
     expect(rows.map((row) => row.textContent)).toEqual([
@@ -486,6 +486,6 @@ describe("CalendarPage month views", () => {
     expect(
       await screen.findByRole("button", { name: /Current subscription.*, due/i }),
     ).toBeVisible();
-    expect(screen.getByText("Some subscription due dates could not be loaded.")).toBeVisible();
+    expect(screen.getByText("Some bill due dates could not be loaded.")).toBeVisible();
   });
 });

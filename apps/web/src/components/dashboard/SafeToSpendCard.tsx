@@ -33,9 +33,9 @@ function guidanceText(
   activeBillCount: number,
   hasBasis: boolean,
 ): string {
-  if (renewalLookup === "pending") return "Checking your renewals, so this figure may still fall.";
+  if (renewalLookup === "pending") return "Checking your bills, so this figure may still fall.";
   if (renewalLookup === "error") {
-    return "Renewals could not be loaded, so this figure may be optimistic.";
+    return "Bills could not be loaded, so this figure may be optimistic.";
   }
   if (safeAmountMinor <= 0) {
     if (!hasBasis) return "Add your balance or a first transaction to see what's safe to spend.";
@@ -98,7 +98,7 @@ export function SafeToSpendCard({
           </span>
           <Link className="safe-to-spend-renewals" to="/app/subscriptions?view=forecast">
             <CalendarClock size={13} aria-hidden="true" />
-            Renewals
+            Bills
           </Link>
         </div>
       </div>

@@ -145,7 +145,7 @@ describe("SubscriptionsPage", () => {
     renderPage();
 
     expect(
-      await screen.findByText("Jun 25, 2026 not renewed: not enough balance"),
+      await screen.findByText("Jun 25, 2026 not paid: not enough balance"),
     ).toBeInTheDocument();
   });
 
@@ -166,9 +166,7 @@ describe("SubscriptionsPage", () => {
     });
     renderPage();
 
-    expect(
-      await screen.findByText("Jul 25, 2026 not renewed: account removed"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Jul 25, 2026 not paid: account removed")).toBeInTheDocument();
   });
 
   it("renders the summary and exact five-column subscription table", async () => {
@@ -182,9 +180,7 @@ describe("SubscriptionsPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(
-      await screen.findByRole("heading", { name: "Monthly subscriptions" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Monthly bills" })).toBeInTheDocument();
     expect(await screen.findByText("Total monthly cost")).toBeInTheDocument();
     expect(screen.getAllByText("₱199")).toHaveLength(2);
     expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
@@ -224,7 +220,7 @@ describe("SubscriptionsPage", () => {
     });
     renderPage();
 
-    const table = await screen.findByRole("table", { name: "Subscription renewals" });
+    const table = await screen.findByRole("table", { name: "Recurring bills" });
     const headers = within(table).getAllByRole("columnheader");
     expect(headers.map((header) => header.textContent)).toEqual([
       "Name",
@@ -251,8 +247,8 @@ describe("SubscriptionsPage", () => {
 
     expect(await screen.findByText("A clean starting point")).toBeInTheDocument();
     expect(screen.getByText("Start with your recurring charges")).toBeInTheDocument();
-    await user.click(screen.getAllByRole("button", { name: "Add a subscription" })[1]!);
-    expect(screen.getByRole("dialog", { name: "Add subscription" })).toBeInTheDocument();
+    await user.click(screen.getAllByRole("button", { name: "Add a bill" })[1]!);
+    expect(screen.getByRole("dialog", { name: "Add bill" })).toBeInTheDocument();
   });
 
   it("renders the cashflow forecast even when there are no subscriptions", async () => {
@@ -295,7 +291,7 @@ describe("SubscriptionsPage", () => {
     renderPage();
 
     await user.click(await screen.findByRole("button", { name: "Edit Music streaming" }));
-    const dialog = screen.getByRole("dialog", { name: "Edit subscription" });
+    const dialog = screen.getByRole("dialog", { name: "Edit bill" });
     expect(dialog).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Music streaming");
     expect(screen.getByLabelText("Amount")).toHaveValue("199");
@@ -334,7 +330,7 @@ describe("SubscriptionsPage", () => {
     expect(within(dialog).getByText(/cannot be undone/i)).toBeInTheDocument();
     expect(deleteSubscription).not.toHaveBeenCalled();
 
-    await user.click(within(dialog).getByRole("button", { name: "Delete subscription" }));
+    await user.click(within(dialog).getByRole("button", { name: "Delete bill" }));
 
     await waitFor(() =>
       expect(deleteSubscription).toHaveBeenCalledWith(
@@ -382,8 +378,8 @@ describe("SubscriptionsPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(await screen.findByRole("button", { name: "Renewal calendar" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Renewal calendar" }));
+    expect(await screen.findByRole("button", { name: "Bill calendar" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Bill calendar" }));
 
     // Verify Cash-flow impact summary
     expect(screen.getByText("Total outflow this month")).toBeInTheDocument();
@@ -391,10 +387,8 @@ describe("SubscriptionsPage", () => {
     expect(screen.getByText("Remaining to be paid")).toBeInTheDocument();
 
     // Verify Calendar Grid
-    expect(
-      screen.getByRole("heading", { level: 3, name: "Renewal Calendar Grid" }),
-    ).toBeInTheDocument();
-    const renewalGrid = screen.getByRole("grid", { name: /^Renewals in/ });
+    expect(screen.getByRole("heading", { level: 3, name: "Bill Calendar" })).toBeInTheDocument();
+    const renewalGrid = screen.getByRole("grid", { name: /^Bills due in/ });
     // The defect this pins: the weekday headers and day cells sat directly under the grid with no
     // role="row" between them, the same invalid structure the main calendar had.
     expect(
@@ -428,7 +422,7 @@ describe("SubscriptionsPage", () => {
 
     // Click edit in timeline
     await user.click(screen.getByRole("button", { name: "Edit Music streaming" }));
-    expect(screen.getByRole("dialog", { name: "Edit subscription" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Edit bill" })).toBeInTheDocument();
   });
 
   it("switches to the cashflow forecast view and displays projection controls", async () => {
@@ -479,7 +473,7 @@ describe("SubscriptionsPage", () => {
     });
     renderPage(["/app/subscriptions?view=timeline"]);
 
-    expect(await screen.findByRole("table", { name: "Subscription renewals" })).toBeInTheDocument();
+    expect(await screen.findByRole("table", { name: "Recurring bills" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Table" })).toHaveAttribute("aria-pressed", "true");
   });
 
@@ -493,7 +487,7 @@ describe("SubscriptionsPage", () => {
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(await screen.findByRole("button", { name: "Renewal calendar" }));
+    await user.click(await screen.findByRole("button", { name: "Bill calendar" }));
     expect(currentLocation()).toBe("/app/subscriptions?view=calendar");
 
     await user.click(screen.getByRole("button", { name: "Cashflow Forecast" }));
@@ -517,7 +511,7 @@ describe("SubscriptionsPage", () => {
     renderPage(["/app/subscriptions?view=calendar"]);
 
     expect(await screen.findByText("Start with your recurring charges")).toBeInTheDocument();
-    expect(screen.queryByRole("grid", { name: /^Renewals in/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("grid", { name: /^Bills due in/ })).not.toBeInTheDocument();
   });
 
   it("renders the forecast from a deep link even when the month has no subscriptions", async () => {
