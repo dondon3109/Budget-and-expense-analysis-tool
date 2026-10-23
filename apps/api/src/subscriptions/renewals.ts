@@ -94,17 +94,15 @@ function notificationMessage(
   const link = subscriptionsUrl(env);
   const archived = notification.reason === "account_archived";
   const subject = archived
-    ? `Your ${name} subscription needs a different account`
-    : `Your ${name} subscription could not be renewed`;
+    ? `Your ${name} bill needs a different account`
+    : `Your ${name} bill could not be paid`;
   const why = archived
-    ? `${account} was removed from your accounts, so no expense was recorded and your balance is unchanged. Choose the account this subscription should be paid from, or restore ${account}, and the charge is recorded on the next attempt.`
+    ? `${account} was removed from your accounts, so no expense was recorded and your balance is unchanged. Choose the account this bill should be paid from, or restore ${account}, and the charge is recorded on the next attempt.`
     : `${account} does not have enough balance to cover this charge, so no expense was recorded and your balance is unchanged. Zoption will try again every day and record the charge as soon as the account can cover it.`;
-  const action = archived
-    ? "Choose a payment account"
-    : "Top up the account or change the subscription";
-  const heading = archived ? `${name} needs a different account` : `${name} could not be renewed`;
+  const action = archived ? "Choose a payment account" : "Top up the account or change the bill";
+  const heading = archived ? `${name} needs a different account` : `${name} could not be paid`;
   const text = [
-    `Zoption could not renew your ${name} subscription.`,
+    `Zoption could not pay your ${name} bill.`,
     "",
     `Amount: ${amount}`,
     `Account: ${account}`,
@@ -113,7 +111,7 @@ function notificationMessage(
     why,
     "",
     ...(link ? [`${action}: ${link}`, ""] : []),
-    "This is the only reminder for this missed renewal.",
+    "This is the only reminder for this missed bill.",
   ].join("\n");
   const html = `<h1>${escapeHtml(heading)}</h1>
 <p><strong>Amount:</strong> ${escapeHtml(amount)}<br>
@@ -121,7 +119,7 @@ function notificationMessage(
 <strong>Due date:</strong> ${escapeHtml(dueDate)}</p>
 <p>${escapeHtml(why)}</p>
 ${link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(action)}</a></p>` : ""}
-<p>This is the only reminder for this missed renewal.</p>`;
+<p>This is the only reminder for this missed bill.</p>`;
   return { to: recipient, from: senderAddress(env), subject, text, html };
 }
 
