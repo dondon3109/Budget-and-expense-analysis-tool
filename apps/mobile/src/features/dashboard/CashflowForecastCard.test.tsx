@@ -112,7 +112,7 @@ describe("CashflowForecastCard", () => {
     const onViewSubscriptions = jest.fn();
     await render(<CashflowForecastCard {...baseProps} onViewSubscriptions={onViewSubscriptions} />);
 
-    await fireEvent.press(screen.getByRole("button", { name: "View subscriptions" }));
+    await fireEvent.press(screen.getByRole("button", { name: "View bills" }));
     expect(onViewSubscriptions).toHaveBeenCalledTimes(1);
   });
 

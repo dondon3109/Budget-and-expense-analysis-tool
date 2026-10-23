@@ -139,18 +139,18 @@ export function CashflowForecastCard({
             Cash flow forecast
           </Text>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Projected balance after upcoming bills and renewals.
+            Projected balance after upcoming bills.
           </Text>
         </View>
         {onViewSubscriptions ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="View subscriptions"
+            accessibilityLabel="View bills"
             onPress={withTapSound(onViewSubscriptions)}
             hitSlop={8}
           >
             <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
-              Subscriptions
+              Bills
             </Text>
           </Pressable>
         ) : null}

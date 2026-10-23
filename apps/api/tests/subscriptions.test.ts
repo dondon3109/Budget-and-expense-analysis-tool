@@ -391,7 +391,7 @@ describe("subscription renewals", () => {
     expect(sent[0]).toMatchObject({
       to: "don@example.com",
       from: { email: "hello@zoption.site", name: "Zoption" },
-      subject: "Your Rent subscription could not be renewed",
+      subject: "Your Rent bill could not be paid",
     });
     expect(sent[0]?.text).toContain("PHP 1,500.00");
     // The app reads this to say why the cycle is held back, so it has to be recorded.
@@ -551,7 +551,7 @@ describe("subscription renewals", () => {
       notified: 1,
     });
     expect(sent).toHaveLength(1);
-    expect(sent[0]?.subject).toBe("Your Rent subscription needs a different account");
+    expect(sent[0]?.subject).toBe("Your Rent bill needs a different account");
     expect(sent[0]?.text).toContain("was removed from your accounts");
     expect(database.prepare("SELECT count(*) AS count FROM transactions").get()).toEqual({
       count: 1,

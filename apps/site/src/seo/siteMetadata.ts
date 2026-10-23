@@ -177,9 +177,9 @@ const FAQ_ITEMS: FaqItem[] = [
       "The assistant is optional and requires separate, versioned consent. It answers questions about your workspace, reads only what you ask about, and explains the reasoning behind each answer. It can also act on your behalf: it logs a transaction from your past entries, and it can propose adding, editing, or removing a subscription, savings goal, debt, account, category, budget, or existing transaction. It prepares each change as a draft or proposal, and nothing is applied until you tap Save or Confirm.",
   },
   {
-    question: "Can I track subscriptions and recurring charges?",
+    question: "Can I track monthly bills and subscriptions?",
     answer:
-      "Yes. Log a subscription and Zoption records its next charge as an expense, so your balance reflects what's paid. You can also switch to the Visual Renewal Calendar Interface to view upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
+      "Yes. Log a bill, such as electricity, water, internet, or a streaming subscription, and Zoption records its next charge as an expense, so your balance reflects what's paid. You can also switch to the bill calendar to view upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
   },
   {
     question: "How does automatic savings interest work?",
@@ -218,7 +218,7 @@ function faqStructuredData(): StructuredDataGraph {
       "@id": `${SITE_ORIGIN}/faq#webpage`,
       name: "FAQ — Zoption",
       description:
-        "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.",
+        "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, bill tracking, savings interest, the AI assistant, privacy, and billing.",
       url: `${SITE_ORIGIN}/faq`,
       inLanguage: "en",
       dateModified: FAQ_LAST_MODIFIED,
@@ -296,8 +296,8 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-10-19";
-const PRICING_LAST_MODIFIED = "2026-10-19";
+const LANDING_LAST_MODIFIED = "2026-10-23";
+const PRICING_LAST_MODIFIED = "2026-10-23";
 const GUIDES_LAST_MODIFIED = "2026-10-17";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
@@ -329,8 +329,8 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
     isPartOf: { "@id": WEBSITE_ID },
   });
 }
-const FAQ_LAST_MODIFIED = "2026-10-07";
-const CHANGELOG_LAST_MODIFIED = "2026-10-20";
+const FAQ_LAST_MODIFIED = "2026-10-23";
+const CHANGELOG_LAST_MODIFIED = "2026-10-23";
 const TERMS_LAST_MODIFIED = "2026-10-19";
 const PRIVACY_LAST_MODIFIED = "2026-10-19";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-10-22";
@@ -339,7 +339,7 @@ const TOOLS_LAST_MODIFIED = "2026-09-29";
 // The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
 // SoftwareApplication nodes; this drives the page's <lastmod> and WebPage dateModified.
 const INSTALL_LAST_MODIFIED = "2026-09-30";
-const TUTORIALS_LAST_MODIFIED = "2026-09-30";
+const TUTORIALS_LAST_MODIFIED = "2026-10-23";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -557,7 +557,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/faq": {
     title: "FAQ — Zoption",
     description:
-      "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.",
+      "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, bill tracking, savings interest, the AI assistant, privacy, and billing.",
     canonical: `${SITE_ORIGIN}/faq`,
     robots: "index,follow",
     structuredData: faqStructuredData(),
@@ -583,7 +583,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/changelog": {
     title: "Changelog & Release Notes — Zoption",
     description:
-      "See what's new in Zoption: visual renewal calendar for subscriptions, voice expense entry, receipt scanning, transaction deduplication, Android Beta APK updates, and private budgeting tools.",
+      "See what's new in Zoption: a bill calendar for recurring bills, voice expense entry, receipt scanning, transaction deduplication, Android Beta APK updates, and private budgeting tools.",
     canonical: `${SITE_ORIGIN}/changelog`,
     robots: "index,follow",
     structuredData: changelogPageStructuredData(),
@@ -635,12 +635,12 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/tutorials": {
     title: "User Guides & Step-by-Step Tutorials — Zoption",
     description:
-      "Step-by-step guides on how to adjust account balances, use envelope budgeting, scan receipts, import bank CSV statements, and track subscriptions in Zoption.",
+      "Step-by-step guides on how to adjust account balances, use envelope budgeting, scan receipts, import bank CSV statements, and track bills in Zoption.",
     canonical: `${SITE_ORIGIN}/tutorials`,
     robots: "index,follow",
     structuredData: contentPageStructuredData(
       "User Guides & Step-by-Step Tutorials — Zoption",
-      "Step-by-step guides on how to adjust account balances, use envelope budgeting, scan receipts, import bank CSV statements, and track subscriptions in Zoption.",
+      "Step-by-step guides on how to adjust account balances, use envelope budgeting, scan receipts, import bank CSV statements, and track bills in Zoption.",
       `${SITE_ORIGIN}/tutorials`,
       TUTORIALS_LAST_MODIFIED,
     ),

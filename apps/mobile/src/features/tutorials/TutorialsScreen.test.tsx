@@ -30,7 +30,7 @@ describe("TutorialsScreen", () => {
     expect(screen.getByText("How to Adjust Current Balances")).toBeTruthy();
     expect(screen.getByText("How to Use Envelope Budgeting")).toBeTruthy();
     expect(screen.getByText("Fast Expense Entry: Receipts & Voice")).toBeTruthy();
-    expect(screen.getByText("Managing Recurring Subscriptions")).toBeTruthy();
+    expect(screen.getByText("Managing Monthly Bills")).toBeTruthy();
     expect(screen.getByText("Offline Storage & Privacy")).toBeTruthy();
   });
 

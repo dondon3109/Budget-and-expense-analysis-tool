@@ -184,10 +184,7 @@ export class LocalMutationStore {
       ),
     );
     if (!decoded.success || decoded.data.deleted_at) {
-      throw new LocalMutationError(
-        "Subscription not found on this device.",
-        "subscription_missing",
-      );
+      throw new LocalMutationError("Bill not found on this device.", "subscription_missing");
     }
     return decoded.data;
   }
@@ -202,10 +199,7 @@ export class LocalMutationStore {
       ),
     );
     if (!decoded.success) {
-      throw new LocalMutationError(
-        "Subscription not found on this device.",
-        "subscription_missing",
-      );
+      throw new LocalMutationError("Bill not found on this device.", "subscription_missing");
     }
     return decoded.data;
   }
@@ -258,15 +252,12 @@ export class LocalMutationStore {
       category.locked === 1
     ) {
       throw new LocalMutationError(
-        "Choose an available expense category for this subscription.",
+        "Choose an available expense category for this bill.",
         "invalid_reference",
       );
     }
     if (!account || account.archived === 1) {
-      throw new LocalMutationError(
-        "Choose an active account for this subscription.",
-        "invalid_reference",
-      );
+      throw new LocalMutationError("Choose an active account for this bill.", "invalid_reference");
     }
   }
 

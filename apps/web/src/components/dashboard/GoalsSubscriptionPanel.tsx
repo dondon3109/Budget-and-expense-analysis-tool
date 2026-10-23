@@ -41,7 +41,7 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
     <section className="panel goals-panel" aria-labelledby="goals-title">
       <div className="panel-heading">
         <div>
-          <h2 id="goals-title">Goals and subscriptions</h2>
+          <h2 id="goals-title">Goals and bills</h2>
         </div>
       </div>
       <div className="goals-layout">
@@ -98,16 +98,16 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
         <article className="goals-block subscriptions-block">
           <div className="goals-block-heading">
             <Repeat2 size={17} aria-hidden="true" />
-            <strong>Subscription cost</strong>
+            <strong>Monthly bills</strong>
           </div>
           {subscriptionsQuery.isPending ? (
-            <p className="insight-empty">Loading subscriptions…</p>
+            <p className="insight-empty">Loading bills…</p>
           ) : subscriptionSummary ? (
             <>
               <div className="subscription-total">
                 <strong>{formatMoney(totalSubscriptionCostMinor)}</strong>
                 <span>
-                  {formatMonth(subscriptionMonth)} · {activeSubscriptions.length} active plan
+                  {formatMonth(subscriptionMonth)} · {activeSubscriptions.length} active bill
                   {activeSubscriptions.length === 1 ? "" : "s"}
                 </span>
                 {otherCurrenciesWithAmounts(monthlyCosts, currency).map((other) => (
@@ -118,12 +118,12 @@ export function GoalsSubscriptionPanel({ workspace }: GoalsSubscriptionPanelProp
               </div>
               <Link className="text-link" to="/app/subscriptions">
                 {activeSubscriptions.length === 0
-                  ? "Add a subscription to track recurring costs"
-                  : "Manage subscriptions"}
+                  ? "Add a bill to track recurring costs"
+                  : "Manage bills"}
               </Link>
             </>
           ) : (
-            <p className="insight-empty">Subscription cost could not be loaded.</p>
+            <p className="insight-empty">Bills could not be loaded.</p>
           )}
         </article>
       </div>

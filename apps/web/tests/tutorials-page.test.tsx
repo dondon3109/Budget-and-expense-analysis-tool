@@ -85,7 +85,7 @@ describe("TutorialsPage", () => {
       screen.getByRole("heading", { name: "How to Use Envelope Budgeting" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "Tracking Subscriptions & Recurring Bills" }),
+      screen.queryByRole("heading", { name: "Tracking Monthly Bills & Subscriptions" }),
     ).not.toBeInTheDocument();
   });
 

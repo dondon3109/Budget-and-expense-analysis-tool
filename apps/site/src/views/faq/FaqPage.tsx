@@ -13,7 +13,7 @@ const FAQ_CATEGORY_BY_QUESTION: Record<string, string> = {
   "What file formats can I import?": "Importing your data",
   "How are money amounts stored?": "Budgets & tracking",
   "How do transfers between accounts work?": "Budgets & tracking",
-  "Can I track subscriptions and recurring charges?": "Budgets & tracking",
+  "Can I track monthly bills and subscriptions?": "Budgets & tracking",
   "How does automatic savings interest work?": "Budgets & tracking",
   "How does the AI Financial Assistant work, and what does it read?": "AI assistant",
   "Is my workspace private?": "Privacy & data",

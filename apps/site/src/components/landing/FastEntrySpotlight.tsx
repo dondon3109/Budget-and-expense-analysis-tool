@@ -94,10 +94,10 @@ const assistantPromptSamples = [
     category: "Spending Trends",
   },
   {
-    question: "What recurring bills or subscriptions are coming up?",
+    question: "What bills are coming up?",
     answer:
       "You have 3 recurring charges scheduled in the next 10 days: Spotify (₱139 on Jul 17), iCloud+ (₱49 on Jul 24), and Canva Pro (₱249 on Aug 01), totalling ₱437.",
-    evidence: "Grounded from active subscription tracker records",
+    evidence: "Grounded from active bill records",
     category: "Upcoming Bills",
   },
   {
@@ -587,7 +587,7 @@ export function FastEntrySpotlight() {
                 </li>
                 <li>
                   <Check size={16} aria-hidden="true" /> <strong>You approve every change:</strong>{" "}
-                  Drafts transactions and proposes edits to subscriptions, goals, debts, accounts,
+                  Drafts transactions and proposes edits to bills, goals, debts, accounts,
                   categories, budgets, and transactions; you tap Save or Confirm.
                 </li>
                 <li>
