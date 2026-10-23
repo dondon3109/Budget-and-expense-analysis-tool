@@ -295,7 +295,7 @@ describe("assistant orchestration", () => {
     expect(requests[1]?.toolChoice).toBe("auto");
     expect(JSON.stringify(requests)).not.toContain("tenant-secret");
     expect(requests[0]?.messages[0]?.content).toContain("Return plain text only");
-    expect(requests[0]?.messages[0]?.content).toContain('"assistantName":"Aster"');
+    expect(requests[0]?.messages[1]?.content).toContain('"assistantName":"Aster"');
   });
 
   it("reads every required group itself when the model answers without tools", async () => {

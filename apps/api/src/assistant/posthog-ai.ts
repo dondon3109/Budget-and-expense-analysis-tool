@@ -129,6 +129,9 @@ export function createPostHogAiTelemetry(
               ...(completion.usage?.completionTokens === undefined
                 ? {}
                 : { $ai_output_tokens: completion.usage.completionTokens }),
+              ...(completion.usage?.cachedPromptTokens === undefined
+                ? {}
+                : { $ai_cache_read_input_tokens: completion.usage.cachedPromptTokens }),
             },
           });
         }

@@ -225,6 +225,14 @@ Local development and CI can set `ASSISTANT_PROVIDER=stub` to route provider-bac
 - Assistant output and metadata are rendered as React text, not HTML.
 - Operational logs contain status and diagnostic categories, not messages, tool payloads, account names, transaction descriptions, JWTs, or keys.
 
+## Prompt caching
+
+Every provider call sends the tool definitions and two system messages: `ASSISTANT_RULES_PROMPT` in `apps/api/src/assistant/prompt.ts`, which is byte-identical for every user and turn, then this turn's context (trusted policy, profile, memory, goal, and date). Providers cache requests by prefix, so the tools and rules (most of the input) are cache reads after the first call. Nothing per-turn may be interpolated into the rules; that would make every call a cache miss.
+
+- Chat-completions providers receive the two system messages joined, rules first. DeepSeek, OpenAI, and Gemini cache prefixes automatically.
+- Anthropic receives them as two `system` blocks with a `cache_control` breakpoint on the rules, plus top-level `cache_control` so a turn's follow-up calls after a tool round reread the conversation from the cache.
+- Each provider's cache-hit count is reported as `cachedPromptTokens`, which reaches PostHog AI Observability as `$ai_cache_read_input_tokens`. `promptTokens` always counts every input token, cached or not.
+
 ## Configuration
 
 Non-secret Worker variables:

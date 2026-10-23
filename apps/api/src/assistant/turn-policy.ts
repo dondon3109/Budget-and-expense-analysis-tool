@@ -12,7 +12,7 @@ import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
 
 /** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
-export const ASSISTANT_PROMPT_VERSION = "expert-v7";
+export const ASSISTANT_PROMPT_VERSION = "expert-v8";
 
 export type RequiredToolGroup =
   | "account_balance"

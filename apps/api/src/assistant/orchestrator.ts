@@ -31,7 +31,11 @@ import {
 } from "./answer-validation";
 import type { FinancialReader } from "./financial-reader";
 import type { AssistantAiTelemetry } from "./posthog-ai";
-import { ASSISTANT_PROMPT_VERSION, buildAssistantSystemPrompt } from "./prompt";
+import {
+  ASSISTANT_PROMPT_VERSION,
+  ASSISTANT_RULES_PROMPT,
+  buildAssistantTurnContext,
+} from "./prompt";
 import {
   createAssistantTurnPolicy,
   responseMetadataForPolicy,
@@ -158,10 +162,13 @@ function providerMessages(
   memory: string,
   goal: PrimaryGoal | null,
 ): AssistantProviderMessage[] {
+  // Two system messages so a provider can cache the shared rules apart from this turn's
+  // context; chat-completions providers receive them joined, rules first.
   return [
+    { role: "system", content: ASSISTANT_RULES_PROMPT },
     {
       role: "system",
-      content: buildAssistantSystemPrompt(
+      content: buildAssistantTurnContext(
         policy.currentDate,
         policy.timeZone,
         identity,

@@ -76,7 +76,9 @@ interface StubTurnPolicy {
  * validation decides whether the resulting answer is usable.
  */
 function readTurnPolicy(messages: readonly AssistantProviderMessage[]): StubTurnPolicy {
-  const prompt = messages.find((message) => message.role === "system")?.content ?? "";
+  const prompt = messages
+    .flatMap((message) => (message.role === "system" ? [message.content] : []))
+    .join("\n\n");
   const policy: StubTurnPolicy = {
     currentDate: CURRENT_DATE_PATTERN.exec(prompt)?.[1] ?? null,
     resolvedPeriod: null,
