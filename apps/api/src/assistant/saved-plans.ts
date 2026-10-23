@@ -103,6 +103,7 @@ export function goalsAndDebtsResult(
   const activeGoals = goals.filter((goal) => goal.status === "active");
   const activeDebts = debts.filter((debt) => debt.status === "active");
   const sum = (values: readonly number[]) => values.reduce((total, value) => total + value, 0);
+  // No recordCount: clients caption it as "N goals", which would count debts as goals.
   return source(
     {
       currency,
@@ -144,6 +145,5 @@ export function goalsAndDebtsResult(
       })),
     },
     "goals",
-    { recordCount: goals.length + debts.length },
   );
 }
