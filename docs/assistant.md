@@ -93,6 +93,8 @@ next to Cloudflare Workers AI.
 - `calculate_savings_goal` — deterministic target-date contributions from a saved goal or validated hypothetical inputs.
 - `list_transactions` — a bounded filtered page of transaction details without notes or internal IDs. It is detail-only and must not be totaled by the model.
 - `list_categories` — active category names and kinds.
+- `list_subscriptions` — the saved subscriptions and recurring bills (amount, billing cycle, next billing date, status, category, account), the monthly cost of active ones, and which bill within `dueWithinDays` (default 30) of today. Totals count only the workspace currency, as on the Subscriptions page; plans billed in another currency are listed but not added in.
+- `get_goals_and_debts` — saved savings goals (target, saved, remaining, progress rounded down, target date, status) and saved debts (balance, APR, minimum payment, balance date, status), with totals for active ones.
 - `suggest_transaction_details` — for logging: the user's own entries from the trailing 12 months at a named place (grouped by description, with the usual category, account, typical and last amount), otherwise their most frequent entries; a category matched from the place name when history has none; active categories; and active accounts with their recorded balances.
 - `draft_transaction` — resolves an income or expense against active accounts and categories and returns a draft. It writes nothing.
 - `propose_action` — resolves a subscription, goal, debt, account, category, budget, or transaction create, edit, delete, archive, status, or balance change against the tenant's own records and returns a proposal (or the missing details). It writes nothing.

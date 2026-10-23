@@ -1,4 +1,4 @@
-import type { AssistantToolResultEnvelope } from "@zoption/shared";
+import type { AssistantSourceMetadata, AssistantToolResultEnvelope } from "@zoption/shared";
 import { describe, expect, it, vi } from "vitest";
 
 import { createAssistantOrchestrator } from "../src/assistant/orchestrator";
@@ -44,7 +44,7 @@ const policy: AssistantTurnPolicy = {
 
 function envelope<T>(
   data: T,
-  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts" = "transactions",
+  sourceType: AssistantSourceMetadata["sourceType"] = "transactions",
 ): AssistantToolResultEnvelope<T> {
   return {
     data,
@@ -82,6 +82,8 @@ function createReader(): FinancialReader {
     calculateSavingsGoal: vi.fn(async () => envelope({ items: [] }, "goals")),
     listTransactions: vi.fn(async () => envelope({ items: [] })),
     listCategories: vi.fn(async () => envelope({ items: [] })),
+    listSubscriptions: vi.fn(async () => envelope({ items: [] }, "subscriptions")),
+    getGoalsAndDebts: vi.fn(async () => envelope({ goals: [], debts: [] }, "goals")),
     suggestTransactionDetails: vi.fn(async () =>
       envelope({
         place: "Jollibee",
@@ -479,6 +481,8 @@ describe("assistant orchestration", () => {
       "calculate_savings_goal",
       "list_transactions",
       "list_categories",
+      "list_subscriptions",
+      "get_goals_and_debts",
       "suggest_transaction_details",
       "draft_transaction",
       "propose_action",

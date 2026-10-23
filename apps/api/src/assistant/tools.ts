@@ -4,11 +4,13 @@ import {
   assistantBudgetVsActualToolSchema,
   assistantCategoryToolSchema,
   assistantDebtPayoffToolSchema,
+  assistantGoalsAndDebtsToolSchema,
   assistantPeriodSummaryToolSchema,
   assistantRecurringChargesToolSchema,
   assistantSavingsGoalToolSchema,
   assistantSpendingAnomaliesToolSchema,
   assistantSpendingByCategoryToolSchema,
+  assistantSubscriptionsToolSchema,
   assistantActionToolSchema,
   assistantTransactionDraftToolSchema,
   assistantTransactionSuggestionToolSchema,
@@ -203,6 +205,32 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
         properties: { kind: { type: "string", enum: ["income", "expense", "transfer"] } },
         additionalProperties: false,
       },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_subscriptions",
+      description:
+        "List the user's saved subscriptions and recurring bills with amount, billing cycle, next billing date, and status, plus the authoritative monthly cost of active ones and which bill within dueWithinDays days (default 30) of through.",
+      parameters: {
+        type: "object",
+        properties: {
+          through: { type: "string", description: "Trusted current date YYYY-MM-DD" },
+          dueWithinDays: { type: "integer", minimum: 1, maximum: 90 },
+        },
+        required: ["through"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_goals_and_debts",
+      description:
+        "Get the user's saved savings goals with saved amount, target, remaining, progress, and target date, and saved debts with balance, APR, and minimum payment, plus authoritative totals for active ones.",
+      parameters: { type: "object", properties: {}, additionalProperties: false },
     },
   },
   {
@@ -498,6 +526,20 @@ export async function executeAssistantToolDetailed(
         args = parsed;
         validate(parsed);
         result = await reader.listCategories(context, parsed.kind);
+        break;
+      }
+      case "list_subscriptions": {
+        const parsed = parseWithSchema(assistantSubscriptionsToolSchema, rawArguments);
+        args = parsed;
+        validate(parsed);
+        result = await reader.listSubscriptions(context, parsed);
+        break;
+      }
+      case "get_goals_and_debts": {
+        const parsed = parseWithSchema(assistantGoalsAndDebtsToolSchema, rawArguments);
+        args = parsed;
+        validate(parsed);
+        result = await reader.getGoalsAndDebts(context);
         break;
       }
       case "suggest_transaction_details": {

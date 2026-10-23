@@ -21,6 +21,8 @@ export type RequiredToolGroup =
   | "budget_comparison"
   | "transaction_detail"
   | "category_list"
+  | "subscription_list"
+  | "goals_overview"
   | "recurring"
   | "anomaly"
   | "debt_projection"
@@ -188,6 +190,27 @@ function requiredGroups(message: string): RequiredToolGroup[] {
     )
   ) {
     groups.add("recurring");
+  }
+  // Saved plans, not charges detected in transactions: "what bills are due this week",
+  // "magkano ang subscriptions ko".
+  if (
+    /\b(?:subscriptions?|subskripsyon|bills?|bayarin|renewals?)\b/i.test(message) &&
+    /\b(?:due|upcoming|next|renew\w*|list|show|have|saved|what|which|how much|total|darating|susunod|ipakita|pakita|ilista|ano|alin|magkano|meron|mayroon)\b/i.test(
+      message,
+    )
+  ) {
+    groups.add("subscription_list");
+  }
+  // "How are my goals going", "kumusta ang ipon goal ko", "show my debts".
+  if (
+    /\b(?:goals?|layunin|ipon goal|emergency fund|sinking fund|debts?|loans?|utang)\b/i.test(
+      message,
+    ) &&
+    /\b(?:progress|how (?:am i|are|is)|status|on track|close|list|show|overview|all|total|lahat|ipakita|pakita|ilista|gaano na|kumusta|nasaan na|magkano)\b/i.test(
+      message,
+    )
+  ) {
+    groups.add("goals_overview");
   }
   if (
     /\b(?:anomal|unusual|outlier|spike|why.*overspend|why.*higher|kakaiba|hindi karaniwan|hindi pangkaraniwan|bakit.*tumaas|bakit.*lumaki|bakit.*sumobra)\b/i.test(
