@@ -453,6 +453,7 @@ describe("AnthropicProvider", () => {
       ],
     });
     expect((body.system as unknown[])[1]).not.toHaveProperty("cache_control");
+    expect(body).not.toHaveProperty("temperature");
     expect(body).not.toHaveProperty("messages[0].role", "system");
     expect(completion.usage).toEqual({
       promptTokens: 129,

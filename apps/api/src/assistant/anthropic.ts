@@ -230,7 +230,7 @@ export class AnthropicProvider implements AssistantProvider {
         body: JSON.stringify({
           model: this.model,
           max_tokens: 800,
-          temperature: 0.15,
+          // No temperature: Claude 4.7 and later reject any sampling parameter with a 400.
           // Caches the conversation so far, so the turn's follow-up calls after a tool
           // round reread it from the cache.
           cache_control: { type: "ephemeral" },
