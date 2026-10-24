@@ -16,25 +16,27 @@ overrides:
   "@lhci/cli>uuid": 11.1.1
   "xcode>uuid": 11.1.1
   "external-editor>tmp": 0.2.7
-  "fast-uri": 3.1.8
+  "fast-uri": 3.1.9
   "@expo/plist>@xmldom/xmldom": 0.8.15
   "plist>@xmldom/xmldom": 0.9.12
   "puppeteer-core>@puppeteer/browsers": 3.2.1
   "js-yaml@3": 3.15.2
   "js-yaml@4": 4.3.2
   "sharp": 0.35.5
-  "undici@6": 6.28.1
-  "undici@7": 7.29.1
+  "undici@6": 6.29.1
+  "undici@7": 7.30.1
+  "undici@8": 8.12.3
   "brace-expansion@1": 1.1.21
   "brace-expansion@2": 2.1.7
   "brace-expansion@5": 5.0.12
   "qs": 6.16.0
-  "ip-address": 10.7.1
-  "dompurify": 3.4.16
+  "ip-address": 10.7.4
+  "dompurify": 3.4.17
   "handlebars": 4.7.10
   "basic-ftp": 6.2.1
   "source-map-js": 1.2.2
   "proxy-addr": 2.0.8
+  "body-parser@1": 1.20.9
   "compression": 1.8.2
   "shell-quote": 1.11.0
   "http-cache-semantics": 4.3.0
@@ -60,6 +62,10 @@ auditConfig:
     # yet. Reached only through dev tooling (argparse under @lhci/cli and Jest coverage). Replace
     # with a "sprintf-js" override once 1.1.4 is published.
     - GHSA-hp3w-g68c-fv3c
+    # zod <4.6.6 memory exhaustion on oversized constrained collections; the 3.x line has no
+    # fix. Reached only through dev tooling (@expo/cli and chromium-bidi under @lhci/cli), never
+    # in a shipped bundle; the app's own zod is 4.x. Drop once those move to zod 4.
+    - GHSA-mrhx-c7xc-m3w5
 
 minimumReleaseAgeExclude:
   - zustand@5.0.15
