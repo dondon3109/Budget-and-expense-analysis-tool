@@ -1,5 +1,6 @@
 import type { SupportedStorage } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 import { z } from "zod";
 
 const manifestSchema = z
@@ -16,6 +17,24 @@ const CHUNK_SIZE = 1_800;
 const secureStoreOptions: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
 };
+
+// auth-js deletes the stored session when a refresh is rejected. On Android
+// that deletion is ignored unless a real sign-out (or a phone restart) allowed
+// it, so closing the app or an expired access token cannot sign the user out.
+let sessionRemovalDepth = 0;
+
+export function sessionRemovalIsAllowed(): boolean {
+  return sessionRemovalDepth > 0;
+}
+
+export async function withSessionRemovalAllowed<T>(action: () => Promise<T>): Promise<T> {
+  sessionRemovalDepth += 1;
+  try {
+    return await action();
+  } finally {
+    sessionRemovalDepth -= 1;
+  }
+}
 
 function manifestKey(key: string): string {
   return `${key}.manifest`;
@@ -74,6 +93,8 @@ export const secureSessionStorage: SupportedStorage = {
   },
 
   async removeItem(key) {
+    if (Platform.OS === "android" && sessionRemovalDepth === 0) return;
+
     const manifest = await readManifest(key);
     if (manifest) {
       await Promise.all(
