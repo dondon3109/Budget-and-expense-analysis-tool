@@ -37,10 +37,19 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { telemetry } from "@/telemetry/telemetry";
 import { setSignedInAccount } from "@/telemetry/account-link";
 
+import {
+  clearAndroidBootCount,
+  endSessionBecauseDeviceRestarted,
+  readAndroidBootCount,
+  readStoredAndroidBootCount,
+  rememberAndroidBootCount,
+  sessionEndedWithDeviceBoot,
+} from "./android-boot-session";
 import { clearAppLock } from "./app-lock";
 import { exchangeCodeOnce } from "./code-exchange";
 import { parseOAuthCallbackUrl } from "./oauth-callback";
 import { clearPlanCache } from "./plan-state";
+import { sessionRemovalIsAllowed, withSessionRemovalAllowed } from "./secure-session-storage";
 import { assertSignOutRiskAllowed } from "./sign-out-policy";
 import { getSupabaseClient, readStoredSessionSubject, supabase } from "./supabase-client";
 
@@ -136,6 +145,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const subjectRef = useRef<string | null>(null);
   const isDummySessionRef = useRef(false);
   const initializedRef = useRef(false);
+  const bootCountRef = useRef<number | null>(null);
 
   const applySubject = useCallback((nextSubject: string | null, email?: string) => {
     isDummySessionRef.current = false;
@@ -231,27 +241,60 @@ export function SessionProvider({ children }: PropsWithChildren) {
     const client = supabase;
 
     let active = true;
+    // The boot count of this process. A later sign-in records it so the next
+    // launch can tell an app restart from a phone restart.
+    const noteBoot = (subject: string | null | undefined): void => {
+      if (!subject || Platform.OS !== "android" || bootCountRef.current === null) return;
+      void rememberAndroidBootCount(bootCountRef.current);
+    };
     const { data: authListener } = client.auth.onAuthStateChange((event, session) => {
       // The startup getSession() below owns the initial state. INITIAL_SESSION
       // reports null whenever the startup refresh fails, including offline.
       if (event === "INITIAL_SESSION") return;
-      if (active) applySubject(session?.user.id ?? null, session?.user.email);
+      // auth-js emits SIGNED_OUT when a refresh is rejected. On Android the
+      // session lasts until the user signs out or the phone restarts, and
+      // removeItem keeps the refresh token unless a sign-out allowed the delete.
+      if (event === "SIGNED_OUT" && Platform.OS === "android" && !sessionRemovalIsAllowed()) {
+        return;
+      }
+      if (!active) return;
+      noteBoot(session?.user.id);
+      applySubject(session?.user.id ?? null, session?.user.email);
     });
 
-    void client.auth.getSession().then(async ({ data, error }) => {
+    void (async () => {
+      if (Platform.OS === "android") {
+        bootCountRef.current = await readAndroidBootCount();
+        if (!active) return;
+        const storedBoot = await readStoredAndroidBootCount();
+        if (!active) return;
+        if (sessionEndedWithDeviceBoot(storedBoot, bootCountRef.current)) {
+          try {
+            // Local only: the workspace stays on the phone for the next sign-in.
+            await endSessionBecauseDeviceRestarted(client);
+          } catch {
+            // The stored boot count still differs, so the next launch tries again.
+          }
+          if (!active) return;
+        }
+      }
+
+      const { data, error } = await client.auth.getSession();
       if (!active) return;
       if (!error && data?.session) {
+        noteBoot(data.session.user.id);
         applySubject(data.session.user.id, data.session.user.email);
         return;
       }
-      if (error && isAuthRetryableFetchError(error)) {
-        // Offline with an expired access token: auth-js could not refresh but
-        // kept the stored refresh token, so the user is still signed in. Open
-        // their local workspace; the Worker identity check still gates sync,
-        // and a refresh Supabase later rejects emits SIGNED_OUT.
+      if (error && (isAuthRetryableFetchError(error) || Platform.OS === "android")) {
+        // The access token could not be refreshed. auth-js keeps the refresh
+        // token after a network failure. On Android it also stays after a
+        // rejection: removeItem ignores that delete, and the stored subject
+        // still names who is signed in. iOS signs out on a rejection.
         const storedSubject = await readStoredSessionSubject().catch(() => null);
         if (!active) return;
         if (storedSubject) {
+          noteBoot(storedSubject);
           applySubject(storedSubject);
           return;
         }
@@ -276,7 +319,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
         }
       }
       await resolveSignedOut(() => active);
-    });
+    })();
 
     const appStateListener =
       Platform.OS === "web"
@@ -447,28 +490,34 @@ export function SessionProvider({ children }: PropsWithChildren) {
         await SecureStore.deleteItemAsync(DUMMY_DEV_STORAGE_KEY).catch(() => undefined);
       } else if (supabase) {
         const client = getSupabaseClient();
-        if (options.preserveLocalWorkspace) {
-          // Forced sign-out: the Worker already rejected the credential, so
-          // there is nothing left to revoke and the encrypted workspace stays
-          // for recovery. This device alone is cleared.
-          const { error } = await client.auth.signOut({ scope: "local" });
-          if (error) throw error;
-        } else {
-          // A user-initiated sign-out revokes the refresh token server-side
-          // (auth-js's default global scope), so a copied refresh token stops
-          // minting access tokens.
-          const { error } = await client.auth.signOut({ scope: "global" });
-          if (error) {
-            // Revocation needs Supabase, and offline is normal on mobile. A user
-            // who asked to sign out must never stay signed in here, so clear
-            // this device as well. Revocation is best-effort in that case, and
-            // the fallback is not surfaced as an error: the user's intent - no
-            // longer being signed in - was carried out.
-            const { error: localError } = await client.auth.signOut({ scope: "local" });
-            if (localError) throw localError;
+        // Android ignores session deletes unless this allows them. The flag
+        // stays set while auth-js emits SIGNED_OUT, so that event still clears
+        // the in-memory session.
+        await withSessionRemovalAllowed(async () => {
+          if (options.preserveLocalWorkspace) {
+            // Forced sign-out: the Worker already rejected the credential, so
+            // there is nothing left to revoke and the encrypted workspace stays
+            // for recovery. This device alone is cleared.
+            const { error } = await client.auth.signOut({ scope: "local" });
+            if (error) throw error;
+          } else {
+            // A user-initiated sign-out revokes the refresh token server-side
+            // (auth-js's default global scope), so a copied refresh token stops
+            // minting access tokens.
+            const { error } = await client.auth.signOut({ scope: "global" });
+            if (error) {
+              // Revocation needs Supabase, and offline is normal on mobile. A user
+              // who asked to sign out must never stay signed in here, so clear
+              // this device as well. Revocation is best-effort in that case, and
+              // the fallback is not surfaced as an error: the user's intent - no
+              // longer being signed in - was carried out.
+              const { error: localError } = await client.auth.signOut({ scope: "local" });
+              if (localError) throw localError;
+            }
           }
-        }
+        });
       }
+      await clearAndroidBootCount();
       isDummySessionRef.current = false;
       clearUserScopedRuntimeState();
       // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.

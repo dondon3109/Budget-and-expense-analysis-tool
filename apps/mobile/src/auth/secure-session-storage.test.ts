@@ -13,7 +13,9 @@ jest.mock("expo-secure-store", () => ({
   }),
 }));
 
-import { secureSessionStorage } from "./secure-session-storage";
+import { Platform } from "react-native";
+
+import { secureSessionStorage, withSessionRemovalAllowed } from "./secure-session-storage";
 
 describe("SecureStore-backed Supabase session storage", () => {
   beforeEach(() => mockValues.clear());
@@ -35,5 +37,22 @@ describe("SecureStore-backed Supabase session storage", () => {
     await secureSessionStorage.setItem("auth", "x".repeat(4_000));
     await secureSessionStorage.removeItem("auth");
     expect([...mockValues.keys()].filter((key) => key.startsWith("auth"))).toEqual([]);
+  });
+
+  it("keeps an Android session until a sign-out allows the delete", async () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, "OS", { configurable: true, value: "android" });
+    try {
+      await secureSessionStorage.setItem("auth", "x".repeat(4_000));
+      await secureSessionStorage.removeItem("auth");
+      expect(await secureSessionStorage.getItem("auth")).toBe("x".repeat(4_000));
+
+      await withSessionRemovalAllowed(async () => {
+        await secureSessionStorage.removeItem("auth");
+      });
+      expect([...mockValues.keys()].filter((key) => key.startsWith("auth"))).toEqual([]);
+    } finally {
+      Object.defineProperty(Platform, "OS", { configurable: true, value: originalOs });
+    }
   });
 });
