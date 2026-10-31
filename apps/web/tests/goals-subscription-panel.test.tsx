@@ -106,7 +106,7 @@ describe("GoalsSubscriptionPanel", () => {
     renderPanel();
 
     expect(await screen.findByText("₱6,000")).toBeInTheDocument();
-    expect(screen.getByText(/2 active plans/)).toBeInTheDocument();
+    expect(screen.getByText(/2 active bills/)).toBeInTheDocument();
   });
 
   it("keeps a plan billed in the other currency out of the total and says so", async () => {
@@ -147,10 +147,10 @@ describe("GoalsSubscriptionPanel", () => {
 
     expect(await screen.findByText("No active goals yet.")).toBeInTheDocument();
     expect(await screen.findByText("₱0")).toBeInTheDocument();
-    expect(screen.getByText(/0 active plans/)).toBeInTheDocument();
+    expect(screen.getByText(/0 active bills/)).toBeInTheDocument();
   });
 
-  it("filters out canceled subscriptions from the active plan count", async () => {
+  it("filters out canceled subscriptions from the active bill count", async () => {
     vi.mocked(getFinancialGoals).mockResolvedValue({ items: [] });
     vi.mocked(getSubscriptions).mockResolvedValue({
       month: "2026-08",
@@ -164,6 +164,6 @@ describe("GoalsSubscriptionPanel", () => {
 
     renderPanel();
 
-    await waitFor(() => expect(screen.getByText(/1 active plan/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/1 active bill/)).toBeInTheDocument());
   });
 });

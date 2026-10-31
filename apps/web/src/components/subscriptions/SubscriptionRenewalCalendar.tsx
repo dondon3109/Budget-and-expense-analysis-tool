@@ -156,7 +156,7 @@ export function SubscriptionRenewalCalendar({
   }
 
   return (
-    <div className="renewal-calendar-interface" aria-label="Visual Renewal Calendar Interface">
+    <div className="renewal-calendar-interface" aria-label="Bill calendar">
       {/* 1. Cash-Flow Impact Summary */}
       <section className="renewal-impact-summary" aria-label="Cash flow impact summary">
         <div className="renewal-stat-card total">
@@ -197,16 +197,16 @@ export function SubscriptionRenewalCalendar({
       </section>
 
       {/* 2. Month-by-Month Grid */}
-      <section className="renewal-grid-section" aria-label={`Renewal calendar for ${month}`}>
+      <section className="renewal-grid-section" aria-label={`Bill calendar for ${month}`}>
         <div className="renewal-grid-header">
           <div className="renewal-grid-title">
             <CalendarDays size={18} aria-hidden="true" />
-            <h3>Renewal Calendar Grid</h3>
+            <h3>Bill Calendar</h3>
           </div>
           <span className="renewal-grid-hint">
             {selectedDate
               ? `Filtered to ${formatCalendarDate(selectedDate)}`
-              : "Tap any day with scheduled renewals to inspect payment details"}
+              : "Tap any day with bills due to inspect payment details"}
           </span>
           {selectedDate && (
             <button
@@ -219,7 +219,7 @@ export function SubscriptionRenewalCalendar({
           )}
         </div>
 
-        <div className="renewal-calendar-grid" role="grid" aria-label={`Renewals in ${month}`}>
+        <div className="renewal-calendar-grid" role="grid" aria-label={`Bills due in ${month}`}>
           <div className="renewal-calendar-row" role="row">
             {weekdays.map((weekday) => (
               <div className="renewal-weekday" role="columnheader" key={weekday} title={weekday}>
@@ -264,10 +264,10 @@ export function SubscriptionRenewalCalendar({
                       <span className="sr-only">
                         {`${formatCalendarDate(date)}${
                           hasRenewals
-                            ? `, ${dayRenewals.length} subscription renewal${
+                            ? `, ${dayRenewals.length} bill${
                                 dayRenewals.length === 1 ? "" : "s"
                               } totaling ${dailyOutflow}`
-                            : ", no renewals"
+                            : ", no bills due"
                         }`}
                       </span>
                       <header className="renewal-day-head" aria-hidden="true">
@@ -323,7 +323,7 @@ export function SubscriptionRenewalCalendar({
             <h3>Payment Schedule & Upcoming Billing Cycles</h3>
             <p>
               {selectedDate
-                ? `Showing renewals on ${formatCalendarDate(selectedDate)}`
+                ? `Showing bills due on ${formatCalendarDate(selectedDate)}`
                 : `All scheduled billing cycles in ${formatFullMonth(month)}`}
             </p>
           </div>
@@ -343,8 +343,8 @@ export function SubscriptionRenewalCalendar({
             <CalendarClock size={24} aria-hidden="true" />
             <p>
               {selectedDate
-                ? `No subscriptions scheduled to renew on ${formatCalendarDate(selectedDate)}.`
-                : `No active subscriptions are scheduled to renew in ${formatFullMonth(month)}.`}
+                ? `No bills due on ${formatCalendarDate(selectedDate)}.`
+                : `No active bills are due in ${formatFullMonth(month)}.`}
             </p>
           </div>
         ) : (
@@ -407,7 +407,7 @@ export function SubscriptionRenewalCalendar({
                       className="icon-button compact"
                       onClick={() => onEdit(item)}
                       aria-label={`Edit ${item.name}`}
-                      title="Edit subscription details"
+                      title="Edit bill details"
                     >
                       <Pencil size={15} aria-hidden="true" />
                     </button>
@@ -421,11 +421,11 @@ export function SubscriptionRenewalCalendar({
         {unbilledActiveItems.length > 0 && !selectedDate && (
           <div className="renewal-unbilled-note">
             <p>
-              <strong>Note:</strong> {unbilledActiveItems.length} active subscription
+              <strong>Note:</strong> {unbilledActiveItems.length} active bill
               {unbilledActiveItems.length === 1 ? "" : "s"} (
               {unbilledActiveItems.map((s) => s.name).join(", ")}){" "}
-              {unbilledActiveItems.length === 1 ? "is" : "are"} billed annually and not scheduled
-              for renewal in {formatFullMonth(month)}.
+              {unbilledActiveItems.length === 1 ? "is" : "are"} billed annually and not due in{" "}
+              {formatFullMonth(month)}.
             </p>
           </div>
         )}

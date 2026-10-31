@@ -171,7 +171,7 @@ export function SubscriptionEditorScreen() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "The subscription could not be saved to encrypted local storage.",
+          : "The bill could not be saved to encrypted local storage.",
       );
     } finally {
       setSaving(false);
@@ -192,7 +192,7 @@ export function SubscriptionEditorScreen() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "The subscription could not be removed from encrypted local storage.",
+          : "The bill could not be removed from encrypted local storage.",
       );
       setConfirmDelete(false);
     } finally {
@@ -205,24 +205,24 @@ export function SubscriptionEditorScreen() {
       edges={["bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      <Stack.Screen options={{ title: editing ? "Edit subscription" : "New subscription" }} />
+      <Stack.Screen options={{ title: editing ? "Edit bill" : "New bill" }} />
       {subscriptionState.error ? (
         <View style={styles.centered}>
           <ErrorState
-            title="Subscription unavailable"
+            title="Bill unavailable"
             message={subscriptionState.error}
             onRetry={subscriptionState.retry}
           />
         </View>
       ) : editing && subscriptionState.loading ? (
-        <View accessibilityLabel="Loading subscription" style={styles.centered}>
+        <View accessibilityLabel="Loading bill" style={styles.centered}>
           <Skeleton height={120} />
         </View>
       ) : editing && !subscriptionState.subscription ? (
         <View style={styles.centered}>
           <ErrorState
-            title="Subscription not found"
-            message="This subscription is no longer active on this device."
+            title="Bill not found"
+            message="This bill is no longer active on this device."
           />
         </View>
       ) : (
@@ -239,14 +239,14 @@ export function SubscriptionEditorScreen() {
               <FormField
                 editable={!saving}
                 error={errors.name}
-                label="Subscription name"
+                label="Bill name"
                 maxLength={120}
                 onChangeText={(value) => {
                   setName(value);
                   setErrors((current) => ({ ...current, name: undefined }));
                   setMessage(null);
                 }}
-                placeholder="Streaming service"
+                placeholder="Electricity or internet"
                 value={name}
               />
               <FormField
@@ -378,16 +378,16 @@ export function SubscriptionEditorScreen() {
                 </Text>
               ) : null}
               <Button
-                accessibilityLabel={editing ? "Save subscription changes" : "Save new subscription"}
+                accessibilityLabel={editing ? "Save bill changes" : "Save new bill"}
                 disabled={blocked}
                 loading={saving}
                 onPress={() => void save()}
               >
-                {editing ? "Save changes" : "Save subscription"}
+                {editing ? "Save changes" : "Save bill"}
               </Button>
               {editing ? (
                 <Button
-                  accessibilityLabel="Delete this subscription"
+                  accessibilityLabel="Delete this bill"
                   disabled={blocked || saving}
                   onPress={() => setConfirmDelete(true)}
                   variant="quiet"
@@ -400,12 +400,12 @@ export function SubscriptionEditorScreen() {
         </KeyboardAvoidingView>
       )}
       <ConfirmationDialog
-        confirmLabel="Delete subscription"
+        confirmLabel="Delete bill"
         destructive
-        message="This subscription schedule will be removed from your Zoption workspace. Recorded transactions are not changed."
+        message="This bill schedule will be removed from your Zoption workspace. Recorded transactions are not changed."
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void remove()}
-        title="Delete this subscription?"
+        title="Delete this bill?"
         visible={confirmDelete}
       />
     </SafeAreaView>

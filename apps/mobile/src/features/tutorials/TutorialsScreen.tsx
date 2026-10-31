@@ -120,26 +120,26 @@ export function TutorialsScreen() {
     {
       id: "subscriptions",
       icon: "calendar-sync-outline",
-      title: "Managing Recurring Subscriptions",
+      title: "Managing Monthly Bills",
       summary:
-        "Track billing cycles, upcoming renewal dates, and step-by-step cancellation instructions.",
-      actionTitle: "View Subscriptions",
+        "Track billing cycles, upcoming due dates, and step-by-step cancellation instructions.",
+      actionTitle: "View Bills",
       onAction: () => router.push("/(app)/subscriptions"),
       steps: [
         {
-          title: "1. Add monthly & annual subscriptions",
+          title: "1. Add monthly & annual bills",
           description:
-            "Track streaming services, cloud storage, gym memberships, and insurance premiums.",
+            "Track electricity, water, and internet bills, streaming services, gym memberships, and insurance premiums.",
         },
         {
-          title: "2. Check renewal agenda on Calendar",
+          title: "2. Check due dates on Calendar",
           description:
             "See upcoming charges marked on your calendar so you are never surprised by auto-renewals.",
         },
         {
           title: "3. Cancellation Guides",
           description:
-            "Tap any subscription and select 'Cancellation guide' for direct links and instructions on how to cancel.",
+            "Tap any bill and select 'Cancellation guide' for direct links and instructions on how to cancel.",
         },
       ],
     },

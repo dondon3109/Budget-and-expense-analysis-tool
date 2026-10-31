@@ -101,7 +101,7 @@ const COMPARISON_ROWS: { category: string; features: ComparisonFeature[] }[] = [
         pro: "Week, month, and 6-month",
       },
       {
-        name: "Interactive Renewal Calendar (Subscriptions)",
+        name: "Interactive Bill Calendar",
         free: "Basic list",
         budget: "Interactive monthly grid",
         pro: "Interactive monthly grid",
@@ -165,7 +165,7 @@ const PRICING_FAQS = [
   {
     question: "What is the difference between Budget and Pro?",
     answer:
-      "Zoption Budget unlocks every paid feature: live voice chat, automatic interest, full cash flow analytics, export, the renewal calendar, and a streak pet that grows to Legend. Zoption Pro doubles the AI actions to 2,000 a month, raises imports to 10 a month, removes the custom category limit, and answers support within 24 hours.",
+      "Zoption Budget unlocks every paid feature: live voice chat, automatic interest, full cash flow analytics, export, the bill calendar, and a streak pet that grows to Legend. Zoption Pro doubles the AI actions to 2,000 a month, raises imports to 10 a month, removes the custom category limit, and answers support within 24 hours.",
   },
   {
     question: "How do the family plans work?",
@@ -233,7 +233,7 @@ const BUDGET_CARD: PaidPlanCard = {
     "1,000 AI actions a month in the same shared pool, plus live streaming voice chat",
     "5 committed statement imports per month",
     "10 custom categories",
-    "Automatic savings interest, full cash flow analytics, and the renewal calendar",
+    "Automatic savings interest, full cash flow analytics, and the bill calendar",
     "Filtered CSV transaction export",
     "A streak pet that grows all the way to Legend",
     "Direct support within 48 hours",

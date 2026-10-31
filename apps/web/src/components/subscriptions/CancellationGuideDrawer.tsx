@@ -159,8 +159,8 @@ function CancellationGuideContent({
 
           <div className="cancellation-drawer-footer-note">
             <p>
-              <em>Note:</em> Marking a subscription as canceled in Zoption tracks your local budget
-              and stops renewal reminders; it does not automatically contact the merchant or dispute
+              <em>Note:</em> Marking a bill as canceled in Zoption tracks your local budget and
+              stops renewal reminders; it does not automatically contact the merchant or dispute
               past bank charges.
             </p>
           </div>
