@@ -14,12 +14,12 @@
   "dependencies": {
     "@zoption/shared": "workspace:*",
     "drizzle-orm": "^0.45.4",
-    "hono": "^4.13.14",
-    "jose": "^6.2.13",
+    "hono": "^4.13.17",
+    "jose": "^6.2.15",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^5.20261025.1",
-    "wrangler": "^4.152.0"
+    "@cloudflare/workers-types": "^5.20261108.1",
+    "wrangler": "^4.158.0"
   }
 }
