@@ -98,6 +98,12 @@ export interface Bindings {
   DODO_FAMILY_PRO_ANNUAL_PRODUCT_ID?: string;
   DODO_PAYMENTS_API_KEY?: string;
   DODO_PAYMENTS_WEBHOOK_KEY?: string;
+  /** The Play build's application id; Play subscriptions are read under it. */
+  GOOGLE_PLAY_PACKAGE_NAME?: string;
+  /** The `zoption-play-billing` service account's JSON key, set only with `wrangler secret put`. */
+  GOOGLE_PLAY_SERVICE_ACCOUNT_JSON?: string;
+  /** `true` grants a plan for a Play license tester's test purchase; anything else refuses it. */
+  GOOGLE_PLAY_ALLOW_TEST_PURCHASES?: string;
   OPS_EGRESS_TOKEN?: string;
   GITHUB_BUGFIX_DISPATCH_TOKEN?: string;
 }

@@ -1,19 +1,26 @@
 import {
   billingCheckoutRequestSchema,
   billingPlanChangeRequestSchema,
+  googlePlayPurchaseRequestSchema,
   isFamilyPlan,
 } from "@zoption/shared";
 import { Hono } from "hono";
 
 import { cancelSubscription, changePlan, startCheckout } from "../billing/checkout";
+import { googlePlayAccountId } from "../billing/google-play";
+import { verifyGooglePlayPurchase } from "../billing/google-play-purchases";
 import { getPayPalBrowserConfiguration } from "../billing/paypal";
 import { reconcileBillingCheckout } from "../billing/reconciliation";
 import type { BillingRepository } from "../db/billing";
+import type { GooglePlayRepository } from "../db/google-play";
 import { HttpError } from "../errors";
 import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
-export function createBillingRoutes(repository: BillingRepository) {
+export function createBillingRoutes(
+  repository: BillingRepository,
+  googlePlay: GooglePlayRepository,
+) {
   const routes = new Hono<AppEnvironment>();
 
   routes.get("/", async (context) =>
@@ -60,6 +67,32 @@ export function createBillingRoutes(repository: BillingRepository) {
     }
     return context.json(
       await changePlan(repository, context.env, context.get("tenant").tenantId, null, request),
+    );
+  });
+
+  // The Play build passes this to Play Billing as `obfuscatedAccountId` when it buys.
+  routes.get("/google-play/account", async (context) =>
+    context.json({ obfuscatedAccountId: await googlePlayAccountId(context.get("authUser").id) }),
+  );
+
+  /** The Play build reports a personal plan purchase here after buying and on every open. */
+  routes.post("/google-play", async (context) => {
+    const request = parseInput(
+      googlePlayPurchaseRequestSchema,
+      await readJson(context),
+      "Send the Google Play purchase.",
+    );
+    return context.json(
+      await verifyGooglePlayPurchase(
+        googlePlay,
+        context.env,
+        {
+          userId: context.get("authUser").id,
+          tenantId: context.get("tenant").tenantId,
+          familyTenantId: null,
+        },
+        request,
+      ),
     );
   });
 
