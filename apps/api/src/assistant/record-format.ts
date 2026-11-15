@@ -1,4 +1,11 @@
-import type { AccountRecord, Currency } from "@zoption/shared";
+import type {
+  AccountRecord,
+  AssistantSourceMetadata,
+  AssistantToolResultEnvelope,
+  Currency,
+} from "@zoption/shared";
+
+import type { DataQualityAssessment } from "./data-quality";
 
 const moneyFormatter = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -33,4 +40,34 @@ export function findAccountByName(
   if (!withoutGenericSuffix || withoutGenericSuffix === requestedName) return undefined;
   const matches = items.filter((account) => normalizedName(account.name) === withoutGenericSuffix);
   return matches.length === 1 ? matches[0] : undefined;
+}
+
+/** Wraps a tool result in the envelope answer validation and source metadata read. */
+export function source<T extends object>(
+  data: T,
+  sourceType: AssistantSourceMetadata["sourceType"],
+  options: {
+    period?: { from: string; to: string };
+    baselinePeriod?: { from: string; to: string };
+    filters?: {
+      accountName?: string;
+      categoryName?: string;
+      goalName?: string;
+      debtNames?: string[];
+    };
+    recordCount?: number;
+    quality?: DataQualityAssessment;
+  } = {},
+): AssistantToolResultEnvelope<T> {
+  return {
+    data,
+    source: {
+      sourceType,
+      ...(options.period ? { period: options.period } : {}),
+      ...(options.baselinePeriod ? { baselinePeriod: options.baselinePeriod } : {}),
+      ...(options.filters ? { filters: options.filters } : {}),
+      ...(options.recordCount === undefined ? {} : { recordCount: options.recordCount }),
+    },
+    dataQuality: options.quality ?? { status: "reliable", signals: [] },
+  };
 }

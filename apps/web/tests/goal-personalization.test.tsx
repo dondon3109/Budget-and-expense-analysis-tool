@@ -3,6 +3,7 @@
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup, fireEvent, screen, waitFor } from "@testing-library/react";
+import { assistantSkills } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -44,7 +45,7 @@ describe("assistant starter prompts", () => {
   it("leaves today's prompts for no goal and for other", () => {
     expect(quickPromptsForGoal(null)).toBe(quickPromptsForGoal(undefined));
     expect(quickPromptsForGoal("other")).toBe(quickPromptsForGoal(null));
-    expect(quickPromptsForGoal(null)[0]?.prompt).toBe("How much did I spend this month?");
+    expect(quickPromptsForGoal(null)[0]?.prompt).toBe(assistantSkills[0].prompt);
   });
 
   it("renders the goal prompt first in the conversation", () => {

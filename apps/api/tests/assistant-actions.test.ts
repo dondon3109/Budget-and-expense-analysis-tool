@@ -364,7 +364,7 @@ function setupConfirm() {
         TENANT,
         THREAD,
         JSON.stringify({
-          promptVersion: "expert-v7",
+          promptVersion: "expert-v8",
           compliance: { posture: "budgeting_allowed", topics: [] },
           sources: [],
           assistantActionFlow: true,

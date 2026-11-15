@@ -30,9 +30,17 @@ const responseSchema = z.object({
     .object({
       input_tokens: z.number().int().nonnegative().optional(),
       output_tokens: z.number().int().nonnegative().optional(),
+      cache_read_input_tokens: z.number().int().nonnegative().optional(),
+      cache_creation_input_tokens: z.number().int().nonnegative().optional(),
     })
     .optional(),
 });
+
+type AnthropicSystemBlock = {
+  type: "text";
+  text: string;
+  cache_control?: { type: "ephemeral" };
+};
 
 type AnthropicContentBlock =
   | { type: "text"; text: string }
@@ -54,7 +62,7 @@ function toAnthropicToolChoice(choice: ProviderCompletionRequest["toolChoice"]) 
 }
 
 function toAnthropicMessages(messages: AssistantProviderMessage[]): {
-  system: string | undefined;
+  system: AnthropicSystemBlock[] | undefined;
   messages: Array<{ role: "user" | "assistant"; content: string | AnthropicContentBlock[] }>;
 } {
   const systemParts: string[] = [];
@@ -124,7 +132,16 @@ function toAnthropicMessages(messages: AssistantProviderMessage[]): {
   }
 
   return {
-    system: systemParts.length > 0 ? systemParts.join("\n\n") : undefined,
+    // The first system message is the rules every turn shares, so its breakpoint caches the
+    // tools and rules across turns and users; later ones carry this turn's context.
+    system:
+      systemParts.length > 0
+        ? systemParts.map((text, index) => ({
+            type: "text" as const,
+            text,
+            ...(index === 0 ? { cache_control: { type: "ephemeral" as const } } : {}),
+          }))
+        : undefined,
     messages: converted,
   };
 }
@@ -213,7 +230,10 @@ export class AnthropicProvider implements AssistantProvider {
         body: JSON.stringify({
           model: this.model,
           max_tokens: 800,
-          temperature: 0.15,
+          // No temperature: Claude 4.7 and later reject any sampling parameter with a 400.
+          // Caches the conversation so far, so the turn's follow-up calls after a tool
+          // round reread it from the cache.
+          cache_control: { type: "ephemeral" },
           ...(system ? { system } : {}),
           messages,
           tools: toAnthropicTools(request.tools),
@@ -334,8 +354,14 @@ export class AnthropicProvider implements AssistantProvider {
       ...(parsed.data.usage
         ? {
             usage: {
-              promptTokens: parsed.data.usage.input_tokens,
+              // input_tokens excludes cache reads and writes; promptTokens counts every
+              // input token, as the other providers report it.
+              promptTokens:
+                (parsed.data.usage.input_tokens ?? 0) +
+                (parsed.data.usage.cache_read_input_tokens ?? 0) +
+                (parsed.data.usage.cache_creation_input_tokens ?? 0),
               completionTokens: parsed.data.usage.output_tokens,
+              cachedPromptTokens: parsed.data.usage.cache_read_input_tokens,
             },
           }
         : {}),
