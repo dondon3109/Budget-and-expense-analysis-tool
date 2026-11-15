@@ -178,7 +178,35 @@ describe("API assistant, voice, and entry routes", () => {
       merchant: "Jollibee",
       amountMinor: -28500,
     });
-    expect(extract).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File));
+    expect(extract).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), {
+      includePayment: false,
+    });
+  });
+
+  it("passes the payment-detail opt-in from the multipart form", async () => {
+    const extract = vi.fn(async () => ({
+      merchant: "JA•••N M•• L.",
+      date: "2026-09-30",
+      amountMinor: 240000,
+      currency: "PHP",
+      kind: "expense",
+      rawText: "Sent via GCash",
+    }));
+    const app = createAppWithFakes({ receiptService: { extract } as unknown as ReceiptService });
+    const form = new FormData();
+    form.set("image", new File([new Uint8Array([1, 2, 3])], "receipt.jpg", { type: "image/jpeg" }));
+    form.set("detail", "payment");
+
+    const response = await app.request("/api/app/receipts/extract", {
+      method: "POST",
+      headers: AUTHORIZATION,
+      body: form,
+    });
+
+    expect(response.status).toBe(200);
+    expect(extract).toHaveBeenCalledWith(undefined, TENANT_ID, expect.any(File), {
+      includePayment: true,
+    });
   });
 
   it("rejects JSON on the multipart receipt extraction route", async () => {

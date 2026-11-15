@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   receiptConsentUpdateSchema,
   receiptDraftSchema,
+  receiptPaymentSchema,
   transactionVoiceDraftSchema,
+  type ReceiptPayment,
 } from "../src/schemas";
-import { receiptItemDescription } from "../src/receipts";
+import { receiptItemDescription, receiptPaymentKind, receiptPaymentNote } from "../src/receipts";
 
 describe("receiptDraftSchema", () => {
   it("accepts a fully parsed receipt draft", () => {
@@ -121,5 +123,59 @@ describe("receiptItemDescription", () => {
     expect(receiptItemDescription("Jollibee", "Chickenjoy")).toBe("Jollibee · Chickenjoy");
     expect(receiptItemDescription("Jollibee", "jollibee")).toBe("Jollibee");
     expect(receiptItemDescription(" ", "Chickenjoy")).toBe("Chickenjoy");
+  });
+});
+
+describe("receipt payment details", () => {
+  const gcash = {
+    merchant: "JA•••N M•• L.",
+    date: "2026-09-30",
+    amountMinor: 240_000,
+    currency: "PHP",
+    kind: "expense",
+    payment: {
+      provider: "GCash",
+      type: "send_money",
+      counterparty: "JA•••N M•• L.",
+      referenceNo: "2045596729825",
+      feeMinor: 0,
+    },
+    rawText: "Sent via GCash",
+  };
+
+  it("accepts a draft with confirmation details", () => {
+    expect(receiptDraftSchema.safeParse(gcash).success).toBe(true);
+  });
+
+  it("rejects an unknown payment type and a float exchange rate", () => {
+    expect(
+      receiptDraftSchema.safeParse({ ...gcash, payment: { provider: "GCash", type: "loan" } })
+        .success,
+    ).toBe(false);
+    expect(
+      receiptPaymentSchema.safeParse({ provider: "Wise", type: "remittance", exchangeRate: 56.12 })
+        .success,
+    ).toBe(false);
+  });
+
+  it("maps confirmation types to transaction kinds", () => {
+    expect(receiptPaymentKind("receive_money")).toBe("income");
+    expect(receiptPaymentKind("cash_in")).toBe("transfer");
+    expect(receiptPaymentKind("bill_payment")).toBe("expense");
+  });
+
+  it("writes a searchable notes line", () => {
+    expect(receiptPaymentNote(gcash.payment as ReceiptPayment)).toBe(
+      "GCash Send money · Ref 2045596729825",
+    );
+    expect(
+      receiptPaymentNote({
+        provider: "Western Union",
+        type: "remittance",
+        sentAmountMinor: 50_000,
+        sentCurrency: "USD",
+        exchangeRate: "56.12",
+      }),
+    ).toBe("Western Union Remittance · Sent 500.00 USD at 56.12");
   });
 });

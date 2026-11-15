@@ -1,4 +1,4 @@
-import { parseAmountToMinor, type ReceiptDraft } from "@zoption/shared";
+import { parseAmountToMinor, receiptPaymentNote, type ReceiptDraft } from "@zoption/shared";
 
 import { formatMinorForInput } from "@/features/transactions/transaction-form";
 
@@ -19,7 +19,7 @@ export interface ReceiptReviewCategory {
 
 function categoryIdFor(
   categories: ReceiptReviewCategory[],
-  kind: "income" | "expense",
+  kind: ReceiptReviewCategory["kind"],
   suggestedName?: string,
 ): string {
   const usable = categories.filter((category) => category.kind === kind);
@@ -36,7 +36,7 @@ function categoryIdFor(
 export function reviewItemsFromReceipt(
   draft: ReceiptDraft,
   categories: ReceiptReviewCategory[],
-  kind: "income" | "expense",
+  kind: ReceiptReviewCategory["kind"],
 ): ReceiptReviewItem[] {
   const extracted = draft.items?.length
     ? draft.items
@@ -66,4 +66,24 @@ export function reviewedItemsTotalMinor(items: ReceiptReviewItem[]): number | nu
     }
   }
   return total;
+}
+
+/**
+ * The account a wallet or bank confirmation belongs to, matched by name: a "GCash" account for a
+ * GCash screenshot, "BPI Savings" for a BPI one. Short names never match, so "Maya" cannot pick a
+ * "My savings" account by accident.
+ */
+export function accountForProvider<T extends { id: string; name: string }>(
+  accounts: T[],
+  provider: string | undefined,
+): T | undefined {
+  const needle = provider?.trim().toLocaleLowerCase("en") ?? "";
+  if (needle.length < 3) return undefined;
+  return accounts.find((account) => account.name.toLocaleLowerCase("en").includes(needle));
+}
+
+/** Notes for every entry saved from one scan; a confirmation keeps its reference number. */
+export function receiptNotes(draft: ReceiptDraft | null): string {
+  if (!draft?.payment) return "Scanned receipt";
+  return `Scanned receipt · ${receiptPaymentNote(draft.payment)}`.slice(0, 500);
 }

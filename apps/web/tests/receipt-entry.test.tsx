@@ -210,6 +210,52 @@ describe("ReceiptEntry", () => {
     });
   });
 
+  it("shows a Maya bills payment's details and splits its fee into its own row", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
+      merchant: "Meralco",
+      date: "2026-10-02",
+      amountMinor: 251500,
+      currency: "PHP",
+      kind: "expense",
+      items: [
+        { description: "Bills payment", amountMinor: 250000 },
+        { description: "Maya fee", amountMinor: 1500, categoryName: "Fees" },
+      ],
+      payment: {
+        provider: "Maya",
+        type: "bill_payment",
+        counterparty: "Meralco",
+        referenceNo: "MB12345",
+        feeMinor: 1500,
+      },
+      rawText: "Maya Pay Bills Meralco",
+    });
+    const onContinue = vi.fn();
+    renderEntry(onContinue);
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+
+    expect(
+      await screen.findByText("Maya · Bills payment · Ref MB12345 · Fee ₱15"),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+
+    expect(onContinue).toHaveBeenCalledWith({
+      date: "2026-10-02",
+      kind: "expense",
+      lines: [
+        {
+          description: "Meralco · Bills payment",
+          amountMinor: 250000,
+          categoryName: "Uncategorized",
+        },
+        { description: "Meralco · Maya fee", amountMinor: 1500, categoryName: "Uncategorized" },
+      ],
+    });
+  });
+
   it("keeps a transfer receipt as one signed total instead of itemizing it", async () => {
     apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
     apiMocks.extractReceipt.mockResolvedValue({

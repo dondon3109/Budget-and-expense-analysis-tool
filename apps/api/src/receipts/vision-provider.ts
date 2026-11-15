@@ -1,8 +1,8 @@
-import type { TransactionKind } from "@zoption/shared";
+import type { ReceiptPaymentType, TransactionKind } from "@zoption/shared";
 
 import type { Bindings } from "../types";
 
-export const DEFAULT_RECEIPT_VISION_MODEL = "@cf/meta/llama-3.2-11b-vision-instruct";
+export const DEFAULT_RECEIPT_VISION_MODEL = "@cf/google/gemma-4-26b-a4b-it";
 
 export type ReceiptVisionProviderName = "cloudflare_workers_ai";
 export type ReceiptVisionProviderErrorKind =
@@ -31,6 +31,17 @@ export interface ReceiptVisionCandidate {
     amountMinor?: number;
     categoryName?: string;
   }>;
+  /** Present when the image is an e-wallet, bank, or remittance confirmation. */
+  payment?: {
+    provider?: string;
+    type?: ReceiptPaymentType;
+    counterparty?: string;
+    referenceNo?: string;
+    feeMinor?: number;
+    sentAmountMinor?: number;
+    sentCurrency?: string;
+    exchangeRate?: string;
+  };
   rawText?: string;
 }
 

@@ -3,6 +3,7 @@ import {
   formatMinorAmount,
   parseAmountToMinor,
   receiptItemDescription,
+  receiptPaymentTypeLabel,
   transactionKinds,
   type CategoryRecord,
   type ReceiptDraft,
@@ -403,6 +404,20 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
               <small>Edit anything before the import preview.</small>
             </div>
           </div>
+          {draft.payment && (
+            <p className="receipt-payment">
+              {[
+                draft.payment.provider,
+                receiptPaymentTypeLabel(draft.payment.type),
+                draft.payment.referenceNo ? "Ref " + draft.payment.referenceNo : null,
+                draft.payment.feeMinor !== undefined
+                  ? "Fee " + formatMoney(draft.payment.feeMinor)
+                  : null,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
           <form className="receipt-draft" onSubmit={submit}>
             <label>
               <span>Merchant</span>

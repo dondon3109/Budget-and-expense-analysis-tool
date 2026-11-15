@@ -505,7 +505,7 @@ export function getDummyReceiptPreferences(): Promise<ReceiptPreferences> {
     enabled: true,
     consentedAt: "2026-08-01T00:00:00.000Z",
     consentVersion: 1,
-    visionModel: "@cf/meta/llama-3.2-11b-vision-instruct",
+    visionModel: "@cf/google/gemma-4-26b-a4b-it",
   });
 }
 
