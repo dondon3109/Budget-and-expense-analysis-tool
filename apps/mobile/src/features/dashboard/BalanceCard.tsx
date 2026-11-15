@@ -2,9 +2,10 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useHideAmountsStore } from "@/stores/hide-amounts-store";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { accountTypeIcon } from "@/features/setup/account-types";
-import { MoneyValue, moneyAccessibilityLabel } from "@/ui/components";
+import { MoneyValue, useMoneyFormat } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { otherCurrenciesWithAmounts, type DashboardSummary } from "@zoption/shared";
@@ -16,6 +17,9 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
   const theme = useZoptionTheme();
   const balances = summary.accountBalances;
   const workspaceCurrency = useWorkspaceCurrency();
+  const money = useMoneyFormat();
+  const toggleHidden = useHideAmountsStore((state) => state.toggle);
+  const openAccounts = withTapSound(() => router.push("/(app)/money-setup"));
   const otherBalances = balances?.balancesByCurrency ?? {};
   const otherCurrencies = otherCurrenciesWithAmounts(otherBalances, workspaceCurrency);
   // Same order as the web dashboard: Cash first, then by name.
@@ -29,30 +33,46 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
 
   return (
     <View style={{ gap: spacing.sm }}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Total balance. Opens account management."
-        onPress={withTapSound(() => router.push("/(app)/money-setup"))}
-      >
-        <View accessibilityLabel="Total balance" style={styles.plain}>
-          <View style={styles.cardHeaderRow}>
+      <View style={styles.plain}>
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.titleRow}>
             <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
               Total Balance
             </Text>
-            <MaterialCommunityIcons
-              accessibilityElementsHidden
-              color={theme.colors.textMuted}
-              name="chevron-right"
-              size={20}
-            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={money.hidden ? "Show amounts" : "Hide amounts"}
+              hitSlop={12}
+              onPress={withTapSound(toggleHidden)}
+            >
+              <MaterialCommunityIcons
+                color={theme.colors.textMuted}
+                name={money.hidden ? "eye-off-outline" : "eye-outline"}
+                size={18}
+              />
+            </Pressable>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Manage accounts"
+            hitSlop={12}
+            onPress={openAccounts}
+          >
+            <MaterialCommunityIcons color={theme.colors.textMuted} name="chevron-right" size={20} />
+          </Pressable>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Total balance. Opens account management."
+          onPress={openAccounts}
+        >
           <View style={{ gap: spacing.xs }}>
             <MoneyValue amountMinor={balances?.overallBalanceMinor ?? 0} style={styles.heroMoney} />
             {otherCurrencies.map((currency) => {
               const otherMinor = otherBalances[currency] ?? 0;
               return (
                 <View key={currency} style={styles.usdMeta}>
-                  {otherMinor > 0 ? (
+                  {otherMinor > 0 && !money.hidden ? (
                     <Text style={[typography.caption, { color: theme.colors.textMuted }]}>+</Text>
                   ) : null}
                   <MoneyValue
@@ -65,15 +85,15 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
               );
             })}
           </View>
-        </View>
-      </Pressable>
+        </Pressable>
+      </View>
       {accounts.length > 0 ? (
         <View accessibilityLabel="Account balances" style={{ gap: spacing.xs }}>
           {accounts.map((account) => (
             <View
               key={account.id}
               accessible
-              accessibilityLabel={`${account.name}, ${moneyAccessibilityLabel(account.balanceMinor, account.currency)}`}
+              accessibilityLabel={`${account.name}, ${money.label(account.balanceMinor, account.currency)}`}
               style={styles.accountRow}
             >
               <View style={[styles.accountIcon, { backgroundColor: theme.colors.canvasMuted }]}>
@@ -106,6 +126,7 @@ export function BalanceCard({ summary }: { summary: DashboardSummary }) {
 const styles = StyleSheet.create({
   ...homeCardStyles,
   plain: { gap: spacing.xs },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: spacing.xs },
   heroMoney: {
     fontSize: 34,
     lineHeight: 40,

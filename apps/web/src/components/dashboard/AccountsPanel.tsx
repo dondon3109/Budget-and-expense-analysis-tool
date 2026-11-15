@@ -8,13 +8,23 @@ import {
   type Currency,
   type DashboardSummary,
 } from "@zoption/shared";
-import { Pencil, Plus, Share2, SlidersHorizontal, Trash2, WalletCards } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Share2,
+  SlidersHorizontal,
+  Trash2,
+  WalletCards,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import type { AccountMutations } from "./useAccountMutations";
 import { isBillingEnforcementError } from "../../lib/api";
 import { trendState } from "../../lib/dashboard";
 import { formatMoney } from "../../lib/formatters";
+import { amountsHidden, setAmountsHidden } from "../../lib/hideAmounts";
 import { UpgradePrompt } from "../billing/UpgradePrompt";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { AccountFormModal } from "./AccountFormModal";
@@ -130,6 +140,21 @@ export function AccountsPanel({
                 <p>All accounts</p>
                 <h2 id="dashboard-balance-title">Overall balance</h2>
               </div>
+              {/* The page remounts on a flip (see WorkspaceCurrencyBoundary), so a plain read is fresh. */}
+              <button
+                className="dashboard-balance-hide"
+                type="button"
+                aria-pressed={amountsHidden()}
+                onClick={() => setAmountsHidden(!amountsHidden())}
+                title={amountsHidden() ? "Show amounts" : "Hide amounts for screen sharing"}
+              >
+                {amountsHidden() ? (
+                  <EyeOff size={18} aria-hidden="true" />
+                ) : (
+                  <Eye size={18} aria-hidden="true" />
+                )}
+                <span className="sr-only">{amountsHidden() ? "Show amounts" : "Hide amounts"}</span>
+              </button>
             </div>
             <strong>{formatMoney(overallBalanceMinor, baseCurrency)}</strong>
             {previousMetrics && (

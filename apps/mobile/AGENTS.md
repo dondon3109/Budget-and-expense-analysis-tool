@@ -57,7 +57,7 @@ pnpm mobile:android                     # adb reverse, then expo run:android
 - `useDashboardData(anchorDate)` bounds its ledger read to `cashflowWindowStart(anchorDate)`, the widest cashflow view, and reads the three newest transactions separately so Home can tell a dormant ledger from an empty one. Home's overview shows the month's top spending category (`TopCategorySection`), the first entry of `spendingByCategory`. Pass the same local date to `buildDashboardView` so the chart cannot read a window the query never loaded.
 - Import icons from `@expo/vector-icons/MaterialCommunityIcons`, never the `@expo/vector-icons` barrel. The barrel registers all 16 font families as bundled assets (2.6 MB), of which the app uses one.
 - Keep financial rows out of Zustand. Stores hold UI state only.
-- Parse money with the shared `parseAmountToMinor` and format only through `formatMoneyMinor` or `MoneyValue`. Amounts are integer minor units with SQLite CHECK constraints.
+- Parse money with the shared `parseAmountToMinor` and format only through `MoneyValue` or `useMoneyFormat` (both honor the Home "hide amounts" eye toggle, `src/stores/hide-amounts-store.ts`). Plain `formatMoneyMinor` is for input values and calculator results only. Amounts are integer minor units with SQLite CHECK constraints.
 - Read `process.env.EXPO_PUBLIC_*` with a literal key. A dynamic read is dropped from the release bundle.
 - Validate wire payloads with the shared strict schemas at the boundary, and surface typed errors (`ApiTransportError`, `LocalWorkspaceError`, `LocalKeyError`) rather than raw SQLite text.
 

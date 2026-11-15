@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 
 import { getFamilyDetail, getFamilySharedBalances, removeFamilySharedBalance } from "@/api/family";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { Button, Card, formatMoneyMinor } from "@/ui/components";
+import { Button, Card, useMoneyFormat } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
@@ -18,6 +18,7 @@ import { formatFamilyDate, memberLabel, useFamilyApi } from "./use-family-api";
  */
 export function SharedBalancesCard() {
   const theme = useZoptionTheme();
+  const money = useMoneyFormat();
   const me = useSessionSnapshot().subject;
   const owner = useActiveWorkspace().family?.role === "owner";
   const familyApi = useFamilyApi();
@@ -71,7 +72,7 @@ export function SharedBalancesCard() {
             </Text>
           </View>
           <Text style={[typography.headline, { color: theme.colors.text }]}>
-            {formatMoneyMinor(balance.balanceMinor, balance.currency)}
+            {money.format(balance.balanceMinor, balance.currency)}
           </Text>
           {owner ? (
             <Button
