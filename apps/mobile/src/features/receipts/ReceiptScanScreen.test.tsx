@@ -7,6 +7,9 @@ import type { TransactionFormData } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
 import { useSyncState } from "@/sync/sync-state";
 import { ReceiptScanScreen } from "./ReceiptScanScreen";
+import { takeSharedReceipt } from "./SharedReceiptHandoff";
+
+jest.mock("./SharedReceiptHandoff", () => ({ takeSharedReceipt: jest.fn(() => null) }));
 
 // Guards the e-wallet paths: a GCash screenshot pays from the GCash account with its reference
 // in the notes, and a cash-in saves as one transfer with its fee.
@@ -166,5 +169,25 @@ describe("ReceiptScanScreen payment confirmations", () => {
       }),
     );
     expect(createTransactions).not.toHaveBeenCalled();
+  });
+
+  it("reads a screenshot shared from GCash without picking a photo", async () => {
+    jest.mocked(extractReceipt).mockResolvedValue(gcashSend);
+    jest.mocked(takeSharedReceipt).mockReturnValueOnce({
+      uri: "file:///cache/zoption-shared-receipts/shared-1.png",
+      fileName: "shared-1.png",
+      mimeType: "image/png",
+      width: 1080,
+      height: 3021,
+    });
+
+    await render(<ReceiptScanScreen />);
+
+    expect(await screen.findByText("Review 1 item")).toBeTruthy();
+    expect(extractReceipt).toHaveBeenCalledWith(expect.anything(), {
+      uri: "file:///cache/zoption-shared-receipts/shared-1.png",
+      fileName: "shared-1.png",
+      mimeType: "image/png",
+    });
   });
 });

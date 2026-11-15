@@ -41,6 +41,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { ItemKindSelector, type ReceiptKind } from "./ItemKindSelector";
 import { ReceiptConsent } from "./ReceiptConsent";
 import { ReceiptTransferFields } from "./ReceiptTransferFields";
+import { takeSharedReceipt } from "./SharedReceiptHandoff";
 import {
   accountForProvider,
   receiptNotes,
@@ -61,6 +62,12 @@ const MIME_BY_EXTENSION: Record<string, "image/jpeg" | "image/png" | "image/webp
 };
 
 type PrefsPhase = "loading" | "consent" | "ready" | "unavailable" | "error";
+
+/** A photo from the camera, the library, or the Android share sheet. */
+type ReceiptPhotoAsset = Pick<
+  ImagePicker.ImagePickerAsset,
+  "uri" | "fileName" | "mimeType" | "width" | "height"
+>;
 
 function defaultCategoryId(categories: ReceiptReviewCategory[], kind: ReceiptKind): string {
   const usable = categories.filter((category) => category.kind === kind);
@@ -104,7 +111,7 @@ export function ReceiptScanScreen() {
   const [singleReceiptNoticeOpen, setSingleReceiptNoticeOpen] = useState(true);
   // A family scan keeps its photo on every entry it saves, unless the person turns it off.
   const inFamily = useActiveWorkspace().family !== null;
-  const [scannedPhoto, setScannedPhoto] = useState<ImagePicker.ImagePickerAsset | null>(null);
+  const [scannedPhoto, setScannedPhoto] = useState<ReceiptPhotoAsset | null>(null);
   const [keepPhoto, setKeepPhoto] = useState(true);
 
   const accounts = useMemo(
@@ -232,7 +239,7 @@ export function ReceiptScanScreen() {
     }
   };
 
-  const readAsset = async (asset: ImagePicker.ImagePickerAsset): Promise<void> => {
+  const readAsset = async (asset: ReceiptPhotoAsset): Promise<void> => {
     setScanning(true);
     setMessage(null);
     setDraft(null);
@@ -286,6 +293,13 @@ export function ReceiptScanScreen() {
       if (mounted.current) setScanning(false);
     }
   };
+
+  // A screenshot shared from GCash or a bank app is read as soon as scanning is ready.
+  useEffect(() => {
+    if (phase !== "ready" || scanning) return;
+    const shared = takeSharedReceipt();
+    if (shared) void readAsset(shared);
+  });
 
   const takePhoto = async (): Promise<void> => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
