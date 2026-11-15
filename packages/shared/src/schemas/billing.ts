@@ -3,6 +3,7 @@
 import { z } from "zod";
 
 import {
+  billingCheckoutProviders,
   billingFeatures,
   billingIntervals,
   billingProviders,
@@ -23,7 +24,7 @@ export const billingCheckoutRequestSchema = z
   .object({
     plan: z.enum(personalBillingPlans),
     interval: billingIntervalSchema,
-    provider: z.enum(billingProviders),
+    provider: z.enum(billingCheckoutProviders),
   })
   .strict();
 
@@ -33,7 +34,7 @@ export const familyBillingCheckoutRequestSchema = z
   .object({
     plan: z.enum(familyBillingPlans),
     interval: billingIntervalSchema,
-    provider: z.enum(billingProviders),
+    provider: z.enum(billingCheckoutProviders),
   })
   .strict();
 
@@ -97,7 +98,7 @@ const billingSubscriptionStatusSchema = z.enum([
 
 const billingPendingCheckoutSchema = z
   .object({
-    provider: z.enum(billingProviders),
+    provider: z.enum(billingCheckoutProviders),
     plan: z.enum(billingPlanKeys),
     interval: billingIntervalSchema,
     createdAt: z.iso.datetime(),
@@ -208,3 +209,46 @@ export const billingReconciliationResponseSchema = z
     summary: billingSummaryResponseSchema,
   })
   .strict();
+
+/**
+ * A Google Play subscription purchase the Play build reports after buying and on every app open.
+ * The API reads the purchase from Google, so these fields only name it; none is trusted.
+ */
+export const googlePlayPurchaseRequestSchema = z
+  .object({
+    productId: z.string().trim().min(1).max(100),
+    basePlanId: z.string().trim().min(1).max(100),
+    purchaseToken: z.string().trim().min(1).max(4096),
+  })
+  .strict();
+
+export type GooglePlayPurchaseRequest = z.infer<typeof googlePlayPurchaseRequestSchema>;
+
+/**
+ * `applied`: Google confirmed the purchase and `subscription` is what Zoption now records.
+ * `pending`: the buyer's payment is still pending in Play, so nothing is granted yet.
+ */
+export const googlePlayPurchaseResponseSchema = z
+  .object({
+    outcome: z.enum(["applied", "pending"]),
+    subscription: z
+      .object({
+        plan: z.enum(billingPlanKeys),
+        interval: billingIntervalSchema,
+        status: billingSubscriptionStatusSchema,
+        currentPeriodEndsAt: z.iso.datetime().nullable(),
+        cancelAtPeriodEnd: z.boolean(),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+
+export type GooglePlayPurchaseResponse = z.infer<typeof googlePlayPurchaseResponseSchema>;
+
+/** The value the app passes to Play Billing as `obfuscatedAccountId` for the signed-in person. */
+export const googlePlayAccountResponseSchema = z
+  .object({ obfuscatedAccountId: z.string().regex(/^[0-9a-f]{64}$/) })
+  .strict();
+
+export type GooglePlayAccountResponse = z.infer<typeof googlePlayAccountResponseSchema>;

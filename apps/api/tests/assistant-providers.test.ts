@@ -116,6 +116,38 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
     expect(body).toMatchObject({ model: "gpt-4o-mini", stream: false, temperature: 0.15 });
   });
 
+  it("sends the system messages as one, rules first, and reads cache hits", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () =>
+      jsonResponse({
+        model: "deepseek-flash",
+        choices: [{ finish_reason: "stop", message: { role: "assistant", content: "ok" } }],
+        usage: { prompt_tokens: 50, completion_tokens: 3, prompt_cache_hit_tokens: 40 },
+      }),
+    );
+    const provider = new ChatCompletionsProvider(
+      { provider: "deepseek", endpoint: "https://x.test", model: "deepseek-flash", apiKey: "k" },
+      fetcher,
+    );
+
+    const completion = await provider.complete({ DB: {} as D1Database } as Bindings, {
+      messages: [
+        { role: "system", content: "Shared rules." },
+        { role: "system", content: "Turn context." },
+        { role: "user", content: "Hi" },
+      ],
+      tools: [],
+    });
+
+    const body = JSON.parse(fetcher.mock.calls[0]![1]?.body as string) as {
+      messages: { role: string; content: string }[];
+    };
+    expect(body.messages.slice(0, 2)).toEqual([
+      { role: "system", content: "Shared rules.\n\nTurn context." },
+      { role: "user", content: "Hi" },
+    ]);
+    expect(completion.usage).toMatchObject({ promptTokens: 50, cachedPromptTokens: 40 });
+  });
+
   it("gives Gemini a larger output cap than the plain-model default", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
@@ -358,7 +390,7 @@ describe("ChatCompletionsProvider (openai/gemini/meta/muse_spark/deepseek)", () 
 });
 
 describe("AnthropicProvider", () => {
-  it("moves system prompts top-level and parses text plus tool_use", async () => {
+  it("moves system prompts top-level, caches the shared rules, and parses tool_use", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       jsonResponse({
         model: "claude-3-5-haiku-latest",
@@ -367,7 +399,12 @@ describe("AnthropicProvider", () => {
           { type: "text", text: "Checking balances. " },
           { type: "tool_use", id: "toolu-1", name: "get_account_balances", input: {} },
         ],
-        usage: { input_tokens: 9, output_tokens: 4 },
+        usage: {
+          input_tokens: 9,
+          output_tokens: 4,
+          cache_read_input_tokens: 100,
+          cache_creation_input_tokens: 20,
+        },
       }),
     );
     const provider = new AnthropicProvider(
@@ -379,7 +416,8 @@ describe("AnthropicProvider", () => {
 
     const completion = await provider.complete({ DB: {} as D1Database } as Bindings, {
       messages: [
-        { role: "system", content: "System prompt." },
+        { role: "system", content: "Shared rules." },
+        { role: "system", content: "Turn context." },
         { role: "user", content: "How much did I spend?" },
       ],
       tools: [
@@ -406,8 +444,22 @@ describe("AnthropicProvider", () => {
       "anthropic-version": "2023-06-01",
     });
     const body = JSON.parse(init?.body as string) as Record<string, unknown>;
-    expect(body).toMatchObject({ model: "claude-3-5-haiku-latest", system: "System prompt." });
+    expect(body).toMatchObject({
+      model: "claude-3-5-haiku-latest",
+      cache_control: { type: "ephemeral" },
+      system: [
+        { type: "text", text: "Shared rules.", cache_control: { type: "ephemeral" } },
+        { type: "text", text: "Turn context." },
+      ],
+    });
+    expect((body.system as unknown[])[1]).not.toHaveProperty("cache_control");
+    expect(body).not.toHaveProperty("temperature");
     expect(body).not.toHaveProperty("messages[0].role", "system");
+    expect(completion.usage).toEqual({
+      promptTokens: 129,
+      completionTokens: 4,
+      cachedPromptTokens: 100,
+    });
   });
 
   it("rejects a missing key without calling Anthropic", async () => {

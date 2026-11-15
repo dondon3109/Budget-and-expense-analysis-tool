@@ -2,6 +2,7 @@ import {
   billingPlanKeys,
   isFamilyPlan,
   type BillingCapability,
+  type BillingCheckoutProvider,
   type BillingInterval,
   type BillingPendingChange,
   type BillingPlanKey,
@@ -132,7 +133,7 @@ interface BillingProviderSubscriptionRow extends Omit<
 
 export interface BillingCheckoutReference {
   reference: string;
-  provider: BillingProvider;
+  provider: BillingCheckoutProvider;
   plan: BillingPlanKey;
   interval: BillingInterval;
   /** The family a family plan checkout covers; null for a personal plan. */
@@ -162,7 +163,7 @@ export type BillingSubscriptionSnapshot = Omit<
 export interface CheckoutRequest {
   plan: BillingPlanKey;
   interval: BillingInterval;
-  provider: BillingProvider;
+  provider: BillingCheckoutProvider;
   /** Set for a family plan, which the owner pays from their personal workspace. */
   familyTenantId: string | null;
 }

@@ -89,7 +89,7 @@ export function ImportSubscriptionSuggestions({
         setSuccessMessage(
           '"' +
             created.name +
-            '" is now tracked as an active subscription. See it in your Renewal Calendar.',
+            '" is now tracked as a recurring bill. See it in your Bill calendar.',
         );
         setActiveCandidate(null);
         setTimeout(() => setSuccessMessage(null), 4000);
@@ -165,10 +165,9 @@ export function ImportSubscriptionSuggestions({
             </strong>
             <span>
               We found repeating merchants, amounts, and billing cycles in this file. Track them as
-              active subscriptions to see billing dates, next charges, and combined commitments in
-              your{" "}
+              recurring bills to see billing dates, next charges, and combined commitments in your{" "}
               <span className="suggestion-renewal-link">
-                <CalendarDays size={12} aria-hidden="true" /> Renewal Calendar
+                <CalendarDays size={12} aria-hidden="true" /> Bill calendar
               </span>
               .
             </span>
@@ -253,10 +252,10 @@ export function ImportSubscriptionSuggestions({
                     title={
                       !resolveCategoryId(candidate) || !resolveAccountId()
                         ? "Create an account and expense category first"
-                        : "Track as subscription"
+                        : "Track as bill"
                     }
                   >
-                    <Plus size={14} aria-hidden="true" /> Track as subscription
+                    <Plus size={14} aria-hidden="true" /> Track as bill
                   </button>
                   <button
                     type="button"
@@ -273,9 +272,9 @@ export function ImportSubscriptionSuggestions({
         </ul>
 
         <p className="suggestion-footer">
-          Tracking creates an active subscription and a matching expense on its next billing date.
-          You can edit the amount, billing cycle, or billing date before saving. Yearly plans are
-          divided across 12 months in your Renewal Calendar cash-flow totals.
+          Tracking creates an active bill and a matching expense on its next billing date. You can
+          edit the amount, billing cycle, or billing date before saving. Yearly plans are divided
+          across 12 months in your Bill calendar cash-flow totals.
         </p>
       </section>
 
@@ -293,8 +292,8 @@ export function ImportSubscriptionSuggestions({
           initial={formInitial}
           busy={createMutation.isPending}
           serverError={createMutation.error?.message}
-          title="Add subscription"
-          submitLabel="Add subscription"
+          title="Add bill"
+          submitLabel="Add bill"
           onSubmit={async (input) => {
             await createMutation.mutateAsync(input);
           }}

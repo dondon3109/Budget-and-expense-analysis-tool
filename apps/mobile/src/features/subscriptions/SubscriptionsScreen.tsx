@@ -102,7 +102,7 @@ export function SubscriptionsScreen() {
     state.subscriptions.length > 0 ? (
       <View style={styles.fabPosition}>
         <Pressable
-          accessibilityLabel="Add subscription"
+          accessibilityLabel="Add bill"
           accessibilityRole="button"
           android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 28 }}
           onPress={withTapSound(addSubscription)}
@@ -129,12 +129,12 @@ export function SubscriptionsScreen() {
       onRefresh={handleRefresh}
       overlay={fabOverlay}
       refreshing={sync.status === "syncing"}
-      title="Subscriptions"
+      title="Bills"
     >
       {state.error ? (
-        <ErrorState message={state.error} onRetry={state.retry} title="Subscriptions unavailable" />
+        <ErrorState message={state.error} onRetry={state.retry} title="Bills unavailable" />
       ) : state.loading ? (
-        <View accessibilityLabel="Loading subscriptions" style={styles.stack}>
+        <View accessibilityLabel="Loading bills" style={styles.stack}>
           <Skeleton height={100} />
           <Skeleton height={88} />
           <Skeleton height={88} />
@@ -142,11 +142,11 @@ export function SubscriptionsScreen() {
       ) : state.subscriptions.length === 0 ? (
         <EmptyState
           icon="calendar-sync-outline"
-          title="No subscriptions yet"
-          description="Add streaming, software, or membership charges to see their monthly cost."
+          title="No bills yet"
+          description="Add electricity, water, internet, or subscription charges to see their monthly cost."
           action={
             <Button disabled={!local.workspace} onPress={addSubscription} variant="primary">
-              + Add a subscription
+              + Add a bill
             </Button>
           }
         />
@@ -169,7 +169,7 @@ export function SubscriptionsScreen() {
           />
 
           <View
-            accessibilityLabel="Filter subscriptions by status"
+            accessibilityLabel="Filter bills by status"
             accessibilityRole="tablist"
             style={styles.filterRow}
           >
@@ -239,14 +239,14 @@ export function SubscriptionsScreen() {
                 size={28}
               />
               <Text style={[typography.headline, { color: theme.colors.text }]}>
-                No {filter} subscriptions
+                No {filter} bills
               </Text>
               <Text
                 style={[typography.caption, { color: theme.colors.textMuted, textAlign: "center" }]}
               >
                 {filter === "canceled"
-                  ? "All your subscriptions are currently active."
-                  : "You do not have any active subscriptions."}
+                  ? "All your bills are currently active."
+                  : "You do not have any active bills."}
               </Text>
             </Card>
           ) : (
@@ -295,7 +295,7 @@ function MonthlyCostCard({
   );
 
   return (
-    <Card accessibilityLabel="Monthly subscription cost" style={styles.summaryCard}>
+    <Card accessibilityLabel="Monthly bills cost" style={styles.summaryCard}>
       <View style={styles.rowBetween}>
         <View style={styles.costItem}>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -313,7 +313,7 @@ function MonthlyCostCard({
             </Text>
           ))}
           <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 11 }]}>
-            Active plans only · Yearly plans divided across 12 months
+            Active bills only · Yearly bills divided across 12 months
           </Text>
         </View>
         <View
@@ -410,7 +410,7 @@ function SubscriptionRow({
                   { color: theme.colors.text, fontWeight: "600", flexShrink: 1 },
                 ]}
               >
-                {category?.name ?? "Subscription"}
+                {category?.name ?? "Bill"}
               </Text>
             </View>
 

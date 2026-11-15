@@ -43,6 +43,21 @@ function resolveVariant(value: string | undefined): AppVariant {
   return "development";
 }
 
+export type AppDistribution = "apk" | "play";
+
+/**
+ * How the build reaches devices. "apk" (the default) is the sideloaded APK from
+ * downloads.zoption.site, which updates itself and checks out on the web. "play"
+ * is the Google Play bundle: Play owns updates, so it must not ship the APK
+ * updater's REQUEST_INSTALL_PACKAGES permission. An unknown value fails the
+ * build rather than silently producing the wrong distribution.
+ */
+function resolveDistribution(value: string | undefined): AppDistribution {
+  if (value === undefined || value === "" || value === "apk") return "apk";
+  if (value === "play") return "play";
+  throw new Error(`ZOPTION_DISTRIBUTION must be "apk" or "play"; got ${JSON.stringify(value)}.`);
+}
+
 function environmentValue(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
@@ -101,6 +116,7 @@ const withoutPushEntitlement: ConfigPlugin = (config) =>
 export default ({ config }: ConfigContext): ExpoConfig => {
   const appVariant = resolveVariant(environmentValue(process.env.APP_VARIANT));
   const variant = variants[appVariant];
+  const distribution = resolveDistribution(environmentValue(process.env.ZOPTION_DISTRIBUTION));
   // Server push needs both: the Firebase file links the Android build to FCM, and the EAS
   // project id scopes its Expo push tokens. Without either, the build has no push and the app
   // never asks Expo for a token (`pushProjectId` in src/features/push/push-registration.ts).
@@ -140,6 +156,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // closing the app whenever the user pressed back from a pushed screen.
       predictiveBackGestureEnabled: false,
       ...(push ? { googleServicesFile: push.googleServicesFile } : {}),
+      // Play forbids self-updating apps; the zoption-apk-updater module's manifest
+      // declares this permission, so the Play bundle removes it at manifest merge.
+      ...(distribution === "play"
+        ? { blockedPermissions: ["android.permission.REQUEST_INSTALL_PACKAGES"] }
+        : {}),
     },
     plugins: [
       "expo-router",
@@ -220,6 +241,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     extra: {
       appVariant,
+      distribution,
       ...(push ? { eas: { projectId: push.easProjectId } } : {}),
     },
   };

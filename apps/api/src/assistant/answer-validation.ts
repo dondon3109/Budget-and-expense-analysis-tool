@@ -24,7 +24,7 @@ const COUNT_OR_DURATION_PATTERN =
 const SHAMING_PATTERN =
   /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless|iresponsable|bobo sa pera|aksaya sa pera|pabaya sa pera)\b/i;
 const INTERNAL_TOOL_PATTERN =
-  /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories|suggest_transaction_details|draft_transaction)\b/i;
+  /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories|list_subscriptions|get_goals_and_debts|suggest_transaction_details|draft_transaction|propose_action)\b/i;
 const REGULATED_RECOMMENDATION_PATTERN =
   /\b(?:you should|i recommend|best for you|right choice for you|dapat kang|inirerekomenda ko|pinakamainam para sa iyo)\b.{0,80}\b(?:buy|sell|invest|allocate|file|deduct|insurance|coverage|retirement|will|trust|legal structure|bumili|ibenta|mamuhunan|mag-invest|seguro|buwis|huling habilin|pensyon)\b/i;
 
@@ -44,6 +44,8 @@ const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   get_budget_vs_actual: "budget_comparison",
   list_transactions: "transaction_detail",
   list_categories: "category_list",
+  list_subscriptions: "subscription_list",
+  get_goals_and_debts: "goals_overview",
   detect_recurring_charges: "recurring",
   detect_spending_anomalies: "anomaly",
   calculate_debt_payoff: "debt_projection",
@@ -66,6 +68,8 @@ const TOOL_FOR_GROUP: Record<RequiredToolGroup, string | null> = {
   budget_comparison: "get_budget_vs_actual",
   transaction_detail: "list_transactions",
   category_list: "list_categories",
+  subscription_list: "list_subscriptions",
+  goals_overview: "get_goals_and_debts",
   recurring: "detect_recurring_charges",
   anomaly: "detect_spending_anomalies",
   debt_projection: null,
@@ -87,6 +91,8 @@ const SOURCE_LABELS: Record<string, string> = {
   get_budget_vs_actual: "Budget versus actual",
   list_transactions: "Transaction details",
   list_categories: "Categories",
+  list_subscriptions: "Subscriptions",
+  get_goals_and_debts: "Goals and debts",
   detect_recurring_charges: "Recurring charges",
   detect_spending_anomalies: "Spending anomalies",
   calculate_debt_payoff: "Debt payoff projection",
@@ -211,7 +217,9 @@ export function validateToolArguments(
     if (!matches) return "untrusted_period";
   }
   if (
-    (name === "detect_recurring_charges" || name === "suggest_transaction_details") &&
+    (name === "detect_recurring_charges" ||
+      name === "suggest_transaction_details" ||
+      name === "list_subscriptions") &&
     values.through !== policy.currentDate
   ) {
     return "untrusted_current_date";
@@ -248,6 +256,7 @@ export function requiredGroupToolCall(
   switch (name) {
     case "get_account_balances":
     case "list_categories":
+    case "get_goals_and_debts":
       return { name, arguments: {} };
     case "get_period_summary":
     case "get_spending_by_category":
@@ -259,6 +268,7 @@ export function requiredGroupToolCall(
       return { name, arguments: period ? { from: period.from, to: period.to } : {} };
     case "detect_recurring_charges":
     case "suggest_transaction_details":
+    case "list_subscriptions":
       return { name, arguments: { through: policy.currentDate } };
     default:
       return null;

@@ -44,8 +44,11 @@ export interface ProviderCompletion {
   message: Extract<AssistantProviderMessage, { role: "assistant" }>;
   finishReason: string;
   usage?: {
+    /** Every input token, cached or not. */
     promptTokens?: number;
     completionTokens?: number;
+    /** The part of promptTokens the provider served from its prompt cache. */
+    cachedPromptTokens?: number;
   };
 }
 

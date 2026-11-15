@@ -137,7 +137,7 @@ export function MoreScreen() {
             />
             <MenuRow
               icon="calendar-sync-outline"
-              title="Subscriptions"
+              title="Bills"
               onPress={() => router.push("/(app)/subscriptions")}
             />
             <MenuRow

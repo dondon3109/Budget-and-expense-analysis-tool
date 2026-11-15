@@ -1,5 +1,7 @@
 import {
   assistantReplyDrafts,
+  assistantSkillForMessage,
+  type AssistantSkillId,
   type AssistantCompliancePosture,
   type AssistantComplianceTopic,
   type AssistantDateRange,
@@ -10,9 +12,10 @@ import {
 import type { AssistantHistoryMessage } from "../db/assistant";
 import { classifyCompliance } from "./compliance-policy";
 import { resolveAssistantPeriod, type TransactionDateBounds } from "./date-range";
+import { ASSISTANT_SKILL_PLANS } from "./skills";
 
 /** Recorded on every reply and audit row; bump it when the system prompt's rules change. */
-export const ASSISTANT_PROMPT_VERSION = "expert-v7";
+export const ASSISTANT_PROMPT_VERSION = "expert-v8";
 
 export type RequiredToolGroup =
   | "account_balance"
@@ -21,6 +24,8 @@ export type RequiredToolGroup =
   | "budget_comparison"
   | "transaction_detail"
   | "category_list"
+  | "subscription_list"
+  | "goals_overview"
   | "recurring"
   | "anomaly"
   | "debt_projection"
@@ -38,6 +43,8 @@ export interface AssistantTurnPolicy {
   requiredToolGroups: RequiredToolGroup[];
   /** The user is creating, changing, or deleting a subscription, goal, or debt. */
   actionFlow?: boolean;
+  /** A built-in skill: its groups are read before the first provider call. */
+  skill?: AssistantSkillId;
   deterministicResponse?: string;
   disclaimer?: {
     text: string;
@@ -189,6 +196,27 @@ function requiredGroups(message: string): RequiredToolGroup[] {
   ) {
     groups.add("recurring");
   }
+  // Saved plans, not charges detected in transactions: "what bills are due this week",
+  // "magkano ang subscriptions ko".
+  if (
+    /\b(?:subscriptions?|subskripsyon|bills?|bayarin|renewals?)\b/i.test(message) &&
+    /\b(?:due|upcoming|next|renew\w*|list|show|have|saved|what|which|how much|total|darating|susunod|ipakita|pakita|ilista|ano|alin|magkano|meron|mayroon)\b/i.test(
+      message,
+    )
+  ) {
+    groups.add("subscription_list");
+  }
+  // "How are my goals going", "kumusta ang ipon goal ko", "show my debts".
+  if (
+    /\b(?:goals?|layunin|ipon goal|emergency fund|sinking fund|debts?|loans?|utang)\b/i.test(
+      message,
+    ) &&
+    /\b(?:progress|how (?:am i|are|is)|status|on track|close|list|show|overview|all|total|lahat|ipakita|pakita|ilista|gaano na|kumusta|nasaan na|magkano)\b/i.test(
+      message,
+    )
+  ) {
+    groups.add("goals_overview");
+  }
   if (
     /\b(?:anomal|unusual|outlier|spike|why.*overspend|why.*higher|kakaiba|hindi karaniwan|hindi pangkaraniwan|bakit.*tumaas|bakit.*lumaki|bakit.*sumobra)\b/i.test(
       message,
@@ -299,6 +327,28 @@ export function createAssistantTurnPolicy(input: {
         ? { disclaimer: { text: compliance.disclaimer, topics: compliance.topics } }
         : {}),
     };
+  }
+
+  const skill = assistantSkillForMessage(input.message);
+  if (skill) {
+    const plan = ASSISTANT_SKILL_PLANS[skill.id];
+    const period = plan.period
+      ? resolveAssistantPeriod([], plan.period, input.currentDate, input.transactionBounds, true)
+      : {};
+    const base: AssistantTurnPolicy = {
+      currentDate: input.currentDate,
+      timeZone: input.timeZone,
+      compliance: { posture: compliance.posture, topics: compliance.topics },
+      requiredToolGroups: plan.groups,
+      skill: skill.id,
+    };
+    // A workspace with no records in the period gets the same deterministic reply a typed
+    // question would.
+    const deterministic = period.clarification ?? period.deterministicResponse;
+    if (deterministic) {
+      return { ...base, requiredToolGroups: [], deterministicResponse: deterministic };
+    }
+    return { ...base, ...(period.period ? { resolvedPeriod: period.period } : {}) };
   }
 
   if (

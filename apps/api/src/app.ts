@@ -230,7 +230,7 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/onboarding", createOnboardingRoutes(dependencies.onboarding));
   app.route("/api/app/profile", createGoalProfileRoutes(dependencies.goalProfile));
   app.route("/api/app/pet", createPetRoutes(dependencies.pet));
-  app.route("/api/app/billing", createBillingRoutes(dependencies.billing));
+  app.route("/api/app/billing", createBillingRoutes(dependencies.billing, dependencies.googlePlay));
   app.route("/api/app/subscriptions", createSubscriptionRoutes(dependencies.subscriptions));
   app.route("/api/app/events", createCalendarEventRoutes(dependencies.events));
   app.route("/api/app/goals", createFinancialGoalRoutes(dependencies.goals));
@@ -268,7 +268,10 @@ export function createApp(options: AppOptions = {}) {
     createFamilyCommentRoutes(dependencies.familyComments, dependencies.familyNotifier),
   );
   app.route("/api/app/family/alerts", createFamilyAlertRoutes(dependencies.familyAlerts));
-  app.route("/api/app/family/billing", createFamilyBillingRoutes(dependencies.billing));
+  app.route(
+    "/api/app/family/billing",
+    createFamilyBillingRoutes(dependencies.billing, dependencies.googlePlay),
+  );
   app.route("/api/app/family/receipts", createFamilyReceiptRoutes(dependencies.familyReceipts));
   app.route("/api/app/families", createFamilyRoutes(dependencies.families));
   app.route("/api/app/family", createActiveFamilyRoutes(dependencies.families));

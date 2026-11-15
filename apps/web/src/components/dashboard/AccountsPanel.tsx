@@ -112,9 +112,9 @@ export function AccountsPanel({
   const linkedSubscriptions = removingAccount?.activeSubscriptions ?? [];
   const linkedSubscriptionWarning =
     linkedSubscriptions.length === 1
-      ? `The active subscription ${linkedSubscriptions[0]} is paid from this account. It stops being charged once the account is removed, and Zoption emails you until you choose another account for it.`
+      ? `The active bill ${linkedSubscriptions[0]} is paid from this account. It stops being charged once the account is removed, and Zoption emails you until you choose another account for it.`
       : linkedSubscriptions.length > 1
-        ? `The active subscriptions ${linkedSubscriptions.join(", ")} are paid from this account. They stop being charged once the account is removed, and Zoption emails you until you choose another account for each.`
+        ? `The active bills ${linkedSubscriptions.join(", ")} are paid from this account. They stop being charged once the account is removed, and Zoption emails you until you choose another account for each.`
         : null;
 
   return (

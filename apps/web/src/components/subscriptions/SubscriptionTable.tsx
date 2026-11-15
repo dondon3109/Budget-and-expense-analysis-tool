@@ -34,8 +34,8 @@ function formatBillingDate(value: string): string {
 function renewalBlockedNote(reason: SubscriptionRenewalReason, dueDate: string): string {
   const cycle = formatBillingDate(dueDate);
   return reason === "account_archived"
-    ? `${cycle} not renewed: account removed`
-    : `${cycle} not renewed: not enough balance`;
+    ? `${cycle} not paid: account removed`
+    : `${cycle} not paid: not enough balance`;
 }
 
 export function SubscriptionTable({
@@ -50,7 +50,7 @@ export function SubscriptionTable({
   return (
     <div className="subscription-table-wrap">
       <table className="subscription-table">
-        <caption className="sr-only">Subscription renewals</caption>
+        <caption className="sr-only">Recurring bills</caption>
         <thead>
           <tr>
             <th scope="col">Name</th>

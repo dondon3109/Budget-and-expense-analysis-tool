@@ -1,6 +1,10 @@
 import {
   billingIntervals,
   billingPlanKeys,
+  GOOGLE_PLAY_BASE_PLAN_IDS,
+  GOOGLE_PLAY_PRODUCT_IDS,
+  googlePlayPlan,
+  type BillingCheckoutProvider,
   type BillingInterval,
   type BillingPlanKey,
   type BillingProvider,
@@ -15,7 +19,7 @@ type PlanIdVariable = {
 
 /** The Worker variable holding each PayPal plan id and Dodo product id. */
 const PLAN_ID_VARIABLES: Record<
-  BillingProvider,
+  BillingCheckoutProvider,
   Record<BillingPlanKey, Record<BillingInterval, PlanIdVariable>>
 > = {
   paypal: {
@@ -44,7 +48,12 @@ const PLAN_ID_VARIABLES: Record<
   },
 };
 
-const PLAN_ID_PREFIX: Record<BillingProvider, string> = { paypal: "P-", dodo: "pdt_" };
+const PLAN_ID_PREFIX: Record<BillingCheckoutProvider, string> = { paypal: "P-", dodo: "pdt_" };
+
+/** A Play subscription row's plan id: `<product id>:<base plan id>`, fixed in `@zoption/shared`. */
+export function googlePlayPlanId(plan: BillingPlanKey, interval: BillingInterval): string {
+  return `${GOOGLE_PLAY_PRODUCT_IDS[plan]}:${GOOGLE_PLAY_BASE_PLAN_IDS[interval]}`;
+}
 
 export function configuredPlanId(
   env: Bindings,
@@ -52,6 +61,7 @@ export function configuredPlanId(
   plan: BillingPlanKey,
   interval: BillingInterval,
 ): string {
+  if (provider === "google_play") return googlePlayPlanId(plan, interval);
   const value = env[PLAN_ID_VARIABLES[provider][plan][interval]];
   if (typeof value !== "string" || !value.startsWith(PLAN_ID_PREFIX[provider])) {
     throw new HttpError(503, "billing_not_configured", "Billing is not configured yet.");
@@ -65,6 +75,10 @@ export function configuredPlan(
   provider: BillingProvider,
   providerPlanId: string,
 ): { plan: BillingPlanKey; interval: BillingInterval } | null {
+  if (provider === "google_play") {
+    const [productId = "", basePlanId = "", ...rest] = providerPlanId.split(":");
+    return rest.length === 0 ? googlePlayPlan(productId, basePlanId) : null;
+  }
   for (const plan of billingPlanKeys) {
     for (const interval of billingIntervals) {
       const value = env[PLAN_ID_VARIABLES[provider][plan][interval]];

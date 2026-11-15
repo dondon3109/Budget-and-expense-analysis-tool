@@ -135,6 +135,104 @@ or committing with `[skip ci]` would leave the deployed fallback and SEO
 metadata one release behind. The script rejects a lower live `versionCode`;
 an approved rollback must additionally pass `--allow-downgrade`.
 
+## Google Play bundle
+
+The Google Play build is a second distribution of the same production app
+(`site.zoption.android`, same version). `ZOPTION_DISTRIBUTION` selects it:
+unset or `apk` is the sideloaded APK above, `play` is the Play build, and any
+other value fails `app.config.ts`. The value is embedded as
+`extra.distribution` and read at runtime with `isPlayDistribution()`
+(`apps/mobile/src/config/app-variant.ts`). The Play build differs only in what
+Play policy requires: it blocks `REQUEST_INSTALL_PACKAGES` (declared by the
+`zoption-apk-updater` module) and hides the in-app APK updater, because Play
+installs and updates the app.
+
+The `Android Play Bundle` workflow (`.github/workflows/android-play.yml`) is
+dispatched by hand. It prebuilds with `APP_VARIANT=production
+ZOPTION_DISTRIBUTION=play`, runs `bundleRelease` signed with the Play upload
+key, checks the signer (never the sideload key, and equal to
+`PLAY_UPLOAD_CERT_SHA256` when that variable is set), the package, versionCode,
+and versionName, and that the permission is gone, then keeps the AAB as a
+14-day workflow artifact. It never uploads to Play. It builds whatever version
+the last release bump set, so dispatch it on the released commit once
+`Production Release` has finished:
+
+```bash
+gh workflow run android-play.yml --ref main
+gh run download --name "zoption-play-<version>-<versionCode>"
+```
+
+### One-time upload key setup
+
+The upload key only signs uploads to Play; it is separate from the permanent
+sideload key and can be reset through Play support if lost. Generate it on your
+own machine, outside the repository:
+
+```bash
+keytool -genkeypair -v -keystore ~/zoption-play-upload.keystore -alias zoption-upload -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Zoption, O=Zoption, C=PH"
+```
+
+Keep the keystore and both passwords in your password manager. Store them as
+GitHub secrets (each command prompts for the value, so nothing lands in shell
+history) and record the certificate fingerprint:
+
+```bash
+base64 -i ~/zoption-play-upload.keystore | gh secret set PLAY_UPLOAD_KEYSTORE_BASE64
+```
+
+```bash
+gh secret set PLAY_UPLOAD_KEYSTORE_PASSWORD
+```
+
+```bash
+gh secret set PLAY_UPLOAD_KEY_ALIAS
+```
+
+```bash
+gh secret set PLAY_UPLOAD_KEY_PASSWORD
+```
+
+```bash
+keytool -list -v -keystore ~/zoption-play-upload.keystore -alias zoption-upload | grep 'SHA256:'
+```
+
+```bash
+gh variable set PLAY_UPLOAD_CERT_SHA256 --body "<the colon-separated SHA256 value>"
+```
+
+### Play App Signing enrollment
+
+Play App Signing is mandatory for new apps: Google holds the app signing key and
+re-signs what users install. Which key that is decides whether the website APK
+and the Play build can update each other:
+
+- **Recommended: use the permanent sideload key as the app signing key.** In
+  Play Console, create the app, then under Test and release → Setup → App
+  signing choose to use an existing key and follow the "Export and upload a key
+  from Java keystore" steps, which run Google's `pepk` tool against the
+  permanent keystore on your machine and upload the encrypted output. Play
+  installs are then signed with `F9:46:70:EB...`, so a user who sideloaded the
+  APK can move to Play (and back) without uninstalling and losing local data.
+- **Google-generated key.** Simpler, but Play installs then have a different
+  signature from the APK; moving between the two needs an uninstall, which
+  wipes the encrypted local workspace (anything not yet synced is lost).
+
+This choice is permanent per app. In the same page, register the upload key
+(the first AAB you upload registers its signer automatically). Record the
+outcome in `docs/deployment.md` under Google Play.
+
+### Closed testing upload
+
+1. Dispatch the workflow and download the AAB as above.
+2. In Play Console, Test and release → Testing → Closed testing, create a track
+   (or open the existing one), add the testers' email list (at least 12 people
+   opted in for 14 consecutive days before production access opens for a
+   personal account), and create a release.
+3. Upload the `.aab`, paste the release notes from `currentRelease.ts`, and
+   send the release for review. Play rejects a versionCode it has already seen,
+   so each upload needs a new release bump.
+4. Share the opt-in link from the track with testers.
+
 Local release builds remain compile proofs and must never be distributed. iOS
 production signing is still unconfigured and requires an Apple Developer
 distribution certificate, provisioning profile, and App Store Connect record.

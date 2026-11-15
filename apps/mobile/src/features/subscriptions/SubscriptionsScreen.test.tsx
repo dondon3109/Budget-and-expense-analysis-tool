@@ -126,8 +126,8 @@ describe("SubscriptionsScreen", () => {
 
     await render(<SubscriptionsScreen />);
 
-    expect(screen.getByText("No subscriptions yet")).toBeTruthy();
-    const addButton = screen.getByRole("button", { name: "+ Add a subscription" });
+    expect(screen.getByText("No bills yet")).toBeTruthy();
+    const addButton = screen.getByRole("button", { name: "+ Add a bill" });
     await fireEvent.press(addButton);
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
   });
@@ -155,7 +155,7 @@ describe("SubscriptionsScreen", () => {
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
 
     // Pinned FAB button in overlay also navigates to editor
-    const fabAdd = screen.getByRole("button", { name: "Add subscription" });
+    const fabAdd = screen.getByRole("button", { name: "Add bill" });
     await fireEvent.press(fabAdd);
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
 
