@@ -29,6 +29,7 @@ export * from "./safeToSpend";
 export * from "./overspendingAlert";
 export * from "./voiceCaption";
 export * from "./voiceLanguages";
+export * from "./assistantSkills";
 export * from "./redaction";
 export * from "./receipts";
 export * from "./pet";

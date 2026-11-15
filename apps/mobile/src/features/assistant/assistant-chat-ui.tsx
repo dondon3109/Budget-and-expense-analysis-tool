@@ -1,4 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { assistantSkills } from "@zoption/shared";
 import type { ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -20,11 +21,10 @@ import { COMPOSER_BUTTON, COMPOSER_HIT_SLOP, formatRecordingElapsed } from "./as
 import type { RecordingPhase } from "./assistant-voice-hooks";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
-const SUGGESTED_QUESTIONS = [
-  "Where did my money go this month?",
-  "Am I on budget this month?",
-  "Which debt should I pay first?",
-];
+// Built-in skills: the Worker runs a skill's fixed reads when it sees its prompt.
+const SUGGESTED_QUESTIONS = assistantSkills
+  .filter((skill) => skill.id !== "last_month_review")
+  .map((skill) => skill.prompt);
 
 /** Empty chat: the Zoption mark and a greeting centered, starter questions beneath as chips. */
 export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => void }) {
