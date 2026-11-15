@@ -13,7 +13,8 @@ import {
   resetPostHogForTests,
   setAnalyticsAccount,
 } from "../src/analytics/PostHogAnalytics";
-import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
+import { createConsentRecord } from "@zoption/web-common/consent";
+import { persistConsentRecord } from "@zoption/web-common/consent-storage";
 import { resetConsentGateForTests, updateConsentGate } from "@zoption/web-common/consent-gate";
 
 const POSTHOG_KEY = "phc_test_public_key_123";
@@ -64,10 +65,7 @@ function pageviews() {
 
 /** Mirrors the provider: the decision is persisted first, then pushed into the gate. */
 function storeAnalyticsConsent(analytics: boolean) {
-  localStorage.setItem(
-    CONSENT_STORAGE_KEY,
-    JSON.stringify(createConsentRecord({ analytics, marketing: false }, "custom")),
-  );
+  persistConsentRecord(createConsentRecord({ analytics, marketing: false }, "custom"));
   updateConsentGate({ analytics, marketing: false });
 }
 

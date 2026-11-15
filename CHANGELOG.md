@@ -6,6 +6,8 @@ All notable product changes are documented here.
 
 ### Added
 
+- AI Assistant skills, on web and mobile: one-tap Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up chips that answer straight from your records without asking which month.
+- The AI Assistant can now answer "what bills are due soon?", "what subscriptions do I have?", and "how are my goals and debts doing?" from your saved subscriptions, goals, and debts.
 - Family workspaces, on web and mobile: create a family, invite up to 5 people, share a transaction or an account balance into it, record remittances, attach receipt photos, and comment on entries with alerts when something changes. Switch between your own Zoption and a family on web, and use a family offline on the phone.
 - New paid plans, on web and mobile: Zoption Budget (₱149 a month) unlocks every paid feature with 1,000 AI actions, 5 imports a month, and 10 custom categories, and Zoption Pro (₱249 a month) doubles the AI actions, allows 10 imports, and removes the category limit. Yearly billing is 10 times the monthly price.
 - Family plans: Family Budget (₱499 a month) and Family Pro (₱799 a month) cover a family of up to 6 people and give everyone Budget or Pro for their own Zoption too. The owner can set up a family first and try it alone at Free limits; invitations open once a plan is chosen, and the owner buys, changes, or cancels it in Family settings.
@@ -41,6 +43,9 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Subscriptions are now Bills, on web and mobile, so electricity, water, internet, and other recurring bills fit alongside streaming and memberships. The renewal calendar is now the Bill calendar.
+- A bill held back because its account could not cover it is now charged the moment you top up or adjust that account's balance, on web and mobile, instead of on the next daily check. Each due cycle the new balance covers is recorded as an expense and deducted.
+- Your cookie choice now covers both zoption.site and the web app: deciding on one no longer asks again on the other, and withdrawing Analytics on either stops it on both.
 - On the phone, switching between Daily, Calendar, Monthly, and Summary on Transactions now slides the new view in from the side of its tab. Reduce Motion keeps it still.
 - The phone assistant chat has a new look: replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked, a new chat opens on the Zoption mark with starter questions as chips, the message box is one slim row with the microphone and send buttons, and a button jumps back to the newest message after you scroll up.
 - Mobile haptics follow the action: choices, toggles, expanders, and PIN keys give the faintest tick, buttons and rows a light tap, and saves a click or double click.
@@ -68,6 +73,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- The AI Assistant no longer fails every reply when an admin selects a current Claude model.
 - Mobile: pressing and holding a transaction to select it no longer drops the selection when you lift your finger.
 - Mobile voice chat: tapping stop now switches the button to a busy state while your words are transcribed, instead of leaving a stop button that seemed not to respond.
 - On Android, the assistant and support chat message boxes now sit right on the keyboard instead of floating halfway up the screen, and the chat header no longer slides under the status bar while typing.

@@ -26,6 +26,7 @@ import {
   getPayPalSubscription,
   revisePayPalSubscription,
 } from "./paypal";
+import { cancelGooglePlaySubscription } from "./google-play";
 import { configuredPlanId } from "./plan-ids";
 import { reconcileBillingCheckout } from "./reconciliation";
 
@@ -146,6 +147,15 @@ export async function startCheckout(
   return { approvalUrl: subscription.approvalUrl, subscriptionId: subscription.id };
 }
 
+/** Play subscribers change and cancel in Google Play, which the API then reads back. */
+function managedInGooglePlayError(): HttpError {
+  return new HttpError(
+    409,
+    "managed_in_google_play",
+    "This plan is billed through Google Play. Manage it in the Play Store.",
+  );
+}
+
 /** The subscription a plan change acts on, with the plan and interval it renews at. */
 async function renewingSubscription(
   repository: BillingRepository,
@@ -190,6 +200,7 @@ export async function changePlan(
     tenantId,
     familyTenantId,
   );
+  if (subscription.provider === "google_play") throw managedInGooglePlayError();
   const direction = planChangeDirection(current, target);
   if (direction === "same") {
     throw new HttpError(409, "plan_unchanged", "You are already on this plan.");
@@ -257,14 +268,23 @@ export async function cancelSubscription(
       "There is no active subscription to cancel.",
     );
   }
+  if (subscription.provider === "google_play") throw managedInGooglePlayError();
   await cancelProviderSubscription(env, subscription);
 }
 
+/** Also stops a family plan's renewal when its owner hands the family over or closes it. */
 export async function cancelProviderSubscription(
   env: Bindings,
-  subscription: Pick<BillingProviderSubscription, "provider" | "providerSubscriptionId">,
+  subscription: Pick<
+    BillingProviderSubscription,
+    "provider" | "providerSubscriptionId" | "providerPlanId"
+  >,
 ): Promise<void> {
-  if (subscription.provider === "dodo") {
+  if (subscription.provider === "google_play") {
+    // A Play row's plan id is `<product id>:<base plan id>`; cancelling names the product.
+    const [productId = ""] = subscription.providerPlanId.split(":");
+    await cancelGooglePlaySubscription(env, productId, subscription.providerSubscriptionId);
+  } else if (subscription.provider === "dodo") {
     await cancelDodoSubscription(env, subscription.providerSubscriptionId);
   } else {
     await cancelPayPalSubscription(env, subscription.providerSubscriptionId);

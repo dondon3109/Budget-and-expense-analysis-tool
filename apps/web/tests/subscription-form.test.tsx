@@ -102,7 +102,7 @@ describe("SubscriptionForm", () => {
     await user.selectOptions(screen.getByLabelText("Billing cycle"), "yearly");
     await user.clear(screen.getByLabelText("Next billing date"));
     await user.type(screen.getByLabelText("Next billing date"), "2026-08-15");
-    await user.click(screen.getByRole("button", { name: "Add subscription" }));
+    await user.click(screen.getByRole("button", { name: "Add bill" }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith({
@@ -138,7 +138,7 @@ describe("SubscriptionForm", () => {
 
     await user.type(screen.getByLabelText("Name"), "Local gym");
     await user.type(screen.getByLabelText("Amount"), "1500");
-    await user.click(screen.getByRole("button", { name: "Add subscription" }));
+    await user.click(screen.getByRole("button", { name: "Add bill" }));
 
     await waitFor(() =>
       expect(onSubmit).toHaveBeenCalledWith(
@@ -162,7 +162,7 @@ describe("SubscriptionForm", () => {
 
     await user.type(screen.getByLabelText("Name"), "Invalid plan");
     await user.type(screen.getByLabelText("Amount"), "0");
-    await user.click(screen.getByRole("button", { name: "Add subscription" }));
+    await user.click(screen.getByRole("button", { name: "Add bill" }));
 
     expect(await screen.findByRole("alert")).toBeInTheDocument();
     expect(onSubmit).not.toHaveBeenCalled();
@@ -220,7 +220,7 @@ describe("SubscriptionForm", () => {
       />,
     );
 
-    expect(screen.getByRole("dialog", { name: "Edit subscription" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Edit bill" })).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Music streaming");
     expect(screen.getByLabelText("Amount")).toHaveValue("199");
     expect(screen.getByLabelText("Next billing date")).toHaveValue("2026-07-25");
@@ -263,7 +263,7 @@ describe("SubscriptionForm", () => {
     );
 
     expect(root).toHaveAttribute("aria-hidden", "true");
-    const dialog = screen.getByRole("dialog", { name: "Add subscription" });
+    const dialog = screen.getByRole("dialog", { name: "Add bill" });
     expect(root.contains(dialog)).toBe(false);
     expect(document.body.contains(dialog)).toBe(true);
 

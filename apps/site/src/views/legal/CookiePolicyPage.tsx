@@ -5,7 +5,7 @@ export function CookiePolicyPage() {
     <LegalPageLayout
       title="Cookie Policy"
       summary="This policy explains the cookies and similar browser storage Zoption uses, what is necessary, and how optional categories remain blocked until you choose them."
-      lastUpdated="October 17, 2026"
+      lastUpdated="October 22, 2026"
     >
       <section>
         <h2>1. Cookies and similar technologies</h2>
@@ -17,6 +17,12 @@ export function CookiePolicyPage() {
           authentication/session operation. In the web app, a service worker also caches static
           files so the app loads offline; it never caches your financial workspace, private data, or
           account requests. The public website uses no service worker.
+        </p>
+        <p>
+          This consent record is the one cookie Zoption sets: a first-party, necessary cookie named
+          zoption-cookie-consent that holds only your choices and when you made them. It is shared
+          by zoption.site and the web app at app.zoption.site, so one choice covers both, and it
+          expires after 12 months.
         </p>
       </section>
 
@@ -89,13 +95,15 @@ export function CookiePolicyPage() {
         <p>
           You may withdraw optional consent at any time through Cookie Settings. Revocation blocks
           future optional activity and triggers registered cleanup for an active integration where
-          technically possible. Your choice is browser-specific, so another browser, device, or
-          private-browsing session may ask separately.
+          technically possible. Your choice applies to zoption.site and the web app together in the
+          browser where you made it, so another browser, device, or private-browsing session may ask
+          separately.
         </p>
         <p>
-          Clearing browser storage removes the choice and can reset appearance or sign you out.
-          Zoption will ask again when the policy version changes or when a stored record is missing,
-          malformed, stale, or unreadable.
+          Clearing cookies or browser storage removes the choice, and clearing storage can also
+          reset appearance or sign you out. Zoption will ask again when the policy version changes,
+          after the consent cookie expires, or when a stored record is missing, malformed, stale, or
+          unreadable.
         </p>
       </section>
 

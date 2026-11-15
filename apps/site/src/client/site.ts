@@ -7,16 +7,11 @@
 import {
   createConsentRecord,
   DENIED_OPTIONAL_CONSENT,
-  CONSENT_STORAGE_KEY,
   type ConsentDecisionSource,
   type ConsentPreferences,
 } from "@zoption/web-common/consent";
 import { registerOptionalIntegration, updateConsentGate } from "@zoption/web-common/consent-gate";
-import {
-  parseConsentRecord,
-  persistConsentRecord,
-  readConsentRecord,
-} from "@zoption/web-common/consent-storage";
+import { persistConsentRecord, readConsentRecord } from "@zoption/web-common/consent-storage";
 
 const THEMES = ["light", "dark", "coffee"] as const;
 type Theme = (typeof THEMES)[number];
@@ -282,10 +277,11 @@ export function setupConsent() {
     }
   });
 
-  // A decision in another tab applies here too, including a revocation.
-  window.addEventListener("storage", (event) => {
-    if (event.key !== CONSENT_STORAGE_KEY) return;
-    const next = parseConsentRecord(event.newValue);
+  // The decision is a cookie shared with the app, which fires no event when another tab or
+  // app.zoption.site changes it, so it is read again whenever this tab regains focus. A
+  // revocation made elsewhere applies here too.
+  window.addEventListener("focus", () => {
+    const next = readConsentRecord();
     sync(next?.preferences ?? DENIED_OPTIONAL_CONSENT, next !== null);
   });
 }

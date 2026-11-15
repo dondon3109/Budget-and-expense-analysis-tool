@@ -12,6 +12,7 @@ import { ThemeChoiceDialog } from "../src/components/theme/ThemeChoiceDialog";
 import { CONSENT_STORAGE_KEY, createConsentRecord } from "@zoption/web-common/consent";
 import { CookieConsentProvider } from "../src/consent/CookieConsentProvider";
 import { resetConsentGateForTests } from "@zoption/web-common/consent-gate";
+import { readConsentRecord } from "@zoption/web-common/consent-storage";
 import { THEME_STORAGE_KEY, ThemeProvider } from "../src/theme/ThemeProvider";
 
 function renderExperience(initialEntries = ["/"], onUnderlyingAction?: () => void) {
@@ -133,7 +134,7 @@ describe("cookie consent interface", () => {
     await user.click(screen.getByRole("button", { name: "Reject All" }));
 
     expect(screen.queryByRole("heading", { name: "Choose what this browser may use" })).toBeNull();
-    expect(JSON.parse(window.localStorage.getItem(CONSENT_STORAGE_KEY) ?? "null")).toMatchObject({
+    expect(readConsentRecord()).toMatchObject({
       source: "reject_all",
       preferences: { analytics: false, marketing: false },
     });
@@ -159,7 +160,7 @@ describe("cookie consent interface", () => {
     await user.click(screen.getByRole("button", { name: "Save Preferences" }));
 
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(JSON.parse(window.localStorage.getItem(CONSENT_STORAGE_KEY) ?? "null")).toMatchObject({
+    expect(readConsentRecord()).toMatchObject({
       source: "custom",
       preferences: { analytics: true, marketing: false },
     });

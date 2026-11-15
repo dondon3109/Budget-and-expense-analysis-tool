@@ -29,7 +29,7 @@ The public landing page contains a static dashboard illustration only. It does n
 - Imported transactions use the authenticated tenant's deterministic default account.
 - Landing, legal, and feature routes are lazy-loaded; the dashboard chart bundle loads only for the private app.
 - Public legal routes are `/terms-of-service`, `/privacy-policy`, and `/cookie-policy`, with a shared footer across public, authentication, legal, and private shells.
-- Browser consent is a versioned, fail-closed localStorage record. Necessary behavior is always enabled; Analytics and Marketing default off. PostHog is the only Analytics provider and loads only after Analytics consent (`docs/analytics.md`); no Marketing provider is connected. An imperative gate blocks optional loaders and runs cleanup on revocation.
+- Browser consent is a versioned, fail-closed record in one first-party cookie scoped to `zoption.site`, so the public site and `app.zoption.site` share a single decision (preview and local hosts keep a host-only cookie). A record stored in localStorage before the cookie moves into it on first read. Necessary behavior is always enabled; Analytics and Marketing default off. PostHog is the only Analytics provider and loads only after Analytics consent (`docs/analytics.md`); no Marketing provider is connected. An imperative gate blocks optional loaders and runs cleanup on revocation.
 - Browser tracking consent remains separate from server-persisted DeepSeek assistant consent.
 - The pre-render theme bootstrap is a same-origin static script so the deployed `script-src 'self'` policy does not require inline-script exceptions.
 - Authenticated write, import, and assistant-generation throttles use the verified tenant as their client identity.

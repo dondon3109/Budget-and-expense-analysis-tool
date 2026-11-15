@@ -1,6 +1,9 @@
 import {
+  currencies,
+  currencyMetadata,
   heldCurrencies,
   holdsMultipleCurrencies,
+  isCurrency,
   type Currency,
   type CurrencyTotals,
 } from "@zoption/shared";
@@ -8,9 +11,8 @@ import { useState } from "react";
 import { Text, View } from "react-native";
 
 import { useLocalReferenceData, useLocalWorkspace } from "@/db/local-workspace-state";
-import { EntryCurrencyField } from "@/features/transactions/EntryCurrencyField";
 import { useSyncState } from "@/sync/sync-state";
-import { Button, Card, FormField, MoneyValue } from "@/ui/components";
+import { Button, Card, FormField, MoneyValue, SelectionField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
@@ -27,8 +29,9 @@ import {
  * One-click "Adjust Current Balance" for the account editor. Shows an
  * Old → New preview, books the delta as an Uncategorized Adjustment
  * transaction through the existing mutation path, and offers Undo scoped to
- * that single adjustment entry. A bank account picks the currency to adjust, which is how
- * it opens a balance in another currency (a USD balance in a PHP bank account).
+ * that single adjustment entry. A bank account picks which held currency to adjust, and
+ * "Add currency" opens a balance in one it does not hold yet (a USD balance in a PHP bank
+ * account) by booking its opening balance as that currency's first adjustment.
  */
 export function BalanceAdjustCard({
   accountId,
@@ -53,11 +56,26 @@ export function BalanceAdjustCard({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
-  const [chosenCurrency, setChosenCurrency] = useState<Currency>(accountCurrency);
+  const [heldChoice, setHeldChoice] = useState<Currency>(accountCurrency);
+  const [adding, setAdding] = useState(false);
+  const [newCurrency, setNewCurrency] = useState<Currency | null>(null);
   const multiCurrency = holdsMultipleCurrencies(accountType);
-  const currency = multiCurrency ? chosenCurrency : accountCurrency;
-  const currentBalanceMinor = balancesByCurrency[currency] ?? 0;
   const held = heldCurrencies({ currency: accountCurrency, balancesByCurrency });
+  const addable = currencies.filter((code) => !held.includes(code));
+  const currency: Currency | null = adding
+    ? newCurrency
+    : multiCurrency
+      ? heldChoice
+      : accountCurrency;
+  const currentBalanceMinor = currency ? (balancesByCurrency[currency] ?? 0) : 0;
+  const editable = !busy && !disabled;
+
+  const startAdding = (value: boolean): void => {
+    setAdding(value);
+    setNewCurrency(null);
+    setNewBalance("");
+    setMessage(null);
+  };
 
   const parsedNewBalance = (() => {
     if (!newBalance.trim()) return null;
@@ -71,10 +89,10 @@ export function BalanceAdjustCard({
     parsedNewBalance == null
       ? null
       : computeBalanceAdjustment(currentBalanceMinor, parsedNewBalance);
-  const adjustable = preview !== null && preview.kind !== null && !disabled;
+  const adjustable = currency !== null && preview !== null && preview.kind !== null && !disabled;
 
   const adjust = async (): Promise<void> => {
-    if (!local.workspace || busy || parsedNewBalance == null) return;
+    if (!local.workspace || busy || parsedNewBalance == null || !currency) return;
     setBusy(true);
     setMessage(null);
     try {
@@ -139,7 +157,7 @@ export function BalanceAdjustCard({
     <Card accessibilityLabel="Adjust current balance">
       <View className="gap-3">
         <Text style={[typography.headline, { color: theme.colors.text }]}>
-          Adjust current balance
+          {adding ? "Add a currency balance" : "Adjust current balance"}
         </Text>
         {held.length > 1 ? (
           <View className="gap-1" accessibilityLabel="Balances by currency">
@@ -151,23 +169,46 @@ export function BalanceAdjustCard({
             ))}
           </View>
         ) : null}
-        {multiCurrency && !adjustmentId ? (
-          <EntryCurrencyField
-            value={currency}
-            disabled={busy || Boolean(disabled)}
-            onChange={(code) => {
-              setChosenCurrency(code);
+        {multiCurrency && !adding && !adjustmentId && held.length > 1 ? (
+          <SelectionField
+            disabled={!editable}
+            label="Currency"
+            onSelect={(code) => {
+              if (!isCurrency(code)) return;
+              setHeldChoice(code);
               setNewBalance("");
               setMessage(null);
             }}
+            options={held.map((code) => ({ id: code, label: currencyMetadata[code].label }))}
+            placeholder="Choose a currency"
+            sheetTitle="Choose currency"
+            value={heldChoice}
           />
         ) : null}
-        <View className="flex-row flex-wrap items-center">
-          <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-            {multiCurrency ? `Current ${currency} ` : "Current "}
-          </Text>
-          <MoneyValue amountMinor={currentBalanceMinor} currency={currency} />
-        </View>
+        {adding && !adjustmentId ? (
+          <SelectionField
+            disabled={!editable}
+            hint="The account keeps a separate balance for each currency."
+            label="New currency"
+            onSelect={(code) => {
+              if (!isCurrency(code)) return;
+              setNewCurrency(code);
+              setMessage(null);
+            }}
+            options={addable.map((code) => ({ id: code, label: currencyMetadata[code].label }))}
+            placeholder="Choose a currency"
+            sheetTitle="Add currency"
+            value={newCurrency ?? ""}
+          />
+        ) : null}
+        {currency && !adding ? (
+          <View className="flex-row flex-wrap items-center">
+            <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+              {multiCurrency ? `Current ${currency} ` : "Current "}
+            </Text>
+            <MoneyValue amountMinor={currentBalanceMinor} currency={currency} />
+          </View>
+        ) : null}
         {adjustmentId ? (
           <>
             <Text
@@ -183,7 +224,7 @@ export function BalanceAdjustCard({
         ) : (
           <>
             <FormField
-              label="New balance"
+              label={adding ? "Opening balance" : "New balance"}
               value={newBalance}
               onChangeText={(value) => {
                 setNewBalance(value);
@@ -198,9 +239,9 @@ export function BalanceAdjustCard({
                   ? "Enter a valid amount with no more than two decimal places."
                   : undefined
               }
-              editable={!busy && !disabled}
+              editable={editable}
             />
-            {preview && preview.kind ? (
+            {currency && preview && preview.kind ? (
               <View className="flex-row flex-wrap items-center">
                 <Text style={[typography.callout, { color: theme.colors.textMuted }]}>Delta </Text>
                 <MoneyValue
@@ -219,8 +260,23 @@ export function BalanceAdjustCard({
               loading={busy}
               onPress={() => void adjust()}
             >
-              Adjust balance
+              {adding ? `Add ${currency ?? "currency"} balance` : "Adjust balance"}
             </Button>
+            {multiCurrency && !adding && addable.length > 0 ? (
+              <Button
+                variant="quiet"
+                icon="plus"
+                disabled={!editable}
+                onPress={() => startAdding(true)}
+              >
+                Add currency
+              </Button>
+            ) : null}
+            {adding ? (
+              <Button variant="quiet" disabled={busy} onPress={() => startAdding(false)}>
+                Cancel
+              </Button>
+            ) : null}
           </>
         )}
         {message ? (

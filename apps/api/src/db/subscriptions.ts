@@ -48,7 +48,13 @@ export interface SubscriptionRepository {
     input: SubscriptionStatusUpdate,
   ): Promise<SubscriptionRecord>;
   remove(env: Bindings, tenantId: string, id: string): Promise<void>;
-  listDueRenewals(env: Bindings, dueDate: string, limit: number): Promise<DueSubscriptionRenewal[]>;
+  /** Every tenant's due renewals for the sweep, or one tenant's when `tenantId` is given. */
+  listDueRenewals(
+    env: Bindings,
+    dueDate: string,
+    limit: number,
+    tenantId?: string,
+  ): Promise<DueSubscriptionRenewal[]>;
   postRenewalCharge(
     env: Bindings,
     renewal: DueSubscriptionRenewal,
@@ -546,7 +552,7 @@ export const subscriptionRepository: SubscriptionRepository = {
     ]);
   },
 
-  async listDueRenewals(env, dueDate, limit) {
+  async listDueRenewals(env, dueDate, limit, tenantId) {
     const rows = await env.DB.prepare(
       `SELECT s.id, s.tenant_id AS tenantId, s.account_id AS accountId, a.name AS accountName,
               s.category_id AS categoryId, s.name, s.billing_cycle AS billingCycle,
@@ -564,10 +570,16 @@ export const subscriptionRepository: SubscriptionRepository = {
        JOIN accounts a ON a.id = s.account_id AND a.tenant_id = s.tenant_id
        WHERE s.status = 'active' AND s.account_id IS NOT NULL
          AND date(s.next_billing_date) <= date(?)
+         AND (? IS NULL OR s.tenant_id = ?)
        ORDER BY s.next_billing_date, s.id
        LIMIT ?`,
     )
-      .bind(dueDate, Math.max(1, Math.min(200, Math.trunc(limit))))
+      .bind(
+        dueDate,
+        tenantId ?? null,
+        tenantId ?? null,
+        Math.max(1, Math.min(200, Math.trunc(limit))),
+      )
       .all<
         Omit<DueSubscriptionRenewal, "charged" | "accountArchived" | "currency"> & {
           currency: string;

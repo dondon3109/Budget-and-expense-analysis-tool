@@ -59,7 +59,7 @@ pnpm test:e2e                      # Playwright, from the repo root
 
 - `apps/web/tests/` is the only collected test directory. The root Vitest `web` project includes `apps/web/tests/**`, so a test placed beside its source never runs.
 - Every response carries `X-Robots-Tag: noindex, nofollow` and `index.html` says the same; `robots.txt` still allows crawling so crawlers can see it.
-- Browser storage is per origin: the theme, consent record, and session here are separate from the public site's, so a visitor decides consent once on each.
+- Browser storage is per origin: the theme and session here are separate from the public site's. The consent record is the exception: it is a cookie scoped to `zoption.site` (`@zoption/web-common/consent-storage`), so a decision on either surface covers both. It fires no `storage` event, so the consent provider re-reads it when the tab regains focus.
 - The build fails closed. `ZOPTION_DEPLOY_ENV` is required when `CF_PAGES=1`, a non production build must pass explicit `VITE_*` values, and production must point at `https://api.zoption.site`.
 - Any new external origin needs an entry in `deployment-config.ts`; the CSP check fails the build on an unapproved wildcard.
 - The service worker caches only static assets. `/api`, `/app`, auth routes, billing, any request with an `Authorization` header, and URLs carrying tokens are always network only.

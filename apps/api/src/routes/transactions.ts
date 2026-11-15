@@ -11,7 +11,8 @@ import type { EntryAccess, TransactionRepository } from "../db/transactions";
 import { HttpError } from "../errors";
 import type { FamilyAlerts } from "../family-alerts";
 import { parseInput, parsePathParameter, readJson } from "../request";
-import type { AppEnvironment, TenantContext } from "../types";
+import type { SubscriptionRenewalService } from "../subscriptions/renewals";
+import type { AppEnvironment, Bindings, TenantContext } from "../types";
 import { afterResponse } from "./remittances";
 
 /** In a family, members change only the entries they added; the owner changes any. */
@@ -25,14 +26,20 @@ const notFound = () => new HttpError(404, "transaction_not_found", "Transaction 
 
 /**
  * `family.journal` records family changes and deletes, and `family.alerts` reacts to a new
- * family expense; personal rows have neither.
+ * family expense; personal rows have neither. `renewals` charges a personal subscription held
+ * back for balance as soon as a write covers it; subscriptions are personal only.
  */
 export function createTransactionRoutes(
   repository: TransactionRepository,
   family: { journal: FamilyJournal; alerts: FamilyAlerts },
+  renewals?: Pick<SubscriptionRenewalService, "settleTenantRenewals">,
 ) {
   const { journal, alerts } = family;
   const routes = new Hono<AppEnvironment>();
+  // Awaited before the response, so the client's refetch already sees the charge.
+  const settleRenewals = async (env: Bindings, tenant: TenantContext) => {
+    if (renewals && !tenant.membership) await renewals.settleTenantRenewals(env, tenant.tenantId);
+  };
 
   routes.get("/calendar", async (context) => {
     const input = parseInput(
@@ -69,6 +76,7 @@ export function createTransactionRoutes(
         alerts.afterExpense(context.env, tenant.tenantId, authorUserId, created),
       );
     }
+    await settleRenewals(context.env, tenant);
     return context.json(created, 201);
   });
 
@@ -89,6 +97,7 @@ export function createTransactionRoutes(
       entryAccess(tenant, userId),
     );
     if (before) await journal.recordUpdate(context.env, tenant.tenantId, userId, before, updated);
+    await settleRenewals(context.env, tenant);
     return context.json(updated);
   });
 
@@ -99,6 +108,7 @@ export function createTransactionRoutes(
     const access = entryAccess(tenant, userId);
     if (!tenant.membership) {
       await repository.remove(context.env, tenant.tenantId, id, access);
+      await settleRenewals(context.env, tenant);
       return context.body(null, 204);
     }
     // A family delete is journaled first, with the rows a restore needs.

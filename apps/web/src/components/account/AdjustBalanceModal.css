@@ -73,6 +73,10 @@
   color: var(--ink);
 }
 
+.adjust-balance-add-currency {
+  align-self: flex-start;
+}
+
 .adjust-balance-hint {
   font-size: 0.8125rem;
   color: var(--muted);

@@ -24,6 +24,7 @@ import { assistantActionRepository } from "./db/assistant-actions";
 import { assistantTransactionDraftRepository } from "./db/assistant-transaction-drafts";
 import { billingRepository, type BillingRepository } from "./db/billing";
 import { consumeAiUsage as defaultConsumeAiUsage } from "./db/billing-usage";
+import { googlePlayRepository, type GooglePlayRepository } from "./db/google-play";
 import { budgetRepository, type BudgetRepository } from "./db/budgets";
 import {
   bugReportEgressAuditRepository,
@@ -70,6 +71,10 @@ import { checkApiReadiness } from "./readiness";
 import { cloudflareVisionProvider } from "./receipts/cloudflare-vision";
 import { createReceiptService, type ReceiptService } from "./receipts/service";
 import type { CashflowTrendLoader, DashboardLoader, TransferFeeLoader } from "./routes/dashboard";
+import {
+  createSubscriptionRenewalService,
+  type SubscriptionRenewalService,
+} from "./subscriptions/renewals";
 import { createBugReportService, type BugReportService } from "./support/bug-reports";
 import type { Bindings } from "./types";
 
@@ -88,7 +93,9 @@ export interface AppOptions {
   goalProfile?: GoalProfileRepository;
   pet?: PetRepository;
   billing?: BillingRepository;
+  googlePlay?: GooglePlayRepository;
   subscriptions?: SubscriptionRepository;
+  subscriptionRenewals?: SubscriptionRenewalService;
   events?: CalendarEventRepository;
   goals?: FinancialGoalRepository;
   debts?: DebtRepository;
@@ -148,6 +155,8 @@ export function createDependencies(overrides: AppOptions = {}) {
   const petStore = overrides.pet ?? petRepository;
   const billingStore = overrides.billing ?? billingRepository;
   const subscriptionStore = overrides.subscriptions ?? subscriptionRepository;
+  const subscriptionRenewals =
+    overrides.subscriptionRenewals ?? createSubscriptionRenewalService(subscriptionStore);
   const eventStore = overrides.events ?? calendarEventRepository;
   const goalStore = overrides.goals ?? financialGoalRepository;
   const debtStore = overrides.debts ?? debtRepository;
@@ -290,7 +299,9 @@ export function createDependencies(overrides: AppOptions = {}) {
     goalProfile: goalProfileStore,
     pet: petStore,
     billing: billingStore,
+    googlePlay: overrides.googlePlay ?? googlePlayRepository,
     subscriptions: subscriptionStore,
+    subscriptionRenewals,
     events: eventStore,
     goals: goalStore,
     debts: debtStore,

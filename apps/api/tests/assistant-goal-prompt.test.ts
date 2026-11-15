@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createAssistantOrchestrator } from "../src/assistant/orchestrator";
-import { buildAssistantSystemPrompt } from "../src/assistant/prompt";
+import { buildAssistantTurnContext } from "../src/assistant/prompt";
 import type { AssistantProvider } from "../src/assistant/provider";
 import type { AssistantTurnPolicy } from "../src/assistant/turn-policy";
 import type { Bindings } from "../src/types";
@@ -19,8 +19,8 @@ const identity = {
   coachingStyle: "gentle" as const,
 };
 
-function prompt(goal?: Parameters<typeof buildAssistantSystemPrompt>[5]) {
-  return buildAssistantSystemPrompt("2026-09-03", "Asia/Manila", identity, policy, "", goal);
+function prompt(goal?: Parameters<typeof buildAssistantTurnContext>[5]) {
+  return buildAssistantTurnContext("2026-09-03", "Asia/Manila", identity, policy, "", goal);
 }
 
 function envWithGoal(goal: string | null) {
@@ -40,7 +40,7 @@ async function systemPromptSent(env: Bindings) {
   const request = (complete.mock.calls[0] as unknown[])[1] as {
     messages: { role: string; content: string }[];
   };
-  return request.messages[0]!.content;
+  return request.messages[1]!.content;
 }
 
 describe("assistant goal prompt line", () => {

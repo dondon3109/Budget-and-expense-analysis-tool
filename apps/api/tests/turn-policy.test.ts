@@ -465,7 +465,7 @@ describe("assistant transaction entry policy", () => {
     const policy = policyFor("I spent 250 at Jollibee");
     expect(responseMetadataForPolicy(policy)).toMatchObject({
       transactionEntry: true,
-      promptVersion: "expert-v7",
+      promptVersion: "expert-v8",
     });
   });
 });

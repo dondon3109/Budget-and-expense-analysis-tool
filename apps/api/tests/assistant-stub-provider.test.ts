@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createAssistantOrchestrator } from "../src/assistant/orchestrator";
-import { buildAssistantSystemPrompt } from "../src/assistant/prompt";
+import { ASSISTANT_RULES_PROMPT, buildAssistantTurnContext } from "../src/assistant/prompt";
 import type { ProviderCompletionRequest } from "../src/assistant/provider";
 import {
   STUB_ASSISTANT_MODEL,
@@ -42,13 +42,14 @@ const toolResult = {
 };
 
 function systemPrompt(turnPolicy: AssistantTurnPolicy): string {
-  return buildAssistantSystemPrompt(
+  const context = buildAssistantTurnContext(
     turnPolicy.currentDate,
     turnPolicy.timeZone,
     identity,
     turnPolicy,
     "",
   );
+  return `${ASSISTANT_RULES_PROMPT}\n\n${context}`;
 }
 
 function createRegistry() {

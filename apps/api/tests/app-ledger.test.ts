@@ -14,6 +14,7 @@ import {
   createImportStore,
   createAllowedBillingRepository,
   createAppWithFakes,
+  createSubscriptionRenewals,
   privateHeaders,
 } from "./helpers/app-fakes";
 
@@ -160,7 +161,8 @@ describe("API ledger routes", () => {
 
   it("validates and creates a tenant transaction", async () => {
     const transactions = createTransactionStore();
-    const app = createAppWithFakes({ transactions });
+    const subscriptionRenewals = createSubscriptionRenewals();
+    const app = createAppWithFakes({ transactions, subscriptionRenewals });
     const response = await app.request("/api/app/transactions", {
       method: "POST",
       headers: privateHeaders({ "Content-Type": "application/json" }),
@@ -181,6 +183,8 @@ describe("API ledger routes", () => {
       expect.objectContaining({ description: "Weekend groceries" }),
       { authorUserId: undefined },
     );
+    // A personal write that may have covered a held-back subscription settles it before replying.
+    expect(subscriptionRenewals.settleTenantRenewals).toHaveBeenCalledWith(undefined, TENANT_ID);
   });
 
   it("rejects an impossible date before reaching the repository", async () => {
