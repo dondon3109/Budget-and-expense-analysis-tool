@@ -306,6 +306,16 @@ Every APK the Android Beta Build makes from now on registers for push. To set it
 
 Read the state back with `gh secret list` and `gh variable list` (the build values), `npx eas credentials` (the FCM key), and `wrangler secret list --config wrangler.deploy.jsonc --env <preview|production>` (the access token). Push is Android only; the iOS build strips the push entitlement.
 
+### Google Play
+
+The Play build (`Android Play Bundle`, `.github/workflows/android-play.yml`) signs its AAB with a Play upload key kept only in GitHub Actions. **Current external state:** the developer account's verification is pending; the app record, Play App Signing enrollment, and the upload key are not set up yet. Update this list as each is done.
+
+- Repository secrets `PLAY_UPLOAD_KEYSTORE_BASE64` (the base64 upload keystore), `PLAY_UPLOAD_KEYSTORE_PASSWORD`, `PLAY_UPLOAD_KEY_ALIAS`, `PLAY_UPLOAD_KEY_PASSWORD`. The workflow fails before building when any is missing.
+- Repository variable `PLAY_UPLOAD_CERT_SHA256`: the upload certificate's colon-separated SHA-256. Optional, but once set the workflow refuses an AAB signed by any other key.
+- Play App Signing: which app signing key was chosen (the permanent sideload key `F9:46:70:EB...` uploaded with `pepk`, or a Google-generated key) and the upload certificate fingerprint Play Console shows under App signing.
+
+How to create each one is in `docs/mobile/build-instructions.md` (Google Play bundle). Read the state back with `gh secret list` and `gh variable list`, and Play Console → Test and release → Setup → App signing for the keys.
+
 ## Frontend configuration
 
 Build Pages with environment-specific public values. The committed `apps/web/.env.production` sets the production-only API fallback to `https://api.zoption.site`. Preview and staging builds must receive `VITE_API_URL`, `VITE_SUPABASE_URL`, and `VITE_SUPABASE_PUBLISHABLE_KEY` explicitly from the build process; local or production fallbacks are rejected. All deployment API and Supabase values must be exact HTTPS origins without credentials, paths, queries, or fragments. Production must use `https://api.zoption.site`; Preview and Staging must not. The build accepts only a Supabase `sb_publishable_…` or legacy JWT `anon` key and rejects secret/service-role types without echoing the value. Local development leaves `VITE_API_URL` blank and uses the Vite proxy at `http://localhost:8787`: `pnpm --filter @zoption/api dev` binds `127.0.0.1:8787` only, and `pnpm --filter @zoption/api dev:lan` is the explicit opt-in to `0.0.0.0:8787` for testing from a phone on the same Wi-Fi.
