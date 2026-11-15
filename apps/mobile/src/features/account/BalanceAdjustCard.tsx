@@ -30,7 +30,7 @@ import {
  * Old → New preview, books the delta as an Uncategorized Adjustment
  * transaction through the existing mutation path, and offers Undo scoped to
  * that single adjustment entry. A bank account picks which held currency to adjust, and
- * "Add currency" opens a balance in one it does not hold yet (a USD balance in a PHP bank
+ * "Add new currency" opens a balance in one it does not hold yet (a USD balance in a PHP bank
  * account) by booking its opening balance as that currency's first adjustment.
  */
 export function BalanceAdjustCard({
@@ -197,7 +197,7 @@ export function BalanceAdjustCard({
             }}
             options={addable.map((code) => ({ id: code, label: currencyMetadata[code].label }))}
             placeholder="Choose a currency"
-            sheetTitle="Add currency"
+            sheetTitle="Add new currency"
             value={newCurrency ?? ""}
           />
         ) : null}
@@ -269,7 +269,7 @@ export function BalanceAdjustCard({
                 disabled={!editable}
                 onPress={() => startAdding(true)}
               >
-                Add currency
+                Add new currency
               </Button>
             ) : null}
             {adding ? (
