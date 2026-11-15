@@ -69,7 +69,7 @@ describe("landing page", () => {
     expect(screen.getByRole("button", { name: "Ask Zoption support" })).toBeInTheDocument();
   });
 
-  it("highlights the six modules including subscriptions, savings, and the assistant", () => {
+  it("highlights the six modules including bills, savings, and the assistant", () => {
     renderLanding();
 
     const modules = screen.getByRole("region", {
@@ -96,7 +96,7 @@ describe("landing page", () => {
     expect(
       within(modules).getByRole("heading", { name: "Ask your numbers, not a chatbot." }),
     ).toBeInTheDocument();
-    expect(within(modules).getAllByText(/subscription/i).length).toBeGreaterThan(0);
+    expect(within(modules).getAllByText(/bill tracking/i).length).toBeGreaterThan(0);
   });
 
   it("tells the receipt pile story with a described photo and a sign-up action", () => {

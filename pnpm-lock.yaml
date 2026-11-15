@@ -26,6 +26,7 @@ overrides:
   qs: 6.16.0
   ip-address: 10.7.4
   dompurify: 3.4.17
+  node-forge: 1.4.3
   handlebars: 4.7.10
   basic-ftp: 6.2.1
   source-map-js: 1.2.2
@@ -34,11 +35,10 @@ overrides:
   compression: 1.8.2
   shell-quote: 1.11.0
   http-cache-semantics: 4.3.0
-  node-forge: 1.4.3
   postcss-selector-parser@6: 7.1.6
 
 patchedDependencies:
-  decode-uri-component@0.2.2: 1663d1be53a56147964db721d7a4e1d31442994bbae2ec9638f14bc581c2fef1
+  decode-uri-component@0.2.2: 6838b8df4dac47fb601148b5a7d2aa2aabd9e7df13a8697b16445c3036e5540c
   react-native-screens: 9ce9b6c0c38770761f338bfde68cff9a5083d165412264d47bb967ec29868c44
 
 importers:
@@ -14759,7 +14759,7 @@ snapshots:
 
   decimal.js@10.6.0: {}
 
-  decode-uri-component@0.2.2(patch_hash=1663d1be53a56147964db721d7a4e1d31442994bbae2ec9638f14bc581c2fef1): {}
+  decode-uri-component@0.2.2(patch_hash=6838b8df4dac47fb601148b5a7d2aa2aabd9e7df13a8697b16445c3036e5540c): {}
 
   dedent@1.7.2: {}
 
@@ -18750,7 +18750,7 @@ snapshots:
 
   query-string@7.1.3:
     dependencies:
-      decode-uri-component: 0.2.2(patch_hash=1663d1be53a56147964db721d7a4e1d31442994bbae2ec9638f14bc581c2fef1)
+      decode-uri-component: 0.2.2(patch_hash=6838b8df4dac47fb601148b5a7d2aa2aabd9e7df13a8697b16445c3036e5540c)
       filter-obj: 1.1.0
       split-on-first: 1.1.0
       strict-uri-encode: 2.0.0

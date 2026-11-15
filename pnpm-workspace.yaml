@@ -32,6 +32,7 @@ overrides:
   "qs": 6.16.0
   "ip-address": 10.7.4
   "dompurify": 3.4.17
+  "node-forge": 1.4.3
   "handlebars": 4.7.10
   "basic-ftp": 6.2.1
   "source-map-js": 1.2.2
@@ -40,7 +41,6 @@ overrides:
   "compression": 1.8.2
   "shell-quote": 1.11.0
   "http-cache-semantics": 4.3.0
-  "node-forge": 1.4.3
   # Tailwind 3 (under nativewind) still asks for ^6, and the 6.x line has no fix for
   # GHSA-rj75-hqrm-r3gf. 7.x keeps the API Tailwind 3 uses; the mobile CSS output is identical.
   "postcss-selector-parser@6": 7.1.6
@@ -48,8 +48,8 @@ overrides:
 auditConfig:
   ignoreGhsas:
     # Paired with patches/decode-uri-component@0.2.2.patch, which backports the 0.5.0 and
-    # 0.5.1 fixes for these DoS advisories. Keep the patch and these ignores together; an
-    # ignore without the patch would hide a real advisory.
+    # 0.5.1 fixes for these DoS advisories. Keep the patch and these ignores together; the
+    # ignores without the patch would hide real advisories.
     - GHSA-vcc3-ghjq-m6fr
     - GHSA-qr28-fpjm-wq7f
     # braces <=3.0.3 stack exhaustion on deeply nested patterns; the patched 3.0.4 is not on npm

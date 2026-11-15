@@ -162,7 +162,7 @@ export default function AuthenticatedLayout() {
           name="subscription"
           options={{
             headerShown: true,
-            headerBackTitle: "Subscriptions",
+            headerBackTitle: "Bills",
             presentation: Platform.OS === "ios" ? "formSheet" : "card",
             sheetGrabberVisible: Platform.OS === "ios",
           }}
@@ -171,7 +171,7 @@ export default function AuthenticatedLayout() {
           name="subscription-conflict"
           options={{
             headerShown: true,
-            headerBackTitle: "Subscriptions",
+            headerBackTitle: "Bills",
             presentation: Platform.OS === "ios" ? "formSheet" : "card",
             sheetGrabberVisible: Platform.OS === "ios",
           }}

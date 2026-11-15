@@ -131,18 +131,18 @@ export function FeatureModules() {
 
         <article className="facet">
           <div className="facet-text">
-            <p className="facet-kicker">Subscription tracking</p>
+            <p className="facet-kicker">Bill tracking</p>
             <h3>Name the bills that quietly repeat.</h3>
             <p>
-              Log a subscription and Zoption records its next charge as an expense. Switch to the
-              visual renewal calendar to track payment schedules, upcoming billing cycles, and
-              cash-flow impact on an interactive month-by-month grid.
+              Log a bill, from electricity and internet to streaming, and Zoption records its next
+              charge as an expense. Switch to the bill calendar to track payment schedules, upcoming
+              billing cycles, and cash-flow impact on an interactive month-by-month grid.
             </p>
             <div className="facet-tags">
-              <span>Visual renewal calendar</span>
+              <span>Bill calendar</span>
               <span>Payment schedules</span>
               <span>Cash-flow impact</span>
-              <span>Annual plans</span>
+              <span>Yearly bills</span>
             </div>
           </div>
           <div className="facet-visual" aria-hidden="true">
@@ -315,8 +315,7 @@ export function FeatureModules() {
               The AI Financial Assistant answers questions about <em>your</em> data with evidence
               and clear limits. It reads only what you ask about, explains the reasoning behind each
               answer, and can log a transaction or propose a change to your budgets, goals, debts,
-              subscriptions, accounts, or categories. Nothing is applied until you tap Save or
-              Confirm.
+              bills, accounts, or categories. Nothing is applied until you tap Save or Confirm.
             </p>
             <div className="facet-tags">
               <span>Your data only</span>

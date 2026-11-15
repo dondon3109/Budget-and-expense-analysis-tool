@@ -49,7 +49,7 @@ function VersionCard({
         {title}
       </Text>
       {!version ? (
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>No subscription</Text>
+        <Text style={[typography.body, { color: theme.colors.textMuted }]}>No bill</Text>
       ) : (
         <>
           <Text style={[typography.body, { color: theme.colors.text }]}>{version.name}</Text>
@@ -99,7 +99,7 @@ export function SubscriptionConflictScreen() {
       setMessage(
         error instanceof Error
           ? error.message
-          : "The preserved subscription conflict could not be resolved safely.",
+          : "The preserved bill conflict could not be resolved safely.",
       );
       setChoice(null);
     } finally {
@@ -112,7 +112,7 @@ export function SubscriptionConflictScreen() {
       edges={["bottom", "left", "right"]}
       style={[styles.safe, { backgroundColor: theme.colors.canvas }]}
     >
-      <Stack.Screen options={{ title: "Review subscription conflict" }} />
+      <Stack.Screen options={{ title: "Review bill conflict" }} />
       {state.error ? (
         <View style={styles.centered}>
           <ErrorState title="Conflict unavailable" message={state.error} onRetry={state.retry} />
@@ -125,7 +125,7 @@ export function SubscriptionConflictScreen() {
         <View style={styles.centered}>
           <ErrorState
             title="Conflict already resolved"
-            message="There is no unresolved conflict for this subscription."
+            message="There is no unresolved conflict for this bill."
           />
         </View>
       ) : (
@@ -158,7 +158,7 @@ export function SubscriptionConflictScreen() {
             Keep this device subscription
           </Button>
           <Button disabled={resolving} onPress={() => setChoice("keep_server")} variant="secondary">
-            Use server subscription
+            Use server bill
           </Button>
         </ScrollView>
       )}
@@ -167,13 +167,11 @@ export function SubscriptionConflictScreen() {
         message={
           choice === "keep_local"
             ? "Zoption will create a new operation based on the latest server revision. It may conflict again if the server changes first."
-            : "Zoption will discard this device's proposed subscription and replace it with the preserved server subscription."
+            : "Zoption will discard this device's proposed bill and replace it with the preserved server bill."
         }
         onCancel={() => setChoice(null)}
         onConfirm={() => void resolve()}
-        title={
-          choice === "keep_local" ? "Keep this device subscription?" : "Use server subscription?"
-        }
+        title={choice === "keep_local" ? "Keep this device's bill?" : "Use server bill?"}
         visible={choice !== null}
       />
     </SafeAreaView>
