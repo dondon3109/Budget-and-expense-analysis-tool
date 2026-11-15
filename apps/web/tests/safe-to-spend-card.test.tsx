@@ -101,7 +101,7 @@ describe("SafeToSpendCard", () => {
         "Forward guidance accounting for 0 active recurring bills and scheduled obligations.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Renewals" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Bills" })).toHaveAttribute(
       "href",
       "/app/subscriptions?view=forecast",
     );
@@ -128,7 +128,7 @@ describe("SafeToSpendCard", () => {
     renderCard({ startingBalanceMinor: 1_000_000, remainingBudgetMinor: 500_000 });
 
     expect(
-      screen.getByText("Checking your renewals, so this figure may still fall."),
+      screen.getByText("Checking your bills, so this figure may still fall."),
     ).toBeInTheDocument();
   });
 
@@ -138,7 +138,7 @@ describe("SafeToSpendCard", () => {
     renderCard({ startingBalanceMinor: 1_000_000, remainingBudgetMinor: 500_000 });
 
     expect(
-      await screen.findByText("Renewals could not be loaded, so this figure may be optimistic."),
+      await screen.findByText("Bills could not be loaded, so this figure may be optimistic."),
     ).toBeInTheDocument();
   });
 

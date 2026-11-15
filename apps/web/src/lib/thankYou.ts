@@ -23,7 +23,7 @@ export const thankYouCopy: Record<ThankYouFlow, ThankYouContent> = {
     eyebrow: "Membership",
     title: "Thank you for upgrading Zoption!",
     description:
-      "Your plan now includes more AI actions and statement imports, automatic interest compounding, the interactive renewal calendar, and direct support.",
+      "Your plan now includes more AI actions and statement imports, automatic interest compounding, the interactive bill calendar, and direct support.",
   },
   review: {
     icon: Heart,
