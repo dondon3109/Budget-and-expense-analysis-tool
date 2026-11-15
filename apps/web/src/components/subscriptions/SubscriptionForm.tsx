@@ -122,7 +122,7 @@ export function SubscriptionForm({
       accountId,
     });
     if (!parsed.success) {
-      setClientError(parsed.error.issues[0]?.message ?? "Check the subscription details.");
+      setClientError(parsed.error.issues[0]?.message ?? "Check the bill details.");
       return;
     }
     await onSubmit(parsed.data);
@@ -148,9 +148,7 @@ export function SubscriptionForm({
         <header className="modal-header">
           <div>
             <p className="eyebrow">Recurring charge</p>
-            <h2 id="subscription-form-title">
-              {title ?? (editing ? "Edit subscription" : "Add subscription")}
-            </h2>
+            <h2 id="subscription-form-title">{title ?? (editing ? "Edit bill" : "Add bill")}</h2>
           </div>
           <button
             className="icon-button"
@@ -170,7 +168,7 @@ export function SubscriptionForm({
               ref={nameRef}
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="e.g. Music streaming"
+              placeholder="e.g. Electricity or internet"
               maxLength={120}
               required
             />
@@ -287,13 +285,7 @@ export function SubscriptionForm({
               disabled={busy || !categoryId || !accountId}
             >
               {submitLabel ??
-                (busy
-                  ? editing
-                    ? "Saving…"
-                    : "Adding…"
-                  : editing
-                    ? "Save changes"
-                    : "Add subscription")}
+                (busy ? (editing ? "Saving…" : "Adding…") : editing ? "Save changes" : "Add bill")}
             </button>
           </div>
         </form>

@@ -68,7 +68,7 @@ const navItems = [
   { label: "Import", icon: FileUp, to: "/app/import" },
   { label: "Budgets", icon: PiggyBank, to: "/app/budgets" },
   { label: "Goals & debt", icon: Milestone, to: "/app/plan" },
-  { label: "Subscriptions", icon: Repeat2, to: "/app/subscriptions" },
+  { label: "Bills", icon: Repeat2, to: "/app/subscriptions" },
   { label: "Pet", icon: PawPrint, to: "/app/pet" },
 ];
 

@@ -140,7 +140,7 @@ function sourceTypeLabel(source: AssistantSourceMetadata): string {
       accounts: "account",
       goals: "goal",
       debts: "debt",
-      subscriptions: "subscription",
+      subscriptions: "bill",
     }[source.sourceType];
     return `${source.recordCount} ${label}${source.recordCount === 1 ? "" : "s"}`;
   }
@@ -155,7 +155,7 @@ function sourceName(source: AssistantSourceMetadata): string {
     accounts: "Accounts",
     goals: "Goals",
     debts: "Debts",
-    subscriptions: "Subscriptions",
+    subscriptions: "Bills",
   }[source.sourceType];
 }
 
