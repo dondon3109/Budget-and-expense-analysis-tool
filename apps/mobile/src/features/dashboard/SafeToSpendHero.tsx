@@ -104,15 +104,15 @@ export function SafeToSpendHero({
         {onViewRenewals ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="View renewal calendar"
-            accessibilityHint="Opens upcoming renewals and subscriptions"
+            accessibilityLabel="View bills"
+            accessibilityHint="Opens upcoming bills"
             onPress={withTapSound(onViewRenewals)}
             hitSlop={8}
             style={[styles.renewalsButton, { backgroundColor: theme.colors.surfaceRaised }]}
           >
             <MaterialCommunityIcons name="calendar-clock" size={14} color={theme.colors.brand} />
             <Text style={[typography.caption, { color: theme.colors.brand, fontWeight: "600" }]}>
-              Renewals
+              Bills
             </Text>
           </Pressable>
         ) : null}

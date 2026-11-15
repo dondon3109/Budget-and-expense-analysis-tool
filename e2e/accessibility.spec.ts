@@ -101,10 +101,10 @@ test.describe("accessibility — authenticated routes (desktop)", () => {
       const page = await context.newPage();
       try {
         const audit = await auditAppRoute(page, "/app/subscriptions", {
-          // The route opens on the table view. This toggle is the only way the renewal calendar is
+          // The route opens on the table view. This toggle is the only way the bill calendar is
           // ever rendered, which is how its invalid grid stayed out of every earlier scan.
           reveal: async (openPage) => {
-            await openPage.getByRole("button", { name: "Renewal calendar" }).click();
+            await openPage.getByRole("button", { name: "Bill calendar" }).click();
             await openPage.locator(".renewal-calendar-grid").waitFor();
           },
         });

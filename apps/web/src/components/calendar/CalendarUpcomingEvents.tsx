@@ -93,18 +93,18 @@ export function CalendarUpcomingEvents({
 
       <div className="calendar-upcoming-section calendar-subscriptions-section">
         <div className="calendar-upcoming-heading">
-          <h3>Subscriptions to pay</h3>
+          <h3>Bills to pay</h3>
           <span>{rangeLabel}</span>
         </div>
 
         {hasSubscriptionsLoadError && (
           <p className="calendar-upcoming-status warning" role="status">
-            Some subscription due dates could not be loaded.
+            Some bill due dates could not be loaded.
           </p>
         )}
         {subscriptionsLoading && (
           <p className="calendar-upcoming-status" aria-live="polite">
-            Loading subscriptions to pay…
+            Loading bills to pay…
           </p>
         )}
         {!subscriptionsLoading && !hasSubscriptionsLoadError && subscriptions.length === 0 && (
@@ -117,7 +117,7 @@ export function CalendarUpcomingEvents({
         {subscriptions.length > 0 && (
           <ul
             className="calendar-upcoming-list calendar-subscription-list"
-            aria-label={`Subscriptions to pay for ${rangeLabel}`}
+            aria-label={`Bills to pay for ${rangeLabel}`}
           >
             {subscriptions.map((subscription) => {
               const billingDate = subscription.billingDate;

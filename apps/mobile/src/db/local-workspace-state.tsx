@@ -421,7 +421,7 @@ export function useSubscriptions(): {
     read: readSubscriptions,
     tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
     empty: NO_ROWS,
-    errorMessage: "Subscriptions could not be read from encrypted local storage.",
+    errorMessage: "Bills could not be read from encrypted local storage.",
     initialLoading: true,
   });
   return { subscriptions: data, loading, error, retry };
@@ -442,7 +442,7 @@ export function useSubscription(id?: string): {
     read,
     tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
     empty: null,
-    errorMessage: "The subscription could not be read from encrypted local storage.",
+    errorMessage: "The bill could not be read from encrypted local storage.",
     initialLoading: Boolean(id),
   });
   return { subscription: data, loading, error, retry };
@@ -466,7 +466,7 @@ export function useSubscriptionConflict(id?: string): {
     read,
     tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
     empty: null,
-    errorMessage: "The preserved subscription conflict could not be read from encrypted storage.",
+    errorMessage: "The preserved bill conflict could not be read from encrypted storage.",
     initialLoading: Boolean(id),
   });
   return { conflict: data, loading, error, retry };
