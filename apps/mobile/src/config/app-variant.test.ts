@@ -1,4 +1,8 @@
-import { assertDevelopmentAppVariant, isDevelopmentAppVariant } from "./app-variant";
+import {
+  assertDevelopmentAppVariant,
+  isDevelopmentAppVariant,
+  isPlayDistribution,
+} from "./app-variant";
 
 describe("app variant capabilities", () => {
   it("enables demo capabilities only for the explicit development variant", () => {
@@ -18,5 +22,14 @@ describe("app variant capabilities", () => {
     expect(() => assertDevelopmentAppVariant({ appVariant: "production" })).toThrow(
       "Demo data is available only in Zoption Dev.",
     );
+  });
+});
+
+describe("app distribution", () => {
+  it("is Play only when the embedded distribution says so", () => {
+    expect(isPlayDistribution({ appVariant: "production", distribution: "play" })).toBe(true);
+    expect(isPlayDistribution({ appVariant: "production", distribution: "apk" })).toBe(false);
+    expect(isPlayDistribution({ appVariant: "production" })).toBe(false);
+    expect(isPlayDistribution(null)).toBe(false);
   });
 });
