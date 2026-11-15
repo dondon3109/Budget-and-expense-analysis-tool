@@ -15,7 +15,7 @@ import {
   EmptyState,
   ErrorState,
   FormField,
-  moneyAccessibilityLabel,
+  useMoneyFormat,
   MoneyValue,
   SelectionField,
   Skeleton,
@@ -192,6 +192,7 @@ function PayoffPlanCard({ debts }: { debts: LocalDebtItem[] }) {
 function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }) {
   const theme = useZoptionTheme();
   const workspaceCurrency = useWorkspaceCurrency();
+  const money = useMoneyFormat();
   const conflicted = debt.syncState === "conflicted";
   const failed = debt.syncState === "failed";
   return (
@@ -201,7 +202,7 @@ function DebtRow({ debt, onPress }: { debt: LocalDebtItem; onPress: () => void }
       onPress={withTapSound(onPress)}
     >
       <Card
-        accessibilityLabel={`${debt.name}, balance ${moneyAccessibilityLabel(debt.balanceMinor, workspaceCurrency)}`}
+        accessibilityLabel={`${debt.name}, balance ${money.label(debt.balanceMinor, workspaceCurrency)}`}
         style={{
           borderColor: conflicted ? theme.colors.warning : failed ? theme.colors.danger : undefined,
         }}

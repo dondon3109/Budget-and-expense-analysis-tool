@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useRemittanceOverview } from "@/db/local-workspace-state";
 import type { LocalRemittance } from "@/db/remittance-queries";
-import { Button, Card, formatMoneyMinor } from "@/ui/components";
+import { Button, Card, useMoneyFormat } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
@@ -23,9 +23,10 @@ export function RemittanceCard({ month }: { month: string }) {
   const theme = useZoptionTheme();
   const { family, writable: canWrite } = useActiveWorkspace();
   const { overview } = useRemittanceOverview(month);
+  const { format } = useMoneyFormat();
   if (!overview || !family) return null;
   const muted = { color: theme.colors.textMuted };
-  const money = (amountMinor: number) => formatMoneyMinor(amountMinor, overview.currency);
+  const money = (amountMinor: number) => format(amountMinor, overview.currency);
 
   if (!overview.hasRemittances) {
     if (!canWrite) return null;
@@ -87,7 +88,7 @@ export function RemittanceCard({ month }: { month: string }) {
       {overview.pending.map((item) =>
         row(
           item,
-          `${formatMoneyMinor(item.sentAmountMinor, item.sentCurrency)} on the way`,
+          `${format(item.sentAmountMinor, item.sentCurrency)} on the way`,
           `Sent ${item.sentOn}${item.provider ? ` via ${item.provider}` : ""}`,
         ),
       )}
@@ -96,7 +97,7 @@ export function RemittanceCard({ month }: { month: string }) {
         .map((item) =>
           row(
             item,
-            `${formatMoneyMinor(item.received!.amountMinor, item.received!.currency)} arrived`,
+            `${format(item.received!.amountMinor, item.received!.currency)} arrived`,
             `${item.received!.date}${item.provider ? ` via ${item.provider}` : ""}`,
           ),
         )}

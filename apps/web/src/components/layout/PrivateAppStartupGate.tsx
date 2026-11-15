@@ -15,6 +15,7 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { captureFunnelEvent } from "../../analytics/funnel";
 import { useAuth } from "../../auth/AuthProvider";
 import { useBodyScrollLock } from "../../hooks/useRootLock";
+import { useAmountsHidden } from "../../lib/hideAmounts";
 import { setWorkspaceCurrency } from "../../lib/workspaceCurrency";
 import { useOnboarding } from "../../queries/onboarding";
 import { useWorkspaceSettings } from "../../queries/settings";
@@ -53,6 +54,7 @@ function WorkspaceCurrencyBoundary({ children }: { children: ReactNode }) {
   const settings = useWorkspaceSettings(workspace);
   // First-run onboarding belongs to the person's own workspace, never a family.
   const onboarding = useOnboarding(personal);
+  const hidden = useAmountsHidden();
   if (settings.isPending || onboarding.isPending) return null;
   // The Worker refuses ledger data until onboarding finishes; this sends the user to finish it.
   // A failed load goes there too: the onboarding page can retry, and sends a finished user back.
@@ -62,7 +64,12 @@ function WorkspaceCurrencyBoundary({ children }: { children: ReactNode }) {
   const currency = settings.data?.currency ?? "PHP";
   // Assigned before the keyed subtree renders; nothing subscribes, so this cannot loop.
   setWorkspaceCurrency(currency);
-  return <Fragment key={`${workspace.key}|${currency}`}>{children}</Fragment>;
+  // The hide balance toggle is in the key for the same reason: `formatMoney` reads it on render.
+  return (
+    <Fragment key={`${workspace.key}|${currency}|${hidden ? "hidden" : "shown"}`}>
+      {children}
+    </Fragment>
+  );
 }
 
 function RouteCommitReporter({ locationKey, onCommit }: RouteCommitReporterProps) {

@@ -43,7 +43,7 @@ describe("BalanceAdjustCard", () => {
       />,
     );
 
-    await fireEvent.press(screen.getByRole("button", { name: "Add currency" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Add new currency" }));
     await fireEvent.press(screen.getByRole("button", { name: "New currency" }));
     // The sheet offers only currencies the account does not hold yet.
     expect(screen.queryByLabelText("Philippine Peso (PHP)")).toBeNull();
@@ -89,6 +89,6 @@ describe("BalanceAdjustCard", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "Add currency" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add new currency" })).toBeNull();
   });
 });

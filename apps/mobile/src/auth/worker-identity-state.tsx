@@ -10,6 +10,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { Platform } from "react-native";
 
 import { verifyWorkerIdentity, WorkerIdentityError } from "@/api/worker-identity";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
@@ -82,13 +83,23 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
         }
         if (
           error instanceof WorkerIdentityError &&
-          (error.code === "session_expired" ||
-            error.code === "account_deleted" ||
-            error.code === "identity_mismatch")
+          (error.code === "account_deleted" ||
+            error.code === "identity_mismatch" ||
+            (error.code === "session_expired" && Platform.OS !== "android"))
         ) {
           // Preserve the subject-scoped encrypted workspace when remote identity
           // can no longer be trusted enough to inspect or synchronize pending work.
+          // Android keeps the sign-in through an expired access token. The phone
+          // restart and an explicit sign-out are what end it.
           await signOut({ preserveLocalWorkspace: true }).catch(() => undefined);
+          return;
+        }
+        if (error instanceof WorkerIdentityError && error.code === "session_expired") {
+          setSnapshot({
+            status: "error",
+            message:
+              "You're still signed in. Zoption could not refresh the connection. Your entries stay on this phone.",
+          });
           return;
         }
         if (isAuthRetryableFetchError(error)) {

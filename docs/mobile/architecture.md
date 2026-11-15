@@ -86,8 +86,15 @@ The final iOS bundle identifier is a proposal only. Variant selection must be bu
 - An offline start whose access token has expired still opens the workspace. auth-js cannot refresh
   the token, but it keeps the stored refresh token after a network failure, so `SessionProvider`
   reads the stored subject from `readStoredSessionSubject()`. The `/api/app/me` assertion runs
-  again when NetInfo reports the device reachable, and a refresh token Supabase rejects signs the
-  session out.
+  again when NetInfo reports the device reachable. On iOS, a refresh token Supabase rejects signs
+  the session out. On Android the session stays for the whole time the phone is on: a rejected
+  refresh does not sign the user out, because `secureSessionStorage.removeItem` ignores auth-js
+  unless `withSessionRemovalAllowed` is set. The session ends when the user signs out, when the
+  Worker reports the account deleted or an identity mismatch, or when `Settings.Global.BOOT_COUNT`
+  changes, which is a phone restart. That count is stored under `zoption.session.android_boot`
+  when a session is restored or created. A missing stamp, including the first launch after this
+  shipped, does not sign anyone out. A restart clears the Supabase session only. The encrypted
+  workspace stays, and the next sign-in opens it.
 - The optional app lock (`src/auth/app-lock.ts`, `AppLockGate`) holds a salted SHA-256 of the
   user's 6-digit PIN in SecureStore under `zoption.app_lock.<subject>` (record version 2). A
   version 1 record holds a free-text app password from earlier builds; the lock screen accepts it

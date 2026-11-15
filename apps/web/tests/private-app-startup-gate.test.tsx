@@ -72,6 +72,8 @@ vi.mock("../src/components/layout/InlineLoader", () => ({
   InlineLoader: ({ label }: { label: string }) => <div role="status">{label}</div>,
 }));
 
+import { formatMoney } from "../src/lib/formatters";
+import { setAmountsHidden } from "../src/lib/hideAmounts";
 import { InitialDashboardExperienceProvider } from "../src/components/dashboard/InitialDashboardExperienceProvider";
 import {
   PrivateAppStartupGate,
@@ -129,6 +131,20 @@ describe("PrivateAppStartupGate", () => {
   });
 
   afterEach(cleanup);
+
+  it("re-renders every amount masked, then shown, when the hide balance toggle flips", async () => {
+    const MoneyProbe = () => <p>Balance {formatMoney(1_234_00)}</p>;
+    renderPrivateRoutes(<MoneyProbe />, "/app/settings");
+    expect(await screen.findByText("Balance ₱1,234")).toBeInTheDocument();
+
+    act(() => setAmountsHidden(true));
+    expect(screen.getByText("Balance ₱••••")).toBeInTheDocument();
+    expect(window.localStorage.getItem("zoption-hide-amounts")).toBe("1");
+
+    act(() => setAmountsHidden(false));
+    expect(screen.getByText("Balance ₱1,234")).toBeInTheDocument();
+    expect(window.localStorage.getItem("zoption-hide-amounts")).toBeNull();
+  });
 
   it.each(["currency", "cash"] as const)(
     "sends a workspace still on the %s step to onboarding instead of the dashboard",

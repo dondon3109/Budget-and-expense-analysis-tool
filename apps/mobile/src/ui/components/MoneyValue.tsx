@@ -2,6 +2,7 @@ import { Text, type TextProps } from "react-native";
 
 import { currencyFractionDigits, currencyMetadata, type Currency } from "@zoption/shared";
 import { typography } from "@/ui/tokens";
+import { useAmountsHidden } from "@/stores/hide-amounts-store";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -25,6 +26,29 @@ export function moneyAccessibilityLabel(amountMinor: number, currency: Currency)
   return `${amountMinor < 0 ? "negative " : ""}${formatted} ${currencyMetadata[currency].plural}`;
 }
 
+/** Shown in place of every amount while the user hides balances; the sign is hidden too. */
+export function hiddenMoney(currency: Currency): string {
+  return `${currencyMetadata[currency].symbol}••••`;
+}
+
+export const HIDDEN_AMOUNT_LABEL = "hidden amount";
+
+/**
+ * Display formatters that honor the hide balance toggle. Use these for any amount shown
+ * outside `MoneyValue`; keep `formatMoneyMinor` for input values and saved-value echoes
+ * the user is editing.
+ */
+export function useMoneyFormat() {
+  const hidden = useAmountsHidden();
+  return {
+    hidden,
+    format: (amountMinor: number, currency: Currency) =>
+      hidden ? hiddenMoney(currency) : formatMoneyMinor(amountMinor, currency),
+    label: (amountMinor: number, currency: Currency) =>
+      hidden ? HIDDEN_AMOUNT_LABEL : moneyAccessibilityLabel(amountMinor, currency),
+  };
+}
+
 /** Without `currency` the amount is labeled in the workspace currency. */
 interface MoneyValueProps extends TextProps {
   amountMinor: number;
@@ -41,6 +65,7 @@ export function MoneyValue({
 }: MoneyValueProps) {
   const theme = useZoptionTheme();
   const workspaceCurrency = useWorkspaceCurrency();
+  const money = useMoneyFormat();
   const resolvedCurrency = currency ?? workspaceCurrency;
   const color =
     tone === "income"
@@ -50,11 +75,11 @@ export function MoneyValue({
         : theme.colors.text;
   return (
     <Text
-      accessibilityLabel={moneyAccessibilityLabel(amountMinor, resolvedCurrency)}
+      accessibilityLabel={money.label(amountMinor, resolvedCurrency)}
       style={[typography.money, { color }, style]}
       {...props}
     >
-      {formatMoneyMinor(amountMinor, resolvedCurrency)}
+      {money.format(amountMinor, resolvedCurrency)}
     </Text>
   );
 }

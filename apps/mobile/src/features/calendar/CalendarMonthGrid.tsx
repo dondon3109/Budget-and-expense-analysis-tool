@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { useAmountsHidden } from "@/stores/hide-amounts-store";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -31,11 +32,13 @@ function dayAccessibilityLabel(
   cell: CalendarCell | undefined,
   selected: boolean,
   today: boolean,
+  amountsHidden: boolean,
 ): string {
   const parts = [calendarDateLabel(date)];
   if (today) parts.push("today");
   if (selected) parts.push("selected");
-  parts.push(...(cell?.summary ?? []));
+  // The summary speaks the day's amounts, so it goes quiet with the hide balance toggle.
+  if (!amountsHidden) parts.push(...(cell?.summary ?? []));
   return parts.join(", ");
 }
 
@@ -52,6 +55,7 @@ export function CalendarMonthGrid({
   onSelectDate,
 }: CalendarMonthGridProps) {
   const theme = useZoptionTheme();
+  const amountsHidden = useAmountsHidden();
   const weeks = useMemo(() => calendarMonthWeeks(month), [month]);
   const rule = { borderColor: theme.colors.border };
 
@@ -107,7 +111,13 @@ export function CalendarMonthGrid({
               <Pressable
                 key={date}
                 accessibilityHint="Shows this day's agenda below the calendar"
-                accessibilityLabel={dayAccessibilityLabel(date, cell, selected, isToday)}
+                accessibilityLabel={dayAccessibilityLabel(
+                  date,
+                  cell,
+                  selected,
+                  isToday,
+                  amountsHidden,
+                )}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
                 android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
@@ -147,7 +157,7 @@ export function CalendarMonthGrid({
                           numberOfLines={1}
                           style={[styles.amount, { color: theme.colors.info }]}
                         >
-                          {compactAmountLabel(cell.incomeMinor)}
+                          {amountsHidden ? "•••" : compactAmountLabel(cell.incomeMinor)}
                         </Text>
                       ) : null}
                       {cell && cell.expenseMinor > 0 ? (
@@ -155,7 +165,7 @@ export function CalendarMonthGrid({
                           numberOfLines={1}
                           style={[styles.amount, { color: theme.colors.expense }]}
                         >
-                          {compactAmountLabel(cell.expenseMinor)}
+                          {amountsHidden ? "•••" : compactAmountLabel(cell.expenseMinor)}
                         </Text>
                       ) : null}
                     </>
