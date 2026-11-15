@@ -1,4 +1,3 @@
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -56,7 +55,8 @@ import {
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { accountTypeOptions } from "./account-types";
-import { categoryColorOptions, isPresetCategoryColor } from "./category-colors";
+import { CategoryColorPicker } from "./CategoryColorPicker";
+import { isPresetCategoryColor } from "./category-colors";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 const currencyOptions: Array<{ id: Currency; label: string }> = currencies.map((code) => ({
@@ -660,107 +660,16 @@ export function ReferenceEditorScreen() {
                     setMessage(null);
                   }}
                 />
-                <View className="gap-2">
-                  <View className="gap-1">
-                    <Text style={[typography.label, { color: theme.colors.text }]}>Color</Text>
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      Choose a color that makes this category easy to recognize.
-                    </Text>
-                  </View>
-                  <View accessibilityLabel="Category colors" style={styles.colorPicker}>
-                    {categoryColorOptions.map((option) => {
-                      const selected = option.value.toLowerCase() === color.toLowerCase();
-                      return (
-                        <Pressable
-                          key={option.value}
-                          accessibilityLabel={`Use ${option.name} for this category`}
-                          accessibilityRole="button"
-                          accessibilityState={{
-                            disabled: saving || blocked || permanent,
-                            selected,
-                          }}
-                          disabled={saving || blocked || permanent}
-                          onPress={withTapSound(() => {
-                            setColor(option.value);
-                            setCustomColorOpen(false);
-                            setMessage(null);
-                          })}
-                          style={({ pressed }) => [
-                            styles.colorOption,
-                            {
-                              backgroundColor: pressed
-                                ? theme.colors.canvasMuted
-                                : theme.colors.surface,
-                              borderColor: selected ? theme.colors.brand : theme.colors.border,
-                              opacity: saving || blocked || permanent ? 0.5 : 1,
-                            },
-                          ]}
-                        >
-                          <View
-                            accessibilityElementsHidden
-                            style={[styles.colorSwatch, { backgroundColor: option.value }]}
-                          >
-                            {selected ? (
-                              <MaterialCommunityIcons color="#FFFFFF" name="check" size={17} />
-                            ) : null}
-                          </View>
-                          <Text
-                            numberOfLines={1}
-                            style={[typography.label, { color: theme.colors.text }]}
-                          >
-                            {option.name}
-                          </Text>
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityState={{
-                      disabled: saving || blocked || permanent,
-                      expanded: customColorOpen,
-                    }}
-                    disabled={saving || blocked || permanent}
-                    onPress={withTapSound(() => setCustomColorOpen((open) => !open))}
-                    style={({ pressed }) => [
-                      styles.customColorToggle,
-                      {
-                        backgroundColor: pressed ? theme.colors.canvasMuted : "transparent",
-                        opacity: saving || blocked || permanent ? 0.5 : 1,
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      accessibilityElementsHidden
-                      color={theme.colors.brand}
-                      name="palette-outline"
-                      size={19}
-                    />
-                    <Text style={[typography.label, { color: theme.colors.brand }]}>
-                      {customColorOpen ? "Hide custom color" : "Use a custom color"}
-                    </Text>
-                  </Pressable>
-                  {customColorOpen ? (
-                    <FormField
-                      error={
-                        color && !/^#[0-9A-F]{6}$/.test(color)
-                          ? "Use # followed by six characters from 0-9 or A-F."
-                          : undefined
-                      }
-                      label="Custom color code"
-                      value={color}
-                      autoCapitalize="characters"
-                      autoCorrect={false}
-                      editable={!saving && !blocked && !permanent}
-                      hint="Enter a six-digit code, such as #0F766E."
-                      maxLength={7}
-                      onChangeText={(value) => {
-                        setColor(value.toUpperCase());
-                        setMessage(null);
-                      }}
-                    />
-                  ) : null}
-                </View>
+                <CategoryColorPicker
+                  color={color}
+                  customOpen={customColorOpen}
+                  disabled={saving || blocked || permanent}
+                  onChange={(value) => {
+                    setColor(value);
+                    setMessage(null);
+                  }}
+                  onCustomOpenChange={setCustomColorOpen}
+                />
                 <View className="gap-2">
                   <FormField
                     label="Emoji icon (optional)"
@@ -806,12 +715,11 @@ export function ReferenceEditorScreen() {
                             setIconEmoji(emoji);
                             setMessage(null);
                           })}
-                          style={({ pressed }) => [
+                          // NativeWind's Pressable drops a style function, so this is a plain array.
+                          style={[
                             styles.emojiOption,
                             {
-                              backgroundColor: pressed
-                                ? theme.colors.canvasMuted
-                                : theme.colors.surface,
+                              backgroundColor: theme.colors.surface,
                               borderColor: selected ? theme.colors.brand : theme.colors.border,
                               opacity: saving || blocked || permanent ? 0.5 : 1,
                             },
@@ -885,37 +793,6 @@ const styles = StyleSheet.create({
     minHeight: touchTarget,
     alignItems: "center",
     justifyContent: "center",
-  },
-  colorPicker: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
-  colorOption: {
-    minHeight: touchTarget + spacing.xs,
-    minWidth: 136,
-    flexBasis: "46%",
-    flexGrow: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    borderWidth: 1.5,
-    borderRadius: radii.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  colorSwatch: {
-    width: 30,
-    height: 30,
-    flexShrink: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 15,
-  },
-  customColorToggle: {
-    minHeight: touchTarget,
-    alignSelf: "flex-start",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.xs,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.xs,
   },
   emojiPicker: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   emojiOption: {
