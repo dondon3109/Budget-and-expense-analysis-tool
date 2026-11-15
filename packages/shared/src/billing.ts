@@ -7,8 +7,13 @@ import type { BillingPlanKey, BillingTier, FamilyBillingPlan, PersonalBillingPla
 export const billingIntervals = ["month", "year"] as const;
 export type BillingInterval = (typeof billingIntervals)[number];
 
-export const billingProviders = ["paypal", "dodo"] as const;
+/** Where a subscription is paid. `google_play` is bought only inside the Play build of the app. */
+export const billingProviders = ["paypal", "dodo", "google_play"] as const;
 export type BillingProvider = (typeof billingProviders)[number];
+
+/** The providers a web or sideloaded-app checkout can open; Google Play sells only in its app. */
+export const billingCheckoutProviders = ["paypal", "dodo"] as const;
+export type BillingCheckoutProvider = (typeof billingCheckoutProviders)[number];
 
 export const billingSubscriptionStatuses = [
   "active",
@@ -52,6 +57,7 @@ export interface BillingResourceAllowance {
 export const proEntitlementSources = [
   "paypal",
   "dodo",
+  "google_play",
   "platform_admin",
   "sponsored",
   "family",
@@ -78,7 +84,7 @@ export interface SponsoredProSeatSummary {
 }
 
 export interface BillingPendingCheckout {
-  provider: BillingProvider;
+  provider: BillingCheckoutProvider;
   plan: BillingPlanKey;
   interval: BillingInterval;
   createdAt: string;
@@ -123,4 +129,34 @@ export type BillingCheckoutReconciliationOutcome =
 export interface BillingCheckoutReconciliation {
   outcome: BillingCheckoutReconciliationOutcome;
   summary: BillingSummary;
+}
+
+/**
+ * Google Play sells each plan as one subscription product with a monthly and a yearly base plan.
+ * These ids are created once in Play Console (Monetize > Subscriptions) and can never be reused,
+ * so they are fixed here rather than configured. The app buys with them; the API maps a verified
+ * purchase back to a plan with `googlePlayPlan`.
+ */
+export const GOOGLE_PLAY_PRODUCT_IDS = {
+  budget: "zoption_budget",
+  pro: "zoption_pro",
+  family_budget: "zoption_family_budget",
+  family_pro: "zoption_family_pro",
+} as const satisfies Record<BillingPlanKey, string>;
+
+export const GOOGLE_PLAY_BASE_PLAN_IDS = {
+  month: "monthly",
+  year: "yearly",
+} as const satisfies Record<BillingInterval, string>;
+
+/** The plan and interval a Play product and base plan sell, or null when they are not ours. */
+export function googlePlayPlan(
+  productId: string,
+  basePlanId: string,
+): { plan: BillingPlanKey; interval: BillingInterval } | null {
+  const plan = (Object.keys(GOOGLE_PLAY_PRODUCT_IDS) as BillingPlanKey[]).find(
+    (key) => GOOGLE_PLAY_PRODUCT_IDS[key] === productId,
+  );
+  const interval = billingIntervals.find((key) => GOOGLE_PLAY_BASE_PLAN_IDS[key] === basePlanId);
+  return plan && interval ? { plan, interval } : null;
 }

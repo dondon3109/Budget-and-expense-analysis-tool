@@ -72,7 +72,8 @@ export const billingCheckoutReferences = sqliteTable(
 export const billingSubscriptions = sqliteTable(
   "billing_subscriptions",
   {
-    provider: text("provider", { enum: ["paypal", "dodo"] }).notNull(),
+    // A Google Play row's subscription id is its purchase token; see migration 0088.
+    provider: text("provider", { enum: ["paypal", "dodo", "google_play"] }).notNull(),
     providerSubscriptionId: text("provider_subscription_id").notNull(),
     tenantId: text("tenant_id")
       .notNull()
@@ -108,6 +109,9 @@ export const billingSubscriptions = sqliteTable(
     index("billing_subscriptions_family_idx")
       .on(table.familyTenantId)
       .where(sql`${table.familyTenantId} IS NOT NULL`),
+    index("billing_subscriptions_google_play_recheck_idx")
+      .on(table.lastProviderOccurredAt)
+      .where(sql`${table.provider} = 'google_play'`),
   ],
 );
 

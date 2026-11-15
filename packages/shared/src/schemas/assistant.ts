@@ -215,6 +215,15 @@ export const assistantRecurringChargesToolSchema = z
   })
   .strict();
 
+export const assistantSubscriptionsToolSchema = z
+  .object({
+    through: isoDateSchema,
+    dueWithinDays: z.number().int().min(1).max(90).optional(),
+  })
+  .strict();
+
+export const assistantGoalsAndDebtsToolSchema = z.object({}).strict();
+
 export const assistantSpendingAnomaliesToolSchema = z
   .object(assistantDateRangeShape)
   .strict()

@@ -48,7 +48,7 @@ describe("SafeToSpendHero (mobile)", () => {
       />,
     );
 
-    const button = screen.getByRole("button", { name: "View renewal calendar" });
+    const button = screen.getByRole("button", { name: "View bills" });
     expect(button).toBeTruthy();
     fireEvent.press(button);
     expect(onViewRenewals).toHaveBeenCalledTimes(1);

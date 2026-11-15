@@ -17,3 +17,16 @@ export function assertDevelopmentAppVariant(extra?: unknown): void {
     throw new Error("Demo data is available only in Zoption Dev.");
   }
 }
+
+/**
+ * True only in the Google Play build (`ZOPTION_DISTRIBUTION=play`). Missing or
+ * malformed metadata means the sideloaded APK, which keeps today's behavior.
+ */
+export function isPlayDistribution(extra: unknown = Constants.expoConfig?.extra): boolean {
+  return (
+    typeof extra === "object" &&
+    extra !== null &&
+    "distribution" in extra &&
+    (extra as { distribution?: unknown }).distribution === "play"
+  );
+}

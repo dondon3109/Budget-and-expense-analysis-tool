@@ -13,6 +13,7 @@ function optionalString(value: unknown): string | undefined {
 function configFor(environment: Record<string, string | undefined>): ExpoConfig {
   const original: Record<string, string | undefined> = {
     APP_VARIANT: optionalString(process.env.APP_VARIANT),
+    ZOPTION_DISTRIBUTION: optionalString(process.env.ZOPTION_DISTRIBUTION),
   };
   try {
     for (const [name, value] of Object.entries(environment)) {
@@ -43,6 +44,7 @@ describe("mobile app configuration", () => {
     expect(config.android?.versionCode).toBeGreaterThan(0);
     expect(config.extra).toEqual({
       appVariant: "production",
+      distribution: "apk",
     });
   });
 
@@ -53,6 +55,7 @@ describe("mobile app configuration", () => {
     expect(config.android?.package).toBe("site.zoption.android.dev");
     expect(config.extra).toEqual({
       appVariant: "development",
+      distribution: "apk",
     });
   });
 
@@ -63,6 +66,29 @@ describe("mobile app configuration", () => {
     expect(config.android?.package).toBe("site.zoption.android.preview");
     expect(config.extra).toEqual({
       appVariant: "preview",
+      distribution: "apk",
     });
+  });
+
+  it("keeps the sideloaded APK as the default distribution", () => {
+    const config = configFor({ APP_VARIANT: "production", ZOPTION_DISTRIBUTION: undefined });
+
+    expect(config.android?.blockedPermissions).toBeUndefined();
+  });
+
+  it("builds the Play distribution without the APK updater install permission", () => {
+    const config = configFor({ APP_VARIANT: "production", ZOPTION_DISTRIBUTION: "play" });
+
+    expect(config.android?.package).toBe("site.zoption.android");
+    expect(config.android?.blockedPermissions).toEqual([
+      "android.permission.REQUEST_INSTALL_PACKAGES",
+    ]);
+    expect(config.extra).toEqual({ appVariant: "production", distribution: "play" });
+  });
+
+  it("rejects an unknown distribution", () => {
+    expect(() => configFor({ APP_VARIANT: "production", ZOPTION_DISTRIBUTION: "store" })).toThrow(
+      'ZOPTION_DISTRIBUTION must be "apk" or "play"',
+    );
   });
 });

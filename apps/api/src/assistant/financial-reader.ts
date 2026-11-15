@@ -38,10 +38,16 @@ import {
 } from "./calendar-math";
 import { loadAndProposeAction, type ActionProposal } from "./actions";
 import {
+  goalsAndDebtsResult,
+  subscriptionsResult,
+  type SubscriptionsReadInput,
+} from "./saved-plans";
+import {
   compactDescription,
   findAccountByName,
   formatMoney,
   normalizedName,
+  source,
 } from "./record-format";
 import {
   draftTransaction,
@@ -161,6 +167,11 @@ export interface FinancialReader {
     context: FinancialReadContext,
     kind?: TransactionKind,
   ): Promise<AssistantToolResultEnvelope<unknown>>;
+  listSubscriptions(
+    context: FinancialReadContext,
+    input: SubscriptionsReadInput,
+  ): Promise<AssistantToolResultEnvelope<unknown>>;
+  getGoalsAndDebts(context: FinancialReadContext): Promise<AssistantToolResultEnvelope<unknown>>;
   suggestTransactionDetails(
     context: FinancialReadContext,
     input: TransactionSuggestionInput,
@@ -230,35 +241,6 @@ function assessWorkspaceQuality(
   });
   if (quality.status === "reliable") quality.status = "limited";
   return quality;
-}
-
-function source<T extends object>(
-  data: T,
-  sourceType: "transactions" | "budgets" | "accounts" | "goals" | "debts",
-  options: {
-    period?: { from: string; to: string };
-    baselinePeriod?: { from: string; to: string };
-    filters?: {
-      accountName?: string;
-      categoryName?: string;
-      goalName?: string;
-      debtNames?: string[];
-    };
-    recordCount?: number;
-    quality?: DataQualityAssessment;
-  } = {},
-): AssistantToolResultEnvelope<T> {
-  return {
-    data,
-    source: {
-      sourceType,
-      ...(options.period ? { period: options.period } : {}),
-      ...(options.baselinePeriod ? { baselinePeriod: options.baselinePeriod } : {}),
-      ...(options.filters ? { filters: options.filters } : {}),
-      ...(options.recordCount === undefined ? {} : { recordCount: options.recordCount }),
-    },
-    dataQuality: options.quality ?? { status: "reliable", signals: [] },
-  };
 }
 
 async function loadAnalysisTransactions(
@@ -945,6 +927,23 @@ export function createFinancialReader(
               : { status: "reliable", signals: [] },
         },
       );
+    },
+
+    async listSubscriptions(context, input) {
+      const month = `${input.through.slice(0, 7)}-01`;
+      return subscriptionsResult(
+        await subscriptions.list(context.env, context.tenantId, month),
+        input,
+      );
+    },
+
+    async getGoalsAndDebts(context) {
+      const [goalItems, debtItems, currency] = await Promise.all([
+        goals.list(context.env, context.tenantId),
+        debts.list(context.env, context.tenantId),
+        workspaceCurrencyLoader(context.env, context.tenantId),
+      ]);
+      return goalsAndDebtsResult(goalItems, debtItems, currency);
     },
 
     async listCategories(context, kind) {

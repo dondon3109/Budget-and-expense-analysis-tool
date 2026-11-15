@@ -101,7 +101,7 @@ describe("ReferenceEditorScreen archive warning", () => {
     });
   });
 
-  it("counts and names the active subscriptions paid from the account", async () => {
+  it("counts and names the active bills paid from the account", async () => {
     jest.mocked(useSubscriptions).mockReturnValue({
       subscriptions: accountSubscriptions,
       loading: false,
@@ -113,11 +113,11 @@ describe("ReferenceEditorScreen archive warning", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Archive account" }));
 
     expect(
-      screen.getByText(/2 active subscriptions are paid from this account: Netflix, Spotify./),
+      screen.getByText(/2 active bills are paid from this account: Netflix, Spotify./),
     ).toBeTruthy();
     expect(
       screen.getByText(
-        /Zoption skips due subscription charges while this account stays archived and emails you once per cycle./,
+        /Zoption skips due bill charges while this account stays archived and emails you once per cycle./,
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/Gym Membership/)).toBeNull();
@@ -152,9 +152,7 @@ describe("ReferenceEditorScreen archive warning", () => {
     await render(<ReferenceEditorScreen />);
     await fireEvent.press(screen.getByRole("button", { name: "Archive account" }));
 
-    expect(
-      screen.getByText(/1 active subscription is paid from this account: Netflix./),
-    ).toBeTruthy();
+    expect(screen.getByText(/1 active bill is paid from this account: Netflix./)).toBeTruthy();
   });
 
   it("shows no extra warning when the account pays for no active subscriptions", async () => {
