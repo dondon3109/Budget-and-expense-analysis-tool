@@ -101,11 +101,12 @@ export async function readEffectiveAccess(
      ORDER BY rank DESC, CASE source
        WHEN 'paypal' THEN 0
        WHEN 'dodo' THEN 1
-       WHEN 'family' THEN 2
-       WHEN 'platform_admin' THEN 3
-       WHEN 'sponsored' THEN 4
-       WHEN 'trial' THEN 5
-       ELSE 6
+       WHEN 'google_play' THEN 2
+       WHEN 'family' THEN 3
+       WHEN 'platform_admin' THEN 4
+       WHEN 'sponsored' THEN 5
+       WHEN 'trial' THEN 6
+       ELSE 7
      END
      LIMIT 1`,
   )

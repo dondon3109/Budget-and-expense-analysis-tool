@@ -4,6 +4,7 @@ import { createApp } from "../src/app";
 import { verifyDodoWebhook } from "../src/billing/dodo";
 import { reconcileBillingCheckout } from "../src/billing/reconciliation";
 import { billingRepository } from "../src/db/billing";
+import { googlePlayRepository } from "../src/db/google-play";
 import { HttpError } from "../src/errors";
 import { createBillingRoutes } from "../src/routes/billing";
 import type { Bindings } from "../src/types";
@@ -210,7 +211,7 @@ describe("Dodo Payments subscriptions", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const app = createTestApp({ tenant: { tenantId: TENANT_ID } as never, env });
-    app.route("/billing", createBillingRoutes(billingRepository));
+    app.route("/billing", createBillingRoutes(billingRepository, googlePlayRepository));
     app.onError((error, context) =>
       context.json({}, error instanceof HttpError ? error.status : 500),
     );
