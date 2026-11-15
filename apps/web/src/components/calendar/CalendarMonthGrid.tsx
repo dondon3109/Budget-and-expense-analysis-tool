@@ -19,6 +19,8 @@ import {
 import type { KeyboardEvent } from "react";
 
 import { calendarWeeks, firstWeekday, formatCalendarDate, monthDates } from "../../lib/calendar";
+import { formatMoney } from "../../lib/formatters";
+import { amountsHidden } from "../../lib/hideAmounts";
 import "./CalendarOccasions.css";
 
 export interface CalendarDayData {
@@ -46,6 +48,7 @@ const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 const compactMoneyByCurrency = new Map<Currency, Intl.NumberFormat>();
 
 function compactMoney(amountMinor: number, currency: Currency): string {
+  if (amountsHidden()) return formatMoney(amountMinor, currency);
   let formatter = compactMoneyByCurrency.get(currency);
   if (!formatter) {
     formatter = new Intl.NumberFormat(currencyMetadata[currency].locale, {

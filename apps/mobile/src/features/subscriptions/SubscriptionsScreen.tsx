@@ -26,7 +26,7 @@ import {
   EmptyState,
   ErrorState,
   MoneyValue,
-  moneyAccessibilityLabel,
+  useMoneyFormat,
   Skeleton,
   CategoryBadge,
 } from "@/ui/components";
@@ -370,6 +370,7 @@ function SubscriptionRow({
   const conflicted = subscription.syncState === "conflicted";
   const failed = subscription.syncState === "failed";
   const isCanceled = subscription.status === "canceled";
+  const money = useMoneyFormat();
   const isYearly = subscription.billingCycle === "yearly";
   const monthlyEquivalent = isYearly ? Math.round(subscription.amountMinor / 12) : null;
   const currency = subscription.currency;
@@ -377,7 +378,7 @@ function SubscriptionRow({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${subscription.name}, ${moneyAccessibilityLabel(subscription.amountMinor, currency)}, ${subscription.status}`}
+      accessibilityLabel={`${subscription.name}, ${money.label(subscription.amountMinor, currency)}, ${subscription.status}`}
       android_ripple={{ color: "rgba(10, 117, 86, 0.12)", borderless: false }}
       onPress={withTapSound(onPress)}
     >

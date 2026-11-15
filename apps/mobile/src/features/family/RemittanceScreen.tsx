@@ -29,7 +29,7 @@ import {
   DateField,
   ErrorState,
   FormField,
-  formatMoneyMinor,
+  useMoneyFormat,
   SelectionField,
   Skeleton,
 } from "@/ui/components";
@@ -393,17 +393,18 @@ export function RemittanceScreen() {
 
 function Summary({ remittance }: { remittance: LocalRemittance }) {
   const theme = useZoptionTheme();
+  const money = useMoneyFormat();
   const muted = { color: theme.colors.textMuted };
   return (
     <Card style={{ gap: spacing.xxs }}>
       <Text style={[typography.title, { color: theme.colors.text }]}>
-        {formatMoneyMinor(remittance.sentAmountMinor, remittance.sentCurrency)}
+        {money.format(remittance.sentAmountMinor, remittance.sentCurrency)}
       </Text>
       <Text style={[typography.callout, muted]}>
         Sent on {remittance.sentOn}
         {remittance.provider ? ` via ${remittance.provider}` : ""}
         {remittance.feeMinor
-          ? ` · fee ${formatMoneyMinor(remittance.feeMinor, remittance.sentCurrency)}`
+          ? ` · fee ${money.format(remittance.feeMinor, remittance.sentCurrency)}`
           : ""}
       </Text>
       {remittance.note ? (
@@ -411,7 +412,7 @@ function Summary({ remittance }: { remittance: LocalRemittance }) {
       ) : null}
       <Text style={[typography.callout, muted]}>
         {remittance.received
-          ? `${formatMoneyMinor(remittance.received.amountMinor, remittance.received.currency)} arrived on ${remittance.received.date}`
+          ? `${money.format(remittance.received.amountMinor, remittance.received.currency)} arrived on ${remittance.received.date}`
           : "On the way"}
         {remittance.syncState === "pending" ? " · waiting to sync" : ""}
       </Text>

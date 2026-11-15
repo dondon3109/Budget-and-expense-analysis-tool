@@ -5,7 +5,7 @@ import { Text, View } from "react-native";
 import { getFamilyDeletedEntries, restoreFamilyEntry } from "@/api/family";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useSyncState } from "@/sync/sync-state";
-import { Button, Card, EmptyState, ErrorState, formatMoneyMinor, Skeleton } from "@/ui/components";
+import { Button, Card, EmptyState, ErrorState, Skeleton, useMoneyFormat } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -20,6 +20,7 @@ import { useFamilyApi } from "./use-family-api";
  */
 export function FamilyDeletedScreen() {
   const theme = useZoptionTheme();
+  const money = useMoneyFormat();
   const me = useSessionSnapshot().subject;
   const { family, writable } = useActiveWorkspace();
   const role = family?.role;
@@ -76,7 +77,7 @@ export function FamilyDeletedScreen() {
               {deleted.entry.description}
             </Text>
             <Text style={[typography.headline, { color: theme.colors.text }]}>
-              {formatMoneyMinor(deleted.entry.amountMinor, deleted.entry.currency)}
+              {money.format(deleted.entry.amountMinor, deleted.entry.currency)}
             </Text>
           </View>
           <Text style={[typography.callout, { color: theme.colors.textMuted }]}>

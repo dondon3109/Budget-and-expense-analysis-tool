@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { resolveCategoryEmoji, type TransactionListItem } from "@zoption/shared";
 import { playSound } from "@/features/sounds/sound-effects";
 import { CategoryBadge } from "./CategoryBadge";
-import { MoneyValue, moneyAccessibilityLabel } from "./MoneyValue";
+import { MoneyValue, useMoneyFormat } from "./MoneyValue";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -23,6 +23,7 @@ export function TransactionRow({
   onPress,
 }: TransactionRowProps) {
   const theme = useZoptionTheme();
+  const money = useMoneyFormat();
   const emoji = resolveCategoryEmoji({
     name: transaction.categoryName,
     iconEmoji: transaction.categoryIconEmoji,
@@ -39,7 +40,7 @@ export function TransactionRow({
 
   return (
     <Pressable
-      accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}, ${moneyAccessibilityLabel(transaction.amountMinor, transaction.currency)}`}
+      accessibilityLabel={`${transaction.description}, ${transaction.categoryName}, ${transaction.date}, ${money.label(transaction.amountMinor, transaction.currency)}`}
       accessibilityHint={onPress ? "Opens transaction editor" : undefined}
       accessibilityRole={onPress ? "button" : undefined}
       accessibilityState={

@@ -454,6 +454,18 @@ describe("HomeScreen", () => {
       screen.getByRole("button", { name: "Total balance. Opens account management." }),
     );
     expect(router.push).toHaveBeenCalledWith("/(app)/money-setup");
+
+    await fireEvent.press(screen.getByRole("button", { name: "Hide amounts" }));
+    expect(screen.queryByText("₱750.00")).toBeNull();
+    expect(screen.getAllByText("₱••••").length).toBeGreaterThan(3);
+    expect(
+      within(screen.getByLabelText("Account balances"))
+        .getAllByLabelText(/, hidden amount$/)
+        .map((row) => row.props.accessibilityLabel),
+    ).toEqual(["Cash, hidden amount", "Bank, hidden amount", "GCash, hidden amount"]);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Show amounts" }));
+    expect(screen.getByText("₱750.00")).toBeTruthy();
   });
 
   it("triggers sync and dashboard retry on pull to refresh", async () => {

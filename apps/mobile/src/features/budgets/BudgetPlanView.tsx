@@ -5,7 +5,7 @@ import { Pressable, StyleSheet, Text, View, type DimensionValue } from "react-na
 import { resolveCategoryEmoji, type Currency } from "@zoption/shared";
 import type { LocalBudgetOccasion } from "@/db/view-models";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
-import { CategoryBadge, moneyAccessibilityLabel, MoneyValue } from "@/ui/components";
+import { CategoryBadge, MoneyValue, useMoneyFormat } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { occasionDateLabel } from "./budget-form";
@@ -142,16 +142,17 @@ export function BudgetRow({
 }) {
   const theme = useZoptionTheme();
   const currency: Currency = useWorkspaceCurrency();
+  const money = useMoneyFormat();
   const emoji =
     row.categoryIconEmoji ?? resolveCategoryEmoji({ name: row.categoryName, kind: "expense" });
   const blocked = row.syncState === "conflicted" || row.syncState === "failed";
   const spokenAmount = showSpend
-    ? `spent ${moneyAccessibilityLabel(row.spentMinor, currency)} of ${moneyAccessibilityLabel(row.limitMinor, currency)}, ${
+    ? `spent ${money.label(row.spentMinor, currency)} of ${money.label(row.limitMinor, currency)}, ${
         row.remainingMinor >= 0
-          ? `${moneyAccessibilityLabel(row.remainingMinor, currency)} remaining`
-          : `${moneyAccessibilityLabel(Math.abs(row.remainingMinor), currency)} over budget`
+          ? `${money.label(row.remainingMinor, currency)} remaining`
+          : `${money.label(Math.abs(row.remainingMinor), currency)} over budget`
       }`
-    : `limit ${moneyAccessibilityLabel(row.limitMinor, currency)}`;
+    : `limit ${money.label(row.limitMinor, currency)}`;
 
   return (
     <View style={[styles.row, { borderBottomColor: theme.colors.border }]}>

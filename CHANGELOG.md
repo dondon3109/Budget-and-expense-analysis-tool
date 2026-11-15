@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Hide balance, on web and mobile: tap the eye next to your total balance to mask every amount in the app (shown as ₱••••) before you share your screen or take a screenshot. Tap it again to show them; each device remembers its own choice.
 - AI Assistant skills, on web and mobile: one-tap Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up chips that answer straight from your records without asking which month.
 - The AI Assistant can now answer "what bills are due soon?", "what subscriptions do I have?", and "how are my goals and debts doing?" from your saved subscriptions, goals, and debts.
 - Family workspaces, on web and mobile: create a family, invite up to 5 people, share a transaction or an account balance into it, record remittances, attach receipt photos, and comment on entries with alerts when something changes. Switch between your own Zoption and a family on web, and use a family offline on the phone.

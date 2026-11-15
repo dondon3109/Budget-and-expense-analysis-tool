@@ -1,4 +1,5 @@
 import { currencyMetadata, type Currency } from "@zoption/shared";
+import { amountsHidden } from "./hideAmounts";
 import { workspaceCurrency } from "./workspaceCurrency";
 
 const currencyFormatterCache = new Map<Currency, Intl.NumberFormat>();
@@ -16,7 +17,11 @@ function currencyFormatterFor(currency: Currency): Intl.NumberFormat {
   return formatter;
 }
 
+const HIDDEN_DIGITS = "••••";
+
+/** Masked while the user hides balances (`hideAmounts.ts`); the sign is hidden too. */
 export function formatMoney(amountMinor: number, currency: Currency = workspaceCurrency()): string {
+  if (amountsHidden()) return currencyMetadata[currency].symbol + HIDDEN_DIGITS;
   return currencyFormatterFor(currency).format(amountMinor / 100);
 }
 
@@ -24,6 +29,12 @@ export function formatMoneyParts(
   amountMinor: number,
   currency: Currency = workspaceCurrency(),
 ): Intl.NumberFormatPart[] {
+  if (amountsHidden()) {
+    return [
+      { type: "currency", value: currencyMetadata[currency].symbol },
+      { type: "integer", value: HIDDEN_DIGITS },
+    ];
+  }
   return currencyFormatterFor(currency).formatToParts(amountMinor / 100);
 }
 
