@@ -1,11 +1,13 @@
 import { createAccountDeletionService } from "./account-deletion";
 import { createApp } from "./app";
+import { recheckGooglePlaySubscriptions } from "./billing/google-play-purchases";
 import { reconcileDueBillingCheckouts } from "./billing/scheduled-reconciliation";
 import { trialEmailService } from "./billing/trial-emails";
 import { assistantRepository } from "./db/assistant";
 import { billingRepository } from "./db/billing";
 import { familyRepository } from "./db/families";
 import { familyReceiptRepository } from "./db/family-receipts";
+import { googlePlayRepository } from "./db/google-play";
 import { compactMobileSyncChanges } from "./db/mobile-sync";
 import { familyAlerts } from "./family-alerts";
 import { refreshDailyFxRates } from "./fx/rates";
@@ -66,6 +68,12 @@ export default {
       const result = await reconcileDueBillingCheckouts(billingRepository, env, 25);
       if (result.checked > 0) {
         console.log(JSON.stringify({ message: "Pending billing checkouts reconciled", ...result }));
+      }
+      const playRecheck = await recheckGooglePlaySubscriptions(googlePlayRepository, env, 25);
+      if (playRecheck.checked > 0) {
+        console.log(
+          JSON.stringify({ message: "Google Play subscriptions rechecked", ...playRecheck }),
+        );
       }
       const notifications = await bugReportService.retryPendingNotifications(env, 25);
       if (notifications.claimed > 0) {

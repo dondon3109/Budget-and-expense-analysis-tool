@@ -564,7 +564,7 @@ export function CashflowForecastSection({
           </h2>
           <p className="forecast-subheading">
             Simulate your expected cash position based on current liquid balances and recurring
-            subscription commitments.
+            bills.
           </p>
           {otherCurrencyPlans > 0 && (
             <p className="forecast-subheading">
@@ -867,7 +867,7 @@ export function CashflowForecastSection({
               <thead>
                 <tr>
                   <th scope="col">Due Date</th>
-                  <th scope="col">Subscription / Obligation</th>
+                  <th scope="col">Bill / Obligation</th>
                   <th scope="col" className="text-right">
                     Amount
                   </th>

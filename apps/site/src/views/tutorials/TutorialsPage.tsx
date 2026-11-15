@@ -154,23 +154,23 @@ const TUTORIALS_DATA: TutorialSection[] = [
   },
   {
     id: "subscriptions-and-bills",
-    category: "Subscriptions",
-    title: "Tracking Subscriptions & Recurring Bills",
+    category: "Bills",
+    title: "Tracking Monthly Bills & Subscriptions",
     icon: Repeat,
     summary:
-      "Never miss a renewal date or pay for an unused service with scheduled bill tracking and cancellation guides.",
-    actionText: "Manage Subscriptions",
+      "Never miss a due date or pay for an unused service with scheduled bill tracking and cancellation guides.",
+    actionText: "Manage Bills",
     actionHref: "/app/subscriptions",
     steps: [
       {
-        title: "Add your active recurring services",
+        title: "Add your recurring bills",
         description:
-          "Add services like Netflix, Spotify, gym memberships, internet bills, or insurance premiums with their renewal cycle (monthly or annual).",
+          "Add electricity, water, and internet bills, insurance premiums, or services like Netflix and Spotify with their billing cycle (monthly or annual).",
       },
       {
-        title: "Track renewal reminders and cash flow impact",
+        title: "Track due dates and cash flow impact",
         description:
-          "See upcoming charge dates on your Calendar and review your 30-day and annual subscription burn rate.",
+          "See upcoming charge dates on your Calendar and review your 30-day and annual bill totals.",
       },
       {
         title: "Use Step-by-Step Cancellation Guides",

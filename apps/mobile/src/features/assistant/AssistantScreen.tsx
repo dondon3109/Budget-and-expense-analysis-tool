@@ -1005,7 +1005,7 @@ export function AssistantScreen() {
             ListEmptyComponent={
               <EmptyState
                 title="No conversations yet"
-                description="Ask about your spending, budgets, subscriptions, goals or debts. You can also tell it what you spent and it drafts the transaction for you to save."
+                description="Ask about your spending, budgets, bills, goals or debts. You can also tell it what you spent and it drafts the transaction for you to save."
               />
             }
           />
