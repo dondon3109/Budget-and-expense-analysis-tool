@@ -44,6 +44,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Mobile: pick a custom category color by sliding Hue, Vividness, and Brightness, with a live preview. Typing a hex code still works for an exact color.
 - Subscriptions are now Bills, on web and mobile, so electricity, water, internet, and other recurring bills fit alongside streaming and memberships. The renewal calendar is now the Bill calendar.
 - A bill held back because its account could not cover it is now charged the moment you top up or adjust that account's balance, on web and mobile, instead of on the next daily check. Each due cycle the new balance covers is recorded as an expense and deducted.
 - Your cookie choice now covers both zoption.site and the web app: deciding on one no longer asks again on the other, and withdrawing Analytics on either stops it on both.
@@ -74,6 +75,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: category color circles are evenly spaced in one row instead of being pushed around by their names, and the custom color button and emoji choices line up again.
 - Android: you stay signed in until you sign out or restart the phone. Closing the app, or an access token expiring, no longer sends you back to the sign-in screen. Restarting the phone signs you out, and your entries stay on the phone for the next sign-in.
 - The AI Assistant no longer fails every reply when an admin selects a current Claude model.
 - Mobile: pressing and holding a transaction to select it no longer drops the selection when you lift your finger.
