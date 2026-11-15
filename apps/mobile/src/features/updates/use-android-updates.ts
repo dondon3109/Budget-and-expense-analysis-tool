@@ -9,6 +9,8 @@ import {
 } from "react";
 import { AppState, InteractionManager, Platform } from "react-native";
 
+import { isPlayDistribution } from "@/config/app-variant";
+
 import type { ParsedAndroidRelease } from "./android-release-metadata";
 import {
   applyAndroidUpdate,
@@ -82,7 +84,8 @@ export function useAndroidUpdateController(
     }),
     [dependencies],
   );
-  const supported = deps.platform === "android";
+  // A Play install is updated by Play and has no REQUEST_INSTALL_PACKAGES.
+  const supported = deps.platform === "android" && !isPlayDistribution();
   const [status, setStatus] = useState<ManualUpdateStatus>("idle");
   const [installed, setInstalled] = useState<InstalledAndroidApp | null>(null);
   const [latest, setLatest] = useState<ParsedAndroidRelease | null>(null);

@@ -23,7 +23,7 @@ const SUPPORT_DESTINATIONS: SupportDestination[] = [
   { label: "Start free", to: "/signup" },
   { label: "Sign in", to: "/login" },
   { label: "Transactions", to: "/app/transactions" },
-  { label: "Subscriptions", to: "/app/subscriptions" },
+  { label: "Bills", to: "/app/subscriptions" },
   { label: "Calendar", to: "/app/calendar" },
   { label: "Budgets", to: "/app/budgets" },
   { label: "Import", to: "/app/import" },

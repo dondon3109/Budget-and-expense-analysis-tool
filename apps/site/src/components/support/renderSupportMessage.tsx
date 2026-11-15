@@ -22,7 +22,7 @@ const SUPPORT_DESTINATIONS: SupportDestination[] = [
   { label: "Start free", href: appUrl("/signup") },
   { label: "Sign in", href: appUrl("/login") },
   { label: "Transactions", href: appUrl("/app/transactions") },
-  { label: "Subscriptions", href: appUrl("/app/subscriptions") },
+  { label: "Bills", href: appUrl("/app/subscriptions") },
   { label: "Calendar", href: appUrl("/app/calendar") },
   { label: "Budgets", href: appUrl("/app/budgets") },
   { label: "Import", href: appUrl("/app/import") },

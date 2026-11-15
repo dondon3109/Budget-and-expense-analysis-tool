@@ -1,6 +1,7 @@
 import {
   billingPlanChangeRequestSchema,
   familyBillingCheckoutRequestSchema,
+  googlePlayPurchaseRequestSchema,
   isFamilyPlan,
 } from "@zoption/shared";
 import { Hono, type Context } from "hono";
@@ -11,7 +12,9 @@ import {
   familyPlanPayer,
   startCheckout,
 } from "../billing/checkout";
+import { verifyGooglePlayPurchase } from "../billing/google-play-purchases";
 import type { BillingRepository } from "../db/billing";
+import type { GooglePlayRepository } from "../db/google-play";
 import { HttpError } from "../errors";
 import { parseInput, readJson } from "../request";
 import type { AppEnvironment } from "../types";
@@ -21,7 +24,10 @@ import type { AppEnvironment } from "../types";
  * The owner pays from their personal workspace, so the subscription and its checkout live there;
  * the client confirms a checkout through the personal `/api/app/billing/reconcile`.
  */
-export function createFamilyBillingRoutes(repository: BillingRepository) {
+export function createFamilyBillingRoutes(
+  repository: BillingRepository,
+  googlePlay: GooglePlayRepository,
+) {
   const routes = new Hono<AppEnvironment>();
 
   const ownerContext = (context: Context<AppEnvironment>) =>
@@ -46,6 +52,24 @@ export function createFamilyBillingRoutes(repository: BillingRepository) {
       familyTenantId,
     });
     return context.json(response, 201);
+  });
+
+  /** The Play build reports a family plan purchase here; the owner's personal workspace pays. */
+  routes.post("/google-play", async (context) => {
+    const { familyTenantId, payerTenantId } = ownerContext(context);
+    const request = parseInput(
+      googlePlayPurchaseRequestSchema,
+      await readJson(context),
+      "Send the Google Play purchase.",
+    );
+    return context.json(
+      await verifyGooglePlayPurchase(
+        googlePlay,
+        context.env,
+        { userId: context.get("authUser").id, tenantId: payerTenantId, familyTenantId },
+        request,
+      ),
+    );
   });
 
   routes.post("/change", async (context) => {

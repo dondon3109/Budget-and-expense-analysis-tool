@@ -15,15 +15,23 @@ function isWebhookDuplicateError(error: unknown): boolean {
   );
 }
 
+/** Who a purchase verified for the signed-in payer belongs to, when no checkout sold it. */
+export interface SubscriptionOwner {
+  tenantId: string;
+  familyTenantId: string | null;
+}
+
 /**
  * Applies a provider's subscription state, from a verified webhook or a reconciliation read. A
- * new subscription is matched to the checkout that sold it and inherits its family; an update
- * older than the stored one is ignored.
+ * new subscription is matched to the checkout that sold it and inherits its family, or, for a
+ * Google Play purchase, to the `owner` it was verified for; an update older than the stored one
+ * is ignored. A stored subscription never moves to another owner.
  */
 export async function applySubscriptionUpdate(
   env: Bindings,
   update: BillingSubscriptionSnapshot,
   webhook?: { providerEventId: string; type: string },
+  owner?: SubscriptionOwner,
 ): Promise<BillingSubscriptionApplyOutcome> {
   const configured = configuredPlan(env, update.provider, update.providerPlanId);
   if (
@@ -63,6 +71,14 @@ export async function applySubscriptionUpdate(
       lastProviderOccurredAt: string;
       lastProviderEventId: string;
     }>();
+  if (
+    owner &&
+    existingSubscription &&
+    (existingSubscription.tenantId !== owner.tenantId ||
+      existingSubscription.familyTenantId !== owner.familyTenantId)
+  ) {
+    throw new HttpError(409, "invalid_billing_ownership", "Invalid billing ownership.");
+  }
   // A plan change never turns a personal plan into a family one or back.
   if (
     existingSubscription &&
@@ -117,11 +133,11 @@ export async function applySubscriptionUpdate(
           .first<{ tenantId: string; providerPlanId: string; familyTenantId: string | null }>()
       : null;
 
-  const tenantId = existingSubscription?.tenantId ?? reference?.tenantId;
+  const tenantId = existingSubscription?.tenantId ?? reference?.tenantId ?? owner?.tenantId;
   if (!tenantId) return "unmatched";
   const familyTenantId = existingSubscription
     ? existingSubscription.familyTenantId
-    : (reference?.familyTenantId ?? null);
+    : ((reference ?? owner)?.familyTenantId ?? null);
   if (!existingSubscription && plan && isFamilyPlan(plan) !== (familyTenantId !== null)) {
     return "rejected_plan";
   }

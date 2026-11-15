@@ -134,10 +134,10 @@ describe("AppShell", () => {
       "Import",
       "Budgets",
       "Goals & debt",
-      "Subscriptions",
+      "Bills",
       "Pet",
     ]);
-    expect(screen.getByRole("link", { name: "Subscriptions" })).toHaveClass("current");
+    expect(screen.getByRole("link", { name: "Bills" })).toHaveClass("current");
     expect(screen.getByRole("button", { name: "Open navigation" })).toHaveAttribute(
       "aria-controls",
       "primary-navigation",
@@ -251,7 +251,7 @@ describe("AppShell", () => {
       "Import",
       "Budgets",
       "Goals & debt",
-      "Subscriptions",
+      "Bills",
       "Pet",
     ]);
   });

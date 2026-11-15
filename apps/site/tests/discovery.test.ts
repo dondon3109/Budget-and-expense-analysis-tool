@@ -43,7 +43,7 @@ describe("llms.txt page list", () => {
     const lines = llmsPageList().split("\n");
     expect(lines).toHaveLength(PUBLIC_ROUTE_PATHS.length);
     expect(lines).toContain(
-      `- [FAQ](${SITE_ORIGIN}/faq): Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, subscription tracking, savings interest, the AI assistant, privacy, and billing.`,
+      `- [FAQ](${SITE_ORIGIN}/faq): Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, bill tracking, savings interest, the AI assistant, privacy, and billing.`,
     );
   });
 
