@@ -36,11 +36,11 @@ export type AssistantSkill = (typeof assistantSkills)[number];
 export type AssistantSkillId = AssistantSkill["id"];
 
 function normalizedPrompt(value: string): string {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[.?!]+$/, "")
-    .toLowerCase();
+  const collapsed = value.trim().replace(/\s+/g, " ");
+  // Trim end marks with a loop: an anchored /[.?!]+$/ backtracks quadratically on user input.
+  let end = collapsed.length;
+  while (end > 0 && ".?!".includes(collapsed[end - 1] ?? "")) end -= 1;
+  return collapsed.slice(0, end).toLowerCase();
 }
 
 /** The skill a message runs: only its exact prompt, ignoring case, spacing, and end marks. */
