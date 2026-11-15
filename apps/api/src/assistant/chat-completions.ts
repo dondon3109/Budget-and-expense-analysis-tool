@@ -35,6 +35,11 @@ const responseSchema = z.object({
     .object({
       prompt_tokens: z.number().int().nonnegative().optional(),
       completion_tokens: z.number().int().nonnegative().optional(),
+      // OpenAI and Gemini report cache hits here; DeepSeek reports prompt_cache_hit_tokens.
+      prompt_tokens_details: z
+        .object({ cached_tokens: z.number().int().nonnegative().optional() })
+        .nullish(),
+      prompt_cache_hit_tokens: z.number().int().nonnegative().optional(),
     })
     .optional(),
 });
@@ -98,15 +103,28 @@ function outgoingMessages(
   providerName: string,
 ): unknown[] {
   const echoExtras = providerName === "gemini";
-  return messages.map((message) => {
-    if (message.role !== "assistant" || !message.tool_calls) return message;
-    return {
-      ...message,
-      tool_calls: message.tool_calls.map(({ providerExtras, ...call }) =>
-        echoExtras && providerExtras ? { ...call, extra_content: providerExtras } : call,
-      ),
-    };
-  });
+  // Some OpenAI-compatible vendors accept only one system message, so the leading ones are
+  // joined in order; the shared rules stay first, which keeps the cached prefix stable.
+  const leadingSystem: string[] = [];
+  let rest = messages;
+  while (rest[0]?.role === "system") {
+    leadingSystem.push(rest[0].content);
+    rest = rest.slice(1);
+  }
+  const system =
+    leadingSystem.length > 0 ? [{ role: "system", content: leadingSystem.join("\n\n") }] : [];
+  return [
+    ...system,
+    ...rest.map((message) => {
+      if (message.role !== "assistant" || !message.tool_calls) return message;
+      return {
+        ...message,
+        tool_calls: message.tool_calls.map(({ providerExtras, ...call }) =>
+          echoExtras && providerExtras ? { ...call, extra_content: providerExtras } : call,
+        ),
+      };
+    }),
+  ];
 }
 
 export class ChatCompletionsProvider implements AssistantProvider {
@@ -242,6 +260,9 @@ export class ChatCompletionsProvider implements AssistantProvider {
             usage: {
               promptTokens: parsed.data.usage.prompt_tokens,
               completionTokens: parsed.data.usage.completion_tokens,
+              cachedPromptTokens:
+                parsed.data.usage.prompt_tokens_details?.cached_tokens ??
+                parsed.data.usage.prompt_cache_hit_tokens,
             },
           }
         : {}),

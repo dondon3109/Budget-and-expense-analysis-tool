@@ -93,6 +93,8 @@ next to Cloudflare Workers AI.
 - `calculate_savings_goal` — deterministic target-date contributions from a saved goal or validated hypothetical inputs.
 - `list_transactions` — a bounded filtered page of transaction details without notes or internal IDs. It is detail-only and must not be totaled by the model.
 - `list_categories` — active category names and kinds.
+- `list_subscriptions` — the saved subscriptions and recurring bills (amount, billing cycle, next billing date, status, category, account), the monthly cost of active ones, and which bill within `dueWithinDays` (default 30) of today. Totals count only the workspace currency, as on the Subscriptions page; plans billed in another currency are listed but not added in.
+- `get_goals_and_debts` — saved savings goals (target, saved, remaining, progress rounded down, target date, status) and saved debts (balance, APR, minimum payment, balance date, status), with totals for active ones.
 - `suggest_transaction_details` — for logging: the user's own entries from the trailing 12 months at a named place (grouped by description, with the usual category, account, typical and last amount), otherwise their most frequent entries; a category matched from the place name when history has none; active categories; and active accounts with their recorded balances.
 - `draft_transaction` — resolves an income or expense against active accounts and categories and returns a draft. It writes nothing.
 - `propose_action` — resolves a subscription, goal, debt, account, category, budget, or transaction create, edit, delete, archive, status, or balance change against the tenant's own records and returns a proposal (or the missing details). It writes nothing.
@@ -100,6 +102,12 @@ next to Cloudflare Workers AI.
 There is no SQL, D1, arbitrary HTTP, environment, credential, secret, or import tool, and no tool that writes directly. Tenant identity is injected by the Worker and is never model-visible.
 
 `list_transactions` reads exactly the trusted period when one resolved. With no period it may read only the undated newest-first page, so "show my recent transactions" is answerable while the model still cannot pick its own date window.
+
+## Built-in skills
+
+The chat's starter chips include one-tap check-ups defined in `packages/shared/src/assistantSkills.ts`: Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up. A chip sends its prompt as an ordinary message. When the turn policy sees a skill's exact prompt (ignoring case, spacing, and end punctuation), it skips text classification and uses the skill's plan in `apps/api/src/assistant/skills.ts`: fixed required tool groups and, for period-based skills, "this month" or "last month" resolved like the user's own words, so a skill never asks which month.
+
+The Worker reads a skill's groups before the first provider call and hands them to the model as tool results, so a skill answers in one provider call instead of a lookup round and an answer round. The skill's guidance goes in the turn context, not the shared rules, so it never breaks the cached prefix. A skill keeps every other rule: compliance classification runs first, answers are still validated against the tool results, and the model may still call further tools. Every skill group must have a backend read (`TOOL_FOR_GROUP` in `answer-validation.ts`), so payoff and savings projections, which need the user's inputs, are not skills.
 
 ## Logging transactions
 
@@ -224,6 +232,14 @@ Local development and CI can set `ASSISTANT_PROVIDER=stub` to route provider-bac
 - Stored names and transaction descriptions are untrusted data, not instructions.
 - Assistant output and metadata are rendered as React text, not HTML.
 - Operational logs contain status and diagnostic categories, not messages, tool payloads, account names, transaction descriptions, JWTs, or keys.
+
+## Prompt caching
+
+Every provider call sends the tool definitions and two system messages: `ASSISTANT_RULES_PROMPT` in `apps/api/src/assistant/prompt.ts`, which is byte-identical for every user and turn, then this turn's context (trusted policy, profile, memory, goal, and date). Providers cache requests by prefix, so the tools and rules (most of the input) are cache reads after the first call. Nothing per-turn may be interpolated into the rules; that would make every call a cache miss.
+
+- Chat-completions providers receive the two system messages joined, rules first. DeepSeek, OpenAI, and Gemini cache prefixes automatically.
+- Anthropic receives them as two `system` blocks with a `cache_control` breakpoint on the rules, plus top-level `cache_control` so a turn's follow-up calls after a tool round reread the conversation from the cache.
+- Each provider's cache-hit count is reported as `cachedPromptTokens`, which reaches PostHog AI Observability as `$ai_cache_read_input_tokens`. `promptTokens` always counts every input token, cached or not.
 
 ## Configuration
 
