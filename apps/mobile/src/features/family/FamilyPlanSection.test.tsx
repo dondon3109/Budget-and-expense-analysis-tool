@@ -115,6 +115,26 @@ describe("FamilyPlanSection", () => {
     expect(screen.queryByText("Just you for now")).toBeNull();
   });
 
+  it("sends the owner to Google Play for a plan Play bills", async () => {
+    jest.mocked(getFamilyBillingSummary).mockResolvedValue({
+      ...unpaid,
+      state: "active",
+      plan: "family_pro",
+      interval: "month",
+      provider: "google_play",
+      status: "active",
+      currentPeriodEndsAt: "2099-01-01T00:00:00.000Z",
+      paidByYou: true,
+      canCheckout: false,
+      canChangePlan: true,
+    });
+    await render(<FamilyPlanSection detail={detail({ plan: "active" })} onChanged={jest.fn()} />);
+
+    expect(await screen.findByRole("button", { name: "Manage in Google Play" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Change plan" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Cancel renewal" })).toBeNull();
+  });
+
   it("tells a member the lapsed family is read only, without asking for billing", async () => {
     await render(
       <FamilyPlanSection

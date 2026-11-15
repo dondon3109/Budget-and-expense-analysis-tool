@@ -5,15 +5,17 @@ import {
   type BillingPlanKey,
   type BillingProvider,
 } from "@zoption/shared";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import type { PlanChoice } from "@/api/billing";
+import { isPlayDistribution } from "@/config/app-variant";
 import { Button, SelectionField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 
 import { INTERVAL_LABELS, PLAN_PITCH, planPriceLabel } from "./billing-copy";
+import { loadPlayOffers, playOfferKey, type PlayOffers } from "./google-play";
 import type { CheckoutBusy } from "./use-plan-checkout";
 
 interface PlanPickerProps {
@@ -26,7 +28,31 @@ interface PlanPickerProps {
   onChange: (choice: PlanChoice) => void;
 }
 
-/** Plan and interval choice, then Dodo or PayPal checkout, or a switch of the current plan. */
+/** Play's offers and prices for the Play build; "failed" when Play could not list them. */
+function usePlayOffers(enabled: boolean): PlayOffers | "loading" | "failed" {
+  const [offers, setOffers] = useState<PlayOffers | "loading" | "failed">("loading");
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    loadPlayOffers().then(
+      (next) => {
+        if (active) setOffers(next);
+      },
+      () => {
+        if (active) setOffers("failed");
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [enabled]);
+  return offers;
+}
+
+/**
+ * Plan and interval choice, then checkout or a switch of the current plan. Checkout is Dodo or
+ * PayPal on the web, and Google Play only in the Play build, which never links to web checkout.
+ */
 export function PlanPicker({
   plans,
   suggestedPlan,
@@ -40,6 +66,13 @@ export function PlanPicker({
   const [interval, setIntervalChoice] = useState<BillingInterval>(current?.interval ?? "month");
   const choice = { plan, interval };
   const unchanged = current !== null && current.plan === plan && current.interval === interval;
+  const play = isPlayDistribution();
+  const playOffers = usePlayOffers(play);
+  const playPrice = (choice: PlanChoice): string | undefined => {
+    if (typeof playOffers === "string") return undefined;
+    const offer = playOffers.get(playOfferKey(choice));
+    return offer ? offer.price + " / " + choice.interval : undefined;
+  };
 
   return (
     <View className="gap-3">
@@ -61,7 +94,7 @@ export function PlanPicker({
         options={plans.map((id) => ({
           id,
           label: PLAN_NAMES[id],
-          detail: planPriceLabel(id, interval),
+          detail: play ? playPrice({ plan: id, interval }) : planPriceLabel(id, interval),
         }))}
         placeholder={PLAN_NAMES[suggestedPlan]}
         sheetTitle="Plan"
@@ -79,6 +112,22 @@ export function PlanPicker({
           </Button>
           <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
             Upgrades start now. A smaller plan starts when the current paid period ends.
+          </Text>
+        </>
+      ) : play ? (
+        <>
+          <Button
+            loading={busy === "play-checkout" || playOffers === "loading"}
+            disabled={busy !== null || playPrice(choice) === undefined}
+            onPress={() => onCheckout(choice, "google_play")}
+          >
+            Subscribe with Google Play
+          </Button>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            {playOffers === "failed" ||
+            (playOffers !== "loading" && playPrice(choice) === undefined)
+              ? "Google Play could not list this plan. Check your connection and that the Play Store is signed in, then try again."
+              : "Google Play bills this subscription. Change or cancel it anytime in Google Play."}
           </Text>
         </>
       ) : (

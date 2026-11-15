@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- The Google Play version of the Android app sells Budget, Pro, and the family plans through Google Play, at Play's prices. A purchase that was interrupted is picked up the next time the app opens, and a plan bought on Google Play is changed or cancelled in Google Play.
 - Family workspaces, on web and mobile: create a family, invite up to 5 people, share a transaction or an account balance into it, record remittances, attach receipt photos, and comment on entries with alerts when something changes. Switch between your own Zoption and a family on web, and use a family offline on the phone.
 - New paid plans, on web and mobile: Zoption Budget (₱149 a month) unlocks every paid feature with 1,000 AI actions, 5 imports a month, and 10 custom categories, and Zoption Pro (₱249 a month) doubles the AI actions, allows 10 imports, and removes the category limit. Yearly billing is 10 times the monthly price.
 - Family plans: Family Budget (₱499 a month) and Family Pro (₱799 a month) cover a family of up to 6 people and give everyone Budget or Pro for their own Zoption too. The owner can set up a family first and try it alone at Free limits; invitations open once a plan is chosen, and the owner buys, changes, or cancels it in Family settings.

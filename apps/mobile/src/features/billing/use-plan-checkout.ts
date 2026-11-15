@@ -5,12 +5,24 @@ import { useCallback, useState } from "react";
 import {
   ApiTransportError,
   changeBillingPlan,
+  getGooglePlayAccountId,
   reconcileBillingCheckout,
+  reportGooglePlayPurchase,
   startBillingCheckout,
   type PlanChoice,
 } from "@/api/billing";
+import { clearPlanCache } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { showThankYou } from "@/features/thank-you/ThankYouHost";
+
+import {
+  buyOnGooglePlay,
+  loadPlayOffers,
+  PlayBillingError,
+  playOfferKey,
+  settlePlayPurchase,
+  type ReportPlayPurchase,
+} from "./google-play";
 
 const RECONCILE_ATTEMPTS = 8;
 const RECONCILE_DELAY_MS = 1500;
@@ -19,7 +31,23 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export type CheckoutBusy = "checkout" | "dodo-checkout" | "change" | "reconcile" | "cancel";
+export type CheckoutBusy =
+  "checkout" | "dodo-checkout" | "play-checkout" | "change" | "reconcile" | "cancel";
+
+/** What a refused plan change or cancel says when Google Play bills the plan. */
+export const MANAGED_IN_GOOGLE_PLAY_MESSAGE =
+  "This plan is billed through Google Play. Change or cancel it in Google Play.";
+
+/** The message for a failed billing call, naming Google Play when it owns the subscription. */
+export function billingErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiTransportError && error.serverCode === "managed_in_google_play") {
+    return MANAGED_IN_GOOGLE_PLAY_MESSAGE;
+  }
+  if (error instanceof ApiTransportError || error instanceof PlayBillingError) {
+    return error.message;
+  }
+  return fallback;
+}
 
 /**
  * Checkout, plan change, and payment confirmation for the personal plan (`familyId` null) or
@@ -96,8 +124,65 @@ export function usePlanCheckout(
     }
   }, [reconcile]);
 
+  const reportToZoption = useCallback<ReportPlayPurchase>(
+    ({ plan, familyId: purchaseFamilyId, body }) =>
+      withToken((token) =>
+        reportGooglePlayPurchase(
+          purchaseFamilyId
+            ? { accessToken: token, workspaceId: purchaseFamilyId }
+            : { accessToken: token },
+          plan,
+          body,
+        ),
+      ),
+    [withToken],
+  );
+
+  // Play build only: buy through Google Play, then let the Worker verify the purchase.
+  const playCheckout = useCallback(
+    async (choice: PlanChoice) => {
+      const offer = (await loadPlayOffers()).get(playOfferKey(choice));
+      if (!offer) throw new PlayBillingError("Google Play does not offer this plan right now.");
+      const obfuscatedAccountId = await withToken((token) =>
+        getGooglePlayAccountId({ accessToken: token }),
+      );
+      const purchase = await buyOnGooglePlay({
+        choice,
+        offerToken: offer.offerToken,
+        obfuscatedAccountId,
+        familyId,
+      });
+      if (!purchase) {
+        setMessage("Purchase canceled. You were not charged.");
+        return;
+      }
+      const outcome = await settlePlayPurchase(purchase, reportToZoption, choice.interval);
+      clearPlanCache();
+      onSettled(null);
+      if (outcome === "applied") {
+        setMessage("Your subscription is active. Thank you for upgrading.");
+        showThankYou("pro");
+        return;
+      }
+      setMessage("Google Play is still processing your payment. Your plan starts once it clears.");
+    },
+    [familyId, onSettled, reportToZoption, withToken],
+  );
+
   const checkout = useCallback(
     async (choice: PlanChoice, provider: BillingProvider) => {
+      if (provider === "google_play") {
+        setBusy("play-checkout");
+        setMessage(null);
+        try {
+          await playCheckout(choice);
+        } catch (error) {
+          setMessage(billingErrorMessage(error, "Google Play could not complete the purchase."));
+        } finally {
+          setBusy(null);
+        }
+        return;
+      }
       setBusy(provider === "dodo" ? "dodo-checkout" : "checkout");
       setMessage(null);
       try {
@@ -116,7 +201,7 @@ export function usePlanCheckout(
         setBusy(null);
       }
     },
-    [api, reconcile, withToken],
+    [api, playCheckout, reconcile, withToken],
   );
 
   const change = useCallback(
@@ -138,9 +223,7 @@ export function usePlanCheckout(
             : `You’re now on ${PLAN_NAMES[choice.plan]}.`,
         );
       } catch (error) {
-        setMessage(
-          error instanceof ApiTransportError ? error.message : "The plan could not be changed.",
-        );
+        setMessage(billingErrorMessage(error, "The plan could not be changed."));
       } finally {
         setBusy(null);
       }

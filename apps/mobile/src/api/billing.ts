@@ -5,15 +5,19 @@ import {
   billingReconciliationResponseSchema,
   billingSummaryResponseSchema,
   familyBillingSummaryResponseSchema,
+  googlePlayAccountResponseSchema,
+  googlePlayPurchaseResponseSchema,
   isFamilyPlan,
   type BillingCheckoutReconciliation,
   type BillingCheckoutResponse,
+  type BillingCheckoutProvider,
   type BillingInterval,
   type BillingPlanChangeResponse,
   type BillingPlanKey,
-  type BillingProvider,
   type BillingSummary,
   type FamilyBillingSummary,
+  type GooglePlayPurchaseRequest,
+  type GooglePlayPurchaseResponse,
 } from "@zoption/shared";
 
 import { ApiTransportError, apiRequest } from "./authenticated";
@@ -53,7 +57,7 @@ function planBillingPath(plan: BillingPlanKey): string {
 export function startBillingCheckout(
   api: BillingApi | FamilyApi,
   choice: PlanChoice,
-  provider: BillingProvider = "paypal",
+  provider: BillingCheckoutProvider = "paypal",
 ): Promise<BillingCheckoutResponse> {
   return apiRequest({
     ...api,
@@ -127,6 +131,37 @@ export function reconcileBillingCheckout(
     fallback: billingFallback,
     decode: (value) => billingReconciliationResponseSchema.parse(value),
     timeoutMs: 60_000,
+  });
+}
+
+/** The `obfuscatedAccountId` every Play purchase must carry; personal, so no family header. */
+export async function getGooglePlayAccountId(api: BillingApi): Promise<string> {
+  const response = await apiRequest({
+    ...api,
+    path: "/api/app/billing/google-play/account",
+    method: "GET",
+    fallback: billingFallback,
+    decode: (value) => googlePlayAccountResponseSchema.parse(value),
+  });
+  return response.obfuscatedAccountId;
+}
+
+/**
+ * Reports a Play subscription so the Worker verifies it with Google and grants the plan. A
+ * family plan goes to the family it covers, so `api` must then name that family.
+ */
+export function reportGooglePlayPurchase(
+  api: BillingApi | FamilyApi,
+  plan: BillingPlanKey,
+  purchase: GooglePlayPurchaseRequest,
+): Promise<GooglePlayPurchaseResponse> {
+  return apiRequest({
+    ...api,
+    path: `${planBillingPath(plan)}/google-play`,
+    method: "POST",
+    body: purchase,
+    fallback: billingFallback,
+    decode: (value) => googlePlayPurchaseResponseSchema.parse(value),
   });
 }
 
