@@ -1,0 +1,24 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <application>
+    <!--
+      Lists Zoption in the Android share sheet for screenshots and photos. The activity copies
+      the shared image into the app cache, opens the app, and finishes without drawing.
+      Only the image types the receipt scanner accepts are listed.
+    -->
+    <activity
+      android:name=".ZoptionShareReceiverActivity"
+      android:exported="true"
+      android:excludeFromRecents="true"
+      android:noHistory="true"
+      android:label="Scan receipt"
+      android:theme="@android:style/Theme.Translucent.NoTitleBar">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="image/jpeg" />
+        <data android:mimeType="image/png" />
+        <data android:mimeType="image/webp" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

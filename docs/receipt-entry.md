@@ -50,6 +50,10 @@ name matches the provider, and saves a transfer (cash-in, or money moved between
 accounts) as one transfer with the fee in its transfer fee. The web import flow shows the details
 and keeps its one-row-per-item preview.
 
+On Android, Zoption appears in the share sheet for JPEG, PNG, and WebP images as "Scan receipt".
+Sharing a GCash or bank screenshot opens the scanner and reads it straight away. The flow is
+described under `apps/mobile/AGENTS.md` (share intake). iOS has no share extension yet.
+
 ## PDF statement import
 
 The mobile import picker also accepts PDFs up to 5 MB. The authenticated Worker sends the selected

@@ -28,6 +28,7 @@ jest.mock("@/features/family/active-workspace", () => ({
 }));
 jest.mock("@/features/reminders/daily-reminder", () => ({ DailyReminderTapHandler: () => null }));
 jest.mock("@/features/family/family-push-tap", () => ({ FamilyPushTapHandler: () => null }));
+jest.mock("@/features/receipts/SharedReceiptHandoff", () => ({ SharedReceiptHandoff: () => null }));
 jest.mock("@/features/billing/PlanLimitDialog", () => ({ PlanLimitHost: () => null }));
 jest.mock("@/telemetry/screen-viewed", () => ({ ScreenViewedTracker: () => null }));
 jest.mock("@/sync/sync-state", () => ({
