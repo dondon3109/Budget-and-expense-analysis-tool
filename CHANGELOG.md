@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- The Google Play version of the Android app sells Budget, Pro, and the family plans through Google Play, at Play's prices. A purchase that was interrupted is picked up the next time the app opens, and a plan bought on Google Play is changed or cancelled in Google Play.
 - Hide balance, on web and mobile: tap the eye next to your total balance to mask every amount in the app (shown as ₱••••) before you share your screen or take a screenshot. Tap it again to show them; each device remembers its own choice.
 - AI Assistant skills, on web and mobile: one-tap Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up chips that answer straight from your records without asking which month.
 - The AI Assistant can now answer "what bills are due soon?", "what subscriptions do I have?", and "how are my goals and debts doing?" from your saved subscriptions, goals, and debts.

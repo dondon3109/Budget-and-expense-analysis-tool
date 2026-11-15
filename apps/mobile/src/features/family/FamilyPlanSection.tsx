@@ -11,7 +11,8 @@ import { Text, View } from "react-native";
 
 import { cancelFamilyPlan, getFamilyBillingSummary } from "@/api/billing";
 import { PlanPicker } from "@/features/billing/PlanPicker";
-import { usePlanCheckout } from "@/features/billing/use-plan-checkout";
+import { openPlaySubscriptions } from "@/features/billing/google-play";
+import { billingErrorMessage, usePlanCheckout } from "@/features/billing/use-plan-checkout";
 import { Button, Card, ConfirmationDialog, Skeleton } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
@@ -116,7 +117,7 @@ export function FamilyPlanSection({
       setMessage("Renewal is canceled. The family stays covered until the paid period ends.");
       await load();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "The renewal could not be canceled.");
+      setMessage(billingErrorMessage(error, "The renewal could not be canceled."));
     } finally {
       setBusy(null);
     }
@@ -126,7 +127,9 @@ export function FamilyPlanSection({
     summary?.plan && summary.interval && summary.paidByYou
       ? { plan: summary.plan, interval: summary.interval }
       : null;
-  const changing = summary?.canChangePlan === true && current !== null;
+  // Google Play bills this plan, so only Play can change or cancel it.
+  const playManaged = summary?.provider === "google_play" && summary.paidByYou;
+  const changing = summary?.canChangePlan === true && current !== null && !playManaged;
 
   return (
     <View style={{ gap: spacing.xs }}>
@@ -165,7 +168,11 @@ export function FamilyPlanSection({
                 {changing ? "Change plan" : "Choose a family plan"}
               </Button>
             ) : null}
-            {summary.paidByYou && summary.state === "active" && !summary.cancelAtPeriodEnd ? (
+            {playManaged ? (
+              <Button onPress={() => void openPlaySubscriptions(summary.plan)} variant="secondary">
+                Manage in Google Play
+              </Button>
+            ) : summary.paidByYou && summary.state === "active" && !summary.cancelAtPeriodEnd ? (
               <Button
                 disabled={busy !== null}
                 loading={busy === "cancel"}

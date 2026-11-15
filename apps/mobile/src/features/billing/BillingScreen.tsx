@@ -18,8 +18,9 @@ import {
   usageResetsCopy,
   usageTitle,
 } from "./billing-copy";
+import { openPlaySubscriptions } from "./google-play";
 import { PlanPicker } from "./PlanPicker";
-import { usePlanCheckout } from "./use-plan-checkout";
+import { billingErrorMessage, usePlanCheckout } from "./use-plan-checkout";
 
 export function BillingScreen() {
   const theme = useZoptionTheme();
@@ -63,15 +64,14 @@ export function BillingScreen() {
       await load();
       setMessage("Renewal is off. Your plan stays until the end of the current period.");
     } catch (error) {
-      setMessage(
-        error instanceof ApiTransportError
-          ? error.message
-          : "The subscription could not be changed.",
-      );
+      setMessage(billingErrorMessage(error, "The subscription could not be changed."));
     } finally {
       setBusy(null);
     }
   }, [load, setBusy, setMessage, withToken]);
+
+  // Google Play bills this plan, so only Play can change or cancel it.
+  const playManaged = summary?.provider === "google_play";
 
   if (phase === "loading") {
     return (
@@ -187,7 +187,7 @@ export function BillingScreen() {
         </View>
       </Card>
 
-      {summary.canCheckout || summary.canChangePlan ? (
+      {!playManaged && (summary.canCheckout || summary.canChangePlan) ? (
         <Card accessibilityLabel={summary.canChangePlan ? "Change plan" : "Choose a plan"}>
           <View className="gap-3">
             <Text style={[typography.headline, { color: theme.colors.text }]}>
@@ -209,7 +209,28 @@ export function BillingScreen() {
         </Card>
       ) : null}
 
-      {summary.canManageBilling && summary.status === "active" && !summary.cancelAtPeriodEnd ? (
+      {playManaged ? (
+        <Card accessibilityLabel="Manage subscription">
+          <View className="gap-3">
+            <Text style={[typography.headline, { color: theme.colors.text }]}>Subscription</Text>
+            <Text style={[typography.body, { color: theme.colors.textMuted }]}>
+              Google Play bills this plan. Change the plan, update payment, or cancel renewal in
+              Google Play.
+            </Text>
+            <Button
+              variant="secondary"
+              onPress={() => void openPlaySubscriptions(summary.subscriptionPlan)}
+            >
+              Manage in Google Play
+            </Button>
+          </View>
+        </Card>
+      ) : null}
+
+      {!playManaged &&
+      summary.canManageBilling &&
+      summary.status === "active" &&
+      !summary.cancelAtPeriodEnd ? (
         <Card accessibilityLabel="Manage subscription">
           <View className="gap-3">
             <Text style={[typography.headline, { color: theme.colors.text }]}>Subscription</Text>

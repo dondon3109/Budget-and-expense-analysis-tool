@@ -7,6 +7,7 @@ import { useWorkerIdentity } from "@/auth/worker-identity-state";
 import { useGoalProfileSync } from "@/auth/goal-profile-sync";
 import { usePetSync } from "@/auth/pet-sync";
 import { usePetNotifications } from "@/features/pet/pet-notifications";
+import { usePlayPurchaseRestore } from "@/features/billing/use-play-purchase-restore";
 import { usePushRegistration } from "@/features/push/use-push-registration";
 import { useWorkspaceCurrencySync } from "@/auth/workspace-currency-sync";
 import { AccountPromptHost } from "@/features/account-prompt/AccountPromptHost";
@@ -83,6 +84,7 @@ function LocalWorkspaceGate({
   usePetSync();
   usePetNotifications();
   usePushRegistration();
+  usePlayPurchaseRestore();
   const theme = useZoptionTheme();
   if (local.status === "opening") {
     return (

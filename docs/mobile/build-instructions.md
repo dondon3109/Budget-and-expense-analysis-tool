@@ -147,6 +147,18 @@ Play policy requires: it blocks `REQUEST_INSTALL_PACKAGES` (declared by the
 `zoption-apk-updater` module) and hides the in-app APK updater, because Play
 installs and updates the app.
 
+The Play build also sells plans through Google Play Billing (`expo-iap`, Play
+Billing Library 9) instead of Dodo or PayPal web checkout, which Play forbids
+linking to. `src/features/billing/google-play.ts` reads prices from Play, buys
+with the account's `obfuscatedAccountId` (and the family id as
+`obfuscatedProfileId` for a family plan), reports each purchase to the Worker,
+and acknowledges it only after the Worker answers `applied`;
+`usePlayPurchaseRestore` reports owned purchases again on every app open. A
+`google_play` subscription is changed or cancelled in Play's subscription
+center ("Manage in Google Play") on every build. expo-iap needs no config
+plugin; its Play Billing dependency is linked into every Android build but runs
+only in the Play build.
+
 The `Android Play Bundle` workflow (`.github/workflows/android-play.yml`) is
 dispatched by hand. It prebuilds with `APP_VARIANT=production
 ZOPTION_DISTRIBUTION=play`, runs `bundleRelease` signed with the Play upload
