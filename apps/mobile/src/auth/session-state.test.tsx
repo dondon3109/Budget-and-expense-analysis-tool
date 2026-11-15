@@ -2,6 +2,7 @@ import { render, waitFor, act } from "@testing-library/react-native";
 import React, { useEffect } from "react";
 import * as SecureStore from "expo-secure-store";
 import { AuthApiError, AuthRetryableFetchError, type Session } from "@supabase/supabase-js";
+import { Platform } from "react-native";
 
 const mockSecureValues = new Map<string, string>();
 
@@ -52,6 +53,12 @@ jest.mock("./supabase-client", () => ({
   readStoredSessionSubject: () => Promise.resolve(mockStoredSubject),
 }));
 
+const mockReadDeviceBootCount = jest.fn<Promise<number>, []>(async () => 1);
+jest.mock("@/db/local-data-security", () => ({
+  readDeviceBootCount: () => mockReadDeviceBootCount(),
+  ensureLocalDataBackupProtection: async () => undefined,
+}));
+
 jest.mock("@/db/workspace", () => ({
   discardLocalWorkspace: jest.fn(() => Promise.resolve()),
   inspectLocalWorkspaceForSignOut: jest.fn(() =>
@@ -63,6 +70,7 @@ import { discardLocalWorkspace } from "@/db/workspace";
 
 import { GUEST_SUBJECT } from "@/db/guest-workspace";
 
+import { ANDROID_BOOT_COUNT_KEY } from "./android-boot-session";
 import {
   DUMMY_DEV_STORAGE_KEY,
   DUMMY_DEV_SUBJECT,
@@ -421,6 +429,100 @@ describe("SessionProvider and dummy session handling", () => {
       await waitFor(() => expect(latest.current?.status).toBe("signed-in"));
       expect(latest.current?.subject).toBe("real-user-id");
       expect(mockSecureValues.has(GUEST_STORAGE_KEY)).toBe(false);
+    });
+  });
+
+  describe("android session lifetime", () => {
+    const originalOs = Platform.OS;
+    const account = {
+      access_token: "real-token",
+      refresh_token: "refresh-token",
+      user: { id: "real-user-id", email: "user@example.com" },
+    } as Session;
+
+    beforeEach(() => {
+      Object.defineProperty(Platform, "OS", { configurable: true, value: "android" });
+      mockReadDeviceBootCount.mockReset().mockResolvedValue(4);
+    });
+
+    afterEach(() => {
+      Object.defineProperty(Platform, "OS", { configurable: true, value: originalOs });
+    });
+
+    async function renderSession() {
+      const latest = { current: null as ReturnType<typeof useSessionSnapshot> | null };
+      await act(async () => {
+        render(
+          <SessionProvider>
+            <TestConsumer onSnapshot={(snap) => (latest.current = snap)} />
+          </SessionProvider>,
+        );
+      });
+      return latest;
+    }
+
+    it("stays signed in on the same boot and records the boot the first time", async () => {
+      mockCurrentSession = account;
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("signed-in"));
+      expect(latest.current?.subject).toBe("real-user-id");
+      expect(mockAuth.signOut).not.toHaveBeenCalled();
+      await waitFor(() => expect(mockSecureValues.get(ANDROID_BOOT_COUNT_KEY)).toBe("4"));
+    });
+
+    it("signs out locally after the phone restarts without deleting the workspace", async () => {
+      mockSecureValues.set(ANDROID_BOOT_COUNT_KEY, "3");
+      mockCurrentSession = account;
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("signed-out"));
+      expect(mockAuth.signOut).toHaveBeenCalledTimes(1);
+      expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "local" });
+      expect(discardLocalWorkspace).not.toHaveBeenCalled();
+      expect(mockSecureValues.has(ANDROID_BOOT_COUNT_KEY)).toBe(false);
+    });
+
+    it("stays signed in when Supabase rejects the stored refresh token", async () => {
+      mockStoredSubject = "08060c19-8a55-4046-a2e7-7384808dd81c";
+      mockAuth.getSession.mockImplementation(() =>
+        Promise.resolve({
+          data: { session: null },
+          error: new AuthApiError("Invalid Refresh Token", 400, "refresh_token_not_found"),
+        } as never),
+      );
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("signed-in"));
+      expect(latest.current?.subject).toBe(mockStoredSubject);
+    });
+
+    it("ignores a SIGNED_OUT event the user did not ask for", async () => {
+      let onAuth: ((event: string, session: Session | null) => void) | null = null;
+      mockAuth.onAuthStateChange.mockImplementation((callback) => {
+        onAuth = callback;
+        return { data: { subscription: { unsubscribe: jest.fn() } } };
+      });
+      mockCurrentSession = account;
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("signed-in"));
+
+      await act(async () => {
+        onAuth?.("SIGNED_OUT", null);
+      });
+      expect(latest.current?.status).toBe("signed-in");
+      expect(latest.current?.subject).toBe("real-user-id");
+    });
+
+    it("still signs out when the user asks", async () => {
+      mockSecureValues.set(ANDROID_BOOT_COUNT_KEY, "4");
+      mockCurrentSession = account;
+      const latest = await renderSession();
+      await waitFor(() => expect(latest.current?.status).toBe("signed-in"));
+
+      await act(async () => {
+        await latest.current!.signOut();
+      });
+      expect(mockAuth.signOut).toHaveBeenCalledWith({ scope: "global" });
+      expect(latest.current?.status).toBe("signed-out");
+      expect(mockSecureValues.has(ANDROID_BOOT_COUNT_KEY)).toBe(false);
     });
   });
 });

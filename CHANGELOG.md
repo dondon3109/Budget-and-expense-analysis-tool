@@ -73,6 +73,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Android: you stay signed in until you sign out or restart the phone. Closing the app, or an access token expiring, no longer sends you back to the sign-in screen. Restarting the phone signs you out, and your entries stay on the phone for the next sign-in.
 - The AI Assistant no longer fails every reply when an admin selects a current Claude model.
 - Mobile: pressing and holding a transaction to select it no longer drops the selection when you lift your finger.
 - Mobile voice chat: tapping stop now switches the button to a busy state while your words are transcribed, instead of leaving a stop button that seemed not to respond.
