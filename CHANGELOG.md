@@ -41,7 +41,8 @@ All notable product changes are documented here.
 
 ### Changed
 
-- A subscription held back because its account could not cover it is now charged the moment you top up or adjust that account's balance, on web and mobile, instead of on the next renewal check. Each due cycle the new balance covers is recorded as an expense and deducted.
+- Subscriptions are now Bills, on web and mobile, so electricity, water, internet, and other recurring bills fit alongside streaming and memberships. The renewal calendar is now the Bill calendar.
+- A bill held back because its account could not cover it is now charged the moment you top up or adjust that account's balance, on web and mobile, instead of on the next daily check. Each due cycle the new balance covers is recorded as an expense and deducted.
 - Your cookie choice now covers both zoption.site and the web app: deciding on one no longer asks again on the other, and withdrawing Analytics on either stops it on both.
 - On the phone, switching between Daily, Calendar, Monthly, and Summary on Transactions now slides the new view in from the side of its tab. Reduce Motion keeps it still.
 - The phone assistant chat has a new look: replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked, a new chat opens on the Zoption mark with starter questions as chips, the message box is one slim row with the microphone and send buttons, and a button jumps back to the newest message after you scroll up.

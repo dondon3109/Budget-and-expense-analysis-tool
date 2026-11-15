@@ -252,7 +252,7 @@ export function ReferenceEditorScreen() {
   const archiveWarning =
     payingSubscriptions.length === 0
       ? ""
-      : ` ${payingSubscriptions.length} active ${payingSubscriptions.length === 1 ? "subscription is" : "subscriptions are"} paid from this account: ${payingNames}. Zoption skips due subscription charges while this account stays archived and emails you once per cycle.`;
+      : ` ${payingSubscriptions.length} active ${payingSubscriptions.length === 1 ? "bill is" : "bills are"} paid from this account: ${payingNames}. Zoption skips due bill charges while this account stays archived and emails you once per cycle.`;
   const archiveMessage = `It will stop appearing in new transaction choices. Existing records keep their ${entityType} reference.${archiveWarning}`;
 
   // Blank means no starting balance; text that is not an amount blocks the save.
