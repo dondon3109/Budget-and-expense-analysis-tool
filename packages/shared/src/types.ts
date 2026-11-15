@@ -1,6 +1,7 @@
 import type { AccountType } from "./accountTypes";
 import type { Currency, CurrencyTotals } from "./currencies";
 import type { AssistantAction, AssistantTransactionDraft } from "./schemas/assistant";
+import type { ReceiptPayment } from "./schemas/receipts";
 
 export * from "./accountTypes";
 // Currencies live in their own module; re-exported so `./types` stays the one import site.
@@ -8,6 +9,21 @@ export * from "./currencies";
 
 export const transactionKinds = ["income", "expense", "transfer"] as const;
 export type TransactionKind = (typeof transactionKinds)[number];
+
+/** What a scanned e-wallet, bank, or remittance confirmation records. */
+export const receiptPaymentTypes = [
+  "send_money",
+  "receive_money",
+  "bill_payment",
+  "merchant_payment",
+  "cash_in",
+  "cash_out",
+  "bank_transfer",
+  "remittance",
+  "mobile_load",
+  "other",
+] as const;
+export type ReceiptPaymentType = (typeof receiptPaymentTypes)[number];
 
 /**
  * How a transaction was first entered, stored once at create in D1 so Zoption can count feature
@@ -736,6 +752,8 @@ export interface ReceiptDraft {
   categoryName?: string;
   /** Omitted by earlier API deployments; an empty list means no line could be read confidently. */
   items?: ReceiptLineItem[];
+  /** Set only for e-wallet, bank, or remittance confirmations, and only for clients that ask. */
+  payment?: ReceiptPayment;
   rawText: string;
 }
 

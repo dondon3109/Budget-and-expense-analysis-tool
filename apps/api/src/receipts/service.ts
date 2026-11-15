@@ -1,8 +1,12 @@
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   normalizeImportDate,
+  receiptPaymentKind,
+  receiptPaymentSchema,
+  receiptPaymentTypeLabel,
   type Currency,
   type ReceiptDraft,
+  type ReceiptPayment,
   type ReceiptPreferences,
 } from "@zoption/shared";
 
@@ -21,7 +25,13 @@ import {
 export interface ReceiptService {
   getPreferences(env: Bindings, tenantId: string): Promise<ReceiptPreferences>;
   grantConsent(env: Bindings, tenantId: string): Promise<ReceiptPreferences>;
-  extract(env: Bindings, tenantId: string, image: File): Promise<ReceiptDraft>;
+  /** `includePayment` is the client's opt-in to the `payment` field its draft schema knows. */
+  extract(
+    env: Bindings,
+    tenantId: string,
+    image: File,
+    options?: { includePayment?: boolean },
+  ): Promise<ReceiptDraft>;
 }
 
 export interface ReceiptVisionProviderFailureEvent {
@@ -197,6 +207,60 @@ function normalizeItems(
   return discountMinor > 0 ? applyDiscount(items, discountMinor) : items;
 }
 
+/**
+ * Keeps the confirmation details that survive the shared schema. A fee is only kept while it is
+ * part of the total, so principal plus fee always equals the amount that left the wallet.
+ */
+function normalizePayment(
+  candidate: ReceiptVisionCandidate["payment"],
+  totalMinor: number,
+): ReceiptPayment | undefined {
+  const provider = candidate?.provider?.trim().slice(0, 60);
+  if (!candidate || !provider) return undefined;
+  const fee = candidate.feeMinor;
+  const parsed = receiptPaymentSchema.safeParse({
+    provider,
+    type: candidate.type ?? "other",
+    counterparty: candidate.counterparty?.trim().slice(0, 160) || undefined,
+    // Apps print reference numbers in spaced groups; one unbroken run is what people search for.
+    referenceNo: candidate.referenceNo?.replace(/\s+/g, "").slice(0, 60) || undefined,
+    feeMinor:
+      typeof fee === "number" && Number.isSafeInteger(fee) && fee >= 0 && fee < Math.abs(totalMinor)
+        ? fee
+        : undefined,
+    sentAmountMinor:
+      candidate.sentAmountMinor !== undefined && candidate.sentAmountMinor > 0
+        ? candidate.sentAmountMinor
+        : undefined,
+    sentCurrency: /^[A-Z]{3}$/.test(candidate.sentCurrency ?? "")
+      ? candidate.sentCurrency
+      : undefined,
+    exchangeRate: /^\d{1,6}(?:\.\d{1,6})?$/.test(candidate.exchangeRate ?? "")
+      ? candidate.exchangeRate
+      : undefined,
+  });
+  // Drop only the optional extras that fail, never the whole confirmation.
+  if (parsed.success) return parsed.data;
+  return { provider, type: candidate.type ?? "other" };
+}
+
+/**
+ * A paid-out confirmation with a fee becomes two lines, the payment and the fee, so the fee is
+ * budgeted as its own expense. Without a fee the draft stays one total.
+ */
+function paymentItems(payment: ReceiptPayment, totalMinor: number): ReceiptDraftItem[] | undefined {
+  const fee = payment.feeMinor ?? 0;
+  if (fee <= 0) return undefined;
+  return [
+    { description: receiptPaymentTypeLabel(payment.type), amountMinor: Math.abs(totalMinor) - fee },
+    {
+      description: `${payment.provider} fee`.slice(0, 160),
+      amountMinor: fee,
+      categoryName: "Fees",
+    },
+  ];
+}
+
 export function createReceiptService(
   repository: ReceiptRepository,
   provider: ReceiptVisionProvider,
@@ -226,8 +290,15 @@ export function createReceiptService(
     env: Bindings,
     candidate: ReceiptVisionCandidate,
     currency: Currency,
+    includePayment: boolean,
   ): ReceiptDraft {
-    const merchant = candidate.merchant?.trim() ?? "";
+    const amountMinor = candidate.amountMinor;
+    const payment =
+      typeof amountMinor === "number"
+        ? normalizePayment(candidate.payment, amountMinor)
+        : undefined;
+    // A wallet screenshot that names no recipient still names the wallet that sent it.
+    const merchant = candidate.merchant?.trim() || payment?.counterparty || payment?.provider || "";
     if (!merchant) {
       throw new HttpError(
         422,
@@ -235,7 +306,6 @@ export function createReceiptService(
         "Could not read the merchant name from this photo. Try a clearer photo.",
       );
     }
-    const amountMinor = candidate.amountMinor;
     if (
       typeof amountMinor !== "number" ||
       !Number.isSafeInteger(amountMinor) ||
@@ -247,8 +317,15 @@ export function createReceiptService(
         "Could not read the total amount from this photo. Try a clearer photo.",
       );
     }
-    const kind = candidate.kind ?? (amountMinor < 0 ? "expense" : "income");
-    const items = normalizeItems(candidate, amountMinor);
+    // The confirmation type is a stronger signal than the model's own kind guess.
+    const kind = payment
+      ? receiptPaymentKind(payment.type)
+      : (candidate.kind ?? (amountMinor < 0 ? "expense" : "income"));
+    const items = payment
+      ? kind === "expense"
+        ? paymentItems(payment, amountMinor)
+        : undefined
+      : normalizeItems(candidate, amountMinor);
     return {
       merchant,
       date: normalizeImportDate(candidate.date?.trim() ?? "") ?? currentDateInTimeZone(env),
@@ -259,6 +336,7 @@ export function createReceiptService(
         ? { categoryName: candidate.categoryName.trim().slice(0, 80) }
         : {}),
       ...(items ? { items } : {}),
+      ...(payment && includePayment ? { payment } : {}),
       rawText: candidate.rawText?.trim().slice(0, 6_000) ?? "",
     };
   }
@@ -270,7 +348,7 @@ export function createReceiptService(
       await repository.grantConsent(env, tenantId);
       return preferences(env, tenantId);
     },
-    async extract(env, tenantId, image) {
+    async extract(env, tenantId, image, options) {
       await requireConsent(env, tenantId);
       // Receipt vision spends one billable provider call, drawn from the shared monthly pool.
       await consumeAiUsage(env, tenantId);
@@ -279,7 +357,7 @@ export function createReceiptService(
           provider.extract(env, image),
           loadWorkspaceCurrency(env, tenantId),
         ]);
-        return normalizeDraft(env, candidate, currency);
+        return normalizeDraft(env, candidate, currency, options?.includePayment === true);
       } catch (error) {
         return mapProviderError(error, reporter);
       }

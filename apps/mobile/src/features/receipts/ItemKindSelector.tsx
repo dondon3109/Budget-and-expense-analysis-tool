@@ -5,7 +5,13 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
-export type ReceiptKind = "expense" | "income";
+export type ReceiptKind = "expense" | "income" | "transfer";
+
+const OPTIONS = {
+  expense: { label: "Expense", icon: "arrow-up-right" },
+  income: { label: "Income", icon: "arrow-down-left" },
+  transfer: { label: "Transfer", icon: "swap-horizontal" },
+} as const;
 
 export function ItemKindSelector({
   value,
@@ -24,7 +30,7 @@ export function ItemKindSelector({
         accessibilityRole="radiogroup"
         style={[styles.kindGroup, { backgroundColor: theme.colors.canvasMuted }]}
       >
-        {(["expense", "income"] as const).map((option) => {
+        {(["expense", "income", "transfer"] as const).map((option) => {
           const selected = value === option;
           return (
             <Pressable
@@ -45,7 +51,7 @@ export function ItemKindSelector({
               <MaterialCommunityIcons
                 accessibilityElementsHidden
                 color={selected ? theme.colors.brand : theme.colors.textMuted}
-                name={option === "expense" ? "arrow-up-right" : "arrow-down-left"}
+                name={OPTIONS[option].icon}
                 size={19}
               />
               <Text
@@ -54,7 +60,7 @@ export function ItemKindSelector({
                   { color: selected ? theme.colors.text : theme.colors.textMuted },
                 ]}
               >
-                {option === "expense" ? "Expense" : "Income"}
+                {OPTIONS[option].label}
               </Text>
             </Pressable>
           );

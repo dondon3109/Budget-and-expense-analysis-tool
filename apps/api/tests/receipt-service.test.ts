@@ -76,6 +76,12 @@ function provider(): ReceiptVisionProvider {
   };
 }
 
+function paymentProvider(
+  candidate: Awaited<ReturnType<ReceiptVisionProvider["extract"]>>,
+): ReceiptVisionProvider {
+  return { extract: vi.fn(async () => candidate) };
+}
+
 describe("receipt service", () => {
   it("advertises the configured vision model and consent state", async () => {
     const service = createReceiptService(repository(), provider());
@@ -83,7 +89,7 @@ describe("receipt service", () => {
       enabled: true,
       consentedAt: "2026-08-12T00:00:00.000Z",
       consentVersion: CURRENT_RECEIPT_CONSENT_VERSION,
-      visionModel: "@cf/meta/llama-3.2-11b-vision-instruct",
+      visionModel: "@cf/google/gemma-4-26b-a4b-it",
     });
   });
 
@@ -385,6 +391,120 @@ describe("receipt service", () => {
     await expect(service.extract(env, TENANT_ID, receiptImage())).resolves.toMatchObject({
       items: [],
     });
+  });
+
+  it("reads a GCash Send Money screenshot as one expense with its confirmation details", async () => {
+    const service = createReceiptService(
+      repository(),
+      paymentProvider({
+        merchant: "JA•••N M•• L.",
+        date: "2026-09-30",
+        amountMinor: 240000,
+        kind: "expense",
+        items: [],
+        payment: {
+          provider: "GCash",
+          type: "send_money",
+          counterparty: "JA•••N M•• L.",
+          referenceNo: "2045 596 729825",
+          feeMinor: 0,
+        },
+        rawText: "Sent via GCash",
+      }),
+    );
+
+    await expect(
+      service.extract(env, TENANT_ID, receiptImage(), { includePayment: true }),
+    ).resolves.toEqual({
+      merchant: "JA•••N M•• L.",
+      date: "2026-09-30",
+      amountMinor: 240000,
+      currency: "PHP",
+      kind: "expense",
+      payment: {
+        provider: "GCash",
+        type: "send_money",
+        counterparty: "JA•••N M•• L.",
+        referenceNo: "2045596729825",
+        feeMinor: 0,
+      },
+      rawText: "Sent via GCash",
+    });
+  });
+
+  it("leaves payment details out for clients that did not ask for them", async () => {
+    const service = createReceiptService(
+      repository(),
+      paymentProvider({
+        merchant: "Meralco",
+        amountMinor: 251500,
+        payment: { provider: "Maya", type: "bill_payment", feeMinor: 1500 },
+      }),
+    );
+
+    const draft = await service.extract(env, TENANT_ID, receiptImage());
+
+    expect(draft).not.toHaveProperty("payment");
+    // Older apps still get the fee as its own line.
+    expect(draft.items).toEqual([
+      { description: "Bills payment", amountMinor: 250000 },
+      { description: "Maya fee", amountMinor: 1500, categoryName: "Fees" },
+    ]);
+  });
+
+  it("maps cash-in to a transfer and money received to income without line items", async () => {
+    const cashIn = createReceiptService(
+      repository(),
+      paymentProvider({
+        merchant: "BPI",
+        amountMinor: 100000,
+        kind: "expense",
+        payment: { provider: "GCash", type: "cash_in", feeMinor: 1500 },
+      }),
+    );
+    await expect(
+      cashIn.extract(env, TENANT_ID, receiptImage(), { includePayment: true }),
+    ).resolves.toMatchObject({
+      kind: "transfer",
+      payment: { type: "cash_in", feeMinor: 1500 },
+    });
+
+    const received = createReceiptService(
+      repository(),
+      paymentProvider({
+        merchant: "Maria D.",
+        amountMinor: 50000,
+        kind: "expense",
+        payment: { provider: "Maya", type: "receive_money" },
+      }),
+    );
+    const draft = await received.extract(env, TENANT_ID, receiptImage());
+    expect(draft.kind).toBe("income");
+    expect(draft.items).toBeUndefined();
+  });
+
+  it("drops a fee that is not part of the total and invalid remittance extras", async () => {
+    const service = createReceiptService(
+      repository(),
+      paymentProvider({
+        merchant: "",
+        amountMinor: 1000,
+        payment: {
+          provider: "BDO",
+          type: "bank_transfer",
+          feeMinor: 2500,
+          sentCurrency: "pesos",
+          exchangeRate: "about 56",
+        },
+      }),
+    );
+
+    const draft = await service.extract(env, TENANT_ID, receiptImage(), { includePayment: true });
+
+    // With no recipient read, the bank that sent it names the entry.
+    expect(draft.merchant).toBe("BDO");
+    expect(draft.payment).toEqual({ provider: "BDO", type: "bank_transfer" });
+    expect(draft.items).toBeUndefined();
   });
 
   it("rejects an unreadable merchant or amount with 422", async () => {

@@ -1,4 +1,5 @@
 import {
+  RECEIPT_DRAFT_PAYMENT_DETAIL,
   receiptConsentUpdateSchema,
   receiptDraftSchema,
   receiptPreferencesResponseSchema,
@@ -75,6 +76,8 @@ export async function extractReceipt(api: ReceiptApi, image: ReceiptImage): Prom
   // Append an expo-file-system File instead; the Winter runtime converts it
   // through its bytes() contract and carries name/type into the part headers.
   form.append("image", new File(image.uri) as unknown as Blob, image.fileName);
+  // Asks for e-wallet and bank confirmation details, which this build's draft schema knows.
+  form.append("detail", RECEIPT_DRAFT_PAYMENT_DETAIL);
   const fetchImpl = api.fetchImpl ?? fetch;
   let timedOut = false;
   const timeout = setTimeout(() => {

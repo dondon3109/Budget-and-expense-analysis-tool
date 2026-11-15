@@ -8,6 +8,7 @@ import {
   CURRENT_RECEIPT_CONSENT_VERSION,
   preferredTransactionAccount,
   receiptItemDescription,
+  receiptPaymentTypeLabel,
   type Currency,
   type ReceiptDraft,
   type TransactionInput,
@@ -17,7 +18,11 @@ import { ApiTransportError } from "@/api/authenticated";
 import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "@/api/receipt-scan";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
-import { localCalendarDate, parseTransactionForm } from "@/features/transactions/transaction-form";
+import {
+  formatMinorForInput,
+  localCalendarDate,
+  parseTransactionForm,
+} from "@/features/transactions/transaction-form";
 import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import {
@@ -35,7 +40,10 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 
 import { ItemKindSelector, type ReceiptKind } from "./ItemKindSelector";
 import { ReceiptConsent } from "./ReceiptConsent";
+import { ReceiptTransferFields } from "./ReceiptTransferFields";
 import {
+  accountForProvider,
+  receiptNotes,
   reviewedItemsTotalMinor,
   reviewItemsFromReceipt,
   type ReceiptReviewCategory,
@@ -86,6 +94,10 @@ export function ReceiptScanScreen() {
   const [date, setDate] = useState(localCalendarDate());
   const [kind, setKind] = useState<ReceiptKind>("expense");
   const [accountId, setAccountId] = useState("");
+  // A transfer (a cash-in, or money moved between the user's own accounts) saves as one entry.
+  const [toAccountId, setToAccountId] = useState("");
+  const [transferAmount, setTransferAmount] = useState("");
+  const [transferFee, setTransferFee] = useState("");
   const lastUsedAccountId = useLastUsedAccountStore((state) => state.accountId);
   const [items, setItems] = useState<ReceiptReviewItem[]>([]);
   const [showRawText, setShowRawText] = useState(false);
@@ -241,8 +253,16 @@ export function ReceiptScanScreen() {
         ),
       );
       if (!mounted.current) return;
-      const extractedKind: ReceiptKind = extracted.kind === "income" ? "income" : "expense";
+      const extractedKind: ReceiptKind = extracted.kind;
       const reviewItems = reviewItemsFromReceipt(extracted, categories, extractedKind);
+      // A GCash screenshot belongs to the GCash account: it paid, or a cash-in landed in it.
+      const providerAccount = accountForProvider(accounts, extracted.payment?.provider);
+      if (extractedKind === "transfer") setToAccountId(providerAccount?.id ?? "");
+      else if (providerAccount) setAccountId(providerAccount.id);
+      setTransferAmount(formatMinorForInput(Math.abs(extracted.amountMinor)));
+      setTransferFee(
+        extracted.payment?.feeMinor ? formatMinorForInput(extracted.payment.feeMinor) : "",
+      );
       nextItemId.current = reviewItems.length + 1;
       setDraft(extracted);
       setMerchant(extracted.merchant);
@@ -308,67 +328,20 @@ export function ReceiptScanScreen() {
     });
   };
 
-  const confirm = async (): Promise<void> => {
+  type Mutations = NonNullable<typeof local.workspace>["transactionMutations"];
+
+  /** Runs one local write (row plus outbox in one SQLite transaction), then keeps the photo. */
+  const save = async (write: (mutations: Mutations) => Promise<string[]>): Promise<void> => {
     if (!local.workspace) return;
-    if (!accountId) {
-      setMessage("Choose the account that paid for this receipt before saving.");
-      return;
-    }
-    if (!merchant.trim()) {
-      setMessage("Enter the merchant before saving.");
-      return;
-    }
-    if (!items.length) {
-      setMessage("Keep at least one receipt item before saving.");
-      return;
-    }
-    if (reviewedTotalMinor === null) {
-      setMessage("Enter a valid amount for every receipt item.");
-      return;
-    }
-    if (hasExtractedLines && !totalsMatch) {
-      setMessage(
-        `The items add to ${formatReceiptAmount(reviewedTotalMinor, activeCurrency)}, but the receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}. Correct the amounts or add the missing fee or discount before saving.`,
-      );
-      return;
-    }
-
-    const inputs: Array<Extract<TransactionInput, { kind: ReceiptKind }>> = [];
-    for (const [index, item] of items.entries()) {
-      const parsed = parseTransactionForm({
-        kind,
-        debtId: "",
-        accountId,
-        toAccountId: "",
-        categoryId: item.categoryId,
-        date,
-        description: receiptItemDescription(merchant, item.description),
-        amount: item.amount,
-        transferFee: "",
-        currency: activeCurrency,
-        notes: "Scanned receipt",
-      });
-      if (!parsed.success) {
-        setMessage(
-          `Item ${index + 1}: ${parsed.errors.description ?? parsed.errors.amount ?? parsed.errors.categoryId ?? "Check the details."}`,
-        );
-        return;
-      }
-      if (parsed.input.kind === "transfer") {
-        setMessage("Receipt items must be income or expense transactions.");
-        return;
-      }
-      inputs.push({ ...parsed.input, entryMethod: "receipt" });
-    }
-
     setSaving(true);
     setMessage(null);
     try {
-      const savedIds = await local.workspace.transactionMutations.createTransactions(inputs);
+      const mutations = local.workspace.transactionMutations;
+      const savedIds = await write(mutations);
       if (inFamily && keepPhoto && scannedPhoto) {
         try {
           const photo = await prepareReceiptPhoto(scannedPhoto);
-          await local.workspace.transactionMutations.queueReceiptUpload(savedIds, photo);
+          await mutations.queueReceiptUpload(savedIds, photo);
         } catch (error) {
           Alert.alert(
             "Entries saved without the photo",
@@ -387,6 +360,98 @@ export function ReceiptScanScreen() {
     } finally {
       if (mounted.current) setSaving(false);
     }
+  };
+
+  const confirmTransfer = async (): Promise<void> => {
+    if (!toAccountId) {
+      setMessage("Choose the account the money went to before saving.");
+      return;
+    }
+    const parsed = parseTransactionForm({
+      kind: "transfer",
+      debtId: "",
+      accountId,
+      toAccountId,
+      categoryId: defaultCategoryId(categories, "transfer"),
+      date,
+      description: merchant,
+      amount: transferAmount,
+      transferFee,
+      currency: activeCurrency,
+      notes: receiptNotes(draft),
+    });
+    if (!parsed.success) {
+      setMessage(
+        parsed.errors.toAccountId ??
+          parsed.errors.amount ??
+          parsed.errors.transferFee ??
+          parsed.errors.categoryId ??
+          "Check the transfer details.",
+      );
+      return;
+    }
+    const input = { ...parsed.input, entryMethod: "receipt" as const };
+    await save(async (mutations) => [await mutations.createTransaction(input)]);
+  };
+
+  const confirm = async (): Promise<void> => {
+    if (!local.workspace) return;
+    if (!accountId) {
+      setMessage("Choose the account that paid for this receipt before saving.");
+      return;
+    }
+    if (!merchant.trim()) {
+      setMessage("Enter the merchant before saving.");
+      return;
+    }
+    if (kind === "transfer") {
+      await confirmTransfer();
+      return;
+    }
+    if (!items.length) {
+      setMessage("Keep at least one receipt item before saving.");
+      return;
+    }
+    if (reviewedTotalMinor === null) {
+      setMessage("Enter a valid amount for every receipt item.");
+      return;
+    }
+    if (hasExtractedLines && !totalsMatch) {
+      setMessage(
+        `The items add to ${formatReceiptAmount(reviewedTotalMinor, activeCurrency)}, but the receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}. Correct the amounts or add the missing fee or discount before saving.`,
+      );
+      return;
+    }
+
+    const inputs: Array<Extract<TransactionInput, { kind: "expense" | "income" }>> = [];
+    for (const [index, item] of items.entries()) {
+      const parsed = parseTransactionForm({
+        kind,
+        debtId: "",
+        accountId,
+        toAccountId: "",
+        categoryId: item.categoryId,
+        date,
+        description: receiptItemDescription(merchant, item.description),
+        amount: item.amount,
+        transferFee: "",
+        currency: activeCurrency,
+        notes: receiptNotes(draft),
+      });
+      if (!parsed.success) {
+        setMessage(
+          `Item ${index + 1}: ${parsed.errors.description ?? parsed.errors.amount ?? parsed.errors.categoryId ?? "Check the details."}`,
+        );
+        return;
+      }
+      if (parsed.input.kind === "transfer") {
+        setMessage("Receipt items must be income or expense transactions.");
+        return;
+      }
+      inputs.push({ ...parsed.input, entryMethod: "receipt" });
+    }
+
+    await save((mutations) => mutations.createTransactions(inputs));
   };
 
   const captureActions = (
@@ -526,62 +591,85 @@ export function ReceiptScanScreen() {
                   accessibilityRole="header"
                   style={[typography.title, { color: theme.colors.text }]}
                 >
-                  Review {items.length} {items.length === 1 ? "item" : "items"}
+                  {kind === "transfer"
+                    ? "Review transfer"
+                    : `Review ${items.length} ${items.length === 1 ? "item" : "items"}`}
                 </Text>
                 <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                  Each item will become its own transaction in your encrypted local workspace.
+                  {kind === "transfer"
+                    ? "This will save as one transfer between your accounts."
+                    : "Each item will become its own transaction in your encrypted local workspace."}
                 </Text>
+                {draft.payment ? (
+                  <Text
+                    accessibilityLabel={`Read from a ${draft.payment.provider} confirmation`}
+                    style={[typography.caption, { color: theme.colors.textMuted }]}
+                  >
+                    {[
+                      draft.payment.provider,
+                      receiptPaymentTypeLabel(draft.payment.type),
+                      draft.payment.referenceNo ? `Ref ${draft.payment.referenceNo}` : null,
+                      draft.payment.feeMinor !== undefined
+                        ? `Fee ${formatReceiptAmount(draft.payment.feeMinor, activeCurrency)}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </Text>
+                ) : null}
               </View>
 
-              <View
-                accessibilityRole="summary"
-                accessibilityLabel={
-                  totalsMatch
-                    ? `Item total ${formatReceiptAmount(reviewedTotalMinor ?? 0, activeCurrency)} matches the receipt total.`
-                    : `Items need review. Receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}.`
-                }
-                style={[
-                  styles.reconciliation,
-                  {
-                    backgroundColor: totalsMatch
-                      ? theme.colors.brandSoft
-                      : theme.colors.warningSoft,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  accessibilityElementsHidden
-                  color={totalsMatch ? theme.colors.brand : theme.colors.warning}
-                  name={totalsMatch ? "check-circle-outline" : "alert-circle-outline"}
-                  size={24}
-                />
-                <View className="min-w-0 flex-1 gap-1">
-                  <Text style={[typography.headline, { color: theme.colors.text }]}>
-                    {reviewedTotalMinor === null
-                      ? "Enter every item amount"
-                      : totalsMatch
-                        ? "Items match the receipt total"
-                        : "Items need review before saving"}
-                  </Text>
-                  <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                    Items:{" "}
-                    {reviewedTotalMinor === null
-                      ? "—"
-                      : formatReceiptAmount(reviewedTotalMinor, activeCurrency)}{" "}
-                    · Receipt: {formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}
-                  </Text>
-                  {!hasExtractedLines ? (
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      No itemized lines were read confidently, so this will save as one receipt
-                      total.
+              {kind === "transfer" ? null : (
+                <View
+                  accessibilityRole="summary"
+                  accessibilityLabel={
+                    totalsMatch
+                      ? `Item total ${formatReceiptAmount(reviewedTotalMinor ?? 0, activeCurrency)} matches the receipt total.`
+                      : `Items need review. Receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}.`
+                  }
+                  style={[
+                    styles.reconciliation,
+                    {
+                      backgroundColor: totalsMatch
+                        ? theme.colors.brandSoft
+                        : theme.colors.warningSoft,
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    accessibilityElementsHidden
+                    color={totalsMatch ? theme.colors.brand : theme.colors.warning}
+                    name={totalsMatch ? "check-circle-outline" : "alert-circle-outline"}
+                    size={24}
+                  />
+                  <View className="min-w-0 flex-1 gap-1">
+                    <Text style={[typography.headline, { color: theme.colors.text }]}>
+                      {reviewedTotalMinor === null
+                        ? "Enter every item amount"
+                        : totalsMatch
+                          ? "Items match the receipt total"
+                          : "Items need review before saving"}
                     </Text>
-                  ) : null}
+                    <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                      Items:{" "}
+                      {reviewedTotalMinor === null
+                        ? "—"
+                        : formatReceiptAmount(reviewedTotalMinor, activeCurrency)}{" "}
+                      · Receipt: {formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}
+                    </Text>
+                    {!hasExtractedLines ? (
+                      <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                        No itemized lines were read confidently, so this will save as one receipt
+                        total.
+                      </Text>
+                    ) : null}
+                  </View>
                 </View>
-              </View>
+              )}
 
               <View className="w-full gap-4">
                 <SelectionField
-                  label="Paid from"
+                  label={kind === "transfer" ? "From account" : "Paid from"}
                   value={accountId}
                   options={accountOptions}
                   placeholder="Choose an account"
@@ -613,108 +701,128 @@ export function ReceiptScanScreen() {
                   placeholder="YYYY-MM-DD"
                 />
                 <ItemKindSelector value={kind} disabled={saving} onChange={changeKind} />
+                {kind === "transfer" ? (
+                  <ReceiptTransferFields
+                    accountOptions={accountOptions}
+                    fromAccountId={accountId}
+                    toAccountId={toAccountId}
+                    amount={transferAmount}
+                    fee={transferFee}
+                    onToAccountChange={setToAccountId}
+                    onAmountChange={(value) => {
+                      setTransferAmount(value);
+                      setMessage(null);
+                    }}
+                    onFeeChange={(value) => {
+                      setTransferFee(value);
+                      setMessage(null);
+                    }}
+                  />
+                ) : null}
               </View>
 
-              <View className="w-full gap-3">
-                <View className="flex-row items-end justify-between gap-3">
-                  <View className="min-w-0 flex-1 gap-1">
-                    <Text
-                      accessibilityRole="header"
-                      style={[typography.headline, { color: theme.colors.text }]}
-                    >
-                      Receipt items
-                    </Text>
-                    <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                      Correct, remove, or add an item before saving.
+              {kind === "transfer" ? null : (
+                <View className="w-full gap-3">
+                  <View className="flex-row items-end justify-between gap-3">
+                    <View className="min-w-0 flex-1 gap-1">
+                      <Text
+                        accessibilityRole="header"
+                        style={[typography.headline, { color: theme.colors.text }]}
+                      >
+                        Receipt items
+                      </Text>
+                      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                        Correct, remove, or add an item before saving.
+                      </Text>
+                    </View>
+                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                      {items.length}/30
                     </Text>
                   </View>
-                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                    {items.length}/30
-                  </Text>
-                </View>
-                {items.map((item, index) => (
-                  <Card key={item.id} style={styles.itemCard}>
-                    <View className="flex-row items-center justify-between gap-3">
-                      <Text style={[typography.label, { color: theme.colors.text }]}>
-                        Item {index + 1}
-                      </Text>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remove item ${index + 1}`}
-                        accessibilityState={{ disabled: items.length === 1 || saving }}
-                        disabled={items.length === 1 || saving}
-                        onPress={withTapSound(() =>
-                          setItems((current) =>
-                            current.filter((candidate) => candidate.id !== item.id),
-                          ),
-                        )}
-                        style={({ pressed }) => [
-                          styles.removeItem,
-                          {
-                            backgroundColor: pressed ? theme.colors.dangerSoft : "transparent",
-                            opacity: items.length === 1 || saving ? 0.45 : 1,
-                          },
-                        ]}
-                      >
-                        <MaterialCommunityIcons
-                          accessibilityElementsHidden
-                          color={theme.colors.danger}
-                          name="trash-can-outline"
-                          size={19}
-                        />
-                        <Text style={[typography.label, { color: theme.colors.danger }]}>
-                          Remove
+                  {items.map((item, index) => (
+                    <Card key={item.id} style={styles.itemCard}>
+                      <View className="flex-row items-center justify-between gap-3">
+                        <Text style={[typography.label, { color: theme.colors.text }]}>
+                          Item {index + 1}
                         </Text>
-                      </Pressable>
-                    </View>
-                    <FormField
-                      label="Description"
-                      value={item.description}
-                      onChangeText={(value) => updateItem(item.id, { description: value })}
-                      placeholder="e.g. Chickenjoy"
-                      maxLength={160}
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remove item ${index + 1}`}
+                          accessibilityState={{ disabled: items.length === 1 || saving }}
+                          disabled={items.length === 1 || saving}
+                          onPress={withTapSound(() =>
+                            setItems((current) =>
+                              current.filter((candidate) => candidate.id !== item.id),
+                            ),
+                          )}
+                          style={({ pressed }) => [
+                            styles.removeItem,
+                            {
+                              backgroundColor: pressed ? theme.colors.dangerSoft : "transparent",
+                              opacity: items.length === 1 || saving ? 0.45 : 1,
+                            },
+                          ]}
+                        >
+                          <MaterialCommunityIcons
+                            accessibilityElementsHidden
+                            color={theme.colors.danger}
+                            name="trash-can-outline"
+                            size={19}
+                          />
+                          <Text style={[typography.label, { color: theme.colors.danger }]}>
+                            Remove
+                          </Text>
+                        </Pressable>
+                      </View>
+                      <FormField
+                        label="Description"
+                        value={item.description}
+                        onChangeText={(value) => updateItem(item.id, { description: value })}
+                        placeholder="e.g. Chickenjoy"
+                        maxLength={160}
+                      />
+                      <FormField
+                        label="Amount"
+                        value={item.amount}
+                        onChangeText={(value) => updateItem(item.id, { amount: value })}
+                        placeholder="0.00"
+                        keyboardType="decimal-pad"
+                      />
+                      <SelectionField
+                        label="Category"
+                        value={item.categoryId}
+                        options={categoryOptions}
+                        placeholder="Choose a category"
+                        sheetTitle={`Category for item ${index + 1}`}
+                        onSelect={(categoryId) => updateItem(item.id, { categoryId })}
+                      />
+                    </Card>
+                  ))}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add receipt item"
+                    accessibilityState={{ disabled: items.length >= 30 || saving }}
+                    disabled={items.length >= 30 || saving}
+                    onPress={withTapSound(addItem)}
+                    style={({ pressed }) => [
+                      styles.addItem,
+                      {
+                        backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
+                        borderColor: theme.colors.border,
+                        opacity: items.length >= 30 || saving ? 0.45 : 1,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      accessibilityElementsHidden
+                      color={theme.colors.brand}
+                      name="plus"
+                      size={21}
                     />
-                    <FormField
-                      label="Amount"
-                      value={item.amount}
-                      onChangeText={(value) => updateItem(item.id, { amount: value })}
-                      placeholder="0.00"
-                      keyboardType="decimal-pad"
-                    />
-                    <SelectionField
-                      label="Category"
-                      value={item.categoryId}
-                      options={categoryOptions}
-                      placeholder="Choose a category"
-                      sheetTitle={`Category for item ${index + 1}`}
-                      onSelect={(categoryId) => updateItem(item.id, { categoryId })}
-                    />
-                  </Card>
-                ))}
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Add receipt item"
-                  accessibilityState={{ disabled: items.length >= 30 || saving }}
-                  disabled={items.length >= 30 || saving}
-                  onPress={withTapSound(addItem)}
-                  style={({ pressed }) => [
-                    styles.addItem,
-                    {
-                      backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
-                      borderColor: theme.colors.border,
-                      opacity: items.length >= 30 || saving ? 0.45 : 1,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    accessibilityElementsHidden
-                    color={theme.colors.brand}
-                    name="plus"
-                    size={21}
-                  />
-                  <Text style={[typography.label, { color: theme.colors.brand }]}>Add item</Text>
-                </Pressable>
-              </View>
+                    <Text style={[typography.label, { color: theme.colors.brand }]}>Add item</Text>
+                  </Pressable>
+                </View>
+              )}
 
               {draft.rawText.trim() ? (
                 <View className="w-full gap-2">
@@ -779,13 +887,18 @@ export function ReceiptScanScreen() {
               ) : null}
 
               <Button
-                accessibilityLabel={`Save ${items.length} scanned ${items.length === 1 ? "item" : "items"}`}
+                accessibilityLabel={
+                  kind === "transfer"
+                    ? "Save scanned transfer"
+                    : `Save ${items.length} scanned ${items.length === 1 ? "item" : "items"}`
+                }
                 disabled={saving}
                 loading={saving}
                 onPress={() => void confirm()}
               >
-                Save {items.length} {kind === "expense" ? "expense" : "income"}
-                {items.length === 1 ? "" : "s"}
+                {kind === "transfer"
+                  ? "Save transfer"
+                  : `Save ${items.length} ${kind}${items.length === 1 ? "" : "s"}`}
               </Button>
             </View>
           ) : null}

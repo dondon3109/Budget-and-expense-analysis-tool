@@ -55,7 +55,7 @@
     "ASSISTANT_VOICE_PROVIDER_TIMEOUT_MS": "30000",
     "RECEIPT_ENTRY_ENABLED": "true",
     "FAMILY_WORKSPACES_ENABLED": "true",
-    "RECEIPT_VISION_MODEL": "@cf/meta/llama-3.2-11b-vision-instruct",
+    "RECEIPT_VISION_MODEL": "@cf/google/gemma-4-26b-a4b-it",
     "RECEIPT_VISION_PROVIDER_TIMEOUT_MS": "30000",
     "AI_ENTRY_PROVIDER_TIMEOUT_MS": "30000",
     "FISH_AUDIO_TTS_MODEL": "s2.1-pro-free",

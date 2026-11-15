@@ -12,9 +12,9 @@ every field — the AI drafts, the user commits.
    never stored or used for anything else.
 2. **Capture.** Import page "Photo receipt" tab (also linked from the dashboard quick actions).
    Accepts JPEG/PNG/WebP up to 8 MB; the mobile file input uses `capture="environment"`.
-3. **Extraction.** The photo is sent to Cloudflare Workers AI (`@cf/meta/llama-3.2-11b-vision-instruct`)
-   with a strict-JSON prompt returning `merchant`, `date`, receipt `amountMinor` (centavos), `kind`,
-   `categoryName`, readable `items`, and `rawText`. The API normalizes the candidate: date via the
+3. **Extraction.** The photo is sent to Cloudflare Workers AI (`@cf/google/gemma-4-26b-a4b-it`) as a
+   chat message with a JSON-schema `response_format`, thinking off, returning `merchant`, `date`,
+   receipt `amountMinor` (centavos), `kind`, `categoryName`, readable `items`, `payment`, and `rawText`. The API normalizes the candidate: date via the
    shared import normalizer (falling back to today in the configured time zone), kind from the amount
    sign when missing, and hard 422 failures when merchant or amount cannot be read.
 4. **Draft edit.** The extracted fields appear in a small form (merchant, date, amount, type,
@@ -26,6 +26,29 @@ every field — the AI drafts, the user commits.
    existing transactions, and stores a 15-minute one-time commit token. The user then sees the
    standard preview screen — including category/type overrides and duplicate flags — and
    commits through the unchanged `POST /api/app/imports/commit` path.
+
+## E-wallet, bank, and remittance confirmations
+
+The same scan reads GCash, Maya, and Philippine bank app screenshots (Send Money, Pay Bills, QR
+payments, Cash In, InstaPay/PESONet transfers, money received) and remittance or calculator
+results. The model fills `payment` (`provider`, `type`, `counterparty`, `referenceNo`, `feeMinor`,
+and for remittances `sentAmountMinor`, `sentCurrency`, and the printed `exchangeRate` as text) and
+`receipts/service.ts` decides the rest:
+
+- `amountMinor` is the total that left or entered the account, fee included. A fee is kept only
+  while it is smaller than the total.
+- The type sets the kind (`receiptPaymentKind` in `@zoption/shared`): money received is income, a
+  cash-in is a transfer into the wallet, everything else is an expense. A paid-out confirmation
+  with a fee becomes two items, the payment and a `Fees` line, so older apps split it too.
+- The merchant falls back to the counterparty, then the provider, so a screenshot with no readable
+  recipient still drafts.
+- Installed apps parse the draft strictly, so `payment` is returned only when the extract form
+  carries `detail=payment` (`RECEIPT_DRAFT_PAYMENT_DETAIL`). Both current clients send it.
+
+Mobile saves the reference number in the notes (`receiptPaymentNote`), preselects an account whose
+name matches the provider, and saves a transfer (cash-in, or money moved between the user's own
+accounts) as one transfer with the fee in its transfer fee. The web import flow shows the details
+and keeps its one-row-per-item preview.
 
 ## PDF statement import
 
@@ -85,8 +108,9 @@ maps provider failures to stable HTTP errors exactly like the voice service does
 ## Environment
 
 - `RECEIPT_ENTRY_ENABLED` — "true" enables the routes (404 otherwise).
-- `RECEIPT_VISION_MODEL` — defaults to `@cf/meta/llama-3.2-11b-vision-instruct`; swap
-  freely, the provider validates output shape regardless of model.
+- `RECEIPT_VISION_MODEL` — defaults to `@cf/google/gemma-4-26b-a4b-it` ($0.10 / $0.30 per M
+  input / output tokens). Any replacement must be a Workers AI vision model that takes chat
+  `messages` with an `image_url` part; the provider validates the output shape regardless of model.
 - `RECEIPT_VISION_PROVIDER_TIMEOUT_MS` — 5s–60s, default 30s.
 - `AI_ENTRY_PROVIDER_TIMEOUT_MS` — text-model timeout for PDF row and voice draft extraction;
   5s–60s, default 30s.

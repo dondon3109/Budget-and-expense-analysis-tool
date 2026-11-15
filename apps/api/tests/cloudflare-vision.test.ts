@@ -47,11 +47,25 @@ describe("Cloudflare vision provider", () => {
       { signal: unknown },
     ];
     expect(call[0]).toBe(DEFAULT_RECEIPT_VISION_MODEL);
-    expect(call[1]).toMatchObject({ max_tokens: 2048 });
-    expect(String(call[1].image)).toMatch(/^data:image\/jpeg;base64,/);
-    expect(String(call[1].prompt)).toContain("merchant");
-    expect(String(call[1].prompt)).toContain("items");
-    expect(String(call[1].prompt)).toContain("discount");
+    expect(call[1]).toMatchObject({
+      max_tokens: 2048,
+      temperature: 0,
+      chat_template_kwargs: { enable_thinking: false },
+      response_format: { type: "json_schema" },
+    });
+    const [message] = call[1].messages as Array<{
+      role: string;
+      content: Array<{ type: string; text?: string; image_url?: { url: string } }>;
+    }>;
+    expect(message?.role).toBe("user");
+    const prompt = message?.content.find((part) => part.type === "text")?.text ?? "";
+    expect(message?.content.find((part) => part.type === "image_url")?.image_url?.url).toMatch(
+      /^data:image\/jpeg;base64,/,
+    );
+    expect(prompt).toContain("merchant");
+    expect(prompt).toContain("discount");
+    expect(prompt).toContain("GCash");
+    expect(prompt).toContain("referenceNo");
     expect(call[2].signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({
       merchant: "Jollibee",
@@ -96,6 +110,87 @@ describe("Cloudflare vision provider", () => {
       categoryName: "Food",
       items: [{ description: "Burger steak", amountMinor: 35300, categoryName: "Food" }],
       rawText: "JOLLIBEE TOTAL 353.00",
+    });
+  });
+
+  it("reads a chat-completion answer with GCash confirmation details", async () => {
+    const run = vi.fn(async () => ({
+      id: "chatcmpl-1",
+      object: "chat.completion",
+      choices: [
+        {
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              merchant: "JA•••N M•• L.",
+              date: "2026-09-30",
+              amountMinor: 240000,
+              kind: "expense",
+              categoryName: null,
+              items: [],
+              payment: {
+                provider: "GCash",
+                type: "send_money",
+                counterparty: "JA•••N M•• L.",
+                referenceNo: "2045 596 729825",
+                feeMinor: 0,
+                sentAmountMinor: null,
+                sentCurrency: null,
+                exchangeRate: null,
+              },
+              rawText: "Sent via GCash Amount 2,400.00 Ref No. 2045 596 729825",
+            }),
+          },
+        },
+      ],
+    }));
+
+    const result = await cloudflareVisionProvider.extract(environment(run), receiptImage());
+
+    expect(result).toEqual({
+      merchant: "JA•••N M•• L.",
+      date: "2026-09-30",
+      amountMinor: 240000,
+      kind: "expense",
+      items: [],
+      payment: {
+        provider: "GCash",
+        type: "send_money",
+        counterparty: "JA•••N M•• L.",
+        referenceNo: "2045 596 729825",
+        feeMinor: 0,
+      },
+      rawText: "Sent via GCash Amount 2,400.00 Ref No. 2045 596 729825",
+    });
+  });
+
+  it("keeps a numeric exchange rate as text", async () => {
+    const run = vi.fn(async () => ({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              merchant: "Western Union",
+              amountMinor: 2806000,
+              payment: {
+                provider: "Western Union",
+                type: "remittance",
+                sentAmountMinor: 50000,
+                sentCurrency: "usd",
+                exchangeRate: 56.12,
+              },
+            }),
+          },
+        },
+      ],
+    }));
+
+    const result = await cloudflareVisionProvider.extract(environment(run), receiptImage());
+
+    expect(result.payment).toMatchObject({
+      sentAmountMinor: 50000,
+      sentCurrency: "USD",
+      exchangeRate: "56.12",
     });
   });
 

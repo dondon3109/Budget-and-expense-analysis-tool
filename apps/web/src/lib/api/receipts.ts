@@ -1,4 +1,8 @@
-import type { ReceiptDraft, ReceiptPreferences } from "@zoption/shared";
+import {
+  RECEIPT_DRAFT_PAYMENT_DETAIL,
+  type ReceiptDraft,
+  type ReceiptPreferences,
+} from "@zoption/shared";
 
 import { captureFunnelEvent } from "../../analytics/funnel";
 import type { AuthenticatedWorkspace } from "../workspace";
@@ -31,6 +35,7 @@ export async function extractReceipt(
       ? "webp"
       : "jpg";
   form.set("image", image, "receipt." + extension);
+  form.set("detail", RECEIPT_DRAFT_PAYMENT_DETAIL);
   const response = await workspaceFetch(
     workspace,
     "/api/app/receipts/extract",

@@ -371,3 +371,9 @@
 .receipt-notice button:focus-visible {
   color: var(--ink);
 }
+
+.receipt-payment {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}

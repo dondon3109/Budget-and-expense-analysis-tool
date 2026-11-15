@@ -1,4 +1,4 @@
-import { receiptConsentUpdateSchema } from "@zoption/shared";
+import { RECEIPT_DRAFT_PAYMENT_DETAIL, receiptConsentUpdateSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import { HttpError } from "../errors";
@@ -34,7 +34,11 @@ export function createReceiptRoutes(service: ReceiptService) {
     if (!mediaType || !ACCEPTED_IMAGE_TYPES.has(mediaType)) {
       throw new HttpError(415, "unsupported_receipt_image", "Use a JPEG, PNG, or WebP photo.");
     }
-    return context.json(await service.extract(context.env, context.get("tenant").tenantId, image));
+    return context.json(
+      await service.extract(context.env, context.get("tenant").tenantId, image, {
+        includePayment: form.get("detail") === RECEIPT_DRAFT_PAYMENT_DETAIL,
+      }),
+    );
   });
 
   return routes;
