@@ -50,6 +50,18 @@ export function billingErrorMessage(error: unknown, fallback: string): string {
 }
 
 /**
+ * What the buyer sees when Google Play took the payment but Zoption has not confirmed it, for
+ * example while Play billing is not configured (`503 billing_not_configured`) or offline.
+ */
+export function playUnconfirmedMessage(error: unknown): string {
+  const reason =
+    error instanceof ApiTransportError && error.serverCode === "billing_not_configured"
+      ? "Zoption cannot confirm Google Play purchases yet."
+      : "Zoption could not confirm your Google Play purchase yet.";
+  return `${reason} It is confirmed automatically the next time you open the app. If it never is, Google Play refunds it within 3 days.`;
+}
+
+/**
  * Checkout, plan change, and payment confirmation for the personal plan (`familyId` null) or
  * the plan of the family `familyId` names. Confirmation always goes through the personal
  * reconcile, which also settles a family checkout. `onSettled` runs once a write may have
@@ -156,7 +168,20 @@ export function usePlanCheckout(
         setMessage("Purchase canceled. You were not charged.");
         return;
       }
-      const outcome = await settlePlayPurchase(purchase, reportToZoption, choice.interval);
+      // Play has the payment now. A failed report leaves the purchase unacknowledged, so the
+      // next app open reports it again (`usePlayPurchaseRestore`) and Google refunds it if
+      // Zoption never confirms it.
+      let outcome: Awaited<ReturnType<typeof settlePlayPurchase>>;
+      try {
+        outcome = await settlePlayPurchase(purchase, reportToZoption, choice.interval);
+      } catch (error) {
+        setMessage(playUnconfirmedMessage(error));
+        return;
+      }
+      if (outcome === null) {
+        setMessage(playUnconfirmedMessage(null));
+        return;
+      }
       clearPlanCache();
       onSettled(null);
       if (outcome === "applied") {

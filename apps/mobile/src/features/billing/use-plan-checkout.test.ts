@@ -1,4 +1,5 @@
 import { act, renderHook } from "@testing-library/react-native";
+import { finishTransaction } from "expo-iap";
 
 import {
   ApiTransportError,
@@ -105,6 +106,26 @@ describe("usePlanCheckout with Google Play", () => {
     expect(reportGooglePlayPurchase).not.toHaveBeenCalled();
     expect(onSettled).not.toHaveBeenCalled();
     expect(result.current.message).toBe("Purchase canceled. You were not charged.");
+  });
+
+  it("says a paid purchase confirms later when Play billing is not configured", async () => {
+    jest.mocked(buyOnGooglePlay).mockResolvedValue(playPurchase as never);
+    jest
+      .mocked(reportGooglePlayPurchase)
+      .mockRejectedValue(
+        new ApiTransportError("Not configured", "unavailable", 503, "billing_not_configured"),
+      );
+    const onSettled = jest.fn();
+    const { result } = await renderHook(() => usePlanCheckout("fam-1", onSettled));
+
+    await act(() =>
+      result.current.checkout({ plan: "family_pro", interval: "year" }, "google_play"),
+    );
+
+    expect(finishTransaction).not.toHaveBeenCalled();
+    expect(onSettled).not.toHaveBeenCalled();
+    expect(result.current.message).toMatch(/cannot confirm Google Play purchases yet/);
+    expect(result.current.message).toMatch(/next time you open the app/);
   });
 
   it("names Google Play when the Worker refuses a change it does not bill", async () => {
