@@ -152,12 +152,8 @@ describe("SubscriptionsScreen", () => {
     expect(screen.getByText("Entertainment")).toBeTruthy();
     expect(screen.getAllByText("BDO Checking").length).toBeGreaterThan(0);
 
-    // Top + Add button navigates to editor
-    const headerAdd = screen.getByRole("button", { name: "+ Add" });
-    await fireEvent.press(headerAdd);
-    expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
-
-    // Pinned FAB button in overlay also navigates to editor
+    // The pinned round button is the one way to add once bills exist.
+    expect(screen.queryByRole("button", { name: "+ Add" })).toBeNull();
     const fabAdd = screen.getByRole("button", { name: "Add bill" });
     await fireEvent.press(fabAdd);
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");

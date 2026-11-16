@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+
+import { openBills } from "@/features/budgets/open-bills";
 import { useCallback, useState } from "react";
 import { Text } from "react-native";
 
@@ -135,11 +137,7 @@ export function MoreScreen() {
               title="Debts"
               onPress={() => router.push("/(app)/debts")}
             />
-            <MenuRow
-              icon="calendar-sync-outline"
-              title="Bills"
-              onPress={() => router.push("/(app)/subscriptions")}
-            />
+            <MenuRow icon="calendar-sync-outline" title="Bills" onPress={() => openBills()} />
             <MenuRow
               icon="calendar-month-outline"
               title="Calendar"

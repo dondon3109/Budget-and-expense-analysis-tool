@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { BudgetQuery } from "@zoption/shared";
@@ -63,7 +63,7 @@ function emptyOccasion(month: string): OccasionEditorValue {
  * Budgets for a month, for every month, or for an occasion such as a birthday party. Flat rows
  * and dividers carry the plan; the only raised surface is the sheet used to edit a limit.
  */
-export function BudgetsScreen() {
+export function BudgetsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) {
   const local = useLocalWorkspace();
   const sync = useSyncState();
   const { family, writable } = useActiveWorkspace();
@@ -306,6 +306,9 @@ export function BudgetsScreen() {
           )}
         </View>
       }
+      edges={["top", "left", "right"]}
+      hasHeader={Boolean(viewSwitch)}
+      leadingAction={viewSwitch}
       onRefresh={handleRefresh}
       refreshing={sync.status === "syncing"}
       title="Budgets"

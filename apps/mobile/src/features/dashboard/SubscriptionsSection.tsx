@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+
+import { openBills } from "@/features/budgets/open-bills";
 import { Pressable, Text, View } from "react-native";
 
 import type { LocalSubscriptionItem } from "@/db/view-models";
@@ -27,11 +29,7 @@ export function SubscriptionsSection({
 
   return (
     <View accessibilityLabel="Bills" style={{ gap: spacing.xs }}>
-      <SectionHeader
-        title="Bills"
-        actionLabel="View all bills"
-        onAction={() => router.push("/(app)/subscriptions")}
-      />
+      <SectionHeader title="Bills" actionLabel="View all bills" onAction={() => openBills()} />
       <View>
         {upcoming.slice(0, VISIBLE_ROWS).map((subscription, index) => (
           <View key={subscription.id}>

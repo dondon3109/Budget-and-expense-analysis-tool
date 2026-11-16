@@ -1,6 +1,8 @@
 import { subscriptionPushDataSchema } from "@zoption/shared";
 import * as Notifications from "expo-notifications";
-import { router, useRootNavigationState } from "expo-router";
+import { useRootNavigationState } from "expo-router";
+
+import { openBills } from "@/features/budgets/open-bills";
 import { useEffect } from "react";
 
 import { useActiveWorkspace } from "@/features/family/active-workspace";
@@ -33,10 +35,7 @@ export function SubscriptionPushTapHandler() {
         switchTo(null);
         return;
       }
-      router.push({
-        pathname: "/(app)/subscriptions",
-        params: { highlight: data.data.subscriptionId },
-      });
+      openBills(data.data.subscriptionId);
     };
     open(Notifications.getLastNotificationResponse());
     const subscription = Notifications.addNotificationResponseReceivedListener(open);
@@ -48,7 +47,7 @@ export function SubscriptionPushTapHandler() {
     if (!navigationReady || !waiting || family) return;
     const highlight = waiting;
     waiting = null;
-    router.push({ pathname: "/(app)/subscriptions", params: { highlight } });
+    openBills(highlight);
   }, [family, navigationReady]);
 
   return null;

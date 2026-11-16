@@ -7,6 +7,7 @@ All notable product changes are documented here.
 ### Added
 
 - Subscription ROI (Pro and Family Pro), on web and mobile: tap "Used it" on a bill whenever you use the service to see uses this cycle, what each use cost, and a weekly streak. A bill you track but haven't used in 30 days is flagged with a Cancel it button, and on Android you get a reminder 3 days before it renews. Rent, utilities, and other bills you don't "use" stay out of it unless you track them, and you can stop tracking any bill. The AI Assistant can see which subscriptions you actually use. On mobile, check-ins work offline and upload when you're back online.
+- On mobile, Bills now lives in the Budgets tab: switch between Budgets and Bills at the top, the same way Home switches between Overview and Analytics. Add a bill with the round + button at the bottom right.
 - 50/30/20 calculator on the web app's Budgets page, opened from the 50/30/20 calculator button at the top of the Month tab: enter your take-home pay to see the needs, wants, and savings split in your workspace currency, as a guide for your monthly limits. It uses the same math as the free calculator on zoption.site, and the AI Assistant and Zoption Support can point you to it.
 - New free subscription cost calculator on zoption.site: list what you pay for, weekly to yearly, and see the monthly and yearly total in pesos.
 - The 50/30/20 budget calculator on zoption.site is linked from the footer and home page, and offers a "Track this split in Zoption" sign-up right under your results.
