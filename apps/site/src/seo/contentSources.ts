@@ -97,6 +97,11 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
     "apps/site/src/views/tools/BudgetCalculator.tsx",
     "apps/site/src/views/tools/allocateBudget.ts",
   ],
+  "/tools/subscription-cost-calculator": [
+    "apps/site/src/views/tools/SubscriptionCalculatorPage.tsx",
+    "apps/site/src/views/tools/SubscriptionCalculator.tsx",
+    "apps/site/src/views/tools/subscriptionCosts.ts",
+  ],
   "/features/receipt-scanning": FEATURE_PAGE_SOURCES,
   "/features/voice-expense-entry": FEATURE_PAGE_SOURCES,
 };

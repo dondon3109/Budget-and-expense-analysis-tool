@@ -26,10 +26,10 @@ function capturedNames() {
 
 describe("site events", () => {
   it("captures an announced event with no property beyond the page and surface", () => {
-    announceSiteEvent("calculator_used");
+    announceSiteEvent("budget_calculator_used");
 
     expect(posthog.capture).toHaveBeenCalledWith(
-      "calculator_used",
+      "budget_calculator_used",
       { $current_url: `${location.origin}${location.pathname}`, source: "site" },
       { send_instantly: true },
     );
@@ -53,7 +53,7 @@ describe("site events", () => {
     fireEvent.change(income, { target: { value: "45,250.50" } });
     fireEvent.change(income, { target: { value: "52,000" } });
 
-    expect(capturedNames()).toEqual(["calculator_used"]);
+    expect(capturedNames()).toEqual(["budget_calculator_used"]);
     expect(JSON.stringify(posthog.capture.mock.calls)).not.toContain("52");
   });
 
@@ -66,6 +66,6 @@ describe("site events", () => {
     cta.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(cta);
 
-    expect(capturedNames()).toEqual(["calculator_signup_clicked"]);
+    expect(capturedNames()).toEqual(["budget_calculator_signup_clicked"]);
   });
 });

@@ -223,6 +223,13 @@ describe("SignupPage", () => {
 
     cleanup();
     vi.mocked(funnel.captureFunnelEvent).mockClear();
+    renderSignup("/signup?from=subscription-calculator");
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_viewed", {
+      source: "subscription_calculator",
+    });
+
+    cleanup();
+    vi.mocked(funnel.captureFunnelEvent).mockClear();
     renderSignup("/signup?from=someone@example.com");
     expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_viewed", { source: undefined });
   });

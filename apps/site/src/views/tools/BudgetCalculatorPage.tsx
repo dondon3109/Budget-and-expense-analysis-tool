@@ -88,7 +88,7 @@ export function BudgetCalculatorPage({ calculator }: { calculator?: ReactNode })
         <a
           className="calc-cta-link"
           href={appUrl(BUDGET_CALCULATOR_SIGNUP_PATH)}
-          data-site-event="calculator_signup_clicked"
+          data-site-event="budget_calculator_signup_clicked"
           {...NEW_TAB}
         >
           Track your budget in Zoption — start free

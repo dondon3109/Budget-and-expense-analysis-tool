@@ -44,7 +44,7 @@ export function BudgetCalculator() {
   function markUsed() {
     if (usedRef.current) return;
     usedRef.current = true;
-    announceSiteEvent("calculator_used");
+    announceSiteEvent("budget_calculator_used");
   }
 
   const percentageTotal = percentages.needs + percentages.wants + percentages.savings;
@@ -169,7 +169,7 @@ export function BudgetCalculator() {
         <a
           className="calc-cta-link"
           href={appUrl(BUDGET_CALCULATOR_SIGNUP_PATH)}
-          data-site-event="calculator_signup_clicked"
+          data-site-event="budget_calculator_signup_clicked"
           {...NEW_TAB}
         >
           Track this split in Zoption — start free

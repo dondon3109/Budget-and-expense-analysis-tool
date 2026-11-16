@@ -40,6 +40,7 @@ export type PublicRoutePath =
   | "/import/bank-of-america-statement"
   | "/import/jpmorgan-statement"
   | "/tools/50-30-20-calculator"
+  | "/tools/subscription-cost-calculator"
   | FeaturePagePath;
 
 export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
@@ -61,6 +62,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/import/bank-of-america-statement",
   "/import/jpmorgan-statement",
   "/tools/50-30-20-calculator",
+  "/tools/subscription-cost-calculator",
   ...FEATURE_PAGES.map((page) => page.path),
 ];
 
@@ -336,6 +338,7 @@ const PRIVACY_LAST_MODIFIED = "2026-10-19";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-10-22";
 const IMPORT_LAST_MODIFIED = "2026-10-03";
 const TOOLS_LAST_MODIFIED = "2026-11-16";
+const SUBSCRIPTION_TOOL_LAST_MODIFIED = "2026-11-16";
 // The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
 // SoftwareApplication nodes; this drives the page's <lastmod> and WebPage dateModified.
 const INSTALL_LAST_MODIFIED = "2026-09-30";
@@ -447,6 +450,28 @@ function featurePageMetadata(path: FeaturePagePath): PublicRouteMetadata {
       lastModified: FEATURE_PAGES_LAST_MODIFIED,
       changeFrequency: "monthly",
       priority: 0.7,
+    },
+  };
+}
+
+function subscriptionCalculatorMetadata(): PublicRouteMetadata {
+  const url = `${SITE_ORIGIN}/tools/subscription-cost-calculator`;
+  return {
+    title: "Subscription Cost Calculator for Philippine Pesos | Zoption",
+    description:
+      "Add up your streaming, app, gym, and auto-debit subscriptions in pesos and see the monthly and yearly total, exact to the centavo. No sign-up, nothing leaves your browser.",
+    canonical: url,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      "Subscription Cost Calculator for Philippine Pesos",
+      "Add up streaming, app, gym, and auto-debit subscriptions in Philippine pesos and see what they cost per month and per year.",
+      url,
+      SUBSCRIPTION_TOOL_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: SUBSCRIPTION_TOOL_LAST_MODIFIED,
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
   };
 }
@@ -630,6 +655,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/import/bank-of-america-statement": importGuideMetadata("/import/bank-of-america-statement"),
   "/import/jpmorgan-statement": importGuideMetadata("/import/jpmorgan-statement"),
   "/tools/50-30-20-calculator": budgetCalculatorMetadata(),
+  "/tools/subscription-cost-calculator": subscriptionCalculatorMetadata(),
   "/features/receipt-scanning": featurePageMetadata("/features/receipt-scanning"),
   "/features/voice-expense-entry": featurePageMetadata("/features/voice-expense-entry"),
   "/tutorials": {
