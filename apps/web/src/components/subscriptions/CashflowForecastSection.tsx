@@ -19,6 +19,7 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  X,
 } from "lucide-react";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
@@ -487,6 +488,8 @@ export function CashflowForecastSection({
   const [horizonDays, setHorizonDays] = useState<ForecastHorizon>(30);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("all");
   const [safetyBufferText, setSafetyBufferText] = useState("");
+  // Remembers which warning was closed, so a different warning (deficit vs low buffer) still shows.
+  const [dismissedAlert, setDismissedAlert] = useState<"deficit" | "low_buffer" | null>(null);
   const { minor: safetyBufferMinor, error: safetyBufferError } =
     parseSafetyBuffer(safetyBufferText);
 
@@ -549,6 +552,7 @@ export function CashflowForecastSection({
     }
     return "safe";
   }, [forecast, safetyBufferMinor]);
+  const showAlert = alertStatus !== dismissedAlert;
 
   return (
     <section className="cashflow-forecast-section" aria-labelledby="cashflow-forecast-heading">
@@ -658,7 +662,7 @@ export function CashflowForecastSection({
       </div>
 
       {/* Proactive Alert Banner */}
-      {alertStatus === "deficit" && (
+      {alertStatus === "deficit" && showAlert && (
         <div className="forecast-alert-banner alert-deficit" role="alert">
           <div className="alert-icon-wrap">
             <Info size={20} aria-hidden="true" />
@@ -675,10 +679,19 @@ export function CashflowForecastSection({
               covered.
             </p>
           </div>
+          <button
+            className="alert-dismiss"
+            type="button"
+            onClick={() => setDismissedAlert("deficit")}
+            aria-label="Dismiss shortfall warning"
+            title="Dismiss"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
         </div>
       )}
 
-      {alertStatus === "low_buffer" && (
+      {alertStatus === "low_buffer" && showAlert && (
         <div className="forecast-alert-banner alert-warning" role="alert">
           <div className="alert-icon-wrap">
             <AlertTriangle size={20} aria-hidden="true" />
@@ -696,6 +709,15 @@ export function CashflowForecastSection({
               payments to maintain comfortable liquidity.
             </p>
           </div>
+          <button
+            className="alert-dismiss"
+            type="button"
+            onClick={() => setDismissedAlert("low_buffer")}
+            aria-label="Dismiss low buffer warning"
+            title="Dismiss"
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
         </div>
       )}
 

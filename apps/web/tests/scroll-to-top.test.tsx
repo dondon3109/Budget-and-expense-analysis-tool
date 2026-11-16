@@ -3,10 +3,10 @@
 import "@testing-library/jest-dom/vitest";
 
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { Link, MemoryRouter, Route, Routes } from "react-router-dom";
+import { Link, MemoryRouter, Route, Routes, useSearchParams } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ScrollToTop } from "../src/components/layout/ScrollToTop";
+import { PRESERVE_SCROLL_STATE, ScrollToTop } from "../src/components/layout/ScrollToTop";
 
 // Mirrors HASH_TARGET_POLL_MS and HASH_TARGET_DEADLINE_MS in the component.
 const POLL_INTERVAL_MS = 50;
@@ -23,12 +23,25 @@ function hashTarget(id: string) {
   return { element, scrollIntoView };
 }
 
+function ViewToggle() {
+  const [, setSearchParams] = useSearchParams();
+  return (
+    <button
+      type="button"
+      onClick={() => setSearchParams({ view: "forecast" }, { state: PRESERVE_SCROLL_STATE })}
+    >
+      Forecast
+    </button>
+  );
+}
+
 function renderApp(initialPath: string) {
   return render(
     <MemoryRouter initialEntries={[initialPath]}>
       <ScrollToTop />
       <Routes>
         <Route path="/install" element={<h1>Install Page</h1>} />
+        <Route path="/bills" element={<ViewToggle />} />
         <Route
           path="/settings"
           element={
@@ -69,6 +82,15 @@ describe("ScrollToTop", () => {
 
     expect(screen.getByRole("heading", { name: "Install Page" })).toBeInTheDocument();
     expect(scrollToSpy).toHaveBeenCalledWith({ top: 0, left: 0, behavior: "instant" });
+  });
+
+  it("keeps the scroll position when a navigation asks to preserve it", () => {
+    renderApp("/bills");
+    scrollToSpy.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "Forecast" }));
+
+    expect(scrollToSpy).not.toHaveBeenCalled();
   });
 
   it("scrolls to a hash target that already exists without jumping to the top", () => {

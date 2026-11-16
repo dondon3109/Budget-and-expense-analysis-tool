@@ -248,7 +248,8 @@
   }
 }
 
-.subscriptions-panel-actions {
+/* Outranks `.transactions-panel-heading > div`, which would stack Refresh under the view toggle. */
+.transactions-panel-heading .subscriptions-panel-actions {
   display: flex;
   align-items: center;
   gap: 12px;

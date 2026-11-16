@@ -326,6 +326,20 @@ describe("CashflowForecastSection", () => {
     expect(screen.getByText(/Your balance is projected to fall below zero/)).toBeInTheDocument();
   });
 
+  it("closes the shortfall warning when its dismiss button is pressed", () => {
+    render(
+      <CashflowForecastSection
+        items={[mockItem]}
+        accounts={[{ id: "acc-1", name: "Checking Account", balanceMinor: 0 }]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss shortfall warning" }));
+
+    expect(screen.queryByText("Projected Shortfall Guidance")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("displays safe status when starting balance is high", () => {
     render(<CashflowForecastSection items={[mockItem]} accounts={highBalanceAccounts} />);
 

@@ -81,6 +81,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Web Bills page: switching between Table, Bill calendar, and Cashflow Forecast keeps your place on the page instead of jumping to the top. Refresh now sits beside the view switch, and the shortfall and low buffer warnings can be closed with an × button.
 - A debt payment can no longer be larger than what the debt still owes. The web and mobile forms say so before saving, and the server refuses one that arrives anyway.
 - The mobile app lowers a debt's balance as soon as a payment is saved, instead of waiting for it to sync.
 - Deleting or changing a debt payment that was larger than the debt no longer leaves the debt higher than it was before the payment.
