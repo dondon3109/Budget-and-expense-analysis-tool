@@ -219,7 +219,7 @@
 }
 
 .overview-stat-trend[data-state="positive"] > span {
-  color: var(--income);
+  color: var(--income-text);
   background: var(--income-soft);
 }
 
