@@ -14,11 +14,28 @@ function scrollToTop(): void {
   }
 }
 
+/**
+ * Navigation state that keeps the reader where they are. In-page controls that only rewrite the
+ * query string (a view toggle) pass it so switching views does not jump back to the top.
+ */
+export const PRESERVE_SCROLL_STATE = { preserveScroll: true } as const;
+
+function preservesScroll(state: unknown): boolean {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    (state as { preserveScroll?: unknown }).preserveScroll === true
+  );
+}
+
 export function ScrollToTop() {
-  const { pathname, search, hash } = useLocation();
+  const location = useLocation();
+  const { pathname, search, hash } = location;
+  const keepPosition = preservesScroll(location.state as unknown);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (keepPosition) return;
 
     const targetId = hash.slice(1);
     if (targetId) {
@@ -50,7 +67,7 @@ export function ScrollToTop() {
     }
 
     scrollToTop();
-  }, [pathname, search, hash]);
+  }, [pathname, search, hash, keepPosition]);
 
   return null;
 }

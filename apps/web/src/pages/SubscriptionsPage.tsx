@@ -17,6 +17,7 @@ import { ConfirmDialog } from "../components/common/ConfirmDialog";
 import { MetricCard } from "../components/dashboard/MetricCard";
 import { AppShell } from "../components/layout/AppShell";
 import { InlineLoader } from "../components/layout/InlineLoader";
+import { PRESERVE_SCROLL_STATE } from "../components/layout/ScrollToTop";
 import { MonthSelector } from "../components/month/MonthSelector";
 import { CancellationGuideDrawer } from "../components/subscriptions/CancellationGuideDrawer";
 import { CashflowForecastSection } from "../components/subscriptions/CashflowForecastSection";
@@ -249,7 +250,8 @@ export function SubscriptionsPage() {
         }
         return params;
       },
-      { replace: true },
+      // Switching views stays in place on the page instead of jumping back to the top.
+      { replace: true, state: PRESERVE_SCROLL_STATE },
     );
   }
 
@@ -333,6 +335,18 @@ export function SubscriptionsPage() {
                   </strong>
                 </div>
                 <div className="subscriptions-panel-actions">
+                  <button
+                    className="refresh-button"
+                    type="button"
+                    onClick={() => void subscriptionsQuery.refetch()}
+                    disabled={subscriptionsQuery.isFetching}
+                  >
+                    <RefreshCw
+                      size={15}
+                      className={subscriptionsQuery.isFetching ? "spinning" : ""}
+                    />{" "}
+                    Refresh
+                  </button>
                   <div className="subscriptions-view-toggle" role="group" aria-label="Bills view">
                     <button
                       className={`view-toggle-button ${viewMode === "table" ? "active" : ""}`}
@@ -365,18 +379,6 @@ export function SubscriptionsPage() {
                       <span>Cashflow Forecast</span>
                     </button>
                   </div>
-                  <button
-                    className="refresh-button"
-                    type="button"
-                    onClick={() => void subscriptionsQuery.refetch()}
-                    disabled={subscriptionsQuery.isFetching}
-                  >
-                    <RefreshCw
-                      size={15}
-                      className={subscriptionsQuery.isFetching ? "spinning" : ""}
-                    />{" "}
-                    Refresh
-                  </button>
                 </div>
               </div>
 
