@@ -282,10 +282,11 @@ export function BudgetsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) {
     <Screen
       action={
         <View style={styles.headerActions}>
-          {showsMonthPlan ? (
+          {/* Hidden, not disabled, with nothing to share: a disabled icon button reads as tappable. */}
+          {showsMonthPlan && (view?.rows.length ?? 0) > 0 ? (
             <Button
               accessibilityLabel="Share envelopes"
-              disabled={!local.workspace || (view?.rows.length ?? 0) === 0}
+              disabled={!local.workspace}
               icon="share-variant-outline"
               onPress={() => setShareOpen(true)}
               size="compact"

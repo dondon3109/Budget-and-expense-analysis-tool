@@ -141,6 +141,17 @@ describe("BudgetsScreen", () => {
     expect(screen.getByRole("button", { name: "Save new budget" })).toBeDisabled();
   });
 
+  it("shows the share button only once the month has a budget to share", async () => {
+    mockPlan([], [DINING]);
+    const { rerender } = await render(<BudgetsScreen />);
+    expect(screen.queryByRole("button", { name: "Share envelopes" })).toBeNull();
+
+    mockPlan([budget()]);
+    await rerender(<BudgetsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Share envelopes" }));
+    expect(screen.getByText("Envelopes to include (1 of 1)")).toBeTruthy();
+  });
+
   it("makes the category an explicit choice instead of defaulting to the first one", async () => {
     mockPlan([], [{ ...DINING, id: "debt", name: "Debt payment" }, FOOD]);
 
