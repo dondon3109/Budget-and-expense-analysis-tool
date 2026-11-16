@@ -45,6 +45,20 @@
   background: var(--surface);
 }
 
+/* The bordered row is the visible field, so it carries the focus ring; the bare
+   input inside would otherwise draw a second box around the number alone. */
+.calc-input-row:focus-within,
+.calc-split:focus-within {
+  border-color: var(--focus);
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.calc-input:focus-visible,
+.calc-split-input:focus-visible {
+  outline: none;
+}
+
 .calc-currency {
   color: var(--muted);
   font-size: 16px;
