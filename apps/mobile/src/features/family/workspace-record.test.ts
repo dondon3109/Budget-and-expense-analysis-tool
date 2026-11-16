@@ -27,6 +27,7 @@ describe("mergeWorkspaceList", () => {
         families: [family("a"), family("b")],
         synced: ["a", "b"],
         closing: { a: "2026-11-18T00:00:00.000Z", b: "2026-11-20T00:00:00.000Z" },
+        lapsed: ["a", "b"],
       },
       [{ id: "user-1", kind: "user", name: "Personal", role: "owner" }, family("b", "viewer")],
     );
@@ -36,6 +37,7 @@ describe("mergeWorkspaceList", () => {
       families: [family("b", "viewer")],
       synced: ["b"],
       closing: { b: "2026-11-20T00:00:00.000Z" },
+      lapsed: ["b"],
     });
   });
 });
@@ -50,7 +52,13 @@ describe("familyOpenable", () => {
 
 it("lists the personal file first, then one per family", () => {
   expect(
-    workspaceSubjects("user-1", { active: null, families: [family("a")], synced: [], closing: {} }),
+    workspaceSubjects("user-1", {
+      active: null,
+      families: [family("a")],
+      synced: [],
+      closing: {},
+      lapsed: [],
+    }),
   ).toEqual(["user-1", "user-1#family:a"]);
 });
 
@@ -64,6 +72,7 @@ describe("loadWorkspaceRecord", () => {
       families: [family("a")],
       synced: ["a"],
       closing: {},
+      lapsed: [],
     });
   });
 });

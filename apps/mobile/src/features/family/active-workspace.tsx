@@ -39,7 +39,7 @@ interface ActiveWorkspaceValue {
   closing: Readonly<Record<string, string>>;
   /**
    * Whether changes can be made in what is shown: always in personal, and in a family unless the
-   * person only views it or it is closing.
+   * person only views it, it is closing, or its plan has ended.
    */
   writable: boolean;
   /** The local file subject for what is shown: the person, or the person plus the family. */
@@ -117,8 +117,8 @@ export function ActiveWorkspaceProvider({
     return () => controller.abort();
   }, [commit, getAccessToken, listAttempt, loaded, reachable, sessionStatus, subject]);
 
-  // The family shown is re-read online on every list refresh, which a closing refusal from sync
-  // also asks for, so the phone learns it is closing and stops offering changes.
+  // The family shown is re-read online on every list refresh, which a closing or lapsed refusal
+  // from sync also asks for, so the phone learns it is closing or unpaid and stops offering changes.
   const activeId = record?.active ?? null;
   useEffect(() => {
     if (!activeId || sessionStatus !== "signed-in" || reachable === false) return;
@@ -132,12 +132,17 @@ export function ActiveWorkspaceProvider({
         });
         if (controller.signal.aborted) return;
         const known = recordRef.current.closing[activeId] ?? null;
-        if (known === detail.closesAt) return;
+        const lapsed = detail.plan === "lapsed";
+        if (known === detail.closesAt && recordRef.current.lapsed.includes(activeId) === lapsed) {
+          return;
+        }
         commit((current) => {
           const { [activeId]: _previous, ...others } = current.closing;
+          const otherLapsed = current.lapsed.filter((id) => id !== activeId);
           return {
             ...current,
             closing: detail.closesAt ? { ...others, [activeId]: detail.closesAt } : others,
+            lapsed: lapsed ? [...otherLapsed, activeId] : otherLapsed,
           };
         });
       } catch {
@@ -167,6 +172,7 @@ export function ActiveWorkspaceProvider({
         closing: Object.fromEntries(
           Object.entries(current.closing).filter(([id]) => id !== familyId),
         ),
+        lapsed: current.lapsed.filter((id) => id !== familyId),
       }));
       await discardLocalWorkspace(familySubject(subject, familyId)).catch(() => undefined);
     },
@@ -185,7 +191,9 @@ export function ActiveWorkspaceProvider({
       synced: current.synced,
       closesAt,
       closing: current.closing,
-      writable: !family || (family.role !== "viewer" && closesAt === null),
+      writable:
+        !family ||
+        (family.role !== "viewer" && closesAt === null && !current.lapsed.includes(family.id)),
       workspaceSubject: family ? familySubject(subject, family.id) : subject,
       switchTo,
       markSynced,

@@ -55,7 +55,12 @@ export type MobileSyncTransportErrorCode =
   | "idempotency_mismatch"
   | "invalid_response"
   | "update_required"
-  | WorkspaceAccessCode;
+  | WorkspaceAccessCode
+  /**
+   * The family's plan ended. Unlike the access codes, renewing it lifts the refusal, so queued
+   * changes stay pending instead of being dropped or marked failed.
+   */
+  | "workspace_lapsed";
 
 /**
  * Why a family refused this device: no longer a member, a viewer, or a family being closed.
@@ -94,7 +99,10 @@ async function throwIfWorkspaceRefused(response: Response): Promise<void> {
   if (response.status !== 403) return;
   const payload = await decodeResponse(response).catch(() => null);
   if (typeof payload !== "object" || payload === null || !("error" in payload)) return;
-  const code = WORKSPACE_ACCESS_CODES.find((candidate) => candidate === payload.error);
+  const code =
+    payload.error === "workspace_lapsed"
+      ? "workspace_lapsed"
+      : WORKSPACE_ACCESS_CODES.find((candidate) => candidate === payload.error);
   if (!code) return;
   const message =
     "message" in payload && typeof payload.message === "string"
