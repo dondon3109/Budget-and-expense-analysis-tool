@@ -154,8 +154,20 @@ export const accountDeletionRepository: AccountDeletionRepository = {
       env.DB.prepare("DELETE FROM app_user_identities WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM push_devices WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM push_preferences WHERE user_id = ?").bind(userId),
+      // Leaving by deleting the account frees each family seat like a removal does, so the
+      // seat still cools down and counts toward the family's yearly swaps.
+      env.DB.prepare(
+        `INSERT INTO family_seat_events (tenant_id, user_id, kind)
+         SELECT member.tenant_id, member.user_id, 'freed'
+         FROM tenant_members member
+         JOIN tenants family ON family.id = member.tenant_id AND family.kind = 'family'
+         WHERE member.user_id = ? AND member.role != 'owner'`,
+      ).bind(userId),
       env.DB.prepare("DELETE FROM tenant_members WHERE user_id = ?").bind(userId),
-      env.DB.prepare("DELETE FROM family_seat_events WHERE user_id = ?").bind(userId),
+      // Freed rows are the families' seat history, not this person's; only the join record goes.
+      env.DB.prepare("DELETE FROM family_seat_events WHERE user_id = ? AND kind != 'freed'").bind(
+        userId,
+      ),
       ...tenantDataStatements(env, tenantId),
       env.DB.prepare("DELETE FROM user_tenants WHERE user_id = ?").bind(userId),
       env.DB.prepare("DELETE FROM tenants WHERE id = ?").bind(tenantId),
