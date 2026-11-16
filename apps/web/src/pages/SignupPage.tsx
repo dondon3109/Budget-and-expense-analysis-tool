@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 import { captureFunnelEvent } from "../analytics/funnel";
 import { AuthOperationError } from "../auth/authErrors";
@@ -10,6 +10,7 @@ import { AuthLayout } from "../components/auth/AuthLayout";
 import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { SocialAuthButtons } from "../components/auth/SocialAuthButtons";
+import { signupSourceFrom } from "../lib/signupSource";
 import { markSignupThankYouPending } from "../lib/thankYou";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -17,6 +18,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SignupPage() {
   const { configured, signUp, signInWithSocial } = useAuth();
   const navigate = useNavigate();
+  const source = signupSourceFrom(useLocation().search);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -31,8 +33,8 @@ export function SignupPage() {
   const authenticationBusy = busy || busyProvider !== null;
 
   useEffect(() => {
-    captureFunnelEvent("signup_viewed", {});
-  }, []);
+    captureFunnelEvent("signup_viewed", { source });
+  }, [source]);
 
   const passwordEvaluation = evaluatePassword(password);
   const showPasswordError = (submitted || passwordTouched) && !passwordEvaluation.isValid;
@@ -72,13 +74,18 @@ export function SignupPage() {
         captureFunnelEvent("signup_submitted", {
           method: "password",
           outcome: "confirmation_required",
+          source,
         });
       } else {
-        captureFunnelEvent("signup_submitted", { method: "password", outcome: "signed_in" });
+        captureFunnelEvent("signup_submitted", {
+          method: "password",
+          outcome: "signed_in",
+          source,
+        });
         void navigate("/app?proCheckout=open", { replace: true });
       }
     } catch (submitError) {
-      captureFunnelEvent("signup_submitted", { method: "password", outcome: "failed" });
+      captureFunnelEvent("signup_submitted", { method: "password", outcome: "failed", source });
       setError(
         submitError instanceof AuthOperationError
           ? submitError
@@ -93,11 +100,15 @@ export function SignupPage() {
     setBusyProvider(provider);
     setError(undefined);
     // Sent before the call: a successful start navigates away to Google.
-    captureFunnelEvent("signup_submitted", { method: provider, outcome: "redirect_started" });
+    captureFunnelEvent("signup_submitted", {
+      method: provider,
+      outcome: "redirect_started",
+      source,
+    });
     try {
       await signInWithSocial(provider, "/app?proCheckout=open");
     } catch {
-      captureFunnelEvent("signup_submitted", { method: provider, outcome: "failed" });
+      captureFunnelEvent("signup_submitted", { method: provider, outcome: "failed", source });
       setError(
         new AuthOperationError(
           "unknown",

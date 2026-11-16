@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 
 import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 import { formatPeso } from "../../lib/formatters";
+import { BUDGET_CALCULATOR_SIGNUP_PATH } from "../../lib/siteEvents";
 import { allocateBudget, DEFAULT_PERCENTAGES } from "./allocateBudget";
 import "./BudgetCalculatorPage.css";
 
-export const BUDGET_CALCULATOR_LAST_UPDATED = "August 31, 2026";
+export const BUDGET_CALCULATOR_LAST_UPDATED = "November 16, 2026";
 
 const EXAMPLE_INCOMES_MINOR = [1_800_000, 3_000_000, 5_000_000];
 
@@ -83,8 +85,13 @@ export function BudgetCalculatorPage({ calculator }: { calculator?: ReactNode })
       </p>
 
       <p className="calc-cta">
-        <a className="calc-cta-link" href="/">
-          Try Zoption free
+        <a
+          className="calc-cta-link"
+          href={appUrl(BUDGET_CALCULATOR_SIGNUP_PATH)}
+          data-site-event="calculator_signup_clicked"
+          {...NEW_TAB}
+        >
+          Track your budget in Zoption — start free
         </a>
       </p>
     </LegalPageLayout>

@@ -3,6 +3,7 @@ import posthog from "posthog-js";
 import type { TransactionKind } from "@zoption/shared";
 
 import type { SocialAuthProvider } from "../auth/AuthProvider";
+import type { SignupSource } from "../lib/signupSource";
 import { ensurePostHogInitialized, isAnalyticsConsented } from "./PostHogAnalytics";
 
 /** The signed-in pages `page_viewed` can name; admin pages are left out on purpose. */
@@ -22,6 +23,9 @@ export type AppPage =
 
 type NoProperties = Record<string, never>;
 
+/** Set when a public site link named where the visitor came from (`lib/signupSource.ts`). */
+type SignupSourceProperty = { source?: SignupSource | undefined };
+
 /**
  * The closed set of app events (the signup funnel plus feature usage) and the
  * only properties each one may carry. Every value is a fixed enum, so no event
@@ -31,11 +35,13 @@ type NoProperties = Record<string, never>;
  * the mobile app's, so one PostHog breakdown by `$lib` compares both clients.
  */
 export interface FunnelEventProperties {
-  signup_viewed: NoProperties;
+  signup_viewed: SignupSourceProperty;
   /** A Google sign-up is counted when the redirect starts; its finish is the next app_session_started. */
-  signup_submitted:
-    | { method: "password"; outcome: "confirmation_required" | "signed_in" | "failed" }
-    | { method: SocialAuthProvider; outcome: "redirect_started" | "failed" };
+  signup_submitted: SignupSourceProperty &
+    (
+      | { method: "password"; outcome: "confirmation_required" | "signed_in" | "failed" }
+      | { method: SocialAuthProvider; outcome: "redirect_started" | "failed" }
+    );
   app_session_started: NoProperties;
   first_import_committed: NoProperties;
   assistant_consent_granted: NoProperties;
@@ -71,8 +77,8 @@ export type FunnelEventName = keyof FunnelEventProperties;
 
 /** The property keys each event is allowed to send, enforced at capture time. */
 const FUNNEL_PROPERTY_KEYS: Record<FunnelEventName, readonly string[]> = {
-  signup_viewed: [],
-  signup_submitted: ["method", "outcome"],
+  signup_viewed: ["source"],
+  signup_submitted: ["method", "outcome", "source"],
   app_session_started: [],
   first_import_committed: [],
   assistant_consent_granted: [],
@@ -122,7 +128,9 @@ function allowedProperties<Name extends FunnelEventName>(
 ): Record<string, unknown> {
   const allowed = FUNNEL_PROPERTY_KEYS[name];
   return Object.fromEntries(
-    Object.entries(properties as Record<string, unknown>).filter(([key]) => allowed.includes(key)),
+    Object.entries(properties as Record<string, unknown>).filter(
+      ([key, value]) => allowed.includes(key) && value !== undefined,
+    ),
   );
 }
 

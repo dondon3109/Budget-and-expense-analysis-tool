@@ -204,6 +204,29 @@ describe("SignupPage", () => {
     expect(funnel.captureFunnelEvent).toHaveBeenCalledTimes(1);
   });
 
+  it("tags the signup events with a known public site source and ignores unknown ones", async () => {
+    authState.signUp.mockResolvedValueOnce({ confirmationRequired: true });
+    renderSignup("/signup?from=budget-calculator");
+    fillValidCredentials();
+    fireEvent.click(screen.getByRole("button", { name: "Create account" }));
+
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_viewed", {
+      source: "budget_calculator",
+    });
+    await waitFor(() =>
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
+        method: "password",
+        outcome: "confirmation_required",
+        source: "budget_calculator",
+      }),
+    );
+
+    cleanup();
+    vi.mocked(funnel.captureFunnelEvent).mockClear();
+    renderSignup("/signup?from=someone@example.com");
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_viewed", { source: undefined });
+  });
+
   it("records a confirmation outcome without identity detail", async () => {
     authState.signUp.mockResolvedValueOnce({ confirmationRequired: true });
     renderSignup();
