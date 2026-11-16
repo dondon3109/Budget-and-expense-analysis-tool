@@ -1,4 +1,6 @@
 import { router } from "expo-router";
+
+import { openBills } from "@/features/budgets/open-bills";
 import { useCallback, useMemo, useState } from "react";
 import { View } from "react-native";
 
@@ -17,7 +19,7 @@ import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { useSyncState } from "@/sync/sync-state";
-import { ErrorState, OfflineBanner, Skeleton, SyncStatus } from "@/ui/components";
+import { ErrorState, OfflineBanner, Skeleton, SyncStatus, ViewSwitch } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { spacing } from "@/ui/tokens";
 import type { CashflowTrend } from "@zoption/shared";
@@ -28,7 +30,6 @@ import { CashflowCard } from "./CashflowCard";
 import { CashflowForecastCard } from "./CashflowForecastCard";
 import { buildDashboardView, localIsoDate } from "./dashboard-view";
 import { HomeEmptyView } from "./HomeEmptyView";
-import { HomeViewSwitch, type HomeViewName } from "./HomeViewSwitch";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
 import { QuickStartGuideCard } from "./QuickStartGuideCard";
@@ -38,6 +39,13 @@ import { TopCategorySection } from "./TopCategorySection";
 import { WorkspaceMenu, type HomeMenuView } from "./WorkspaceMenu";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { SpendingByCategory } from "./SpendingByCategory";
+
+type HomeViewName = "overview" | "analytics";
+
+const HOME_VIEWS = [
+  { value: "overview", label: "Overview" },
+  { value: "analytics", label: "Analytics" },
+] as const;
 
 function visibleSyncState(status: ReturnType<typeof useSyncState>["status"]) {
   if (status === "syncing") return "syncing" as const;
@@ -106,7 +114,9 @@ export function HomeScreen() {
             onOpenPet={() => openFeature("pet", "/(app)/pet")}
           />
         </View>
-        {showViewSwitch ? <HomeViewSwitch selected={homeView} onSelect={setHomeView} /> : null}
+        {showViewSwitch ? (
+          <ViewSwitch options={HOME_VIEWS} selected={homeView} onSelect={setHomeView} />
+        ) : null}
         <View style={{ flex: 1, alignItems: "flex-end" }}>
           <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
         </View>
@@ -161,7 +171,7 @@ export function HomeScreen() {
                               )
                             : undefined
                         }
-                        onViewRenewals={() => router.push("/(app)/subscriptions")}
+                        onViewRenewals={() => openBills()}
                       />
                       <SubscriptionsSection subscriptions={subscriptions.subscriptions} />
                     </>

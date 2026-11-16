@@ -53,6 +53,10 @@ import { createImportRepository, type ImportRepository } from "./db/imports";
 import { mobileSyncRepository, type MobileSyncRepository } from "./db/mobile-sync";
 import { platformAdminRepository, type PlatformAdminRepository } from "./db/platform-admin";
 import { receiptRepository } from "./db/receipts";
+import {
+  subscriptionUsageRepository,
+  type SubscriptionUsageRepository,
+} from "./db/subscription-usage";
 import { subscriptionRepository, type SubscriptionRepository } from "./db/subscriptions";
 import { tenantResolver, type TenantResolver } from "./db/tenants";
 import { transactionRepository, type TransactionRepository } from "./db/transactions";
@@ -95,6 +99,7 @@ export interface AppOptions {
   billing?: BillingRepository;
   googlePlay?: GooglePlayRepository;
   subscriptions?: SubscriptionRepository;
+  subscriptionUsage?: SubscriptionUsageRepository;
   subscriptionRenewals?: SubscriptionRenewalService;
   events?: CalendarEventRepository;
   goals?: FinancialGoalRepository;
@@ -301,6 +306,7 @@ export function createDependencies(overrides: AppOptions = {}) {
     billing: billingStore,
     googlePlay: overrides.googlePlay ?? googlePlayRepository,
     subscriptions: subscriptionStore,
+    subscriptionUsage: overrides.subscriptionUsage ?? subscriptionUsageRepository,
     subscriptionRenewals,
     events: eventStore,
     goals: goalStore,

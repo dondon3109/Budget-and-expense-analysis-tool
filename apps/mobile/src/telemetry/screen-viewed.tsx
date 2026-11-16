@@ -18,7 +18,6 @@ const SCREENS: Record<string, string> = {
   "/categories": "categories",
   "/debts": "debts",
   "/goals": "goals",
-  "/subscriptions": "subscriptions",
   "/import": "import",
   "/pet": "pet",
   "/receipt-scan": "receipt_scan",

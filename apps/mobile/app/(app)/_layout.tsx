@@ -152,13 +152,6 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
-          name="subscriptions"
-          options={{
-            headerShown: true,
-            headerBackTitle: "More",
-          }}
-        />
-        <Stack.Screen
           name="subscription"
           options={{
             headerShown: true,

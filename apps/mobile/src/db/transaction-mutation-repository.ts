@@ -17,6 +17,7 @@ import type {
   FinancialGoalInput,
   SubscriptionInput,
   SubscriptionStatus,
+  SubscriptionUsageList,
   FinancialGoalUpdate,
   TransactionInput,
   TransactionUpdate,
@@ -50,6 +51,14 @@ import {
   deleteTransaction,
   updateTransaction,
 } from "./transaction-mutations/commands/transactions";
+import {
+  finishQueuedSubscriptionUsage,
+  queueSubscriptionUsage,
+  readyQueuedSubscriptionUsage,
+  replaceSubscriptionUsage,
+  type QueuedSubscriptionUsage,
+  type SubscriptionUsageAction,
+} from "./transaction-mutations/commands/subscription-usage";
 import { updateTransfer } from "./transaction-mutations/commands/transfers";
 import {
   cancelRemittance,
@@ -93,6 +102,7 @@ export type {
   LocalTransactionConflict,
   LocalTransactionConflictVersion,
 } from "./transaction-mutations/model";
+export type { QueuedSubscriptionUsage, SubscriptionUsageAction };
 
 export class LocalTransactionMutationRepository {
   private readonly conflicts: LocalConflictRepository;
@@ -369,6 +379,27 @@ export class LocalTransactionMutationRepository {
     await this.commands.writer.run(async () => {
       await this.database.runAsync("DELETE FROM receipt_uploads WHERE id = ?", id);
     });
+  }
+
+  /** A Subscription ROI tap (check-in, undo, or the Track usage switch), applied and queued. */
+  queueSubscriptionUsage(
+    subscriptionId: string,
+    action: SubscriptionUsageAction,
+    usedOn: string | null = null,
+  ): Promise<void> {
+    return queueSubscriptionUsage(this.commands, subscriptionId, action, usedOn);
+  }
+
+  readyQueuedSubscriptionUsage(): Promise<QueuedSubscriptionUsage[]> {
+    return readyQueuedSubscriptionUsage(this.commands);
+  }
+
+  finishQueuedSubscriptionUsage(sequence: number): Promise<void> {
+    return finishQueuedSubscriptionUsage(this.commands, sequence);
+  }
+
+  replaceSubscriptionUsage(list: SubscriptionUsageList): Promise<boolean> {
+    return replaceSubscriptionUsage(this.commands, list);
   }
 
   getPushBatch(limit = 50): Promise<MobileSyncPushRequest | null> {

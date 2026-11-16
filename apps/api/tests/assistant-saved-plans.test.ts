@@ -60,6 +60,36 @@ describe("subscriptionsResult", () => {
       "other_currency_excluded",
     ]);
   });
+
+  it("reports usage only for bills with Track usage on", () => {
+    const summary: SubscriptionMonthSummary = {
+      month: "2026-10-01",
+      currency: "PHP",
+      totalMonthlyCostMinor: 0,
+      items: [
+        subscription("Netflix", 54_900, "2026-11-05"),
+        subscription("Electric bill", 300_000, "2026-11-05"),
+        subscription("Spotify", 19_900, "2026-11-05"),
+      ],
+    };
+    const result = subscriptionsResult(
+      summary,
+      { through: "2026-10-23" },
+      {
+        usage: [
+          { subscriptionId: "Netflix", usedOn: ["2026-10-20"] },
+          { subscriptionId: "Spotify", usedOn: ["2026-10-20"] },
+        ],
+        tracking: [{ subscriptionId: "Spotify", tracked: false }],
+      },
+    );
+    const items = (result.data as { items: { name: string; usage: { status: string } }[] }).items;
+    expect(items.map((item) => [item.name, item.usage.status])).toEqual([
+      ["Netflix", "active"],
+      ["Electric bill", "untracked"],
+      ["Spotify", "untracked"],
+    ]);
+  });
 });
 
 describe("goalsAndDebtsResult", () => {

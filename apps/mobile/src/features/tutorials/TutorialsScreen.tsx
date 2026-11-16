@@ -1,5 +1,7 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Stack, router } from "expo-router";
+
+import { openBills } from "@/features/budgets/open-bills";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -124,7 +126,7 @@ export function TutorialsScreen() {
       summary:
         "Track billing cycles, upcoming due dates, and step-by-step cancellation instructions.",
       actionTitle: "View Bills",
-      onAction: () => router.push("/(app)/subscriptions"),
+      onAction: () => openBills(),
       steps: [
         {
           title: "1. Add monthly & annual bills",

@@ -88,6 +88,9 @@ export const queryKeys = {
     [...queryKeys.workspace(workspace), "debts"] as const,
   subscriptions: (workspace: AuthenticatedWorkspace, month: string) =>
     [...queryKeys.workspace(workspace), "subscriptions", month] as const,
+  // Under the subscriptions root, so refreshing all subscriptions refreshes usage too.
+  subscriptionUsage: (workspace: AuthenticatedWorkspace) =>
+    [...queryKeys.workspace(workspace), "subscriptions", "usage"] as const,
   allSubscriptions: (workspace: AuthenticatedWorkspace) =>
     [...queryKeys.workspace(workspace), "subscriptions"] as const,
   providerConfigs: (workspace: AuthenticatedWorkspace) =>

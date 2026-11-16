@@ -6,13 +6,17 @@ import { z } from "zod";
 
 import { familyCommentSubjectKinds } from "./family-comments";
 
-/** Server push topics; each one can be turned off per person. Family features send them. */
+/**
+ * Server push topics; each one can be turned off per person. Family features send most of them;
+ * `subscription_idle` is the Subscription ROI nudge before an unused subscription renews.
+ */
 export const pushCategories = [
   "remittance_received",
   "family_spending",
   "family_digest",
   "low_balance",
   "comment_reply",
+  "subscription_idle",
 ] as const;
 export type PushCategory = (typeof pushCategories)[number];
 
@@ -52,6 +56,14 @@ export const familyPushDataSchema = z.object({
 });
 
 export type FamilyPushData = z.infer<typeof familyPushDataSchema>;
+
+/** The data on a Subscription ROI nudge: a tap opens that subscription in the personal space. */
+export const subscriptionPushDataSchema = z.object({
+  path: z.literal("/subscriptions"),
+  subscriptionId: z.string().min(1).max(180),
+});
+
+export type SubscriptionPushData = z.infer<typeof subscriptionPushDataSchema>;
 export type PushDeviceRegisterInput = z.infer<typeof pushDeviceRegisterSchema>;
 export type PushPreferences = z.infer<typeof pushPreferencesSchema>;
 export type PushPreferenceUpdate = z.infer<typeof pushPreferenceUpdateSchema>;

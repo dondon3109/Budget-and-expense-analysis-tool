@@ -1,6 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { router } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -20,6 +20,7 @@ import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard"
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import { CancellationGuideSheet } from "./CancellationGuideSheet";
+import { SubscriptionRoiCard } from "./SubscriptionRoiCard";
 import {
   Button,
   Card,
@@ -38,7 +39,11 @@ import { withTapSound } from "@/features/sounds/sound-effects";
 
 type SubscriptionFilter = "all" | "active" | "canceled";
 
-export function SubscriptionsScreen() {
+/**
+ * Bills, shown in the Budgets tab under the Budgets / Bills switch (`viewSwitch`). Adding a bill
+ * is the round button at the bottom right, or the empty state's button before the first one.
+ */
+export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) {
   const local = useLocalWorkspace();
   const state = useSubscriptions();
   const dashboard = useDashboardData(localIsoDate(new Date()));
@@ -46,6 +51,8 @@ export function SubscriptionsScreen() {
   const [filter, setFilter] = useState<SubscriptionFilter>("all");
   const [guideSubscription, setGuideSubscription] = useState<LocalSubscriptionItem | null>(null);
   const theme = useZoptionTheme();
+  // Set when an idle-bill nudge opened this screen.
+  const { highlight } = useLocalSearchParams<{ highlight?: string }>();
 
   const addSubscription = (): void => {
     router.push("/(app)/subscription");
@@ -120,12 +127,9 @@ export function SubscriptionsScreen() {
 
   return (
     <Screen
-      action={
-        <Button disabled={!local.workspace} onPress={addSubscription} variant="primary">
-          + Add
-        </Button>
-      }
+      edges={["top", "left", "right"]}
       hasHeader
+      leadingAction={viewSwitch}
       onRefresh={handleRefresh}
       overlay={fabOverlay}
       refreshing={sync.status === "syncing"}
@@ -151,12 +155,14 @@ export function SubscriptionsScreen() {
           }
         />
       ) : (
-        <View style={styles.stack}>
+        <View style={[styles.stack, styles.clearOfFab]}>
           <MonthlyCostCard
             activeCount={activeSubscriptions.length}
             canceledCount={canceledSubscriptions.length}
             subscriptions={state.subscriptions}
           />
+
+          <SubscriptionRoiCard highlightId={highlight} subscriptions={state.subscriptions} />
 
           <CashflowForecastCard
             startingBalanceMinor={
@@ -563,6 +569,8 @@ function SubscriptionRow({
 
 const styles = StyleSheet.create({
   stack: { gap: spacing.sm },
+  // Room under the last row so the add button never covers its controls.
+  clearOfFab: { paddingBottom: 72 },
   card: { padding: spacing.md },
   summaryCard: { padding: spacing.md, gap: spacing.sm },
   rowBetween: {

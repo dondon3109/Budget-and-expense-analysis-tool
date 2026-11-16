@@ -3,6 +3,9 @@ import type {
   SubscriptionMonthSummary,
   SubscriptionRecord,
   SubscriptionStatusUpdate,
+  SubscriptionUsage,
+  SubscriptionUsageList,
+  SubscriptionUsageTracking,
 } from "@zoption/shared";
 
 import { captureFunnelEvent } from "../../analytics/funnel";
@@ -59,4 +62,43 @@ export function setSubscriptionStatus(
     method: "PATCH",
     body: JSON.stringify(args.input),
   });
+}
+
+/** Subscription ROI check-ins (Pro); the Worker answers 403 `upgrade_required` on other plans. */
+export function getSubscriptionUsage(
+  workspace: AuthenticatedWorkspace,
+): Promise<SubscriptionUsageList> {
+  return requestJson(workspace, "/api/app/subscriptions/usage");
+}
+
+export function checkInSubscription(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; usedOn: string },
+): Promise<SubscriptionUsage> {
+  return requestJson(workspace, `/api/app/subscriptions/${encodeURIComponent(args.id)}/usage`, {
+    method: "POST",
+    body: JSON.stringify({ usedOn: args.usedOn }),
+  });
+}
+
+export function undoSubscriptionCheckIn(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; usedOn: string },
+): Promise<SubscriptionUsage> {
+  return requestJson(
+    workspace,
+    `/api/app/subscriptions/${encodeURIComponent(args.id)}/usage/${args.usedOn}`,
+    { method: "DELETE" },
+  );
+}
+
+export function setSubscriptionUsageTracking(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; tracked: boolean },
+): Promise<SubscriptionUsageTracking> {
+  return requestJson(
+    workspace,
+    `/api/app/subscriptions/${encodeURIComponent(args.id)}/usage/tracking`,
+    { method: "PUT", body: JSON.stringify({ tracked: args.tracked }) },
+  );
 }

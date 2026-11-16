@@ -4,19 +4,15 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
-export type HomeViewName = "overview" | "analytics";
-
-const OPTIONS: { value: HomeViewName; label: string }[] = [
-  { value: "overview", label: "Overview" },
-  { value: "analytics", label: "Analytics" },
-];
-
-export function HomeViewSwitch({
+/** The pill switch between a tab's views: Home's Overview and Analytics, Budgets and Bills. */
+export function ViewSwitch<T extends string>({
+  options,
   selected,
   onSelect,
 }: {
-  selected: HomeViewName;
-  onSelect: (view: HomeViewName) => void;
+  options: readonly { value: T; label: string }[];
+  selected: T;
+  onSelect: (view: T) => void;
 }) {
   const theme = useZoptionTheme();
   return (
@@ -27,7 +23,7 @@ export function HomeViewSwitch({
         { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
       ]}
     >
-      {OPTIONS.map((option) => {
+      {options.map((option) => {
         const active = option.value === selected;
         return (
           <Pressable

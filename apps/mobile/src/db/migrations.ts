@@ -17,7 +17,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 18;
+export const LOCAL_SCHEMA_VERSION = 19;
 
 export const migrations: readonly Migration[] = [
   {
@@ -851,6 +851,30 @@ export const migrations: readonly Migration[] = [
     `,
   },
   familyWorkspaceMigration,
+  {
+    version: 19,
+    // Subscription ROI (Pro) outside mobile sync: the Worker's check-ins and "Track usage"
+    // choices as last read, with this phone's own taps applied on top, and the taps still to
+    // upload in order. Upload replays them through the REST routes, which are idempotent.
+    name: "subscription_usage",
+    sql: `
+      CREATE TABLE subscription_usage (
+        subscription_id TEXT NOT NULL,
+        used_on TEXT NOT NULL,
+        PRIMARY KEY (subscription_id, used_on)
+      );
+      CREATE TABLE subscription_usage_tracking (
+        subscription_id TEXT PRIMARY KEY NOT NULL,
+        tracked INTEGER NOT NULL CHECK (tracked IN (0, 1))
+      );
+      CREATE TABLE subscription_usage_queue (
+        sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+        subscription_id TEXT NOT NULL,
+        action TEXT NOT NULL CHECK (action IN ('check_in', 'undo', 'track', 'untrack')),
+        used_on TEXT
+      );
+    `,
+  },
 ] as const;
 
 export async function applyLocalMigrations(database: MigrationDatabase): Promise<number> {

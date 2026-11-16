@@ -1,1 +1,1 @@
-export { BudgetsScreen as default } from "@/features/budgets/BudgetsScreen";
+export { BudgetsTab as default } from "@/features/budgets/BudgetsTab";

@@ -38,3 +38,40 @@ export const subscriptionStatusUpdateSchema = z
   .strict();
 
 export type SubscriptionStatusUpdate = z.infer<typeof subscriptionStatusUpdateSchema>;
+
+/**
+ * Subscription ROI (Pro): one "used it" check-in per subscription per day. Online only; the
+ * log is a REST surface and never enters mobile sync.
+ */
+export const subscriptionUsageInputSchema = z.object({ usedOn: isoDateSchema }).strict();
+
+export type SubscriptionUsageInput = z.infer<typeof subscriptionUsageInputSchema>;
+
+/** One subscription's check-in days within `SUBSCRIPTION_USAGE_WINDOW_DAYS`, oldest first. */
+export const subscriptionUsageSchema = z
+  .object({ subscriptionId: resourceIdSchema, usedOn: z.array(isoDateSchema) })
+  .strict();
+
+export type SubscriptionUsage = z.infer<typeof subscriptionUsageSchema>;
+
+/** Turns usage tracking on or off for one subscription ("Track usage"). */
+export const subscriptionUsageTrackingInputSchema = z.object({ tracked: z.boolean() }).strict();
+
+export type SubscriptionUsageTrackingInput = z.infer<typeof subscriptionUsageTrackingInputSchema>;
+
+/** A choice the person made; a subscription without one follows `isUsageTrackedByDefault`. */
+export const subscriptionUsageTrackingSchema = z
+  .object({ subscriptionId: resourceIdSchema, tracked: z.boolean() })
+  .strict();
+
+export type SubscriptionUsageTracking = z.infer<typeof subscriptionUsageTrackingSchema>;
+
+/** Every subscription with a check-in in the window, and every explicit tracking choice. */
+export const subscriptionUsageListSchema = z
+  .object({
+    usage: z.array(subscriptionUsageSchema),
+    tracking: z.array(subscriptionUsageTrackingSchema),
+  })
+  .strict();
+
+export type SubscriptionUsageList = z.infer<typeof subscriptionUsageListSchema>;

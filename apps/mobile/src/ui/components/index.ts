@@ -19,3 +19,4 @@ export * from "./Skeleton";
 export * from "./SyncStatus";
 export * from "./TransactionRow";
 export * from "./CurrencyCode";
+export * from "./ViewSwitch";

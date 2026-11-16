@@ -6,6 +6,9 @@ import {
   type SubscriptionMonthSummary,
   type SubscriptionRecord,
   type SubscriptionStatus,
+  type SubscriptionUsage,
+  type SubscriptionUsageList,
+  type SubscriptionUsageTracking,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
@@ -23,14 +26,19 @@ import { CancellationGuideDrawer } from "../components/subscriptions/Cancellatio
 import { CashflowForecastSection } from "../components/subscriptions/CashflowForecastSection";
 import { SubscriptionForm } from "../components/subscriptions/SubscriptionForm";
 import { SubscriptionRenewalCalendar } from "../components/subscriptions/SubscriptionRenewalCalendar";
+import { SubscriptionRoiPanel } from "../components/subscriptions/SubscriptionRoiPanel";
 import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable";
+import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
+  checkInSubscription,
+  setSubscriptionUsageTracking,
   createSubscription,
   deleteSubscription,
   setSubscriptionStatus,
+  undoSubscriptionCheckIn,
   updateSubscription,
 } from "../lib/api";
-import { currentMonth } from "../lib/calendar";
+import { currentMonth, localIsoDate } from "../lib/calendar";
 import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { workspaceCurrency } from "../lib/workspaceCurrency";
 import { optimisticId, restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
@@ -38,11 +46,26 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { useAccounts } from "../queries/accounts";
 import { useCategories } from "../queries/categories";
-import { useSubscriptions } from "../queries/subscriptions";
+import { useSubscriptions, useSubscriptionUsage } from "../queries/subscriptions";
 import "./SubscriptionsPage.css";
 
 function subscriptionMonthlyCost(item: Pick<SubscriptionRecord, "amountMinor" | "billingCycle">) {
   return item.billingCycle === "yearly" ? Math.round(item.amountMinor / 12) : item.amountMinor;
+}
+
+/** Swaps one subscription's check-in days into the cached usage list. */
+function replaceUsage(
+  current: SubscriptionUsageList | undefined,
+  next: SubscriptionUsage | SubscriptionUsageTracking,
+): SubscriptionUsageList {
+  const usage = current?.usage ?? [];
+  const tracking = current?.tracking ?? [];
+  if ("tracked" in next) {
+    const others = tracking.filter((row) => row.subscriptionId !== next.subscriptionId);
+    return { usage, tracking: [...others, next] };
+  }
+  const others = usage.filter((row) => row.subscriptionId !== next.subscriptionId);
+  return { usage: next.usedOn.length > 0 ? [...others, next] : others, tracking };
 }
 
 function updateSubscriptionSummary(
@@ -76,6 +99,10 @@ export function SubscriptionsPage() {
   const subscriptionsQuery = useSubscriptions(workspace, monthStart);
   const categoriesQuery = useCategories(workspace);
   const accountsQuery = useAccounts(workspace);
+  const billingQuery = useBillingSummary(workspace);
+  const isPro = billingQuery.data?.plan === "zoption_pro";
+  const usageQuery = useSubscriptionUsage(workspace, isPro);
+  const today = localIsoDate();
 
   const refreshSubscriptions = () =>
     queryClient.invalidateQueries({ queryKey: queryKeys.allSubscriptions(workspace) });
@@ -193,6 +220,28 @@ export function SubscriptionsPage() {
     onSettled: () => {
       void refreshSubscriptions();
     },
+  });
+  const usageMutation = useMutation({
+    mutationFn: (args: {
+      id: string;
+      action: "check_in" | "undo" | "track" | "untrack";
+    }): Promise<SubscriptionUsage | SubscriptionUsageTracking> => {
+      if (args.action === "check_in") {
+        return checkInSubscription(workspace, { id: args.id, usedOn: today });
+      }
+      if (args.action === "undo") {
+        return undoSubscriptionCheckIn(workspace, { id: args.id, usedOn: today });
+      }
+      return setSubscriptionUsageTracking(workspace, {
+        id: args.id,
+        tracked: args.action === "track",
+      });
+    },
+    onSuccess: (usage) =>
+      queryClient.setQueryData<SubscriptionUsageList>(
+        queryKeys.subscriptionUsage(workspace),
+        (current) => replaceUsage(current, usage),
+      ),
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deleteSubscription(workspace, id),
@@ -326,6 +375,23 @@ export function SubscriptionsPage() {
                 tone="sage"
               />
             </section>
+
+            {viewMode === "table" && (
+              <SubscriptionRoiPanel
+                isPro={isPro}
+                items={data.items}
+                usage={usageQuery.data}
+                today={today}
+                savingId={usageMutation.isPending ? usageMutation.variables.id : undefined}
+                error={usageMutation.error?.message ?? usageQuery.error?.message}
+                onCheckIn={(id) => usageMutation.mutate({ id, action: "check_in" })}
+                onUndo={(id) => usageMutation.mutate({ id, action: "undo" })}
+                onTrack={(id, tracked) =>
+                  usageMutation.mutate({ id, action: tracked ? "track" : "untrack" })
+                }
+                onCancel={(id) => statusMutation.mutate({ id, status: "canceled" })}
+              />
+            )}
 
             <section className="transactions-panel subscriptions-panel" aria-live="polite">
               <div className="transactions-panel-heading">

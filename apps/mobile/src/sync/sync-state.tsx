@@ -30,6 +30,7 @@ import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { uploadQueuedReceipts } from "@/features/family/receipt-uploads";
 import { describeRefusedChanges } from "@/features/family/refused-changes";
 import { familySubject } from "@/features/family/workspace-record";
+import { uploadSubscriptionUsage } from "@/features/subscriptions/subscription-usage-upload";
 
 export type ForegroundSyncStatus =
   "waiting" | "syncing" | "synced" | "failed" | "full-resync-required";
@@ -345,6 +346,9 @@ export function SyncProvider({
                 accessToken: auth.token,
                 workspaceId: familyId,
               }).catch(() => undefined);
+            } else {
+              // Subscription ROI taps wait for a personal sync, after any new bill has synced.
+              await uploadSubscriptionUsage(workspace, auth.token).catch(() => undefined);
             }
             if (requestRef.current === requestId) {
               const schedule = await scheduleOutstandingRetry();

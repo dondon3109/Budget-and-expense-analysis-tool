@@ -3,15 +3,74 @@ import {
   subscriptionQuerySchema,
   subscriptionStatusUpdateSchema,
   subscriptionUpdateSchema,
+  subscriptionUsageInputSchema,
+  subscriptionUsageTrackingInputSchema,
 } from "@zoption/shared";
 import { Hono } from "hono";
 
+import type { SubscriptionUsageRepository } from "../db/subscription-usage";
 import type { SubscriptionRepository } from "../db/subscriptions";
 import { parseInput, parsePathParameter, readJson } from "../request";
 import type { AppEnvironment } from "../types";
 
-export function createSubscriptionRoutes(repository: SubscriptionRepository) {
+export function createSubscriptionRoutes(
+  repository: SubscriptionRepository,
+  usage: SubscriptionUsageRepository,
+) {
   const routes = new Hono<AppEnvironment>();
+
+  // Subscription ROI check-ins (Pro). Before "/:id" so "usage" is never read as an id.
+  routes.get("/usage", async (context) =>
+    context.json(await usage.list(context.env, context.get("tenant").tenantId)),
+  );
+
+  routes.post("/:id/usage", async (context) => {
+    const input = parseInput(
+      subscriptionUsageInputSchema,
+      await readJson(context),
+      "Choose a valid check-in date.",
+    );
+    return context.json(
+      await usage.checkIn(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id")),
+        input.usedOn,
+      ),
+    );
+  });
+
+  routes.put("/:id/usage/tracking", async (context) => {
+    const input = parseInput(
+      subscriptionUsageTrackingInputSchema,
+      await readJson(context),
+      "Choose whether to track this bill.",
+    );
+    return context.json(
+      await usage.setTracking(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id")),
+        input.tracked,
+      ),
+    );
+  });
+
+  routes.delete("/:id/usage/:usedOn", async (context) => {
+    const input = parseInput(
+      subscriptionUsageInputSchema,
+      { usedOn: context.req.param("usedOn") },
+      "Choose a valid check-in date.",
+    );
+    return context.json(
+      await usage.undo(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id")),
+        input.usedOn,
+      ),
+    );
+  });
 
   routes.get("/", async (context) => {
     const input = parseInput(

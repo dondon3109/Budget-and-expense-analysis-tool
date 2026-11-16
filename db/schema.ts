@@ -405,6 +405,56 @@ export const subscriptions = sqliteTable(
   ],
 );
 
+// Subscription ROI (0090): daily check-ins, "Track usage" choices (no row means the default by
+// name), and one idle nudge per subscription per billing date.
+export const subscriptionUsage = sqliteTable(
+  "subscription_usage",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    usedOn: text("used_on").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.subscriptionId, table.usedOn] })],
+);
+
+export const subscriptionUsageSettings = sqliteTable(
+  "subscription_usage_settings",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    tracked: integer("tracked", { mode: "boolean" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.subscriptionId] })],
+);
+
+export const subscriptionUsageNudges = sqliteTable(
+  "subscription_usage_nudges",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    billingDate: text("billing_date").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.subscriptionId, table.billingDate] })],
+);
+
 // A billing cycle left uncharged for lack of balance; the unique index emails only its first day.
 export const subscriptionRenewalNotifications = sqliteTable(
   "subscription_renewal_notifications",

@@ -1,0 +1,146 @@
+/* Subscription ROI: check-ins, cost per use, and the idle prompt. Flat surfaces, no gradients. */
+
+.subscription-roi {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.subscription-roi-header,
+.subscription-roi-teaser {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  color: var(--ink);
+}
+
+.subscription-roi-teaser {
+  flex-direction: row;
+  align-items: center;
+}
+
+.subscription-roi-teaser > div {
+  flex: 1;
+}
+
+.subscription-roi-header p,
+.subscription-roi-teaser p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.subscription-roi-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.subscription-roi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.subscription-roi-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.2fr) minmax(220px, 2fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-soft);
+}
+
+.subscription-roi-row.idle {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.subscription-roi-name {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.subscription-roi-status {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.subscription-roi-status.idle {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.subscription-roi-status.active {
+  color: var(--success);
+}
+
+.subscription-roi-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+.subscription-roi-stats dt {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.subscription-roi-stats dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 2px 0 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.subscription-roi-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.subscription-roi-used {
+  color: var(--success);
+}
+
+@media (max-width: 720px) {
+  .subscription-roi-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .subscription-roi-actions {
+    justify-content: flex-start;
+  }
+
+  .subscription-roi-teaser {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+.subscription-roi-untracked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
