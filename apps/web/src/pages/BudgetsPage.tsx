@@ -7,7 +7,7 @@ import {
   type BudgetUpsert,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide-react";
+import { Calculator, Check, CircleDollarSign, PiggyBank, Share2, TrendingDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 
@@ -248,6 +248,12 @@ export function BudgetsPage() {
             <h1>Budgets</h1>
           </div>
           <div className="header-actions budgets-header-actions">
+            {/* The calculator sits below the whole plan, so the header points to it. */}
+            {tab === "month" && (
+              <a className="button secondary" href="#budget-rule">
+                <Calculator size={17} aria-hidden="true" /> 50/30/20 calculator
+              </a>
+            )}
             {!family && (
               <button
                 className="button secondary"

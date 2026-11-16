@@ -1,3 +1,5 @@
+/* The tools render inside `.legal-article`, whose `h2` and `p` rules would
+   otherwise outrank these single-class rules; text rules carry that prefix. */
 .calc-panel {
   display: grid;
   grid-template-columns: minmax(240px, 1fr) auto;
@@ -60,13 +62,13 @@
   font-weight: 620;
 }
 
-.calc-hint {
+.legal-article .calc-hint {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 12px;
 }
 
-.calc-error {
+.legal-article .calc-error {
   margin: 8px 0 0;
   color: var(--danger);
   font-size: 13px;
@@ -130,7 +132,7 @@
   padding: 14px;
 }
 
-.calc-result-label {
+.legal-article .calc-result-label {
   margin: 0;
   color: var(--muted);
   font-size: 12px;
@@ -139,7 +141,7 @@
   text-transform: uppercase;
 }
 
-.calc-result-amount {
+.legal-article .calc-result-amount {
   margin: 6px 0 0;
   font-family: var(--font-display);
   font-size: 24px;
@@ -147,20 +149,20 @@
   color: var(--ink);
 }
 
-.calc-result-pct {
+.legal-article .calc-result-pct {
   margin: 2px 0 0;
   color: var(--muted);
   font-size: 12px;
 }
 
-.calc-result-blurb {
+.legal-article .calc-result-blurb {
   margin: 10px 0 0;
   color: var(--muted);
   font-size: 13px;
   line-height: 1.5;
 }
 
-.calc-exact {
+.legal-article .calc-exact {
   margin: 14px 0 0;
   padding: 12px 14px;
   border: 1px solid var(--subtle-border);
