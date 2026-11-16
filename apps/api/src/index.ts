@@ -18,6 +18,7 @@ import { RateLimitDurableObject } from "./rate-limit-do";
 import { deleteExpiredRateLimits } from "./rate-limit";
 import { validateRequiredApiBindings } from "./readiness";
 import { subscriptionRenewalService } from "./subscriptions/renewals";
+import { sendIdleSubscriptionNudges } from "./subscriptions/usage-nudges";
 import { bugReportService } from "./support/bug-reports";
 import { dispatchBugfixDraft } from "./support/bugfix-dispatch";
 import type { Bindings } from "./types";
@@ -157,6 +158,10 @@ export default {
     }
     const digests = await familyAlerts.sendDailyDigests(env, new Date(controller.scheduledTime));
     if (digests > 0) console.log(JSON.stringify({ message: "Family digests sent", digests }));
+    const nudges = await sendIdleSubscriptionNudges(env, new Date(controller.scheduledTime));
+    if (nudges.nudged > 0 || nudges.failed > 0) {
+      console.log(JSON.stringify({ message: "Subscription idle nudges sent", ...nudges }));
+    }
     const syncCompaction = await compactMobileSyncChanges(env);
     if (syncCompaction.deletedChanges > 0 || syncCompaction.expiredClients > 0) {
       console.log(

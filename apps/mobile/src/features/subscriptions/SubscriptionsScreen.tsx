@@ -1,5 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -20,6 +20,7 @@ import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard"
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import { CancellationGuideSheet } from "./CancellationGuideSheet";
+import { SubscriptionRoiCard } from "./SubscriptionRoiCard";
 import {
   Button,
   Card,
@@ -46,6 +47,8 @@ export function SubscriptionsScreen() {
   const [filter, setFilter] = useState<SubscriptionFilter>("all");
   const [guideSubscription, setGuideSubscription] = useState<LocalSubscriptionItem | null>(null);
   const theme = useZoptionTheme();
+  // Set when an idle-bill nudge opened this screen.
+  const { highlight } = useLocalSearchParams<{ highlight?: string }>();
 
   const addSubscription = (): void => {
     router.push("/(app)/subscription");
@@ -157,6 +160,8 @@ export function SubscriptionsScreen() {
             canceledCount={canceledSubscriptions.length}
             subscriptions={state.subscriptions}
           />
+
+          <SubscriptionRoiCard highlightId={highlight} subscriptions={state.subscriptions} />
 
           <CashflowForecastCard
             startingBalanceMinor={

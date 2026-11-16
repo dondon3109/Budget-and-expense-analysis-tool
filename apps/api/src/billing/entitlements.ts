@@ -124,7 +124,10 @@ export async function readTier(env: Bindings, tenantId: string): Promise<Billing
   return (await readEffectiveAccess(env, tenantId)).tier;
 }
 
-/** Budget or Pro: every gated feature opens at Budget; Pro only raises the limits. */
+/**
+ * Budget or Pro: gated features open at Budget and Pro raises the limits, except the few that
+ * use `proPlanRequiredError`.
+ */
 export async function hasPaidPlan(env: Bindings, tenantId: string): Promise<boolean> {
   return (await readTier(env, tenantId)) !== "free";
 }
@@ -133,6 +136,15 @@ export function paidPlanRequiredError(capability: string): HttpError {
   return new HttpError(403, "upgrade_required", "This feature needs Zoption Budget or Pro.", {
     capability,
     requiredPlan: "zoption_budget",
+    billingPath: "/app/settings",
+  });
+}
+
+/** For the few features only Pro (or Family Pro) opens, such as Subscription ROI. */
+export function proPlanRequiredError(capability: string): HttpError {
+  return new HttpError(403, "upgrade_required", "This feature needs Zoption Pro.", {
+    capability,
+    requiredPlan: "zoption_pro",
     billingPath: "/app/settings",
   });
 }

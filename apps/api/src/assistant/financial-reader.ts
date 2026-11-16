@@ -20,6 +20,11 @@ import { categoryRepository, type CategoryRepository } from "../db/categories";
 import { debtRepository, type DebtRepository } from "../db/debts";
 import { loadDashboard } from "../db/dashboard";
 import { financialGoalRepository, type FinancialGoalRepository } from "../db/goals";
+import { readTier } from "../billing/entitlements";
+import {
+  subscriptionUsageRepository,
+  type SubscriptionUsageRepository,
+} from "../db/subscription-usage";
 import { subscriptionRepository, type SubscriptionRepository } from "../db/subscriptions";
 import { transactionRepository, type TransactionRepository } from "../db/transactions";
 import { loadWorkspaceCurrency } from "../db/workspace-settings";
@@ -293,6 +298,7 @@ export function createFinancialReader(
     debts?: DebtRepository;
     goals?: FinancialGoalRepository;
     subscriptions?: SubscriptionRepository;
+    subscriptionUsage?: SubscriptionUsageRepository;
     transactions?: TransactionRepository;
     dashboardLoader?: DashboardLoader;
     analysisLoader?: AnalysisLoader;
@@ -306,6 +312,7 @@ export function createFinancialReader(
   const debts = options.debts ?? debtRepository;
   const goals = options.goals ?? financialGoalRepository;
   const subscriptions = options.subscriptions ?? subscriptionRepository;
+  const subscriptionUsage = options.subscriptionUsage ?? subscriptionUsageRepository;
   const transactions = options.transactions ?? transactionRepository;
   const dashboardLoader = options.dashboardLoader ?? loadDashboard;
   const analysisLoader = options.analysisLoader ?? loadAnalysisTransactions;
@@ -931,10 +938,12 @@ export function createFinancialReader(
 
     async listSubscriptions(context, input) {
       const month = `${input.through.slice(0, 7)}-01`;
-      return subscriptionsResult(
-        await subscriptions.list(context.env, context.tenantId, month),
-        input,
-      );
+      const isPro = (await readTier(context.env, context.tenantId)) === "zoption_pro";
+      const [summary, usage] = await Promise.all([
+        subscriptions.list(context.env, context.tenantId, month),
+        isPro ? subscriptionUsage.list(context.env, context.tenantId, input.through) : null,
+      ]);
+      return subscriptionsResult(summary, input, usage);
     },
 
     async getGoalsAndDebts(context) {

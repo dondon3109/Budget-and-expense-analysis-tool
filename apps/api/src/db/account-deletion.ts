@@ -97,6 +97,8 @@ export function tenantDataStatements(env: Bindings, tenantId: string): D1Prepare
     env.DB.prepare("DELETE FROM subscription_renewal_notifications WHERE tenant_id = ?").bind(
       tenantId,
     ),
+    env.DB.prepare("DELETE FROM subscription_usage_nudges WHERE tenant_id = ?").bind(tenantId),
+    env.DB.prepare("DELETE FROM subscription_usage WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM subscriptions WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM transactions WHERE tenant_id = ?").bind(tenantId),
     env.DB.prepare("DELETE FROM transfer_groups WHERE tenant_id = ?").bind(tenantId),

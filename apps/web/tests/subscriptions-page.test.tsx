@@ -32,6 +32,8 @@ vi.mock("../src/lib/api", () => ({
   createSubscription: vi.fn(),
   deleteSubscription: vi.fn(),
   getAccounts: vi.fn(),
+  // Free plan: the usage panel shows its Pro teaser and never asks for check-ins.
+  getBillingSummary: vi.fn().mockRejectedValue(new Error("offline")),
   getCategories: vi.fn(),
   getCustomerReviewState: vi.fn().mockResolvedValue({ review: {}, promptEligible: false }),
   getSubscriptions: vi.fn(),

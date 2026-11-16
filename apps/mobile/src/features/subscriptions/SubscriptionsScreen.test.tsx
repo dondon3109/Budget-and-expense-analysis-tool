@@ -18,7 +18,10 @@ jest.mock("expo-router", () => ({
   Stack: {
     Screen: () => null,
   },
+  useLocalSearchParams: () => ({}),
 }));
+// Online and plan gated; covered in its own suite.
+jest.mock("./SubscriptionRoiCard", () => ({ SubscriptionRoiCard: () => null }));
 
 jest.mock("@/db/local-workspace-state", () => ({
   useDashboardData: jest.fn(),

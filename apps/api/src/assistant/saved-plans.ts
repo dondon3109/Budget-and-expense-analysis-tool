@@ -1,9 +1,12 @@
-import type {
-  AssistantToolResultEnvelope,
-  Currency,
-  Debt,
-  FinancialGoal,
-  SubscriptionMonthSummary,
+import {
+  subscriptionRoi,
+  type AssistantToolResultEnvelope,
+  type Currency,
+  type Debt,
+  type FinancialGoal,
+  type SubscriptionMonthItem,
+  type SubscriptionMonthSummary,
+  type SubscriptionUsageList,
 } from "@zoption/shared";
 
 import type { DataQualityAssessment } from "./data-quality";
@@ -20,12 +23,15 @@ export interface SubscriptionsReadInput {
 /**
  * The user's saved subscriptions, the monthly cost of the active ones, and what bills in the
  * next few days. Totals count only the workspace currency, like the Subscriptions page, so a
- * plan billed in another currency is listed but never added in.
+ * plan billed in another currency is listed but never added in. `usage` is the Pro check-in log,
+ * or null on other plans; a subscription then carries no usage field.
  */
 export function subscriptionsResult(
   summary: SubscriptionMonthSummary,
   input: SubscriptionsReadInput,
+  usage: SubscriptionUsageList | null = null,
 ): AssistantToolResultEnvelope<unknown> {
+  const usedOnById = new Map(usage?.usage.map((row) => [row.subscriptionId, row.usedOn]));
   const days = input.dueWithinDays ?? DEFAULT_DUE_WITHIN_DAYS;
   const until = shiftDays(input.through, days);
   const currency = summary.currency;
@@ -78,6 +84,9 @@ export function subscriptionsResult(
         categoryName: item.categoryName,
         accountName: item.accountName,
         ...(item.renewalBlockedReason ? { renewalOnHold: item.renewalBlockedReason } : {}),
+        ...(usage
+          ? { usage: usageSummary(item, usedOnById.get(item.id) ?? [], input.through) }
+          : {}),
       })),
     },
     "subscriptions",
@@ -146,4 +155,16 @@ export function goalsAndDebtsResult(
     },
     "goals",
   );
+}
+
+function usageSummary(item: SubscriptionMonthItem, usedOn: readonly string[], today: string) {
+  const roi = subscriptionRoi(item, usedOn, today);
+  return {
+    status: roi.status,
+    lastUsedOn: roi.lastUsedOn,
+    daysSinceLastUse: roi.daysSinceLastUse,
+    usesThisCycle: roi.usesThisCycle,
+    costPerUse:
+      roi.costPerUseMinor === null ? null : formatMoney(roi.costPerUseMinor, item.currency),
+  };
 }

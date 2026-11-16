@@ -94,3 +94,121 @@ export function latestDueSubscriptionBillingDate(
     due = following;
   }
 }
+
+/** No check-in for this many days makes a tracked subscription idle. */
+export const SUBSCRIPTION_IDLE_DAYS = 30;
+/** How many days before a renewal the idle nudge goes out. */
+export const SUBSCRIPTION_NUDGE_LEAD_DAYS = 3;
+/** How far back the usage log is read: one yearly cycle, plus a day for a leap year. */
+export const SUBSCRIPTION_USAGE_WINDOW_DAYS = 366;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function dayNumber(isoDate: string): number {
+  return Math.floor(Date.parse(`${isoDate}T00:00:00Z`) / DAY_MS);
+}
+
+/** `isoDate` moved by `days` (negative goes back). */
+export function addDaysToIsoDate(isoDate: string, days: number): string {
+  return new Date((dayNumber(isoDate) + days) * DAY_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * The billing date one cycle before `nextBillingDate`, which starts the cycle being paid for now.
+ * Clamped to the month's last day like `nextSubscriptionBillingDate`.
+ */
+export function previousSubscriptionBillingDate(
+  nextBillingDate: string,
+  billingCycle: SubscriptionBillingCycle,
+): string {
+  const year = Number(nextBillingDate.slice(0, 4));
+  const month = Number(nextBillingDate.slice(5, 7));
+  const day = Number(nextBillingDate.slice(8, 10));
+  const target = new Date(Date.UTC(year, month - 1 - (billingCycle === "monthly" ? 1 : 12), 1));
+  const targetYear = target.getUTCFullYear();
+  const targetMonth = target.getUTCMonth() + 1;
+  const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate();
+  return `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
+}
+
+/**
+ * `untracked`: never checked in, so there is nothing to judge. `idle`: tracked, but no check-in
+ * for `SUBSCRIPTION_IDLE_DAYS`. `active`: used within that window.
+ */
+export type SubscriptionUsageStatus = "untracked" | "idle" | "active";
+
+export interface SubscriptionRoi {
+  status: SubscriptionUsageStatus;
+  usedToday: boolean;
+  lastUsedOn: string | null;
+  daysSinceLastUse: number | null;
+  /** Check-ins since the current cycle began (the previous billing date). */
+  usesThisCycle: number;
+  /** The cycle's charge spread over its check-ins; null before the first one. */
+  costPerUseMinor: number | null;
+  /** Consecutive weeks (Monday start) with a check-in, ending this week or last. */
+  weekStreak: number;
+}
+
+/**
+ * How much a subscription is being used for what it costs. `usedOn` holds one ISO date per
+ * check-in day, in any order; dates after `today` are ignored.
+ */
+export function subscriptionRoi(
+  subscription: {
+    amountMinor: number;
+    billingCycle: SubscriptionBillingCycle;
+    nextBillingDate: string;
+  },
+  usedOn: readonly string[],
+  today: string,
+): SubscriptionRoi {
+  const days = [...new Set(usedOn)].filter((date) => date <= today).sort();
+  const lastUsedOn = days.at(-1) ?? null;
+  const daysSinceLastUse = lastUsedOn === null ? null : dayNumber(today) - dayNumber(lastUsedOn);
+  // A billing date already passed (the renewal sweep has not rolled it yet) began the cycle.
+  const cycleStart =
+    subscription.nextBillingDate > today
+      ? previousSubscriptionBillingDate(subscription.nextBillingDate, subscription.billingCycle)
+      : latestDueSubscriptionBillingDate(
+          subscription.nextBillingDate,
+          subscription.billingCycle,
+          today,
+        );
+  const usesThisCycle = days.filter((date) => date >= cycleStart).length;
+  const status: SubscriptionUsageStatus =
+    daysSinceLastUse === null
+      ? "untracked"
+      : daysSinceLastUse >= SUBSCRIPTION_IDLE_DAYS
+        ? "idle"
+        : "active";
+  return {
+    status,
+    usedToday: lastUsedOn === today,
+    lastUsedOn,
+    daysSinceLastUse,
+    usesThisCycle,
+    // Integer minor units in, integer minor units out.
+    costPerUseMinor:
+      usesThisCycle > 0 ? Math.round(subscription.amountMinor / usesThisCycle) : null,
+    weekStreak: weekStreak(days, today),
+  };
+}
+
+/** Day 0 of the Unix epoch was a Thursday, so shifting by 3 makes weeks start on Monday. */
+function weekNumber(isoDate: string): number {
+  return Math.floor((dayNumber(isoDate) + 3) / 7);
+}
+
+function weekStreak(sortedDays: readonly string[], today: string): number {
+  const weeks = new Set(sortedDays.map(weekNumber));
+  // This week still counts as unbroken until it ends, so the streak may end last week.
+  let week = weekNumber(today);
+  if (!weeks.has(week)) week -= 1;
+  let streak = 0;
+  while (weeks.has(week)) {
+    streak += 1;
+    week -= 1;
+  }
+  return streak;
+}

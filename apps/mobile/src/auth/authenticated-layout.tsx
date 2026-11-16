@@ -18,6 +18,7 @@ import { DailyReminderTapHandler } from "@/features/reminders/daily-reminder";
 import { LocalWorkspaceProvider, useLocalWorkspace } from "@/db/local-workspace-state";
 import { ActiveWorkspaceProvider, useActiveWorkspace } from "@/features/family/active-workspace";
 import { FamilyPushTapHandler } from "@/features/family/family-push-tap";
+import { SubscriptionPushTapHandler } from "@/features/subscriptions/subscription-push-tap";
 import { SharedReceiptHandoff } from "@/features/receipts/SharedReceiptHandoff";
 import { SyncProvider } from "@/sync/sync-state";
 import { ScreenViewedTracker } from "@/telemetry/screen-viewed";
@@ -120,6 +121,7 @@ function LocalWorkspaceGate({
       <ScreenViewedTracker />
       <DailyReminderTapHandler />
       <FamilyPushTapHandler />
+      <SubscriptionPushTapHandler />
       <SharedReceiptHandoff />
       <PlanLimitHost />
       <ThankYouHost />

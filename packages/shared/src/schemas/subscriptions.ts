@@ -38,3 +38,25 @@ export const subscriptionStatusUpdateSchema = z
   .strict();
 
 export type SubscriptionStatusUpdate = z.infer<typeof subscriptionStatusUpdateSchema>;
+
+/**
+ * Subscription ROI (Pro): one "used it" check-in per subscription per day. Online only; the
+ * log is a REST surface and never enters mobile sync.
+ */
+export const subscriptionUsageInputSchema = z.object({ usedOn: isoDateSchema }).strict();
+
+export type SubscriptionUsageInput = z.infer<typeof subscriptionUsageInputSchema>;
+
+/** One subscription's check-in days within `SUBSCRIPTION_USAGE_WINDOW_DAYS`, oldest first. */
+export const subscriptionUsageSchema = z
+  .object({ subscriptionId: resourceIdSchema, usedOn: z.array(isoDateSchema) })
+  .strict();
+
+export type SubscriptionUsage = z.infer<typeof subscriptionUsageSchema>;
+
+/** Every subscription with at least one check-in in the window. */
+export const subscriptionUsageListSchema = z
+  .object({ usage: z.array(subscriptionUsageSchema) })
+  .strict();
+
+export type SubscriptionUsageList = z.infer<typeof subscriptionUsageListSchema>;

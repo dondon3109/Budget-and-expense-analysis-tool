@@ -231,7 +231,10 @@ export function createApp(options: AppOptions = {}) {
   app.route("/api/app/profile", createGoalProfileRoutes(dependencies.goalProfile));
   app.route("/api/app/pet", createPetRoutes(dependencies.pet));
   app.route("/api/app/billing", createBillingRoutes(dependencies.billing, dependencies.googlePlay));
-  app.route("/api/app/subscriptions", createSubscriptionRoutes(dependencies.subscriptions));
+  app.route(
+    "/api/app/subscriptions",
+    createSubscriptionRoutes(dependencies.subscriptions, dependencies.subscriptionUsage),
+  );
   app.route("/api/app/events", createCalendarEventRoutes(dependencies.events));
   app.route("/api/app/goals", createFinancialGoalRoutes(dependencies.goals));
   app.route("/api/app/debts", createDebtRoutes(dependencies.debts));
