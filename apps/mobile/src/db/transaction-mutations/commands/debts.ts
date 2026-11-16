@@ -5,6 +5,7 @@ import {
   type DebtUpdate,
 } from "@zoption/shared";
 
+import { pendingDebtPaymentMinor } from "../../pending-debt-payments";
 import type { LocalCommandContext } from "../context";
 import { debtSnapshot, uuidSchema } from "../model";
 import {
@@ -64,7 +65,12 @@ export function updateDebt(ctx: LocalCommandContext, id: string, value: DebtUpda
       const merged = {
         name: update.name ?? current.name,
         type: update.type ?? current.type,
-        balanceMinor: update.balanceMinor ?? current.balance_minor,
+        // The editor shows the balance net of payments queued after this debt's pending
+        // edit. Those reach the server after the edit, so the edit stores them on top.
+        balanceMinor:
+          update.balanceMinor === undefined
+            ? current.balance_minor
+            : update.balanceMinor + (outbox ? await pendingDebtPaymentMinor(ctx.database, id) : 0),
         aprBasisPoints: update.aprBasisPoints ?? current.apr_basis_points,
         minimumPaymentMinor: update.minimumPaymentMinor ?? current.minimum_payment_minor,
         balanceAsOf: update.balanceAsOf ?? current.balance_as_of,

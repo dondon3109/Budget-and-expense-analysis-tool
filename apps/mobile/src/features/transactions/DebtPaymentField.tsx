@@ -32,7 +32,7 @@ export function DebtPaymentField({
     <SelectionField
       disabled={disabled}
       error={error}
-      hint={required ? undefined : "Optional. The debt's balance drops once this syncs."}
+      hint={required ? undefined : "Optional. The debt's balance drops by what this pays."}
       label="Debt paid"
       onSelect={(debtId) => onChange(debtId === NO_DEBT_OPTION ? "" : debtId)}
       options={required ? options : [{ id: NO_DEBT_OPTION, label: "No linked debt" }, ...options]}

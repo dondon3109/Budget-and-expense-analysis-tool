@@ -357,7 +357,8 @@ export function useDebts(): {
   const { workspace } = useLocalWorkspace();
   const { data, loading, error, retry } = useLocalQuery<LocalDebtItem[]>(workspace, {
     read: readDebts,
-    tables: ["debts", "sync_outbox", "sync_conflicts"],
+    // A payment waiting to sync lowers the shown balance, so a ledger change re-reads it.
+    tables: ["debts", "transactions", "sync_outbox", "sync_conflicts"],
     empty: NO_ROWS,
     errorMessage: "Debts could not be read from encrypted local storage.",
     initialLoading: true,
@@ -378,7 +379,7 @@ export function useDebt(id?: string): {
   );
   const { data, loading, error, retry } = useLocalQuery(workspace, {
     read,
-    tables: ["debts", "sync_outbox", "sync_conflicts"],
+    tables: ["debts", "transactions", "sync_outbox", "sync_conflicts"],
     empty: null,
     errorMessage: "The debt could not be read from encrypted local storage.",
     initialLoading: Boolean(id),

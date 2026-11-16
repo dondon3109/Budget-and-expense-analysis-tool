@@ -40,6 +40,7 @@ import {
   type LocalRemittanceOverview,
 } from "./remittance-queries";
 import { readTransactionFormData } from "./transaction-form-data";
+import { pendingDebtPaymentsSql } from "./pending-debt-payments";
 
 const workspaceStatsRowSchema = z.object({
   account_count: z.number().int().nonnegative(),
@@ -774,8 +775,9 @@ LIMIT ?`;
 
   async getDebts(): Promise<LocalDebtItem[]> {
     const rows = await this.database.getAllAsync(
-      `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
-        balance_as_of, status, sync_state
+      `SELECT id, name, type,
+        MAX(0, balance_minor - ${pendingDebtPaymentsSql("debts.id")}) AS balance_minor,
+        apr_basis_points, minimum_payment_minor, balance_as_of, status, sync_state
        FROM debts
        WHERE deleted_at IS NULL
        ORDER BY
@@ -849,26 +851,11 @@ LIMIT ?`;
     };
   }
 
-  /**
-   * What payments that have never reached the server will take off a debt. The debt's local
-   * balance only drops after sync, so the editor subtracts this to see what is really left.
-   * An edit of a synced payment is not counted: its change in amount is unknown here.
-   */
-  async getUnsyncedDebtPaymentMinor(debtId: string): Promise<number> {
-    const row = await this.database.getFirstAsync<{ total: number }>(
-      `SELECT COALESCE(SUM(ABS(amount_minor) - COALESCE(transfer_fee_minor, 0)), 0) AS total
-       FROM transactions
-       WHERE debt_id = ? AND deleted_at IS NULL AND server_revision = 0
-         AND sync_state = 'pending'`,
-      debtId,
-    );
-    return row?.total ?? 0;
-  }
-
   async getDebt(id: string): Promise<LocalDebtItem | null> {
     const row = await this.database.getFirstAsync(
-      `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
-        balance_as_of, status, sync_state
+      `SELECT id, name, type,
+        MAX(0, balance_minor - ${pendingDebtPaymentsSql("debts.id")}) AS balance_minor,
+        apr_basis_points, minimum_payment_minor, balance_as_of, status, sync_state
        FROM debts
        WHERE id = ? AND deleted_at IS NULL`,
       id,
