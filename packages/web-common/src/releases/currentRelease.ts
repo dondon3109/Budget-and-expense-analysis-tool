@@ -11,22 +11,47 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "October 20, 2026",
+  releasedOn: "November 16, 2026",
   changes: [
     {
-      title: "A new look for the assistant chat",
+      title: "Subscriptions are now Bills",
       description:
-        'On mobile, replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked. A new chat opens with starter questions as chips, the message box is one slim row, and a button jumps back to the newest message.',
+        "Electricity, water, internet, and other recurring bills now sit alongside streaming and memberships, on web and mobile, and the renewal calendar is the Bill calendar. A bill held back because its account was short is charged as soon as you top up or adjust that account.",
     },
     {
-      title: "Chat boxes stay on the keyboard",
+      title: "Hide your balance",
       description:
-        "On Android, the assistant and support chat message boxes sit right on the keyboard instead of floating halfway up the screen, and the header no longer slides under the status bar.",
+        "Tap the eye next to your total balance to mask every amount (shown as ₱••••) before you share your screen or take a screenshot. Each device remembers its own choice.",
     },
     {
-      title: "Android Beta 0.2.59",
+      title: "Scan GCash, Maya, and bank receipts",
       description:
-        "The official Android Beta carries the new assistant chat and everything from 0.2.58. Install 0.2.59 over 0.2.58.",
+        "Receipt scanning reads GCash, Maya, and Philippine bank app confirmations and remittance results: the reference number, the fee as its own line, and whether it was Send Money, Pay Bills, Cash In, or money received.",
+    },
+    {
+      title: "Share a receipt to Zoption",
+      description:
+        "On Android, share a screenshot or photo to Zoption from GCash, Maya, your bank app, or your gallery, and the receipt scanner opens and reads it straight away.",
+    },
+    {
+      title: "One-tap assistant check-ins",
+      description:
+        "The AI Assistant gains Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up chips that answer straight from your records.",
+    },
+    {
+      title: "Any color for a category",
+      description:
+        "On mobile, slide Hue, Vividness, and Brightness to pick a custom category color with a live preview, or type a hex code.",
+    },
+    {
+      title: "Stay signed in on Android",
+      description:
+        "Closing the app or an expired session no longer sends you back to the sign-in screen. You stay signed in until you sign out or restart the phone.",
+    },
+    {
+      title: "Android Beta 0.2.60",
+      description:
+        "The official Android Beta carries everything above and everything from 0.2.59. Install 0.2.60 over 0.2.59.",
     },
   ],
 };
@@ -41,6 +66,27 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.5.0",
+    releasedOn: "October 21, 2026",
+    changes: [
+      {
+        title: "A new look for the assistant chat",
+        description:
+          'On mobile, replies read full width under a "Thought for N seconds" line that opens to the records the assistant checked. A new chat opens with starter questions as chips, the message box is one slim row, and a button jumps back to the newest message.',
+      },
+      {
+        title: "Chat boxes stay on the keyboard",
+        description:
+          "On Android, the assistant and support chat message boxes sit right on the keyboard instead of floating halfway up the screen, and the header no longer slides under the status bar.",
+      },
+      {
+        title: "Android Beta 0.2.59",
+        description:
+          "The official Android Beta carries the new assistant chat and everything from 0.2.58. Install 0.2.59 over 0.2.58.",
+      },
+    ],
+  },
   {
     version: "4.4.1",
     releasedOn: "October 20, 2026",
