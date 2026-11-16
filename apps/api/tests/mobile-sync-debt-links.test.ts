@@ -47,6 +47,31 @@ describe("mobile sync debt links", () => {
     };
   }
 
+  it("rejects a pushed payment that is more than the debt still owes", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
+    const start = debtBalance(database);
+
+    const pushed = await repository.push(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      operations: [
+        {
+          ...ids(),
+          entityType: "transaction",
+          entityId: expenseId,
+          operationType: "create",
+          baseRevision: 0,
+          dependencyIds: [],
+          payload: expense(start + 1),
+        },
+      ],
+    });
+
+    expect(pushed.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
+    expect(debtBalance(database)).toBe(start);
+  });
+
   it("pays down a debt from a pushed expense and gives it back on edit and delete", async () => {
     const { env, database } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));

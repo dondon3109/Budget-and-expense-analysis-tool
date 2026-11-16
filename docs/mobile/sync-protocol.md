@@ -74,7 +74,10 @@ A payment can name the debt it pays (`debtId`): an expense, or a transfer into a
 payable account, where the link sits on the sending leg. The debt must already be synchronized, since
 a transaction cannot depend on a debt create. The server owns debt balances: it pays the debt down on
 push, gives the amount back on edit or delete, and the new balance reaches the device as a debt
-change. An edit without `debtId` keeps the stored link.
+change. Until then the device shows each debt's stored balance minus the payments still queued
+after the debt's own pending edit (`apps/mobile/src/db/pending-debt-payments.ts`), and a debt edit
+stores what the person typed plus those payments, so the server ends at the typed balance once
+they apply. An edit without `debtId` keeps the stored link.
 
 A transaction or transfer create may also say how it was entered (`entryMethod`, one of
 `transactionEntryMethods` in `packages/shared/src/types.ts`). It is push-only: the Worker stores it in

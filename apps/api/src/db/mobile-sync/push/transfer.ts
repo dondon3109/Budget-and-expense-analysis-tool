@@ -10,6 +10,7 @@ import {
 import { HttpError } from "../../../errors";
 import type { Bindings } from "../../../types";
 import {
+  assertDebtPaymentFits,
   debtPaymentChanges,
   readTransferDebtPayment,
   validateTransactionReferences,
@@ -67,6 +68,11 @@ export async function pushTransferOperation(
           ? (previousPayment?.debtId ?? null)
           : null,
   };
+  const [, receivedLeg] = transfer ? buildTransferLegs(transfer) : [];
+  const nextPayment =
+    transfer?.debtId && receivedLeg
+      ? { debtId: transfer.debtId, amountMinor: receivedLeg.amountMinor }
+      : null;
   if (transfer) {
     try {
       await validateTransactionReferences(
@@ -76,6 +82,7 @@ export async function pushTransferOperation(
         existing?.categoryId,
         readEntitlement,
       );
+      await assertDebtPaymentFits(env, tenantId, operation.entityId, previousPayment, nextPayment);
     } catch (error) {
       if (!(error instanceof HttpError)) throw error;
       return persistResult(
@@ -99,11 +106,6 @@ export async function pushTransferOperation(
   });
   const timestamp = serverTimestamp();
   const statements: D1PreparedStatement[] = [];
-  const [, receivedLeg] = transfer ? buildTransferLegs(transfer) : [];
-  const nextPayment =
-    transfer?.debtId && receivedLeg
-      ? { debtId: transfer.debtId, amountMinor: receivedLeg.amountMinor }
-      : null;
   if (operation.operationType === "create") {
     const payload = operation.payload;
     const [fromLeg, toLeg] = buildTransferLegs(payload.transfer);
@@ -233,6 +235,7 @@ export async function pushTransferOperation(
     ...debtPaymentChanges(
       env,
       tenantId,
+      operation.entityId,
       previousPayment,
       nextPayment,
       appliedOperationGuard(tenantId, clientId, operation),

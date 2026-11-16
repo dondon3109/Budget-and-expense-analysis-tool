@@ -538,6 +538,23 @@ export const debts = sqliteTable(
   ],
 );
 
+/**
+ * What a linked debt payment really took off its debt, which is less than its amount when it
+ * overpays. `paymentKey` is the expense's id, or the transfer group's id for a transfer.
+ */
+export const debtPaymentApplied = sqliteTable(
+  "debt_payment_applied",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    paymentKey: text("payment_key").notNull(),
+    debtId: text("debt_id").notNull(),
+    appliedMinor: integer("applied_minor").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.paymentKey] })],
+);
+
 export const assistantThreads = sqliteTable(
   "assistant_threads",
   {

@@ -374,6 +374,38 @@ export interface TransferLeg {
   description: string;
 }
 
+/** The parts of an entry that decide what it pays toward a debt. */
+export interface DebtPaymentEntry {
+  kind: string;
+  amountMinor: number;
+  transferFeeMinor?: number | null;
+  debtId?: string | null;
+}
+
+/** What an entry pays toward its debt: an expense's amount, or what a transfer delivered. */
+export function debtPaymentMinor(entry: DebtPaymentEntry): number {
+  const sent = Math.abs(entry.amountMinor);
+  return entry.kind === "transfer" ? sent - (entry.transferFeeMinor ?? 0) : sent;
+}
+
+/**
+ * True when an entry would pay more than its debt still owes. An edit may reuse what the
+ * stored entry already took off the same debt. Clients call this to warn before saving; the
+ * Worker enforces the same rule against the amount it recorded for the stored payment.
+ */
+export function overpaysDebt(
+  entry: DebtPaymentEntry,
+  debt: { id: string; balanceMinor: number },
+  stored?: DebtPaymentEntry | null,
+): boolean {
+  const givenBack = stored?.debtId === debt.id ? debtPaymentMinor(stored) : 0;
+  return debtPaymentMinor(entry) > Math.max(0, debt.balanceMinor) + givenBack;
+}
+
+/** Shown wherever a debt payment is refused for being larger than the debt. */
+export const DEBT_OVERPAYMENT_MESSAGE =
+  "This payment is more than what is left on the debt. Lower the amount or update the debt's balance.";
+
 /** Builds the balanced sender and receiver rows used by every Zoption client and the Worker. */
 export function buildTransferLegs(input: TransferInput): [TransferLeg, TransferLeg] {
   const fee = input.transferFeeMinor ?? 0;

@@ -4,6 +4,7 @@ import {
   buildCashflowTrend,
   buildCashflowTrendFromDayTotals,
   cashflowWindowStart,
+  overpaysDebt,
   buildDashboardSummary,
   buildTransferFeeInsight,
   summarizeAccountBalances,
@@ -512,5 +513,28 @@ describe("transfer fee insight calculations", () => {
         feesByCurrency: {},
       },
     ]);
+  });
+});
+
+describe("debt overpayment", () => {
+  const debt = { id: "debt-1", balanceMinor: 500_000 };
+
+  it("allows a payment up to what the debt owes and refuses one centavo more", () => {
+    expect(overpaysDebt({ kind: "expense", amountMinor: 500_000 }, debt)).toBe(false);
+    expect(overpaysDebt({ kind: "expense", amountMinor: 500_001 }, debt)).toBe(true);
+  });
+
+  it("counts a transfer by what reached the account, not what was sent", () => {
+    const transfer = { kind: "transfer", amountMinor: 500_500, transferFeeMinor: 500 };
+    expect(overpaysDebt(transfer, debt)).toBe(false);
+    expect(overpaysDebt({ ...transfer, transferFeeMinor: 0 }, debt)).toBe(true);
+  });
+
+  it("lets an edit reuse what the stored payment took off the same debt only", () => {
+    const paidDown = { id: "debt-1", balanceMinor: 400_000 };
+    const stored = { kind: "expense", amountMinor: -100_000, debtId: "debt-1" };
+    const edit = { kind: "expense", amountMinor: 500_000 };
+    expect(overpaysDebt(edit, paidDown, stored)).toBe(false);
+    expect(overpaysDebt(edit, paidDown, { ...stored, debtId: "debt-2" })).toBe(true);
   });
 });

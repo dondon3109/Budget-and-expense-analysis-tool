@@ -6,6 +6,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
 import { migrations } from "./migrations";
+import { LocalWorkspaceRepository } from "./repository";
 import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";
 
 class TestDatabase {
@@ -110,6 +111,43 @@ describe("local debt links", () => {
       database.native.prepare("SELECT debt_id FROM transactions WHERE id = ?").get(id),
     ).toEqual({ debt_id: "debt-synced" });
     expect(outboxPayload(database, "transaction")).toMatchObject({ debtId: "debt-synced" });
+  });
+
+  it("shows a debt's balance less the payments still waiting to sync", async () => {
+    const database = new TestDatabase();
+    const writes = repository(database);
+    const reads = new LocalWorkspaceRepository(database as unknown as SQLiteDatabase);
+    const shown = async () => (await reads.getDebt("debt-synced"))?.balanceMinor;
+    const stored = () =>
+      (
+        database.native
+          .prepare("SELECT balance_minor AS balance FROM debts WHERE id = 'debt-synced'")
+          .get() as { balance: number }
+      ).balance;
+
+    await writes.createTransaction({ ...payment, debtId: "debt-synced" });
+    await writes.createTransaction({ ...transfer, transferFeeMinor: 500, debtId: "debt-synced" });
+    const removed = await writes.createTransaction({ ...payment, debtId: "debt-synced" });
+    await writes.deleteTransaction(removed);
+    expect(await shown()).toBe(460_500);
+
+    // An edit sets what the debt owes after the payments queued before it.
+    await writes.updateDebt("debt-synced", { balanceMinor: 400_000 });
+    expect(stored()).toBe(400_000);
+    expect(await shown()).toBe(400_000);
+
+    // A payment queued after the edit lands on the server after it, so the next edit of the
+    // same queued entry stores it on top of the typed balance.
+    await writes.createTransaction({ ...payment, amountMinor: 10_000, debtId: "debt-synced" });
+    expect(await shown()).toBe(390_000);
+    await writes.updateDebt("debt-synced", { balanceMinor: 390_000 });
+    expect(stored()).toBe(400_000);
+    expect(await shown()).toBe(390_000);
+
+    // Once the server has everything, the debt's own balance carries the payments.
+    database.native.exec("DELETE FROM sync_outbox");
+    database.native.exec("UPDATE debts SET balance_minor = 390000");
+    expect(await shown()).toBe(390_000);
   });
 
   it("waits for a debt to reach the server before linking a payment to it", async () => {
