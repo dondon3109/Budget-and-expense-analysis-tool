@@ -47,12 +47,12 @@ describe("mobile sync debt links", () => {
     };
   }
 
-  it("gives back only what a pushed overpayment took off the debt", async () => {
+  it("rejects a pushed payment that is more than the debt still owes", async () => {
     const { env, database } = createSyncEnvironment();
     const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
     const start = debtBalance(database);
 
-    await repository.push(env, "tenant-1", {
+    const pushed = await repository.push(env, "tenant-1", {
       protocolVersion: 1,
       clientId,
       operations: [
@@ -63,28 +63,12 @@ describe("mobile sync debt links", () => {
           operationType: "create",
           baseRevision: 0,
           dependencyIds: [],
-          payload: expense(start + 100_000),
+          payload: expense(start + 1),
         },
       ],
     });
-    expect(debtBalance(database)).toBe(0);
 
-    const removed = await repository.push(env, "tenant-1", {
-      protocolVersion: 1,
-      clientId,
-      operations: [
-        {
-          ...ids(),
-          entityType: "transaction",
-          entityId: expenseId,
-          operationType: "delete",
-          baseRevision: 1,
-          dependencyIds: [],
-          payload: {},
-        },
-      ],
-    });
-    expect(removed.results[0]).toMatchObject({ status: "acknowledged" });
+    expect(pushed.results[0]).toMatchObject({ status: "rejected", code: "invalid_operation" });
     expect(debtBalance(database)).toBe(start);
   });
 

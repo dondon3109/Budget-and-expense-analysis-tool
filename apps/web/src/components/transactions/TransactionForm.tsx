@@ -1,11 +1,13 @@
 import {
   currencies,
   currencyMetadata,
+  DEBT_OVERPAYMENT_MESSAGE,
   DEBT_PAYMENT_CATEGORY_SYSTEM_KEY,
   defaultTransactionCategory,
   formatMinorAmount,
   isLiabilityAccountType,
   matchCategory,
+  overpaysDebt,
   parseAmountToMinor,
   pinnedEntryCurrency,
   preferredTransactionAccount,
@@ -309,6 +311,20 @@ export function TransactionForm({
     );
     if (!parsed.success) {
       setClientError(parsed.error.issues[0]?.message ?? "Check the transaction details.");
+      return;
+    }
+    const paidDebtId = parsed.data.kind === "income" ? null : parsed.data.debtId;
+    const paidDebt = debts.find((debt) => debt.id === paidDebtId);
+    // The server refuses an overpayment too; checking here keeps the form open with the reason.
+    if (
+      paidDebt &&
+      overpaysDebt(
+        parsed.data,
+        paidDebt,
+        item && { ...item, amountMinor: Math.abs(item.amountMinor) },
+      )
+    ) {
+      setClientError(DEBT_OVERPAYMENT_MESSAGE);
       return;
     }
     await onSubmit(parsed.data);

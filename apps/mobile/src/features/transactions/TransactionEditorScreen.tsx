@@ -3,9 +3,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
+  DEBT_OVERPAYMENT_MESSAGE,
   defaultTransactionCategory,
   isCurrency,
   matchCategory,
+  overpaysDebt,
   parseAmountToMinor,
   preferredTransactionAccount,
   resolveCategoryEmoji,
@@ -319,6 +321,15 @@ export function TransactionEditorScreen() {
     const parsed = parseTransactionForm(targetValues);
     if (!parsed.success) {
       setErrors(parsed.errors);
+      playSound("error");
+      setMessage("Check the highlighted details.");
+      return false;
+    }
+    const paidDebtId = parsed.input.kind === "income" ? null : parsed.input.debtId;
+    const paidDebt = debts.find((debt) => debt.id === paidDebtId);
+    // A balance that has not synced yet can let this through; the server refuses it then.
+    if (paidDebt && overpaysDebt(parsed.input, paidDebt, formData.data?.transaction?.input)) {
+      setErrors({ amount: DEBT_OVERPAYMENT_MESSAGE });
       playSound("error");
       setMessage("Check the highlighted details.");
       return false;

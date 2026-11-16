@@ -1,4 +1,5 @@
 import {
+  DEBT_OVERPAYMENT_MESSAGE,
   buildTransferLegs,
   isLiabilityAccountType,
   normalizeSignedAmount,
@@ -510,6 +511,37 @@ export function debtPaymentChanges(
   ];
 }
 
+/**
+ * Refuses a payment that is more than the debt still owes. An edit may use what the same payment
+ * already took off, which the write gives back first. A missing debt is left to
+ * `validateTransactionReferences`, and an unchanged payment passes, so an old overpayment can
+ * still have its other fields edited.
+ */
+export async function assertDebtPaymentFits(
+  env: Bindings,
+  tenantId: string,
+  paymentKey: string,
+  previous: DebtPayment,
+  next: DebtPayment,
+): Promise<void> {
+  if (!next) return;
+  if (previous?.debtId === next.debtId && previous.amountMinor === next.amountMinor) return;
+  const debt = await env.DB.prepare(
+    `SELECT balance_minor AS balanceMinor,
+            (SELECT applied_minor FROM debt_payment_applied
+             WHERE tenant_id = ?1 AND payment_key = ?2 AND debt_id = ?3) AS appliedMinor
+     FROM debts WHERE id = ?3 AND tenant_id = ?1`,
+  )
+    .bind(tenantId, paymentKey, next.debtId)
+    .first<{ balanceMinor: number; appliedMinor: number | null }>();
+  if (!debt) return;
+  const givenBack =
+    previous?.debtId === next.debtId ? (debt.appliedMinor ?? previous.amountMinor) : 0;
+  if (next.amountMinor > Math.max(0, debt.balanceMinor) + givenBack) {
+    throw new HttpError(400, "debt_overpayment", DEBT_OVERPAYMENT_MESSAGE);
+  }
+}
+
 /** The payment an income or expense row makes today: its debt link and absolute amount. */
 export async function readTransactionDebtPayment(
   env: Bindings,
@@ -626,6 +658,8 @@ export const transactionRepository: TransactionRepository = {
       const toId = crypto.randomUUID();
       const [fromLeg, toLeg] = buildTransferLegs(input);
       const debtId = input.debtId ?? null;
+      const payment = debtId ? { debtId, amountMinor: toLeg.amountMinor } : null;
+      await assertDebtPaymentFits(env, tenantId, groupId, null, payment);
       await env.DB.batch([
         env.DB.prepare(
           `INSERT INTO transfer_groups (id, tenant_id, from_transaction_id, to_transaction_id)
@@ -664,13 +698,7 @@ export const transactionRepository: TransactionRepository = {
           entryMethod: input.entryMethod,
           authorUserId: options.authorUserId,
         }),
-        ...debtPaymentChanges(
-          env,
-          tenantId,
-          groupId,
-          null,
-          debtId ? { debtId, amountMinor: toLeg.amountMinor } : null,
-        ),
+        ...debtPaymentChanges(env, tenantId, groupId, null, payment),
       ]);
       const created = await findTransaction(env, tenantId, fromId);
       if (!created) throw new Error("Created transfer could not be read back.");
@@ -695,13 +723,9 @@ export const transactionRepository: TransactionRepository = {
     });
     // The expense row and the linked debt's new balance are one atomic write.
     if (input.kind === "expense" && input.debtId) {
-      await env.DB.batch([
-        insert,
-        ...debtPaymentChanges(env, tenantId, id, null, {
-          debtId: input.debtId,
-          amountMinor: input.amountMinor,
-        }),
-      ]);
+      const payment = { debtId: input.debtId, amountMinor: input.amountMinor };
+      await assertDebtPaymentFits(env, tenantId, id, null, payment);
+      await env.DB.batch([insert, ...debtPaymentChanges(env, tenantId, id, null, payment)]);
     } else {
       await insert.run();
     }
@@ -753,6 +777,13 @@ export const transactionRepository: TransactionRepository = {
       const nextPayment = nextDebtId
         ? { debtId: nextDebtId, amountMinor: toLeg.amountMinor }
         : null;
+      await assertDebtPaymentFits(
+        env,
+        tenantId,
+        existing.transferGroupId,
+        previousPayment,
+        nextPayment,
+      );
       await env.DB.batch([
         env.DB.prepare(
           `UPDATE transactions SET account_id = ?, category_id = ?, date = ?, description = ?, amount_minor = ?, currency = ?, kind = 'transfer', notes = ?, transfer_fee_minor = ?, debt_id = ?, updated_at = datetime('now') WHERE tenant_id = ? AND transfer_group_id = ? AND amount_minor < 0`,
@@ -843,15 +874,14 @@ export const transactionRepository: TransactionRepository = {
       id,
       tenantId,
     );
-    const paymentWrites = debtPaymentChanges(
-      env,
-      tenantId,
-      id,
+    const previousPayment =
       current.kind === "expense" && current.debtId
         ? { debtId: current.debtId, amountMinor: Math.abs(current.amountMinor) }
-        : null,
-      nextDebtId !== null ? { debtId: nextDebtId, amountMinor: transaction.amountMinor } : null,
-    );
+        : null;
+    const nextPayment =
+      nextDebtId !== null ? { debtId: nextDebtId, amountMinor: transaction.amountMinor } : null;
+    await assertDebtPaymentFits(env, tenantId, id, previousPayment, nextPayment);
+    const paymentWrites = debtPaymentChanges(env, tenantId, id, previousPayment, nextPayment);
     if (paymentWrites.length > 0) {
       await env.DB.batch([update, ...paymentWrites]);
     } else {

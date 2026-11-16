@@ -24,7 +24,7 @@ import {
   isCategoryPlanAvailable,
   NEXT_CUSTOM_CATEGORY_PLAN_SQL,
 } from "../../../billing/entitlements";
-import { debtPaymentChanges } from "../../transactions";
+import { assertDebtPaymentFits, debtPaymentChanges } from "../../transactions";
 import { mobileSyncServerTimestamp as serverTimestamp } from "../protocol";
 import type { MobileSyncEntitlementReader as EntitlementReader } from "../read";
 import {
@@ -251,6 +251,15 @@ async function validateGraphTransactionReferences(
       .first<{ found: number }>();
     if (!debt) {
       return rejectedResult(operation, "invalid_operation", "Choose a debt from this workspace.");
+    }
+    try {
+      await assertDebtPaymentFits(env, tenantId, operation.entityId, null, {
+        debtId: transaction.debtId,
+        amountMinor: transaction.amountMinor,
+      });
+    } catch (error) {
+      if (!(error instanceof HttpError)) throw error;
+      return rejectedResult(operation, "invalid_operation", error.message);
     }
   }
   return null;
