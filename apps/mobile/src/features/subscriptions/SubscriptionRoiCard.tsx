@@ -1,10 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import {
-  isSubscriptionUsageTracked,
-  SUBSCRIPTION_IDLE_DAYS,
-  subscriptionRoi,
-  type SubscriptionRoi,
-} from "@zoption/shared";
+import { isSubscriptionUsageTracked, subscriptionRoi, type SubscriptionRoi } from "@zoption/shared";
 import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -73,8 +68,7 @@ export function SubscriptionRoiCard({
               Are your bills worth it?
             </Text>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              With Zoption Pro, tap “Used it” whenever you use a service to see what each use costs,
-              and get a reminder before an unused one renews.
+              See what each use costs with Pro.
             </Text>
           </View>
         </View>
@@ -112,13 +106,9 @@ export function SubscriptionRoiCard({
     <Card accessibilityLabel="Usage and value" style={styles.card}>
       <View style={styles.header}>
         <MaterialCommunityIcons color={theme.colors.brand} name="gauge" size={22} />
-        <View style={styles.flex}>
-          <Text style={[typography.headline, { color: theme.colors.text }]}>Usage and value</Text>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Tap “Used it” when you use a service. Unused for {SUBSCRIPTION_IDLE_DAYS} days, it gets
-            flagged before it renews.
-          </Text>
-        </View>
+        <Text style={[typography.headline, styles.flex, { color: theme.colors.text }]}>
+          Usage and value
+        </Text>
       </View>
       {shownError ? (
         <Text
@@ -189,23 +179,21 @@ export function SubscriptionRoiCard({
               )}
             </View>
             <View style={styles.stats}>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                {roi.usesThisCycle} use{roi.usesThisCycle === 1 ? "" : "s"} this cycle
-              </Text>
-              <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                {roi.costPerUseMinor === null ? (
-                  "No cost per use yet"
-                ) : (
-                  <>
-                    <MoneyValue
-                      amountMinor={roi.costPerUseMinor}
-                      currency={item.currency}
-                      style={[typography.caption, { color: theme.colors.textMuted }]}
-                    />{" "}
-                    per use
-                  </>
-                )}
-              </Text>
+              {roi.usesThisCycle > 0 ? (
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  {roi.usesThisCycle} use{roi.usesThisCycle === 1 ? "" : "s"} this cycle
+                </Text>
+              ) : null}
+              {roi.costPerUseMinor === null ? null : (
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  <MoneyValue
+                    amountMinor={roi.costPerUseMinor}
+                    currency={item.currency}
+                    style={[typography.caption, { color: theme.colors.textMuted }]}
+                  />{" "}
+                  per use
+                </Text>
+              )}
               {roi.weekStreak > 0 ? (
                 <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
                   {roi.weekStreak}-week streak
@@ -237,9 +225,7 @@ export function SubscriptionRoiCard({
       })}
       {untracked.length > 0 ? (
         <View style={styles.untracked}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Not tracked. Tap a bill to track it.
-          </Text>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Not tracked</Text>
           <View style={styles.untrackedList}>
             {untracked.map((item) => (
               <Button

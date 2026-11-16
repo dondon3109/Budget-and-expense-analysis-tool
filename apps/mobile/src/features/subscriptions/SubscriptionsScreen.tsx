@@ -136,7 +136,7 @@ export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) 
         <EmptyState
           icon="calendar-sync-outline"
           title="No bills yet"
-          description="Add electricity, water, internet, or subscription charges to see their monthly cost."
+          description="Add utilities and subscriptions to see their monthly cost."
           action={
             <Button disabled={!local.workspace} onPress={addSubscription} variant="primary">
               + Add a bill
@@ -236,13 +236,6 @@ export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) 
               <Text style={[typography.headline, { color: theme.colors.text }]}>
                 No {filter} bills
               </Text>
-              <Text
-                style={[typography.caption, { color: theme.colors.textMuted, textAlign: "center" }]}
-              >
-                {filter === "canceled"
-                  ? "All your bills are currently active."
-                  : "You do not have any active bills."}
-              </Text>
             </Card>
           ) : (
             filteredSubscriptions.map((subscription) => (
@@ -307,9 +300,6 @@ function MonthlyCostCard({
               /mo billed in {other}
             </Text>
           ))}
-          <Text style={[typography.caption, { color: theme.colors.textMuted, fontSize: 11 }]}>
-            Active bills only · Yearly bills divided across 12 months
-          </Text>
         </View>
         <View
           accessibilityElementsHidden
