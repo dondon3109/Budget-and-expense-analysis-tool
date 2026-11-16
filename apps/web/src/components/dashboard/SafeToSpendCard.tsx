@@ -104,7 +104,8 @@ export function SafeToSpendCard({
           <AlertTriangle size={14} aria-hidden="true" />
           <div>
             <strong>{alertMessage.title}</strong>
-            <p>{alertMessage.body}</p>
+            {/* The deficit date lives on the Bills forecast; the title alone flags the risk here. */}
+            {alert?.kind === "overspent" ? <p>{alertMessage.body}</p> : null}
           </div>
         </div>
       ) : null}
