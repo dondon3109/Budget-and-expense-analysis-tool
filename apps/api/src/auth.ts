@@ -137,6 +137,9 @@ const LAPSED_FAMILY_WRITES = [
   "/api/app/family/close",
 ];
 
+// The one route a voice ticket opens. Anywhere else a ticket is ignored and left unspent.
+const VOICE_STREAM_PATH = "/api/app/assistant/voice/stream";
+
 function acceptsFamilyWorkspace(path: string): boolean {
   return FAMILY_WORKSPACE_PATHS.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
@@ -154,10 +157,11 @@ export function createAuthMiddleware(
 
     // A browser cannot set an Authorization header on a WebSocket handshake, so the stream
     // redeems a single-use ticket from the query string instead of carrying the access token in
-    // the URL. Only a real upgrade may redeem one, and redemption deletes the row, so a replayed
-    // or expired ticket is rejected here with the same 401 shape as a bad token.
+    // the URL. Only a real upgrade of the stream route may redeem one, so a ticket never reads
+    // the rest of the API, and redemption deletes the row, so a replayed or expired ticket is
+    // rejected here with the same 401 shape as a bad token.
     let ticketUserId: string | null = null;
-    if (!token && isWebSocket) {
+    if (!token && isWebSocket && context.req.path === VOICE_STREAM_PATH) {
       const ticket = context.req.query("ticket")?.trim();
       if (ticket) {
         ticketUserId = await voiceTickets.consume(context.env, ticket);
