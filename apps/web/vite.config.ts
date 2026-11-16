@@ -95,7 +95,9 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     build: {
-      sourcemap: false,
+      // Hidden maps (no sourceMappingURL) exist only for the release workflow's PostHog upload,
+      // which deletes them before the bundle is hashed and deployed.
+      sourcemap: process.env.ZOPTION_WEB_SOURCEMAPS === "1" ? "hidden" : false,
     },
   };
 });
