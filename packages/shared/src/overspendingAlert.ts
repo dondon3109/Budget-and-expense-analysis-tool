@@ -51,7 +51,7 @@ export function overspendingAlertMessage(alert: OverspendingAlert): {
   if (alert.kind === "deficit_risk") {
     return {
       title: "Deficit risk ahead",
-      body: `Your balance is projected to fall below zero on ${alert.deficitDate}. Nothing is safe to spend this week until then.`,
+      body: `Your balance is projected to fall below zero on ${alert.deficitDate}.`,
     };
   }
   return {
