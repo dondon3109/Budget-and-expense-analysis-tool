@@ -1,4 +1,5 @@
 import {
+  isSubscriptionUsageTracked,
   SUBSCRIPTION_IDLE_DAYS,
   subscriptionRoi,
   type SubscriptionMonthItem,
@@ -17,12 +18,13 @@ interface SubscriptionRoiPanelProps {
   items: SubscriptionMonthItem[];
   usage: SubscriptionUsageList | undefined;
   today: string;
-  /** The subscription whose check-in is being saved. */
+  /** The subscription whose check-in or tracking switch is being saved. */
   savingId?: string;
   error?: string;
   onCheckIn: (id: string) => void;
   onUndo: (id: string) => void;
   onCancel: (id: string) => void;
+  onTrack: (id: string, tracked: boolean) => void;
 }
 
 function statusLabel(roi: SubscriptionRoi): string {
@@ -35,7 +37,8 @@ function statusLabel(roi: SubscriptionRoi): string {
 
 /**
  * Subscription ROI: a "used it" check-in per subscription per day, what each use cost this
- * cycle, and a cancel prompt once a tracked subscription sits unused for 30 days.
+ * cycle, and a cancel prompt once a tracked subscription sits unused for 30 days. Only bills with
+ * "Track usage" on get rows; rent and utilities start off, so nobody taps "Used it" for water.
  */
 export function SubscriptionRoiPanel({
   isPro,
@@ -47,6 +50,7 @@ export function SubscriptionRoiPanel({
   onCheckIn,
   onUndo,
   onCancel,
+  onTrack,
 }: SubscriptionRoiPanelProps) {
   const active = items.filter((item) => item.status === "active");
   if (active.length === 0) return null;
@@ -70,7 +74,12 @@ export function SubscriptionRoiPanel({
   }
 
   const usedOnById = new Map(usage?.usage.map((row) => [row.subscriptionId, row.usedOn]));
-  const rows = active.map((item) => ({
+  const trackedById = new Map(usage?.tracking.map((row) => [row.subscriptionId, row.tracked]));
+  const tracked = active.filter((item) =>
+    isSubscriptionUsageTracked(item.name, trackedById.get(item.id)),
+  );
+  const untracked = active.filter((item) => !tracked.includes(item));
+  const rows = tracked.map((item) => ({
     item,
     roi: subscriptionRoi(item, usedOnById.get(item.id) ?? [], today),
   }));
@@ -124,6 +133,15 @@ export function SubscriptionRoiPanel({
               </div>
             </dl>
             <div className="subscription-roi-actions">
+              <button
+                className="button ghost compact"
+                type="button"
+                disabled={savingId === item.id}
+                aria-label={`Stop tracking ${item.name}`}
+                onClick={() => onTrack(item.id, false)}
+              >
+                Stop tracking
+              </button>
               {roi.status === "idle" && (
                 <button
                   className="button secondary"
@@ -158,6 +176,23 @@ export function SubscriptionRoiPanel({
           </li>
         ))}
       </ul>
+      {untracked.length > 0 && (
+        <div className="subscription-roi-untracked">
+          <span>Not tracked</span>
+          {untracked.map((item) => (
+            <button
+              key={item.id}
+              className="button secondary compact"
+              type="button"
+              disabled={savingId === item.id}
+              aria-label={`Track ${item.name}`}
+              onClick={() => onTrack(item.id, true)}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }

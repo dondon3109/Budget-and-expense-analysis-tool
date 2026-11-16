@@ -1,8 +1,10 @@
 import {
   subscriptionUsageListSchema,
   subscriptionUsageSchema,
+  subscriptionUsageTrackingSchema,
   type SubscriptionUsage,
   type SubscriptionUsageList,
+  type SubscriptionUsageTracking,
 } from "@zoption/shared";
 
 import { apiRequest } from "./authenticated";
@@ -13,8 +15,8 @@ export interface SubscriptionUsageApi {
   fetchImpl?: typeof fetch;
 }
 
-// Subscription ROI check-ins (Pro). Worker state, not ledger data: they bypass the outbox and
-// need a connection, and they always act in the personal workspace.
+// Subscription ROI (Pro). Worker state, not ledger data: taps bypass the outbox, wait in the local
+// queue (`subscription-usage-upload.ts`), and always act in the personal workspace.
 const PATH = "/api/app/subscriptions";
 
 export function getSubscriptionUsage(api: SubscriptionUsageApi): Promise<SubscriptionUsageList> {
@@ -37,7 +39,7 @@ export function checkInSubscription(
     path: `${PATH}/${encodeURIComponent(id)}/usage`,
     method: "POST",
     body: { usedOn },
-    fallback: "Zoption could not save that check-in. Try again when you are online.",
+    fallback: "Zoption could not save that check-in.",
     decode: (value) => subscriptionUsageSchema.parse(value),
   });
 }
@@ -51,7 +53,22 @@ export function undoSubscriptionCheckIn(
     ...api,
     path: `${PATH}/${encodeURIComponent(id)}/usage/${usedOn}`,
     method: "DELETE",
-    fallback: "Zoption could not undo that check-in. Try again when you are online.",
+    fallback: "Zoption could not undo that check-in.",
     decode: (value) => subscriptionUsageSchema.parse(value),
+  });
+}
+
+export function setSubscriptionUsageTracking(
+  api: SubscriptionUsageApi,
+  id: string,
+  tracked: boolean,
+): Promise<SubscriptionUsageTracking> {
+  return apiRequest({
+    ...api,
+    path: `${PATH}/${encodeURIComponent(id)}/usage/tracking`,
+    method: "PUT",
+    body: { tracked },
+    fallback: "Zoption could not save whether to track that bill.",
+    decode: (value) => subscriptionUsageTrackingSchema.parse(value),
   });
 }

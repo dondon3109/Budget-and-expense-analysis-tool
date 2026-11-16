@@ -1,4 +1,5 @@
 import {
+  isSubscriptionUsageTracked,
   subscriptionRoi,
   type AssistantToolResultEnvelope,
   type Currency,
@@ -24,7 +25,8 @@ export interface SubscriptionsReadInput {
  * The user's saved subscriptions, the monthly cost of the active ones, and what bills in the
  * next few days. Totals count only the workspace currency, like the Subscriptions page, so a
  * plan billed in another currency is listed but never added in. `usage` is the Pro check-in log,
- * or null on other plans; a subscription then carries no usage field.
+ * or null on other plans; a subscription then carries no usage field. A bill with "Track usage"
+ * off (rent and utilities by default) reads as untracked, whatever its old check-ins say.
  */
 export function subscriptionsResult(
   summary: SubscriptionMonthSummary,
@@ -32,6 +34,7 @@ export function subscriptionsResult(
   usage: SubscriptionUsageList | null = null,
 ): AssistantToolResultEnvelope<unknown> {
   const usedOnById = new Map(usage?.usage.map((row) => [row.subscriptionId, row.usedOn]));
+  const trackedById = new Map(usage?.tracking.map((row) => [row.subscriptionId, row.tracked]));
   const days = input.dueWithinDays ?? DEFAULT_DUE_WITHIN_DAYS;
   const until = shiftDays(input.through, days);
   const currency = summary.currency;
@@ -85,7 +88,11 @@ export function subscriptionsResult(
         accountName: item.accountName,
         ...(item.renewalBlockedReason ? { renewalOnHold: item.renewalBlockedReason } : {}),
         ...(usage
-          ? { usage: usageSummary(item, usedOnById.get(item.id) ?? [], input.through) }
+          ? {
+              usage: isSubscriptionUsageTracked(item.name, trackedById.get(item.id))
+                ? usageSummary(item, usedOnById.get(item.id) ?? [], input.through)
+                : { status: "untracked" },
+            }
           : {}),
       })),
     },

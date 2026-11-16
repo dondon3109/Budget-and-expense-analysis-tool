@@ -8,6 +8,7 @@ import {
   type SubscriptionStatus,
   type SubscriptionUsage,
   type SubscriptionUsageList,
+  type SubscriptionUsageTracking,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, CalendarDays, LayoutList, Plus, RefreshCw, Repeat2 } from "lucide-react";
@@ -30,6 +31,7 @@ import { SubscriptionTable } from "../components/subscriptions/SubscriptionTable
 import { useBillingSummary } from "../hooks/useBillingSummary";
 import {
   checkInSubscription,
+  setSubscriptionUsageTracking,
   createSubscription,
   deleteSubscription,
   setSubscriptionStatus,
@@ -54,10 +56,16 @@ function subscriptionMonthlyCost(item: Pick<SubscriptionRecord, "amountMinor" | 
 /** Swaps one subscription's check-in days into the cached usage list. */
 function replaceUsage(
   current: SubscriptionUsageList | undefined,
-  next: SubscriptionUsage,
+  next: SubscriptionUsage | SubscriptionUsageTracking,
 ): SubscriptionUsageList {
-  const others = (current?.usage ?? []).filter((row) => row.subscriptionId !== next.subscriptionId);
-  return { usage: next.usedOn.length > 0 ? [...others, next] : others };
+  const usage = current?.usage ?? [];
+  const tracking = current?.tracking ?? [];
+  if ("tracked" in next) {
+    const others = tracking.filter((row) => row.subscriptionId !== next.subscriptionId);
+    return { usage, tracking: [...others, next] };
+  }
+  const others = usage.filter((row) => row.subscriptionId !== next.subscriptionId);
+  return { usage: next.usedOn.length > 0 ? [...others, next] : others, tracking };
 }
 
 function updateSubscriptionSummary(
@@ -214,10 +222,21 @@ export function SubscriptionsPage() {
     },
   });
   const usageMutation = useMutation({
-    mutationFn: (args: { id: string; undo: boolean }) =>
-      args.undo
-        ? undoSubscriptionCheckIn(workspace, { id: args.id, usedOn: today })
-        : checkInSubscription(workspace, { id: args.id, usedOn: today }),
+    mutationFn: (args: {
+      id: string;
+      action: "check_in" | "undo" | "track" | "untrack";
+    }): Promise<SubscriptionUsage | SubscriptionUsageTracking> => {
+      if (args.action === "check_in") {
+        return checkInSubscription(workspace, { id: args.id, usedOn: today });
+      }
+      if (args.action === "undo") {
+        return undoSubscriptionCheckIn(workspace, { id: args.id, usedOn: today });
+      }
+      return setSubscriptionUsageTracking(workspace, {
+        id: args.id,
+        tracked: args.action === "track",
+      });
+    },
     onSuccess: (usage) =>
       queryClient.setQueryData<SubscriptionUsageList>(
         queryKeys.subscriptionUsage(workspace),
@@ -365,8 +384,11 @@ export function SubscriptionsPage() {
                 today={today}
                 savingId={usageMutation.isPending ? usageMutation.variables.id : undefined}
                 error={usageMutation.error?.message ?? usageQuery.error?.message}
-                onCheckIn={(id) => usageMutation.mutate({ id, undo: false })}
-                onUndo={(id) => usageMutation.mutate({ id, undo: true })}
+                onCheckIn={(id) => usageMutation.mutate({ id, action: "check_in" })}
+                onUndo={(id) => usageMutation.mutate({ id, action: "undo" })}
+                onTrack={(id, tracked) =>
+                  usageMutation.mutate({ id, action: tracked ? "track" : "untrack" })
+                }
                 onCancel={(id) => statusMutation.mutate({ id, status: "canceled" })}
               />
             )}

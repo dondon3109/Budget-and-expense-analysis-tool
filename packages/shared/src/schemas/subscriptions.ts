@@ -54,9 +54,24 @@ export const subscriptionUsageSchema = z
 
 export type SubscriptionUsage = z.infer<typeof subscriptionUsageSchema>;
 
-/** Every subscription with at least one check-in in the window. */
+/** Turns usage tracking on or off for one subscription ("Track usage"). */
+export const subscriptionUsageTrackingInputSchema = z.object({ tracked: z.boolean() }).strict();
+
+export type SubscriptionUsageTrackingInput = z.infer<typeof subscriptionUsageTrackingInputSchema>;
+
+/** A choice the person made; a subscription without one follows `isUsageTrackedByDefault`. */
+export const subscriptionUsageTrackingSchema = z
+  .object({ subscriptionId: resourceIdSchema, tracked: z.boolean() })
+  .strict();
+
+export type SubscriptionUsageTracking = z.infer<typeof subscriptionUsageTrackingSchema>;
+
+/** Every subscription with a check-in in the window, and every explicit tracking choice. */
 export const subscriptionUsageListSchema = z
-  .object({ usage: z.array(subscriptionUsageSchema) })
+  .object({
+    usage: z.array(subscriptionUsageSchema),
+    tracking: z.array(subscriptionUsageTrackingSchema),
+  })
   .strict();
 
 export type SubscriptionUsageList = z.infer<typeof subscriptionUsageListSchema>;

@@ -28,21 +28,23 @@ const base: SubscriptionMonthItem = {
   monthlyCostMinor: 1_500_00,
 };
 const video: SubscriptionMonthItem = { ...base, id: "video", name: "Video" };
+const electric: SubscriptionMonthItem = { ...base, id: "electric", name: "Electric bill" };
 
 afterEach(cleanup);
 
 function renderPanel(props: Partial<Parameters<typeof SubscriptionRoiPanel>[0]> = {}) {
-  const handlers = { onCheckIn: vi.fn(), onUndo: vi.fn(), onCancel: vi.fn() };
+  const handlers = { onCheckIn: vi.fn(), onUndo: vi.fn(), onCancel: vi.fn(), onTrack: vi.fn() };
   render(
     <MemoryRouter>
       <SubscriptionRoiPanel
         isPro
-        items={[base, video]}
+        items={[base, video, electric]}
         usage={{
           usage: [
             { subscriptionId: "gym", usedOn: ["2026-11-06", "2026-11-10", "2026-11-16"] },
             { subscriptionId: "video", usedOn: ["2026-10-01"] },
           ],
+          tracking: [{ subscriptionId: "video", tracked: true }],
         }}
         today="2026-11-16"
         {...handlers}
@@ -76,6 +78,15 @@ describe("SubscriptionRoiPanel", () => {
     expect(handlers.onCancel).toHaveBeenCalledWith("video");
     await userEvent.click(within(row).getByRole("button", { name: "I used Video today" }));
     expect(handlers.onCheckIn).toHaveBeenCalledWith("video");
+  });
+
+  it("leaves rent and utilities out until the person tracks them", async () => {
+    const handlers = renderPanel();
+    expect(screen.queryByRole("button", { name: "I used Electric bill today" })).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Track Electric bill" }));
+    expect(handlers.onTrack).toHaveBeenCalledWith("electric", true);
+    await userEvent.click(screen.getByRole("button", { name: "Stop tracking Gym" }));
+    expect(handlers.onTrack).toHaveBeenCalledWith("gym", false);
   });
 
   it("shows a Pro teaser instead of check-ins on other plans", () => {

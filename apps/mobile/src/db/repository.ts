@@ -9,6 +9,7 @@ import {
   type Currency,
   type CurrencyTotals,
   type InterestSettings,
+  type SubscriptionUsageList,
   type TransactionListItem,
   type TransactionRecord,
 } from "@zoption/shared";
@@ -798,6 +799,27 @@ LIMIT ?`;
         status: row.status,
         syncState: row.sync_state,
       }));
+  }
+
+  /** Subscription ROI check-ins and Track usage choices on this phone, queued taps included. */
+  async getSubscriptionUsage(): Promise<SubscriptionUsageList> {
+    const days = await this.database.getAllAsync<{ subscription_id: string; used_on: string }>(
+      "SELECT subscription_id, used_on FROM subscription_usage ORDER BY subscription_id, used_on",
+    );
+    const tracking = await this.database.getAllAsync<{ subscription_id: string; tracked: number }>(
+      "SELECT subscription_id, tracked FROM subscription_usage_tracking",
+    );
+    const usedOn = new Map<string, string[]>();
+    for (const row of days) {
+      usedOn.set(row.subscription_id, [...(usedOn.get(row.subscription_id) ?? []), row.used_on]);
+    }
+    return {
+      usage: [...usedOn].map(([subscriptionId, dates]) => ({ subscriptionId, usedOn: dates })),
+      tracking: tracking.map((row) => ({
+        subscriptionId: row.subscription_id,
+        tracked: row.tracked === 1,
+      })),
+    };
   }
 
   async getSubscriptions(): Promise<LocalSubscriptionItem[]> {

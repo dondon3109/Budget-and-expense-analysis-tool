@@ -5,6 +5,7 @@ import {
   SUBSCRIPTION_USAGE_WINDOW_DAYS,
   type SubscriptionUsage,
   type SubscriptionUsageList,
+  type SubscriptionUsageTracking,
 } from "@zoption/shared";
 
 import { proPlanRequiredError, readTier } from "../billing/entitlements";
@@ -21,8 +22,9 @@ export interface IdleRenewal {
 }
 
 /**
- * Subscription ROI check-ins (Pro). The phone and the web both call these online; the log is
- * not part of mobile sync. `today` is the Asia/Manila date unless a caller passes one.
+ * Subscription ROI check-ins and "Track usage" choices (Pro). Not part of mobile sync: the web
+ * calls these directly and the phone replays its local queue through them, so every write is
+ * idempotent. `today` is the Asia/Manila date unless a caller passes one.
  */
 export interface SubscriptionUsageRepository {
   list(env: Bindings, tenantId: string, today?: string): Promise<SubscriptionUsageList>;
@@ -40,10 +42,18 @@ export interface SubscriptionUsageRepository {
     usedOn: string,
     today?: string,
   ): Promise<SubscriptionUsage>;
+  /** Saves the "Track usage" switch; check-ins stay, so switching back on keeps the history. */
+  setTracking(
+    env: Bindings,
+    tenantId: string,
+    subscriptionId: string,
+    tracked: boolean,
+  ): Promise<SubscriptionUsageTracking>;
   /**
    * Pro tenants' active subscriptions renewing on `billingDate` that were checked in at least once
-   * but not in the last `SUBSCRIPTION_IDLE_DAYS`, and not nudged for that date yet. A subscription
-   * never checked in is not tracked, so it is never nudged.
+   * but not in the last `SUBSCRIPTION_IDLE_DAYS`, and not nudged for that date yet. One never
+   * checked in, or switched off, is never nudged. The default by name lives in shared code, so a
+   * bill with no choice counts as tracked once it has a check-in.
    */
   listIdleRenewals(
     env: Bindings,
@@ -119,8 +129,18 @@ export const subscriptionUsageRepository: SubscriptionUsageRepository = {
       days.push(row.usedOn);
       bySubscription.set(row.subscriptionId, days);
     }
+    const tracking = await env.DB.prepare(
+      `SELECT subscription_id AS subscriptionId, tracked FROM subscription_usage_settings
+       WHERE tenant_id = ? ORDER BY subscription_id`,
+    )
+      .bind(tenantId)
+      .all<{ subscriptionId: string; tracked: number }>();
     return {
       usage: [...bySubscription].map(([subscriptionId, usedOn]) => ({ subscriptionId, usedOn })),
+      tracking: tracking.results.map((row) => ({
+        subscriptionId: row.subscriptionId,
+        tracked: row.tracked === 1,
+      })),
     };
   },
 
@@ -149,6 +169,18 @@ export const subscriptionUsageRepository: SubscriptionUsageRepository = {
     return readUsage(env, tenantId, subscriptionId, today);
   },
 
+  async setTracking(env, tenantId, subscriptionId, tracked) {
+    await requirePro(env, tenantId);
+    await requireSubscription(env, tenantId, subscriptionId);
+    await env.DB.prepare(
+      `INSERT INTO subscription_usage_settings (tenant_id, subscription_id, tracked) VALUES (?, ?, ?)
+       ON CONFLICT (tenant_id, subscription_id) DO UPDATE SET tracked = excluded.tracked`,
+    )
+      .bind(tenantId, subscriptionId, tracked ? 1 : 0)
+      .run();
+    return { subscriptionId, tracked };
+  },
+
   async listIdleRenewals(env, billingDate, today, limit) {
     const { results } = await env.DB.prepare(
       `SELECT s.tenant_id AS tenantId, s.id AS subscriptionId, s.name,
@@ -162,6 +194,9 @@ export const subscriptionUsageRepository: SubscriptionUsageRepository = {
          AND NOT EXISTS (
            SELECT 1 FROM subscription_usage_nudges n
            WHERE n.tenant_id = s.tenant_id AND n.subscription_id = s.id AND n.billing_date = ?)
+         AND NOT EXISTS (
+           SELECT 1 FROM subscription_usage_settings c
+           WHERE c.tenant_id = s.tenant_id AND c.subscription_id = s.id AND c.tracked = 0)
        GROUP BY s.tenant_id, s.id
        HAVING MAX(u.used_on) <= ?
        LIMIT ?`,

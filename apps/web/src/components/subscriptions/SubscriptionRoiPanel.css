@@ -135,3 +135,12 @@
     align-items: flex-start;
   }
 }
+
+.subscription-roi-untracked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}

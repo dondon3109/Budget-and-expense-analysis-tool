@@ -5,6 +5,7 @@ import type {
   SubscriptionStatusUpdate,
   SubscriptionUsage,
   SubscriptionUsageList,
+  SubscriptionUsageTracking,
 } from "@zoption/shared";
 
 import { captureFunnelEvent } from "../../analytics/funnel";
@@ -88,5 +89,16 @@ export function undoSubscriptionCheckIn(
     workspace,
     `/api/app/subscriptions/${encodeURIComponent(args.id)}/usage/${args.usedOn}`,
     { method: "DELETE" },
+  );
+}
+
+export function setSubscriptionUsageTracking(
+  workspace: AuthenticatedWorkspace,
+  args: { id: string; tracked: boolean },
+): Promise<SubscriptionUsageTracking> {
+  return requestJson(
+    workspace,
+    `/api/app/subscriptions/${encodeURIComponent(args.id)}/usage/tracking`,
+    { method: "PUT", body: JSON.stringify({ tracked: args.tracked }) },
   );
 }

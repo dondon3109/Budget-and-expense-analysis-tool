@@ -1,3 +1,4 @@
+import { CANCELLATION_GUIDES } from "./cancellationGuides";
 import {
   addToCurrencyTotal,
   type Currency,
@@ -93,6 +94,38 @@ export function latestDueSubscriptionBillingDate(
     if (following > today) return due;
     due = following;
   }
+}
+
+// Services people use rather than just pay for: the streaming, software, and gaming entries of
+// the cancellation guide catalog, plus gyms. Utilities, rent, phone plans, and payment channels
+// stay out, so they never get a "Used it" button unless someone turns it on.
+const USAGE_TRACKED_GUIDE_CATEGORIES = new Set(["streaming", "software", "gaming"]);
+const USAGE_TRACKED_KEYWORDS = [
+  ...CANCELLATION_GUIDES.filter((guide) =>
+    USAGE_TRACKED_GUIDE_CATEGORIES.has(guide.category),
+  ).flatMap((guide) => guide.aliases),
+  "gym",
+  "fitness",
+];
+
+/**
+ * Whether a subscription starts with usage tracking on, before anyone flips its switch. Matches
+ * whole words of the name, so "Electric bill" or "Monthly rent" never match a service.
+ */
+export function isUsageTrackedByDefault(subscriptionName: string): boolean {
+  const name = ` ${subscriptionName
+    .toLowerCase()
+    .replace(/[^a-z0-9+]+/g, " ")
+    .trim()} `;
+  return USAGE_TRACKED_KEYWORDS.some((keyword) => name.includes(` ${keyword} `));
+}
+
+/** The person's own choice wins; without one, the default by name. */
+export function isSubscriptionUsageTracked(
+  subscriptionName: string,
+  explicit: boolean | undefined,
+): boolean {
+  return explicit ?? isUsageTrackedByDefault(subscriptionName);
 }
 
 /** No check-in for this many days makes a tracked subscription idle. */

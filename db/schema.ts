@@ -405,7 +405,8 @@ export const subscriptions = sqliteTable(
   ],
 );
 
-// Subscription ROI check-ins, one per subscription per day (0090_subscription_usage.sql).
+// Subscription ROI (0090): daily check-ins, "Track usage" choices (no row means the default by
+// name), and one idle nudge per subscription per billing date.
 export const subscriptionUsage = sqliteTable(
   "subscription_usage",
   {
@@ -423,7 +424,20 @@ export const subscriptionUsage = sqliteTable(
   (table) => [primaryKey({ columns: [table.tenantId, table.subscriptionId, table.usedOn] })],
 );
 
-// The idle nudge sent before a renewal, one per subscription per billing date.
+export const subscriptionUsageSettings = sqliteTable(
+  "subscription_usage_settings",
+  {
+    tenantId: text("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    subscriptionId: text("subscription_id")
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: "cascade" }),
+    tracked: integer("tracked", { mode: "boolean" }).notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.tenantId, table.subscriptionId] })],
+);
+
 export const subscriptionUsageNudges = sqliteTable(
   "subscription_usage_nudges",
   {

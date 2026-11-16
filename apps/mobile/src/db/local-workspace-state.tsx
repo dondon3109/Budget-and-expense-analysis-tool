@@ -9,7 +9,7 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import type { BudgetQuery } from "@zoption/shared";
+import type { BudgetQuery, SubscriptionUsageList } from "@zoption/shared";
 
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
@@ -426,6 +426,22 @@ export function useSubscriptions(): {
     initialLoading: true,
   });
   return { subscriptions: data, loading, error, retry };
+}
+
+const readSubscriptionUsage = (workspace: LocalWorkspace) =>
+  workspace.repository.getSubscriptionUsage();
+const NO_SUBSCRIPTION_USAGE: SubscriptionUsageList = { usage: [], tracking: [] };
+
+/** Subscription ROI check-ins and Track usage choices, this phone's queued taps included. */
+export function useSubscriptionUsage(): { usage: SubscriptionUsageList; error: string | null } {
+  const { workspace } = useLocalWorkspace();
+  const { data, error } = useLocalQuery(workspace, {
+    read: readSubscriptionUsage,
+    tables: ["subscription_usage", "subscription_usage_tracking"],
+    empty: NO_SUBSCRIPTION_USAGE,
+    errorMessage: "Bill check-ins could not be read from encrypted local storage.",
+  });
+  return { usage: data, error };
 }
 
 export function useSubscription(id?: string): {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { previousSubscriptionBillingDate, subscriptionRoi } from "../src/subscriptions";
+import {
+  isSubscriptionUsageTracked,
+  isUsageTrackedByDefault,
+  previousSubscriptionBillingDate,
+  subscriptionRoi,
+} from "../src/subscriptions";
 
 const gym = {
   amountMinor: 150_000,
@@ -70,5 +75,22 @@ describe("previousSubscriptionBillingDate", () => {
     expect(previousSubscriptionBillingDate("2026-03-31", "monthly")).toBe("2026-02-28");
     expect(previousSubscriptionBillingDate("2026-01-15", "monthly")).toBe("2025-12-15");
     expect(previousSubscriptionBillingDate("2028-02-29", "yearly")).toBe("2027-02-28");
+  });
+});
+
+describe("isUsageTrackedByDefault", () => {
+  it("starts services on and rent and utilities off", () => {
+    for (const name of ["Netflix Standard", "ChatGPT Plus", "Spotify Premium", "Disney+", "Gym"]) {
+      expect(isUsageTrackedByDefault(name), name).toBe(true);
+    }
+    for (const name of ["Electric bill", "Water", "Monthly rent", "Meralco", "Internet"]) {
+      expect(isUsageTrackedByDefault(name), name).toBe(false);
+    }
+  });
+
+  it("lets the person's choice win over the default", () => {
+    expect(isSubscriptionUsageTracked("Monthly rent", true)).toBe(true);
+    expect(isSubscriptionUsageTracked("Netflix", false)).toBe(false);
+    expect(isSubscriptionUsageTracked("Netflix", undefined)).toBe(true);
   });
 });

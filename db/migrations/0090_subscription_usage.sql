@@ -18,3 +18,12 @@ CREATE TABLE `subscription_usage_nudges` (
 	`created_at` text NOT NULL DEFAULT (datetime('now')),
 	PRIMARY KEY (`tenant_id`, `subscription_id`, `billing_date`)
 );
+--> statement-breakpoint
+-- "Track usage" choices. No row means the default by name (`isUsageTrackedByDefault`), so a
+-- streaming service starts tracked and an electric bill or rent does not.
+CREATE TABLE `subscription_usage_settings` (
+	`tenant_id` text NOT NULL REFERENCES `tenants`(`id`) ON DELETE CASCADE,
+	`subscription_id` text NOT NULL REFERENCES `subscriptions`(`id`) ON DELETE CASCADE,
+	`tracked` integer NOT NULL CHECK (`tracked` IN (0, 1)),
+	PRIMARY KEY (`tenant_id`, `subscription_id`)
+);

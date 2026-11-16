@@ -10,6 +10,7 @@ import {
   financialGoals,
   subscriptions,
   subscriptionUsage,
+  subscriptionUsageSettings,
 } from "../../../../db/schema";
 import type { GoalsProfile, TransactionListItem } from "@zoption/shared";
 import { goalProfileRepository } from "../db/goal-profile";
@@ -29,6 +30,7 @@ export interface AccountArchive {
   budgets: unknown[];
   subscriptions: unknown[];
   subscriptionUsage: unknown[];
+  subscriptionUsageSettings: unknown[];
   goals: unknown[];
   debts: unknown[];
   goalProfile: GoalsProfile;
@@ -49,6 +51,7 @@ export async function buildAccountArchive(args: {
     budgetRows,
     subscriptionRows,
     subscriptionUsageRows,
+    subscriptionUsageSettingRows,
     goalRows,
     debtRows,
     eventRows,
@@ -63,6 +66,10 @@ export async function buildAccountArchive(args: {
     db.select().from(budgets).where(eq(budgets.tenantId, args.tenantId)),
     db.select().from(subscriptions).where(eq(subscriptions.tenantId, args.tenantId)),
     db.select().from(subscriptionUsage).where(eq(subscriptionUsage.tenantId, args.tenantId)),
+    db
+      .select()
+      .from(subscriptionUsageSettings)
+      .where(eq(subscriptionUsageSettings.tenantId, args.tenantId)),
     db.select().from(financialGoals).where(eq(financialGoals.tenantId, args.tenantId)),
     db.select().from(debts).where(eq(debts.tenantId, args.tenantId)),
     db.select().from(calendarEvents).where(eq(calendarEvents.tenantId, args.tenantId)),
@@ -82,6 +89,7 @@ export async function buildAccountArchive(args: {
     budgets: budgetRows.map(stripTenantId),
     subscriptions: subscriptionRows.map(stripTenantId),
     subscriptionUsage: subscriptionUsageRows.map(stripTenantId),
+    subscriptionUsageSettings: subscriptionUsageSettingRows.map(stripTenantId),
     goals: goalRows.map(stripTenantId),
     debts: debtRows.map(stripTenantId),
     goalProfile,

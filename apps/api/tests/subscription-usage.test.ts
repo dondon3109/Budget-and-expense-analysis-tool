@@ -48,6 +48,7 @@ describe("subscription usage check-ins", () => {
 
     await expect(subscriptionUsageRepository.list(env, "user:pro", TODAY)).resolves.toEqual({
       usage: [{ subscriptionId: "sub-gym", usedOn: ["2026-11-10", TODAY] }],
+      tracking: [],
     });
 
     await expect(
@@ -84,6 +85,25 @@ describe("subscription usage check-ins", () => {
     await expect(
       subscriptionUsageRepository.checkIn(env, "user:pro", "sub-gym", "2026-11-17", TODAY),
     ).resolves.toMatchObject({ usedOn: ["2026-11-17"] });
+  });
+
+  it("saves the Track usage switch and keeps check-ins when it is off", async () => {
+    const { env } = seeded();
+    await subscriptionUsageRepository.checkIn(env, "user:pro", "sub-gym", TODAY, TODAY);
+    await subscriptionUsageRepository.setTracking(env, "user:pro", "sub-gym", true);
+    await expect(
+      subscriptionUsageRepository.setTracking(env, "user:pro", "sub-gym", false),
+    ).resolves.toEqual({ subscriptionId: "sub-gym", tracked: false });
+    await expect(subscriptionUsageRepository.list(env, "user:pro", TODAY)).resolves.toEqual({
+      usage: [{ subscriptionId: "sub-gym", usedOn: [TODAY] }],
+      tracking: [{ subscriptionId: "sub-gym", tracked: false }],
+    });
+    await expect(
+      subscriptionUsageRepository.setTracking(env, "user:pro", "sub-free", true),
+    ).rejects.toMatchObject({ status: 404 });
+    await expect(
+      subscriptionUsageRepository.setTracking(env, "user:free", "sub-free", true),
+    ).rejects.toMatchObject({ status: 403 });
   });
 
   it("drops check-ins with their subscription", async () => {
@@ -125,6 +145,27 @@ describe("idle subscription nudges", () => {
       sendIdleSubscriptionNudges(env, now, subscriptionUsageRepository, pushRepository, send),
     ).resolves.toEqual({ nudged: 0, failed: 0 });
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("never nudges a subscription switched off", async () => {
+    const { env, database } = seeded();
+    database.exec(`
+      INSERT INTO subscription_usage (tenant_id, subscription_id, used_on)
+      VALUES ('user:pro', 'sub-gym', '2026-10-01');
+      INSERT INTO subscription_usage_settings (tenant_id, subscription_id, tracked)
+      VALUES ('user:pro', 'sub-gym', 0);
+    `);
+    const send = vi.fn();
+    await expect(
+      sendIdleSubscriptionNudges(
+        env,
+        new Date("2026-11-16T03:17:00Z"),
+        subscriptionUsageRepository,
+        pushRepository,
+        send,
+      ),
+    ).resolves.toEqual({ nudged: 0, failed: 0 });
+    expect(send).not.toHaveBeenCalled();
   });
 
   it("never nudges a subscription that was never checked in", async () => {

@@ -1,22 +1,18 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
+  isSubscriptionUsageTracked,
   SUBSCRIPTION_IDLE_DAYS,
   subscriptionRoi,
   type SubscriptionRoi,
-  type SubscriptionUsage,
-  type SubscriptionUsageList,
 } from "@zoption/shared";
 import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import {
-  checkInSubscription,
-  getSubscriptionUsage,
-  undoSubscriptionCheckIn,
-} from "@/api/subscription-usage";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { useLocalWorkspace, useSubscriptionUsage } from "@/db/local-workspace-state";
+import type { SubscriptionUsageAction } from "@/db/transaction-mutation-repository";
 import type { LocalSubscriptionItem } from "@/db/view-models";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
@@ -32,20 +28,12 @@ function statusLabel(roi: SubscriptionRoi): string {
   return `Used ${roi.daysSinceLastUse} days ago`;
 }
 
-/** Swaps one subscription's check-in days into the list. */
-function replaceUsage(
-  current: SubscriptionUsageList | null,
-  next: SubscriptionUsage,
-): SubscriptionUsageList {
-  const others = (current?.usage ?? []).filter((row) => row.subscriptionId !== next.subscriptionId);
-  return { usage: next.usedOn.length > 0 ? [...others, next] : others };
-}
-
 /**
  * Subscription ROI (Pro): a "Used it" check-in per bill per day, what each use cost this cycle,
- * and a nudge to cancel once a tracked bill sits unused for 30 days. Check-ins are Worker state
- * and need a connection; other plans and guests see what it does and where to get it.
- * `highlightId` is the bill a push nudge opened the screen on.
+ * and a nudge to cancel once a tracked bill sits unused for 30 days. Only bills with "Track usage"
+ * on get rows; rent and utilities start off. Taps save to this phone at once and upload with the
+ * next personal sync, so they work offline. Other plans and guests see what it does and where to
+ * get it. `highlightId` is the bill a push nudge opened the screen on.
  */
 export function SubscriptionRoiCard({
   subscriptions,
@@ -56,28 +44,18 @@ export function SubscriptionRoiCard({
 }) {
   const theme = useZoptionTheme();
   const { plan } = usePlan();
-  const { status: sessionStatus, getAccessToken } = useSessionSnapshot();
+  const { status: sessionStatus } = useSessionSnapshot();
+  const { workspace } = useLocalWorkspace();
+  const { usage, error: readError } = useSubscriptionUsage();
   const { openFeature } = useAccountGate();
-  const isPro = plan === "zoption_pro" && sessionStatus === "signed-in";
-  const [usage, setUsage] = useState<SubscriptionUsageList | null>(null);
-  const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Offline after a cold start the plan is unknown; the Worker only ever filled this phone's
+  // copy for a Pro account, so a copy with history keeps the card working until the plan loads.
+  const hasHistory = usage.usage.length > 0 || usage.tracking.length > 0;
+  const isPro =
+    sessionStatus === "signed-in" && (plan === "zoption_pro" || (plan === null && hasHistory));
   const today = localIsoDate(new Date());
   const active = subscriptions.filter((item) => item.status === "active");
-
-  const load = useCallback(async () => {
-    try {
-      const accessToken = await getAccessToken(false);
-      setUsage(await getSubscriptionUsage({ accessToken }));
-      setError(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not load check-ins.");
-    }
-  }, [getAccessToken]);
-
-  useEffect(() => {
-    if (isPro) void load();
-  }, [isPro, load]);
 
   if (active.length === 0) return null;
 
@@ -103,24 +81,22 @@ export function SubscriptionRoiCard({
     );
   }
 
-  const toggle = async (id: string, undo: boolean) => {
-    if (savingId) return;
-    setSavingId(id);
-    try {
-      const accessToken = await getAccessToken(false);
-      const next = undo
-        ? await undoSubscriptionCheckIn({ accessToken }, id, today)
-        : await checkInSubscription({ accessToken }, id, today);
-      setUsage((current) => replaceUsage(current, next));
-      setError(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not save that check-in.");
-    } finally {
-      setSavingId(null);
-    }
+  const tap = (id: string, action: SubscriptionUsageAction) => {
+    if (!workspace) return;
+    const usedOn = action === "check_in" || action === "undo" ? today : null;
+    workspace.transactionMutations.queueSubscriptionUsage(id, action, usedOn).then(
+      () => setError(null),
+      () => setError("Could not save that on this phone. Try again."),
+    );
   };
 
-  const usedOnById = new Map(usage?.usage.map((row) => [row.subscriptionId, row.usedOn]));
+  const usedOnById = new Map(usage.usage.map((row) => [row.subscriptionId, row.usedOn]));
+  const trackedById = new Map(usage.tracking.map((row) => [row.subscriptionId, row.tracked]));
+  const tracked = active.filter((item) =>
+    isSubscriptionUsageTracked(item.name, trackedById.get(item.id)),
+  );
+  const untracked = active.filter((item) => !tracked.includes(item));
+  const shownError = error ?? readError;
 
   return (
     <Card accessibilityLabel="Usage and value" style={styles.card}>
@@ -134,15 +110,15 @@ export function SubscriptionRoiCard({
           </Text>
         </View>
       </View>
-      {error ? (
+      {shownError ? (
         <Text
           accessibilityRole="alert"
           style={[typography.caption, { color: theme.colors.danger }]}
         >
-          {error}
+          {shownError}
         </Text>
       ) : null}
-      {active.map((item) => {
+      {tracked.map((item) => {
         const roi = subscriptionRoi(item, usedOnById.get(item.id) ?? [], today);
         const idle = roi.status === "idle";
         return (
@@ -186,9 +162,8 @@ export function SubscriptionRoiCard({
               {roi.usedToday ? (
                 <Button
                   accessibilityLabel={`Undo today's check-in for ${item.name}`}
-                  disabled={savingId === item.id}
                   icon="check"
-                  onPress={() => void toggle(item.id, true)}
+                  onPress={() => tap(item.id, "undo")}
                   variant="secondary"
                 >
                   Undo
@@ -196,8 +171,7 @@ export function SubscriptionRoiCard({
               ) : (
                 <Button
                   accessibilityLabel={`I used ${item.name} today`}
-                  disabled={savingId === item.id}
-                  onPress={() => void toggle(item.id, false)}
+                  onPress={() => tap(item.id, "check_in")}
                   variant="primary"
                 >
                   Used it
@@ -224,20 +198,49 @@ export function SubscriptionRoiCard({
                 </Text>
               ) : null}
             </View>
-            {idle ? (
+            <View style={styles.rowActions}>
+              {idle ? (
+                <Button
+                  icon="close-circle-outline"
+                  onPress={() =>
+                    router.push({ pathname: "/(app)/subscription", params: { id: item.id } })
+                  }
+                  variant="secondary"
+                >
+                  Cancel it
+                </Button>
+              ) : null}
               <Button
-                icon="close-circle-outline"
-                onPress={() =>
-                  router.push({ pathname: "/(app)/subscription", params: { id: item.id } })
-                }
-                variant="secondary"
+                accessibilityLabel={`Stop tracking ${item.name}`}
+                onPress={() => tap(item.id, "untrack")}
+                variant="quiet"
               >
-                Cancel it
+                Stop tracking
               </Button>
-            ) : null}
+            </View>
           </View>
         );
       })}
+      {untracked.length > 0 ? (
+        <View style={styles.untracked}>
+          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+            Not tracked. Tap a bill to track it.
+          </Text>
+          <View style={styles.untrackedList}>
+            {untracked.map((item) => (
+              <Button
+                key={item.id}
+                accessibilityLabel={`Track ${item.name}`}
+                icon="plus"
+                onPress={() => tap(item.id, "track")}
+                variant="secondary"
+              >
+                {item.name}
+              </Button>
+            ))}
+          </View>
+        </View>
+      ) : null}
     </Card>
   );
 }
@@ -254,4 +257,7 @@ const styles = StyleSheet.create({
   },
   rowTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
   stats: { flexDirection: "row", flexWrap: "wrap", columnGap: spacing.md, rowGap: 2 },
+  rowActions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
+  untracked: { gap: spacing.xs },
+  untrackedList: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
 });

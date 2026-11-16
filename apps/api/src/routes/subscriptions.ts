@@ -4,6 +4,7 @@ import {
   subscriptionStatusUpdateSchema,
   subscriptionUpdateSchema,
   subscriptionUsageInputSchema,
+  subscriptionUsageTrackingInputSchema,
 } from "@zoption/shared";
 import { Hono } from "hono";
 
@@ -35,6 +36,22 @@ export function createSubscriptionRoutes(
         context.get("tenant").tenantId,
         parsePathParameter(context.req.param("id")),
         input.usedOn,
+      ),
+    );
+  });
+
+  routes.put("/:id/usage/tracking", async (context) => {
+    const input = parseInput(
+      subscriptionUsageTrackingInputSchema,
+      await readJson(context),
+      "Choose whether to track this bill.",
+    );
+    return context.json(
+      await usage.setTracking(
+        context.env,
+        context.get("tenant").tenantId,
+        parsePathParameter(context.req.param("id")),
+        input.tracked,
       ),
     );
   });
