@@ -43,6 +43,8 @@ describe("BalanceAdjustCard", () => {
       />,
     );
 
+    // The new-currency picker stays hidden until the user asks to add one.
+    expect(screen.queryByRole("button", { name: "New currency" })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Add new currency" }));
     await fireEvent.press(screen.getByRole("button", { name: "New currency" }));
     // The sheet offers only currencies the account does not hold yet.
