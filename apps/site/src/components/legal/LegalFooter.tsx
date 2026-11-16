@@ -23,6 +23,7 @@ export function LegalFooter() {
         <a href="/pricing">Pricing</a>
         <a href="/guides">Guides</a>
         <a href="/tools/50-30-20-calculator">50/30/20 Calculator</a>
+        <a href="/tools/subscription-cost-calculator">Subscription Calculator</a>
         <a href="/tutorials">Tutorials</a>
         <a href="/faq">FAQ</a>
         <a href="/install">Android Beta</a>

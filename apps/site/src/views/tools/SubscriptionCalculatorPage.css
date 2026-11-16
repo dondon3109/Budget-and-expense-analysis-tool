@@ -1,0 +1,105 @@
+/* Builds on BudgetCalculatorPage.css, which the page also imports. */
+.sub-panel {
+  display: block;
+}
+
+/* Two classes so they outrank the article's own list indent and spacing. */
+.calc-panel .sub-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.calc-panel .sub-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "name amount cycle remove"
+    "note note note note";
+  gap: 8px;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+}
+
+.sub-name {
+  grid-area: name;
+}
+
+.sub-amount {
+  grid-area: amount;
+}
+
+.sub-cycle {
+  grid-area: cycle;
+}
+
+.sub-remove {
+  grid-area: remove;
+}
+
+.sub-name,
+.sub-cycle {
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 15px;
+}
+
+.sub-amount .calc-input {
+  font-size: 17px;
+}
+
+.sub-row-note {
+  grid-area: note;
+  margin: -2px 0 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.sub-row-note .calc-error {
+  margin: 0;
+}
+
+.sub-add {
+  margin: 14px 0 0;
+  min-height: 40px;
+}
+
+.sub-results {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+  .calc-panel {
+    padding: 14px;
+  }
+
+  .calc-panel .sub-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas:
+      "name name"
+      "amount cycle"
+      "note remove";
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sub-remove {
+    justify-self: end;
+  }
+
+  .sub-row-note {
+    margin: 0;
+  }
+
+  .sub-results {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

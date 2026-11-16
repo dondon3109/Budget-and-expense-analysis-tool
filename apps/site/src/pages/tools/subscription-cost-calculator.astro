@@ -1,0 +1,11 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { SubscriptionCalculator } from "../../views/tools/SubscriptionCalculator";
+import { SubscriptionCalculatorPage } from "../../views/tools/SubscriptionCalculatorPage";
+---
+
+<BaseLayout path="/tools/subscription-cost-calculator">
+  <SubscriptionCalculatorPage>
+    <SubscriptionCalculator slot="calculator" client:visible />
+  </SubscriptionCalculatorPage>
+</BaseLayout>

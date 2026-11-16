@@ -127,7 +127,7 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
     category: "subscriptions",
     readTimeMinutes: 8,
     publishedDate: "2026-02-01",
-    updatedDate: "2026-08-25",
+    updatedDate: "2026-11-16",
     author: "Zoption Personal Finance Team",
     keywords: [
       "cancel gcash autopay",
@@ -181,6 +181,14 @@ export const FINANCE_GUIDES: FinanceGuide[] = [
           "Deleting an app from your phone does NOT cancel its recurring monthly billing cycle.",
           "Cancelling before the cutoff allows you to use the remaining paid duration without being charged again.",
         ],
+      },
+    ],
+    relatedLinks: [
+      {
+        to: "/tools/subscription-cost-calculator",
+        label: "Subscription Cost Calculator for Philippine Pesos",
+        description:
+          "List what you pay for and see the monthly and yearly total in pesos before you decide what to cancel, with no sign up.",
       },
     ],
     faqs: [

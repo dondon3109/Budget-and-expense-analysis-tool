@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- New free subscription cost calculator on zoption.site: list what you pay for, weekly to yearly, and see the monthly and yearly total in pesos.
 - The 50/30/20 budget calculator on zoption.site is linked from the footer and home page, and offers a "Track this split in Zoption" sign-up right under your results.
 - Hide balance, on web and mobile: tap the eye next to your total balance to mask every amount in the app (shown as ₱••••) before you share your screen or take a screenshot. Tap it again to show them; each device remembers its own choice.
 - Receipt scanning reads GCash, Maya, and Philippine bank app confirmations and remittance or calculator results, on web and mobile: the reference number, the fee as its own line, and the type (Send Money, Pay Bills, Cash In, money received). On the phone a cash-in saves as a transfer into your wallet with its fee, the GCash or Maya account is picked for you, and the reference number goes in the notes. Scans use a newer vision model that reads app screenshots more reliably.
