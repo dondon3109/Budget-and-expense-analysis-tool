@@ -74,6 +74,13 @@ function createSqliteEnvironment(): {
       status text NOT NULL DEFAULT 'active',
       updated_at text NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE debt_payment_applied (
+      tenant_id text NOT NULL,
+      payment_key text NOT NULL,
+      debt_id text NOT NULL,
+      applied_minor integer NOT NULL,
+      PRIMARY KEY (tenant_id, payment_key)
+    );
     CREATE TABLE effective_plan_access (
       tenant_id text NOT NULL,
       source text NOT NULL,
@@ -508,6 +515,58 @@ describe("transactionRepository SQLite behavior", () => {
 
     await transactionRepository.update(env, "tenant-1", created.id, { amountMinor: 1_000 });
     expect(readDebtCard(database)).toEqual({ balanceMinor: 4_000, status: "active" });
+
+    await transactionRepository.remove(env, "tenant-1", created.id);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+  });
+
+  it("gives back only what an overpayment took off the debt", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    const overpay = () =>
+      transactionRepository.create(env, "tenant-1", {
+        accountId: "cash-1",
+        categoryId: "expense-1",
+        date: "2026-07-05",
+        description: "Card payment",
+        amountMinor: 6_000,
+        currency: "PHP",
+        kind: "expense",
+        debtId: "debt-card",
+      });
+
+    const deleted = await overpay();
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 0, status: "paid" });
+    await transactionRepository.remove(env, "tenant-1", deleted.id);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+
+    // Re-pricing gives the 5,000 back first, then takes the new amount.
+    const edited = await overpay();
+    await transactionRepository.update(env, "tenant-1", edited.id, { amountMinor: 1_000 });
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 4_000, status: "active" });
+    await transactionRepository.remove(env, "tenant-1", edited.id);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+    expect(database.prepare("SELECT COUNT(*) AS rows FROM debt_payment_applied").get()).toEqual({
+      rows: 0,
+    });
+  });
+
+  it("gives back the full amount of a payment recorded before applied amounts were kept", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    const created = await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Card payment",
+      amountMinor: 2_000,
+      currency: "PHP",
+      kind: "expense",
+      debtId: "debt-card",
+    });
+    database.prepare("DELETE FROM debt_payment_applied").run();
 
     await transactionRepository.remove(env, "tenant-1", created.id);
     expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });

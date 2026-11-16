@@ -77,6 +77,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Deleting or changing a debt payment that was larger than the debt no longer leaves the debt higher than it was before the payment.
 - Mobile: category color circles are evenly spaced in one row instead of being pushed around by their names, and the custom color button and emoji choices line up again.
 - Android: you stay signed in until you sign out or restart the phone. Closing the app, or an access token expiring, no longer sends you back to the sign-in screen. Restarting the phone signs you out, and your entries stay on the phone for the next sign-in.
 - The AI Assistant no longer fails every reply when an admin selects a current Claude model.

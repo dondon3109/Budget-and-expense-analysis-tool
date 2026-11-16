@@ -233,6 +233,7 @@ export async function pushTransferOperation(
     ...debtPaymentChanges(
       env,
       tenantId,
+      operation.entityId,
       previousPayment,
       nextPayment,
       appliedOperationGuard(tenantId, clientId, operation),

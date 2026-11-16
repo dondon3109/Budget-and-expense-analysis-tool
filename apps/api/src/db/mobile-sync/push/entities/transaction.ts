@@ -66,6 +66,7 @@ export function transactionMutation(
   const extraStatements = debtPaymentChanges(
     env,
     tenantId,
+    operation.entityId,
     previousPayment,
     next,
     appliedOperationGuard(tenantId, clientId, operation),

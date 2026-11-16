@@ -527,7 +527,7 @@ export async function pushCreateDependencyGraph(
     const transaction = operation.payload;
     if (transaction.kind !== "expense" || !transaction.debtId) continue;
     statements.push(
-      ...debtPaymentChanges(env, tenantId, null, {
+      ...debtPaymentChanges(env, tenantId, operation.entityId, null, {
         debtId: transaction.debtId,
         amountMinor: transaction.amountMinor,
       }),
