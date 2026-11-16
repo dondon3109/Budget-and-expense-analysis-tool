@@ -25,15 +25,12 @@ export const MAX_SUBSCRIPTIONS = 30;
 type Row = { id: number; name: string; amountInput: string; cycle: BillingCycle };
 
 /**
- * Example rows, not price claims: the visitor replaces them with what they pay.
- * Generic names keep the page from quoting a provider's price that later changes.
+ * One example row, not a price claim: its name says it is an example, and the
+ * visitor replaces it with what they pay. A generic name keeps the page from
+ * quoting a provider's price that later changes.
  */
 const EXAMPLE_ROWS: readonly Row[] = [
-  { id: 1, name: "Video streaming", amountInput: "549.00", cycle: "monthly" },
-  { id: 2, name: "Music streaming", amountInput: "169.00", cycle: "monthly" },
-  { id: 3, name: "Cloud storage", amountInput: "49.00", cycle: "monthly" },
-  { id: 4, name: "Gym membership", amountInput: "1,500.00", cycle: "monthly" },
-  { id: 5, name: "Antivirus", amountInput: "1,299.00", cycle: "yearly" },
+  { id: 1, name: "Example: video streaming", amountInput: "549.00", cycle: "monthly" },
 ];
 
 function parseRowAmount(input: string): { amountMinor: number } | { error: string } {
@@ -113,22 +110,24 @@ export function SubscriptionCalculator() {
                     onChange={(event) => updateRow(row.id, { amountInput: event.target.value })}
                   />
                 </div>
-                <select
-                  className="sub-cycle"
-                  value={row.cycle}
-                  aria-label={`How often ${label} charges you`}
-                  onChange={(event) => {
-                    if (isBillingCycle(event.target.value)) {
-                      updateRow(row.id, { cycle: event.target.value });
-                    }
-                  }}
-                >
-                  {BILLING_CYCLES.map((cycle) => (
-                    <option key={cycle} value={cycle}>
-                      {CYCLE_LABELS[cycle]}
-                    </option>
-                  ))}
-                </select>
+                <span className="sub-cycle">
+                  <select
+                    className="sub-cycle-select"
+                    value={row.cycle}
+                    aria-label={`How often ${label} charges you`}
+                    onChange={(event) => {
+                      if (isBillingCycle(event.target.value)) {
+                        updateRow(row.id, { cycle: event.target.value });
+                      }
+                    }}
+                  >
+                    {BILLING_CYCLES.map((cycle) => (
+                      <option key={cycle} value={cycle}>
+                        {CYCLE_LABELS[cycle]}
+                      </option>
+                    ))}
+                  </select>
+                </span>
                 <button
                   type="button"
                   className="calc-reset sub-remove"
@@ -189,7 +188,7 @@ export function SubscriptionCalculator() {
           Track these renewals in Zoption — start free
         </a>
       </p>
-      <p className="calc-hint">
+      <p className="calc-hint sub-footnote">
         Zoption keeps a calendar of every subscription and shows what renews this month, so a charge
         you forgot about does not surprise you.
       </p>

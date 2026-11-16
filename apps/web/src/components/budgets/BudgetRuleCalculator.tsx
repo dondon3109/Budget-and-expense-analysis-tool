@@ -60,7 +60,7 @@ export function BudgetRuleCalculator() {
   }
 
   return (
-    <section className="budget-rule" aria-labelledby="budget-rule-title">
+    <section id="budget-rule" className="budget-rule" aria-labelledby="budget-rule-title">
       <div className="budget-rule-heading">
         <h2 id="budget-rule-title">50/30/20 calculator</h2>
         <p>

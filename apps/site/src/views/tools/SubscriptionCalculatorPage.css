@@ -41,7 +41,7 @@
 }
 
 .sub-name,
-.sub-cycle {
+.sub-cycle-select {
   min-width: 0;
   min-height: 44px;
   border: 1px solid var(--line-strong);
@@ -52,24 +52,57 @@
   font-size: 15px;
 }
 
+/* The native arrow sits flush against the border and differs per browser, so it
+   is hidden and redrawn as a token-coloured chevron with room to breathe. */
+.sub-cycle {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.sub-cycle-select {
+  width: 100%;
+  padding-right: 34px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.sub-cycle::after {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  content: "";
+  pointer-events: none;
+  transform: translateY(-70%) rotate(45deg);
+}
+
 .sub-amount .calc-input {
   font-size: 17px;
 }
 
-.sub-row-note {
+.legal-article .sub-row-note {
   grid-area: note;
   margin: -2px 0 4px;
   color: var(--muted);
   font-size: 12px;
 }
 
-.sub-row-note .calc-error {
+.legal-article .sub-row-note .calc-error {
   margin: 0;
 }
 
 .sub-add {
   margin: 14px 0 0;
   min-height: 40px;
+}
+
+/* The article's next h2 has no top margin, so the island ends with the gap. */
+.legal-article .sub-footnote {
+  margin-bottom: 40px;
 }
 
 .sub-results {
@@ -95,7 +128,7 @@
     justify-self: end;
   }
 
-  .sub-row-note {
+  .legal-article .sub-row-note {
     margin: 0;
   }
 

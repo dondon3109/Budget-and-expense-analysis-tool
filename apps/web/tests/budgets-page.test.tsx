@@ -162,6 +162,25 @@ describe("BudgetsPage", () => {
     expect(screen.queryByText("Over by")).not.toBeInTheDocument();
   });
 
+  it("links from the header to the 50/30/20 calculator below the plan", async () => {
+    vi.mocked(getBudgets).mockResolvedValue(budgetPlan);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/budgets?month=2026-07"]}>
+          <QueryClientProvider client={queryClient}>
+            <BudgetsPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    const link = screen.getByRole("link", { name: "50/30/20 calculator" });
+    expect(link).toHaveAttribute("href", "#budget-rule");
+    expect(document.getElementById("budget-rule")).toHaveAccessibleName("50/30/20 calculator");
+  });
+
   it("flags unsaved edits and asks the browser to confirm before an unload", async () => {
     const user = userEvent.setup();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });

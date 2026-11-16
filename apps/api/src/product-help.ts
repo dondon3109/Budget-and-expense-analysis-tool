@@ -10,6 +10,7 @@ export const PRODUCT_HELP = `How Zoption works:
 - Account balances are calculated from the recorded transaction ledger. They are not live bank balances and may omit activity from before tracking began.
 - Transactions supports manual income, expense, and transfer records, filtering, editing, deletion, categories, accounts, and eligible CSV export.
 - Budgets sets monthly category limits and compares recorded spending with those limits.
+- Budgets also has a 50/30/20 calculator (on the Month tab, choose 50/30/20 calculator at the top of the page). It splits monthly take-home pay into needs, wants, and savings, the percentages can be changed, and nothing it shows is saved; the user sets the category limits from it. The same rule is sometimes called the needs-wants-savings split or the 50/30/20 budget rule.
 - Subscriptions tracks recurring charges and keeps their next recorded charge in sync when a subscription is edited, cancelled, or deleted.
 - Calendar combines transaction activity, subscriptions, and user-created events by month.
 - Goals & debt stores savings goals and debt-planning records. These can be changed in the page itself, or through AI Assistant, which only applies a change after the user taps Confirm. This support chat never changes them.

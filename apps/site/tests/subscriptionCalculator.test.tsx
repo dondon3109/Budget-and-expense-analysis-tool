@@ -53,28 +53,34 @@ describe("SubscriptionCalculator", () => {
     return within(card as HTMLElement).getByText(/₱/).textContent;
   }
 
-  it("totals the example rows before anyone types", () => {
+  it("starts with one row labelled as an example", () => {
     render(<SubscriptionCalculator />);
-    // (549 + 169 + 49 + 1,500) × 12 + 1,299 = 28,503
-    expect(yearlyTotal()).toBe("₱28,503");
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
+    expect(screen.getByLabelText("Name of subscription 1")).toHaveValue("Example: video streaming");
+    // 549 × 12 = 6,588
+    expect(yearlyTotal()).toBe("₱6,588");
   });
 
   it("leaves an unfinished row out of the totals and says so", () => {
     render(<SubscriptionCalculator />);
-    fireEvent.change(screen.getByLabelText("Amount for Gym membership"), {
+    fireEvent.click(screen.getByRole("button", { name: "Add a subscription" }));
+    fireEvent.change(screen.getByLabelText("Amount for Subscription 2"), {
+      target: { value: "1,299" },
+    });
+    fireEvent.change(screen.getByLabelText("Amount for Example: video streaming"), {
       target: { value: "abc" },
     });
 
-    expect(yearlyTotal()).toBe("₱10,503");
+    expect(yearlyTotal()).toBe("₱15,588");
     expect(screen.getByText(/One row is left out of the totals/)).toBeInTheDocument();
   });
 
   it("adds and removes rows, up to the cap", () => {
     render(<SubscriptionCalculator />);
-    fireEvent.click(screen.getByRole("button", { name: "Remove Antivirus" }));
-    expect(yearlyTotal()).toBe("₱27,204");
+    fireEvent.click(screen.getByRole("button", { name: "Remove Example: video streaming" }));
+    expect(yearlyTotal()).toBe("₱0");
 
-    for (let count = 4; count < MAX_SUBSCRIPTIONS; count += 1) {
+    for (let count = 0; count < MAX_SUBSCRIPTIONS; count += 1) {
       fireEvent.click(screen.getByRole("button", { name: "Add a subscription" }));
     }
     expect(screen.queryByRole("button", { name: "Add a subscription" })).toBeNull();
