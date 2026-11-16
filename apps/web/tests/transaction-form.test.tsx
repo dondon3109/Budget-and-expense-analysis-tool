@@ -286,6 +286,35 @@ describe("TransactionForm", () => {
     expect(window.localStorage.getItem("zoption-default-spending-account")).toBeNull();
   });
 
+  it("keeps a rejected save inside the form instead of an unhandled rejection", async () => {
+    const user = userEvent.setup();
+    // Vitest fails the run on an unhandled rejection, so this also guards Error Tracking noise.
+    const onSubmit = vi.fn(async () => {
+      throw new Error("The request could not be completed.");
+    });
+    render(
+      <TransactionForm
+        workspace={workspace}
+        categories={[category]}
+        accounts={accounts}
+        debts={debts}
+        busy={false}
+        serverError="The request could not be completed."
+        onSubmit={onSubmit}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await user.type(screen.getByPlaceholderText("0.00"), "250");
+    await user.selectOptions(screen.getByLabelText("Account"), "account-savings");
+    fireEvent.submit(screen.getByPlaceholderText("0.00").closest("form")!);
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(screen.getByText("The request could not be completed.")).toBeInTheDocument();
+    // A failed save does not move where the next new entry starts.
+    expect(window.localStorage.getItem("zoption-default-spending-account")).toBeNull();
+  });
+
   it("relabels a category-labeled entry from notes added on edit", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn(async () => undefined);

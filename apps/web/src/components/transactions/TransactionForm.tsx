@@ -327,7 +327,13 @@ export function TransactionForm({
       setClientError(DEBT_OVERPAYMENT_MESSAGE);
       return;
     }
-    await onSubmit(parsed.data);
+    try {
+      await onSubmit(parsed.data);
+    } catch {
+      // Every parent shows a failed save through `serverError` and keeps the form open, so the
+      // rejection is handled here instead of escaping as an unhandled one to Error Tracking.
+      return;
+    }
     if (!item) {
       setLastUsedAccountId(
         parsed.data.kind === "transfer" ? parsed.data.fromAccountId : parsed.data.accountId,

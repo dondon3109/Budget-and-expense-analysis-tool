@@ -259,11 +259,41 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/setup
       - run: node scripts/export-deployment-env.mjs production
+      # Source maps let PostHog Error Tracking resolve web crash frames. They are built hidden,
+      # uploaded, and deleted before the hash below, so no .map file is ever deployed. Without the
+      # POSTHOG_CLI_API_KEY secret the build emits no maps and frames stay minified.
+      - name: Install PostHog CLI for source map upload
+        env:
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+        run: |
+          if [ -z "$POSTHOG_CLI_API_KEY" ]; then
+            echo "::notice::POSTHOG_CLI_API_KEY is not set; web crash frames stay minified."
+            exit 0
+          fi
+          npm install -g @posthog/cli@0.18.10
+          echo "ZOPTION_WEB_SOURCEMAPS=1" >> "$GITHUB_ENV"
       - name: Build versioned production web app
         run: pnpm --filter @zoption/web build
         env:
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: https://us.i.posthog.com
+      # `process` injects chunk IDs into the JS (so it must run before the hash) and uploads the maps.
+      - name: Upload web source maps to PostHog
+        if: env.ZOPTION_WEB_SOURCEMAPS == '1'
+        env:
+          POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_CLI_PROJECT_ID: "549527"
+          POSTHOG_CLI_HOST: https://us.posthog.com
+        run: >-
+          posthog-cli sourcemap process --directory apps/web/dist
+          --release-name zoption-web --release-version "$ZOPTION_RELEASE_VERSION"
+      - name: Keep source maps out of the deployed bundle
+        run: |
+          find apps/web/dist -name '*.map' -delete
+          if find apps/web/dist -name '*.map' | grep -q .; then
+            echo "::error::A source map is left in the production bundle."
+            exit 1
+          fi
       # Same PostHog project key as the app.
       - name: Build versioned production public site
         run: pnpm --filter @zoption/site build
