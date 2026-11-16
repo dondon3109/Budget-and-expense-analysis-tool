@@ -422,14 +422,24 @@
   display: none;
 }
 
+/* The 48px rail is too narrow for the bordered card plus the link's padded hover
+   area, so collapsed mode drops the card chrome and shows the avatar as a nav-sized
+   tile aligned with the icons below. */
 .app-shell.nav-collapsed .sidebar-profile {
-  padding: 10px 6px;
+  padding: 0;
   display: grid;
   place-items: center;
+  border: 0;
+  background: transparent;
 }
 
 .app-shell.nav-collapsed .sidebar-account-identity {
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
   grid-template-columns: 1fr;
+  place-items: center;
 }
 
 .app-shell.nav-collapsed .sidebar .user-avatar.small {
