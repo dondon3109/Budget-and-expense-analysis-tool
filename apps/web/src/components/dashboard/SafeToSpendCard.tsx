@@ -7,14 +7,14 @@ import {
   safeToSpend,
   forecastSubscriptions,
 } from "@zoption/shared";
-import { AlertTriangle, CalendarClock } from "lucide-react";
+import { AlertTriangle, CalendarClock, ShieldCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { currentMonth, monthStart } from "../../lib/calendar";
-import { formatMoney } from "../../lib/formatters";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
 import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import { useSubscriptions } from "../../queries/subscriptions";
+import { OverviewStatValue } from "./OverviewStatBar";
 import "./SafeToSpendCard.css";
 
 export interface SafeToSpendCardProps {
@@ -24,30 +24,24 @@ export interface SafeToSpendCardProps {
 }
 
 /**
- * The guidance line follows the renewal lookup as well as the amount, so a lookup that is
- * still running or has failed is never described as a week with no bills in it.
+ * A caveat only: the line follows the renewal lookup as well as the amount, so a lookup that
+ * is still running or has failed is never described as a week with no bills in it. A settled
+ * figure needs no caption, and an exhausted one is explained by the alert.
  */
 function guidanceText(
   renewalLookup: "pending" | "error" | "ready",
-  safeAmountMinor: number,
-  activeBillCount: number,
   hasBasis: boolean,
-): string {
+): string | null {
   if (renewalLookup === "pending") return "Checking your bills, so this figure may still fall.";
   if (renewalLookup === "error") {
     return "Bills could not be loaded, so this figure may be optimistic.";
   }
-  if (safeAmountMinor <= 0) {
-    if (!hasBasis) return "Add your balance or a first transaction to see what's safe to spend.";
-    return "Keep spending minimal until your next planned deposit or balance adjustment.";
-  }
-  return `Forward guidance accounting for ${activeBillCount} active recurring bill${
-    activeBillCount === 1 ? "" : "s"
-  } and scheduled obligations.`;
+  if (!hasBasis) return "Add your balance or a first transaction to see what's safe to spend.";
+  return null;
 }
 
 /**
- * Dashboard hero for what is safe to spend today: the remaining weekly envelope paced
+ * The overview stat-bar cell for what is safe to spend this week: the remaining weekly envelope paced
  * across the days left in the week, capped by a 30-day projection of the active
  * subscription renewals.
  */
@@ -82,38 +76,39 @@ export function SafeToSpendCard({
   const hasBasis = hasSpendingBasis({ startingBalanceMinor, remainingBudgetMinor });
   const alert = overspendingAlert({ safeToSpendMinor: safeAmountMinor, forecast, hasBasis });
   const alertMessage = alert ? overspendingAlertMessage(alert) : null;
+  const guidance = guidanceText(renewalLookup, hasBasis);
 
   return (
-    <section className="panel safe-to-spend-panel" aria-labelledby="safe-to-spend-title">
-      <div className="panel-heading">
-        <div>
-          <h2 id="safe-to-spend-title">Safe to spend this week</h2>
-        </div>
+    <section
+      className="overview-stat tone-brand safe-to-spend-stat"
+      aria-labelledby="safe-to-spend-title"
+    >
+      <div className="overview-stat-heading">
+        <h2 id="safe-to-spend-title">Safe to spend this week</h2>
+        <span className="overview-stat-icon">
+          <ShieldCheck size={16} aria-hidden="true" />
+        </span>
       </div>
-      <div className="safe-to-spend-amount-row">
-        <strong className="safe-to-spend-amount">{formatMoney(safeAmountMinor)}</strong>
-        <div className="safe-to-spend-meta">
-          <span className="safe-to-spend-pill">
-            {daysLeftInWeek} day{daysLeftInWeek === 1 ? "" : "s"} left
-          </span>
-          <Link className="safe-to-spend-renewals" to="/app/subscriptions?view=forecast">
-            <CalendarClock size={13} aria-hidden="true" />
-            Bills
-          </Link>
-        </div>
+      <OverviewStatValue amountMinor={safeAmountMinor} currency={workspaceCurrency()} />
+      <div className="safe-to-spend-meta">
+        <span className="safe-to-spend-pill">
+          {daysLeftInWeek} day{daysLeftInWeek === 1 ? "" : "s"} left
+        </span>
+        <Link className="safe-to-spend-renewals" to="/app/subscriptions?view=forecast">
+          <CalendarClock size={13} aria-hidden="true" />
+          Bills
+        </Link>
       </div>
       {alertMessage ? (
         <div className="safe-to-spend-alert" role="alert">
-          <AlertTriangle size={15} aria-hidden="true" />
+          <AlertTriangle size={14} aria-hidden="true" />
           <div>
             <strong>{alertMessage.title}</strong>
             <p>{alertMessage.body}</p>
           </div>
         </div>
       ) : null}
-      <p className="safe-to-spend-guidance">
-        {guidanceText(renewalLookup, safeAmountMinor, subscriptions.length, hasBasis)}
-      </p>
+      {guidance ? <p className="safe-to-spend-guidance">{guidance}</p> : null}
     </section>
   );
 }

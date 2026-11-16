@@ -36,6 +36,7 @@ import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalCheckl
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import {
   amountsLeadingWith,
+  OverviewStat,
   OverviewStatBar,
   type OverviewStatItem,
 } from "../components/dashboard/OverviewStatBar";
@@ -557,19 +558,27 @@ export function DashboardPage() {
           </section>
         ) : (
           <>
-            <OverviewStatBar items={overviewItems} />
-            {/* Safe to spend reads subscriptions, which stay personal for now. */}
-            {summaryMonth === currentDashboardMonth && !family && (
-              <SafeToSpendCard
-                workspace={workspace}
-                startingBalanceMinor={overallBalanceMinor}
-                remainingBudgetMinor={
-                  // No budget rows means no weekly envelope to pace; the card falls back to the
-                  // balance rather than reporting a plan the user never set.
-                  data.budgetProgress.length > 0 ? metrics.remainingBudgetMinor : undefined
-                }
-              />
-            )}
+            {/* Safe to spend sits after Income and Expenses, before the fees and budget. */}
+            <OverviewStatBar>
+              {overviewItems.slice(0, 2).map((item) => (
+                <OverviewStat item={item} key={item.label} />
+              ))}
+              {/* Safe to spend reads subscriptions, which stay personal for now. */}
+              {summaryMonth === currentDashboardMonth && !family && (
+                <SafeToSpendCard
+                  workspace={workspace}
+                  startingBalanceMinor={overallBalanceMinor}
+                  remainingBudgetMinor={
+                    // No budget rows means no weekly envelope to pace; the card falls back to
+                    // the balance rather than reporting a plan the user never set.
+                    data.budgetProgress.length > 0 ? metrics.remainingBudgetMinor : undefined
+                  }
+                />
+              )}
+              {overviewItems.slice(2).map((item) => (
+                <OverviewStat item={item} key={item.label} />
+              ))}
+            </OverviewStatBar>
             {goalConfig.emphasis === "recent_transactions" && transactionHistory}
             <div className="dashboard-grid">
               {sectionOrder.map((name) => (

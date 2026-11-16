@@ -6,39 +6,49 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { ArrowDownRight, ArrowUpRight, WalletCards } from "lucide-react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { OverviewStatBar } from "../src/components/dashboard/OverviewStatBar";
+import {
+  OverviewStat,
+  OverviewStatBar,
+  type OverviewStatItem,
+} from "../src/components/dashboard/OverviewStatBar";
 
 afterEach(cleanup);
 
+function renderBar(items: OverviewStatItem[]) {
+  return render(
+    <OverviewStatBar>
+      {items.map((item) => (
+        <OverviewStat item={item} key={item.label} />
+      ))}
+    </OverviewStatBar>,
+  );
+}
+
 describe("OverviewStatBar", () => {
   it("renders locale-formatted summary metrics with a separately styled peso sign", () => {
-    render(
-      <OverviewStatBar
-        items={[
-          {
-            label: "Money in",
-            amounts: [{ amountMinor: 1_000_000, currency: "PHP" }],
-            icon: ArrowDownRight,
-            tone: "income",
-            trend: { percentage: 12.5, comparison: "vs Jun", state: "positive" },
-          },
-          {
-            label: "Money out",
-            amounts: [{ amountMinor: 250_000, currency: "PHP" }],
-            icon: ArrowUpRight,
-            tone: "expense",
-            trend: { percentage: -7.5, comparison: "vs Jun", state: "positive" },
-          },
-          {
-            label: "Net position",
-            amounts: [{ amountMinor: -50_000, currency: "PHP" }],
-            icon: WalletCards,
-            tone: "ink",
-            trend: { percentage: 0, comparison: "vs Jun", state: "neutral" },
-          },
-        ]}
-      />,
-    );
+    renderBar([
+      {
+        label: "Money in",
+        amounts: [{ amountMinor: 1_000_000, currency: "PHP" }],
+        icon: ArrowDownRight,
+        tone: "income",
+        trend: { percentage: 12.5, comparison: "vs Jun", state: "positive" },
+      },
+      {
+        label: "Money out",
+        amounts: [{ amountMinor: 250_000, currency: "PHP" }],
+        icon: ArrowUpRight,
+        tone: "expense",
+        trend: { percentage: -7.5, comparison: "vs Jun", state: "positive" },
+      },
+      {
+        label: "Net position",
+        amounts: [{ amountMinor: -50_000, currency: "PHP" }],
+        icon: WalletCards,
+        tone: "ink",
+        trend: { percentage: 0, comparison: "vs Jun", state: "neutral" },
+      },
+    ]);
 
     const summary = screen.getByRole("region", { name: "Monthly summary" });
     const values = summary.querySelectorAll("strong");
@@ -66,21 +76,17 @@ describe("OverviewStatBar", () => {
   });
 
   it("shows a secondary US-dollar line after the primary peso value", () => {
-    render(
-      <OverviewStatBar
-        items={[
-          {
-            label: "Income",
-            amounts: [
-              { amountMinor: 1_000_000, currency: "PHP" },
-              { amountMinor: 50_000, currency: "USD" },
-            ],
-            icon: ArrowDownRight,
-            tone: "income",
-          },
-        ]}
-      />,
-    );
+    renderBar([
+      {
+        label: "Income",
+        amounts: [
+          { amountMinor: 1_000_000, currency: "PHP" },
+          { amountMinor: 50_000, currency: "USD" },
+        ],
+        icon: ArrowDownRight,
+        tone: "income",
+      },
+    ]);
 
     const summary = screen.getByRole("region", { name: "Monthly summary" });
     const values = summary.querySelectorAll("strong");

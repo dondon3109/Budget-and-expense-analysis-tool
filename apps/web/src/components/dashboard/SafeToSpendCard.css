@@ -1,42 +1,23 @@
-/* Safe to spend card styles owned by SafeToSpendCard. */
+/* Safe to spend styles owned by SafeToSpendCard; the cell itself is an `.overview-stat`. */
 
-.safe-to-spend-panel .panel-heading p {
-  max-width: 46ch;
-  margin: 5px 0 0;
-  color: var(--subtle);
-  font-size: 11px;
-  line-height: 1.55;
-}
-
-.safe-to-spend-amount-row {
-  margin-top: 18px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.safe-to-spend-amount {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-size: clamp(30px, 3.2vw, 40px);
-  font-weight: 600;
-  font-variant-numeric: lining-nums tabular-nums;
-  letter-spacing: -0.03em;
-  line-height: 1;
+/* The label is a heading for the region, styled like the other cell labels. */
+.safe-to-spend-stat .overview-stat-heading h2 {
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
 }
 
 .safe-to-spend-meta {
-  flex: 0 0 auto;
+  min-height: 24px;
+  margin: 0 0 8px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .safe-to-spend-pill {
-  padding: 4px 10px;
+  padding: 3px 8px;
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface-hover);
@@ -50,8 +31,8 @@
 .safe-to-spend-renewals {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  gap: 5px;
+  padding: 3px 10px;
   border: 1px solid color-mix(in srgb, var(--brand) 22%, transparent);
   border-radius: 999px;
   background: var(--brand-soft);
@@ -72,22 +53,20 @@
 }
 
 .safe-to-spend-guidance {
-  max-width: 62ch;
-  margin: 14px 0 0;
-  color: var(--muted);
+  margin: 0;
+  color: var(--subtle);
   font-size: 11px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* The overspending alert: safe to spend has run out or the forecast shows a deficit. */
 .safe-to-spend-alert {
-  margin-top: 14px;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--danger-soft);
   color: var(--danger);
 }
@@ -99,27 +78,13 @@
 
 .safe-to-spend-alert strong {
   display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 650;
 }
 
 .safe-to-spend-alert p {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   color: var(--ink);
   font-size: 11px;
-  line-height: 1.55;
-}
-
-/* Stack the hero number above the days-left pill and the Renewals link on narrow
-   screens so the amount never collides with them. */
-@media (max-width: 620px) {
-  .safe-to-spend-amount-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .safe-to-spend-amount {
-    font-size: 30px;
-  }
+  line-height: 1.5;
 }

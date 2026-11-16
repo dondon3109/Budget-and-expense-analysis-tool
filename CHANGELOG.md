@@ -48,6 +48,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- Web dashboard: Safe to spend this week now sits in the summary row between Expenses and Transfer fees, as a compact figure with the days left, a Bills link, and any overspending alert, instead of a separate card below it.
 - Mobile: pick a custom category color by sliding Hue, Vividness, and Brightness, with a live preview. Typing a hex code still works for an exact color.
 - Subscriptions are now Bills, on web and mobile, so electricity, water, internet, and other recurring bills fit alongside streaming and memberships. The renewal calendar is now the Bill calendar.
 - A bill held back because its account could not cover it is now charged the moment you top up or adjust that account's balance, on web and mobile, instead of on the next daily check. Each due cycle the new balance covers is recorded as an expense and deducted.
