@@ -12,6 +12,7 @@ import "posthog-js/dist/web-vitals";
 import { sanitizeAnalyticsProperties } from "@zoption/web-common/analytics-sanitize";
 import { readConsentRecord } from "@zoption/web-common/consent-storage";
 
+import { isSiteEvent, SITE_EVENT_NAME, type SiteEvent } from "../lib/siteEvents";
 import { isTrackableUrl } from "../lib/trackableUrl";
 
 // Hosts of AI answer engines, so a visit they sent can be told apart from search.
@@ -64,6 +65,32 @@ export function isProductionHost(hostname: string): boolean {
 
 let initialized = false;
 
+function captureSiteEvent(event: SiteEvent) {
+  // A tracked link opens the app in a new tab, but send now in case the visitor closes this one.
+  posthog.capture(
+    event,
+    { $current_url: `${location.origin}${location.pathname}`, source: "site" },
+    { send_instantly: true },
+  );
+}
+
+/**
+ * Islands announce events (`announceSiteEvent`), and static links name theirs in
+ * `data-site-event`. Both are heard only from here, so nothing is sent before consent;
+ * after a revoke, `gateAndSanitize` drops them.
+ */
+export function listenForSiteEvents() {
+  window.addEventListener(SITE_EVENT_NAME, (event) => {
+    const detail = (event as CustomEvent<unknown>).detail;
+    if (isSiteEvent(detail)) captureSiteEvent(detail);
+  });
+  document.addEventListener("click", (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const name = target?.closest<HTMLElement>("[data-site-event]")?.dataset.siteEvent;
+    if (isSiteEvent(name)) captureSiteEvent(name);
+  });
+}
+
 export function startAnalytics(): (() => void) | undefined {
   const key = import.meta.env.PUBLIC_POSTHOG_KEY?.trim();
   if (!key || !isProductionHost(location.hostname)) return undefined;
@@ -88,6 +115,7 @@ export function startAnalytics(): (() => void) | undefined {
       before_send: gateAndSanitize,
       capture_performance: { web_vitals: true, web_vitals_allowed_metrics: ["LCP", "CLS", "INP"] },
     });
+    listenForSiteEvents();
     initialized = true;
   }
   posthog.opt_in_capturing();

@@ -126,6 +126,16 @@ describe("funnel events", () => {
     ]);
   });
 
+  it("sends a signup source when one is known and leaves the key out when it is not", () => {
+    captureFunnelEvent("signup_viewed", { source: "budget_calculator" });
+    captureFunnelEvent("signup_viewed", { source: undefined });
+
+    expect(mockedPostHog.__getCapturedEvents()).toEqual([
+      { event: "signup_viewed", properties: { source: "budget_calculator" } },
+      { event: "signup_viewed", properties: {} },
+    ]);
+  });
+
   it("captures the first occurrence events once per page load", () => {
     captureFunnelEvent("app_session_started", {});
     captureFunnelEvent("app_session_started", {});

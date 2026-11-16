@@ -1,7 +1,9 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { MoneyParseError, parseAmountToMinor } from "@zoption/shared/money";
 
+import { appUrl, NEW_TAB } from "../../lib/appUrl";
 import { formatPeso } from "../../lib/formatters";
+import { announceSiteEvent, BUDGET_CALCULATOR_SIGNUP_PATH } from "../../lib/siteEvents";
 import { allocateBudget, DEFAULT_PERCENTAGES, type BudgetRulePercentages } from "./allocateBudget";
 
 export const BUCKET_COPY = [
@@ -36,6 +38,14 @@ export const BUCKET_COPY = [
 export function BudgetCalculator() {
   const [incomeInput, setIncomeInput] = useState("30,000.00");
   const [percentages, setPercentages] = useState<BudgetRulePercentages>(DEFAULT_PERCENTAGES);
+  const usedRef = useRef(false);
+
+  // Counts a visitor who changed the default inputs, once per page load. Nothing typed is sent.
+  function markUsed() {
+    if (usedRef.current) return;
+    usedRef.current = true;
+    announceSiteEvent("calculator_used");
+  }
 
   const percentageTotal = percentages.needs + percentages.wants + percentages.savings;
   const percentagesValid = percentageTotal === 100;
@@ -57,6 +67,7 @@ export function BudgetCalculator() {
   }, [parsed.incomeMinor, percentages, percentagesValid]);
 
   function updatePercentage(key: keyof BudgetRulePercentages, raw: string) {
+    markUsed();
     const next = Number.parseInt(raw, 10);
     setPercentages((current) => ({
       ...current,
@@ -79,7 +90,10 @@ export function BudgetCalculator() {
               type="text"
               inputMode="decimal"
               value={incomeInput}
-              onChange={(event) => setIncomeInput(event.target.value)}
+              onChange={(event) => {
+                markUsed();
+                setIncomeInput(event.target.value);
+              }}
               aria-describedby="calc-income-hint"
             />
           </div>
@@ -150,6 +164,21 @@ export function BudgetCalculator() {
           typed.
         </p>
       ) : null}
+
+      <p className="calc-cta">
+        <a
+          className="calc-cta-link"
+          href={appUrl(BUDGET_CALCULATOR_SIGNUP_PATH)}
+          data-site-event="calculator_signup_clicked"
+          {...NEW_TAB}
+        >
+          Track this split in Zoption — start free
+        </a>
+      </p>
+      <p className="calc-hint">
+        Zoption shows what you actually spend in each category against your budget, from voice
+        entries, receipt photos, or an imported bank statement.
+      </p>
     </>
   );
 }
