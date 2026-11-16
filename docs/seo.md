@@ -189,8 +189,8 @@ and matches the product's centavo-precision story.
 **Shipped.** `/tools/50-30-20-calculator` runs fully client-side with no account and
 no network call. Percentages are adjustable, and allocation happens in integer
 centavos via the largest-remainder method
-(`apps/site/src/views/tools/allocateBudget.ts`), so the three buckets always sum to
-exactly the income entered. `budgetCalculator.test.ts` asserts that invariant for
+(`packages/shared/src/budgetRule.ts`, also used by the web app's Budgets page), so the three buckets always sum to
+exactly the income entered. `packages/shared/tests/budget-rule.test.ts` asserts that invariant for
 every amount from 0 to ₱1,000.00 in one-centavo steps — the property most competing
 calculators get wrong, and the one worth claiming.
 

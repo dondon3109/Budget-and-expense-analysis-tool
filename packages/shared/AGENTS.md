@@ -25,6 +25,7 @@ The domain package every app imports: runtime zod schemas, money and aggregate r
 | `src/planning.ts`              | Debt payoff, savings goal, recurring charge, and anomaly calculators                             |
 | `src/cashflowForecast.ts`      | Forward cashflow projection                                                                      |
 | `src/safeToSpend.ts`           | Weekly safe-to-spend amount                                                                      |
+| `src/budgetRule.ts`            | The 50/30/20 split (`allocateBudget`), shared by the site calculator and the web Budgets page    |
 | `src/overspendingAlert.ts`     | The overspending alert (spent-out week or forecast deficit) and its wording for web and mobile   |
 | `src/pet.ts`                   | Pet companion points, daily caps, stages, Free growth cap, egg streak, health, and heal cost     |
 | `src/petMoment.ts`             | When the pet pop-up opens (ready egg, growth, sickness, death, or the day's first open)          |
@@ -82,7 +83,7 @@ pnpm verify:shared                       # this package, then every workspace ty
 - Share tokens are unsigned and therefore public. Mask sensitive fields before encoding.
 - `financeGuides.ts` is in the barrel, so Metro (which does not tree shake) ships the guide content to mobile. Moving it to a subpath export means editing the guide page imports, and `apps/site/tests/content-freshness.test.ts` dates those pages from the last commit that modified a source, so that change forces guide date bumps. Do not move the file itself either; `apps/site/src/seo/contentSources.ts` lists it by path.
 - `workbook.ts` must stay out of the barrel: it lazily imports the SheetJS build from a CDN tarball and applies its own zip bomb limits.
-- `money.ts` is also exported as `@zoption/shared/money` so browser islands can parse amounts without bundling the barrel (and zod). Keep it import free.
+- `money.ts` is also exported as `@zoption/shared/money` so browser islands can parse amounts without bundling the barrel (and zod). Keep it import free. `budgetRule.ts` is exported the same way as `@zoption/shared/budget-rule` for the site's 50/30/20 island, and must stay import free too.
 - `fingerprint.ts` needs `crypto.subtle` and `TextEncoder`; treat that as a platform requirement for any new consumer.
 
 ## Related specs

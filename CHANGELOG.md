@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- 50/30/20 calculator on the web app's Budgets page: enter your take-home pay to see the needs, wants, and savings split in your workspace currency, as a guide for your monthly limits. It uses the same math as the free calculator on zoption.site.
 - New free subscription cost calculator on zoption.site: list what you pay for, weekly to yearly, and see the monthly and yearly total in pesos.
 - The 50/30/20 budget calculator on zoption.site is linked from the footer and home page, and offers a "Track this split in Zoption" sign-up right under your results.
 - Hide balance, on web and mobile: tap the eye next to your total balance to mask every amount in the app (shown as ₱••••) before you share your screen or take a screenshot. Tap it again to show them; each device remembers its own choice.

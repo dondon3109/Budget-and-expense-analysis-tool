@@ -1,4 +1,5 @@
 export * from "./budgetPlan";
+export * from "./budgetRule";
 export * from "./calculations";
 export * from "./goalConfig";
 export * from "./goals";
