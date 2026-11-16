@@ -15,13 +15,15 @@ import { useLocalWorkspace, useSubscriptionUsage } from "@/db/local-workspace-st
 import type { SubscriptionUsageAction } from "@/db/transaction-mutation-repository";
 import type { LocalSubscriptionItem } from "@/db/view-models";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { Button, Card, MoneyValue } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
+import { uploadSubscriptionUsage } from "./subscription-usage-upload";
 
 function statusLabel(roi: SubscriptionRoi): string {
-  if (roi.status === "untracked") return "Not tracked yet";
+  if (roi.status === "untracked") return "No check-ins yet";
   if (roi.status === "idle") return `Unused for ${roi.daysSinceLastUse} days`;
   if (roi.daysSinceLastUse === 0) return "Used today";
   if (roi.daysSinceLastUse === 1) return "Used yesterday";
@@ -32,7 +34,8 @@ function statusLabel(roi: SubscriptionRoi): string {
  * Subscription ROI (Pro): a "Used it" check-in per bill per day, what each use cost this cycle,
  * and a nudge to cancel once a tracked bill sits unused for 30 days. Only bills with "Track usage"
  * on get rows; rent and utilities start off. Taps save to this phone at once and upload with the
- * next personal sync, so they work offline. Other plans and guests see what it does and where to
+ * next personal sync, so they work offline; online they also upload right away, so the Worker's idle
+ * nudge sees them. Personal only: in a family the card stays hidden. Other plans and guests see what it does and where to
  * get it. `highlightId` is the bill a push nudge opened the screen on.
  */
 export function SubscriptionRoiCard({
@@ -44,7 +47,8 @@ export function SubscriptionRoiCard({
 }) {
   const theme = useZoptionTheme();
   const { plan } = usePlan();
-  const { status: sessionStatus } = useSessionSnapshot();
+  const { status: sessionStatus, getAccessToken } = useSessionSnapshot();
+  const { family } = useActiveWorkspace();
   const { workspace } = useLocalWorkspace();
   const { usage, error: readError } = useSubscriptionUsage();
   const { openFeature } = useAccountGate();
@@ -57,7 +61,7 @@ export function SubscriptionRoiCard({
   const today = localIsoDate(new Date());
   const active = subscriptions.filter((item) => item.status === "active");
 
-  if (active.length === 0) return null;
+  if (family || active.length === 0) return null;
 
   if (!isPro) {
     return (
@@ -85,7 +89,13 @@ export function SubscriptionRoiCard({
     if (!workspace) return;
     const usedOn = action === "check_in" || action === "undo" ? today : null;
     workspace.transactionMutations.queueSubscriptionUsage(id, action, usedOn).then(
-      () => setError(null),
+      () => {
+        setError(null);
+        // Offline this fails quietly and the tap waits in the queue for the next sync.
+        void getAccessToken(false)
+          .then((accessToken) => uploadSubscriptionUsage(workspace, accessToken))
+          .catch(() => undefined);
+      },
       () => setError("Could not save that on this phone. Try again."),
     );
   };
@@ -187,8 +197,12 @@ export function SubscriptionRoiCard({
                   "No cost per use yet"
                 ) : (
                   <>
-                    <MoneyValue amountMinor={roi.costPerUseMinor} currency={item.currency} /> per
-                    use
+                    <MoneyValue
+                      amountMinor={roi.costPerUseMinor}
+                      currency={item.currency}
+                      style={[typography.caption, { color: theme.colors.textMuted }]}
+                    />{" "}
+                    per use
                   </>
                 )}
               </Text>

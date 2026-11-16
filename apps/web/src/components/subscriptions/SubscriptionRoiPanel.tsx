@@ -28,7 +28,7 @@ interface SubscriptionRoiPanelProps {
 }
 
 function statusLabel(roi: SubscriptionRoi): string {
-  if (roi.status === "untracked") return "Not tracked yet";
+  if (roi.status === "untracked") return "No check-ins yet";
   if (roi.status === "idle") return `Unused for ${roi.daysSinceLastUse} days`;
   if (roi.daysSinceLastUse === 0) return "Used today";
   if (roi.daysSinceLastUse === 1) return "Used yesterday";

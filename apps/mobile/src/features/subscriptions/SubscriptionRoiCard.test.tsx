@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { SubscriptionUsageList } from "@zoption/shared";
 import { router } from "expo-router";
 
@@ -9,7 +9,13 @@ import { SubscriptionRoiCard } from "./SubscriptionRoiCard";
 
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 jest.mock("@/auth/session-state", () => ({
-  useSessionSnapshot: () => ({ status: "signed-in" }),
+  useSessionSnapshot: () => ({ status: "signed-in", getAccessToken: async () => "token" }),
+}));
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: () => ({ family: mockFamily }),
+}));
+jest.mock("./subscription-usage-upload", () => ({
+  uploadSubscriptionUsage: () => mockUpload(),
 }));
 jest.mock("@/auth/plan-state", () => ({ usePlan: jest.fn() }));
 jest.mock("@/db/local-workspace-state", () => ({
@@ -25,6 +31,8 @@ jest.mock("@/features/dashboard/dashboard-view", () => ({ localIsoDate: () => "2
 
 const mockOpenFeature = jest.fn();
 const mockQueue = jest.fn(() => Promise.resolve());
+const mockUpload = jest.fn(() => Promise.resolve());
+let mockFamily: { id: string } | null = null;
 
 const gym: LocalSubscriptionItem = {
   id: "gym",
@@ -52,6 +60,7 @@ function withUsage(usage: SubscriptionUsageList) {
 describe("SubscriptionRoiCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFamily = null;
   });
 
   it("saves a check-in to the phone and shows what each use costs", async () => {
@@ -65,6 +74,15 @@ describe("SubscriptionRoiCard", () => {
     expect(screen.getByText("2 uses this cycle")).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "I used Gym today" }));
     expect(mockQueue).toHaveBeenCalledWith("gym", "check_in", "2026-11-16");
+    await waitFor(() => expect(mockUpload).toHaveBeenCalled());
+  });
+
+  it("stays hidden in a family workspace", async () => {
+    withPlan("zoption_pro");
+    withUsage({ usage: [], tracking: [] });
+    mockFamily = { id: "family-1" };
+    await render(<SubscriptionRoiCard subscriptions={[netflix]} />);
+    expect(screen.queryByLabelText("Usage and value")).toBeNull();
   });
 
   it("flags a bill unused for 30 days and opens it to cancel", async () => {
