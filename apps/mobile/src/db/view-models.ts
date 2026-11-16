@@ -36,6 +36,8 @@ export interface LocalWorkspaceStats {
 export interface LocalTransactionItem {
   transaction: TransactionListItem;
   syncState: LocalSyncState;
+  /** Who added a family entry, once the Worker has confirmed it; null in a personal workspace. */
+  authorUserId: string | null;
 }
 
 export interface LocalAccountOption {

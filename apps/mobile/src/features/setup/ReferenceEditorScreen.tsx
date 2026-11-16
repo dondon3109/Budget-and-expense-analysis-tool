@@ -40,6 +40,7 @@ import {
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { ShareToFamilyButton } from "@/features/family/ShareToFamilyButton";
 import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
@@ -165,6 +166,7 @@ export function ReferenceEditorScreen() {
   const modelingState = useAccountModeling(entityType === "account" && editing ? id : undefined);
   const subscriptionState = useSubscriptions();
   const sync = useSyncState();
+  const { writable } = useActiveWorkspace();
   const theme = useZoptionTheme();
   const initialized = useRef(false);
   const [name, setName] = useState("");
@@ -245,7 +247,9 @@ export function ReferenceEditorScreen() {
       : id && references.data && !account && !category
         ? "This item is no longer active on this device."
         : null;
+  // A viewer, or a closing or lapsed family, takes no changes: the Worker would refuse them.
   const blocked =
+    !writable ||
     account?.syncState === "failed" ||
     account?.syncState === "conflicted" ||
     category?.syncState === "failed" ||

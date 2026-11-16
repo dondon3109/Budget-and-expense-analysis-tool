@@ -13,8 +13,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useSessionSnapshot } from "@/auth/session-state";
 import { useLocalTransactions, useLocalWorkspace } from "@/db/local-workspace-state";
-import { transactionKindFilters, type TransactionKindFilter } from "@/db/view-models";
+import {
+  transactionKindFilters,
+  type LocalTransactionItem,
+  type TransactionKindFilter,
+} from "@/db/view-models";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { canChangeEntry } from "@/features/family/entry-access";
 import { monthLabel, todayIso } from "@/features/calendar/event-form";
 import { useSyncState } from "@/sync/sync-state";
 import { telemetry } from "@/telemetry/telemetry";
@@ -97,6 +104,12 @@ export function TransactionsScreen() {
   const [smsQuickPasteVisible, setSmsQuickPasteVisible] = useState(false);
   const [netInfoVisible, setNetInfoVisible] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const { family, writable } = useActiveWorkspace();
+  const me = useSessionSnapshot().subject;
+  // The same family rule as the editor: a row this person may not change cannot be selected,
+  // since the Worker refuses the delete and a viewer's refusal discards the family's copy.
+  const canDelete = (item: LocalTransactionItem): boolean =>
+    writable && canChangeEntry(family, me, item);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -155,10 +168,7 @@ export function TransactionsScreen() {
 
   // Derived from the live list, so a row that left the month or filter never
   // inflates the count, and select mode ends when nothing selected is visible.
-  const selectedItems = useMemo(
-    () => items.filter((i) => selectedIds.includes(i.transaction.id)),
-    [items, selectedIds],
-  );
+  const selectedItems = items.filter((i) => selectedIds.includes(i.transaction.id) && canDelete(i));
   const selecting = selectedItems.length > 0;
   const toggleSelected = useCallback((id: string) => {
     setDeleteError(null);
@@ -474,7 +484,7 @@ export function TransactionsScreen() {
             renderItem={({ item }) => (
               <TransactionItemRow
                 item={item}
-                onToggleSelect={toggleSelected}
+                onToggleSelect={canDelete(item) ? toggleSelected : undefined}
                 selected={selectedIds.includes(item.transaction.id)}
                 selecting={selecting}
               />
@@ -504,7 +514,7 @@ export function TransactionsScreen() {
             renderItem={({ item }) => (
               <TransactionItemRow
                 item={item}
-                onToggleSelect={toggleSelected}
+                onToggleSelect={canDelete(item) ? toggleSelected : undefined}
                 selected={selectedIds.includes(item.transaction.id)}
                 selecting={selecting}
               />
@@ -539,7 +549,7 @@ export function TransactionsScreen() {
             renderItem={({ item }) => (
               <TransactionItemRow
                 item={item}
-                onToggleSelect={toggleSelected}
+                onToggleSelect={canDelete(item) ? toggleSelected : undefined}
                 selected={selectedIds.includes(item.transaction.id)}
                 selecting={selecting}
                 showDate

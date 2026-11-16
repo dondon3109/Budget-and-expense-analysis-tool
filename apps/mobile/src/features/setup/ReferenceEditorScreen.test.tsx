@@ -30,6 +30,10 @@ jest.mock("@/db/local-workspace-state", () => ({
 }));
 
 jest.mock("@/features/family/ShareToFamilyButton", () => ({ ShareToFamilyButton: () => null }));
+const mockWritable = { current: true };
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: () => ({ writable: mockWritable.current }),
+}));
 jest.mock("@/sync/sync-state", () => ({
   useSyncState: () => ({ retry: jest.fn() }),
 }));
@@ -65,6 +69,7 @@ const accountSubscriptions = [netflix, spotify, gym, icloud];
 describe("ReferenceEditorScreen archive warning", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockWritable.current = true;
     jest.mocked(useLocalSearchParams).mockReturnValue({ entityType: "account", id: "acc-bank" });
     jest.mocked(useLocalWorkspace).mockReturnValue({
       workspace: {
@@ -172,5 +177,19 @@ describe("ReferenceEditorScreen archive warning", () => {
       ),
     ).toBeTruthy();
     expect(screen.queryByText(/paid from this account/)).toBeNull();
+  });
+
+  it("offers no changes where the family takes none", async () => {
+    mockWritable.current = false;
+    jest.mocked(useSubscriptions).mockReturnValue({
+      subscriptions: [],
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<ReferenceEditorScreen />);
+
+    expect(screen.getByRole("button", { name: "Archive account" })).toBeDisabled();
   });
 });

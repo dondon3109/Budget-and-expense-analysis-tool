@@ -87,7 +87,9 @@ export function TransactionItemRow({
       accessibilityHint={
         selecting
           ? "Selects this transaction for deleting."
-          : "Opens transaction details. Press and hold to select transactions to delete."
+          : onToggleSelect
+            ? "Opens transaction details. Press and hold to select transactions to delete."
+            : "Opens transaction details."
       }
       accessibilityRole={selecting ? "checkbox" : "button"}
       accessibilityState={selecting ? { checked: selected } : undefined}
