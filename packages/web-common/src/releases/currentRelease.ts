@@ -49,9 +49,24 @@ export const currentRelease: ProductRelease = {
         "Closing the app or an expired session no longer sends you back to the sign-in screen. You stay signed in until you sign out or restart the phone.",
     },
     {
-      title: "Android Beta 0.2.60",
+      title: "A 50/30/20 calculator for your budgets",
       description:
-        "The official Android Beta carries everything above and everything from 0.2.59. Install 0.2.60 over 0.2.59.",
+        "On the web Budgets page, enter your take-home pay to see the needs, wants, and savings split in your workspace currency, as a guide for your monthly limits.",
+    },
+    {
+      title: "Safe to spend in the summary row",
+      description:
+        "On the web dashboard, Safe to spend this week now sits between Expenses and Transfer fees, with the days left, a Bills link, and any overspending alert.",
+    },
+    {
+      title: "Debt payments stay within what you owe",
+      description:
+        "A debt payment can no longer be larger than what the debt still owes, on web and mobile. On the phone a debt's balance drops as soon as the payment is saved, without waiting for it to sync.",
+    },
+    {
+      title: "Android Beta 0.2.61",
+      description:
+        "The official Android Beta carries everything above and everything from 0.2.59. Install 0.2.61 over 0.2.59.",
     },
   ],
 };
