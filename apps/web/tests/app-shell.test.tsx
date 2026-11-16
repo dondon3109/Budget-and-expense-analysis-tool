@@ -76,20 +76,17 @@ describe("AppShell", () => {
 
   afterEach(cleanup);
 
-  it("starts the sidebar collapsed on the assistant page without saving that as the preference", () => {
-    window.localStorage.removeItem("zoption:nav-collapsed");
+  it("starts the sidebar collapsed on the assistant page", () => {
     const { container } = renderShell("/app/assistant");
     const shell = container.querySelector(".app-shell")!;
     expect(shell).toHaveClass("nav-collapsed");
 
     fireEvent.click(screen.getByRole("button", { name: "Expand sidebar" }));
     expect(shell).not.toHaveClass("nav-collapsed");
-    expect(window.localStorage.getItem("zoption:nav-collapsed")).toBeNull();
   });
 
   it("labels the sidebar controls directly while the sidebar is collapsed", () => {
     // jsdom applies no CSS, so the hidden text still names them; the attribute is what survives.
-    window.localStorage.removeItem("zoption:nav-collapsed");
     renderShell("/app/assistant");
     const sidebar = screen.getByRole("navigation", { name: "Main navigation" });
     for (const link of within(sidebar).getAllByRole("link")) {
@@ -104,8 +101,8 @@ describe("AppShell", () => {
     );
   });
 
-  it("keeps the saved sidebar preference on other pages", () => {
-    window.localStorage.removeItem("zoption:nav-collapsed");
+  it("opens the sidebar by default on other pages, even after a collapse was saved before", () => {
+    window.localStorage.setItem("zoption:nav-collapsed", "1");
     const { container } = renderShell("/app");
     expect(container.querySelector(".app-shell")).not.toHaveClass("nav-collapsed");
   });

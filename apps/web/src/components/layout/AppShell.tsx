@@ -164,13 +164,10 @@ export function AppShell({ children }: AppShellProps) {
   const accountName = displayName || user?.email || "Zoption user";
   const avatarPath = avatarPathFromMetadata(user?.user_metadata);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [navCollapsed, setNavCollapsed] = useState(() =>
-    typeof window !== "undefined" && window.localStorage
-      ? window.localStorage.getItem("zoption:nav-collapsed") === "1"
-      : false,
-  );
+  // The sidebar opens on every load; collapsing it lasts until the next reload.
+  const [navCollapsed, setNavCollapsed] = useState(false);
   // The assistant page has its own history rail, so the sidebar starts collapsed there; opening
-  // it is per visit and never overwrites the saved preference.
+  // it is per visit and leaves the other pages' state alone.
   const onAssistantRoute = location.pathname.startsWith("/app/assistant");
   const [assistantNavOpen, setAssistantNavOpen] = useState(false);
   const navIsCollapsed = onAssistantRoute ? !assistantNavOpen : navCollapsed;
@@ -332,11 +329,7 @@ export function AppShell({ children }: AppShellProps) {
                 setAssistantNavOpen((open) => !open);
                 return;
               }
-              setNavCollapsed((collapsed) => {
-                const next = !collapsed;
-                window.localStorage.setItem("zoption:nav-collapsed", next ? "1" : "0");
-                return next;
-              });
+              setNavCollapsed((collapsed) => !collapsed);
             }}
             aria-pressed={navIsCollapsed}
             aria-controls="primary-navigation"
