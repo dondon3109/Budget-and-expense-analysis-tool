@@ -14,59 +14,24 @@ export const currentRelease: ProductRelease = {
   releasedOn: "November 16, 2026",
   changes: [
     {
-      title: "Subscriptions are now Bills",
+      title: "A shorter deficit warning",
       description:
-        "Electricity, water, internet, and other recurring bills now sit alongside streaming and memberships, on web and mobile, and the renewal calendar is the Bill calendar. A bill held back because its account was short is charged as soon as you top up or adjust that account.",
+        "When your balance is projected to fall below zero, the Safe to spend warning now just gives the date, on web and mobile.",
     },
     {
-      title: "Hide your balance",
+      title: "Bills views keep your place",
       description:
-        "Tap the eye next to your total balance to mask every amount (shown as ₱••••) before you share your screen or take a screenshot. Each device remembers its own choice.",
+        "On the web Bills page, switching between Table, Bill calendar, and Cashflow Forecast no longer jumps back to the top, Refresh sits beside the view toggle, and the shortfall and low buffer warnings can be dismissed.",
     },
     {
-      title: "Scan GCash, Maya, and bank receipts",
+      title: "One currency picker when adjusting a balance",
       description:
-        "Receipt scanning reads GCash, Maya, and Philippine bank app confirmations and remittance results: the reference number, the fee as its own line, and whether it was Send Money, Pay Bills, Cash In, or money received.",
+        "On mobile, editing a bank account that holds several currencies shows a single Currency field, which picks the balance to adjust.",
     },
     {
-      title: "Share a receipt to Zoption",
+      title: "Android Beta 0.2.62",
       description:
-        "On Android, share a screenshot or photo to Zoption from GCash, Maya, your bank app, or your gallery, and the receipt scanner opens and reads it straight away.",
-    },
-    {
-      title: "One-tap assistant check-ins",
-      description:
-        "The AI Assistant gains Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up chips that answer straight from your records.",
-    },
-    {
-      title: "Any color for a category",
-      description:
-        "On mobile, slide Hue, Vividness, and Brightness to pick a custom category color with a live preview, or type a hex code.",
-    },
-    {
-      title: "Stay signed in on Android",
-      description:
-        "Closing the app or an expired session no longer sends you back to the sign-in screen. You stay signed in until you sign out or restart the phone.",
-    },
-    {
-      title: "A 50/30/20 calculator for your budgets",
-      description:
-        "On the web Budgets page, enter your take-home pay to see the needs, wants, and savings split in your workspace currency, as a guide for your monthly limits.",
-    },
-    {
-      title: "Safe to spend in the summary row",
-      description:
-        "On the web dashboard, Safe to spend this week now sits between Expenses and Transfer fees, with the days left, a Bills link, and any overspending alert.",
-    },
-    {
-      title: "Debt payments stay within what you owe",
-      description:
-        "A debt payment can no longer be larger than what the debt still owes, on web and mobile. On the phone a debt's balance drops as soon as the payment is saved, without waiting for it to sync.",
-    },
-    {
-      title: "Android Beta 0.2.61",
-      description:
-        "The official Android Beta carries everything above and everything from 0.2.59. Install 0.2.61 over 0.2.59.",
+        "The official Android Beta carries everything above and everything from 0.2.61. Install 0.2.62 over 0.2.61.",
     },
   ],
 };
@@ -81,6 +46,67 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.6.0",
+    releasedOn: "November 16, 2026",
+    changes: [
+      {
+        title: "Subscriptions are now Bills",
+        description:
+          "Electricity, water, internet, and other recurring bills now sit alongside streaming and memberships, on web and mobile, and the renewal calendar is the Bill calendar. A bill held back because its account was short is charged as soon as you top up or adjust that account.",
+      },
+      {
+        title: "Hide your balance",
+        description:
+          "Tap the eye next to your total balance to mask every amount (shown as ₱••••) before you share your screen or take a screenshot. Each device remembers its own choice.",
+      },
+      {
+        title: "Scan GCash, Maya, and bank receipts",
+        description:
+          "Receipt scanning reads GCash, Maya, and Philippine bank app confirmations and remittance results: the reference number, the fee as its own line, and whether it was Send Money, Pay Bills, Cash In, or money received.",
+      },
+      {
+        title: "Share a receipt to Zoption",
+        description:
+          "On Android, share a screenshot or photo to Zoption from GCash, Maya, your bank app, or your gallery, and the receipt scanner opens and reads it straight away.",
+      },
+      {
+        title: "One-tap assistant check-ins",
+        description:
+          "The AI Assistant gains Monthly check-in, Review last month, Bills due soon, Find savings, and Goals and debt check-up chips that answer straight from your records.",
+      },
+      {
+        title: "Any color for a category",
+        description:
+          "On mobile, slide Hue, Vividness, and Brightness to pick a custom category color with a live preview, or type a hex code.",
+      },
+      {
+        title: "Stay signed in on Android",
+        description:
+          "Closing the app or an expired session no longer sends you back to the sign-in screen. You stay signed in until you sign out or restart the phone.",
+      },
+      {
+        title: "A 50/30/20 calculator for your budgets",
+        description:
+          "On the web Budgets page, enter your take-home pay to see the needs, wants, and savings split in your workspace currency, as a guide for your monthly limits.",
+      },
+      {
+        title: "Safe to spend in the summary row",
+        description:
+          "On the web dashboard, Safe to spend this week now sits between Expenses and Transfer fees, with the days left, a Bills link, and any overspending alert.",
+      },
+      {
+        title: "Debt payments stay within what you owe",
+        description:
+          "A debt payment can no longer be larger than what the debt still owes, on web and mobile. On the phone a debt's balance drops as soon as the payment is saved, without waiting for it to sync.",
+      },
+      {
+        title: "Android Beta 0.2.61",
+        description:
+          "The official Android Beta carries everything above and everything from 0.2.59. Install 0.2.61 over 0.2.59.",
+      },
+    ],
+  },
   {
     version: "4.5.0",
     releasedOn: "October 21, 2026",

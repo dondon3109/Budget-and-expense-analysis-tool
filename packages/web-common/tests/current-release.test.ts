@@ -25,24 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Subscriptions are now Bills",
-      "Hide your balance",
-      "Scan GCash, Maya, and bank receipts",
-      "Share a receipt to Zoption",
-      "One-tap assistant check-ins",
-      "Any color for a category",
-      "Stay signed in on Android",
-      "A 50/30/20 calculator for your budgets",
-      "Safe to spend in the summary row",
-      "Debt payments stay within what you owe",
-      "Android Beta 0.2.61",
+      "A shorter deficit warning",
+      "Bills views keep your place",
+      "One currency picker when adjusting a balance",
+      "Android Beta 0.2.62",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/GCash, Maya, and Philippine bank/);
-    expect(copy).toMatch(/Android Beta 0\.2\.61/);
+    expect(copy).toMatch(/Android Beta 0\.2\.62/);
+  });
+
+  it("keeps the Bills, hide balance, and receipt scanning notes as 4.6.0", () => {
+    expect(titles("4.6.0")).toContain("Subscriptions are now Bills");
+    expect(notes("4.6.0")).toMatch(/GCash, Maya, and Philippine bank/);
+    expect(notes("4.6.0")).toMatch(/Android Beta 0\.2\.61/);
   });
 
   it("keeps the assistant chat restyle notes as 4.5.0", () => {
@@ -242,6 +240,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "4.6.0",
       "4.5.0",
       "4.4.1",
       "4.4.0",
