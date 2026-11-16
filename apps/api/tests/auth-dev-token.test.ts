@@ -58,6 +58,9 @@ function buildApp(options: { tickets?: Record<string, string> } = {}) {
   app.get("/api/app/me", (context) =>
     context.json({ user: context.get("authUser"), tenantId: context.get("tenant").tenantId }),
   );
+  app.get("/api/app/assistant/voice/stream", (context) =>
+    context.json({ user: context.get("authUser"), tenantId: context.get("tenant").tenantId }),
+  );
   app.get("/api/app/admin/whoami", (context) => context.json({ user: context.get("authUser") }));
   app.onError((error, context) =>
     error instanceof HttpError
@@ -162,7 +165,9 @@ describe("WebSocket credentials", () => {
 
   it("redeems a ticket only for a websocket upgrade", async () => {
     const { app, consume } = buildApp({ tickets: { "ticket-1": "user-9" } });
-    const opened = await app.request("/api/app/me?ticket=ticket-1", { headers: upgrade });
+    const opened = await app.request("/api/app/assistant/voice/stream?ticket=ticket-1", {
+      headers: upgrade,
+    });
 
     expect(opened.status).toBe(200);
     await expect(opened.json()).resolves.toMatchObject({
@@ -171,15 +176,26 @@ describe("WebSocket credentials", () => {
     });
     expect(consume).toHaveBeenCalledWith(undefined, "ticket-1");
 
-    const plain = await app.request("/api/app/me?ticket=ticket-2");
+    const plain = await app.request("/api/app/assistant/voice/stream?ticket=ticket-2");
     expect(plain.status).toBe(401);
     await expect(plain.json()).resolves.toMatchObject({ error: "authentication_required" });
     expect(consume).toHaveBeenCalledTimes(1);
   });
 
+  it("ignores a ticket anywhere but the voice stream and leaves it unspent", async () => {
+    const { app, consume } = buildApp({ tickets: { "ticket-1": "user-9" } });
+    const response = await app.request("/api/app/me?ticket=ticket-1", { headers: upgrade });
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toMatchObject({ error: "authentication_required" });
+    expect(consume).not.toHaveBeenCalled();
+  });
+
   it("rejects an unknown, expired or already redeemed ticket", async () => {
     const { app } = buildApp({ tickets: {} });
-    const response = await app.request("/api/app/me?ticket=spent", { headers: upgrade });
+    const response = await app.request("/api/app/assistant/voice/stream?ticket=spent", {
+      headers: upgrade,
+    });
 
     expect(response.status).toBe(401);
     await expect(response.json()).resolves.toMatchObject({ error: "invalid_voice_ticket" });
@@ -187,7 +203,7 @@ describe("WebSocket credentials", () => {
 
   it("prefers the Authorization header and leaves the ticket unspent", async () => {
     const { app, consume } = buildApp({ tickets: { "ticket-1": "user-9" } });
-    const response = await app.request("/api/app/me?ticket=ticket-1", {
+    const response = await app.request("/api/app/assistant/voice/stream?ticket=ticket-1", {
       headers: { ...AUTHORIZATION, ...upgrade },
     });
 

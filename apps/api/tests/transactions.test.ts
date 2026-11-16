@@ -2,7 +2,11 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buildTransferLegs, transactionRepository } from "../src/db/transactions";
+import {
+  buildTransferLegs,
+  debtPaymentChanges,
+  transactionRepository,
+} from "../src/db/transactions";
 import type { Bindings } from "../src/types";
 import { createCapturingDatabase, type CapturedStatement } from "./helpers/capturing-database";
 
@@ -74,6 +78,13 @@ function createSqliteEnvironment(): {
       status text NOT NULL DEFAULT 'active',
       updated_at text NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE debt_payment_applied (
+      tenant_id text NOT NULL,
+      payment_key text NOT NULL,
+      debt_id text NOT NULL,
+      applied_minor integer NOT NULL,
+      PRIMARY KEY (tenant_id, payment_key)
+    );
     CREATE TABLE effective_plan_access (
       tenant_id text NOT NULL,
       source text NOT NULL,
@@ -144,9 +155,9 @@ function seedTransactions(database: DatabaseSync): void {
       ('expense-1', 'tenant-1', 'Food', 'expense', '#ff0000'),
       ('transfer-1', 'tenant-1', 'Transfer', 'transfer', '#0000ff'),
       ('expense-2', 'tenant-2', 'Food', 'expense', '#ff0000');
-    INSERT INTO debts (id, tenant_id, name) VALUES
-      ('debt-card', 'tenant-1', 'Visa card'),
-      ('debt-other', 'tenant-2', 'Other card');
+    INSERT INTO debts (id, tenant_id, name, balance_minor) VALUES
+      ('debt-card', 'tenant-1', 'Visa card', 500000),
+      ('debt-other', 'tenant-2', 'Other card', 500000);
     INSERT INTO transactions (
       id, tenant_id, account_id, category_id, date, description, amount_minor,
       currency, kind, notes, transfer_group_id, transfer_fee_minor, created_at
@@ -508,6 +519,77 @@ describe("transactionRepository SQLite behavior", () => {
 
     await transactionRepository.update(env, "tenant-1", created.id, { amountMinor: 1_000 });
     expect(readDebtCard(database)).toEqual({ balanceMinor: 4_000, status: "active" });
+
+    await transactionRepository.remove(env, "tenant-1", created.id);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+  });
+
+  it("refuses a payment that is more than the debt still owes", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    const pay = (amountMinor: number) =>
+      transactionRepository.create(env, "tenant-1", {
+        accountId: "cash-1",
+        categoryId: "expense-1",
+        date: "2026-07-05",
+        description: "Card payment",
+        amountMinor,
+        currency: "PHP",
+        kind: "expense",
+        debtId: "debt-card",
+      });
+    const overpayment = { status: 400, code: "debt_overpayment" };
+
+    await expect(pay(5_001)).rejects.toMatchObject(overpayment);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+
+    // An edit may use what the same payment already took off, and no more.
+    const created = await pay(2_000);
+    await expect(
+      transactionRepository.update(env, "tenant-1", created.id, { amountMinor: 5_001 }),
+    ).rejects.toMatchObject(overpayment);
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 3_000, status: "active" });
+    await transactionRepository.update(env, "tenant-1", created.id, { amountMinor: 5_000 });
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 0, status: "paid" });
+
+    // An unchanged payment passes, so its other fields stay editable once the debt is paid.
+    await transactionRepository.update(env, "tenant-1", created.id, { description: "Visa" });
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 0, status: "paid" });
+  });
+
+  it("gives back only what a payment took off when the balance stopped at zero", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    // Two payments that each fit can land together; the writes alone must stay reversible.
+    const payment = { debtId: "debt-card", amountMinor: 6_000 };
+
+    await env.DB.batch(debtPaymentChanges(env, "tenant-1", "payment-1", null, payment));
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 0, status: "paid" });
+
+    await env.DB.batch(debtPaymentChanges(env, "tenant-1", "payment-1", payment, null));
+    expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });
+    expect(database.prepare("SELECT COUNT(*) AS rows FROM debt_payment_applied").get()).toEqual({
+      rows: 0,
+    });
+  });
+
+  it("gives back the full amount of a payment recorded before applied amounts were kept", async () => {
+    const { env, database } = createSqliteEnvironment();
+    seedTransactions(database);
+    database.prepare("UPDATE debts SET balance_minor = 5000 WHERE id = 'debt-card'").run();
+    const created = await transactionRepository.create(env, "tenant-1", {
+      accountId: "cash-1",
+      categoryId: "expense-1",
+      date: "2026-07-05",
+      description: "Card payment",
+      amountMinor: 2_000,
+      currency: "PHP",
+      kind: "expense",
+      debtId: "debt-card",
+    });
+    database.prepare("DELETE FROM debt_payment_applied").run();
 
     await transactionRepository.remove(env, "tenant-1", created.id);
     expect(readDebtCard(database)).toEqual({ balanceMinor: 5_000, status: "active" });

@@ -41,7 +41,8 @@ export function updateInput(
   };
 }
 
-function debtPayment(transaction: NonTransferTransactionInput | null): DebtPayment {
+/** The debt payment an expense makes; null for income or an unlinked expense. */
+export function debtPayment(transaction: NonTransferTransactionInput | null): DebtPayment {
   if (transaction?.kind !== "expense" || !transaction.debtId) return null;
   return { debtId: transaction.debtId, amountMinor: transaction.amountMinor };
 }
@@ -66,6 +67,7 @@ export function transactionMutation(
   const extraStatements = debtPaymentChanges(
     env,
     tenantId,
+    operation.entityId,
     previousPayment,
     next,
     appliedOperationGuard(tenantId, clientId, operation),

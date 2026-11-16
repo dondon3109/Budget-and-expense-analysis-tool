@@ -21,6 +21,7 @@ import { HttpError } from "../errors";
 import type { Bindings } from "../types";
 import { readTier } from "../billing/entitlements";
 import {
+  assertDebtPaymentFits,
   readTransactionDebtPayment,
   validateTransactionReferences,
   type DebtPayment,
@@ -47,6 +48,7 @@ import { goalMutation } from "./mobile-sync/push/entities/goal";
 import { remittanceMutation } from "./mobile-sync/push/entities/remittance";
 import { subscriptionMutation } from "./mobile-sync/push/entities/subscription";
 import {
+  debtPayment,
   transactionMutation,
   updateInput,
   type NonTransferTransactionInput,
@@ -488,6 +490,13 @@ export function createMobileSyncRepository(
             transaction,
             currentTransaction?.categoryId,
             readEntitlement,
+          );
+          await assertDebtPaymentFits(
+            env,
+            tenantId,
+            operation.entityId,
+            previousPayment,
+            debtPayment(transaction),
           );
         } catch (error) {
           if (!(error instanceof HttpError)) throw error;

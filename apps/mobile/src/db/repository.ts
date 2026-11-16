@@ -40,6 +40,7 @@ import {
   type LocalRemittanceOverview,
 } from "./remittance-queries";
 import { readTransactionFormData } from "./transaction-form-data";
+import { pendingDebtPaymentsSql } from "./pending-debt-payments";
 
 const workspaceStatsRowSchema = z.object({
   account_count: z.number().int().nonnegative(),
@@ -774,8 +775,9 @@ LIMIT ?`;
 
   async getDebts(): Promise<LocalDebtItem[]> {
     const rows = await this.database.getAllAsync(
-      `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
-        balance_as_of, status, sync_state
+      `SELECT id, name, type,
+        MAX(0, balance_minor - ${pendingDebtPaymentsSql("debts.id")}) AS balance_minor,
+        apr_basis_points, minimum_payment_minor, balance_as_of, status, sync_state
        FROM debts
        WHERE deleted_at IS NULL
        ORDER BY
@@ -851,8 +853,9 @@ LIMIT ?`;
 
   async getDebt(id: string): Promise<LocalDebtItem | null> {
     const row = await this.database.getFirstAsync(
-      `SELECT id, name, type, balance_minor, apr_basis_points, minimum_payment_minor,
-        balance_as_of, status, sync_state
+      `SELECT id, name, type,
+        MAX(0, balance_minor - ${pendingDebtPaymentsSql("debts.id")}) AS balance_minor,
+        apr_basis_points, minimum_payment_minor, balance_as_of, status, sync_state
        FROM debts
        WHERE id = ? AND deleted_at IS NULL`,
       id,
