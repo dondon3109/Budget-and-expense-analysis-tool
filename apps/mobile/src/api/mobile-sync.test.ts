@@ -238,6 +238,40 @@ describe("fixed mobile synchronization transport", () => {
     );
   });
 
+  it("keeps a lapsed family's push apart from permanent rejections, so it can be retried", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify({ error: "workspace_lapsed", message: "This family's plan has ended." }),
+          { status: 403 },
+        ),
+      ),
+    );
+    await expect(
+      pushMobileSync({
+        accessToken: "token",
+        workspaceId: "family-1",
+        request: {
+          protocolVersion: 1,
+          clientId: "00000000-0000-4000-8000-000000000001",
+          operations: [
+            {
+              operationId: "00000000-0000-4000-8000-000000000002",
+              idempotencyKey: "00000000-0000-4000-8000-000000000003",
+              entityType: "transaction",
+              entityId: "00000000-0000-4000-8000-000000000004",
+              operationType: "delete",
+              baseRevision: 2,
+              dependencyIds: [],
+              payload: {},
+            },
+          ],
+        },
+        fetchImpl,
+      }),
+    ).rejects.toMatchObject({ code: "workspace_lapsed", status: 403 });
+  });
+
   it("recognizes a typed full-resync response", async () => {
     const fetchImpl = jest.fn(() =>
       Promise.resolve(

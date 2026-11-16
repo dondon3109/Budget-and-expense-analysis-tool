@@ -7,7 +7,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createAccountDeletionService } from "../src/account-deletion";
 import { readTier } from "../src/billing/entitlements";
 import { createAuthMiddleware, type AuthVerifier } from "../src/auth";
-import type { AccountDeletionRepository } from "../src/db/account-deletion";
+import {
+  accountDeletionRepository,
+  type AccountDeletionRepository,
+} from "../src/db/account-deletion";
 import { familyRepository } from "../src/db/families";
 import {
   createTenantResolver,
@@ -402,6 +405,34 @@ describe("family plans", () => {
         .prepare("SELECT COUNT(*) AS count FROM effective_plan_access WHERE tenant_id = ?")
         .get(family),
     ).toEqual({ count: 1 });
+  });
+});
+
+describe("account deletion for a family member", () => {
+  it("frees their seat with the same cooldown as a removal and keeps past seat history", async () => {
+    const { env, database, createFamily, join, detail } = await setup();
+    const family = await createFamily();
+    expect((await join(family, "papa")).status).toBe(204);
+    database
+      .prepare(
+        `INSERT INTO family_seat_events (tenant_id, user_id, kind, created_at)
+         VALUES ('earlier-family', 'papa', 'freed', datetime('now', '-10 days'))`,
+      )
+      .run();
+
+    await accountDeletionRepository.purgeTenant(env, "papa");
+
+    expect((await detail(family)).seats).toEqual({ limit: 6, used: 1, cooling: 1 });
+    expect(
+      database
+        .prepare(
+          "SELECT tenant_id AS tenantId, kind FROM family_seat_events WHERE user_id = 'papa' ORDER BY tenant_id",
+        )
+        .all(),
+    ).toEqual([
+      { tenantId: "earlier-family", kind: "freed" },
+      { tenantId: family, kind: "freed" },
+    ]);
   });
 });
 

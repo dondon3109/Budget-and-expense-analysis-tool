@@ -24,6 +24,11 @@ const recordSchema = z
      * family refuses every change, so the phone shows it read only. Older records have none.
      */
     closing: z.record(z.string(), z.string()).default({}),
+    /**
+     * Families whose plan ended, as last read online. A lapsed family refuses changes until it is
+     * paid again, so the phone shows it read only. Older records have none.
+     */
+    lapsed: z.array(z.string().min(1)).default([]),
   })
   .strict();
 
@@ -34,6 +39,7 @@ export const EMPTY_WORKSPACE_RECORD: WorkspaceRecord = {
   families: [],
   synced: [],
   closing: {},
+  lapsed: [],
 };
 
 const storeOptions: SecureStore.SecureStoreOptions = {
@@ -87,6 +93,7 @@ export function mergeWorkspaceList(
       families,
       synced: record.synced.filter((id) => ids.has(id)),
       closing: Object.fromEntries(Object.entries(record.closing).filter(([id]) => ids.has(id))),
+      lapsed: record.lapsed.filter((id) => ids.has(id)),
     },
     gone,
   };

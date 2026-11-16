@@ -72,6 +72,7 @@ describe("encrypted local workspace repository", () => {
             to_account_id: null,
             to_account_name: null,
             sync_state: "synced",
+            author_user_id: "user-2",
           },
         ]),
       ),
@@ -88,6 +89,7 @@ describe("encrypted local workspace repository", () => {
           accountName: "Wallet",
         },
         syncState: "synced",
+        authorUserId: "user-2",
       },
     ]);
   });

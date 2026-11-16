@@ -10,6 +10,7 @@ import {
   type ForecastRecurringIncome,
 } from "@zoption/shared";
 import { MoneyValue } from "@/ui/components";
+import { useForecastOnTrackStore } from "@/stores/forecast-on-track-store";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -50,6 +51,8 @@ export function CashflowForecastCard({
   const workspaceCurrency = useWorkspaceCurrency();
   const currency = currencyProp ?? workspaceCurrency;
   const [horizon, setHorizon] = useState<HorizonDays>(30);
+  const onTrackDismissed = useForecastOnTrackStore((state) => state.dismissed);
+  const dismissOnTrack = useForecastOnTrackStore((state) => state.dismiss);
   // The starting balance is in `currency`, so plans billed in the other one are left out.
   const subscriptions = useMemo(
     () => forecastSubscriptions(allSubscriptions, currency),
@@ -100,22 +103,20 @@ export function CashflowForecastCard({
         tone: "danger" as const,
         icon: "alert-octagon-outline" as const,
         title: "Deficit risk",
-        detail: firstDeficitDay
-          ? `Balance projected below zero on ${firstDeficitDay.date}.`
-          : "Balance projected below zero.",
+        detail: firstDeficitDay ? `Below zero on ${firstDeficitDay.date}.` : "Below zero.",
       }
     : selected.hasBufferDip
       ? {
           tone: "warning" as const,
           icon: "alert-outline" as const,
           title: "Buffer warning",
-          detail: `Balance dips below your buffer on ${selected.dipDaysCount} day${selected.dipDaysCount === 1 ? "" : "s"} — lowest on ${selected.minBalanceDate}.`,
+          detail: `Below your buffer on ${selected.dipDaysCount} day${selected.dipDaysCount === 1 ? "" : "s"}.`,
         }
       : {
           tone: "healthy" as const,
           icon: "check-circle-outline" as const,
           title: "On track",
-          detail: `Balance stays above your buffer through ${selected.endDate}.`,
+          detail: null,
         };
 
   const statusBackground =
@@ -138,9 +139,6 @@ export function CashflowForecastCard({
           <Text style={[typography.headline, { color: theme.colors.text }]}>
             Cash flow forecast
           </Text>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            Projected balance after upcoming bills.
-          </Text>
         </View>
         {onViewSubscriptions ? (
           <Pressable
@@ -158,8 +156,7 @@ export function CashflowForecastCard({
 
       {excludedCount > 0 ? (
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-          {excludedCount} {excludedCount === 1 ? "plan" : "plans"} billed in another currency{" "}
-          {excludedCount === 1 ? "isn't" : "aren't"} included in this {currency} forecast.
+          {excludedCount} {excludedCount === 1 ? "plan" : "plans"} in another currency not included.
         </Text>
       ) : null}
 
@@ -234,18 +231,38 @@ export function CashflowForecastCard({
         })}
       </View>
 
-      <View
-        accessibilityLabel={`${status.title}: ${status.detail}`}
-        style={[styles.statusBanner, { backgroundColor: statusBackground }]}
-      >
-        <MaterialCommunityIcons name={status.icon} size={18} color={statusForeground} />
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={[typography.body, { color: statusForeground, fontWeight: "700" }]}>
-            {status.title}
-          </Text>
-          <Text style={[typography.caption, { color: statusForeground }]}>{status.detail}</Text>
+      {status.tone === "healthy" && onTrackDismissed ? null : (
+        <View style={[styles.statusBanner, { backgroundColor: statusBackground }]}>
+          <View
+            accessibilityLabel={status.detail ? `${status.title}: ${status.detail}` : status.title}
+            accessible
+            style={styles.statusBody}
+          >
+            <MaterialCommunityIcons name={status.icon} size={18} color={statusForeground} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[typography.body, { color: statusForeground, fontWeight: "700" }]}>
+                {status.title}
+              </Text>
+              {status.detail ? (
+                <Text style={[typography.caption, { color: statusForeground }]}>
+                  {status.detail}
+                </Text>
+              ) : null}
+            </View>
+          </View>
+          {/* Only good news can be closed; a warning stays until the forecast changes. */}
+          {status.tone === "healthy" ? (
+            <Pressable
+              accessibilityLabel="Close On track"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={withTapSound(dismissOnTrack)}
+            >
+              <MaterialCommunityIcons color={statusForeground} name="close" size={18} />
+            </Pressable>
+          ) : null}
         </View>
-      </View>
+      )}
 
       <View style={styles.detailRow}>
         <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Lowest balance</Text>
@@ -263,12 +280,12 @@ export function CashflowForecastCard({
 
       {visibleBills.length === 0 ? (
         <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          No upcoming bills or renewals in the next {horizon} days.
+          No bills in the next {horizon} days.
         </Text>
       ) : (
         <View style={{ gap: spacing.xs }}>
           <Text style={[typography.caption, { color: theme.colors.textMuted, fontWeight: "600" }]}>
-            Upcoming bills and renewals
+            Upcoming bills
           </Text>
           {visibleBills.map((bill) => {
             const pillBackground =
@@ -369,6 +386,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     borderRadius: radii.md,
   },
+  statusBody: { flex: 1, flexDirection: "row", alignItems: "flex-start", gap: spacing.xs },
   detailRow: {
     flexDirection: "row",
     alignItems: "center",

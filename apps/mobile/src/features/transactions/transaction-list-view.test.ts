@@ -20,6 +20,7 @@ function item(
 ): LocalTransactionItem {
   return {
     syncState: "synced",
+    authorUserId: null,
     transaction: {
       id,
       date,

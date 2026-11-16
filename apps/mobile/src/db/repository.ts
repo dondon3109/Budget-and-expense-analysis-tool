@@ -71,6 +71,7 @@ const localTransactionRowSchema = z.object({
   to_account_id: z.string().nullable(),
   to_account_name: z.string().nullable(),
   sync_state: z.enum(["synced", "pending", "failed", "conflicted"]),
+  author_user_id: z.string().nullable(),
 });
 
 const goalItemSchema = z.object({
@@ -249,7 +250,8 @@ const transactionListSelect = `SELECT
   transaction_row.transfer_fee_minor,
   peer.account_id AS to_account_id,
   destination.name AS to_account_name,
-  transaction_row.sync_state
+  transaction_row.sync_state,
+  transaction_row.author_user_id
 FROM transactions transaction_row
 INNER JOIN categories category
   ON category.id = transaction_row.category_id AND category.deleted_at IS NULL
@@ -345,7 +347,7 @@ function mapTransactionRows(rows: unknown[]): LocalTransactionItem[] {
         transferFeeMinor: row.transfer_fee_minor,
         legacyTransfer: row.kind === "transfer" && !linkedTransfer,
       };
-      return { transaction, syncState: row.sync_state };
+      return { transaction, syncState: row.sync_state, authorUserId: row.author_user_id };
     });
 }
 

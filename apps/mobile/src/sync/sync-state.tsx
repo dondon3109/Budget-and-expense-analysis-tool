@@ -159,7 +159,9 @@ async function pushOutbox(
         error.code !== "account_deleted" &&
         error.code !== "session_expired" &&
         // The family's copy is settled by the caller, which drops these changes.
-        !isWorkspaceRefusal(error)
+        !isWorkspaceRefusal(error) &&
+        // Left pending, so they upload once the family's plan is renewed.
+        error.code !== "workspace_lapsed"
       ) {
         await workspace.transactionMutations.recordPushFailure(
           request,
@@ -377,6 +379,20 @@ export function SyncProvider({
         await workspace.syncRepository.recordFailure().catch(() => undefined);
         if (error instanceof MobileSyncTransportError && error.code === "account_deleted") {
           await session.signOut({ preserveLocalWorkspace: true }).catch(() => undefined);
+          return;
+        }
+        if (
+          familyId &&
+          error instanceof MobileSyncTransportError &&
+          error.code === "workspace_lapsed"
+        ) {
+          // Read only until renewed: refreshing the family marks it so, and the pending changes
+          // wait in the outbox for the first sync after the plan is paid again.
+          refreshFamilies();
+          setSnapshot({
+            status: "failed",
+            message: `${familyName ?? "This family"}'s plan has ended. Your changes will upload once it's renewed.`,
+          });
           return;
         }
         if (familyId && isWorkspaceRefusal(error)) {

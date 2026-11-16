@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { TransactionsScreen } from "./TransactionsScreen";
 import { useLocalTransactions, useLocalWorkspace } from "@/db/local-workspace-state";
 import type { LocalTransactionItem } from "@/db/view-models";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { useSyncState } from "@/sync/sync-state";
 
 jest.mock("expo-router", () => ({
@@ -32,13 +33,23 @@ jest.mock("@/sync/sync-state", () => ({
   useSyncState: jest.fn(),
 }));
 
+jest.mock("@/features/family/active-workspace", () => ({
+  useActiveWorkspace: jest.fn(() => ({ family: null, writable: true })),
+}));
+
+jest.mock("@/auth/session-state", () => ({
+  useSessionSnapshot: () => ({ subject: "me" }),
+}));
+
 function item(
   id: string,
   amountMinor: number,
   kind: LocalTransactionItem["transaction"]["kind"],
+  authorUserId: string | null = null,
 ): LocalTransactionItem {
   return {
     syncState: "synced",
+    authorUserId,
     transaction: {
       id,
       date: "2026-09-15",
@@ -118,6 +129,10 @@ describe("TransactionsScreen select mode", () => {
     jest.clearAllMocks();
     deleteTransaction.mockResolvedValue(undefined);
     jest.mocked(useSyncState).mockReturnValue({ status: "synced", message: null, retry });
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: null,
+      writable: true,
+    } as ReturnType<typeof useActiveWorkspace>);
     jest.mocked(useLocalWorkspace).mockReturnValue({
       workspace: { transactionMutations: { deleteTransaction } },
     } as unknown as ReturnType<typeof useLocalWorkspace>);
@@ -170,5 +185,36 @@ describe("TransactionsScreen select mode", () => {
 
     expect(await screen.findByText("Blocked")).toBeTruthy();
     expect(screen.getByText("1 selected")).toBeTruthy();
+  });
+
+  it("in a family, lets a member select only their own entries", async () => {
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: { id: "fam-1", kind: "family", name: "Home", role: "member" },
+      writable: true,
+    } as ReturnType<typeof useActiveWorkspace>);
+    jest.mocked(useLocalTransactions).mockReturnValue({
+      items: [item("mine", -4_000, "expense", "me"), item("theirs", -9_000, "expense", "other")],
+      error: null,
+      retry: jest.fn(),
+    });
+    await render(<TransactionsScreen />);
+
+    await fireEvent(screen.getByRole("button", { name: /^theirs,/ }), "longPress");
+    expect(screen.queryByText(/selected$/)).toBeNull();
+
+    await fireEvent(screen.getByRole("button", { name: /^mine,/ }), "longPress");
+    expect(screen.getByText("1 selected")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Delete 1 selected" })).toBeTruthy();
+  });
+
+  it("offers no selection where the family takes no changes", async () => {
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: { id: "fam-1", kind: "family", name: "Home", role: "viewer" },
+      writable: false,
+    } as ReturnType<typeof useActiveWorkspace>);
+    await render(<TransactionsScreen />);
+
+    await fireEvent(screen.getByRole("button", { name: /^salary,/ }), "longPress");
+    expect(screen.queryByText(/selected$/)).toBeNull();
   });
 });
