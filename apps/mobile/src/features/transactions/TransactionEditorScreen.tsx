@@ -327,8 +327,15 @@ export function TransactionEditorScreen() {
     }
     const paidDebtId = parsed.input.kind === "income" ? null : parsed.input.debtId;
     const paidDebt = debts.find((debt) => debt.id === paidDebtId);
-    // A balance that has not synced yet can let this through; the server refuses it then.
-    if (paidDebt && overpaysDebt(parsed.input, paidDebt, formData.data?.transaction?.input)) {
+    // The local balance drops only after sync, so payments still waiting to sync come off it
+    // first. An unsynced entry being edited is in that sum and is given back as the stored one.
+    const left = paidDebt && {
+      id: paidDebt.id,
+      balanceMinor:
+        paidDebt.balanceMinor -
+        (await local.workspace.repository.getUnsyncedDebtPaymentMinor(paidDebt.id)),
+    };
+    if (left && overpaysDebt(parsed.input, left, formData.data?.transaction?.input)) {
       setErrors({ amount: DEBT_OVERPAYMENT_MESSAGE });
       playSound("error");
       setMessage("Check the highlighted details.");

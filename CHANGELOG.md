@@ -77,7 +77,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
-- A debt payment can no longer be larger than what the debt still owes. The web and mobile forms say so before saving, and the server refuses one that arrives anyway.
+- A debt payment can no longer be larger than what the debt still owes. The web and mobile forms say so before saving, the mobile app also counts payments still waiting to sync, and the server refuses one that arrives anyway.
 - Deleting or changing a debt payment that was larger than the debt no longer leaves the debt higher than it was before the payment.
 - Mobile: category color circles are evenly spaced in one row instead of being pushed around by their names, and the custom color button and emoji choices line up again.
 - Android: you stay signed in until you sign out or restart the phone. Closing the app, or an access token expiring, no longer sends you back to the sign-in screen. Restarting the phone signs you out, and your entries stay on the phone for the next sign-in.

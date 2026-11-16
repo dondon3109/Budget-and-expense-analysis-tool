@@ -6,6 +6,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
 import { migrations } from "./migrations";
+import { LocalWorkspaceRepository } from "./repository";
 import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";
 
 class TestDatabase {
@@ -110,6 +111,22 @@ describe("local debt links", () => {
       database.native.prepare("SELECT debt_id FROM transactions WHERE id = ?").get(id),
     ).toEqual({ debt_id: "debt-synced" });
     expect(outboxPayload(database, "transaction")).toMatchObject({ debtId: "debt-synced" });
+  });
+
+  it("totals what payments still waiting to sync will take off a debt", async () => {
+    const database = new TestDatabase();
+    const writes = repository(database);
+    const reads = new LocalWorkspaceRepository(database as unknown as SQLiteDatabase);
+
+    await writes.createTransaction({ ...payment, debtId: "debt-synced" });
+    await writes.createTransaction({ ...transfer, transferFeeMinor: 500, debtId: "debt-synced" });
+    const removed = await writes.createTransaction({ ...payment, debtId: "debt-synced" });
+    await writes.deleteTransaction(removed);
+    expect(await reads.getUnsyncedDebtPaymentMinor("debt-synced")).toBe(39_500);
+
+    // Once the server has them the debt's own balance carries the payments.
+    database.native.exec("UPDATE transactions SET server_revision = 1, sync_state = 'synced'");
+    expect(await reads.getUnsyncedDebtPaymentMinor("debt-synced")).toBe(0);
   });
 
   it("waits for a debt to reach the server before linking a payment to it", async () => {
