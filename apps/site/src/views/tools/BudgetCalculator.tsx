@@ -4,7 +4,11 @@ import { MoneyParseError, parseAmountToMinor } from "@zoption/shared/money";
 import { appUrl, NEW_TAB } from "../../lib/appUrl";
 import { formatPeso } from "../../lib/formatters";
 import { announceSiteEvent, BUDGET_CALCULATOR_SIGNUP_PATH } from "../../lib/siteEvents";
-import { allocateBudget, DEFAULT_PERCENTAGES, type BudgetRulePercentages } from "./allocateBudget";
+import {
+  allocateBudget,
+  DEFAULT_BUDGET_RULE_PERCENTAGES,
+  type BudgetRulePercentages,
+} from "@zoption/shared/budget-rule";
 
 export const BUCKET_COPY = [
   {
@@ -37,7 +41,9 @@ export const BUCKET_COPY = [
  */
 export function BudgetCalculator() {
   const [incomeInput, setIncomeInput] = useState("30,000.00");
-  const [percentages, setPercentages] = useState<BudgetRulePercentages>(DEFAULT_PERCENTAGES);
+  const [percentages, setPercentages] = useState<BudgetRulePercentages>(
+    DEFAULT_BUDGET_RULE_PERCENTAGES,
+  );
   const usedRef = useRef(false);
 
   // Counts a visitor who changed the default inputs, once per page load. Nothing typed is sent.
@@ -128,13 +134,13 @@ export function BudgetCalculator() {
             </p>
           )}
           {percentagesValid &&
-          (percentages.needs !== DEFAULT_PERCENTAGES.needs ||
-            percentages.wants !== DEFAULT_PERCENTAGES.wants ||
-            percentages.savings !== DEFAULT_PERCENTAGES.savings) ? (
+          (percentages.needs !== DEFAULT_BUDGET_RULE_PERCENTAGES.needs ||
+            percentages.wants !== DEFAULT_BUDGET_RULE_PERCENTAGES.wants ||
+            percentages.savings !== DEFAULT_BUDGET_RULE_PERCENTAGES.savings) ? (
             <button
               type="button"
               className="calc-reset"
-              onClick={() => setPercentages(DEFAULT_PERCENTAGES)}
+              onClick={() => setPercentages(DEFAULT_BUDGET_RULE_PERCENTAGES)}
             >
               Reset to 50 / 30 / 20
             </button>

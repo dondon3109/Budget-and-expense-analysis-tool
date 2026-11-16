@@ -95,7 +95,7 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/tools/50-30-20-calculator": [
     "apps/site/src/views/tools/BudgetCalculatorPage.tsx",
     "apps/site/src/views/tools/BudgetCalculator.tsx",
-    "apps/site/src/views/tools/allocateBudget.ts",
+    "packages/shared/src/budgetRule.ts",
   ],
   "/tools/subscription-cost-calculator": [
     "apps/site/src/views/tools/SubscriptionCalculatorPage.tsx",

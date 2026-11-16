@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { useSearchParams } from "react-router-dom";
 
 import { BudgetOccasions } from "../components/budgets/BudgetOccasions";
+import { BudgetRuleCalculator } from "../components/budgets/BudgetRuleCalculator";
 import { BudgetScopeTabs, type BudgetTab } from "../components/budgets/BudgetScopeTabs";
 import { ShareBudgetModal } from "../components/budgets/ShareBudgetModal";
 import { ConfirmDialog } from "../components/common/ConfirmDialog";
@@ -508,6 +509,7 @@ export function BudgetsPage() {
             />
           </>
         )}
+        {tab === "month" && <BudgetRuleCalculator />}
         {(pendingMonth || pendingParams) && (
           <ConfirmDialog
             title="Discard unsaved changes?"

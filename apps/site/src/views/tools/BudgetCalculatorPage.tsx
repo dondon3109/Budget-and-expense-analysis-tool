@@ -4,7 +4,7 @@ import { LegalPageLayout } from "../../components/legal/LegalPageLayout";
 import { appUrl, NEW_TAB } from "../../lib/appUrl";
 import { formatPeso } from "../../lib/formatters";
 import { BUDGET_CALCULATOR_SIGNUP_PATH } from "../../lib/siteEvents";
-import { allocateBudget, DEFAULT_PERCENTAGES } from "./allocateBudget";
+import { allocateBudget, DEFAULT_BUDGET_RULE_PERCENTAGES } from "@zoption/shared/budget-rule";
 import "./BudgetCalculatorPage.css";
 
 export const BUDGET_CALCULATOR_LAST_UPDATED = "November 16, 2026";
@@ -33,7 +33,7 @@ export function BudgetCalculatorPage({ calculator }: { calculator?: ReactNode })
         </thead>
         <tbody>
           {EXAMPLE_INCOMES_MINOR.map((incomeMinor) => {
-            const example = allocateBudget(incomeMinor, DEFAULT_PERCENTAGES);
+            const example = allocateBudget(incomeMinor, DEFAULT_BUDGET_RULE_PERCENTAGES);
             return (
               <tr key={incomeMinor}>
                 <th scope="row">{formatPeso(incomeMinor)}</th>

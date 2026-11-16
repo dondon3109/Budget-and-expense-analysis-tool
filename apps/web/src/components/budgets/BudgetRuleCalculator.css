@@ -1,0 +1,124 @@
+/* The 50/30/20 calculator below the Budgets plan. The income field reuses `.budget-amount-input`. */
+
+.budget-rule {
+  margin-top: 32px;
+  padding-top: 24px;
+  display: grid;
+  gap: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.budget-rule-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.budget-rule-heading p {
+  margin: 4px 0 0;
+  max-width: 640px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.budget-rule-inputs {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  align-items: end;
+  gap: 18px 28px;
+}
+
+.budget-rule-split {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  border: 0;
+}
+
+.budget-rule-split legend,
+.budget-rule-split label span,
+.budget-rule-results span {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 580;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.budget-rule-split legend {
+  margin-bottom: 6px;
+}
+
+.budget-rule-split label {
+  display: grid;
+  gap: 6px;
+}
+
+.budget-rule-split input {
+  width: 88px;
+  height: var(--control-height);
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.budget-rule-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.budget-rule-results article {
+  padding: 4px 24px;
+  display: grid;
+  gap: 6px;
+}
+
+.budget-rule-results article:first-child {
+  padding-left: 0;
+}
+
+.budget-rule-results article + article {
+  border-left: 1px solid var(--line);
+}
+
+.budget-rule-results strong {
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.budget-rule-results small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .budget-rule-inputs,
+  .budget-rule-results {
+    grid-template-columns: 1fr;
+  }
+
+  .budget-rule-results article,
+  .budget-rule-results article:first-child {
+    padding: 12px 0;
+  }
+
+  .budget-rule-results article + article {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}

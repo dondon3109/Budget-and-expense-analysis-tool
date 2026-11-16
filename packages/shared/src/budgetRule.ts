@@ -1,5 +1,5 @@
 /**
- * Centavo-exact 50/30/20 allocation.
+ * Minor-unit exact 50/30/20 allocation, shared by the public calculator and the signed-in app.
  *
  * Money is integer minor units (centavos) end to end, which is what makes the three
  * buckets sum to the income *exactly*. Naive percentage arithmetic rounds each bucket
@@ -25,7 +25,7 @@ export type BudgetAllocation = BudgetRulePercentages & {
 const BUCKET_ORDER = ["needs", "wants", "savings"] as const;
 type Bucket = (typeof BUCKET_ORDER)[number];
 
-export const DEFAULT_PERCENTAGES: BudgetRulePercentages = {
+export const DEFAULT_BUDGET_RULE_PERCENTAGES: BudgetRulePercentages = {
   needs: 50,
   wants: 30,
   savings: 20,
@@ -33,10 +33,10 @@ export const DEFAULT_PERCENTAGES: BudgetRulePercentages = {
 
 export function allocateBudget(
   incomeMinor: number,
-  percentages: BudgetRulePercentages = DEFAULT_PERCENTAGES,
+  percentages: BudgetRulePercentages = DEFAULT_BUDGET_RULE_PERCENTAGES,
 ): BudgetAllocation {
   if (!Number.isSafeInteger(incomeMinor) || incomeMinor < 0) {
-    throw new RangeError("Income must be a non-negative integer in centavos.");
+    throw new RangeError("Income must be a non-negative integer in minor units.");
   }
 
   const values = BUCKET_ORDER.map((bucket) => percentages[bucket]);

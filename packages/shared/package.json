@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./money": "./src/money.ts",
+    "./budget-rule": "./src/budgetRule.ts",
     "./workbook": "./src/workbook.ts"
   },
   "scripts": {
