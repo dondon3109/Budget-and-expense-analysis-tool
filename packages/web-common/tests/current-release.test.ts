@@ -32,14 +32,17 @@ describe("current release notes", () => {
       "One-tap assistant check-ins",
       "Any color for a category",
       "Stay signed in on Android",
-      "Android Beta 0.2.60",
+      "A 50/30/20 calculator for your budgets",
+      "Safe to spend in the summary row",
+      "Debt payments stay within what you owe",
+      "Android Beta 0.2.61",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
     expect(copy).toMatch(/GCash, Maya, and Philippine bank/);
-    expect(copy).toMatch(/Android Beta 0\.2\.60/);
+    expect(copy).toMatch(/Android Beta 0\.2\.61/);
   });
 
   it("keeps the assistant chat restyle notes as 4.5.0", () => {
