@@ -1,3 +1,6 @@
+// First, before any module that builds a schema: see zodJitless.ts.
+import "./zodJitless";
+
 export * from "./budgetPlan";
 export * from "./budgetRule";
 export * from "./calculations";
