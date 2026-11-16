@@ -17,6 +17,8 @@ import {
   categoryInputSchema,
   currencies,
   currencyMetadata,
+  heldCurrencies,
+  holdsMultipleCurrencies,
   interestAmountMinor,
   interestFrequencies,
   interestUpdateSchema,
@@ -181,6 +183,7 @@ export function ReferenceEditorScreen() {
   const [interestPayDay, setInterestPayDay] = useState("15");
   const [interestInitialized, setInterestInitialized] = useState(false);
   const [interestMessage, setInterestMessage] = useState<string | null>(null);
+  const [adjustCurrency, setAdjustCurrency] = useState<Currency | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -193,6 +196,15 @@ export function ReferenceEditorScreen() {
     entityType === "category" && id
       ? references.data?.categories.find((item) => item.id === id)
       : undefined;
+  // A bank account holding several currencies reuses the Currency field to choose which
+  // balance the adjust card below changes; the account's own currency stays fixed.
+  const modeling = modelingState.modeling;
+  const heldBalanceCurrencies =
+    account && modeling && holdsMultipleCurrencies(account.type) ? heldCurrencies(modeling) : [];
+  const adjustCurrencyValue =
+    adjustCurrency && heldBalanceCurrencies.includes(adjustCurrency)
+      ? adjustCurrency
+      : (modeling?.currency ?? null);
 
   useEffect(() => {
     if (initialized.current || !references.data) return;
@@ -512,16 +524,32 @@ export function ReferenceEditorScreen() {
                     setMessage(null);
                   }}
                 />
-                <SelectionField
-                  label="Currency"
-                  value={accountCurrency}
-                  options={currencyOptions}
-                  placeholder="Choose a currency"
-                  sheetTitle="Account currency"
-                  hint={editing ? "An account's currency cannot be changed." : undefined}
-                  disabled={editing || saving || blocked}
-                  onSelect={(value) => setAccountCurrency(value as Currency)}
-                />
+                {heldBalanceCurrencies.length > 1 ? (
+                  <SelectionField
+                    label="Currency"
+                    value={adjustCurrencyValue ?? ""}
+                    options={heldBalanceCurrencies.map((code) => ({
+                      id: code,
+                      label: currencyMetadata[code].label,
+                    }))}
+                    placeholder="Choose a currency"
+                    sheetTitle="Choose currency"
+                    hint="Chooses the balance to adjust below. The account's main currency cannot be changed."
+                    disabled={saving || blocked}
+                    onSelect={(value) => setAdjustCurrency(value as Currency)}
+                  />
+                ) : (
+                  <SelectionField
+                    label="Currency"
+                    value={accountCurrency}
+                    options={currencyOptions}
+                    placeholder="Choose a currency"
+                    sheetTitle="Account currency"
+                    hint={editing ? "An account's currency cannot be changed." : undefined}
+                    disabled={editing || saving || blocked}
+                    onSelect={(value) => setAccountCurrency(value as Currency)}
+                  />
+                )}
                 {editing ? null : (
                   <FormField
                     label="Starting balance (optional)"
@@ -740,6 +768,7 @@ export function ReferenceEditorScreen() {
                 accountType={account.type}
                 accountCurrency={modelingState.modeling.currency}
                 balancesByCurrency={modelingState.modeling.balancesByCurrency}
+                selectedCurrency={adjustCurrencyValue ?? undefined}
                 disabled={blocked || saving}
               />
             ) : null}

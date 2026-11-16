@@ -43,6 +43,8 @@ describe("BalanceAdjustCard", () => {
       />,
     );
 
+    // The new-currency picker stays hidden until the user asks to add one.
+    expect(screen.queryByRole("button", { name: "New currency" })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Add new currency" }));
     await fireEvent.press(screen.getByRole("button", { name: "New currency" }));
     // The sheet offers only currencies the account does not hold yet.
@@ -76,6 +78,29 @@ describe("BalanceAdjustCard", () => {
 
     expect(screen.getByLabelText("Balances by currency")).toBeTruthy();
     expect(screen.getByText("USD ")).toBeTruthy();
+  });
+
+  it("adjusts the held currency chosen in the editor, with no picker of its own", async () => {
+    await render(
+      <BalanceAdjustCard
+        accountId="acc-bank"
+        accountName="Bank"
+        accountType="savings"
+        accountCurrency="PHP"
+        balancesByCurrency={{ PHP: 50_000, USD: 12_000 }}
+        selectedCurrency="USD"
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Currency" })).toBeNull();
+    await fireEvent.changeText(screen.getByPlaceholderText("0.00"), "100");
+    await fireEvent.press(screen.getByRole("button", { name: "Adjust balance" }));
+
+    await waitFor(() =>
+      expect(createTransaction).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "expense", amountMinor: 2_000, currency: "USD" }),
+      ),
+    );
   });
 
   it("keeps a cash account in its own currency", async () => {

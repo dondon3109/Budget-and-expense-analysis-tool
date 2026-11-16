@@ -29,8 +29,8 @@ import {
  * One-click "Adjust Current Balance" for the account editor. Shows an
  * Old → New preview, books the delta as an Uncategorized Adjustment
  * transaction through the existing mutation path, and offers Undo scoped to
- * that single adjustment entry. A bank account picks which held currency to adjust, and
- * "Add new currency" opens a balance in one it does not hold yet (a USD balance in a PHP bank
+ * that single adjustment entry. A bank account adjusts the held currency chosen in the
+ * editor's Currency field (`selectedCurrency`), and "Add new currency" opens a balance in one it does not hold yet (a USD balance in a PHP bank
  * account) by booking its opening balance as that currency's first adjustment.
  */
 export function BalanceAdjustCard({
@@ -39,6 +39,7 @@ export function BalanceAdjustCard({
   accountType,
   accountCurrency,
   balancesByCurrency,
+  selectedCurrency,
   disabled,
 }: {
   accountId: string;
@@ -46,6 +47,7 @@ export function BalanceAdjustCard({
   accountType: string;
   accountCurrency: Currency;
   balancesByCurrency: CurrencyTotals;
+  selectedCurrency?: Currency;
   disabled?: boolean;
 }) {
   const theme = useZoptionTheme();
@@ -56,7 +58,6 @@ export function BalanceAdjustCard({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [adjustmentId, setAdjustmentId] = useState<string | null>(null);
-  const [heldChoice, setHeldChoice] = useState<Currency>(accountCurrency);
   const [adding, setAdding] = useState(false);
   const [newCurrency, setNewCurrency] = useState<Currency | null>(null);
   const multiCurrency = holdsMultipleCurrencies(accountType);
@@ -65,7 +66,7 @@ export function BalanceAdjustCard({
   const currency: Currency | null = adding
     ? newCurrency
     : multiCurrency
-      ? heldChoice
+      ? (selectedCurrency ?? accountCurrency)
       : accountCurrency;
   const currentBalanceMinor = currency ? (balancesByCurrency[currency] ?? 0) : 0;
   const editable = !busy && !disabled;
@@ -168,22 +169,6 @@ export function BalanceAdjustCard({
               </View>
             ))}
           </View>
-        ) : null}
-        {multiCurrency && !adding && !adjustmentId && held.length > 1 ? (
-          <SelectionField
-            disabled={!editable}
-            label="Currency"
-            onSelect={(code) => {
-              if (!isCurrency(code)) return;
-              setHeldChoice(code);
-              setNewBalance("");
-              setMessage(null);
-            }}
-            options={held.map((code) => ({ id: code, label: currencyMetadata[code].label }))}
-            placeholder="Choose a currency"
-            sheetTitle="Choose currency"
-            value={heldChoice}
-          />
         ) : null}
         {adding && !adjustmentId ? (
           <SelectionField
