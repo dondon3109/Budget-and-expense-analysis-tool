@@ -1,6 +1,6 @@
 import { otherCurrenciesWithAmounts, type Currency, type CurrencyTotals } from "@zoption/shared";
 import type { LucideIcon } from "lucide-react";
-import { Fragment } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { formatMoney, formatMoneyParts } from "../../lib/formatters";
 
@@ -31,10 +31,6 @@ export interface OverviewStatItem {
   trend?: OverviewStatTrend;
 }
 
-interface OverviewStatBarProps {
-  items: OverviewStatItem[];
-}
-
 const percentageFormatter = new Intl.NumberFormat("en-PH", { maximumFractionDigits: 1 });
 
 function formatPercentageChange(percentage: number): string {
@@ -42,55 +38,65 @@ function formatPercentageChange(percentage: number): string {
   return `${sign}${percentageFormatter.format(percentage)}%`;
 }
 
-export function OverviewStatBar({ items }: OverviewStatBarProps) {
+/** A cell's headline amount, with the currency sign set in the UI font. */
+export function OverviewStatValue({ amountMinor, currency }: OverviewStatAmount) {
+  return (
+    <strong>
+      {formatMoneyParts(amountMinor, currency).map((part, index) =>
+        part.type === "currency" ? (
+          <span className="overview-stat-currency" key={`${part.type}-${index}`}>
+            {part.value}
+          </span>
+        ) : (
+          <Fragment key={`${part.type}-${index}`}>{part.value}</Fragment>
+        ),
+      )}
+    </strong>
+  );
+}
+
+/** The summary row; callers compose `OverviewStat` cells with any custom cell between them. */
+export function OverviewStatBar({ children }: { children: ReactNode }) {
   return (
     <section className="overview-stat-bar" aria-label="Monthly summary">
-      {items.map((item) => {
-        const Icon = item.icon;
-        // Callers list the workspace currency first.
-        const primary = item.amounts[0];
-        const secondary = item.amounts.slice(1);
-
-        return (
-          <article className={`overview-stat tone-${item.tone}`} key={item.label}>
-            <div className="overview-stat-heading">
-              <span>{item.label}</span>
-              <span className="overview-stat-icon">
-                <Icon size={16} aria-hidden="true" />
-              </span>
-            </div>
-            {primary && (
-              <strong>
-                {formatMoneyParts(primary.amountMinor, primary.currency).map((part, index) =>
-                  part.type === "currency" ? (
-                    <span className="overview-stat-currency" key={`${part.type}-${index}`}>
-                      {part.value}
-                    </span>
-                  ) : (
-                    <Fragment key={`${part.type}-${index}`}>{part.value}</Fragment>
-                  ),
-                )}
-              </strong>
-            )}
-            {secondary.length > 0 && (
-              <div className="overview-stat-secondary">
-                {secondary.map((amount) => (
-                  <span key={amount.currency}>
-                    {formatMoney(amount.amountMinor, amount.currency)}
-                    <em>{amount.currency}</em>
-                  </span>
-                ))}
-              </div>
-            )}
-            {item.trend && (
-              <div className="overview-stat-trend" data-state={item.trend.state}>
-                <span>{formatPercentageChange(item.trend.percentage)}</span>
-                <small>{item.trend.comparison}</small>
-              </div>
-            )}
-          </article>
-        );
-      })}
+      {children}
     </section>
+  );
+}
+
+export function OverviewStat({ item }: { item: OverviewStatItem }) {
+  const Icon = item.icon;
+  // Callers list the workspace currency first.
+  const primary = item.amounts[0];
+  const secondary = item.amounts.slice(1);
+
+  return (
+    <article className={`overview-stat tone-${item.tone}`}>
+      <div className="overview-stat-heading">
+        <span>{item.label}</span>
+        <span className="overview-stat-icon">
+          <Icon size={16} aria-hidden="true" />
+        </span>
+      </div>
+      {primary && (
+        <OverviewStatValue amountMinor={primary.amountMinor} currency={primary.currency} />
+      )}
+      {secondary.length > 0 && (
+        <div className="overview-stat-secondary">
+          {secondary.map((amount) => (
+            <span key={amount.currency}>
+              {formatMoney(amount.amountMinor, amount.currency)}
+              <em>{amount.currency}</em>
+            </span>
+          ))}
+        </div>
+      )}
+      {item.trend && (
+        <div className="overview-stat-trend" data-state={item.trend.state}>
+          <span>{formatPercentageChange(item.trend.percentage)}</span>
+          <small>{item.trend.comparison}</small>
+        </div>
+      )}
+    </article>
   );
 }

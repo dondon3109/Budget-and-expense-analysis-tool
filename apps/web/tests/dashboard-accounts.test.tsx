@@ -340,11 +340,13 @@ describe("Profile dashboard account management", () => {
 
     // The shared fixture has no budget rows, so the card must fall back to the balance
     // instead of telling a funded workspace that nothing is safe to spend.
-    expect(
-      await screen.findByText(
-        "Forward guidance accounting for 0 active recurring bills and scheduled obligations.",
-      ),
-    ).toBeInTheDocument();
+    const card = await screen.findByRole("region", { name: "Safe to spend this week" });
+    await waitFor(() =>
+      expect(
+        within(card).queryByText("Checking your bills, so this figure may still fall."),
+      ).not.toBeInTheDocument(),
+    );
+    expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("hides safe-to-spend guidance while a past month is selected", async () => {

@@ -84,23 +84,34 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+/** Matches the headline amount, whose currency sign renders in its own span. */
+function amount(text: string) {
+  return (_content: string, element: Element | null) =>
+    element?.tagName === "STRONG" && element.textContent === text;
+}
+
+/** A settled figure carries no caption, so the loading caveat clearing means bills loaded. */
+async function expectBillsLoaded() {
+  await waitFor(() =>
+    expect(
+      screen.queryByText("Checking your bills, so this figure may still fall."),
+    ).not.toBeInTheDocument(),
+  );
+}
+
 describe("SafeToSpendCard", () => {
   it("paces the remaining budget across the days left in the week", async () => {
     mockSubscriptions([]);
 
     renderCard({ startingBalanceMinor: 1_000_000, remainingBudgetMinor: 500_000 });
 
-    expect(await screen.findByText("₱1,000")).toBeInTheDocument();
+    expect(await screen.findByText(amount("₱1,000"))).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Safe to spend this week" })).toBeInTheDocument();
     expect(
       screen.getByRole("heading", { level: 2, name: "Safe to spend this week" }),
     ).toBeInTheDocument();
     expect(screen.getByText("5 days left")).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Forward guidance accounting for 0 active recurring bills and scheduled obligations.",
-      ),
-    ).toBeInTheDocument();
+    await expectBillsLoaded();
     expect(screen.getByRole("link", { name: "Bills" })).toHaveAttribute(
       "href",
       "/app/subscriptions?view=forecast",
@@ -114,12 +125,8 @@ describe("SafeToSpendCard", () => {
     // No budget rows means no weekly envelope, so the balance is paced instead.
     renderCard({ startingBalanceMinor: 1_000_000 });
 
-    expect(await screen.findByText("₱2,000")).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Forward guidance accounting for 0 active recurring bills and scheduled obligations.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(amount("₱2,000"))).toBeInTheDocument();
+    await expectBillsLoaded();
   });
 
   it("says the figure may still fall while renewals are loading", () => {
@@ -148,8 +155,8 @@ describe("SafeToSpendCard", () => {
     // ₱5,000 over 5 days paces to ₱1,000, but the projection never rises above ₱600.
     renderCard({ startingBalanceMinor: 60_000, remainingBudgetMinor: 500_000 });
 
-    expect(await screen.findByText("₱600")).toBeInTheDocument();
-    expect(screen.queryByText("₱1,000")).not.toBeInTheDocument();
+    expect(await screen.findByText(amount("₱600"))).toBeInTheDocument();
+    expect(screen.queryByText(amount("₱1,000"))).not.toBeInTheDocument();
   });
 
   it("asks for minimal spending when nothing is safe to spend", async () => {
@@ -157,12 +164,7 @@ describe("SafeToSpendCard", () => {
 
     renderCard({ startingBalanceMinor: 1_000_000, remainingBudgetMinor: 0 });
 
-    expect(await screen.findByText("₱0")).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Keep spending minimal until your next planned deposit or balance adjustment.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(amount("₱0"))).toBeInTheDocument();
     expect(screen.getByText("5 days left")).toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("You've used up what's safe to spend");
   });
@@ -196,7 +198,7 @@ describe("SafeToSpendCard", () => {
 
     renderCard({ startingBalanceMinor: 1_000_000, remainingBudgetMinor: 500_000 });
 
-    expect(await screen.findByText("₱1,000")).toBeInTheDocument();
+    expect(await screen.findByText(amount("₱1,000"))).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -209,23 +211,15 @@ describe("SafeToSpendCard", () => {
       remainingBudgetMinor: 500_000,
     });
 
-    expect(await screen.findByText("₱700")).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Forward guidance accounting for 1 active recurring bill and scheduled obligations.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(amount("₱700"))).toBeInTheDocument();
+    await expectBillsLoaded();
 
     unmount();
     mockSubscriptions([subscription({ status: "canceled" })]);
 
     renderCard({ startingBalanceMinor: 150_000, remainingBudgetMinor: 500_000 });
 
-    expect(await screen.findByText("₱1,000")).toBeInTheDocument();
-    expect(
-      await screen.findByText(
-        "Forward guidance accounting for 0 active recurring bills and scheduled obligations.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(amount("₱1,000"))).toBeInTheDocument();
+    await expectBillsLoaded();
   });
 });
