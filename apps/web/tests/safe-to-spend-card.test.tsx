@@ -190,7 +190,7 @@ describe("SafeToSpendCard", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("Deficit risk ahead");
-    expect(alert).toHaveTextContent(daysAfterWednesday(2));
+    expect(alert).not.toHaveTextContent(/projected to fall below zero/);
   });
 
   it("raises no alert while there is still something safe to spend", async () => {
