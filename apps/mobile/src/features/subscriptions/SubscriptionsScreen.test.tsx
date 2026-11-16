@@ -152,10 +152,9 @@ describe("SubscriptionsScreen", () => {
     expect(screen.getByText("Entertainment")).toBeTruthy();
     expect(screen.getAllByText("BDO Checking").length).toBeGreaterThan(0);
 
-    // The pinned round button is the one way to add once bills exist.
+    // The header's plus button is the one way to add once bills exist.
     expect(screen.queryByRole("button", { name: "+ Add" })).toBeNull();
-    const fabAdd = screen.getByRole("button", { name: "Add bill" });
-    await fireEvent.press(fabAdd);
+    await fireEvent.press(screen.getByRole("button", { name: "Add bill" }));
     expect(router.push).toHaveBeenCalledWith("/(app)/subscription");
 
     // Pressing a row opens the subscription for editing

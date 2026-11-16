@@ -34,14 +34,14 @@ import {
 import { Screen } from "@/ui/screen";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
-import { elevation, radii, spacing, typography } from "@/ui/tokens";
+import { radii, spacing, typography } from "@/ui/tokens";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 type SubscriptionFilter = "all" | "active" | "canceled";
 
 /**
  * Bills, shown in the Budgets tab under the Budgets / Bills switch (`viewSwitch`). Adding a bill
- * is the round button at the bottom right, or the empty state's button before the first one.
+ * is the header's plus button, the same place as Budgets' add, or the empty state's button.
  */
 export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) {
   const local = useLocalWorkspace();
@@ -105,33 +105,22 @@ export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) 
     await new Promise((resolve) => setTimeout(resolve, 650));
   }, [reference, state, sync]);
 
-  const fabOverlay =
-    state.subscriptions.length > 0 ? (
-      <View style={styles.fabPosition}>
-        <Pressable
-          accessibilityLabel="Add bill"
-          accessibilityRole="button"
-          android_ripple={{ color: "rgba(255, 255, 255, 0.22)", borderless: false, radius: 28 }}
-          onPress={withTapSound(addSubscription)}
-          style={[styles.fabButton, { backgroundColor: theme.colors.brand }]}
-        >
-          <MaterialCommunityIcons
-            accessibilityElementsHidden
-            color={theme.colors.onBrand}
-            name="plus"
-            size={28}
-          />
-        </Pressable>
-      </View>
-    ) : null;
-
   return (
     <Screen
+      action={
+        <Button
+          accessibilityLabel="Add bill"
+          disabled={!local.workspace}
+          icon="plus"
+          onPress={addSubscription}
+          size="compact"
+          variant="primary"
+        />
+      }
       edges={["top", "left", "right"]}
       hasHeader
       leadingAction={viewSwitch}
       onRefresh={handleRefresh}
-      overlay={fabOverlay}
       refreshing={sync.status === "syncing"}
       title="Bills"
     >
@@ -155,7 +144,7 @@ export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) 
           }
         />
       ) : (
-        <View style={[styles.stack, styles.clearOfFab]}>
+        <View style={styles.stack}>
           <MonthlyCostCard
             activeCount={activeSubscriptions.length}
             canceledCount={canceledSubscriptions.length}
@@ -570,7 +559,6 @@ function SubscriptionRow({
 const styles = StyleSheet.create({
   stack: { gap: spacing.sm },
   // Room under the last row so the add button never covers its controls.
-  clearOfFab: { paddingBottom: 72 },
   card: { padding: spacing.md },
   summaryCard: { padding: spacing.md, gap: spacing.sm },
   rowBetween: {
@@ -654,22 +642,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: spacing.xs,
-  },
-  fabPosition: {
-    position: "absolute",
-    right: spacing.md,
-    bottom: spacing.md,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    ...elevation.card,
-  },
-  fabButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    overflow: "hidden",
-    alignItems: "center",
-    justifyContent: "center",
   },
 });
