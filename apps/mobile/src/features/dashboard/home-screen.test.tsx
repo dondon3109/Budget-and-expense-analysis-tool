@@ -281,7 +281,7 @@ describe("HomeScreen", () => {
     await fireEvent.press(screen.getByRole("tab", { name: "Analytics" }));
 
     expect(screen.getByText("Cash flow forecast")).toBeTruthy();
-    expect(screen.getByText("Upcoming bills and renewals")).toBeTruthy();
+    expect(screen.getByText("Upcoming bills")).toBeTruthy();
     expect(screen.getByText("Netflix")).toBeTruthy();
   });
 

@@ -19,6 +19,7 @@ import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
 import { AndroidUpdateProvider } from "@/features/updates";
 import { CrashScreen } from "@/features/navigation/CrashScreen";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
+import { useForecastOnTrackStore } from "@/stores/forecast-on-track-store";
 import { useHideAmountsStore } from "@/stores/hide-amounts-store";
 import { useReduceMotionStore } from "@/stores/reduce-motion-store";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
@@ -111,7 +112,7 @@ export default function RootLayout() {
 
   // These stores set skipHydration, so a saved value is only read when something
   // asks for it. Without this the voice language, reduce motion, hide balance, assistant voice options, mic
-  // capture consent, and last used account all start at their defaults
+  // capture consent, last used account, and the forecast's closed On track all start at their defaults
   // on every launch. The theme store hydrates in ZoptionThemeProvider, which
   // renders nothing until it has. The daily reminder store hydrates in
   // DailyReminderSession, once the session is known to be signed in.
@@ -124,6 +125,7 @@ export default function RootLayout() {
     void useMicCaptureConsentStore.persist.rehydrate();
     void useLastUsedAccountStore.persist.rehydrate();
     void useWorkspaceCurrencyStore.persist.rehydrate();
+    void useForecastOnTrackStore.persist.rehydrate();
   }, []);
 
   return (

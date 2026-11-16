@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { projectCashflow } from "@zoption/shared";
 import { CashflowForecastCard } from "./CashflowForecastCard";
+import { useForecastOnTrackStore } from "@/stores/forecast-on-track-store";
 import { formatMoneyMinor } from "@/ui/components/MoneyValue";
 
 const START_DATE = "2026-09-01";
@@ -23,6 +24,8 @@ const baseProps = {
 };
 
 describe("CashflowForecastCard", () => {
+  beforeEach(() => useForecastOnTrackStore.setState({ dismissed: false }));
+
   it("renders 30/60/90-day balance projections matching the shared forecast", async () => {
     await render(<CashflowForecastCard {...baseProps} />);
 
@@ -41,7 +44,7 @@ describe("CashflowForecastCard", () => {
   it("lists upcoming bills and renewals with due dates", async () => {
     await render(<CashflowForecastCard {...baseProps} />);
 
-    expect(screen.getByText("Upcoming bills and renewals")).toBeTruthy();
+    expect(screen.getByText("Upcoming bills")).toBeTruthy();
     expect(screen.getByText("Netflix")).toBeTruthy();
     expect(screen.getByText("Due 2026-09-10 · in 9 days")).toBeTruthy();
   });
@@ -49,8 +52,25 @@ describe("CashflowForecastCard", () => {
   it("shows an on-track status when the balance stays above the buffer", async () => {
     await render(<CashflowForecastCard {...baseProps} safetyBufferMinor={10_000} />);
 
-    expect(screen.getAllByText("On track")[0]).toBeTruthy();
+    expect(screen.getByLabelText("On track")).toBeTruthy();
     expect(screen.getByText("Lowest balance")).toBeTruthy();
+  });
+
+  it("closes the on-track status for good when the user taps its close button", async () => {
+    await render(<CashflowForecastCard {...baseProps} />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Close On track" }));
+
+    expect(screen.queryByLabelText("On track")).toBeNull();
+    expect(useForecastOnTrackStore.getState().dismissed).toBe(true);
+  });
+
+  it("keeps a warning on screen with no close button, even after On track was closed", async () => {
+    useForecastOnTrackStore.setState({ dismissed: true });
+    await render(<CashflowForecastCard {...baseProps} safetyBufferMinor={480_000} />);
+
+    expect(screen.getByText("Buffer warning")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Close On track" })).toBeNull();
   });
 
   it("warns when the balance dips below the buffer without going negative", async () => {
@@ -70,9 +90,7 @@ describe("CashflowForecastCard", () => {
     );
 
     expect(screen.getAllByText("Deficit risk")[0]).toBeTruthy();
-    expect(
-      screen.getByLabelText("Deficit risk: Balance projected below zero on 2026-09-10."),
-    ).toBeTruthy();
+    expect(screen.getByLabelText("Deficit risk: Below zero on 2026-09-10.")).toBeTruthy();
   });
 
   it("expands the renewal list when switching to a longer horizon", async () => {
@@ -104,8 +122,8 @@ describe("CashflowForecastCard", () => {
   it("renders an empty state when there are no upcoming bills", async () => {
     await render(<CashflowForecastCard startingBalanceMinor={500_000} subscriptions={[]} />);
 
-    expect(screen.getByText("No upcoming bills or renewals in the next 30 days.")).toBeTruthy();
-    expect(screen.getByText("On track")).toBeTruthy();
+    expect(screen.getByText("No bills in the next 30 days.")).toBeTruthy();
+    expect(screen.getByLabelText("On track")).toBeTruthy();
   });
 
   it("navigates to subscriptions when the link is pressed", async () => {
@@ -122,8 +140,6 @@ describe("CashflowForecastCard", () => {
 
     expect(screen.getByText("Netflix")).toBeTruthy();
     expect(screen.queryByText("Figma")).toBeNull();
-    expect(
-      screen.getByText("1 plan billed in another currency isn't included in this PHP forecast."),
-    ).toBeTruthy();
+    expect(screen.getByText("1 plan in another currency not included.")).toBeTruthy();
   });
 });
