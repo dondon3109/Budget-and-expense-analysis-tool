@@ -1,8 +1,9 @@
 import { useEffect, useRef } from "react";
-import { Animated, Easing, StyleSheet, View } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 
 import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
+import { typography } from "@/ui/tokens";
 
 /**
  * Zoption loading mark, matching the web LedgerLoader: three ledger rows, each
@@ -114,6 +115,21 @@ export function LedgerLoader({
           </View>
         );
       })}
+    </View>
+  );
+}
+
+/**
+ * The full-screen wait for every step of opening the app: finishing a sign-in, restoring the
+ * session, and unlocking the local workspace. Each step mounts its own copy, so they share one
+ * layout and one visible line and read as a single wait; only the screen-reader label names the step.
+ */
+export function AppLoadingScreen({ accessibilityLabel }: { accessibilityLabel: string }) {
+  const theme = useZoptionTheme();
+  return (
+    <View className="flex-1 items-center justify-center gap-5 px-6">
+      <LedgerLoader accessibilityLabel={accessibilityLabel} />
+      <Text style={[typography.body, { color: theme.colors.textMuted }]}>Opening Zoption…</Text>
     </View>
   );
 }

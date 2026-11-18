@@ -247,7 +247,11 @@ older than the local durable revision are ignored; any server change overlapping
 conflicted local row stops with `local_conflict` and does not advance the cursor.
 
 Foreground pulls are bounded by page count and per-request timeout. An expired token is refreshed
-once. NetInfo can delay an attempt but only the Worker response and local commit produce `synced`.
+once. Pull, snapshot, and acknowledge draw from their own tenant budget of 300 requests a minute
+(`tenant-sync-read`), apart from the 60 a minute that push and every other write share, because a
+first sync on a new phone pulls page after page. A `429` inside a run waits its `Retry-After` (at most
+a minute, three times per request) and repeats the request; past that the run reports the limit and
+schedules its own retry, resuming from the durable cursor. NetInfo can delay an attempt but only the Worker response and local commit produce `synced`.
 Startup opens the immutable-subject-scoped local workspace without waiting for Worker availability;
 the independent Worker identity assertion gates synchronization, not offline reads.
 

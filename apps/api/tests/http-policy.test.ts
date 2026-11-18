@@ -32,6 +32,7 @@ const DAY = 24 * 60 * 60;
 
 const tenantWrite = [{ scope: "tenant-write", limit: 60, windowSeconds: MINUTE }];
 const tenantRead = [{ scope: "tenant-read", limit: 120, windowSeconds: MINUTE }];
+const syncRead = [{ scope: "tenant-sync-read", limit: 300, windowSeconds: MINUTE }];
 const tenantImport = [{ scope: "tenant-import", limit: 20, windowSeconds: QUARTER_HOUR }];
 const adminWrite = [{ scope: "platform-admin-seat-write", limit: 20, windowSeconds: QUARTER_HOUR }];
 const adminRead = [{ scope: "platform-admin-seat-read", limit: 60, windowSeconds: MINUTE }];
@@ -151,6 +152,9 @@ const APP_RATE_LIMITS: [string, string, RateLimitIdentity, RateLimitPolicy[]][] 
   ["PUT", "/api/app/budgets/2026-09", "tenant", tenantWrite],
   ["DELETE", "/api/app/transactions/transaction-1", "tenant", tenantWrite],
   ["POST", "/api/app/sync/push", "tenant", tenantWrite],
+  ["POST", "/api/app/sync/pull", "tenant", syncRead],
+  ["POST", "/api/app/sync/snapshot", "tenant", syncRead],
+  ["POST", "/api/app/sync/acknowledge", "tenant", syncRead],
   ["POST", "/api/app/profile/avatar", "tenant", tenantWrite],
   ["DELETE", "/api/app/profile/avatar", "tenant", tenantWrite],
   ["GET", "/api/app/transactions", "tenant", tenantRead],

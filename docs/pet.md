@@ -90,7 +90,8 @@ Mobile Home and every web workspace page open a pop-up with the pet's picture wh
 ready, it grew a stage, got sick, or died since
 the device last showed it, or else on the day's first open (Manila date). One open shows at most one.
 On mobile it decides only while Home is on screen, so a change seen on the pet page is announced on
-returning to Home rather than over the pet page.
+returning to Home rather than over the pet page. It also waits behind the thank-you card and the
+usage-analytics prompt ("Help improve Zoption"), so only one dialog is ever on screen.
 The rule is `petMoment` in `packages/shared/src/petMoment.ts` and the wording is `petCopy.ts`; each
 device keeps what it last showed: mobile in SecureStore (`zoption-mobile-pet-seen-v1`, cleared on
 every identity change, and only after first-run setup), the web in local storage per user

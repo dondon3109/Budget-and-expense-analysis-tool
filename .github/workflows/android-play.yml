@@ -185,9 +185,30 @@ jobs:
           echo "AAB_PATH=$RUNNER_TEMP/zoption-play-$RELEASE_VERSION_NAME-$RELEASE_VERSION_CODE.aab" >> "$GITHUB_ENV"
           echo "AAB verified: $ANDROID_PACKAGE $RELEASE_VERSION_NAME ($RELEASE_VERSION_CODE)"
 
+      # A universal APK of the same bundle, signed with the upload key, for installing the Play
+      # build on a test phone without a Play upload (Play rejects a reused versionCode, and
+      # Internal app sharing needs a published app). Uninstall any other Zoption first: the
+      # signer differs from both the website APK and Play's app signing key.
+      - name: Build universal APK from the AAB
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
+        run: |
+          java -jar "$RUNNER_TEMP/bundletool.jar" build-apks --mode=universal \
+            --bundle "$AAB_PATH" --output "$RUNNER_TEMP/zoption-universal.apks" \
+            --ks "$ANDROID_KEYSTORE_PATH" --ks-pass "pass:$ANDROID_KEYSTORE_PASSWORD" \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass "pass:$ANDROID_KEY_PASSWORD"
+          APK="$RUNNER_TEMP/zoption-play-$RELEASE_VERSION_NAME-$RELEASE_VERSION_CODE-universal.apk"
+          unzip -p "$RUNNER_TEMP/zoption-universal.apks" universal.apk > "$APK"
+          test -s "$APK" || { echo "::error::bundletool produced no universal APK."; exit 1; }
+          echo "UNIVERSAL_APK_PATH=$APK" >> "$GITHUB_ENV"
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: zoption-play-${{ env.RELEASE_VERSION_NAME }}-${{ env.RELEASE_VERSION_CODE }}
-          path: ${{ env.AAB_PATH }}
+          path: |
+            ${{ env.AAB_PATH }}
+            ${{ env.UNIVERSAL_APK_PATH }}
           if-no-files-found: error
           retention-days: 14
