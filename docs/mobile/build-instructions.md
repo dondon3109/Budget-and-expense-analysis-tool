@@ -153,7 +153,12 @@ ZOPTION_DISTRIBUTION=play`, runs `bundleRelease` signed with the Play upload
 key, checks the signer (never the sideload key, and equal to
 `PLAY_UPLOAD_CERT_SHA256` when that variable is set), the package, versionCode,
 and versionName, and that the permission is gone, then keeps the AAB as a
-14-day workflow artifact. It never uploads to Play. It builds whatever version
+14-day workflow artifact. It never uploads to Play. The same artifact holds a
+universal APK built from that AAB by bundletool and signed with the upload key,
+for testing the Play build on a phone without a Play upload (Play refuses a
+reused versionCode, and Internal app sharing needs a published app). It installs
+only after any other Zoption is uninstalled, because its signer matches neither
+the website APK nor Play's app signing key. It builds whatever version
 the last release bump set, so dispatch it on the released commit once
 `Production Release` has finished:
 
