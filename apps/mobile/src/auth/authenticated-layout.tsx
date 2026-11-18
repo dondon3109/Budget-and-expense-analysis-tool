@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
 import type { PropsWithChildren } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
@@ -22,9 +22,7 @@ import { SubscriptionPushTapHandler } from "@/features/subscriptions/subscriptio
 import { SharedReceiptHandoff } from "@/features/receipts/SharedReceiptHandoff";
 import { SyncProvider } from "@/sync/sync-state";
 import { ScreenViewedTracker } from "@/telemetry/screen-viewed";
-import { ErrorState, LedgerLoader } from "@/ui/components";
-import { useZoptionTheme } from "@/ui/theme-provider";
-import { typography } from "@/ui/tokens";
+import { AppLoadingScreen, ErrorState } from "@/ui/components";
 
 /**
  * Everything the authenticated route group waits on before it renders `children`: the restored
@@ -34,21 +32,13 @@ import { typography } from "@/ui/tokens";
 export function AuthenticatedGate({ children }: PropsWithChildren) {
   const session = useSessionSnapshot();
   const identity = useWorkerIdentity();
-  const theme = useZoptionTheme();
   // Hold the route while the stored session is still being restored. A deep
   // link that opens the app cold arrives before the restore settles, and
   // redirecting here would discard that route and its params: the home-screen
   // mic widget's widget-intent link lost its transcript and payload that way.
   // Only a resolved signed-out session redirects. Same rule as SessionRedirectScreen.
   if (session.status === "loading") {
-    return (
-      <View className="flex-1 items-center justify-center gap-5 px-6">
-        <LedgerLoader accessibilityLabel="Restoring your session" />
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Restoring your session…
-        </Text>
-      </View>
-    );
+    return <AppLoadingScreen accessibilityLabel="Restoring your session" />;
   }
   if (session.status !== "signed-in" && session.status !== "guest") {
     return <Redirect href="/(public)/sign-in" />;
@@ -85,16 +75,8 @@ function LocalWorkspaceGate({
   usePetSync();
   usePetNotifications();
   usePushRegistration();
-  const theme = useZoptionTheme();
   if (local.status === "opening") {
-    return (
-      <View className="flex-1 items-center justify-center gap-5 px-6">
-        <LedgerLoader accessibilityLabel="Opening encrypted local workspace" />
-        <Text style={[typography.body, { color: theme.colors.textMuted }]}>
-          Unlocking encrypted local data…
-        </Text>
-      </View>
-    );
+    return <AppLoadingScreen accessibilityLabel="Opening encrypted local workspace" />;
   }
   if (local.status === "error") {
     return (

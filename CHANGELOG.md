@@ -87,6 +87,8 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- On mobile, signing in shows one loading screen instead of a "Finishing sign in" screen followed by a second loader.
+- On mobile Home, the pet pop-up now waits until you answer "Help improve Zoption", so the two no longer swap back and forth on screen.
 - Web Bills page: switching between Table, Bill calendar, and Cashflow Forecast keeps your place on the page instead of jumping to the top. Refresh now sits beside the view switch, and the shortfall and low buffer warnings can be closed with an × button.
 - A debt payment can no longer be larger than what the debt still owes. The web and mobile forms say so before saving, and the server refuses one that arrives anyway.
 - The mobile app lowers a debt's balance as soon as a payment is saved, instead of waiting for it to sync.

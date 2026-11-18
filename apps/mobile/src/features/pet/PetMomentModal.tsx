@@ -4,6 +4,8 @@ import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { petMomentCopy, petMood } from "@zoption/shared";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { useThankYouOpen } from "@/features/thank-you/ThankYouHost";
+import { useAccountLink } from "@/telemetry/account-link";
 import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { elevation, radii, spacing, typography } from "@/ui/tokens";
@@ -12,11 +14,17 @@ import { petImage } from "./pet-images";
 import { TintedPetImage } from "./TintedPetImage";
 import { usePetMoment } from "./use-pet-moment";
 
-/** The pet pop-up on Home: the pet's picture and how it is doing, at most once per open. */
+/**
+ * The pet pop-up on Home: the pet's picture and how it is doing, at most once per open. It waits
+ * for the thank-you card and the usage-analytics prompt, because two native modals open at once
+ * take the screen from each other in turn on Android.
+ */
 export function PetMomentModal() {
   const theme = useZoptionTheme();
   const { shown, close } = usePetMoment();
-  if (!shown) return null;
+  const analyticsPending = useAccountLink().pending;
+  const thankYouOpen = useThankYouOpen();
+  if (!shown || analyticsPending || thankYouOpen) return null;
 
   const { pet } = shown;
   const copy = petMomentCopy(shown.moment, pet);

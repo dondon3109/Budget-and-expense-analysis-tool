@@ -6,6 +6,11 @@ import type * as React from "react";
 import { petLocalDate } from "@zoption/shared";
 
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import {
+  chooseAccountLink,
+  resetAccountLinkForTests,
+  setSignedInAccount,
+} from "@/telemetry/account-link";
 import { usePetStore } from "@/stores/pet-store";
 import { PetMomentModal } from "./PetMomentModal";
 import { babyPet, noPet } from "./pet-test-fixtures";
@@ -39,6 +44,10 @@ jest.mock("expo-secure-store", () => ({
   deleteItemAsync: jest.fn(async (key: string) => void mockStorage.delete(key)),
 }));
 
+jest.mock("@/telemetry/telemetry", () => ({
+  telemetry: { identify: jest.fn(), reset: jest.fn(async () => undefined) },
+}));
+
 const seenBaby = { species: "panda", stage: "baby", unwell: false, ready: false, diedAt: null };
 const remember = (date: string) =>
   mockStorage.set("zoption-mobile-pet-seen-v1", JSON.stringify({ ...seenBaby, date }));
@@ -50,6 +59,18 @@ describe("PetMomentModal", () => {
     jest.mocked(router.push).mockClear();
     useOnboardingStore.setState({ state: { step: "complete" } as never });
     mockFocus.focused = true;
+    resetAccountLinkForTests();
+  });
+
+  it("waits for the usage-analytics choice so the two dialogs never trade places", async () => {
+    usePetStore.setState({ pet: babyPet });
+    await act(async () => setSignedInAccount({ id: "user-1", email: "person@example.com" }));
+    await render(<PetMomentModal />);
+    await waitFor(() => expect(SecureStore.setItemAsync).toHaveBeenCalled());
+    expect(screen.queryByText("Bao · Baby")).toBeNull();
+
+    await act(async () => chooseAccountLink("declined"));
+    expect(await screen.findByText("Bao · Baby")).toBeTruthy();
   });
 
   it("shows the pet on the day's first open and links to its page", async () => {

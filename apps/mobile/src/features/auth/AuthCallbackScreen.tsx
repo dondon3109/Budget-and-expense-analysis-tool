@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 
 import { authErrorMessage } from "@/auth/auth-validation";
 import { useSessionSnapshot } from "@/auth/session-state";
-import { Button, LedgerLoader } from "@/ui/components";
+import { AppLoadingScreen, Button } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
@@ -50,18 +50,18 @@ export function AuthCallbackScreen() {
       });
   }, [exchangeCodeForSession, params.code, params.next, status]);
 
+  // Success hands straight to the authenticated gate, which shows the same loader while it
+  // restores the session and unlocks local data, so finishing sign in reads as one wait.
+  if (!error) return <AppLoadingScreen accessibilityLabel="Finishing sign in" />;
+
   return (
-    <Screen title="Finishing sign in" description="Zoption is validating the secure callback.">
-      {error ? (
-        <View className="w-full gap-4">
-          <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
-            {error}
-          </Text>
-          <Button onPress={() => router.replace("/(public)/sign-in")}>Back to sign in</Button>
-        </View>
-      ) : (
-        <LedgerLoader accessibilityLabel="Finishing sign in" />
-      )}
+    <Screen title="Sign in failed" description="Zoption could not validate the secure callback.">
+      <View className="w-full gap-4">
+        <Text accessibilityRole="alert" style={[typography.body, { color: theme.colors.danger }]}>
+          {error}
+        </Text>
+        <Button onPress={() => router.replace("/(public)/sign-in")}>Back to sign in</Button>
+      </View>
     </Screen>
   );
 }
