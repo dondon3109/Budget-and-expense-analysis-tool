@@ -32,6 +32,8 @@ import { describeRefusedChanges } from "@/features/family/refused-changes";
 import { familySubject } from "@/features/family/workspace-record";
 import { uploadSubscriptionUsage } from "@/features/subscriptions/subscription-usage-upload";
 
+import { rateLimitDelaySeconds, withRateLimitWait } from "./rate-limit-wait";
+
 export type ForegroundSyncStatus =
   "waiting" | "syncing" | "synced" | "failed" | "full-resync-required";
 
@@ -301,9 +303,11 @@ export function SyncProvider({
         if (!(await pushOutbox(workspace, familyId, auth, controller.signal, stale))) return;
         for (let pageNumber = 0; pageNumber < 250; pageNumber += 1) {
           const cursor = await workspace.syncRepository.getCursor();
-          const page = await withSessionRetry(auth, (accessToken) =>
-            withTimeout(controller.signal, TIMED_OUT, (signal) =>
-              pullMobileSync({ accessToken, workspaceId: familyId, cursor, signal }),
+          const page = await withRateLimitWait(controller.signal, () =>
+            withSessionRetry(auth, (accessToken) =>
+              withTimeout(controller.signal, TIMED_OUT, (signal) =>
+                pullMobileSync({ accessToken, workspaceId: familyId, cursor, signal }),
+              ),
             ),
           );
           if (page.hasMore && page.nextCursor === (cursor ?? "v1.0")) {
@@ -323,18 +327,20 @@ export function SyncProvider({
           }
           if (!page.hasMore) {
             const clientId = await workspace.transactionMutations.clientId();
-            const acknowledgement = await withSessionRetry(auth, (accessToken) =>
-              withTimeout(
-                controller.signal,
-                "Zoption did not confirm synchronization progress before timing out.",
-                (signal) =>
-                  acknowledgeMobileSync({
-                    accessToken,
-                    workspaceId: familyId,
-                    clientId,
-                    cursor: page.nextCursor,
-                    signal,
-                  }),
+            const acknowledgement = await withRateLimitWait(controller.signal, () =>
+              withSessionRetry(auth, (accessToken) =>
+                withTimeout(
+                  controller.signal,
+                  "Zoption did not confirm synchronization progress before timing out.",
+                  (signal) =>
+                    acknowledgeMobileSync({
+                      accessToken,
+                      workspaceId: familyId,
+                      clientId,
+                      cursor: page.nextCursor,
+                      signal,
+                    }),
+                ),
               ),
             );
             await workspace.syncRepository.recordAcknowledgement(
@@ -451,6 +457,13 @@ export function SyncProvider({
           await scheduleOutstandingRetry().catch(() => undefined);
         }
         if (stale()) return;
+        if (error instanceof MobileSyncTransportError && error.code === "rate_limited") {
+          // A pull has no outbox row to carry its retry, so the run schedules its own; the
+          // durable cursor makes the next run resume where this one stopped.
+          if (retryTimer) clearTimeout(retryTimer);
+          const delayMs = rateLimitDelaySeconds(error, 300) * 1000;
+          retryTimer = setTimeout(() => setAttempt((value) => value + 1), delayMs);
+        }
         setSnapshot({
           status: "failed",
           message:
