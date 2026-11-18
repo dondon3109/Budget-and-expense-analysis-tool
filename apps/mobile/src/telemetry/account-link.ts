@@ -76,6 +76,12 @@ export interface AccountLinkView {
   choice: AccountLinkChoice | null;
   /** True once storage answered and the account has not chosen yet. */
   needsChoice: boolean;
+  /**
+   * True while a signed-in account's choice is still being read or not yet made. Another pop-up
+   * waits on this rather than `needsChoice`, which is false during the read and would let it open
+   * and then lose the screen to the prompt.
+   */
+  pending: boolean;
 }
 
 export function useAccountLink(): AccountLinkView {
@@ -84,6 +90,7 @@ export function useAccountLink(): AccountLinkView {
     signedIn: current.account !== null,
     choice: current.choice,
     needsChoice: current.account !== null && current.loaded && current.choice === null,
+    pending: current.account !== null && current.choice === null,
   };
 }
 

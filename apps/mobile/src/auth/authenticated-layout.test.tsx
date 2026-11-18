@@ -70,7 +70,7 @@ describe("authenticated layout session gate", () => {
     await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
 
     // Redirecting here is what dropped the widget's payload and transcript.
-    expect(screen.getByText("Restoring your session…")).toBeTruthy();
+    expect(screen.getByLabelText("Restoring your session")).toBeTruthy();
     expect(screen.queryByText("Workspace routes")).toBeNull();
   });
 
@@ -81,7 +81,7 @@ describe("authenticated layout session gate", () => {
 
     await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
 
-    expect(screen.queryByText("Restoring your session…")).toBeNull();
+    expect(screen.queryByLabelText("Restoring your session")).toBeNull();
     expect(screen.queryByText("Workspace routes")).toBeNull();
   });
 
@@ -92,7 +92,7 @@ describe("authenticated layout session gate", () => {
 
     await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
 
-    expect(screen.queryByText("Restoring your session…")).toBeNull();
+    expect(screen.queryByLabelText("Restoring your session")).toBeNull();
     expect(await screen.findByText("Workspace routes")).toBeTruthy();
   });
 
