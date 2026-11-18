@@ -94,6 +94,22 @@ function updateRequiredError(): MobileSyncTransportError {
   );
 }
 
+/**
+ * A payload this build's strict contract refuses. The message names the first refused field path
+ * (keys and indexes only, never a value) so "Sync failed" can say what the app could not read.
+ */
+function invalidPayloadError(
+  error: { issues: readonly { path: readonly PropertyKey[] }[] },
+  status: number,
+): MobileSyncTransportError {
+  const path = error.issues[0]?.path.map(String).join(".");
+  return new MobileSyncTransportError(
+    `Zoption returned an invalid synchronization response${path ? ` (at ${path})` : ""}.`,
+    "invalid_response",
+    status,
+  );
+}
+
 // Reads the body of a 403 only; every caller then fails without reading it again.
 async function throwIfWorkspaceRefused(response: Response): Promise<void> {
   if (response.status !== 403) return;
@@ -220,13 +236,7 @@ export async function pullMobileSync({
   }
 
   const parsed = mobileSyncPullResponseSchema.safeParse(await decodeResponse(response));
-  if (!parsed.success) {
-    throw new MobileSyncTransportError(
-      "Zoption returned an invalid synchronization response.",
-      "invalid_response",
-      response.status,
-    );
-  }
+  if (!parsed.success) throw invalidPayloadError(parsed.error, response.status);
   return parsed.data;
 }
 
@@ -322,13 +332,7 @@ export async function snapshotMobileSync({
   }
 
   const parsed = mobileSyncSnapshotResponseSchema.safeParse(await decodeResponse(response));
-  if (!parsed.success) {
-    throw new MobileSyncTransportError(
-      "Zoption returned an invalid synchronization response.",
-      "invalid_response",
-      response.status,
-    );
-  }
+  if (!parsed.success) throw invalidPayloadError(parsed.error, response.status);
   return parsed.data;
 }
 
@@ -510,12 +514,6 @@ export async function pushMobileSync({
   }
 
   const parsed = mobileSyncPushResponseSchema.safeParse(await decodeResponse(response));
-  if (!parsed.success) {
-    throw new MobileSyncTransportError(
-      "Zoption returned an invalid synchronization response.",
-      "invalid_response",
-      response.status,
-    );
-  }
+  if (!parsed.success) throw invalidPayloadError(parsed.error, response.status);
   return parsed.data;
 }
