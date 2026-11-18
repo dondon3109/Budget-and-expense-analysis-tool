@@ -118,7 +118,11 @@ export function HomeScreen() {
           <ViewSwitch options={HOME_VIEWS} selected={homeView} onSelect={setHomeView} />
         ) : null}
         <View style={{ flex: 1, alignItems: "flex-end" }}>
-          <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
+          <SyncStatus
+            state={guest ? "pending" : visibleSyncState(sync.status)}
+            detail={sync.message}
+            onRetry={sync.retry}
+          />
         </View>
       </View>
       <FamilyClosingNotice />

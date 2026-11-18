@@ -52,6 +52,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- On mobile, tap "Sync failed" on Home or the calendar to see why synchronization stopped, with a Try again button.
 - Web dashboard: the deficit warning under Safe to spend this week now only says "Deficit risk ahead", without the projected date sentence, matching mobile.
 - The deficit warning under Safe to spend this week, on web and mobile, now just says when your balance is projected to fall below zero, without the extra "Nothing is safe to spend this week until then." line.
 - Web dashboard: Safe to spend this week now sits in the summary row between Expenses and Transfer fees, as a compact figure with the days left, a Bills link, and any overspending alert, instead of a separate card below it.

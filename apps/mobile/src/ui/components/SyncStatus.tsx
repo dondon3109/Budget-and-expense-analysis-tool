@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { radii, spacing, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -14,7 +14,21 @@ const labels: Record<SyncState, string> = {
   conflicted: "Needs review",
 };
 
-export function SyncStatus({ state, count }: { state: SyncState; count?: number }) {
+/**
+ * `detail` is the reason a failed sync gave. While failed, a tap shows it (the pill alone cannot
+ * say why), with `onRetry` as the dialog's retry action.
+ */
+export function SyncStatus({
+  state,
+  count,
+  detail,
+  onRetry,
+}: {
+  state: SyncState;
+  count?: number;
+  detail?: string | null;
+  onRetry?: () => void;
+}) {
   const theme = useZoptionTheme();
   const color =
     state === "failed" || state === "conflicted"
@@ -23,12 +37,8 @@ export function SyncStatus({ state, count }: { state: SyncState; count?: number 
         ? theme.colors.warning
         : theme.colors.brand;
   const label = `${labels[state]}${count ? ` · ${count}` : ""}`;
-  return (
-    <View
-      accessibilityLabel={label}
-      className="flex-row items-center gap-2"
-      style={styles.container}
-    >
+  const content = (
+    <>
       <View accessibilityElementsHidden style={[styles.dot, { backgroundColor: color }]} />
       <Text
         numberOfLines={1}
@@ -36,6 +46,36 @@ export function SyncStatus({ state, count }: { state: SyncState; count?: number 
       >
         {label}
       </Text>
+    </>
+  );
+  if (state === "failed" && detail) {
+    return (
+      <Pressable
+        accessibilityHint="Shows why synchronization failed"
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        className="flex-row items-center gap-2"
+        hitSlop={8}
+        onPress={() =>
+          Alert.alert(
+            "Sync failed",
+            detail,
+            onRetry ? [{ text: "Close" }, { text: "Try again", onPress: onRetry }] : undefined,
+          )
+        }
+        style={styles.container}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+  return (
+    <View
+      accessibilityLabel={label}
+      className="flex-row items-center gap-2"
+      style={styles.container}
+    >
+      {content}
     </View>
   );
 }

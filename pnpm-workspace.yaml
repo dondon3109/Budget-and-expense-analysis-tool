@@ -64,6 +64,10 @@ auditConfig:
     # fix. Reached only through dev tooling (@expo/cli and chromium-bidi under @lhci/cli), never
     # in a shipped bundle; the app's own zod is 4.x. Drop once those move to zod 4.
     - GHSA-mrhx-c7xc-m3w5
+    # picomatch <=4.0.7 ReDoS through single-branch repeated extglobs; the patched 4.0.8 is not
+    # on npm yet. Reached only through build tooling (tinyglobby and fdir under expo and
+    # react-native codegen). Replace with a "picomatch@4" override once 4.0.8 is published.
+    - GHSA-fc5q-39xc-vjpf
 
 minimumReleaseAgeExclude:
   - zustand@5.0.15
