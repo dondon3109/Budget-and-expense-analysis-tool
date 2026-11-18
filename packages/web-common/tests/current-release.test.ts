@@ -25,16 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "A shorter deficit warning",
-      "Bills views keep your place",
-      "One currency picker when adjusting a balance",
-      "Android Beta 0.2.62",
+      "Is that subscription worth it?",
+      "Bills live in the Budgets tab",
+      "A first sync that finishes",
+      "A smoother sign-in",
+      "Android Beta 0.2.63",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Android Beta 0\.2\.62/);
+    expect(copy).toMatch(/Android Beta 0\.2\.63/);
+  });
+
+  it("keeps the deficit warning and currency picker notes as 4.6.1", () => {
+    expect(titles("4.6.1")).toContain("A shorter deficit warning");
+    expect(notes("4.6.1")).toMatch(/Android Beta 0\.2\.62/);
   });
 
   it("keeps the Bills, hide balance, and receipt scanning notes as 4.6.0", () => {

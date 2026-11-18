@@ -11,27 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "November 16, 2026",
+  releasedOn: "November 18, 2026",
   changes: [
     {
-      title: "A shorter deficit warning",
+      title: "Is that subscription worth it?",
       description:
-        "When your balance is projected to fall below zero, the Safe to spend warning now just gives the date, on web and mobile.",
+        "On Pro and Family Pro, tap Used it on a bill each time you use the service to see what each use cost and a weekly streak. A tracked bill you haven't used in 30 days is flagged with a Cancel it button, on web and mobile.",
     },
     {
-      title: "Bills views keep your place",
+      title: "Bills live in the Budgets tab",
       description:
-        "On the web Bills page, switching between Table, Bill calendar, and Cashflow Forecast no longer jumps back to the top, Refresh sits beside the view toggle, and the shortfall and low buffer warnings can be dismissed.",
+        "On mobile, switch between Budgets and Bills at the top of the Budgets tab, and add a bill with the + button beside them.",
     },
     {
-      title: "One currency picker when adjusting a balance",
+      title: "A first sync that finishes",
       description:
-        "On mobile, editing a bank account that holds several currencies shows a single Currency field, which picks the balance to adjust.",
+        "Signing in on a new phone with a lot of history no longer stops with Sync failed partway through: the sync waits when Zoption asks it to slow down, then finishes on its own. Tap Sync failed to see why it stopped, with a Try again button.",
     },
     {
-      title: "Android Beta 0.2.62",
+      title: "A smoother sign-in",
       description:
-        "The official Android Beta carries everything above and everything from 0.2.61. Install 0.2.62 over 0.2.61.",
+        "On mobile, signing in shows one loading screen, and the pet pop-up waits until you answer Help improve Zoption instead of trading places with it.",
+    },
+    {
+      title: "Android Beta 0.2.63",
+      description:
+        "The official Android Beta carries everything above and everything from 0.2.62. Install 0.2.63 over 0.2.62.",
     },
   ],
 };
@@ -46,6 +51,32 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.6.1",
+    releasedOn: "November 16, 2026",
+    changes: [
+      {
+        title: "A shorter deficit warning",
+        description:
+          "When your balance is projected to fall below zero, the Safe to spend warning now just gives the date, on web and mobile.",
+      },
+      {
+        title: "Bills views keep your place",
+        description:
+          "On the web Bills page, switching between Table, Bill calendar, and Cashflow Forecast no longer jumps back to the top, Refresh sits beside the view toggle, and the shortfall and low buffer warnings can be dismissed.",
+      },
+      {
+        title: "One currency picker when adjusting a balance",
+        description:
+          "On mobile, editing a bank account that holds several currencies shows a single Currency field, which picks the balance to adjust.",
+      },
+      {
+        title: "Android Beta 0.2.62",
+        description:
+          "The official Android Beta carries everything above and everything from 0.2.61. Install 0.2.62 over 0.2.61.",
+      },
+    ],
+  },
   {
     version: "4.6.0",
     releasedOn: "November 16, 2026",
