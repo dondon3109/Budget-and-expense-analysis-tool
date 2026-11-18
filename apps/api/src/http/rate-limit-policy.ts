@@ -72,6 +72,16 @@ function byUser(...policies: RateLimitPolicy[]): AppRateLimit {
  * user instead of the tenant.
  */
 export function appRateLimitFor(method: string, path: string): AppRateLimit {
+  // Mobile sync reads are POSTs but not writes. A first sync on a new phone pulls one page per
+  // request back to back, which outran the shared write budget and left the phone half synced.
+  if (
+    method === "POST" &&
+    (path === "/api/app/sync/pull" ||
+      path === "/api/app/sync/snapshot" ||
+      path === "/api/app/sync/acknowledge")
+  ) {
+    return byTenant({ scope: "tenant-sync-read", limit: 300, windowSeconds: MINUTE });
+  }
   // Every pooled AI path keeps only its per-minute burst cap: a per-day cap would sit below
   // the monthly pool and reject a Pro tenant that has units left. The monthly pool is the cap.
   if (method === "POST") {

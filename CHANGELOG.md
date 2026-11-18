@@ -87,6 +87,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- On mobile, signing in on a new phone with a lot of history no longer stops with "Sync failed" partway through: the first sync waits when Zoption asks it to slow down, then finishes on its own.
 - On mobile, signing in shows one loading screen instead of a "Finishing sign in" screen followed by a second loader.
 - On mobile Home, the pet pop-up now waits until you answer "Help improve Zoption", so the two no longer swap back and forth on screen.
 - Web Bills page: switching between Table, Bill calendar, and Cashflow Forecast keeps your place on the page instead of jumping to the top. Refresh now sits beside the view switch, and the shortfall and low buffer warnings can be closed with an × button.
