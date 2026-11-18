@@ -31,7 +31,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "A smoother sign-in",
       description:
-        "On mobile, signing in shows one loading screen, and the pet pop-up waits until you answer Help improve Zoption instead of trading places with it.",
+        "On mobile, signed-out users open straight to Sign in, with Continue without an account at the bottom, signing in shows one loading screen, and the pet pop-up waits until you answer Help improve Zoption instead of trading places with it.",
     },
     {
       title: "Android Beta 0.2.63",
