@@ -246,6 +246,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "4.6.1",
       "4.6.0",
       "4.5.0",
       "4.4.1",
