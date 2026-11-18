@@ -13,8 +13,14 @@ import { typography } from "@/ui/tokens";
 export function SignInScreen() {
   const theme = useZoptionTheme();
   const demoEnabled = isDevelopmentAppVariant();
-  const { configured, signInWithGoogle, signInWithPassword, signInWithDummyAccount, status } =
-    useSessionSnapshot();
+  const {
+    configured,
+    continueAsGuest,
+    signInWithGoogle,
+    signInWithPassword,
+    signInWithDummyAccount,
+    status,
+  } = useSessionSnapshot();
   const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +29,7 @@ export function SignInScreen() {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [dummyBusy, setDummyBusy] = useState(false);
+  const [guestBusy, setGuestBusy] = useState(false);
 
   useEffect(() => {
     if (status === "signed-in") router.replace("/(app)/(tabs)");
@@ -43,6 +50,17 @@ export function SignInScreen() {
       setFormError(authErrorMessage(error, "Zoption could not sign in with dummy account."));
     } finally {
       setDummyBusy(false);
+    }
+  }
+
+  async function handleGuest(): Promise<void> {
+    if (guestBusy) return;
+    setGuestBusy(true);
+    try {
+      await continueAsGuest();
+      router.replace("/(app)/(tabs)");
+    } catch {
+      setGuestBusy(false);
     }
   }
 
@@ -190,6 +208,24 @@ export function SignInScreen() {
         >
           Continue with Google
         </Button>
+        {/* Guest mode is offered only before the first choice; a guest opening sign-in from the app gets "Not now" instead. */}
+        {status === "signed-out" ? (
+          <>
+            <Button
+              accessibilityHint="Uses Zoption on this device without an account"
+              disabled={guestBusy || busy || dummyBusy}
+              loading={guestBusy}
+              variant="quiet"
+              onPress={() => void handleGuest()}
+            >
+              Continue without an account
+            </Button>
+            <Text style={[typography.caption, styles.footnote, { color: theme.colors.textMuted }]}>
+              Without an account your data stays on this device. An account adds backup and sync
+              across your phone and the web, the AI Assistant, receipt scanning and voice entry.
+            </Text>
+          </>
+        ) : null}
       </View>
     </Screen>
   );
@@ -198,4 +234,5 @@ export function SignInScreen() {
 const styles = StyleSheet.create({
   dividerRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   divider: { flex: 1, height: StyleSheet.hairlineWidth },
+  footnote: { textAlign: "center" },
 });

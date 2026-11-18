@@ -52,6 +52,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- On mobile, signed-out users now open straight to Sign in instead of a separate welcome screen. Continue without an account, and the note on what an account adds, sit at the bottom of Sign in.
 - On mobile, tap "Sync failed" on Home or the calendar to see why synchronization stopped, with a Try again button.
 - Web dashboard: the deficit warning under Safe to spend this week now only says "Deficit risk ahead", without the projected date sentence, matching mobile.
 - The deficit warning under Safe to spend this week, on web and mobile, now just says when your balance is projected to fall below zero, without the extra "Nothing is safe to spend this week until then." line.
