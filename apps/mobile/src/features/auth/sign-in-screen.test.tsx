@@ -1,11 +1,19 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { router } from "expo-router";
+
 import { SignInScreen } from "./SignInScreen";
 
 const mockSignInWithGoogle = jest.fn(async () => undefined);
 const mockSignInWithPassword = jest.fn(async () => undefined);
 const mockSignInWithDummyAccount = jest.fn(async () => undefined);
+const mockContinueAsGuest = jest.fn(async () => undefined);
 let mockDevelopmentVariant = true;
+let mockStatus = "signed-out";
+
+jest.mock("expo-router", () => ({
+  router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
+}));
 
 jest.mock("@/config/app-variant", () => ({
   isDevelopmentAppVariant: () => mockDevelopmentVariant,
@@ -13,9 +21,10 @@ jest.mock("@/config/app-variant", () => ({
 
 jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({
-    status: "signed-out",
+    status: mockStatus,
     subject: null,
     configured: true,
+    continueAsGuest: mockContinueAsGuest,
     signInWithGoogle: mockSignInWithGoogle,
     signInWithPassword: mockSignInWithPassword,
     signInWithDummyAccount: mockSignInWithDummyAccount,
@@ -30,6 +39,22 @@ describe("sign-in screen social options", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDevelopmentVariant = true;
+    mockStatus = "signed-out";
+  });
+
+  it("lets a signed-out user continue without an account", async () => {
+    await render(<SignInScreen />);
+    expect(screen.getByText(/An account adds backup and sync/)).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Continue without an account" }));
+    expect(mockContinueAsGuest).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/(app)/(tabs)"));
+  });
+
+  it("offers Not now instead of guest mode to an existing guest", async () => {
+    mockStatus = "guest";
+    await render(<SignInScreen />);
+    expect(screen.queryByRole("button", { name: "Continue without an account" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Not now" })).toBeTruthy();
   });
 
   it("exposes a working dummy account sign-in action", async () => {
