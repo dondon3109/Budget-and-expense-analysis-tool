@@ -84,7 +84,9 @@ describe("FullPageLoadingStatus", () => {
     );
 
     const fill = document.querySelector<HTMLElement>(".full-page-loading-fill");
-    expect(fill?.style.transform).toBe("scaleX(0.3333333333333333)");
+    // jsdom 31 serializes the factor to six decimals; older releases keep full precision.
+    expect(fill?.style.transform).toMatch(/^scaleX\(0\.333333\d*\)$/);
+    expect(fill?.style.width).toBe("");
   });
 
   it("holds a still frame when motion is reduced", () => {
