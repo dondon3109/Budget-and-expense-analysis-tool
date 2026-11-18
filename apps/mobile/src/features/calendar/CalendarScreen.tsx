@@ -332,7 +332,11 @@ export function CalendarScreen() {
               <Text style={[typography.caption, { color: theme.colors.brand }]}>Today</Text>
             </Pressable>
           ) : null}
-          <SyncStatus state={guest ? "pending" : visibleSyncState(sync.status)} />
+          <SyncStatus
+            state={guest ? "pending" : visibleSyncState(sync.status)}
+            detail={sync.message}
+            onRetry={sync.retry}
+          />
         </View>
       </View>
       {state.error ? (

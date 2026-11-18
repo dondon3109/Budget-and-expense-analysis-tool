@@ -310,6 +310,21 @@ describe("fixed mobile synchronization transport", () => {
     ).rejects.toBe(abort);
   });
 
+  it("names the refused field of a payload the contract rejects", async () => {
+    const fetchImpl = jest.fn(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ protocolVersion: 1, changes: "nope" }), { status: 200 }),
+      ),
+    );
+    const error = await pullMobileSync({ accessToken: "token", cursor: null, fetchImpl }).catch(
+      (caught: unknown) => caught,
+    );
+    expect(error).toMatchObject({ code: "invalid_response" });
+    expect((error as Error).message).toMatch(
+      /^Zoption returned an invalid synchronization response \(at \w+/,
+    );
+  });
+
   it("rejects invalid and oversized response bodies", async () => {
     const invalid = jest.fn(() => Promise.resolve(new Response("not-json", { status: 200 })));
     const oversized = jest.fn(() =>
