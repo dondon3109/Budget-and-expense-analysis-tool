@@ -79,6 +79,11 @@
   font-size: clamp(36px, 4vw, 50px);
 }
 
+.planning-overview-lead .goal-progress {
+  max-width: 340px;
+  margin-top: 4px;
+}
+
 .planning-overview-stat strong {
   overflow-wrap: anywhere;
 }
@@ -98,7 +103,7 @@
 .planning-section-heading {
   padding: 24px 0 16px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
   border-bottom: 1px solid var(--line);
@@ -106,19 +111,37 @@
 
 .planning-section-heading > div {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
 .planning-section-heading svg {
-  margin-top: 2px;
   flex: 0 0 auto;
   color: var(--sage);
 }
 
+.planning-count {
+  min-width: 26px;
+  min-height: 24px;
+  padding: 0 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 580;
+}
+
+.planning-section-heading h2 {
+  margin: 0;
+}
+
 .planning-section-heading h2,
 .planning-preferences h2 {
-  margin: 0 0 6px;
   color: var(--ink);
   font-family: var(--font-display);
   font-size: 23px;
@@ -136,7 +159,6 @@
   line-height: 1.55;
 }
 
-.planning-section-heading .text-button,
 .planning-preferences .text-button {
   display: inline-flex;
   align-items: center;
@@ -149,10 +171,10 @@
 }
 
 .planning-record {
-  padding: 22px 0;
+  padding: 18px 0;
   display: grid;
   align-content: center;
-  gap: 12px;
+  gap: 10px;
   border-bottom: 1px solid var(--line);
   transition: background-color 160ms ease;
 }
@@ -165,8 +187,16 @@
    the actions stay at full contrast. */
 .planning-record.paused .planning-record-topline strong,
 .planning-record.completed .planning-record-topline strong,
-.planning-record.paid .planning-record-topline strong {
+.planning-record.paid .planning-record-topline strong,
+.planning-record.paused .goal-amount-line strong,
+.planning-record.completed .goal-amount-line strong,
+.planning-record.paid .debt-balance-line strong {
   color: var(--muted);
+}
+
+.planning-record.paused .goal-progress span,
+.planning-record.completed .goal-progress span {
+  background: var(--subtle);
 }
 
 .planning-record-topline,
@@ -233,11 +263,26 @@
   background: var(--surface-hover);
 }
 
+.goal-amount-line > div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.goal-amount-line b {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
 .goal-amount-line strong,
 .debt-balance-line strong {
   color: var(--ink);
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 22px;
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   letter-spacing: -0.025em;
@@ -246,8 +291,7 @@
 
 .goal-amount-line span,
 .debt-balance-line span,
-.planning-record-meta,
-.planning-record > small {
+.planning-record-meta {
   color: var(--subtle);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -261,7 +305,7 @@
 }
 
 .goal-progress {
-  height: 8px;
+  height: 6px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
   border-radius: 999px;
@@ -523,15 +567,6 @@
   .planning-section-heading {
     min-height: 0;
     padding: 19px 0 12px;
-  }
-
-  .planning-section-heading > .text-button {
-    font-size: 0;
-  }
-
-  .planning-section-heading > .text-button svg {
-    width: 18px;
-    height: 18px;
   }
 
   .planning-record {

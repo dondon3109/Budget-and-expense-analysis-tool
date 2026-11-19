@@ -38,7 +38,9 @@ jest.mock("@/api/receipt-scan", () => ({
 
 jest.mock("@/auth/session-state", () => {
   const session = { getAccessToken: jest.fn().mockResolvedValue("token") };
-  return { useSessionSnapshot: () => session };
+  // A new value each render, as a session change makes: the screen must not reload its
+  // preferences and fall back to "Checking receipt scanning…" because of it.
+  return { useSessionSnapshot: () => ({ ...session }) };
 });
 
 jest.mock("@/db/local-workspace-state", () => ({

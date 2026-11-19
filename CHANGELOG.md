@@ -54,6 +54,7 @@ All notable product changes are documented here.
 ### Changed
 
 - On Android, Plan and billing no longer offers PayPal or Dodo Payments checkout or plan changes, because Google Play allows only its own billing in the app. A plan bought on the web still applies on your phone, and you can still cancel renewal there.
+- A cleaner Goals page, on web and mobile. On the phone it now looks like Budgets: one "saved so far" total with a progress bar, goals grouped into Active, Paused, and Completed, and each goal showing how much is left and its target date. On the web, Goals & debt shows overall progress, how much is left to save, and your total minimum debt payments, with active goals and debts listed first.
 - The Android app now ships only through Google Play. The website APK download, its in-app updater, and the download page's install steps are gone; zoption.site/install now says the app is coming to Google Play and points to the web app until the listing opens. Anyone with the old APK installed should sync, uninstall it, and install from Google Play.
 - On mobile, signed-out users now open straight to Sign in instead of a separate welcome screen. Continue without an account, and the note on what an account adds, sit at the bottom of Sign in.
 - On mobile, tap "Sync failed" on Home or the calendar to see why synchronization stopped, with a Try again button.
@@ -91,6 +92,9 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: the AI Assistant shows **bold** words in its replies as bold text instead of showing the asterisks.
+- Mobile: receipt scanning no longer stays on "Checking receipt scanning…", and the Import screen's title reads "Import".
+- The web dashboard counts your "Every month" budget limits, so the "Set a monthly budget" step in Get started is checked off and the budget totals match the Budgets page, instead of only seeing limits set on that month.
 - On mobile, signing in on a new phone with a lot of history no longer stops with "Sync failed" partway through: the first sync waits when Zoption asks it to slow down, then finishes on its own.
 - On mobile, signing in shows one loading screen instead of a "Finishing sign in" screen followed by a second loader.
 - On mobile Home, the pet pop-up now waits until you answer "Help improve Zoption", so the two no longer swap back and forth on screen.

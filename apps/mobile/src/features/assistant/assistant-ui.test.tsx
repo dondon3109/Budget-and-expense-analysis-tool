@@ -191,6 +191,19 @@ describe("assistant accessibility-critical interactions", () => {
     expect(onListen).toHaveBeenCalled();
   });
 
+  it("shows **bold** in a reply as bold text without the asterisks", async () => {
+    await render(
+      <AssistantMessageBubble
+        role="assistant"
+        content="You spent **₱1,515.00** on dining."
+        status="completed"
+        createdAt="2026-05-01T08:00:00.000Z"
+      />,
+    );
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+    expect(screen.getByText("₱1,515.00")).toHaveStyle({ fontWeight: "700" });
+  });
+
   it("marks failed assistant answers honestly", async () => {
     await render(
       <AssistantMessageBubble
