@@ -256,6 +256,14 @@ export default function AuthenticatedLayout() {
           }}
         />
         <Stack.Screen
+          name="about"
+          options={{
+            headerShown: true,
+            headerBackTitle: "More",
+            title: "About Zoption",
+          }}
+        />
+        <Stack.Screen
           name="tutorials"
           options={{
             headerShown: true,

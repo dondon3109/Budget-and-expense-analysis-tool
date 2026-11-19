@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
+import { AboutSettings } from "../components/account/AboutSettings";
 import { BillingSettings } from "../components/account/BillingSettings";
 import { CurrencySettings } from "../components/account/CurrencySettings";
 import { DangerZoneSettings } from "../components/account/DangerZoneSettings";
@@ -40,6 +41,7 @@ const SETTINGS_SECTION_BY_HASH: Record<string, string> = {
   "#primary-goal": "primary-goal",
   "#voice-language": "voice-language",
   "#voice-settings": "voice-language",
+  "#about": "about",
 };
 
 export function SettingsPage() {
@@ -105,6 +107,8 @@ export function SettingsPage() {
           {user && <BillingSettings user={user} />}
 
           <HelpAndContactSettings />
+
+          <AboutSettings />
 
           {user && <SharedLinksSettings workspace={userWorkspace(user)} />}
 
