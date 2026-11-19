@@ -318,12 +318,7 @@ How to create each one is in `docs/mobile/build-instructions.md` (Google Play bu
 
 ### Retired sideloaded APK channel
 
-The website APK, its in-app updater, and the `Android Beta Build` and `R2 Publish Smoke Test` workflows were removed on 2026-11-19; nothing in the repository reads the resources below any more. **Current external state:** they still exist until deleted by hand. Remove each line as it is deleted.
-
-- Cloudflare R2 bucket `zoption-android-beta` (the APKs and `android/latest.json`), served at the custom domain `downloads.zoption.site`, and the R2 API token behind the GitHub secrets below.
-- Repository secrets `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, and repository variables `R2_ACCOUNT_ID`, `R2_BUCKET_NAME`, `R2_PUBLIC_BASE_URL`.
-
-Read the state back with `wrangler r2 bucket list`, the bucket's Settings → Custom Domains, `gh secret list`, and `gh variable list`.
+The website APK, its in-app updater, and the `Android Beta Build` and `R2 Publish Smoke Test` workflows were removed on 2026-11-19, along with their external resources: the R2 bucket `zoption-android-beta`, its custom domain `downloads.zoption.site`, its R2 API token, and the `R2_*`, `ANDROID_KEYSTORE_*`, and `ANDROID_KEY_*` repository secrets and variables. The old APK signing key (`F9:46:70:EB...`) is kept offline only; Play does not use it.
 
 ## Frontend configuration
 
