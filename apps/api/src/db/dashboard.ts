@@ -4,6 +4,7 @@ import {
   buildCashflowTrendFromDayTotals,
   buildDashboardSummary,
   buildTransferFeeInsight,
+  EVERY_MONTH_KEY,
   isCurrency,
   OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   summarizeAccountBalances,
@@ -17,7 +18,7 @@ import {
   type TransferFeeTotalsByCurrency,
   type TransactionRecord,
 } from "@zoption/shared";
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, inArray, lte } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/d1";
 
 import { accounts, budgets, categories, transactions } from "../../../../db/schema";
@@ -165,7 +166,12 @@ export async function loadDashboard(
           categories,
           and(eq(budgets.categoryId, categories.id), eq(categories.tenantId, tenantId)),
         )
-        .where(and(eq(budgets.tenantId, tenantId), eq(budgets.month, budgetMonth))),
+        .where(
+          and(
+            eq(budgets.tenantId, tenantId),
+            inArray(budgets.month, [budgetMonth, EVERY_MONTH_KEY]),
+          ),
+        ),
       accountRepository.list(env, tenantId),
       loadBalancesByCurrency(env, tenantId),
       loadWorkspaceCurrency(env, tenantId),
@@ -179,7 +185,19 @@ export async function loadDashboard(
 
   const accountSummary = summarizeAccountBalances(accountRows, workspaceCurrency);
 
-  return buildDashboardSummary(normalizedTransactions, budgetRows, period, {
+  // Same rule as the Budgets page: an "Every month" limit applies unless the month has its
+  // own row for that category, which wins even at zero.
+  const monthBudgets = new Map<string, (typeof budgetRows)[number]>();
+  for (const row of budgetRows) {
+    if (row.month === EVERY_MONTH_KEY) continue;
+    monthBudgets.set(row.categoryId, row);
+  }
+  for (const row of budgetRows) {
+    if (row.month !== EVERY_MONTH_KEY || monthBudgets.has(row.categoryId)) continue;
+    monthBudgets.set(row.categoryId, { ...row, month: budgetMonth });
+  }
+
+  return buildDashboardSummary(normalizedTransactions, [...monthBudgets.values()], period, {
     ...accountSummary,
     overallBalanceMinor: overallBalances[workspaceCurrency] ?? 0,
     balancesByCurrency: overallBalances,
