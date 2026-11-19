@@ -29,13 +29,14 @@ describe("current release notes", () => {
       "Bills live in the Budgets tab",
       "A first sync that finishes",
       "A smoother sign-in",
-      "Android Beta 0.2.63",
+      "See which version you have",
+      "Android Beta 0.2.64",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Android Beta 0\.2\.63/);
+    expect(copy).toMatch(/Android Beta 0\.2\.64/);
   });
 
   it("keeps the deficit warning and currency picker notes as 4.6.1", () => {

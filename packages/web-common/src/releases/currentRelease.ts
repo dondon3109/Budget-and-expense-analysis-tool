@@ -11,7 +11,7 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "November 18, 2026",
+  releasedOn: "November 19, 2026",
   changes: [
     {
       title: "Is that subscription worth it?",
@@ -34,9 +34,14 @@ export const currentRelease: ProductRelease = {
         "On mobile, signed-out users open straight to Sign in, with Continue without an account at the bottom, signing in shows one loading screen, and the pet pop-up waits until you answer Help improve Zoption instead of trading places with it.",
     },
     {
-      title: "Android Beta 0.2.63",
+      title: "See which version you have",
       description:
-        "The official Android Beta carries everything above and everything from 0.2.62. Install 0.2.63 over 0.2.62.",
+        "On mobile, More now has an About Zoption page with the version, build number, and where the app came from, plus Check for updates. On the web, Account Settings shows the web version.",
+    },
+    {
+      title: "Android Beta 0.2.64",
+      description:
+        "The official Android Beta carries everything above and everything from 0.2.62. Install 0.2.64 over 0.2.62 or 0.2.63.",
     },
   ],
 };
