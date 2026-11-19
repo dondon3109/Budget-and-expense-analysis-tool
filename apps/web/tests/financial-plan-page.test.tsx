@@ -120,9 +120,7 @@ describe("FinancialPlanPage", () => {
   it("renders planning totals and records", async () => {
     renderPage();
 
-    expect(
-      await screen.findByRole("heading", { name: "Your planning ledger" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Goals & debt" })).toBeInTheDocument();
     expect(await screen.findByText("Emergency fund")).toBeInTheDocument();
     expect(screen.getByText("Main card")).toBeInTheDocument();
     expect(screen.getAllByText("₱30,000")).toHaveLength(2);
@@ -131,6 +129,11 @@ describe("FinancialPlanPage", () => {
       "aria-valuenow",
       "25",
     );
+    expect(screen.getByRole("progressbar", { name: "Overall goal progress" })).toHaveAttribute(
+      "aria-valuenow",
+      "25",
+    );
+    expect(screen.getByText("₱90,000 to go")).toBeInTheDocument();
   });
 
   it("keeps the remittance calculator available when the plan data fails", async () => {

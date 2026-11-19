@@ -13,13 +13,13 @@ jest.mock("@/db/local-workspace-state", () => ({
   useGoals: jest.fn(),
 }));
 
-const goal = (id: string, name: string, current: number, target: number) => ({
+const goal = (id: string, name: string, current: number, target: number, status = "active") => ({
   id,
   name,
   currentAmountMinor: current,
   targetAmountMinor: target,
   targetDate: "2026-12-31",
-  status: "active",
+  status,
   syncState: "synced",
 });
 const goalsState = (goals: unknown[]) =>
@@ -45,9 +45,28 @@ describe("GoalsScreen", () => {
       );
     await render(<GoalsScreen />);
 
-    expect(screen.getByText("Saved so far")).toBeTruthy();
-    expect(screen.getByText(/to go/)).toBeTruthy();
-    expect(screen.getByText(/Goal reached/)).toBeTruthy();
+    expect(screen.getByText("SAVED SO FAR")).toBeTruthy();
+    expect(screen.getByText("to go")).toBeTruthy();
+    expect(screen.getByText("Goal reached")).toBeTruthy();
+    expect(screen.getAllByText(/by Dec 31, 2026/)).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Goal" })).toBeTruthy();
+  });
+
+  it("groups goals by status under section headers", async () => {
+    jest
+      .mocked(useGoals)
+      .mockReturnValue(
+        goalsState([
+          goal("1", "Emergency fund", 3_000_000, 6_000_000),
+          goal("2", "Laptop", 1_000_000, 5_000_000, "paused"),
+          goal("3", "Phone", 6_000_000, 6_000_000, "completed"),
+        ]),
+      );
+    await render(<GoalsScreen />);
+
+    expect(screen.getByText("Active")).toBeTruthy();
+    expect(screen.getByText("Paused")).toBeTruthy();
+    expect(screen.getByText("Completed")).toBeTruthy();
+    expect(screen.getByText(/across 1 active goal$/)).toBeTruthy();
   });
 });
