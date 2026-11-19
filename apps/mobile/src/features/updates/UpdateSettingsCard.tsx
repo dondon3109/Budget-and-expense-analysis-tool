@@ -72,11 +72,11 @@ export function UpdateSettingsCardView(props: UpdateSettingsCardViewProps) {
     <Card accessibilityLabel="Zoption updates">
       <View className="gap-3">
         <View style={styles.header}>
-          <MenuIcon icon="information-outline" />
+          <MenuIcon icon="update" />
           <View style={styles.headerText}>
-            <Text style={[typography.headline, { color: theme.colors.text }]}>About Zoption</Text>
+            <Text style={[typography.headline, { color: theme.colors.text }]}>App updates</Text>
             <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-              Version {versionLabel}
+              Installed {versionLabel}
             </Text>
           </View>
         </View>

@@ -9,6 +9,7 @@ import type { Plan } from "@/api/plan";
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
+import { appVersionInfo } from "@/config/app-version";
 import { seedDummyWorkspaceData } from "@/db/demo-seed";
 import { useLocalWorkspace, useLocalWorkspaceStats } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
@@ -16,7 +17,6 @@ import { GuestAccountCard } from "@/features/account-prompt/GuestAccountCard";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { PreferenceCards } from "@/features/settings/PreferenceCards";
-import { UpdateSettingsCard } from "@/features/updates";
 import { ConfirmationDialog, MenuGroup, MenuRow } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -171,6 +171,12 @@ export function MoreScreen() {
           title="Account"
           onPress={() => openFeature("account", "/(app)/account")}
         />
+        <MenuRow
+          icon="information-outline"
+          title="About Zoption"
+          value={appVersionInfo().version ?? undefined}
+          onPress={() => router.push("/(app)/about")}
+        />
       </MenuGroup>
 
       {demoEnabled ? (
@@ -188,8 +194,6 @@ export function MoreScreen() {
           />
         </MenuGroup>
       ) : null}
-
-      <UpdateSettingsCard />
 
       <MenuGroup>
         {guest ? (

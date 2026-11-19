@@ -133,6 +133,7 @@ describe("SettingsPage", () => {
     ["help", "/app/settings#help", "help"],
     ["contact", "/app/settings#contact", "contact"],
     ["voice language", "/app/settings#voice-language", "voice-language"],
+    ["about", "/app/settings#about", "about"],
   ])("scrolls to and focuses the %s section from its hash", async (_label, entry, sectionId) => {
     renderSettings(entry);
 
@@ -140,6 +141,17 @@ describe("SettingsPage", () => {
     expect(section).toHaveAttribute("tabindex", "-1");
     await waitFor(() => expect(section).toHaveFocus());
     expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+  });
+
+  it("shows the web app version with a link to what's new", () => {
+    renderSettings();
+
+    const about = screen.getByRole("region", { name: "About Zoption" });
+    expect(within(about).getByText(/^Version \d+\.\d+\.\d+/)).toBeInTheDocument();
+    expect(within(about).getByRole("link", { name: "What’s new" })).toHaveAttribute(
+      "href",
+      expect.stringContaining("/changelog"),
+    );
   });
 
   it("offers FAQ, chat, and resilient email support from Account Settings", async () => {

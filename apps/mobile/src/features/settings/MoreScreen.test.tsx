@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
+import { router } from "expo-router";
+
 import { MoreScreen } from "./MoreScreen";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
@@ -27,9 +29,11 @@ jest.mock("@/db/local-workspace-state", () => ({
 jest.mock("@/sync/sync-state", () => ({
   useSyncState: () => ({ status: "synced", message: null, retry: jest.fn() }),
 }));
-// Both cards own their stores and native modules; this suite covers the screen's own flows.
+// The cards own their stores and native modules; this suite covers the screen's own flows.
 jest.mock("@/features/settings/PreferenceCards", () => ({ PreferenceCards: () => null }));
-jest.mock("@/features/updates", () => ({ UpdateSettingsCard: () => null }));
+jest.mock("@/config/app-version", () => ({
+  appVersionInfo: () => ({ version: "0.2.64-beta", build: "20364", source: "Google Play" }),
+}));
 
 const signOut = jest.fn<Promise<void>, [{ discardUnsyncedChanges: boolean }]>();
 
@@ -99,5 +103,13 @@ describe("MoreScreen sign out", () => {
     jest.mocked(isDevelopmentAppVariant).mockReturnValue(true);
     await render(<MoreScreen />);
     expect(screen.getByText("Demo data")).toBeTruthy();
+  });
+
+  it("shows the installed version on the About row and opens the About page", async () => {
+    withLocalChanges(0, 0);
+    await render(<MoreScreen />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "About Zoption, 0.2.64-beta" }));
+    expect(router.push).toHaveBeenCalledWith("/(app)/about");
   });
 });
