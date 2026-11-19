@@ -9,7 +9,7 @@ import type {
   FinancialGoalUpdate,
 } from "@zoption/shared";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Landmark, Pencil, Plus, RefreshCw, SlidersHorizontal, Target, Trash2 } from "lucide-react";
+import { Landmark, Pencil, RefreshCw, SlidersHorizontal, Target, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -54,6 +54,27 @@ function debtTypeLabel(type: Debt["type"]): string {
     mortgage: "Mortgage",
     other: "Other debt",
   }[type];
+}
+
+/** Records still being worked on lead; paused, completed, and paid ones follow. */
+const statusOrder: Record<FinancialGoal["status"] | Debt["status"], number> = {
+  active: 0,
+  paused: 1,
+  completed: 2,
+  paid: 2,
+};
+
+function byStatus<T extends { status: keyof typeof statusOrder }>(records: T[]): T[] {
+  return [...records].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
+}
+
+function percentSaved(currentMinor: number, targetMinor: number): number {
+  if (targetMinor <= 0) return 0;
+  return Math.min(100, Math.round((currentMinor / targetMinor) * 100));
+}
+
+function plural(count: number, noun: string): string {
+  return `${count} ${count === 1 ? noun : `${noun}s`}`;
 }
 
 function goalUpdate(input: FinancialGoalInput): FinancialGoalUpdate {
@@ -220,13 +241,19 @@ export function FinancialPlanPage() {
     },
   });
 
-  const goals = goalsQuery.data?.items ?? [];
-  const debts = debtsQuery.data?.items ?? [];
+  const goals = byStatus(goalsQuery.data?.items ?? []);
+  const debts = byStatus(debtsQuery.data?.items ?? []);
   const activeGoals = goals.filter((goal) => goal.status === "active");
   const activeDebts = debts.filter((debt) => debt.status === "active");
   const goalSavedMinor = activeGoals.reduce((total, goal) => total + goal.currentAmountMinor, 0);
   const goalTargetMinor = activeGoals.reduce((total, goal) => total + goal.targetAmountMinor, 0);
+  const goalLeftMinor = Math.max(0, goalTargetMinor - goalSavedMinor);
+  const goalPercent = percentSaved(goalSavedMinor, goalTargetMinor);
   const activeDebtMinor = activeDebts.reduce((total, debt) => total + debt.balanceMinor, 0);
+  const minimumPaymentMinor = activeDebts.reduce(
+    (total, debt) => total + debt.minimumPaymentMinor,
+    0,
+  );
   const loading = goalsQuery.isPending || debtsQuery.isPending;
   const loadError = goalsQuery.error ?? debtsQuery.error;
   // Delete failures render inside their ConfirmDialog, so they are excluded here.
@@ -270,8 +297,8 @@ export function FinancialPlanPage() {
       <div className="dashboard-page financial-plan-page">
         <header className="dashboard-header financial-plan-header">
           <div>
-            <p className="eyebrow">Goals & debt</p>
-            <h1>Your planning ledger</h1>
+            <p className="eyebrow">Plan ahead</p>
+            <h1>Goals & debt</h1>
           </div>
           <div className="header-actions financial-plan-actions">
             <button className="button secondary" type="button" onClick={() => setDebtForm("new")}>
@@ -304,20 +331,34 @@ export function FinancialPlanPage() {
           <>
             <section className="planning-overview" aria-label="Financial plan overview">
               <div className="planning-overview-lead">
-                <span>Active goal progress</span>
+                <span>Saved toward goals</span>
                 <strong>{formatMoney(goalSavedMinor)}</strong>
-                <small>of {formatMoney(goalTargetMinor)} saved across active goals</small>
-              </div>
-              <div className="planning-overview-stat">
-                <span>Active debt balance</span>
-                <strong>{formatMoney(activeDebtMinor)}</strong>
-                <small>{activeDebts.length} balances included in payoff planning</small>
-              </div>
-              <div className="planning-overview-stat">
-                <span>Planning records</span>
-                <strong>{goals.length + debts.length}</strong>
+                <div
+                  className="goal-progress"
+                  role="progressbar"
+                  aria-label="Overall goal progress"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={goalPercent}
+                >
+                  <span style={{ width: `${goalPercent}%` }} />
+                </div>
                 <small>
-                  {activeGoals.length} active goals · {activeDebts.length} active debts
+                  {goalPercent}% of {formatMoney(goalTargetMinor)} across{" "}
+                  {plural(activeGoals.length, "active goal")}
+                </small>
+              </div>
+              <div className="planning-overview-stat">
+                <span>Left to save</span>
+                <strong>{formatMoney(goalLeftMinor)}</strong>
+                <small>Until every active goal is funded</small>
+              </div>
+              <div className="planning-overview-stat">
+                <span>Debt balance</span>
+                <strong>{formatMoney(activeDebtMinor)}</strong>
+                <small>
+                  {plural(activeDebts.length, "active debt")} · {formatMoney(minimumPaymentMinor)}{" "}
+                  minimum / month
                 </small>
               </div>
             </section>
@@ -327,13 +368,9 @@ export function FinancialPlanPage() {
                 <div className="planning-section-heading">
                   <div>
                     <Target size={18} aria-hidden="true" />
-                    <div>
-                      <h2 id="goals-heading">Savings goals</h2>
-                    </div>
+                    <h2 id="goals-heading">Savings goals</h2>
                   </div>
-                  <button className="text-button" type="button" onClick={() => setGoalForm("new")}>
-                    <Plus size={15} aria-hidden="true" /> Add goal
-                  </button>
+                  {goals.length > 0 && <span className="planning-count">{goals.length}</span>}
                 </div>
 
                 {goals.length === 0 ? (
@@ -351,18 +388,24 @@ export function FinancialPlanPage() {
                 ) : (
                   <div className="planning-record-list">
                     {goals.map((goal) => {
-                      const progress = Math.min(
-                        100,
-                        Math.round((goal.currentAmountMinor / goal.targetAmountMinor) * 100),
+                      const progress = percentSaved(
+                        goal.currentAmountMinor,
+                        goal.targetAmountMinor,
+                      );
+                      const remainingMinor = Math.max(
+                        0,
+                        goal.targetAmountMinor - goal.currentAmountMinor,
                       );
                       return (
                         <article className={`planning-record goal ${goal.status}`} key={goal.id}>
                           <div className="planning-record-topline">
                             <div>
                               <strong>{goal.name}</strong>
-                              <span className={`planning-status ${goal.status}`}>
-                                {goal.status}
-                              </span>
+                              {goal.status !== "active" && (
+                                <span className={`planning-status ${goal.status}`}>
+                                  {goal.status}
+                                </span>
+                              )}
                             </div>
                             <div className="planning-record-actions">
                               <button
@@ -385,8 +428,11 @@ export function FinancialPlanPage() {
                             </div>
                           </div>
                           <div className="goal-amount-line">
-                            <strong>{formatMoney(goal.currentAmountMinor)}</strong>
-                            <span>of {formatMoney(goal.targetAmountMinor)}</span>
+                            <div>
+                              <strong>{formatMoney(goal.currentAmountMinor)}</strong>
+                              <span>of {formatMoney(goal.targetAmountMinor)}</span>
+                            </div>
+                            <b>{progress}%</b>
                           </div>
                           <div
                             className="goal-progress"
@@ -399,8 +445,12 @@ export function FinancialPlanPage() {
                             <span style={{ width: `${progress}%` }} />
                           </div>
                           <div className="planning-record-meta">
-                            <span>{progress}% saved</span>
-                            <span>Target {formatDate(goal.targetDate)}</span>
+                            <span>
+                              {remainingMinor > 0
+                                ? `${formatMoney(remainingMinor)} to go`
+                                : "Goal reached"}
+                            </span>
+                            <span>By {formatDate(goal.targetDate)}</span>
                           </div>
                         </article>
                       );
@@ -413,13 +463,9 @@ export function FinancialPlanPage() {
                 <div className="planning-section-heading">
                   <div>
                     <Landmark size={18} aria-hidden="true" />
-                    <div>
-                      <h2 id="debts-heading">Debt balances</h2>
-                    </div>
+                    <h2 id="debts-heading">Debt balances</h2>
                   </div>
-                  <button className="text-button" type="button" onClick={() => setDebtForm("new")}>
-                    <Plus size={15} aria-hidden="true" /> Add debt
-                  </button>
+                  {debts.length > 0 && <span className="planning-count">{debts.length}</span>}
                 </div>
 
                 {debts.length === 0 ? (
@@ -441,7 +487,11 @@ export function FinancialPlanPage() {
                         <div className="planning-record-topline">
                           <div>
                             <strong>{debt.name}</strong>
-                            <span className={`planning-status ${debt.status}`}>{debt.status}</span>
+                            {debt.status !== "active" && (
+                              <span className={`planning-status ${debt.status}`}>
+                                {debt.status === "paid" ? "Paid off" : debt.status}
+                              </span>
+                            )}
                           </div>
                           <div className="planning-record-actions">
                             <button
@@ -468,10 +518,11 @@ export function FinancialPlanPage() {
                           <span>{(debt.aprBasisPoints / 100).toFixed(2)}% APR</span>
                         </div>
                         <div className="planning-record-meta">
-                          <span>{debtTypeLabel(debt.type)}</span>
+                          <span>
+                            {debtTypeLabel(debt.type)} · as of {formatDate(debt.balanceAsOf)}
+                          </span>
                           <span>Minimum {formatMoney(debt.minimumPaymentMinor)} / month</span>
                         </div>
-                        <small>Balance recorded {formatDate(debt.balanceAsOf)}</small>
                       </article>
                     ))}
                   </div>
