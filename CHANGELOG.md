@@ -6,7 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
-- About Zoption, on web and mobile: the web app's Account Settings shows the web version and release date, and the phone's More tab opens an About page with the app version, build number, and whether it came from Google Play or the Android Beta APK. The APK updater now sits on that page.
+- About Zoption, on web and mobile: the web app's Account Settings shows the web version and release date, and the phone's More tab opens an About page with the app version, build number, and whether it came from Google Play or the Android Beta APK. The APK updater now sits on that page, and a Google Play install gets a Check for updates option that opens Zoption in the Play Store.
 - Subscription ROI (Pro and Family Pro), on web and mobile: tap "Used it" on a bill whenever you use the service to see uses this cycle, what each use cost, and a weekly streak. A bill you track but haven't used in 30 days is flagged with a Cancel it button, and on Android you get a reminder 3 days before it renews. Rent, utilities, and other bills you don't "use" stay out of it unless you track them, and you can stop tracking any bill. The AI Assistant can see which subscriptions you actually use. On mobile, check-ins work offline and upload when you're back online.
 - On mobile, Bills now lives in the Budgets tab: switch between Budgets and Bills at the top, the same way Home switches between Overview and Analytics. Add a bill with the + button at the top, where Budgets has its own, and switching between the two no longer reloads either view.
 - On mobile, the cash flow forecast's On track status has a close button, and the phone remembers it; a buffer warning or deficit risk always stays.
