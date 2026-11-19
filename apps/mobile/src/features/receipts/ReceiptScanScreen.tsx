@@ -83,7 +83,9 @@ function formatReceiptAmount(amountMinor: number, currency: Currency): string {
 }
 
 export function ReceiptScanScreen() {
-  const session = useSessionSnapshot();
+  // Only the stable token getter: depending on the whole session value would rebuild
+  // loadPreferences whenever the session object changes and reset the screen to loading.
+  const { getAccessToken } = useSessionSnapshot();
   const local = useLocalWorkspace();
   const formData = useTransactionFormData();
   const sync = useSyncState();
@@ -178,15 +180,15 @@ export function ReceiptScanScreen() {
   const withToken = useCallback(
     async <T,>(operation: (accessToken: string) => Promise<T>): Promise<T> => {
       try {
-        return await operation(await session.getAccessToken(false));
+        return await operation(await getAccessToken(false));
       } catch (error) {
         if (error instanceof ApiTransportError && error.code === "session_expired") {
-          return operation(await session.getAccessToken(true));
+          return operation(await getAccessToken(true));
         }
         throw error;
       }
     },
-    [session],
+    [getAccessToken],
   );
 
   const loadPreferences = useCallback(async () => {

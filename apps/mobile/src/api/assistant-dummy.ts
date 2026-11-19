@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import {
   CURRENT_ASSISTANT_CONSENT_VERSION,
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+  CURRENT_RECEIPT_CONSENT_VERSION,
   type AssistantMemory,
   type AssistantMemoryPreferences,
   type AssistantMessageInput,
@@ -49,6 +50,14 @@ function generateUuid(): string {
     const v = c === "x" ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
+}
+
+/** A time `daysAgo` days before now, so the sample chats always read as recent. */
+function recentIso(daysAgo: number, hours: number, minutes: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() - daysAgo);
+  date.setHours(hours, minutes, 0, 0);
+  return date.toISOString();
 }
 
 // 1. In-memory dummy state for development mode
@@ -111,24 +120,24 @@ let dummyMemories: AssistantMemory[] = [
 let dummyThreads: AssistantThread[] = [
   {
     id: "00000000-0000-4000-8000-100000000001",
-    title: "August Budget Review",
+    title: "Monthly Budget Review",
     kind: "text",
-    lastMessageAt: "2026-08-28T09:15:00.000Z",
-    createdAt: "2026-08-28T09:10:00.000Z",
+    lastMessageAt: recentIso(1, 9, 15),
+    createdAt: recentIso(1, 9, 10),
   },
   {
     id: "00000000-0000-4000-8000-100000000002",
     title: "Debt Payoff Strategy",
     kind: "voice",
-    lastMessageAt: "2026-08-27T16:45:00.000Z",
-    createdAt: "2026-08-27T16:40:00.000Z",
+    lastMessageAt: recentIso(2, 16, 45),
+    createdAt: recentIso(2, 16, 40),
   },
   {
     id: "00000000-0000-4000-8000-100000000003",
     title: "Liquid Reserves & Cash",
     kind: "text",
-    lastMessageAt: "2026-08-24T11:20:00.000Z",
-    createdAt: "2026-08-24T11:15:00.000Z",
+    lastMessageAt: recentIso(5, 11, 20),
+    createdAt: recentIso(5, 11, 15),
   },
 ];
 
@@ -140,16 +149,16 @@ let dummyMessages: Record<string, AssistantWireMessage[]> = {
       role: "user",
       content: "How is my grocery spending looking this month?",
       status: "completed",
-      createdAt: "2026-08-28T09:10:00.000Z",
+      createdAt: recentIso(1, 9, 10),
     },
     {
       id: "00000000-0000-4000-8000-200000000002",
       threadId: "00000000-0000-4000-8000-100000000001",
       role: "assistant",
       content:
-        "You have spent **₱12,450** out of your **₱15,000** grocery budget for August (**83%** utilized).\n\n• **Remaining:** ₱2,550\n• **Status:** On track for the remainder of the month.\n\nGreat job maintaining your allocation!",
+        "You have spent **₱9,720.25** of your **₱15,000** grocery budget this month (**65%** used).\n\n• **Remaining:** ₱5,279.75\n• **Status:** On track for the rest of the month.\n\nGreat job keeping to your plan!",
       status: "completed",
-      createdAt: "2026-08-28T09:15:00.000Z",
+      createdAt: recentIso(1, 9, 15),
     },
   ],
   "00000000-0000-4000-8000-100000000002": [
@@ -159,7 +168,7 @@ let dummyMessages: Record<string, AssistantWireMessage[]> = {
       role: "user",
       content: "What is the best way to handle my credit card balance?",
       status: "completed",
-      createdAt: "2026-08-27T16:40:00.000Z",
+      createdAt: recentIso(2, 16, 40),
     },
     {
       id: "00000000-0000-4000-8000-200000000004",
@@ -168,7 +177,7 @@ let dummyMessages: Record<string, AssistantWireMessage[]> = {
       content:
         "Your Citibank Card balance is currently **₱12,500.00**.\n\nUnder your active **debt avalanche** strategy, directing surplus cash to this balance while making minimum payments on any lower-interest accounts will minimize your total interest cost.",
       status: "completed",
-      createdAt: "2026-08-27T16:45:00.000Z",
+      createdAt: recentIso(2, 16, 45),
     },
   ],
   "00000000-0000-4000-8000-100000000003": [
@@ -178,7 +187,7 @@ let dummyMessages: Record<string, AssistantWireMessage[]> = {
       role: "user",
       content: "What is my total cash balance right now?",
       status: "completed",
-      createdAt: "2026-08-24T11:15:00.000Z",
+      createdAt: recentIso(5, 11, 15),
     },
     {
       id: "00000000-0000-4000-8000-200000000006",
@@ -187,7 +196,7 @@ let dummyMessages: Record<string, AssistantWireMessage[]> = {
       content:
         "Here are your liquid account balances:\n\n• **BPI Savings:** ₱125,450.00\n• **GCash Wallet:** ₱8,320.50\n• **BDO Checking:** ₱45,000.00\n\nTotal cash reserves: **₱178,770.50**.",
       status: "completed",
-      createdAt: "2026-08-24T11:20:00.000Z",
+      createdAt: recentIso(5, 11, 20),
     },
   ],
 };
@@ -201,11 +210,11 @@ function generateAssistantResponse(prompt: string): string {
     lower.includes("spend")
   ) {
     return (
-      "Here is a summary of your August spending:\n\n" +
-      "• **Groceries:** ₱12,450 spent of ₱15,000 budget (83%)\n" +
-      "• **Dining & Food:** ₱6,800 spent of ₱8,000 budget (85%)\n" +
-      "• **Utilities & Bills:** ₱4,500 spent of ₱6,000 budget (75%)\n\n" +
-      "You have **₱3,750** remaining buffer across your active budgets. Overall, your spending pace is steady and controlled."
+      "Here is a summary of your spending this month:\n\n" +
+      "• **Groceries:** ₱9,720.25 spent of ₱15,000 budget (65%)\n" +
+      "• **Dining & Food:** ₱1,515.00 spent of ₱8,000 budget (19%)\n" +
+      "• **Utilities & Bills:** ₱6,129.50 spent of ₱7,000 budget (88%)\n\n" +
+      "You have **₱12,635.25** left across these three budgets. Utilities is the one to watch for the rest of the month."
     );
   }
   if (
@@ -504,7 +513,7 @@ export function getDummyReceiptPreferences(): Promise<ReceiptPreferences> {
   return Promise.resolve({
     enabled: true,
     consentedAt: "2026-08-01T00:00:00.000Z",
-    consentVersion: 1,
+    consentVersion: CURRENT_RECEIPT_CONSENT_VERSION,
     visionModel: "@cf/google/gemma-4-26b-a4b-it",
   });
 }

@@ -199,6 +199,7 @@ export default function AuthenticatedLayout() {
           options={{
             headerShown: true,
             headerBackTitle: "More",
+            title: "Import",
           }}
         />
         <Stack.Screen

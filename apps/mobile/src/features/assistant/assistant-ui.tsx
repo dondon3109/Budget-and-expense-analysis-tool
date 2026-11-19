@@ -27,6 +27,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import type { RecordingPhase } from "./assistant-voice-hooks";
 
 import { formatThreadTime, validateIdentityName } from "./assistant-forms";
+import { renderMobileVoiceCaption } from "./render-voice-caption";
 import { withTapSound } from "@/features/sounds/sound-effects";
 
 export function AssistantStatusBadge({
@@ -367,7 +368,13 @@ export function AssistantMessageBubble({
   return (
     <View>
       {content ? (
-        <Text style={[typography.body, styles.reply, { color: theme.colors.text }]}>{content}</Text>
+        <Text style={[typography.body, styles.reply, { color: theme.colors.text }]}>
+          {renderMobileVoiceCaption(
+            content,
+            [typography.body, styles.reply, { color: theme.colors.text }],
+            styles.replyBold,
+          )}
+        </Text>
       ) : null}
       {meta}
     </View>
@@ -734,6 +741,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
   },
   reply: { fontSize: 16, lineHeight: 24 },
+  replyBold: { fontWeight: "700" },
   bubbleMeta: {
     flexDirection: "row",
     alignItems: "center",

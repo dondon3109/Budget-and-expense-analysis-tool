@@ -5,7 +5,7 @@ import { splitVoiceCaption } from "@zoption/shared";
 import type { AssistantWireMessage } from "@/api/assistant";
 
 /**
- * Renders caption content for mobile voice conversation with markdown bold support.
+ * Renders voice captions and chat replies with markdown bold support.
  * Converts **bold text** into bold Text components. Handles incomplete ** tags
  * during live typewriter streaming without exposing raw delimiter syntax.
  */
