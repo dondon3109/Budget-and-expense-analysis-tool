@@ -6,7 +6,7 @@ import {
   type BillingProvider,
 } from "@zoption/shared";
 import { useState } from "react";
-import { Text, View } from "react-native";
+import { Platform, Text, View } from "react-native";
 
 import type { PlanChoice } from "@/api/billing";
 import { Button, SelectionField } from "@/ui/components";
@@ -15,6 +15,15 @@ import { typography } from "@/ui/tokens";
 
 import { INTERVAL_LABELS, PLAN_PITCH, planPriceLabel } from "./billing-copy";
 import type { CheckoutBusy } from "./use-plan-checkout";
+
+/**
+ * The Android app ships only through Google Play, whose Payments policy allows no other way to
+ * buy or change a subscription in the app, nor prices or links that point to one. Until Google
+ * Play Billing ships, Android shows no plan picker; a plan bought on the web still applies.
+ */
+export function sellsPlansInApp(): boolean {
+  return Platform.OS !== "android";
+}
 
 interface PlanPickerProps {
   plans: readonly BillingPlanKey[];

@@ -53,6 +53,7 @@ All notable product changes are documented here.
 
 ### Changed
 
+- On Android, Plan and billing no longer offers PayPal or Dodo Payments checkout or plan changes, because Google Play allows only its own billing in the app. A plan bought on the web still applies on your phone, and you can still cancel renewal there.
 - The Android app now ships only through Google Play. The website APK download, its in-app updater, and the download page's install steps are gone; zoption.site/install now says the app is coming to Google Play and points to the web app until the listing opens. Anyone with the old APK installed should sync, uninstall it, and install from Google Play.
 - On mobile, signed-out users now open straight to Sign in instead of a separate welcome screen. Continue without an account, and the note on what an account adds, sit at the bottom of Sign in.
 - On mobile, tap "Sync failed" on Home or the calendar to see why synchronization stopped, with a Try again button.

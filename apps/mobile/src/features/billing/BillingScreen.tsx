@@ -18,7 +18,7 @@ import {
   usageResetsCopy,
   usageTitle,
 } from "./billing-copy";
-import { PlanPicker } from "./PlanPicker";
+import { PlanPicker, sellsPlansInApp } from "./PlanPicker";
 import { usePlanCheckout } from "./use-plan-checkout";
 
 export function BillingScreen() {
@@ -187,7 +187,7 @@ export function BillingScreen() {
         </View>
       </Card>
 
-      {summary.canCheckout || summary.canChangePlan ? (
+      {sellsPlansInApp() && (summary.canCheckout || summary.canChangePlan) ? (
         <Card accessibilityLabel={summary.canChangePlan ? "Change plan" : "Choose a plan"}>
           <View className="gap-3">
             <Text style={[typography.headline, { color: theme.colors.text }]}>
