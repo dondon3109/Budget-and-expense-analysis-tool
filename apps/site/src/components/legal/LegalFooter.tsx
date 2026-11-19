@@ -26,7 +26,7 @@ export function LegalFooter() {
         <a href="/tools/subscription-cost-calculator">Subscription Calculator</a>
         <a href="/tutorials">Tutorials</a>
         <a href="/faq">FAQ</a>
-        <a href="/install">Android Beta</a>
+        <a href="/install">Android app</a>
         <a href="/changelog">Changelog</a>
         <a href="/terms-of-service">Terms of Service</a>
         <a href="/privacy-policy">Privacy Policy</a>

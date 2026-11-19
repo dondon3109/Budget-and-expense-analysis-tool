@@ -60,7 +60,7 @@ This compiles the native debug build (`site.zoption.android.dev` with standard A
 
 - Adding, removing, or updating native npm dependencies
 - Changing native configuration in `app.config.ts` or config plugins
-- Editing custom native modules (`modules/zoption-apk-updater`, `modules/zoption-local-data-security`)
+- Editing custom native modules (`modules/zoption-local-data-security`, `modules/zoption-share-intake`)
 - Modifying Android Gradle files or properties (`android/app/build.gradle`, `gradle.properties`)
 
 Normal JS/TS/UI/styles changes do **not** require rebuilding.
@@ -99,7 +99,7 @@ REACT_NATIVE_PACKAGER_HOSTNAME="$(ipconfig getifaddr en0)" pnpm --filter @zoptio
 - Preview: `site.zoption.android.preview` / `site.zoption.ios.preview`
 - Production (Zoption Beta): `site.zoption.android` / `site.zoption.ios`
 
-### Building the Beta APK
+### Building a local release
 
 `APP_VARIANT` selects the variant's app name, scheme, and deep-link callback. It must be set for
 **both** steps, or the embedded Expo config silently falls back to the development variant (the
@@ -115,4 +115,4 @@ APP_VARIANT=production ANDROID_HOME="$HOME/Library/Android/sdk" \
   ./gradlew assembleRelease
 ```
 
-The Beta APK is sideloaded from the Zoption website and is not distributed through Google Play.
+A local release build is a compile proof only and is never distributed. Production ships only through Google Play, built by the `Android Play Bundle` workflow (`docs/mobile/build-instructions.md`).

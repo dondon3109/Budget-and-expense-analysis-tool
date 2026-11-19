@@ -1,14 +1,12 @@
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
-import { isPlayDistribution } from "@/config/app-variant";
-
 export interface AppVersionInfo {
   /** `version` from apps/mobile/package.json, such as `0.2.63-beta`. */
   version: string | null;
   /** Android `versionCode` or iOS `buildNumber` embedded at build time. */
   build: string | null;
-  /** Where this copy came from, so a tester can tell the Play and sideloaded builds apart. */
+  /** Where this copy came from, so a tester can tell a Play install from a development build. */
   source: string;
 }
 
@@ -20,11 +18,20 @@ export function appVersionInfo(config = Constants.expoConfig, os = Platform.OS):
     return {
       version,
       build: code === undefined ? null : String(code),
-      source: isPlayDistribution(config?.extra) ? "Google Play" : "Android Beta APK",
+      source: isProductionVariant(config?.extra) ? "Google Play" : "Android test build",
     };
   }
   if (os === "ios") {
     return { version, build: config?.ios?.buildNumber ?? null, source: "iOS" };
   }
   return { version, build: null, source: os };
+}
+
+/** Production Android builds ship only through Google Play; every other variant is a test build. */
+function isProductionVariant(extra: unknown): boolean {
+  return (
+    typeof extra === "object" &&
+    extra !== null &&
+    (extra as { appVariant?: unknown }).appVariant === "production"
+  );
 }

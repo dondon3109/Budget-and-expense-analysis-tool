@@ -38,8 +38,7 @@ const FEATURE_PAGE_SOURCES = [
  * Page CSS is not listed: these dates track material content changes, so a
  * restyle does not force a date bump. Also deliberately not listed:
  * siteMetadata.ts (it holds the declared dates), the chrome every route renders
- * (PublicHeader, LegalFooter, LegalPageLayout), and androidRelease.json (its
- * releaseDate is the date /install already declares).
+ * (PublicHeader, LegalFooter, LegalPageLayout).
  */
 export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/": [
@@ -55,10 +54,7 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/privacy-policy": ["apps/site/src/views/legal/PrivacyPolicyPage.tsx"],
   "/cookie-policy": ["apps/site/src/views/legal/CookiePolicyPage.tsx"],
   "/faq": ["apps/site/src/views/faq/FaqPage.tsx"],
-  "/install": [
-    "apps/site/src/views/InstallPage.tsx",
-    "apps/site/src/components/install/DownloadPanel.tsx",
-  ],
+  "/install": ["apps/site/src/views/InstallPage.tsx"],
   "/changelog": [
     "apps/site/src/views/changelog/ChangelogPage.tsx",
     "packages/web-common/src/releases/currentRelease.ts",

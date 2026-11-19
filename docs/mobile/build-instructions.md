@@ -58,13 +58,13 @@ Once the development build is installed on your device/emulator, you do **not** 
 
 ### Separation of Change Types
 
-| Change Type                                                   | Action Required                      | Command                                                                  |
-| ------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------ |
-| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`)       | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running)                                         |
-| **Native Packages / Dependencies** (`package.json`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                           |
-| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App              | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache`  |
-| **Custom Native Code** (`modules/**`, `android/**`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                           |
-| **Production Release**                                        | Dispatch `Production Release`        | Its `android` job calls `Android Beta Build` (signs with production key) |
+| Change Type                                                   | Action Required                      | Command                                                                   |
+| ------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------- |
+| **JS / TS / UI / Styles / Stores** (`app/**`, `src/**`)       | **Fast Refresh only** (Instant save) | `npx expo start` (Metro running)                                          |
+| **Native Packages / Dependencies** (`package.json`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                            |
+| **Config Plugins / Manifest** (`app.config.ts`, `plugins/**`) | Rebuild Development App              | `pnpm mobile:android:rebuild` / `npx expo run:android --no-build-cache`   |
+| **Custom Native Code** (`modules/**`, `android/**`)           | Rebuild Development App              | `pnpm mobile:android` / `npx expo run:android`                            |
+| **Production Release**                                        | Dispatch `Production Release`        | Its `android` job calls `Android Play Bundle` (signs with the upload key) |
 
 ## Android emulator (available on this host)
 
@@ -106,71 +106,39 @@ npx jest --runInBand
 npx expo export --platform ios   # bundle sanity; delete dist afterwards
 ```
 
-## Signed production artifacts
-
-The website-linked Android Beta is built and published only through the
-`Android Beta Build` GitHub Actions workflow. A release publishes it from the
-`android` job of `Production Release`, after the Worker and web are live, so an
-APK never reaches users before the API it needs; dispatch `Android Beta Build`
-by hand only for a build-only check or to retry a failed publish. Its signing
-key and R2 credentials remain in GitHub Actions secrets; the workflow prebuilds
-the production variant, signs with the permanent Zoption key, verifies the APK
-identity, publishes the immutable versioned object, verifies that public object,
-and advances `android/latest.json` last. Both publish inputs must remain false
-for a build-only validation run and may be enabled only with explicit release
-approval. That workflow never commits to this repository.
-
-After `android/latest.json` is publicly verified, refresh the build-time website
-fallback from the repository root:
-
-```bash
-node scripts/refresh-android-release-snapshot.mjs --write
-git diff -- packages/web-common/src/releases/androidRelease.json
-```
-
-Commit the reviewed snapshot as `fix(web): refresh Android install snapshot`;
-the next dispatched `Production Release` deploys and smoke-tests it.
-This explicit second commit is intentional: refreshing after Pages deployment
-or committing with `[skip ci]` would leave the deployed fallback and SEO
-metadata one release behind. The script rejects a lower live `versionCode`;
-an approved rollback must additionally pass `--allow-downgrade`.
-
 ## Google Play bundle
 
-The Google Play build is a second distribution of the same production app
-(`site.zoption.android`, same version). `ZOPTION_DISTRIBUTION` selects it:
-unset or `apk` is the sideloaded APK above, `play` is the Play build, and any
-other value fails `app.config.ts`. The value is embedded as
-`extra.distribution` and read at runtime with `isPlayDistribution()`
-(`apps/mobile/src/config/app-variant.ts`). The Play build differs only in what
-Play policy requires: it blocks `REQUEST_INSTALL_PACKAGES` (declared by the
-`zoption-apk-updater` module) and hides the in-app APK updater, because Play
-installs and updates the app.
+Google Play is the only Android distribution: production builds are never
+sideloaded, and the app has no self-updater or `REQUEST_INSTALL_PACKAGES`
+permission. Play installs and updates the app, and the About screen's "Check
+for updates" opens the Play listing.
 
-The `Android Play Bundle` workflow (`.github/workflows/android-play.yml`) is
-dispatched by hand. It prebuilds with `APP_VARIANT=production
-ZOPTION_DISTRIBUTION=play`, runs `bundleRelease` signed with the Play upload
-key, checks the signer (never the sideload key, and equal to
-`PLAY_UPLOAD_CERT_SHA256` when that variable is set), the package, versionCode,
-and versionName, and that the permission is gone, then keeps the AAB as a
-14-day workflow artifact. It never uploads to Play. The same artifact holds a
-universal APK built from that AAB by bundletool and signed with the upload key,
-for testing the Play build on a phone without a Play upload (Play refuses a
-reused versionCode, and Internal app sharing needs a published app). It installs
-only after any other Zoption is uninstalled, because its signer matches neither
-the website APK nor Play's app signing key. It builds whatever version
-the last release bump set, so dispatch it on the released commit once
-`Production Release` has finished:
+The `Android Play Bundle` workflow (`.github/workflows/android-play.yml`)
+prebuilds with `APP_VARIANT=production`, runs `bundleRelease` signed with the
+Play upload key, checks the signer (equal to `PLAY_UPLOAD_CERT_SHA256` when
+that variable is set), the package, versionCode, and versionName, and that no
+install-packages permission is requested, then keeps the AAB as a 14-day
+workflow artifact. It never uploads to Play. `Production Release` runs it from
+its `android` job once the Worker and web are live and tagged, so a Play upload
+never carries an app that needs an API production does not run yet. Dispatch it
+by hand only to retry, or to build a branch for testing:
 
 ```bash
 gh workflow run android-play.yml --ref main
 gh run download --name "zoption-play-<version>-<versionCode>"
 ```
 
+The same artifact holds a universal APK built from that AAB by bundletool and
+signed with the upload key, for testing the Play build on a phone without a
+Play upload (Play refuses a reused versionCode, and Internal app sharing needs a
+published app). It installs only after any other Zoption is uninstalled,
+because its signer is not Play's app signing key. It is a test build only; never
+distribute it.
+
 ### One-time upload key setup
 
-The upload key only signs uploads to Play; it is separate from the permanent
-sideload key and can be reset through Play support if lost. Generate it on your
+The upload key only signs uploads to Play and can be reset through Play support
+if lost. Generate it on your
 own machine, outside the repository:
 
 ```bash
@@ -208,23 +176,10 @@ gh variable set PLAY_UPLOAD_CERT_SHA256 --body "<the colon-separated SHA256 valu
 ### Play App Signing enrollment
 
 Play App Signing is mandatory for new apps: Google holds the app signing key and
-re-signs what users install. Which key that is decides whether the website APK
-and the Play build can update each other:
-
-- **Recommended: use the permanent sideload key as the app signing key.** In
-  Play Console, create the app, then under Test and release → Setup → App
-  signing choose to use an existing key and follow the "Export and upload a key
-  from Java keystore" steps, which run Google's `pepk` tool against the
-  permanent keystore on your machine and upload the encrypted output. Play
-  installs are then signed with `F9:46:70:EB...`, so a user who sideloaded the
-  APK can move to Play (and back) without uninstalling and losing local data.
-- **Google-generated key.** Simpler, but Play installs then have a different
-  signature from the APK; moving between the two needs an uninstall, which
-  wipes the encrypted local workspace (anything not yet synced is lost).
-
-This choice is permanent per app. In the same page, register the upload key
-(the first AAB you upload registers its signer automatically). Record the
-outcome in `docs/deployment.md` under Google Play.
+re-signs what users install. Zoption uses a Google-generated app signing key
+(recorded in `docs/deployment.md` under Google Play). Anyone who still has the
+old website APK installed must uninstall it before installing from Play, which
+wipes the encrypted local workspace, so sync first.
 
 ### Closed testing upload
 
@@ -256,14 +211,14 @@ gh variable set EXPO_PUBLIC_POSTHOG_HOST --body https://us.i.posthog.com
 Paste the project API key when the first command prompts. Do not use a PostHog
 personal API key. If the project is in the EU region, use
 `https://eu.i.posthog.com` instead. Then create a PostHog boolean feature flag
-with the key `crash-telemetry-enabled` and enable it for all Android Beta
+with the key `crash-telemetry-enabled` and enable it for all Android
 installations. The app sends nothing while that flag is absent, unresolved, or
 false.
 
-The signed APK workflow validates these values before it builds or publishes, so
+The Play bundle workflow validates these values before it builds, so
 a missing key or host now fails the workflow. To intentionally ship an inert artifact,
 set the repository variable `EXPO_PUBLIC_TELEMETRY_DISABLED=1`; remove it before
-re-enabling telemetry. A new APK is required whenever the embedded build-time
+re-enabling telemetry. A new Play build is required whenever the embedded build-time
 values change.
 
 To resolve crash frames in PostHog Error Tracking, also store a PostHog
@@ -278,5 +233,5 @@ With it set, the workflow installs `@posthog/cli`, exports
 `POSTHOG_UPLOAD_SOURCE_MAPS=1` so `app.config.ts` adds the
 `posthog-react-native/expo` plugin, and the release Gradle build uploads the
 Hermes source map to project `549527` on `https://us.posthog.com`. Without the
-secret the APK still builds and reports crashes, with minified frames. Local
+secret the bundle still builds and reports crashes, with minified frames. Local
 release builds never upload.

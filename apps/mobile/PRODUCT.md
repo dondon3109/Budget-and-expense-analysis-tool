@@ -32,7 +32,7 @@ Users record transactions and transfers, review monthly budgets and trends, impo
 - Transfers are atomic logical operations and do not contribute to income or expense totals.
 - Free and Pro policy stays server-authoritative.
 - The AI Financial Assistant remains online-only, consent-gated, and server-grounded. It can draft a transaction for review; only the user's Save tap adds it, and the new row arrives through sync.
-- Development, preview, and production variants use separate native identifiers. The production Android variant is the website-linked Zoption Beta APK; no app-store listing is part of this release.
+- Development, preview, and production variants use separate native identifiers. The production Android variant ships only through Google Play (in testing; the public listing is not open yet).
 
 ## Brand Commitments
 
@@ -45,7 +45,7 @@ Preserve the Zoption name, restrained green-led identity, integer-first financia
 - Server authorization and product rules: `apps/api/src`, `db/schema.ts`, and API tests.
 - Billing truth: `apps/web/src/components/billing/billingPlans.ts` plus Worker billing enforcement.
 - Incumbent visual tokens: `apps/web/src/styles/foundation.css`.
-- The production Beta APK metadata is maintained in `packages/web-common/src/releases/androidRelease.json`. There are no approved app-store records or mobile testimonials; future work must not invent them.
+- There are no public app-store ratings or mobile testimonials yet; future work must not invent them.
 
 ## Product Principles
 

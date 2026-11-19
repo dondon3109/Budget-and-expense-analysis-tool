@@ -25,7 +25,7 @@ const DEFAULT_LINKS: PublicHeaderLink[] = [
   { label: "Guides", href: "/guides" },
   { label: "Tutorials", href: "/tutorials" },
   { label: "FAQ", href: "/faq" },
-  { label: "Android Beta", href: "/install" },
+  { label: "Android app", href: "/install" },
 ];
 
 const THEME_OPTIONS = [

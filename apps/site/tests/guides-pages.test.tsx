@@ -93,7 +93,7 @@ describe("GuidesIndexPage", () => {
       "href",
       "https://app.zoption.site/signup",
     );
-    expect(screen.getByRole("link", { name: "Download Android Beta APK" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Get the Android app" })).toHaveAttribute(
       "href",
       "/install",
     );
@@ -192,7 +192,7 @@ describe("GuideDetailPage", () => {
       "href",
       "https://app.zoption.site/signup",
     );
-    expect(screen.getByRole("link", { name: "Download Android Beta APK" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Get the Android app" })).toHaveAttribute(
       "href",
       "/install",
     );

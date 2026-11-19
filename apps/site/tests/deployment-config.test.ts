@@ -63,12 +63,10 @@ describe("site deployment config", () => {
     ).toThrow(/without credentials, a path/);
   });
 
-  it("allows scripts only from this origin and connections only to its API and downloads", () => {
+  it("allows scripts only from this origin and connections only to its API", () => {
     const policy = createSiteContentSecurityPolicy(resolveSiteDeploymentConfig({}));
     expect(policy).toContain("script-src 'self';");
-    expect(policy).toContain(
-      "connect-src 'self' https://api.zoption.site https://downloads.zoption.site;",
-    );
+    expect(policy).toContain("connect-src 'self' https://api.zoption.site;");
     expect(policy).toContain("frame-ancestors 'none'");
     expect(policy).not.toContain("*");
   });

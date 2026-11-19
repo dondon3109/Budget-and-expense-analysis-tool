@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Assert against the committed fallback snapshot so refreshing it never
 // breaks this test.
-import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import type { PublicCustomerReview } from "@zoption/shared";
 
 import { setupDrawer } from "../src/client/site";
@@ -155,41 +154,18 @@ describe("landing page", () => {
     ).toBeInTheDocument();
   });
 
-  it("promotes the official Android beta with its offline-first promise", () => {
+  it("says the Android app is coming to Google Play, with no APK download", () => {
     renderLanding();
 
-    const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
+    const installation = screen.getByRole("region", { name: "Coming soon to Google Play." });
     expect(within(installation).getAllByText(/same account and workspace/i).length).toBeGreaterThan(
       0,
     );
     expect(within(installation).getByText(/offline-first entry/i)).toBeInTheDocument();
     expect(
-      within(installation).getByText(/not distributed through Google Play/i),
-    ).toBeInTheDocument();
-    expect(within(installation).getByText(/uninstall it first/i)).toBeInTheDocument();
-    expect(
-      within(installation).getByRole("link", { name: "Download Android APK" }),
+      within(installation).getByRole("link", { name: "About the Android app" }),
     ).toHaveAttribute("href", "/install");
-    expect(screen.getByRole("navigation", { name: "Learn more" })).toContainElement(
-      screen.getByRole("link", { name: "Android APK" }),
-    );
-  });
-
-  it("renders the shipped Android release facts into the page", () => {
-    renderLanding();
-
-    const installation = screen.getByRole("region", { name: "Take Zoption Beta to Android." });
-    const label = ANDROID_RELEASE.sizeLabel;
-    expect(
-      within(installation).getByText((_, element) => {
-        if (!element || !element.textContent?.includes(label)) return false;
-        return ![...element.children].some((child) => child.textContent?.includes(label));
-      }),
-    ).toBeInTheDocument();
-    expect(within(installation).queryByText(/temporarily unavailable/i)).not.toBeInTheDocument();
-    expect(
-      within(installation).getByRole("link", { name: "Download Android APK" }),
-    ).toHaveAttribute("href", "/install");
+    expect(within(installation).queryByText(/APK/)).not.toBeInTheDocument();
   });
 
   it("shows customer-published reviews without manufacturing fallback testimonials", () => {

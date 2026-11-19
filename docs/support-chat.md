@@ -20,6 +20,6 @@ The public endpoint uses the existing `ASSISTANT_ENABLED`, `DEEPSEEK_MODEL`, `DE
 
 ## Product knowledge
 
-The bounded support prompt in `apps/api/src/support/service.ts` documents the current public entry points, authenticated navigation, import flow, ledger-derived balances, budgets, subscriptions, calendar, goals and debts, financial Assistant boundary, account settings, Android APK, and public policy routes.
+The bounded support prompt in `apps/api/src/support/service.ts` documents the current public entry points, authenticated navigation, import flow, ledger-derived balances, budgets, subscriptions, calendar, goals and debts, financial Assistant boundary, account settings, the Android app, and public policy routes.
 
 When one of those workflows changes, update the support prompt and its assertions in `apps/api/tests/support.test.ts` in the same change.

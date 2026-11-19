@@ -9,14 +9,14 @@ describe("appVersionInfo", () => {
           slug: "zoption",
           version: "0.2.64-beta",
           android: { versionCode: 20364 },
-          extra: { distribution: "play" },
+          extra: { appVariant: "production" },
         },
         "android",
       ),
     ).toEqual({ version: "0.2.64-beta", build: "20364", source: "Google Play" });
   });
 
-  it("treats Android without play metadata as the sideloaded APK", () => {
+  it("names any other Android variant a test build", () => {
     expect(
       appVersionInfo(
         {
@@ -27,7 +27,7 @@ describe("appVersionInfo", () => {
         },
         "android",
       ),
-    ).toEqual({ version: "0.2.64-beta", build: "20364", source: "Android Beta APK" });
+    ).toEqual({ version: "0.2.64-beta", build: "20364", source: "Android test build" });
   });
 
   it("reports unknown values instead of guessing", () => {

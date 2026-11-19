@@ -18,12 +18,12 @@ export const PRODUCT_HELP = `How Zoption works:
 - Account Settings manages profile details, sign-in/security settings, theme, plan and billing, Help & contact, assistant data controls, and permanent account deletion.
 - Supabase manages sign-in and identity. A verified Google identity with the same email can preserve the existing Zoption workspace.
 - Zoption has a free plan and an optional Pro plan. Current limits and checkout details are shown inside Account Settings; direct people there rather than guessing when plan details may have changed.
-- The Android app is a signed APK downloaded from zoption.site/install and is not distributed through Google Play. It is online-first and opens the same private web workspace.
+- The Android app is distributed only through Google Play, where it is in testing and not yet public; zoption.site/install has its status. It uses the same account and workspace. Zoption no longer offers an APK download.
 - Help & contact in Account Settings provides the FAQ, Zoption Support chat, and email contact options. The support email is support@zoption.site.
 - Public help and policy pages are available at /faq, /terms-of-service, /privacy-policy, and /cookie-policy.
 
 Navigation language:
-- Before sign-in: use Start free, Sign in, FAQ, or Android APK.
+- Before sign-in: use Start free, Sign in, FAQ, or Android app.
 - After sign-in: use Profile dashboard, AI Assistant, Calendar, Transactions, Import, Budgets, Goals & debt, Subscriptions, Account settings, Help, Contact, or Help & contact.
 - When naming one of those destinations, use its exact label. The interface turns supported destination labels into safe clickable links. Never write raw URLs or Markdown links.
 `;

@@ -11,7 +11,7 @@ export type BillingInterval = (typeof billingIntervals)[number];
 export const billingProviders = ["paypal", "dodo", "google_play"] as const;
 export type BillingProvider = (typeof billingProviders)[number];
 
-/** The providers a web or sideloaded-app checkout can open; Google Play sells only in its app. */
+/** The providers a web checkout can open; Google Play sells only in its app. */
 export const billingCheckoutProviders = ["paypal", "dodo"] as const;
 export type BillingCheckoutProvider = (typeof billingCheckoutProviders)[number];
 

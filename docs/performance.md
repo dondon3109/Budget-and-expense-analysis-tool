@@ -18,7 +18,7 @@ The enforced floors are 90 for each Lighthouse category, LCP at or below 2.5 sec
 
 ## Design choices behind the result
 
-- The public site is static HTML: content pages load one 8 KB script, and React loads only on pages with an island (the landing sections, the calculator, the support chat, the live APK card). PostHog loads only after analytics consent.
+- The public site is static HTML: content pages load one 8 KB script, and React loads only on pages with an island (the landing sections, the calculator, the support chat). PostHog loads only after analytics consent.
 - SEO reads 92 only because Lighthouse's `robots-txt` audit does not recognise the `Content-Signal` line (see `docs/seo.md`). Accessibility findings: the landing eyebrow text and the calculator's closing link miss contrast, and the review star row carries `aria-label` on a plain `div`; all three predate the split. Best practices on `/install` records the R2 CORS rejection that only a `localhost` origin sees.
 - Route-level lazy loading keeps the charting library out of the app's first bundle.
 - Integer-centavo calculations avoid client/server rounding drift.

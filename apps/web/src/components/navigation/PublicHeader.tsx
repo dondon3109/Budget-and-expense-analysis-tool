@@ -32,7 +32,7 @@ const DEFAULT_LINKS: PublicHeaderLink[] = [
   { label: "Guides", to: siteUrl("/guides") },
   { label: "Tutorials", to: siteUrl("/tutorials") },
   { label: "FAQ", to: siteUrl("/faq") },
-  { label: "Android Beta", to: siteUrl("/install") },
+  { label: "Android app", to: siteUrl("/install") },
 ];
 
 const DRAWER_ID = "public-header-mobile-nav";

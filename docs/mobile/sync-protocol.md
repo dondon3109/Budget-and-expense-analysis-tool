@@ -145,7 +145,7 @@ supported, the features it sends, JSON Schemas of the strict responses it accept
 request it sends. `apps/api/tests/mobile-sync-released-contracts.test.ts` replays the current sync
 engine against each contract (snapshot, pull, push, and acknowledge over fixtures that reach every
 feature-gated field), so a server change that would break an installed app fails CI. Freeze the
-contract when bumping the mobile version, from the commit the APK is built from:
+contract when bumping the mobile version, from the commit the Play bundle is built from:
 
 ```bash
 node scripts/freeze-mobile-sync-contract.mjs 0.2.46-beta

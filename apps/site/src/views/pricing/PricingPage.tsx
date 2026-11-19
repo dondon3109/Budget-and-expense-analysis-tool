@@ -141,7 +141,7 @@ const COMPARISON_ROWS: { category: string; features: ComparisonFeature[] }[] = [
     category: "Platforms & Support",
     features: [
       {
-        name: "Progressive Web App (PWA) and Android Beta APK",
+        name: "Progressive Web App (PWA) and Android app",
         free: "Included",
         budget: "Included",
         pro: "Included",
@@ -342,7 +342,7 @@ export function PricingPage() {
           { label: "Overview", href: "/" },
           { label: "Pricing", href: "/pricing" },
           { label: "Changelog", href: "/changelog" },
-          { label: "Android APK", href: "/install" },
+          { label: "Android app", href: "/install" },
           { label: "FAQ", href: "/faq" },
         ]}
       />
@@ -445,7 +445,7 @@ export function PricingPage() {
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Offline PWA &amp; Official Android Beta APK</span>
+                <span>Offline PWA &amp; Android app</span>
               </li>
             </ul>
           </article>
@@ -541,7 +541,7 @@ export function PricingPage() {
               Create your free workspace <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a className="button secondary" href="/install">
-              Download Android APK
+              Get the Android app
             </a>
           </div>
         </section>

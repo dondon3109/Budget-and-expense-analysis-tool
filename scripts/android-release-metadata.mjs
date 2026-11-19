@@ -5,15 +5,13 @@
  * release version name and apps/mobile/app.config.ts for the Android
  * versionCode. This script reads both back out of the resolved Expo
  * configuration instead of letting the release workflow repeat the literals.
- * Every publish/verify step in android-beta.yml consumes the GITHUB_ENV lines
- * produced here, so a bump never requires touching the workflow or tests.
+ * The verify steps in android-play.yml consume the GITHUB_ENV lines produced
+ * here, so a bump never requires touching the workflow or tests.
  *
  * Usage (CI):
  *   pnpm --filter @zoption/mobile exec expo config --type introspect --json \
  *     | node scripts/android-release-metadata.mjs >> "$GITHUB_ENV"
  */
-
-const DOWNLOAD_BASE_URL = "https://downloads.zoption.site";
 
 const VERSION_PATTERN = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const PACKAGE_NAME_PATTERN = /^[a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z][a-zA-Z0-9_]*)+$/;
@@ -43,28 +41,15 @@ export function deriveAndroidReleaseMetadata(config) {
     );
   }
 
-  // The R2 artifact name carries only the numeric core (zoption-beta-0.2.7.apk);
-  // prerelease labels stay in versionName/latest.json.
-  const semverCore = version.replace(/-.*$/, "");
-  const apkObjectKey = `android/zoption-beta-${semverCore}.apk`;
-
-  return Object.freeze({
-    versionName: version,
-    versionCode,
-    packageName,
-    apkObjectKey,
-    publicApkUrl: `${DOWNLOAD_BASE_URL}/${apkObjectKey}`,
-  });
+  return Object.freeze({ versionName: version, versionCode, packageName });
 }
 
-/** Renders the identity as GITHUB_ENV lines consumed by android-beta.yml. */
+/** Renders the identity as GITHUB_ENV lines consumed by android-play.yml. */
 export function renderGitHubEnvLines(metadata) {
   return [
     `RELEASE_VERSION_NAME=${metadata.versionName}`,
     `RELEASE_VERSION_CODE=${metadata.versionCode}`,
     `ANDROID_PACKAGE=${metadata.packageName}`,
-    `APK_OBJECT_KEY=${metadata.apkObjectKey}`,
-    `APK_PUBLIC_URL=${metadata.publicApkUrl}`,
   ];
 }
 

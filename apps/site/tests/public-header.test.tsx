@@ -26,7 +26,7 @@ describe("PublicHeader", () => {
       .getAllByRole("link")
       .map((link) => link.textContent);
 
-    expect(labels).toEqual(["Pricing", "Guides", "Tutorials", "FAQ", "Android Beta"]);
+    expect(labels).toEqual(["Pricing", "Guides", "Tutorials", "FAQ", "Android app"]);
     for (const link of within(navigation).getAllByRole("link")) {
       expect(link).toHaveAttribute("href");
     }

@@ -66,7 +66,7 @@ describe("PricingPage", () => {
     expect(signupLinks[0]).toHaveAttribute("href", "https://app.zoption.site/signup");
 
     const apkLinks = screen.getAllByRole("link", {
-      name: /Download Android APK|Android APK/i,
+      name: /Android app/i,
     });
     expect(apkLinks.length).toBeGreaterThan(0);
     expect(apkLinks[0]).toHaveAttribute("href", "/install");

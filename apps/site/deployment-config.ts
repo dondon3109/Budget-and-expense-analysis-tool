@@ -9,8 +9,6 @@ export type DeployEnvironment = (typeof deployEnvironments)[number];
 
 const PRODUCTION_API_ORIGIN = "https://api.zoption.site";
 const PRODUCTION_APP_ORIGIN = "https://app.zoption.site";
-/** The install page reads android/latest.json from the public R2 bucket. */
-export const ANDROID_DOWNLOAD_ORIGIN = "https://downloads.zoption.site";
 
 export interface SiteDeploymentConfig {
   deployEnvironment: DeployEnvironment;
@@ -101,7 +99,7 @@ export function createSiteContentSecurityPolicy(config: SiteDeploymentConfig): s
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data:",
-    `connect-src 'self' ${config.apiOrigin} ${ANDROID_DOWNLOAD_ORIGIN}`,
+    `connect-src 'self' ${config.apiOrigin}`,
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

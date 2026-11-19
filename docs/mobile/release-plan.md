@@ -1,19 +1,22 @@
 # Mobile release and rollback plan
 
-Updated 2026-08-20. Status: current native Beta release plan. The website-linked
-Android Beta is the supported native mobile release; no app-store submission is
-part of this distribution channel.
+Updated 2026-11-19. Status: current native release plan. Google Play is the only
+Android distribution; the website APK and its in-app updater were retired on
+2026-11-19. The version sections below 0.2.0-beta onward are history from the
+APK channel.
 
 ## Production Beta state
 
 1. The native app in `apps/mobile` is the only Android application maintained in
    this repository. Its production variant uses `site.zoption.android` and the
    `Zoption Beta` name.
-2. The Beta APK is linked from `https://zoption.site/install`, uses the shared
-   Supabase identity and Worker/D1 workspace, and keeps financial screens
-   available from encrypted local data between synchronizations.
+2. The app ships through Google Play (internal testing today; the public listing
+   opens after the closed test), uses the shared Supabase identity and
+   Worker/D1 workspace, and keeps financial screens available from encrypted
+   local data between synchronizations. `https://zoption.site/install` describes
+   its status and offers no download.
 3. Development and preview builds use separate identifiers and configuration.
-   iOS remains a native build target but is not part of the public APK channel.
+   iOS remains a native build target but has no public distribution yet.
 
 ## iOS distribution requirements
 
@@ -35,29 +38,25 @@ part of this distribution channel.
 
 ## Release mechanics
 
-- Ship channel: website-linked Android APK. iOS distribution remains pending
-  the separate Apple approval and signing work below.
+- Ship channel: Google Play. iOS distribution remains pending the separate
+  Apple approval and signing work below.
 - A signed-release version bump edits exactly two files:
   `apps/mobile/package.json` for the release version name and `apps/mobile/app.config.ts`
-  for the Android `versionCode`. The `Android Beta Build` workflow resolves
-  that Expo configuration once and derives every other identity value it
-  publishes (APK object key, public URL, and `android/latest.json` fields), so
-  no release literal is repeated anywhere else.
-- The verified APK updater remains the native Android release and update channel.
+  for the Android `versionCode`. The `Android Play Bundle` workflow resolves
+  that Expo configuration once and verifies the bundle against it, so no
+  release literal is repeated anywhere else.
+- Play installs and updates the app; the uploaded AAB goes through Play Console
+  by hand (`docs/mobile/build-instructions.md`).
 - Both platforms talk only to the existing Worker. Deploy the Worker before
   or independently of the app; mobile has no pinned server schema beyond the
   shared response contracts in this repository.
 
 ## Rollback plan
 
-- **App-level**: replace the website-linked Beta artifact with a previously
-  verified native Beta artifact or temporarily direct users to the website.
-  Server-owned identity and data remain unchanged. Rolling the live channel
-  back also means refreshing the website snapshot deliberately after the live
-  metadata is verified. The refresh script refuses a lower `versionCode`, so
-  an intentional rollback must run it with `--allow-downgrade`, review the
-  generated diff, and send the snapshot commit through normal Production
-  Release deployment.
+- **App-level**: Play refuses a lower versionCode, so a bad Android release is
+  fixed forward: halt the rollout in Play Console, then ship a new release
+  bump with the fix (or the previous code). Users can use the website
+  meanwhile. Server-owned identity and data remain unchanged.
 - **Server-level**: the Worker changes introduced for mobile sync (revisions,
   tombstones, cursor) are additive; rolling them back requires the documented
   migration plan in `sync-protocol.md` and would precede any app rollback.
