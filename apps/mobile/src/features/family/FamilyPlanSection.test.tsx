@@ -1,5 +1,6 @@
 import type { FamilyBillingSummary, FamilyDetail } from "@zoption/shared";
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { Platform } from "react-native";
 
 import { getFamilyBillingSummary } from "@/api/billing";
 
@@ -92,6 +93,21 @@ describe("FamilyPlanSection", () => {
 
     await fireEvent.press(screen.getByRole("button", { name: "Choose a family plan" }));
     expect(screen.getByText("Continue with Family Budget")).toBeTruthy();
+  });
+
+  it("offers no plan checkout or change on Android, which ships through Google Play", async () => {
+    const platform = Platform.OS;
+    Platform.OS = "android";
+    try {
+      jest.mocked(getFamilyBillingSummary).mockResolvedValue(unpaid);
+      await render(<FamilyPlanSection detail={detail()} onChanged={jest.fn()} />);
+
+      expect(await screen.findByText(/invitations open once you choose a plan/)).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Choose a family plan" })).toBeNull();
+      expect(screen.queryByText("Continue with PayPal")).toBeNull();
+    } finally {
+      Platform.OS = platform;
+    }
   });
 
   it("shows the owner the paid plan with a change and a cancel", async () => {

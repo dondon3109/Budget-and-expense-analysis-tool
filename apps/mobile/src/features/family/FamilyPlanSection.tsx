@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
 import { cancelFamilyPlan, getFamilyBillingSummary } from "@/api/billing";
-import { PlanPicker } from "@/features/billing/PlanPicker";
+import { PlanPicker, sellsPlansInApp } from "@/features/billing/PlanPicker";
 import { usePlanCheckout } from "@/features/billing/use-plan-checkout";
 import { Button, Card, ConfirmationDialog, Skeleton } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -151,7 +151,7 @@ export function FamilyPlanSection({
                 Check payment status
               </Button>
             ) : null}
-            {picking ? (
+            {!sellsPlansInApp() ? null : picking ? (
               <PlanPicker
                 busy={busy}
                 current={changing ? current : null}
