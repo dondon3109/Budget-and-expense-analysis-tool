@@ -10,7 +10,7 @@ function readValue(environment, name) {
 }
 
 /**
- * Validates the public values embedded in signed APKs and production OTAs.
+ * Validates the public values embedded in production Android builds.
  * The API key is deliberately never included in errors or returned to callers.
  */
 export function validateMobileTelemetryEnvironment(environment = process.env) {

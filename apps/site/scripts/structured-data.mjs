@@ -4,7 +4,6 @@
  * navigation markup Zoption cannot substantiate (docs/seo.md). finalize-build.mjs runs it on
  * every built page and scripts/smoke-production.mjs on the live ones.
  */
-import release from "@zoption/web-common/android-release.json" with { type: "json" };
 
 const FORBIDDEN_SCHEMA_TYPES = new Set([
   "Organization",
@@ -191,14 +190,8 @@ export function assertPublicStructuredDataGraph(
     structuredDataAssert(
       typeof application.operatingSystem === "string" &&
         application.operatingSystem.startsWith("Android") &&
-        typeof application.softwareVersion === "string" &&
-        /^\d+\.\d+\.\d+(-[a-z0-9.]+)?$/.test(application.softwareVersion) &&
-        typeof application.downloadUrl === "string" &&
-        application.downloadUrl === release.downloadPath &&
-        application.downloadUrl.endsWith(`/${release.filename}`) &&
-        typeof application.fileSize === "string" &&
-        /^\d+ bytes$/.test(application.fileSize),
-      "/install SoftwareApplication must match the maintained Android release.",
+        application.downloadUrl === undefined,
+      "/install SoftwareApplication must describe the Android app without a download.",
     );
   } else {
     structuredDataAssert(
