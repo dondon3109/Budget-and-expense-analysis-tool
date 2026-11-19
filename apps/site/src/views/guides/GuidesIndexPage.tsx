@@ -84,7 +84,7 @@ export function GuidesIndexPage() {
               Create your free workspace <ArrowRight size={16} aria-hidden="true" />
             </a>
             <a className="button secondary" href="/install">
-              Download Android Beta APK
+              Get the Android app
             </a>
           </div>
         </section>

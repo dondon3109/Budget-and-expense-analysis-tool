@@ -37,8 +37,8 @@ export interface FeaturePage {
 export type FeaturePagePath = "/features/receipt-scanning" | "/features/voice-expense-entry";
 
 /** Feeds the WebPage dateModified and the sitemap lastmod; keep the two in step. */
-export const FEATURE_PAGES_LAST_MODIFIED = "2026-10-17";
-export const FEATURE_PAGES_LAST_UPDATED = "October 17, 2026";
+export const FEATURE_PAGES_LAST_MODIFIED = "2026-11-19";
+export const FEATURE_PAGES_LAST_UPDATED = "November 19, 2026";
 
 export const FEATURE_PAGES: FeaturePage[] = [
   {
@@ -80,7 +80,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       {
         id: "one-ledger-three-ways-in",
         title: "One Ledger, Three Ways In",
-        body: "Scanning a receipt is one of three ways to record spending without typing every field: import a statement file, dictate a transaction by voice, or scan a receipt. All three land in the same categories, budgets, and reports, so the month stays in one place. Receipt scanning is available on the web app and in the Android Beta.",
+        body: "Scanning a receipt is one of three ways to record spending without typing every field: import a statement file, dictate a transaction by voice, or scan a receipt. All three land in the same categories, budgets, and reports, so the month stays in one place. Receipt scanning is available on the web app and in the Android app.",
       },
     ],
     relatedGuideSlug: "replace-excel-spreadsheets-budget-tracker",
@@ -125,7 +125,7 @@ export const FEATURE_PAGES: FeaturePage[] = [
       {
         id: "same-ledger-same-budgets",
         title: "The Same Ledger and the Same Budgets",
-        body: "A spoken transaction lands in the same categories, budgets, and reports as every other entry, and it goes through the same duplicate check. Voice is a faster way in, not a separate set of books. Voice entry is available on the web app and in the Android Beta.",
+        body: "A spoken transaction lands in the same categories, budgets, and reports as every other entry, and it goes through the same duplicate check. Voice is a faster way in, not a separate set of books. Voice entry is available on the web app and in the Android app.",
       },
     ],
     relatedGuideSlug: "track-gcash-maya-without-bank-linking",

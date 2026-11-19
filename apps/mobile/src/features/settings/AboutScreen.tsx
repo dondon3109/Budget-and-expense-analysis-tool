@@ -1,8 +1,6 @@
 import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 
 import { appVersionInfo } from "@/config/app-version";
-import { isPlayDistribution } from "@/config/app-variant";
-import { UpdateSettingsCard } from "@/features/updates";
 import { Card, MenuGroup, MenuRow } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -12,7 +10,7 @@ const CHANGELOG_URL = "https://zoption.site/changelog";
 const PLAY_PACKAGE = "site.zoption.android";
 
 /**
- * Play installs update through the Play Store, so its listing is the update check.
+ * Android installs update through the Play Store, so its listing is the update check.
  * `market://` opens the Play Store app; the web listing covers a phone without it.
  */
 async function openPlayListing(): Promise<void> {
@@ -23,7 +21,7 @@ async function openPlayListing(): Promise<void> {
   }
 }
 
-/** Which build is installed, plus an update check: the Play listing, or the APK updater. */
+/** Which build is installed, plus an update check on Android through the Play listing. */
 export function AboutScreen() {
   const theme = useZoptionTheme();
   const info = appVersionInfo();
@@ -48,7 +46,7 @@ export function AboutScreen() {
         </View>
       </Card>
       <MenuGroup>
-        {Platform.OS === "android" && isPlayDistribution() ? (
+        {Platform.OS === "android" ? (
           <MenuRow
             icon="update"
             title="Check for updates"
@@ -62,7 +60,6 @@ export function AboutScreen() {
           onPress={() => void Linking.openURL(CHANGELOG_URL)}
         />
       </MenuGroup>
-      <UpdateSettingsCard />
     </Screen>
   );
 }

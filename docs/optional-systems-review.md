@@ -15,13 +15,12 @@ Last reviewed: 2026-09-23.
 | Public AI support chat                      | Keep | Active product-help surface on public and in-app pages. Provider failure must not affect financial routes.                     |
 | PostHog AI observability                    | Keep | Active metadata-only AI operational stream after assistant consent. Do not attach prompts, answers, or financial records.      |
 | Receipt entry                               | Keep | Active review-before-commit workflow. Images remain in flight; transaction commit continues through the canonical import path. |
-| Signed APK updater                          | Keep | Current native release and repair channel. Package, version, hash, signer, and installer checks remain mandatory.              |
 
 ## Freeze
 
 | System                       | Flag    | Reconsider when                                                                                                                                                                                  |
 | ---------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Expo OTA publishing          | Removed | Removed completely in favor of direct signed APK releases (`downloads.zoption.site`).                                                                                                            |
+| Expo OTA publishing          | Removed | Removed completely; Android updates ship through Google Play.                                                                                                                                    |
 | Cloud Run Chirp 3 STT bridge | Removed | Never deployed and removed with `apps/stt-bridge`. Realtime transcription runs on Gemini Live from the Worker (`docs/voice-live.md`); `chirp_3` stays a batch-only `POST /transcriptions` model. |
 
 ## Review before further investment

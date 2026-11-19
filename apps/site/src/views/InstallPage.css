@@ -5,25 +5,6 @@
   background: var(--lp-bg);
 }
 
-.install-header-links {
-  display: flex;
-  align-items: center;
-  gap: 26px;
-  font-size: 14px;
-}
-
-.install-header-links a {
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  color: var(--lp-muted);
-  font-weight: 500;
-}
-
-.install-header-links a:hover {
-  color: var(--lp-fg);
-}
-
 .install-hero {
   width: min(1160px, calc(100% - 48px));
   margin-inline: auto;
@@ -180,82 +161,6 @@
   color: var(--lp-accent-strong);
 }
 
-.apk-update-note {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  max-width: 68ch;
-  color: var(--lp-accent-strong);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.55;
-}
-
-.apk-update-note svg {
-  flex: none;
-  margin-top: 1px;
-  color: var(--lp-accent-strong);
-}
-
-.apk-release-facts {
-  grid-column: 1 / -1;
-  margin: 24px 0 10px;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid var(--lp-border);
-  border-bottom: 1px solid var(--lp-border);
-}
-
-.apk-release-facts > div {
-  min-width: 0;
-  padding: 17px 20px 17px 0;
-}
-
-.apk-release-facts > div + div {
-  padding-left: 20px;
-  border-left: 1px solid var(--lp-border);
-}
-
-.apk-release-facts dt,
-.apk-checksum p {
-  color: var(--lp-muted);
-  font-size: 10px;
-  font-weight: 620;
-  letter-spacing: 0.045em;
-  text-transform: uppercase;
-}
-
-.apk-release-facts dd {
-  margin: 5px 0 0;
-  font-size: 13px;
-  font-weight: 580;
-  line-height: 1.45;
-}
-
-.apk-release-facts > .apk-release-cert {
-  grid-column: 1 / -1;
-  padding: 17px 0 17px;
-  border-left: 0;
-  border-top: 1px solid var(--lp-border);
-}
-
-.apk-cert-fingerprint {
-  display: block;
-  overflow-wrap: anywhere;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.55;
-}
-
-.apk-release-notes {
-  grid-column: 1 / -1;
-  padding: 18px 0 16px;
-  border-bottom: 1px solid var(--lp-border);
-}
-
 .apk-release-notes-title {
   color: var(--lp-muted);
   font-size: 10px;
@@ -287,55 +192,6 @@
   color: var(--lp-accent-strong);
 }
 
-.apk-checksum {
-  grid-column: 1 / span 9;
-  min-width: 0;
-  padding: 10px 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 16px;
-}
-
-.apk-checksum code {
-  margin-top: 6px;
-  display: block;
-  overflow-wrap: anywhere;
-  color: var(--lp-fg);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.55;
-}
-
-.apk-checksum button {
-  min-width: 78px;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  color: var(--lp-accent-strong);
-  border: 1px solid var(--lp-border);
-  border-radius: 9px;
-  background: transparent;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 620;
-  cursor: pointer;
-}
-
-.apk-checksum button:hover {
-  border-color: var(--lp-accent-strong);
-}
-
-.apk-copy-result {
-  grid-column: 1 / span 9;
-  min-height: 18px;
-  color: var(--lp-muted);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
 .apk-checksum-file {
   grid-column: 10 / -1;
   grid-row: 5 / span 2;
@@ -351,48 +207,12 @@
   text-underline-offset: 3px;
 }
 
-.apk-device-note {
-  grid-column: 1 / -1;
-  margin-top: 4px;
-  padding-top: 18px;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  color: var(--lp-muted);
-  border-top: 1px solid var(--lp-border);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-.apk-device-note svg {
-  color: var(--lp-muted);
-}
-
-.apk-device-note.is-android svg {
-  color: var(--lp-accent-strong);
-}
-
-.install-instructions,
-.install-troubleshooting,
 .install-boundaries,
 .install-next-actions {
   width: min(1160px, calc(100% - 48px));
   margin-inline: auto;
 }
 
-.install-instructions {
-  padding: 112px 0;
-}
-
-.install-section-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr);
-  align-items: end;
-  gap: 56px;
-}
-
-.install-instructions h2,
-.install-troubleshooting h2,
 .install-boundaries h2,
 .install-next-actions h2 {
   font-size: clamp(38px, 5vw, 56px);
@@ -401,149 +221,23 @@
   text-wrap: balance;
 }
 
-.install-section-heading > p,
-.install-troubleshooting > div > p:last-child,
 .install-next-actions > p {
   max-width: 68ch;
   color: var(--lp-muted);
   line-height: 1.7;
 }
 
-.apk-install-steps {
-  margin: 64px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  list-style: none;
-}
-
-.apk-install-steps li {
-  min-width: 0;
-  padding: 28px 28px 0 0;
-  display: block;
-  border-top: 1px solid var(--lp-border);
-}
-
-.apk-install-steps li + li {
-  padding-left: 28px;
-  border-left: 1px solid var(--lp-border);
-}
-
-.apk-install-steps li > span {
-  display: block;
-  color: var(--lp-accent-strong);
-  font-family: var(--font-mono);
-  font-size: 28px;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.apk-install-steps h3,
-.apk-integrity-note h3,
 .install-boundary-points h3 {
   font-family: var(--font-ui);
   font-size: 16px;
   font-weight: 650;
 }
 
-.apk-install-steps h3 {
-  margin-top: 34px;
-}
-
-.apk-install-steps p,
-.apk-integrity-note p,
-.apk-troubleshooting-list p,
 .install-boundary-points p {
   margin-top: 8px;
   color: var(--lp-muted);
   font-size: 14px;
   line-height: 1.65;
-}
-
-.apk-install-steps code {
-  color: var(--lp-fg);
-  font-family: var(--font-mono);
-  font-size: 0.86em;
-  overflow-wrap: anywhere;
-}
-
-.apk-integrity-note {
-  width: min(780px, 75%);
-  margin: 64px 0 0 auto;
-  padding: 24px 0;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 18px;
-  border-top: 1px solid var(--lp-border);
-  border-bottom: 1px solid var(--lp-border);
-}
-
-.apk-integrity-note svg {
-  color: var(--lp-accent-strong);
-}
-
-.install-troubleshooting {
-  padding: 106px 0;
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(430px, 1fr);
-  gap: clamp(64px, 10vw, 128px);
-  border-top: 1px solid var(--lp-border);
-  border-bottom: 1px solid var(--lp-border);
-}
-
-.install-troubleshooting > div > p:last-child {
-  margin-top: 20px;
-}
-
-.apk-troubleshooting-list details {
-  border-top: 1px solid var(--lp-border);
-}
-
-.apk-troubleshooting-list details:last-child {
-  border-bottom: 1px solid var(--lp-border);
-}
-
-.apk-troubleshooting-list summary {
-  min-height: 64px;
-  padding: 18px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 18px;
-  color: var(--lp-fg);
-  font-size: 15px;
-  font-weight: 620;
-  line-height: 1.4;
-  list-style: none;
-  cursor: pointer;
-}
-
-.apk-troubleshooting-list summary::-webkit-details-marker {
-  display: none;
-}
-
-.apk-troubleshooting-list summary::after {
-  content: "+";
-  flex: none;
-  color: var(--lp-accent-strong);
-  font-size: 22px;
-  font-weight: 400;
-  line-height: 1;
-}
-
-.apk-troubleshooting-list details[open] summary::after {
-  content: "\2212";
-}
-
-.apk-troubleshooting-list summary:focus-visible {
-  outline: 2px solid var(--lp-accent-strong);
-  outline-offset: 5px;
-}
-
-.apk-troubleshooting-list details p {
-  max-width: 62ch;
-  margin: -4px 0 22px;
-  padding-right: 42px;
 }
 
 .install-boundaries {
@@ -638,10 +332,6 @@
 }
 
 @media (max-width: 980px) {
-  .install-header-links {
-    display: none;
-  }
-
   .install-hero-copy {
     grid-column: 1 / span 8;
   }
@@ -658,27 +348,8 @@
     grid-column: 8 / -1;
   }
 
-  .apk-store-note,
-  .apk-update-note {
+  .apk-store-note {
     grid-column: 1 / -1;
-  }
-
-  .apk-install-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .apk-install-steps li:nth-child(3) {
-    padding-left: 0;
-    border-left: 0;
-  }
-
-  .apk-install-steps li:nth-child(n + 3) {
-    margin-top: 42px;
-  }
-
-  .install-troubleshooting {
-    grid-template-columns: 1fr;
-    gap: 52px;
   }
 
   .install-next-actions > h2,
@@ -693,7 +364,6 @@
 
 @media (max-width: 760px) {
   .install-hero,
-  .install-section-heading,
   .install-next-actions {
     display: block;
   }
@@ -720,39 +390,9 @@
     margin-top: 16px;
   }
 
-  .apk-update-note {
-    margin-top: 24px;
-  }
-
-  .apk-release-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .apk-release-facts > div:nth-child(3) {
-    padding-left: 0;
-    border-left: 0;
-    border-top: 1px solid var(--lp-border);
-  }
-
-  .apk-release-facts > div:nth-child(4) {
-    border-top: 1px solid var(--lp-border);
-  }
-
   .apk-checksum-file {
     margin-top: 4px;
     justify-self: start;
-  }
-
-  .apk-device-note {
-    margin-top: 14px;
-  }
-
-  .install-section-heading > p {
-    margin-top: 24px;
-  }
-
-  .apk-integrity-note {
-    width: 100%;
   }
 
   .install-boundary-copy {
@@ -785,8 +425,6 @@
 
 @media (max-width: 560px) {
   .install-hero,
-  .install-instructions,
-  .install-troubleshooting,
   .install-boundaries,
   .install-next-actions {
     width: calc(100% - 32px);
@@ -812,63 +450,8 @@
     display: none;
   }
 
-  .apk-release-facts {
-    grid-template-columns: 1fr;
-  }
-
-  .apk-release-facts > div,
-  .apk-release-facts > div + div,
-  .apk-release-facts > div:nth-child(3),
-  .apk-release-facts > div:nth-child(4),
-  .apk-release-facts > .apk-release-cert {
-    padding: 15px 0;
-    border-left: 0;
-    border-top: 1px solid var(--lp-border);
-  }
-
-  .apk-release-facts > div:first-child {
-    border-top: 0;
-  }
-
-  .apk-checksum {
-    grid-template-columns: 1fr;
-  }
-
-  .apk-checksum button {
-    width: 100%;
-  }
-
-  .install-instructions,
-  .install-troubleshooting,
   .install-boundaries {
     padding-block: 84px;
-  }
-
-  .apk-install-steps {
-    grid-template-columns: 1fr;
-  }
-
-  .apk-install-steps li,
-  .apk-install-steps li + li,
-  .apk-install-steps li:nth-child(3) {
-    margin-top: 0;
-    padding: 26px 0;
-    display: grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 18px;
-    border-left: 0;
-  }
-
-  .apk-install-steps h3 {
-    margin-top: 0;
-  }
-
-  .apk-integrity-note {
-    margin-top: 42px;
-  }
-
-  .install-troubleshooting {
-    gap: 42px;
   }
 
   .install-next-actions {

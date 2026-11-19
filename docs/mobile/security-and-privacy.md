@@ -71,7 +71,7 @@ opens. It exposes no caller-selected path; failure prevents workspace access.
 
 ## Crash telemetry and product events
 
-The Android Beta ships operator-enabled, build-time gated crash reporting and
+The Android app ships operator-enabled, build-time gated crash reporting and
 product events (`apps/mobile/src/telemetry`, posthog-react-native). It is
 **not user opt-in**: there is no in-app consent setting today, and every
 installation built with an embedded `EXPO_PUBLIC_POSTHOG_KEY` reports crashes
@@ -79,7 +79,7 @@ and product events unless the operator disables the pipeline. Properties:
 
 - **Inert without a key.** Without `EXPO_PUBLIC_POSTHOG_KEY` at build time no
   client is constructed and no network calls are made. Local builds remain
-  inert, while signed APK workflows fail closed when the
+  inert, while the Play bundle workflow fails closed when the
   key or approved regional host is missing unless the build-time kill switch
   explicitly disables telemetry.
 - **Sanitized crash fields only.** The SDK's exception autocapture stays fully
@@ -97,7 +97,7 @@ and product events unless the operator disables the pipeline. Properties:
   attached.
 - **Source maps.** Release bundles carry a PostHog debug id
   (`apps/mobile/metro.config.cjs`). When the `POSTHOG_CLI_API_KEY` secret is
-  set, the Android Beta workflow uploads the Hermes source map of each build,
+  set, the Android Play Bundle workflow uploads the Hermes source map of each build,
   so PostHog resolves frames to original file, function, and line. The source
   map contains Zoption's own code, not user data.
   PostHog still adds the minimal event envelope required by its protocol,
@@ -124,7 +124,7 @@ and product events unless the operator disables the pipeline. Properties:
   or the flag is absent or false. Build-time:
   `EXPO_PUBLIC_TELEMETRY_DISABLED=1`, passed through CI from a repository
   variable, keeps the client unconstructed in every subsequently built
-  APK; devices already installed receive it only by shipping such an
+  bundle; devices already installed receive it only by shipping such an
   update.
 - **Fail-safe initialization.** The PostHog module loads lazily inside a
   caught initializer; a telemetry failure can never prevent startup or
@@ -139,7 +139,7 @@ and product events unless the operator disables the pipeline. Properties:
 - **Scope is intentionally narrow.** This pipeline covers the root React error
   boundary and uncaught JavaScript exceptions only. It does not claim Android
   ANR, native-crash, or unhandled-promise-rejection coverage; those require a
-  separately reviewed native observability design and signed APK.
+  separately reviewed native observability design and Play release.
 
 ## Known limitations
 

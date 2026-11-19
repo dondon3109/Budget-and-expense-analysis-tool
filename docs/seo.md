@@ -8,7 +8,7 @@ The public site is its own static build: [`apps/site`](../apps/site/AGENTS.md) (
 `zoption.site`, separate from the signed-in app at `app.zoption.site`, which is noindex on
 every response. Every public route is real HTML with its canonical URL, OpenGraph and
 Twitter cards, and a Schema.org graph, and content pages ship no framework JavaScript;
-only the landing sections, the calculator, the support chat, and the live APK card
+only the landing sections, the calculator, and the support chat
 hydrate. Lighthouse on seven representative pages measured 100 for performance and an
 LCP of 424–494 ms (2026-09-29, local desktop runs of the production build).
 

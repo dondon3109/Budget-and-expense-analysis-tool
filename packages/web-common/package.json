@@ -10,10 +10,7 @@
     "./consent-storage": "./src/consent/consentStorage.ts",
     "./consent-gate": "./src/consent/consentGate.ts",
     "./analytics-sanitize": "./src/analytics/sanitize.ts",
-    "./releases": "./src/releases/currentRelease.ts",
-    "./android-release": "./src/releases/androidRelease.ts",
-    "./android-release-metadata": "./src/releases/androidReleaseMetadata.ts",
-    "./android-release.json": "./src/releases/androidRelease.json"
+    "./releases": "./src/releases/currentRelease.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json --noEmit",

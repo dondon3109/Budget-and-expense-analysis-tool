@@ -344,7 +344,7 @@ export function FastEntrySpotlight() {
               <h3>Take a picture of any receipt. Skip the keypad.</h3>
               <p>
                 Paper receipts and digital checkout screenshots hold valuable purchase data. Take a
-                quick photo with the Android Beta or upload a receipt image: Zoption’s smart vision
+                quick photo with the Android app or upload a receipt image: Zoption’s smart vision
                 engine detects the merchant name, date, subtotal, sales tax, and line items
                 automatically.
               </p>
@@ -360,7 +360,7 @@ export function FastEntrySpotlight() {
                 </li>
                 <li>
                   <Check size={16} aria-hidden="true" /> <strong>Offline-first option:</strong>{" "}
-                  Available directly on the native Android Beta app.
+                  Available directly on the native Android app.
                 </li>
               </ul>
               <p className="spotlight-learn-more">

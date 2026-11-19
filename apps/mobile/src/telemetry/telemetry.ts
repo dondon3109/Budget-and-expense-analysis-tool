@@ -12,9 +12,8 @@
  *    gate is unknown or closed.
  *  - Build-time hard disable: EXPO_PUBLIC_TELEMETRY_DISABLED=1 keeps the
  *    client unconstructed in every build produced with it set. CI passes the
- *    repository variable through, so flipping it affects newly built
- *    APKs/OTAs; reaching already-installed devices requires shipping such an
- *    update.
+ *    repository variable through, so flipping it affects new builds only;
+ *    reaching already-installed devices requires shipping such an update.
  *
  * Privacy: raw errors NEVER leave the device. SDK exception autocapture
  * stays disabled because it would transmit raw messages, which can embed

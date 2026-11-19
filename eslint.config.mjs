@@ -111,12 +111,8 @@ export default tseslint.config(
     },
   },
   {
-    // The API client and the public Android release lookup are the only places that call fetch.
-    files: [
-      "apps/web/src/lib/api.ts",
-      "apps/web/src/lib/api/**/*.ts",
-      "apps/web/src/releases/useAndroidRelease.ts",
-    ],
+    // The API client is the only place that calls fetch.
+    files: ["apps/web/src/lib/api.ts", "apps/web/src/lib/api/**/*.ts"],
     rules: {
       "no-restricted-syntax": ["error", ...webQueryKeySyntax],
     },

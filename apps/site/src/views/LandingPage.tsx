@@ -1,6 +1,5 @@
 import { ArrowRight, Bot, Camera, Check, FileSpreadsheet, Mic, Sparkles, X } from "lucide-react";
 import type { PublicCustomerReview } from "@zoption/shared";
-import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import type { ReactNode } from "react";
 import "./LandingPage.css";
 import "./LandingComparison.css";
@@ -25,7 +24,7 @@ const LANDING_HEADER_LINKS: PublicHeaderLink[] = [
   { label: "Budget planner", href: "#calculator" },
   { label: "Why Zoption", href: "#compare" },
   { label: "Pricing", href: "/pricing" },
-  { label: "Android APK", href: "#install", secondary: true },
+  { label: "Android app", href: "#install", secondary: true },
   { label: "Supported imports", href: "#banks", secondary: true },
   { label: "How it works", href: "#approach", secondary: true },
   { label: "Reviews", href: "#reviews", secondary: true },
@@ -54,8 +53,6 @@ export function LandingPage({
   budgetPlanner,
   reviews,
 }: LandingPageProps) {
-  const androidRelease = ANDROID_RELEASE;
-
   return (
     <div className="landing-page">
       <PublicHeader links={LANDING_HEADER_LINKS} />
@@ -391,7 +388,7 @@ export function LandingPage({
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Native Android Beta APK with receipt scanning</span>
+                      <span>Native Android app with receipt scanning</span>
                     </span>
                   </td>
                 </tr>
@@ -402,11 +399,11 @@ export function LandingPage({
 
         <section className="install-promo" id="install" aria-labelledby="install-promo-title">
           <div className="install-promo-copy">
-            <p className="eyebrow">Official Android beta</p>
-            <h2 id="install-promo-title">Take Zoption Beta to Android.</h2>
+            <p className="eyebrow">Zoption for Android</p>
+            <h2 id="install-promo-title">Coming soon to Google Play.</h2>
             <p>
-              Download the Zoption Beta APK from zoption.site: the new native app with your
-              workspace on the device, offline-first entry, and camera receipt scanning.
+              The native Android app is in testing on Google Play: your workspace on the device,
+              offline-first entry, and camera receipt scanning.
             </p>
             <ul className="install-promo-points">
               <li>
@@ -416,7 +413,7 @@ export function LandingPage({
                 <Check size={16} aria-hidden="true" /> Receipt scanning with your approval
               </li>
               <li>
-                <Check size={16} aria-hidden="true" /> No Google Play listing required
+                <Check size={16} aria-hidden="true" /> Installs and updates through Google Play
               </li>
             </ul>
           </div>
@@ -425,37 +422,19 @@ export function LandingPage({
             <div className="install-promo-release-heading">
               <BrandMark className="install-promo-mark" />
               <div>
-                <p>Beta ready to download</p>
-                <h3>Zoption Beta</h3>
+                <p>In testing on Google Play</p>
+                <h3>Zoption</h3>
               </div>
-              <span>APK</span>
+              <span>Android</span>
             </div>
-            <dl>
-              <div>
-                <dt>File size</dt>
-                <dd>{androidRelease.sizeLabel}</dd>
-              </div>
-              <div>
-                <dt>Requires</dt>
-                <dd>{androidRelease.minimumAndroid}</dd>
-              </div>
-              <div>
-                <dt>Source</dt>
-                <dd>Official Zoption release</dd>
-              </div>
-            </dl>
             <div className="install-promo-actions">
               <a className="button primary" href="/install">
-                Download Android APK <ArrowRight size={17} aria-hidden="true" />
+                About the Android app <ArrowRight size={17} aria-hidden="true" />
               </a>
             </div>
-            <p className="install-promo-update-note">
-              New in Zoption Beta: snap a receipt and Zoption drafts the expense for you. The beta
-              replaces the older Zoption app — uninstall it first, then install the beta.
-            </p>
             <p className="install-promo-note">
-              The APK is not distributed through Google Play. Zoption remains online-first, so
-              authenticated financial operations require an internet connection.
+              Until the listing opens, use Zoption on the web with the same account. Zoption remains
+              online-first, so authenticated financial operations require an internet connection.
             </p>
           </div>
         </section>

@@ -192,13 +192,12 @@ charge cannot sync to the mobile app; recreate the local D1 state and seed again
 
 These need external services and will fail or stay inert against the local stack:
 
-| Area                                       | Why                                                          |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| Assistant replies                          | DeepSeek is a networked, paid provider                       |
-| Voice capture and playback                 | Fish Audio plus browser audio worklets                       |
-| Checkout                                   | PayPal is configured for sandbox                             |
-| Signup confirmation / password reset email | Resend                                                       |
-| Android release metadata                   | `downloads.zoption.site` rejects localhost origins with CORS |
+| Area                                       | Why                                    |
+| ------------------------------------------ | -------------------------------------- |
+| Assistant replies                          | DeepSeek is a networked, paid provider |
+| Voice capture and playback                 | Fish Audio plus browser audio worklets |
+| Checkout                                   | PayPal is configured for sandbox       |
+| Signup confirmation / password reset email | Resend                                 |
 
 Verify those as UI states only, not as live behaviour.
 

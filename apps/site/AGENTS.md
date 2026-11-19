@@ -2,7 +2,7 @@
 
 ## Overview
 
-The public website at `zoption.site`: marketing, pricing, guides, import guides, tools, legal, and the Android Beta download. It is a static Astro build. Pages render existing React components to HTML at build time and ship no framework JavaScript unless they contain an island. The signed-in app lives in `apps/web` on `app.zoption.site`, and every sign-in, sign-up, and workspace link goes there through `appUrl()`.
+The public website at `zoption.site`: marketing, pricing, guides, import guides, tools, legal, and the Android app page. It is a static Astro build. Pages render existing React components to HTML at build time and ship no framework JavaScript unless they contain an island. The signed-in app lives in `apps/web` on `app.zoption.site`, and every sign-in, sign-up, and workspace link goes there through `appUrl()`.
 
 ## Stack
 

@@ -1,15 +1,6 @@
-import { readFileSync } from "node:fs";
-
 import { expect, test } from "@playwright/test";
 
 import { siteUrl } from "./fixtures/site";
-
-const androidRelease = JSON.parse(
-  readFileSync(
-    new URL("../packages/web-common/src/releases/androidRelease.json", import.meta.url),
-    "utf8",
-  ),
-) as { downloadPath: string };
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("zoption-theme", "light"));
@@ -97,74 +88,22 @@ test("retired demo route renders the not-found page", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Go to Zoption home" })).toHaveAttribute("href", "/");
 });
 
-test("Android download page renders as a public deep link with exact release guidance", async ({
+test("Android page says the app is coming to Google Play, with no APK download", async ({
   page,
 }) => {
-  await page.route("https://downloads.zoption.site/android/latest.json", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        version: "0.2.0",
-        versionCode: 20202,
-        downloadUrl: "https://downloads.zoption.site/zoption-beta-0.2.0.apk",
-        sha256: "2e68b78cda241796023e039069865e164a9839c15036c696308ca9b61f28cc67",
-        certificateSha256:
-          "F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D",
-        size: 66067723,
-        releasedAt: "2026-08-18",
-        minimumAndroidVersion: "Android 7.0 or newer (API 24+)",
-        reinstallRequired: false,
-        notes: ["Remote note: the metadata came from R2."],
-      }),
-    }),
-  );
-
   await page.goto(siteUrl("/install"));
 
   await expect(page).toHaveURL(/\/install$/);
   await expect(
-    page.getByRole("heading", { name: "Download Zoption Beta for Android." }),
+    page.getByRole("heading", { name: "Zoption for Android is coming to Google Play." }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Four steps from download to app icon." }),
-  ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
-    "href",
-    "https://downloads.zoption.site/zoption-beta-0.2.0.apk",
-  );
+  await expect(page.getByRole("link", { name: "Use Zoption on the web" })).toBeVisible();
+  await expect(page.locator("a[download], a[href$='.apk']")).toHaveCount(0);
   await expect(page.getByText(/does not receive bank credentials/i)).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Offline-first with a connected sync" }),
-  ).toBeVisible();
   await expect(page.getByRole("link", { name: "Read the privacy policy" })).toHaveAttribute(
     "href",
     "/privacy-policy",
   );
-
-  await page.getByRole("link", { name: "Read the privacy policy" }).click();
-  await expect(page).toHaveURL(/\/privacy-policy$/);
-  await page.goBack();
-  await expect(page).toHaveURL(/\/install$/);
-  await expect(
-    page.getByRole("heading", { name: "Download Zoption Beta for Android." }),
-  ).toBeVisible();
-});
-
-test("Android download page keeps the official R2 snapshot when live metadata is missing", async ({
-  page,
-}) => {
-  await page.route("https://downloads.zoption.site/android/latest.json", (route) =>
-    route.fulfill({ status: 404, contentType: "application/json", body: "not found" }),
-  );
-
-  await page.goto(siteUrl("/install"));
-
-  await expect(page.getByRole("link", { name: "Download Android APK" })).toHaveAttribute(
-    "href",
-    androidRelease.downloadPath,
-  );
-  await expect(page.getByText(/temporarily unavailable/i)).toHaveCount(0);
 });
 
 test("private pages redirect signed-out users to login", async ({ page }) => {

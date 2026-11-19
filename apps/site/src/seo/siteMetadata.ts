@@ -5,7 +5,6 @@ import {
   type FeaturePagePath,
 } from "../views/features/featurePages";
 import { findImportGuide } from "../views/import/importGuides";
-import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
 import { FINANCE_GUIDES, type FinanceGuide } from "@zoption/shared";
 
 export const SITE_ORIGIN = "https://zoption.site";
@@ -267,8 +266,8 @@ function installPageStructuredData(): StructuredDataGraph {
     {
       "@type": "WebPage",
       "@id": `${url}#webpage`,
-      name: "Download Zoption Beta for Android",
-      description: "Download the official Zoption Beta Android APK from the Zoption website.",
+      name: "Zoption for Android",
+      description: "The Zoption Android app is coming to Google Play.",
       url,
       dateModified: INSTALL_LAST_MODIFIED,
       inLanguage: "en",
@@ -278,17 +277,11 @@ function installPageStructuredData(): StructuredDataGraph {
     {
       "@type": "SoftwareApplication",
       "@id": applicationId,
-      name: "Zoption Beta for Android",
+      name: "Zoption for Android",
       applicationCategory: "FinanceApplication",
-      operatingSystem: ANDROID_RELEASE.minimumAndroid,
-      softwareVersion: ANDROID_RELEASE.versionName,
-      datePublished: ANDROID_RELEASE.releaseDate,
-      downloadUrl: ANDROID_RELEASE.downloadPath.startsWith("http")
-        ? ANDROID_RELEASE.downloadPath
-        : `${SITE_ORIGIN}${ANDROID_RELEASE.downloadPath}`,
-      fileSize: `${ANDROID_RELEASE.sizeBytes} bytes`,
+      operatingSystem: "Android",
       description:
-        "The native Zoption Beta Android app with offline-first budgeting and camera receipt scanning, for the private Zoption workspace.",
+        "The native Zoption Android app with offline-first budgeting and camera receipt scanning, for the private Zoption workspace.",
       url,
     },
   );
@@ -298,9 +291,9 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-11-16";
-const PRICING_LAST_MODIFIED = "2026-11-15";
-const GUIDES_LAST_MODIFIED = "2026-10-17";
+const LANDING_LAST_MODIFIED = "2026-11-19";
+const PRICING_LAST_MODIFIED = "2026-11-19";
+const GUIDES_LAST_MODIFIED = "2026-11-19";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -339,9 +332,7 @@ const COOKIE_POLICY_LAST_MODIFIED = "2026-10-22";
 const IMPORT_LAST_MODIFIED = "2026-10-03";
 const TOOLS_LAST_MODIFIED = "2026-11-16";
 const SUBSCRIPTION_TOOL_LAST_MODIFIED = "2026-11-16";
-// The install page's own content date. The APK dates stay in ANDROID_RELEASE and still drive the
-// SoftwareApplication nodes; this drives the page's <lastmod> and WebPage dateModified.
-const INSTALL_LAST_MODIFIED = "2026-09-30";
+const INSTALL_LAST_MODIFIED = "2026-11-19";
 const TUTORIALS_LAST_MODIFIED = "2026-11-15";
 
 function pricingPageStructuredData(): StructuredDataGraph {
@@ -593,9 +584,9 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
     },
   },
   "/install": {
-    title: "Download Zoption Beta for Android — Official APK",
+    title: "Zoption for Android — Coming to Google Play",
     description:
-      "Download the official Zoption Beta Android APK from the Zoption website, with version, file size, checksum, and safe installation steps.",
+      "The native Zoption Android app, with offline-first entry and receipt scanning, is in testing on Google Play. Use the same account on the web today.",
     canonical: `${SITE_ORIGIN}/install`,
     robots: "index,follow",
     structuredData: installPageStructuredData(),
@@ -608,7 +599,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/changelog": {
     title: "Changelog & Release Notes — Zoption",
     description:
-      "See what's new in Zoption: a bill calendar for recurring bills, voice expense entry, receipt scanning, transaction deduplication, Android Beta APK updates, and private budgeting tools.",
+      "See what's new in Zoption: a bill calendar for recurring bills, voice expense entry, receipt scanning, transaction deduplication, Android app updates, and private budgeting tools.",
     canonical: `${SITE_ORIGIN}/changelog`,
     robots: "index,follow",
     structuredData: changelogPageStructuredData(),

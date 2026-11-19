@@ -19,7 +19,7 @@ const SUPPORT_DESTINATIONS: SupportDestination[] = [
   { label: "Account settings", to: "/app/settings" },
   { label: "Goals & debt", to: "/app/plan" },
   { label: "AI Assistant", to: "/app/assistant" },
-  { label: "Android APK", to: siteUrl("/install") },
+  { label: "Android app", to: siteUrl("/install") },
   { label: "Start free", to: "/signup" },
   { label: "Sign in", to: "/login" },
   { label: "Transactions", to: "/app/transactions" },

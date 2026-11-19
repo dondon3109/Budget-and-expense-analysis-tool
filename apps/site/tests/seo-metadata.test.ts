@@ -11,8 +11,6 @@ import {
   SITE_ORIGIN,
 } from "../src/seo/siteMetadata";
 
-import { ANDROID_RELEASE } from "@zoption/web-common/android-release";
-
 type SchemaNode = Record<string, unknown>;
 
 function structuredDataFor(path: PublicRoutePath) {
@@ -179,21 +177,13 @@ describe("public SEO metadata", () => {
     expect(isTrackableUrl("", "#access_token=secret")).toBe(false);
   });
 
-  it("publishes accurate metadata for the official Android beta download", () => {
+  it("describes the Android app as coming to Google Play without a download", () => {
     const metadata = PUBLIC_ROUTE_METADATA["/install"];
-    expect(metadata.title).toBe("Download Zoption Beta for Android — Official APK");
+    expect(metadata.title).toBe("Zoption for Android — Coming to Google Play");
     expect(metadata.canonical).toBe(`${SITE_ORIGIN}/install`);
-    expect(metadata.description).toMatch(/Zoption Beta|APK|Zoption website/i);
     const application = nodesByType(structuredDataFor("/install")["@graph"], "SoftwareApplication");
-    expect(application).toEqual([
-      expect.objectContaining({
-        operatingSystem: ANDROID_RELEASE.minimumAndroid,
-        softwareVersion: ANDROID_RELEASE.versionName,
-        downloadUrl: ANDROID_RELEASE.downloadPath,
-        fileSize: `${ANDROID_RELEASE.sizeBytes} bytes`,
-      }),
-    ]);
-    expect(JSON.stringify(metadata)).not.toMatch(/Play Store|App Store/i);
+    expect(application).toEqual([expect.objectContaining({ operatingSystem: "Android" })]);
+    expect(JSON.stringify(structuredDataFor("/install"))).not.toMatch(/downloadUrl|APK/);
   });
 
   it("safely serializes structured data", () => {

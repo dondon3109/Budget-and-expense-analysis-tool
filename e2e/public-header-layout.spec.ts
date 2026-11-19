@@ -22,7 +22,7 @@ const EVERY_LANDING_LINK = [
   "Budget planner",
   "Why Zoption",
   "Pricing",
-  "Android APK",
+  "Android app",
   "Supported imports",
   "How it works",
   "Reviews",

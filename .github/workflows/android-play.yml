@@ -1,11 +1,11 @@
 name: Android Play Bundle
 
-# Builds the Google Play distribution (ZOPTION_DISTRIBUTION=play) as a release
-# Android App Bundle signed with the Play upload key, verifies it, and keeps it
-# as a workflow artifact for a manual upload in Play Console. It never uploads
-# to Play, publishes to R2, or commits. The version is whatever the last
-# release bump set (apps/mobile/package.json and android.versionCode), so build
-# from the released commit. Setup: docs/mobile/build-instructions.md.
+# Builds the production Android app as a release Android App Bundle signed with
+# the Play upload key, verifies it, and keeps it as a workflow artifact for a
+# manual upload in Play Console. It never uploads to Play or commits. The
+# version is whatever the last release bump set (apps/mobile/package.json and
+# android.versionCode), so build from the released commit. Setup:
+# docs/mobile/build-instructions.md.
 on:
   workflow_dispatch:
     inputs:
@@ -14,6 +14,29 @@ on:
         type: string
         required: false
         default: ""
+  # Production Release calls this after production is live; see its android job.
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+    secrets:
+      PLAY_UPLOAD_KEYSTORE_BASE64:
+        required: true
+      PLAY_UPLOAD_KEYSTORE_PASSWORD:
+        required: true
+      PLAY_UPLOAD_KEY_ALIAS:
+        required: true
+      PLAY_UPLOAD_KEY_PASSWORD:
+        required: true
+      # Optional: without them the bundle ships with crash telemetry off or minified frames.
+      EXPO_PUBLIC_POSTHOG_KEY:
+        required: false
+      POSTHOG_CLI_API_KEY:
+        required: false
+      # Optional: without it (and the EXPO_PROJECT_ID variable) the bundle has no server push.
+      ANDROID_GOOGLE_SERVICES_JSON:
+        required: false
 
 permissions:
   contents: read
@@ -29,10 +52,6 @@ jobs:
     timeout-minutes: 60
     env:
       APP_VARIANT: production
-      ZOPTION_DISTRIBUTION: play
-      # The website APK's permanent key. Play App Signing re-signs installs with
-      # the app signing key, so the bundle itself must carry the separate upload key.
-      SIDELOAD_FINGERPRINT: F9:46:70:EB:94:11:F3:DA:68:3A:13:33:DD:7F:6C:69:58:B0:08:3C:CE:C4:7E:75:89:4C:38:DB:C6:A5:A5:8D
       BUNDLETOOL_VERSION: 1.18.3
       BUNDLETOOL_SHA256: a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29
     steps:
@@ -61,7 +80,8 @@ jobs:
             fi
           done
 
-      # Same validated public production configuration as the APK build.
+      # Writes VITE_API_URL / VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY,
+      # the web pipeline's validated public production configuration.
       - name: Export production public configuration
         run: node scripts/export-deployment-env.mjs production
 
@@ -103,7 +123,7 @@ jobs:
           echo "GOOGLE_SERVICES_JSON=$RUNNER_TEMP/google-services.json" >> "$GITHUB_ENV"
           echo "EAS_PROJECT_ID=$EXPO_PROJECT_ID" >> "$GITHUB_ENV"
 
-      - name: Prebuild Android (production, Play)
+      - name: Prebuild Android (production)
         working-directory: apps/mobile
         run: CI=1 npx expo prebuild --platform android --clean --no-install
 
@@ -149,8 +169,8 @@ jobs:
           POSTHOG_CLI_PROJECT_ID: "549527"
           POSTHOG_CLI_HOST: https://us.posthog.com
 
-      # Hard gate: the bundle is signed by the upload key (never the sideload
-      # key), carries the release identity, and has no install-packages permission.
+      # Hard gate: the bundle is signed by the upload key, carries the release
+      # identity, and has no install-packages permission.
       - name: Verify AAB signer and identity
         env:
           EXPECTED_UPLOAD_FINGERPRINT: ${{ vars.PLAY_UPLOAD_CERT_SHA256 }}
@@ -161,9 +181,6 @@ jobs:
           FINGERPRINT=$(keytool -printcert -jarfile "$AAB" | awk '/SHA256:/ {print $2; exit}')
           test -n "$FINGERPRINT" || { echo "::error::Could not read the AAB signer certificate."; exit 1; }
           echo "Upload certificate SHA-256: $FINGERPRINT"
-          if [ "$FINGERPRINT" = "$SIDELOAD_FINGERPRINT" ]; then
-            echo "::error::The AAB is signed with the sideload APK key; use the separate Play upload key."; exit 1
-          fi
           if [ -n "$EXPECTED_UPLOAD_FINGERPRINT" ] && [ "$FINGERPRINT" != "$EXPECTED_UPLOAD_FINGERPRINT" ]; then
             echo "::error::Signer $FINGERPRINT does not match PLAY_UPLOAD_CERT_SHA256."; exit 1
           fi
@@ -188,7 +205,7 @@ jobs:
       # A universal APK of the same bundle, signed with the upload key, for installing the Play
       # build on a test phone without a Play upload (Play rejects a reused versionCode, and
       # Internal app sharing needs a published app). Uninstall any other Zoption first: the
-      # signer differs from both the website APK and Play's app signing key.
+      # upload key differs from Play's app signing key. Testing only; never distribute it.
       - name: Build universal APK from the AAB
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}

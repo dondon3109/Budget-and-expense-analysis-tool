@@ -18,7 +18,7 @@
   - 500 AI actions per Manila calendar month, shared across assistant chat, voice chat, receipt scanning, PDF statement entry, and transaction voice entry.
   - Universal bank statement importer (1 committed import per month).
   - Starter accounts (Cash, GCash, Maya, Bank), unlimited custom accounts, and 4 custom budget categories.
-  - Offline PWA and native Android Beta APK access.
+  - Offline PWA and the native Android app (coming to Google Play).
 - **Zoption Budget (₱149 / month or ₱1,490 / year — 2 months free)**:
   - 1,000 AI actions per month in the same shared pool, plus live streaming voice chat (paid plans only: a live platform-funded socket has no per-request boundary to meter).
   - 5 committed statement imports per month.

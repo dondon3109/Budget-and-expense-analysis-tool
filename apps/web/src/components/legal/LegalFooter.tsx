@@ -30,7 +30,7 @@ export function LegalFooter() {
         <Link to={siteUrl("/guides")}>Guides</Link>
         <Link to={siteUrl("/tutorials")}>Tutorials</Link>
         <Link to={siteUrl("/faq")}>FAQ</Link>
-        <Link to={siteUrl("/install")}>Android Beta</Link>
+        <Link to={siteUrl("/install")}>Android app</Link>
         <Link to={siteUrl("/changelog")}>Changelog</Link>
         <Link to={siteUrl("/terms-of-service")}>Terms of Service</Link>
         <Link to={siteUrl("/privacy-policy")}>Privacy Policy</Link>

@@ -41,9 +41,9 @@ test("mobile landing keeps account actions and preview usable", async ({ page })
   ).toBeVisible();
   await expect(formatsSection.locator(".formats-track .formats-group")).toHaveCount(2);
 
-  const installSection = page.getByRole("region", { name: "Take Zoption Beta to Android." });
+  const installSection = page.getByRole("region", { name: "Coming soon to Google Play." });
   await installSection.scrollIntoViewIfNeeded();
-  await expect(installSection.getByRole("link", { name: "Download Android APK" })).toBeVisible();
+  await expect(installSection.getByRole("link", { name: "About the Android app" })).toBeVisible();
 
   const themeToggle = page.getByRole("button", { name: "Choose theme" });
   await themeToggle.scrollIntoViewIfNeeded();

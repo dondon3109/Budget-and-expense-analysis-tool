@@ -16,7 +16,6 @@ import { configureConnectivity } from "@/config/connectivity";
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { warmUpSounds } from "@/features/sounds/sound-effects";
 import { useDailyReminderSession } from "@/features/reminders/daily-reminder";
-import { AndroidUpdateProvider } from "@/features/updates";
 import { CrashScreen } from "@/features/navigation/CrashScreen";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useForecastOnTrackStore } from "@/stores/forecast-on-track-store";
@@ -139,9 +138,7 @@ export default function RootLayout() {
             <DailyReminderSession />
             <WorkerIdentityProvider>
               <ZoptionThemeProvider>
-                <AndroidUpdateProvider>
-                  <RootNavigator />
-                </AndroidUpdateProvider>
+                <RootNavigator />
               </ZoptionThemeProvider>
             </WorkerIdentityProvider>
           </SessionProvider>

@@ -2,15 +2,10 @@ name: Production Release
 
 # Dispatched by Dispatch Production Release when a release-prep commit (an android.versionCode
 # bump) passes CI on main, or by hand for a retry; merging any other change releases nothing. One run ships web and Android together, in that order: the Worker and both Pages
-# projects go live first, and the APK and android/latest.json publish only after production is
-# green and tagged, so a new app never meets an older Worker.
+# projects go live first, and the Google Play bundle builds only after production is green and
+# tagged, so a Play upload never carries an app that needs a Worker production does not run yet.
 on:
   workflow_dispatch:
-    inputs:
-      android_release_notes:
-        description: "Android update notes for android/latest.json (one line per bullet)"
-        type: string
-        required: true
 
 permissions:
   contents: read
@@ -93,24 +88,26 @@ jobs:
             echo "::error::CI on main has not passed for $RELEASE_COMMIT (latest finished run: ${conclusion:-none}). Wait for it, then dispatch again."
             exit 1
           fi
-      # Every release ships a new APK, and the Android job runs only after production is live, so
-      # a forgotten version bump must stop the release here rather than after the deploy.
+      # Every release ships a new Play bundle, and Play refuses a versionCode it has seen, so a
+      # forgotten version bump must stop the release here rather than after the deploy.
       - name: Require a new Android version
-        working-directory: apps/mobile
-        env:
-          APP_VARIANT: production
         run: |
           set -euo pipefail
-          pnpm exec expo config --type introspect --json \
-            | node ../../scripts/android-release-metadata.mjs > "$RUNNER_TEMP/android-release.env"
-          code="$(sed -n 's/^RELEASE_VERSION_CODE=//p' "$RUNNER_TEMP/android-release.env")"
-          live="$(curl -fsS --retry 5 --retry-delay 5 --max-time 60 \
-            https://downloads.zoption.site/android/latest.json | jq -r '.versionCode')"
-          if (( code <= live )); then
-            echo "::error::android.versionCode $code is not newer than the published $live. Bump apps/mobile/package.json version and android.versionCode in apps/mobile/app.config.ts."
+          version_code() {
+            sed -nE 's/^ *versionCode: ([0-9]+),$/\1/p' | head -n 1
+          }
+          code="$(version_code < apps/mobile/app.config.ts)"
+          tag="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)"
+          released="$(git show "$tag:apps/mobile/app.config.ts" | version_code)"
+          if [[ -z "$code" || -z "$released" ]]; then
+            echo "::error::Could not read android.versionCode from apps/mobile/app.config.ts here or at $tag."
             exit 1
           fi
-          echo "Android $code will replace the published $live."
+          if (( code <= released )); then
+            echo "::error::android.versionCode $code is not newer than $released in $tag. Bump apps/mobile/package.json version and android.versionCode in apps/mobile/app.config.ts."
+            exit 1
+          fi
+          echo "Android $code will replace $released from $tag."
       - name: Determine the next semantic release
         id: next_release
         run: node scripts/next-semantic-release.mjs
@@ -767,26 +764,21 @@ jobs:
           bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
 
-  # The APK and android/latest.json publish only once production is live and tagged, so the app
-  # update prompt never offers a build that needs a Worker production does not run yet. A failure
-  # here leaves the web release in place: rerun this job, or dispatch Android Beta Build with both
-  # publish inputs on.
+  # The Play bundle builds only once production is live and tagged, so a Play upload never
+  # carries an app that needs a Worker production does not run yet. Uploading it in Play Console
+  # stays a manual step. A failure here leaves the web release in place: rerun this job, or
+  # dispatch Android Play Bundle on the release commit.
   android:
     needs: [preflight, publish-release]
     if: needs.publish-release.result == 'success'
-    uses: ./.github/workflows/android-beta.yml
+    uses: ./.github/workflows/android-play.yml
     with:
       ref: ${{ github.sha }}
-      publish_apk: true
-      publish_latest_json: true
-      release_notes: ${{ inputs.android_release_notes }}
     secrets:
-      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_UPLOAD_KEYSTORE_BASE64: ${{ secrets.PLAY_UPLOAD_KEYSTORE_BASE64 }}
+      PLAY_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEYSTORE_PASSWORD }}
+      PLAY_UPLOAD_KEY_ALIAS: ${{ secrets.PLAY_UPLOAD_KEY_ALIAS }}
+      PLAY_UPLOAD_KEY_PASSWORD: ${{ secrets.PLAY_UPLOAD_KEY_PASSWORD }}
       EXPO_PUBLIC_POSTHOG_KEY: ${{ secrets.EXPO_PUBLIC_POSTHOG_KEY }}
       POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
       ANDROID_GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
-      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}

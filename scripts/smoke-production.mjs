@@ -89,7 +89,7 @@ function assertPublicSeoDocument(html, path, canonical, label) {
   assertPublicStructuredDataGraph(JSON.parse(structuredData), { path, canonical });
 }
 
-/** The site runs only its own scripts and talks only to itself, the API, and the APK bucket. */
+/** The site runs only its own scripts and talks only to itself and the API. */
 function assertSiteContentSecurityPolicy(value, label) {
   if (!value?.trim()) throw new Error(`${label} is missing Content-Security-Policy.`);
   const directives = parseContentSecurityPolicy(value);
