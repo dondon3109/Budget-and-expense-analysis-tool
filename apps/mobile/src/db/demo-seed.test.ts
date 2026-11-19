@@ -34,4 +34,26 @@ describe("demo workspace boundary", () => {
     );
     expect(withTransactionAsync).not.toHaveBeenCalled();
   });
+
+  it("dates budgets and spending in the month the seed runs, never after today", async () => {
+    const statements: string[] = [];
+    const database = {
+      withTransactionAsync: async (work: () => Promise<void>) => work(),
+      runAsync: async (sql: string) => {
+        statements.push(sql);
+      },
+    } as unknown as SQLiteDatabase;
+
+    await seedDummyWorkspaceData(database, new Date(2026, 10, 19, 9));
+
+    const seeded = statements.join("\n");
+    expect(seeded).toContain("'budget-2026-11-01-groceries', 'category-groceries', '2026-11-01'");
+    expect(seeded).toContain("'budget-2026-10-01-groceries', 'category-groceries', '2026-10-01'");
+    expect(seeded).toContain("'2026-11-15', 'Bi-Monthly Salary Deposit'");
+    // Day 23 of the current month has not happened yet, so it lands on today.
+    expect(seeded).toContain("'2026-11-19', 'SM Supermarket Groceries'");
+    expect(seeded).toContain("'2026-10-31', 'End of Month Salary Deposit'");
+    expect(seeded).toContain("'Netflix 4K', 54900, 'PHP', 'monthly', '2026-12-01'");
+    expect(seeded).not.toMatch(/2026-08|2026-09/);
+  });
 });

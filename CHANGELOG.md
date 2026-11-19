@@ -91,6 +91,8 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: the AI Assistant shows **bold** words in its replies as bold text instead of showing the asterisks.
+- Mobile: receipt scanning no longer stays on "Checking receipt scanning…", and the Import screen's title reads "Import".
 - The web dashboard counts your "Every month" budget limits, so the "Set a monthly budget" step in Get started is checked off and the budget totals match the Budgets page, instead of only seeing limits set on that month.
 - On mobile, signing in on a new phone with a lot of history no longer stops with "Sync failed" partway through: the first sync waits when Zoption asks it to slow down, then finishes on its own.
 - On mobile, signing in shows one loading screen instead of a "Finishing sign in" screen followed by a second loader.
