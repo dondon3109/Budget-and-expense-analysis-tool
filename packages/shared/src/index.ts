@@ -6,6 +6,7 @@ export * from "./budgetRule";
 export * from "./calculations";
 export * from "./goalConfig";
 export * from "./goals";
+export * from "./preferences";
 export * from "./cashflowForecast";
 export * from "./csv";
 export * from "./fingerprint";

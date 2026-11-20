@@ -23,10 +23,19 @@ vi.mock("../src/lib/api", async () =>
     "getAssistantThreads",
     "getDebts",
     "getFinancialGoals",
+    "getMoneyPreferences",
+    "getSubscriptions",
   ]),
 );
 
-import { getAssistantThreads, getDebts, getFinancialGoals } from "../src/lib/api";
+import {
+  getAssistantThreads,
+  getDebts,
+  getFinancialGoals,
+  getMoneyPreferences,
+  getSubscriptions,
+} from "../src/lib/api";
+import { PreferenceSuggestions } from "../src/components/dashboard/PreferenceSuggestions";
 
 const workspace: AuthenticatedWorkspace = { key: "user:test-user", userId: "test-user" };
 
@@ -65,6 +74,77 @@ describe("assistant starter prompts", () => {
     expect(voiceSuggestedPrompts("en", "save_for_goal")[0]).toBe("How fast can I reach my goal?");
     expect(voiceSuggestedPrompts("en", null)).toEqual(VOICE_SUGGESTED_PROMPTS);
     expect(voiceSuggestedPrompts("fil", "save_for_goal")[0]).toBe("How fast can I reach my goal?");
+  });
+});
+
+describe("money preference prompts and suggestions", () => {
+  const semiMonthly = {
+    incomeCadence: "semi_monthly" as const,
+    budgetingStyle: null,
+    spendingFocus: [],
+  };
+
+  it("puts the goal's prompt, then the preferences' prompt, first and keeps the length", () => {
+    const prompts = quickPromptsForGoal("build_budget", semiMonthly);
+    expect(prompts.slice(0, 2).map(({ prompt }) => prompt)).toEqual([
+      "Help me build a budget from my income",
+      "How much can I spend until my next payday?",
+    ]);
+    expect(prompts).toHaveLength(quickPromptsForGoal(null).length);
+    expect(voiceSuggestedPrompts("en", null, semiMonthly)[0]).toBe(
+      "How much can I spend until my next payday?",
+    );
+  });
+
+  it("shows the open suggestions and hides the ones the workspace already did", async () => {
+    vi.mocked(getMoneyPreferences).mockResolvedValue({
+      incomeCadence: "irregular",
+      budgetingStyle: "fifty_thirty_twenty",
+      spendingFocus: ["bills"],
+    });
+    vi.mocked(getFinancialGoals).mockResolvedValue({ items: [] } as never);
+    vi.mocked(getSubscriptions).mockResolvedValue({ items: [{}] } as never);
+    const onAction = vi.fn();
+    renderWithProviders(
+      <PreferenceSuggestions
+        workspace={workspace}
+        hasBudget={false}
+        month="2026-11-01"
+        onAction={onAction}
+      />,
+    );
+
+    expect(await screen.findByRole("heading", { name: "Suggested for you" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Try the 50/30/20 split" })).toHaveAttribute(
+      "href",
+      "/app/budgets",
+    );
+    expect(screen.getByRole("link", { name: "Build a buffer for lean months" })).toHaveAttribute(
+      "href",
+      "/app/plan",
+    );
+    expect(screen.queryByText("Add your bills")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss suggestions" }));
+    expect(screen.queryByRole("heading", { name: "Suggested for you" })).not.toBeInTheDocument();
+  });
+
+  it("renders nothing without preferences", async () => {
+    vi.mocked(getMoneyPreferences).mockResolvedValue({
+      incomeCadence: null,
+      budgetingStyle: null,
+      spendingFocus: [],
+    });
+    renderWithProviders(
+      <PreferenceSuggestions
+        workspace={workspace}
+        hasBudget={false}
+        month="2026-11-01"
+        onAction={vi.fn()}
+      />,
+    );
+    await waitFor(() => expect(getMoneyPreferences).toHaveBeenCalled());
+    expect(screen.queryByRole("heading", { name: "Suggested for you" })).not.toBeInTheDocument();
+    expect(getSubscriptions).not.toHaveBeenCalled();
   });
 });
 

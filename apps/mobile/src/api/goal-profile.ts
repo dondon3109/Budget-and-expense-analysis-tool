@@ -1,9 +1,11 @@
 import {
   goalProfileSchema,
   goalsProfileSchema,
+  moneyPreferencesSchema,
   type GoalProfile,
   type GoalsProfile,
   type GoalsSelection,
+  type MoneyPreferences,
 } from "@zoption/shared";
 
 import { apiRequest } from "./authenticated";
@@ -18,6 +20,7 @@ export interface GoalProfileApi {
 // still use, so skip answers in the older single-goal shape.
 const GOALS_PATH = "/api/app/profile/goals";
 const PATH = "/api/app/profile/goal";
+const PREFERENCES_PATH = "/api/app/profile/preferences";
 
 export function getGoalsProfile(api: GoalProfileApi): Promise<GoalsProfile> {
   return apiRequest({
@@ -62,5 +65,30 @@ export function markGoalShown(api: GoalProfileApi): Promise<void> {
     method: "POST",
     fallback: "Zoption could not record that step.",
     decode: () => undefined,
+  });
+}
+
+/** Pay cadence, budgeting style, and spending focus; unanswered fields are null or empty. */
+export function getMoneyPreferences(api: GoalProfileApi): Promise<MoneyPreferences> {
+  return apiRequest({
+    ...api,
+    path: PREFERENCES_PATH,
+    method: "GET",
+    fallback: "Zoption could not read your money habits. Try again shortly.",
+    decode: (value) => moneyPreferencesSchema.parse(value),
+  });
+}
+
+export function saveMoneyPreferences(
+  api: GoalProfileApi,
+  input: MoneyPreferences,
+): Promise<MoneyPreferences> {
+  return apiRequest({
+    ...api,
+    path: PREFERENCES_PATH,
+    method: "PUT",
+    body: input,
+    fallback: "Zoption could not save your money habits. Try again shortly.",
+    decode: (value) => moneyPreferencesSchema.parse(value),
   });
 }

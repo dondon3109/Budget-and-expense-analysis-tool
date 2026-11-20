@@ -1,6 +1,7 @@
 import {
   currencies,
   currencyMetadata,
+  hasMoneyPreferences,
   onboardingCashSchema,
   parseAmountToMinor,
   type Currency,
@@ -30,6 +31,7 @@ import {
   GoalsStep,
   PetStep,
   SavedStep,
+  PreferencesStep,
   ThemeStep,
 } from "./SetupSteps";
 
@@ -47,11 +49,12 @@ function checkAmount(value: string): { error: string } | { amountMinor: number }
   return { amountMinor };
 }
 
-type SetupStep = "currency" | "cash" | "theme" | "pet" | "egg" | "goals" | "final";
+type SetupStep = "currency" | "cash" | "theme" | "pet" | "egg" | "goals" | "preferences" | "final";
 
 /**
  * First-run setup as one modal over Home: base currency, cash on hand, theme, streak pet (and its
- * egg after a yes), the goals when none were chosen yet, then a closing thank-you, with the step
+ * egg after a yes), the goals when none were chosen yet, the money habits when none are saved,
+ * then a closing thank-you, with the step
  * track under the card.
  * Currency and cash need a connection and answer on the Worker, which owns them; Not now just
  * leaves, and setup is offered again on the next launch until the cash step completes. Every done
@@ -85,6 +88,11 @@ export function OnboardingScreen() {
     const profile = useGoalProfileStore.getState().profile;
     return Boolean(profile && profile.goals.length === 0 && !profile.skipped);
   });
+  // The same for the money habits: only once the Worker answered, and only while none are saved.
+  const [askPreferences] = useState(() => {
+    const preferences = useGoalProfileStore.getState().preferences;
+    return preferences !== null && !hasMoneyPreferences(preferences);
+  });
 
   // Other first-launch prompts (usage analytics) wait while setup is on screen.
   useEffect(() => {
@@ -96,6 +104,7 @@ export function OnboardingScreen() {
   const beforePet = local === "theme" || local === "pet";
   if (beforePet ? wantsPet && canPickEgg(pet) : withEgg) steps.push("egg");
   if (askGoals) steps.push("goals");
+  if (askPreferences) steps.push("preferences");
   steps.push("final");
   // The egg step stays behind once an egg is chosen, since the Worker takes one egg.
   const backTo = (index: number) => {
@@ -155,6 +164,7 @@ export function OnboardingScreen() {
     }
     if (local === "egg") return <EggStep progress={progress} onNext={next} />;
     if (local === "goals") return <GoalsStep progress={progress} onNext={next} />;
+    if (local === "preferences") return <PreferencesStep progress={progress} onNext={next} />;
     return (
       <FinalStep
         progress={progress}

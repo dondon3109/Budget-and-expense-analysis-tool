@@ -2,17 +2,30 @@
 
 import "@testing-library/jest-dom/vitest";
 
+import type { MoneyPreferences } from "@zoption/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const getGoalProfile = vi.hoisted(() => vi.fn());
 const saveGoals = vi.hoisted(() => vi.fn());
+const getMoneyPreferences = vi.hoisted(() =>
+  vi.fn(async (): Promise<MoneyPreferences> => ({
+    incomeCadence: null,
+    budgetingStyle: null,
+    spendingFocus: [],
+  })),
+);
+const saveMoneyPreferences = vi.hoisted(() =>
+  vi.fn(async (_workspace: unknown, input: MoneyPreferences) => input),
+);
 
 vi.mock("../src/lib/api", async (importOriginal) => ({
   ...(await importOriginal()),
   getGoalProfile,
   saveGoals,
+  getMoneyPreferences,
+  saveMoneyPreferences,
 }));
 
 import { GoalSettings } from "../src/components/account/GoalSettings";
@@ -104,5 +117,30 @@ describe("GoalSettings", () => {
         otherText: "House fund",
       }),
     );
+  });
+
+  it("shows the saved money habits and saves a change", async () => {
+    getGoalProfile.mockResolvedValue(profile(["build_budget"]));
+    getMoneyPreferences.mockResolvedValueOnce({
+      incomeCadence: "weekly",
+      budgetingStyle: "zero_based",
+      spendingFocus: [],
+    });
+    renderSettings();
+
+    expect(await screen.findByRole("radio", { name: "Every week" })).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Give every peso a job" })).toBeChecked();
+    fireEvent.click(screen.getByRole("radio", { name: /It varies/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "Transport" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save money habits" }));
+
+    await waitFor(() =>
+      expect(saveMoneyPreferences).toHaveBeenCalledWith(workspace, {
+        incomeCadence: "irregular",
+        budgetingStyle: "zero_based",
+        spendingFocus: ["transport"],
+      }),
+    );
+    expect(await screen.findByText("Saved. Your suggestions are updated.")).toBeInTheDocument();
   });
 });

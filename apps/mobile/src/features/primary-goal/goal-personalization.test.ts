@@ -4,7 +4,7 @@ import { router } from "expo-router";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
-import { promptsForGoal, useGoalCta, useGoalPrompt } from "./goal-personalization";
+import { openGoalTarget, promptsForGoal, useGoalCta, useGoalPrompt } from "./goal-personalization";
 
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
@@ -31,6 +31,30 @@ describe("goal personalization", () => {
       "a?",
       "b?",
     ]);
+  });
+
+  it("leads with the goal's prompt, then the money habits' prompt", () => {
+    expect(
+      promptsForGoal(defaults, "build_budget", {
+        incomeCadence: "irregular",
+        budgetingStyle: null,
+        spendingFocus: [],
+      }),
+    ).toEqual([
+      "Help me build a budget from my income",
+      "How much should I set aside from a good month?",
+      "a?",
+    ]);
+  });
+
+  it("opens Bills for the bills target and the goals screen for a plan without a debt goal", () => {
+    openGoalTarget(null, "/app/subscriptions");
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/(app)/(tabs)/budgets",
+      params: { view: "bills" },
+    });
+    openGoalTarget(null, "/app/plan");
+    expect(router.push).toHaveBeenLastCalledWith("/(app)/goals");
   });
 
   it("has no CTA by default and opens the mobile screen for a goal's CTA", async () => {

@@ -64,3 +64,19 @@ describe("assistant goal prompt line", () => {
     expect(await systemPromptSent({ DB: {} } as unknown as Bindings)).not.toContain("User goal");
   });
 });
+
+describe("assistant preferences prompt line", () => {
+  it("adds the preferences by key, and nothing when none are set", () => {
+    const withPreferences = buildAssistantTurnContext(
+      "2026-09-03",
+      "Asia/Manila",
+      identity,
+      policy,
+      "",
+      null,
+      { incomeCadence: "semi_monthly", budgetingStyle: null, spendingFocus: ["food"] },
+    );
+    expect(withPreferences).toContain("User preferences: paid semi_monthly; watching food.");
+    expect(prompt("build_budget")).not.toContain("User preferences");
+  });
+});

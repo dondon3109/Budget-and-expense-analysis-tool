@@ -32,6 +32,8 @@ vi.mock("../src/lib/api", async (importOriginal) => ({
     "saveGoals",
     "skipGoal",
     "markGoalShown",
+    "getMoneyPreferences",
+    "saveMoneyPreferences",
     "checkInPet",
     "setPetEnabled",
   ]),
@@ -43,9 +45,11 @@ import {
   ApiRequestError,
   checkInPet,
   getGoalProfile,
+  getMoneyPreferences,
   getOnboardingState,
   markGoalShown,
   saveGoals,
+  saveMoneyPreferences,
   saveOnboardingCashBalance,
   saveOnboardingCurrency,
   setPetEnabled,
@@ -94,6 +98,13 @@ describe("OnboardingPage", () => {
     // Most cases are about the later steps, so the goal is already answered unless a case resets it.
     vi.mocked(getGoalProfile).mockResolvedValue({ ...unset, skipped: true });
     vi.mocked(markGoalShown).mockResolvedValue();
+    // Answered too, so the money habits step stays out of the cases about later steps.
+    vi.mocked(getMoneyPreferences).mockResolvedValue({
+      incomeCadence: "monthly",
+      budgetingStyle: null,
+      spendingFocus: [],
+    });
+    vi.mocked(saveMoneyPreferences).mockImplementation(async (_workspace, input) => input);
     vi.mocked(saveGoals).mockImplementation(async (_workspace, input) => ({
       goals: input.goals,
       goal: input.goals[0] ?? null,
@@ -399,6 +410,74 @@ describe("OnboardingPage", () => {
         await screen.findByRole("button", { name: /Base currency/ }, { timeout: 4000 }),
       ).toBeInTheDocument();
       expect(markGoalShown).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("money habits step", () => {
+    beforeEach(() => {
+      vi.mocked(getMoneyPreferences).mockResolvedValue({
+        incomeCadence: null,
+        budgetingStyle: null,
+        spendingFocus: [],
+      });
+    });
+
+    it("comes after the goal and saves the answers before the currency", async () => {
+      vi.mocked(getGoalProfile).mockResolvedValue(unset);
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("checkbox", { name: "Just looking around" }));
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(
+        await screen.findByRole("heading", { name: "How do you manage money?" }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(
+        "Your money habits",
+      );
+      fireEvent.click(screen.getByRole("radio", { name: "Twice a month (kinsenas)" }));
+      fireEvent.click(screen.getByRole("radio", { name: /50\/30\/20/ }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Food and groceries" }));
+      fireEvent.click(screen.getByRole("checkbox", { name: "Bills and subscriptions" }));
+      expect(saveMoneyPreferences).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+      await waitFor(() =>
+        expect(saveMoneyPreferences).toHaveBeenCalledWith(expect.anything(), {
+          incomeCadence: "semi_monthly",
+          budgetingStyle: "fifty_thirty_twenty",
+          spendingFocus: ["food", "bills"],
+        }),
+      );
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+    });
+
+    it("allows at most three spending areas", async () => {
+      renderPage();
+
+      for (const name of ["Food and groceries", "Transport", "Shopping"]) {
+        fireEvent.click(await screen.findByRole("checkbox", { name }));
+      }
+      expect(screen.getByRole("checkbox", { name: "Going out and hobbies" })).toBeDisabled();
+      fireEvent.click(screen.getByRole("checkbox", { name: "Shopping" }));
+      expect(screen.getByRole("checkbox", { name: "Going out and hobbies" })).toBeEnabled();
+    });
+
+    it("skips, or continues with nothing picked, without saving", async () => {
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(saveMoneyPreferences).not.toHaveBeenCalled();
+    });
+
+    it("continues when the save fails", async () => {
+      vi.mocked(saveMoneyPreferences).mockRejectedValue(new Error("offline"));
+      renderPage();
+
+      fireEvent.click(await screen.findByRole("radio", { name: "Every week" }));
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
     });
   });
 });

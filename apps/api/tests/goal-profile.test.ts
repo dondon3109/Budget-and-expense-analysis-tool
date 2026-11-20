@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import { goalEventNames, primaryGoals } from "@zoption/shared";
+import { budgetingStyles, goalEventNames, incomeCadences, primaryGoals } from "@zoption/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createApp } from "../src/app";
@@ -164,7 +164,7 @@ describe("migration 0070", () => {
   it("keeps the SQL enums in step with the shared lists", () => {
     for (const value of [...primaryGoals, ...goalEventNames])
       expect(migration).toContain(`'${value}'`);
-    const schema = ["schema.ts", "schema-goals.ts"]
+    const schema = ["schema-tenants.ts", "schema-goals.ts"]
       .map((file) => readFileSync(new URL(`../../../db/${file}`, import.meta.url), "utf8"))
       .join("\n");
     for (const value of [...primaryGoals, ...goalEventNames])
@@ -485,5 +485,92 @@ describe("goal retention report", () => {
         d30_rate_pct: null,
       },
     ]);
+  });
+});
+
+const PREFERENCES = "/api/app/profile/preferences";
+
+describe("money preferences", () => {
+  it("starts unanswered, saves every field, and clears a field sent as null", async () => {
+    const { call, rows } = createHarness();
+    expect(await (await call(PREFERENCES, ALICE)).json()).toEqual({
+      incomeCadence: null,
+      budgetingStyle: null,
+      spendingFocus: [],
+    });
+
+    const saved = await call(PREFERENCES, ALICE, "PUT", {
+      incomeCadence: "semi_monthly",
+      budgetingStyle: "fifty_thirty_twenty",
+      spendingFocus: ["bills", "food"],
+    });
+    expect(saved.status).toBe(200);
+    expect(await saved.json()).toEqual({
+      incomeCadence: "semi_monthly",
+      budgetingStyle: "fifty_thirty_twenty",
+      spendingFocus: ["bills", "food"],
+    });
+    expect(rows("SELECT income_cadence, budgeting_style, spending_focus FROM tenants")).toEqual([
+      {
+        income_cadence: "semi_monthly",
+        budgeting_style: "fifty_thirty_twenty",
+        spending_focus: '["bills","food"]',
+      },
+    ]);
+
+    const cleared = await call(PREFERENCES, ALICE, "PUT", {
+      incomeCadence: null,
+      budgetingStyle: "not_sure",
+      spendingFocus: [],
+    });
+    expect(await cleared.json()).toEqual({
+      incomeCadence: null,
+      budgetingStyle: "not_sure",
+      spendingFocus: [],
+    });
+  });
+
+  it("rejects unknown values, unknown fields, and more than three focuses", async () => {
+    const { call } = createHarness();
+    for (const body of [
+      { incomeCadence: "daily", budgetingStyle: null, spendingFocus: [] },
+      { incomeCadence: null, budgetingStyle: null, spendingFocus: [], extra: true },
+      {
+        incomeCadence: null,
+        budgetingStyle: null,
+        spendingFocus: ["food", "fun", "bills", "shopping"],
+      },
+    ]) {
+      expect((await call(PREFERENCES, ALICE, "PUT", body)).status).toBe(400);
+    }
+  });
+
+  it("works before onboarding finishes and is scoped to the authenticated tenant", async () => {
+    const { call } = createHarness();
+    await call(PREFERENCES, ALICE, "PUT", {
+      incomeCadence: "weekly",
+      budgetingStyle: null,
+      spendingFocus: ["transport"],
+    });
+    expect(await (await call(PREFERENCES, BOB)).json()).toEqual({
+      incomeCadence: null,
+      budgetingStyle: null,
+      spendingFocus: [],
+    });
+    expect(await (await call(PREFERENCES, ALICE)).json()).toMatchObject({
+      incomeCadence: "weekly",
+    });
+  });
+
+  it("keeps the SQL enums in step with the shared lists", () => {
+    const sql = readFileSync(
+      new URL("../../../db/migrations/0091_money_preferences.sql", import.meta.url),
+      "utf8",
+    );
+    const schema = readFileSync(new URL("../../../db/schema-tenants.ts", import.meta.url), "utf8");
+    for (const value of [...incomeCadences, ...budgetingStyles]) {
+      expect(sql).toContain(`'${value}'`);
+      expect(schema).toContain(`"${value}"`);
+    }
   });
 });

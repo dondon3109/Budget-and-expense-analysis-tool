@@ -1,8 +1,14 @@
 import { primaryGoalLabels } from "@zoption/shared";
 
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
-import { useGoalProfile, useSaveGoals } from "../../queries/goalProfile";
+import {
+  useGoalProfile,
+  useMoneyPreferences,
+  useSaveGoals,
+  useSaveMoneyPreferences,
+} from "../../queries/goalProfile";
 import { GoalPicker } from "../onboarding/GoalPicker";
+import { PreferencesPicker } from "../onboarding/PreferencesPicker";
 
 export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace }) {
   const profileQuery = useGoalProfile(workspace);
@@ -64,6 +70,52 @@ export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace 
           )}
         </div>
       )}
+      <MoneyPreferencesSettings workspace={workspace} />
     </section>
+  );
+}
+
+/** Pay cadence, budgeting style, and spending focus, which tailor suggestions and the AI. */
+function MoneyPreferencesSettings({ workspace }: { workspace: AuthenticatedWorkspace }) {
+  const preferencesQuery = useMoneyPreferences(workspace);
+  const save = useSaveMoneyPreferences(workspace);
+
+  if (preferencesQuery.isPending) {
+    return (
+      <p className="settings-helper" role="status">
+        Loading your money habits…
+      </p>
+    );
+  }
+  if (!preferencesQuery.data) {
+    return (
+      <p className="form-error" role="alert">
+        Your money habits could not be loaded. Refresh the page to try again.
+      </p>
+    );
+  }
+  return (
+    <div className="settings-form">
+      <h3>Your money habits</h3>
+      <p className="settings-helper">
+        Zoption uses these to suggest next steps on your dashboard and to tailor the AI.
+      </p>
+      <PreferencesPicker
+        preferences={preferencesQuery.data}
+        disabled={save.isPending}
+        confirmLabel="Save money habits"
+        onSave={(preferences) => save.mutate(preferences)}
+      />
+      {save.isSuccess && (
+        <p className="settings-helper" role="status">
+          Saved. Your suggestions are updated.
+        </p>
+      )}
+      {save.isError && (
+        <p className="form-error" role="alert">
+          Your money habits could not be saved. Try again.
+        </p>
+      )}
+    </div>
   );
 }

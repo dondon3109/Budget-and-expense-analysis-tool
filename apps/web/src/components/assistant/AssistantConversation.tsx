@@ -4,11 +4,14 @@ import {
   assistantSkills,
   assistantTransactionDraftSchema,
   goalConfigFor,
+  leadStarterPrompts,
   otherCurrenciesWithAmounts,
+  preferenceStarterPrompt,
 } from "@zoption/shared";
 import type {
   AssistantSkillId,
   Currency,
+  MoneyPreferences,
   PrimaryGoal,
   AssistantMessage,
   AssistantSourceMetadata,
@@ -54,23 +57,26 @@ const QUICK_PROMPTS: { prompt: string; title: string; icon: typeof Scale }[] = [
   },
 ];
 
-/** The goal's starter prompt leads; the list keeps its length. No goal returns today's list. */
-export function quickPromptsForGoal(goal: PrimaryGoal | null | undefined) {
-  const starter = goalConfigFor(goal).starterPrompt;
-  if (!starter) return QUICK_PROMPTS;
-  const lead = {
-    prompt: starter,
-    title: starter,
-    icon: Sparkles,
-  };
-  return [lead, ...QUICK_PROMPTS.filter(({ prompt }) => prompt !== starter)].slice(
-    0,
-    QUICK_PROMPTS.length,
-  );
+/**
+ * The goal's starter prompt leads, then the money preferences' one; the list keeps its length.
+ * With neither, today's list is returned as is.
+ */
+export function quickPromptsForGoal(
+  goal: PrimaryGoal | null | undefined,
+  preferences?: MoneyPreferences | null,
+) {
+  const starters = [goalConfigFor(goal).starterPrompt, preferenceStarterPrompt(preferences)];
+  if (starters.every((starter) => !starter)) return QUICK_PROMPTS;
+  const byPrompt = new Map(QUICK_PROMPTS.map((item) => [item.prompt, item]));
+  return leadStarterPrompts(
+    QUICK_PROMPTS.map(({ prompt }) => prompt),
+    starters,
+  ).map((prompt) => byPrompt.get(prompt) ?? { prompt, title: prompt, icon: Sparkles });
 }
 
 interface AssistantConversationProps {
   goal?: PrimaryGoal | null;
+  moneyPreferences?: MoneyPreferences | null;
   assistantName: string;
   messages: AssistantMessage[];
   pendingMessage?: string;
@@ -367,6 +373,7 @@ export function AssistantConversation({
   draftSave,
   actionSave,
   goal,
+  moneyPreferences,
 }: AssistantConversationProps) {
   const endRef = useRef<HTMLDivElement>(null);
   // Replies whose draft a later correction replaced; saving one would record a purchase twice.
@@ -402,7 +409,7 @@ export function AssistantConversation({
         <p className="eyebrow">Evidence-led answers from your records</p>
         <h2>What would you like to understand?</h2>
         <div className="assistant-quick-prompts">
-          {quickPromptsForGoal(goal).map(({ prompt, title, icon: Icon }) => (
+          {quickPromptsForGoal(goal, moneyPreferences).map(({ prompt, title, icon: Icon }) => (
             <button type="button" key={prompt} onClick={() => onPrompt(prompt)}>
               <span className="assistant-quick-prompt-icon" aria-hidden="true">
                 <Icon size={17} />

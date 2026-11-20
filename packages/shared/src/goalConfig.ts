@@ -9,7 +9,12 @@ export const goalCtaActions = ["add_transaction", "import_wizard"] as const;
 export type GoalCtaAction = (typeof goalCtaActions)[number];
 
 /** Routes a CTA can open. Each must exist in `apps/web/src/App.tsx`. */
-export const goalCtaRoutes = ["/app/budgets", "/app/plan", "/app/assistant"] as const;
+export const goalCtaRoutes = [
+  "/app/budgets",
+  "/app/plan",
+  "/app/assistant",
+  "/app/subscriptions",
+] as const;
 export type GoalCtaRoute = (typeof goalCtaRoutes)[number];
 
 export type GoalCtaTarget = GoalCtaAction | GoalCtaRoute;

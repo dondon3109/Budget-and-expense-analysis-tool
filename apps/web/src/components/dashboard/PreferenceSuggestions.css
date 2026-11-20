@@ -1,0 +1,47 @@
+.preference-suggestions {
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background-color: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 12px);
+}
+
+.preference-suggestions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.preference-suggestions-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 620;
+  color: var(--ink);
+}
+
+.preference-suggestions ul {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.preference-suggestions li p {
+  margin: 0.125rem 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.preference-suggestions-action {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--action-strong);
+  text-decoration: underline;
+  cursor: pointer;
+}

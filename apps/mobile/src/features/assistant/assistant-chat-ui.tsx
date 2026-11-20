@@ -13,7 +13,7 @@ import {
 
 import brandIcon from "../../../assets/zoption-icon.png";
 import { promptsForGoal } from "@/features/primary-goal/goal-personalization";
-import { useLeadGoal } from "@/stores/goal-profile-store";
+import { useGoalProfileStore, useLeadGoal } from "@/stores/goal-profile-store";
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
@@ -30,6 +30,7 @@ const SUGGESTED_QUESTIONS = assistantSkills
 export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => void }) {
   const theme = useZoptionTheme();
   const goal = useLeadGoal();
+  const preferences = useGoalProfileStore((state) => state.preferences);
   return (
     <View style={styles.empty}>
       <Image accessibilityElementsHidden source={brandIcon} style={styles.emptyMark} />
@@ -43,7 +44,7 @@ export function AssistantEmptyChat({ onPick }: { onPick: (question: string) => v
         Answers come from your own records, and nothing is saved until you confirm it.
       </Text>
       <View style={styles.suggestions}>
-        {promptsForGoal(SUGGESTED_QUESTIONS, goal).map((question) => (
+        {promptsForGoal(SUGGESTED_QUESTIONS, goal, preferences).map((question) => (
           <Pressable
             key={question}
             accessibilityRole="button"

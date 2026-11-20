@@ -33,6 +33,7 @@ import { ShareLinkModal } from "../components/sharing/ShareLinkModal";
 import { BudgetProgress } from "../components/dashboard/BudgetProgress";
 import { DashboardTransactionHistory } from "../components/dashboard/DashboardTransactionHistory";
 import { GoalChecklist, GoalCtaButton } from "../components/dashboard/GoalChecklist";
+import { PreferenceSuggestions } from "../components/dashboard/PreferenceSuggestions";
 import { GoalsSubscriptionPanel } from "../components/dashboard/GoalsSubscriptionPanel";
 import {
   amountsLeadingWith,
@@ -455,6 +456,13 @@ export function DashboardPage() {
                 has_transaction: (transactionHistoryQuery.data?.total ?? 0) > 0,
                 has_budget: data.budgetProgress.some((row) => row.limitMinor > 0),
               }}
+              onAction={runGoalAction}
+            />
+
+            <PreferenceSuggestions
+              workspace={workspace}
+              hasBudget={data.budgetProgress.some((row) => row.limitMinor > 0)}
+              month={monthStart(currentDashboardMonth)}
               onAction={runGoalAction}
             />
           </>
