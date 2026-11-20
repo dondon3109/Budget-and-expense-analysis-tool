@@ -34,7 +34,7 @@ describe("current release notes", () => {
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Android 0\.2\.67/);
+    expect(copy).toMatch(/Android 0\.2\.68/);
     expect(copy).not.toMatch(/Android Beta/);
   });
 

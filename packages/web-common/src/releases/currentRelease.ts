@@ -16,7 +16,7 @@ export const currentRelease: ProductRelease = {
     {
       title: "Bill edits no longer restart the app",
       description:
-        "In Android 0.2.67, editing or deleting a bill no longer sends you back to the Opening Zoption screen and then Home, and pulling to refresh keeps you on the screen you were using.",
+        "In Android 0.2.68, editing or deleting a bill no longer sends you back to the Opening Zoption screen and then Home, and pulling to refresh keeps you on the screen you were using.",
     },
     {
       title: "A simpler Adjust balance",

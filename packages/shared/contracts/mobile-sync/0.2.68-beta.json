@@ -1,6 +1,6 @@
 {
-  "versionName": "0.2.67-beta",
-  "source": "3c126e01a4a28feda7ea5bac5888d8a33799da82",
+  "versionName": "0.2.68-beta",
+  "source": "99e1408f36658fcbb6a224b6ed312ad71372f9ba",
   "features": [
     "debt-links",
     "account-types-v2",
