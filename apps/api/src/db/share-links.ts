@@ -1,6 +1,7 @@
 import {
   manilaDate,
   shareSnapshotSchema,
+  type LiveShareBalance,
   type PublicShareLink,
   type ShareLink,
   type ShareLinkCreateInput,
@@ -28,7 +29,8 @@ export interface CreatedShareLink {
 
 /**
  * Public share links. `create` and the owner methods are tenant scoped; `readPublic` is the one
- * unauthenticated read and resolves a link only by the hash of its token.
+ * unauthenticated read and resolves a link only by the hash of its token. A live balance link then
+ * reads one account, scoped by the tenant stored on the link row, never by anything in the request.
  */
 export interface ShareLinkRepository {
   create(
@@ -49,6 +51,12 @@ interface ShareLinkRow {
   sharerName: string | null;
   createdAt: string;
   expiresAt: string | null;
+}
+
+interface PublicShareLinkRow extends ShareLinkRow {
+  tenantId: string;
+  sourceId: string;
+  liveBalance: number;
 }
 
 interface TransactionRow {
@@ -132,6 +140,22 @@ async function balanceSnapshot(
   });
 }
 
+/** The account's balance now; null once the owner archives it, so the link stops following it. */
+async function liveBalance(
+  env: Bindings,
+  tenantId: string,
+  accounts: AccountRepository,
+  accountId: string,
+): Promise<LiveShareBalance | null> {
+  const account = (await accounts.list(env, tenantId)).find((item) => item.id === accountId);
+  if (!account || account.archived) return null;
+  return {
+    amountMinor: account.balanceMinor ?? 0,
+    currency: account.currency,
+    checkedAt: new Date().toISOString(),
+  };
+}
+
 function toShareLink(row: ShareLinkRow): ShareLink {
   return {
     id: row.id,
@@ -164,8 +188,8 @@ export function createShareLinkRepository(accounts: AccountRepository): ShareLin
       await env.DB.prepare(
         `INSERT INTO share_links
            (id, tenant_id, created_by_user_id, token_hash, kind, source_id, snapshot_json,
-            sharer_name, expires_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            sharer_name, expires_at, created_at, live_balance)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
         .bind(
           id,
@@ -178,6 +202,7 @@ export function createShareLinkRepository(accounts: AccountRepository): ShareLin
           sharerName,
           expiresAt,
           now.toISOString(),
+          input.kind === "balance" ? 1 : 0,
         )
         .run();
       return { id, token, snapshot, sharerName, expiresAt };
@@ -205,13 +230,19 @@ export function createShareLinkRepository(accounts: AccountRepository): ShareLin
 
     async readPublic(env, token) {
       const row = await env.DB.prepare(
-        `SELECT ${selectColumns} FROM share_links WHERE token_hash = ? AND ${notExpired}`,
+        `SELECT ${selectColumns}, tenant_id AS tenantId, source_id AS sourceId,
+           live_balance AS liveBalance
+         FROM share_links WHERE token_hash = ? AND ${notExpired}`,
       )
         .bind(await hashToken(token), new Date().toISOString())
-        .first<ShareLinkRow>();
+        .first<PublicShareLinkRow>();
       if (!row) return null;
       const { snapshot, sharerName, createdAt, expiresAt } = toShareLink(row);
-      return { snapshot, sharerName, createdAt, expiresAt };
+      const live =
+        row.kind === "balance" && row.liveBalance === 1
+          ? await liveBalance(env, row.tenantId, accounts, row.sourceId)
+          : null;
+      return { snapshot, live, sharerName, createdAt, expiresAt };
     },
   };
 }

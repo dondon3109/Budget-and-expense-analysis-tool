@@ -1,6 +1,7 @@
 // Public share links: a frozen snapshot of one transaction or one account balance that anyone
-// holding the link can read. The snapshot is the whole public surface, so it carries only what
-// the owner chose to show and never an id, account name, or other workspace data.
+// holding the link can read. A balance link also carries the account's live balance. The
+// snapshot and that one live amount are the whole public surface, so a link carries only what the
+// owner chose to show and never an id, account name, or other workspace data.
 
 import { z } from "zod";
 
@@ -67,10 +68,21 @@ export const shareSnapshotSchema = z.discriminatedUnion("kind", [
   sharedBalanceSnapshotSchema,
 ]);
 
+/** The shared account's balance at `checkedAt`, read fresh on every request for the link. */
+export const liveShareBalanceSchema = z
+  .object({
+    amountMinor: z.number().int(),
+    currency: z.enum(currencies),
+    checkedAt: z.string(),
+  })
+  .strict();
+
 /** What `GET /api/public/shares/:token` returns to anyone holding the link. */
 export const publicShareLinkSchema = z
   .object({
     snapshot: shareSnapshotSchema,
+    /** Null for a transaction, a link made before live balances, or an archived account. */
+    live: liveShareBalanceSchema.nullable(),
     sharerName: z.string().nullable(),
     createdAt: z.string(),
     expiresAt: z.string().nullable(),
@@ -109,6 +121,7 @@ export type ShareLinkCreateInput = z.infer<typeof shareLinkCreateSchema>;
 export type SharedTransactionSnapshot = z.infer<typeof sharedTransactionSnapshotSchema>;
 export type SharedBalanceSnapshot = z.infer<typeof sharedBalanceSnapshotSchema>;
 export type ShareSnapshot = z.infer<typeof shareSnapshotSchema>;
+export type LiveShareBalance = z.infer<typeof liveShareBalanceSchema>;
 export type PublicShareLink = z.infer<typeof publicShareLinkSchema>;
 export type ShareLinkCreated = z.infer<typeof shareLinkCreatedSchema>;
 export type ShareLink = z.infer<typeof shareLinkSchema>;

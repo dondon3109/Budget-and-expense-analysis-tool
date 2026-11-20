@@ -59,8 +59,9 @@ function firstName(value: unknown): string {
 }
 
 /**
- * Creates a public, read-only snapshot link for one transaction or balance. Only the amount is
- * always shown; every other field is opt in, and the snapshot never changes after it is made.
+ * Creates a public, read-only link for one transaction or balance. Only the amount is always
+ * shown; every other field is opt in. A transaction link never changes after it is made; a balance
+ * link shows the balance as shared and the account's balance now.
  * A person in a family can instead share into it (`ShareToFamilyForm`).
  */
 export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
@@ -160,7 +161,9 @@ export function ShareLinkModal({ target, onClose }: ShareLinkModalProps) {
             <p id={descriptionId}>
               {destination === "family"
                 ? `${target.label}. Only the family you choose sees it.`
-                : `${target.label}. Anyone with the link sees a frozen snapshot, never your accounts or other transactions. You can turn the link off in Settings.`}
+                : target.kind === "transaction"
+                  ? `${target.label}. Anyone with the link sees a frozen snapshot, never your accounts or other transactions. You can turn the link off in Settings.`
+                  : `${target.label}. Anyone with the link sees this balance as shared and as it is now, updated live, never your other accounts or transactions. You can turn the link off in Settings.`}
             </p>
           </div>
           <button className="share-budget-icon-button" type="button" onClick={onClose}>

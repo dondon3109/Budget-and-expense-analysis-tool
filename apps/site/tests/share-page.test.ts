@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { formatShareMoney, parsePublicShare, tokenFromHash } from "../src/lib/share";
+import {
+  formatCheckedAt,
+  formatShareMoney,
+  parsePublicShare,
+  tokenFromHash,
+} from "../src/lib/share";
 
 const transaction = {
   kind: "transaction",
@@ -25,6 +30,7 @@ describe("share page data", () => {
     const payload = { snapshot: transaction, sharerName: null, createdAt: "x", expiresAt: null };
     expect(parsePublicShare(payload)).toEqual({
       snapshot: transaction,
+      live: null,
       sharerName: null,
       expiresAt: null,
     });
@@ -35,6 +41,20 @@ describe("share page data", () => {
       null,
     );
     expect(parsePublicShare(null)).toBeNull();
+  });
+
+  it("reads a live balance and rejects a malformed one", () => {
+    const balance = { kind: "balance", amountMinor: 275000, currency: "PHP", asOf: "2026-11-20" };
+    const live = { amountMinor: 300000, currency: "PHP", checkedAt: "2026-11-20T07:00:00.000Z" };
+    const payload = { snapshot: balance, live, sharerName: null, createdAt: "x", expiresAt: null };
+    expect(parsePublicShare(payload)?.live).toEqual(live);
+    expect(parsePublicShare({ ...payload, live: { ...live, amountMinor: 1.5 } })).toBeNull();
+  });
+
+  it("shows the live balance's time, with the date once it is not today", () => {
+    const now = new Date(2026, 10, 20, 15, 30);
+    expect(formatCheckedAt(new Date(2026, 10, 20, 15, 4).toISOString(), now)).toMatch(/3:04/u);
+    expect(formatCheckedAt(new Date(2026, 10, 19, 15, 4).toISOString(), now)).toMatch(/2026/u);
   });
 
   it("prints whole units, as the app does", () => {
