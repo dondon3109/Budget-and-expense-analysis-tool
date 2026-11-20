@@ -95,6 +95,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: editing or deleting a bill no longer makes the app jump to the "Opening Zoption…" screen and back to Home on the next sync or refresh. If the phone ever has to rebuild its local copy from the server, the screen you are on now stays open while it does.
 - Mobile: the AI Assistant shows **bold** words in its replies as bold text instead of showing the asterisks.
 - Mobile: receipt scanning no longer stays on "Checking receipt scanning…", and the Import screen's title reads "Import".
 - The web dashboard counts your "Every month" budget limits, so the "Set a monthly budget" step in Get started is checked off and the budget totals match the Budgets page, instead of only seeing limits set on that month.

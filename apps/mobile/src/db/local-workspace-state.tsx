@@ -71,20 +71,29 @@ export function LocalWorkspaceProvider({
     message: null,
   });
   const requestRef = useRef(0);
+  const readySubjectRef = useRef<string | null>(null);
 
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
-    setSnapshot({ status: "opening", workspace: null, message: null });
+    // Reopening the file already shown (sync rebuilt it from the server) keeps the last workspace
+    // until the new one is open. Going back to "opening" would make the authenticated gate swap
+    // every screen for the full-screen loader and remount navigation on Home, dropping the form
+    // the user was in. Reads in that short gap fail and keep their last value.
+    if (readySubjectRef.current !== subject) {
+      setSnapshot({ status: "opening", workspace: null, message: null });
+    }
     void openLocalWorkspace(subject)
       .then((workspace) => {
         if (requestRef.current === requestId) {
           markStartupPhase("workspace:ready");
+          readySubjectRef.current = subject;
           setSnapshot({ status: "ready", workspace, message: null });
         }
       })
       .catch((error: unknown) => {
         if (requestRef.current === requestId) {
+          readySubjectRef.current = null;
           setSnapshot({
             status: "error",
             workspace: null,

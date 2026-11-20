@@ -15,6 +15,7 @@ import { HttpError } from "../../errors";
 import type { Bindings } from "../../types";
 import {
   atomicMobileSyncPage,
+  isSubscriptionGroup,
   decodeMobileSyncChange,
   decodeMobileSyncCursor,
   decodeMobileSyncSnapshotCursor,
@@ -172,7 +173,11 @@ export async function acknowledgeMobileSyncClient(
     )
       .bind(tenantId, acknowledgedSequence, tenantId, acknowledgedSequence + 1)
       .first<{ currentGroupId: string | null; nextGroupId: string | null }>();
-    if (boundary?.currentGroupId && boundary.currentGroupId === boundary.nextGroupId) {
+    if (
+      boundary?.currentGroupId &&
+      !isSubscriptionGroup(boundary.currentGroupId) &&
+      boundary.currentGroupId === boundary.nextGroupId
+    ) {
       throw new HttpError(
         400,
         "invalid_sync_cursor",
@@ -274,7 +279,7 @@ export async function pullMobileSyncChanges(
     .all<MobileSyncChangeRow>();
 
   const first = result.results[0];
-  if (first?.atomicGroupId && cursorSequence > 0) {
+  if (first?.atomicGroupId && !isSubscriptionGroup(first.atomicGroupId) && cursorSequence > 0) {
     const previous = await env.DB.prepare(
       `SELECT atomic_group_id AS atomicGroupId
        FROM mobile_sync_change_groups
