@@ -53,6 +53,7 @@ export const CONTENT_SOURCES: Record<string, readonly string[]> = {
   "/terms-of-service": ["apps/site/src/views/legal/TermsOfServicePage.tsx"],
   "/privacy-policy": ["apps/site/src/views/legal/PrivacyPolicyPage.tsx"],
   "/cookie-policy": ["apps/site/src/views/legal/CookiePolicyPage.tsx"],
+  "/delete-account": ["apps/site/src/views/legal/DeleteAccountPage.tsx"],
   "/faq": ["apps/site/src/views/faq/FaqPage.tsx"],
   "/install": ["apps/site/src/views/InstallPage.tsx"],
   "/changelog": [
