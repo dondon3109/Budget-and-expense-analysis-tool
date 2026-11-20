@@ -11,37 +11,32 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "November 19, 2026",
+  releasedOn: "November 20, 2026",
   changes: [
     {
-      title: "Is that subscription worth it?",
+      title: "A cleaner Goals page",
       description:
-        "On Pro and Family Pro, tap Used it on a bill each time you use the service to see what each use cost and a weekly streak. A tracked bill you haven't used in 30 days is flagged with a Cancel it button, on web and mobile.",
+        "On mobile, Goals now looks like Budgets: one saved so far total with a progress bar, goals grouped into Active, Paused, and Completed, and how much is left on each. On the web, Goals & debt shows overall progress, what is left to save, and your total minimum debt payments.",
     },
     {
-      title: "Bills live in the Budgets tab",
+      title: "Every month budgets count on the dashboard",
       description:
-        "On mobile, switch between Budgets and Bills at the top of the Budgets tab, and add a bill with the + button beside them.",
+        "The web dashboard now counts budget limits set to Every month, so its totals match the Budgets page and the Set a monthly budget step in Get started is checked off.",
     },
     {
-      title: "A first sync that finishes",
+      title: "Receipt scanning and Assistant fixes",
       description:
-        "Signing in on a new phone with a lot of history no longer stops with Sync failed partway through: the sync waits when Zoption asks it to slow down, then finishes on its own. Tap Sync failed to see why it stopped, with a Try again button.",
+        "On mobile, receipt scanning no longer stays on Checking receipt scanning, and the AI Assistant shows bold words as bold instead of asterisks.",
     },
     {
-      title: "A smoother sign-in",
+      title: "Delete your account from anywhere",
       description:
-        "On mobile, signed-out users open straight to Sign in, with Continue without an account at the bottom, signing in shows one loading screen, and the pet pop-up waits until you answer Help improve Zoption instead of trading places with it.",
+        "zoption.site/delete-account explains how to delete your Zoption account from the Android app, the web app, or by email, and what is deleted or kept.",
     },
     {
-      title: "See which version you have",
+      title: "Android 0.2.65 comes from Google Play",
       description:
-        "On mobile, More now has an About Zoption page with the version, build number, and where the app came from, plus Check for updates. On the web, Account Settings shows the web version.",
-    },
-    {
-      title: "Android Beta 0.2.64",
-      description:
-        "The official Android Beta carries everything above and everything from 0.2.62. Install 0.2.64 over 0.2.62 or 0.2.63.",
+        "The Android app now ships only through Google Play, so the APK download and its in-app updater are gone, and Plan and billing on Android no longer offers PayPal or Dodo Payments checkout. A plan bought on the web still applies on your phone.",
     },
   ],
 };
@@ -56,6 +51,42 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.7.0",
+    releasedOn: "November 19, 2026",
+    changes: [
+      {
+        title: "Is that subscription worth it?",
+        description:
+          "On Pro and Family Pro, tap Used it on a bill each time you use the service to see what each use cost and a weekly streak. A tracked bill you haven't used in 30 days is flagged with a Cancel it button, on web and mobile.",
+      },
+      {
+        title: "Bills live in the Budgets tab",
+        description:
+          "On mobile, switch between Budgets and Bills at the top of the Budgets tab, and add a bill with the + button beside them.",
+      },
+      {
+        title: "A first sync that finishes",
+        description:
+          "Signing in on a new phone with a lot of history no longer stops with Sync failed partway through: the sync waits when Zoption asks it to slow down, then finishes on its own. Tap Sync failed to see why it stopped, with a Try again button.",
+      },
+      {
+        title: "A smoother sign-in",
+        description:
+          "On mobile, signed-out users open straight to Sign in, with Continue without an account at the bottom, signing in shows one loading screen, and the pet pop-up waits until you answer Help improve Zoption instead of trading places with it.",
+      },
+      {
+        title: "See which version you have",
+        description:
+          "On mobile, More now has an About Zoption page with the version, build number, and where the app came from, plus Check for updates. On the web, Account Settings shows the web version.",
+      },
+      {
+        title: "Android Beta 0.2.64",
+        description:
+          "The official Android Beta carries everything above and everything from 0.2.62. Install 0.2.64 over 0.2.62 or 0.2.63.",
+      },
+    ],
+  },
   {
     version: "4.6.1",
     releasedOn: "November 16, 2026",
