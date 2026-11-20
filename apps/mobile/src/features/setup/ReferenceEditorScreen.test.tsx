@@ -193,3 +193,101 @@ describe("ReferenceEditorScreen archive warning", () => {
     expect(screen.getByRole("button", { name: "Archive account" })).toBeDisabled();
   });
 });
+
+describe("ReferenceEditorScreen balance change", () => {
+  const updateAccount = jest.fn();
+  const createTransaction = jest.fn();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockWritable.current = true;
+    updateAccount.mockResolvedValue(undefined);
+    createTransaction.mockResolvedValue("tx-adjust");
+    jest.mocked(useLocalSearchParams).mockReturnValue({ entityType: "account", id: "acc-bank" });
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      workspace: {
+        transactionMutations: { updateAccount, createTransaction },
+      } as unknown as LocalWorkspace,
+      status: "ready",
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    jest.mocked(useLocalReferenceData).mockReturnValue({
+      data: {
+        accounts: [
+          {
+            id: "acc-bank",
+            name: "BDO Checking",
+            type: "checking",
+            currency: "PHP",
+            system: false,
+            serverRevision: 1,
+            syncState: "synced",
+          },
+        ],
+        categories: [
+          { id: "cat-income", name: "Uncategorized", kind: "income" },
+          { id: "cat-expense", name: "Uncategorized", kind: "expense" },
+        ],
+      },
+      error: null,
+      retry: jest.fn(),
+    } as unknown as ReturnType<typeof useLocalReferenceData>);
+    jest.mocked(useAccountModeling).mockReturnValue({
+      modeling: {
+        currency: "PHP",
+        balanceMinor: 50_000,
+        balancesByCurrency: { PHP: 50_000, USD: 12_000 },
+        interest: { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null },
+      },
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    } as unknown as ReturnType<typeof useAccountModeling>);
+    jest.mocked(useSubscriptions).mockReturnValue({
+      subscriptions: [],
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    });
+  });
+
+  it("books a typed new balance with the one Save changes tap", async () => {
+    await render(<ReferenceEditorScreen />);
+
+    // The card lists each held balance once, with no separate adjust button.
+    expect(screen.getByLabelText("Balances by currency")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Adjust balance" })).toBeNull();
+    await fireEvent.changeText(screen.getByPlaceholderText("0.00"), "450");
+    await fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateAccount).toHaveBeenCalledWith("acc-bank", expect.anything());
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "expense",
+        accountId: "acc-bank",
+        amountMinor: 5_000,
+        currency: "PHP",
+      }),
+    );
+    expect(router.back).toHaveBeenCalled();
+  });
+
+  it("saves without an adjustment when the balance field is blank", async () => {
+    await render(<ReferenceEditorScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateAccount).toHaveBeenCalled();
+    expect(createTransaction).not.toHaveBeenCalled();
+  });
+
+  it("blocks the save on an invalid new balance", async () => {
+    await render(<ReferenceEditorScreen />);
+    await fireEvent.changeText(screen.getByPlaceholderText("0.00"), "1.234");
+    await fireEvent.press(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(updateAccount).not.toHaveBeenCalled();
+    expect(createTransaction).not.toHaveBeenCalled();
+  });
+});

@@ -15,6 +15,7 @@ import {
   accountInputSchema,
   buildBalanceAdjustmentInput,
   categoryInputSchema,
+  computeBalanceAdjustment,
   currencies,
   currencyMetadata,
   heldCurrencies,
@@ -40,6 +41,11 @@ import {
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import { BalanceAdjustCard } from "@/features/account/BalanceAdjustCard";
+import {
+  emptyBalanceDraft,
+  resolveBalanceDraft,
+  type BalanceDraft,
+} from "@/features/account/balance-adjustment";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { ShareToFamilyButton } from "@/features/family/ShareToFamilyButton";
 import { ShareLinkButton } from "@/features/sharing/ShareLinkButton";
@@ -186,6 +192,7 @@ export function ReferenceEditorScreen() {
   const [interestInitialized, setInterestInitialized] = useState(false);
   const [interestMessage, setInterestMessage] = useState<string | null>(null);
   const [adjustCurrency, setAdjustCurrency] = useState<Currency | null>(null);
+  const [balanceDraft, setBalanceDraft] = useState<BalanceDraft>(emptyBalanceDraft);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -207,6 +214,16 @@ export function ReferenceEditorScreen() {
     adjustCurrency && heldBalanceCurrencies.includes(adjustCurrency)
       ? adjustCurrency
       : (modeling?.currency ?? null);
+  const balanceChange =
+    account && modeling
+      ? resolveBalanceDraft({
+          accountType: account.type,
+          accountCurrency: modeling.currency,
+          balancesByCurrency: modeling.balancesByCurrency,
+          selectedCurrency: adjustCurrencyValue,
+          draft: balanceDraft,
+        })
+      : null;
 
   useEffect(() => {
     if (initialized.current || !references.data) return;
@@ -297,6 +314,14 @@ export function ReferenceEditorScreen() {
           return;
         }
         if (id) {
+          if (balanceChange?.newBalanceMinor === null) {
+            setMessage("Enter a valid new balance with no more than two decimal places.");
+            return;
+          }
+          if (balanceDraft.adding && balanceDraft.amount.trim() && !balanceChange?.currency) {
+            setMessage("Choose the currency to add.");
+            return;
+          }
           let interest: AccountInterestUpdate | undefined;
           if (accountType === "savings" && interestInitialized) {
             const parsedInterest = interestUpdateSchema.safeParse({
@@ -318,6 +343,34 @@ export function ReferenceEditorScreen() {
             ...parsed.data,
             ...(interest !== undefined && { interest }),
           });
+          // A typed new balance books its delta as the same adjustment entry the starting
+          // balance uses, so "Save changes" is the only confirmation.
+          if (balanceChange?.currency && balanceChange.newBalanceMinor != null) {
+            const { currency, currentBalanceMinor, newBalanceMinor } = balanceChange;
+            const kind = computeBalanceAdjustment(currentBalanceMinor, newBalanceMinor).kind;
+            if (kind) {
+              const categoryId = resolveAdjustmentCategoryId(
+                references.data?.categories ?? [],
+                kind,
+              );
+              if (!categoryId) {
+                setMessage(
+                  "The account was saved, but no category is available to book the new balance.",
+                );
+                return;
+              }
+              const adjustment = buildBalanceAdjustmentInput({
+                accountId: id,
+                accountName: parsed.data.name,
+                categoryId,
+                currency,
+                currentBalanceMinor,
+                newBalanceMinor,
+              });
+              if (adjustment)
+                await local.workspace.transactionMutations.createTransaction(adjustment);
+            }
+          }
         } else {
           const mutations = local.workspace.transactionMutations;
           const accountId = await mutations.createAccount({
@@ -767,12 +820,15 @@ export function ReferenceEditorScreen() {
             )}
             {entityType === "account" && editing && id && account && modelingState.modeling ? (
               <BalanceAdjustCard
-                accountId={id}
-                accountName={account.name}
                 accountType={account.type}
                 accountCurrency={modelingState.modeling.currency}
                 balancesByCurrency={modelingState.modeling.balancesByCurrency}
                 selectedCurrency={adjustCurrencyValue ?? undefined}
+                draft={balanceDraft}
+                onDraftChange={(draft) => {
+                  setBalanceDraft(draft);
+                  setMessage(null);
+                }}
                 disabled={blocked || saving}
               />
             ) : null}
