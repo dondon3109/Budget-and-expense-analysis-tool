@@ -31,6 +31,7 @@ export function LegalFooter() {
         <a href="/terms-of-service">Terms of Service</a>
         <a href="/privacy-policy">Privacy Policy</a>
         <a href="/cookie-policy">Cookie Policy</a>
+        <a href="/delete-account">Delete account</a>
         <button type="button" data-cookie-preferences-trigger>
           Cookie Settings
         </button>

@@ -26,6 +26,7 @@ export type PublicRoutePath =
   | "/terms-of-service"
   | "/privacy-policy"
   | "/cookie-policy"
+  | "/delete-account"
   | "/faq"
   | "/install"
   | "/changelog"
@@ -48,6 +49,7 @@ export const PUBLIC_ROUTE_PATHS: PublicRoutePath[] = [
   "/terms-of-service",
   "/privacy-policy",
   "/cookie-policy",
+  "/delete-account",
   "/faq",
   "/install",
   "/changelog",
@@ -329,6 +331,7 @@ const CHANGELOG_LAST_MODIFIED = "2026-11-19";
 const TERMS_LAST_MODIFIED = "2026-10-19";
 const PRIVACY_LAST_MODIFIED = "2026-10-19";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-10-22";
+const DELETE_ACCOUNT_LAST_MODIFIED = "2026-11-20";
 const IMPORT_LAST_MODIFIED = "2026-10-03";
 const TOOLS_LAST_MODIFIED = "2026-11-16";
 const SUBSCRIPTION_TOOL_LAST_MODIFIED = "2026-11-16";
@@ -568,6 +571,24 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
       lastModified: COOKIE_POLICY_LAST_MODIFIED,
       changeFrequency: "yearly",
       priority: 0.4,
+    },
+  },
+  "/delete-account": {
+    title: "Delete your account — Zoption",
+    description:
+      "How to delete your Zoption account and its data from the Android app, the web app, or by email, and what is removed or kept.",
+    canonical: `${SITE_ORIGIN}/delete-account`,
+    robots: "index,follow",
+    structuredData: contentPageStructuredData(
+      "Delete your account — Zoption",
+      "How to delete your Zoption account and its data, and what is removed or kept.",
+      `${SITE_ORIGIN}/delete-account`,
+      DELETE_ACCOUNT_LAST_MODIFIED,
+    ),
+    sitemap: {
+      lastModified: DELETE_ACCOUNT_LAST_MODIFIED,
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   },
   "/faq": {

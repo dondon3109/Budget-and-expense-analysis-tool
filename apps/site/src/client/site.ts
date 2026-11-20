@@ -222,6 +222,7 @@ export function setupStickyCta() {
 // Legal pages are where a visitor reads what they are consenting to, so the banner stays off them.
 const CONSENT_BANNER_EXCLUDED_PATHS = new Set([
   "/cookie-policy",
+  "/delete-account",
   "/privacy-policy",
   "/terms-of-service",
 ]);
