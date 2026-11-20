@@ -48,7 +48,7 @@ export function TutorialsScreen() {
         {
           title: "2. View 'Adjust current balance'",
           description:
-            "Scroll down to the 'Adjust current balance' section inside the account editor. You'll see your current ledger balance.",
+            "Scroll down to the 'Adjust current balance' section inside the account editor. You'll see your balance in each currency, with the one you're adjusting highlighted.",
         },
         {
           title: "3. Enter your actual amount",
@@ -57,9 +57,9 @@ export function TutorialsScreen() {
           tip: "A higher balance books an Income Adjustment. A lower balance books an Expense Adjustment under Uncategorized.",
         },
         {
-          title: "4. Save or Undo",
+          title: "4. Save",
           description:
-            "Tap 'Adjust balance'. If you made a mistake or typo, tap 'Undo adjustment' immediately to reverse the change.",
+            "Tap 'Save changes'. To reverse a mistake, delete the 'Balance adjustment' transaction from your history.",
         },
       ],
     },

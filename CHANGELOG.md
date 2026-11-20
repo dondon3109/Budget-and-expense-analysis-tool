@@ -55,6 +55,8 @@ All notable product changes are documented here.
 
 ### Changed
 
+- On mobile, the account editor's Adjust current balance card is simpler: it lists your balance in each currency once, highlights the one you're adjusting, and uses the app's normal text size. Type the new balance and tap Save changes; there is no separate Adjust balance button to tap first. To reverse an adjustment, delete its Balance adjustment entry from your history.
+- On mobile, the Share balance and Share transaction sheets have more space between the description, the name field, the link duration, and the Create link button.
 - A shared balance link now shows the account's current balance, updated live, next to the balance when you shared it, with when it was last updated. It still shows nothing else from the account, and turning the link off or letting it expire stops both. Balance links made before this change keep showing only the frozen amount; transaction links never change.
 - On mobile, a bill's next billing date and a scanned receipt's date are picked from a calendar pop-up, the same one transactions use, instead of typed as YYYY-MM-DD.
 - On Android, Plan and billing no longer offers PayPal or Dodo Payments checkout or plan changes, because Google Play allows only its own billing in the app. A plan bought on the web still applies on your phone, and you can still cancel renewal there.

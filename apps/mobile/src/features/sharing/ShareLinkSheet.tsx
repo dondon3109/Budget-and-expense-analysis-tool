@@ -107,105 +107,110 @@ export function ShareLinkSheet({ target, visible, onDismiss }: ShareLinkSheetPro
       title={target.kind === "transaction" ? "Share transaction" : "Share balance"}
       visible={visible}
     >
-      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-        {target.kind === "transaction"
-          ? "Anyone with the link sees a frozen snapshot, never your accounts or other transactions."
-          : "Anyone with the link sees this balance as shared and as it is now, updated live, never your other accounts or transactions."}{" "}
-        You can turn links off in Settings on the web.
-      </Text>
+      {/* The sheet stacks its children with no gap of its own, so the body spaces its sections. */}
+      <View style={styles.body}>
+        <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+          {target.kind === "transaction"
+            ? "Anyone with the link sees a frozen snapshot, never your accounts or other transactions."
+            : "Anyone with the link sees this balance as shared and as it is now, updated live, never your other accounts or transactions."}{" "}
+          You can turn links off in Settings on the web.
+        </Text>
 
-      {created ? (
-        <View
-          style={[
-            styles.linkCard,
-            { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
-          ]}
-        >
-          <Text style={[typography.label, { color: theme.colors.text }]}>View-only link</Text>
-          <Text
-            accessibilityLabel="Share link"
-            numberOfLines={2}
-            selectable
-            style={[typography.caption, { color: theme.colors.textMuted }]}
+        {created ? (
+          <View
+            style={[
+              styles.linkCard,
+              { backgroundColor: theme.colors.surfaceRaised, borderColor: theme.colors.border },
+            ]}
           >
-            {created.url}
-          </Text>
-          <Button accessibilityLabel="Copy link" icon="content-copy" onPress={copy}>
-            {copied ? "Copied" : "Copy link"}
-          </Button>
-          <Button
-            accessibilityLabel="Share link"
-            icon="share-variant"
-            onPress={() => void Share.share({ message: created.url })}
-            variant="secondary"
-          >
-            Share
-          </Button>
-        </View>
-      ) : (
-        <>
-          {target.kind === "transaction" ? (
+            <Text style={[typography.label, { color: theme.colors.text }]}>View-only link</Text>
+            <Text
+              accessibilityLabel="Share link"
+              numberOfLines={2}
+              selectable
+              style={[typography.caption, { color: theme.colors.textMuted }]}
+            >
+              {created.url}
+            </Text>
+            <Button accessibilityLabel="Copy link" icon="content-copy" onPress={copy}>
+              {copied ? "Copied" : "Copy link"}
+            </Button>
+            <Button
+              accessibilityLabel="Share link"
+              icon="share-variant"
+              onPress={() => void Share.share({ message: created.url })}
+              variant="secondary"
+            >
+              Share
+            </Button>
+          </View>
+        ) : (
+          <>
+            {target.kind === "transaction" ? (
+              <View style={styles.section}>
+                <Text style={[typography.label, { color: theme.colors.text }]}>
+                  Show with the amount
+                </Text>
+                <View style={styles.pillRow}>
+                  {fields.map((field) => (
+                    <Pill
+                      key={field}
+                      label={FIELD_LABELS[field]}
+                      role="checkbox"
+                      selected={show[field]}
+                      onPress={() =>
+                        setShow((current) => ({ ...current, [field]: !current[field] }))
+                      }
+                    />
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            <FormField
+              label="Your name (optional)"
+              maxLength={40}
+              onChangeText={setSharerName}
+              placeholder="Shown as “A Zoption user”"
+              value={sharerName}
+            />
+
             <View style={styles.section}>
-              <Text style={[typography.label, { color: theme.colors.text }]}>
-                Show with the amount
-              </Text>
+              <Text style={[typography.label, { color: theme.colors.text }]}>Link works for</Text>
               <View style={styles.pillRow}>
-                {fields.map((field) => (
+                {shareLinkExpiries.map((option) => (
                   <Pill
-                    key={field}
-                    label={FIELD_LABELS[field]}
-                    role="checkbox"
-                    selected={show[field]}
-                    onPress={() => setShow((current) => ({ ...current, [field]: !current[field] }))}
+                    key={option}
+                    label={EXPIRY_LABELS[option]}
+                    role="radio"
+                    selected={expiry === option}
+                    onPress={() => setExpiry(option)}
                   />
                 ))}
               </View>
             </View>
-          ) : null}
 
-          <FormField
-            label="Your name (optional)"
-            maxLength={40}
-            onChangeText={setSharerName}
-            placeholder="Shown as “A Zoption user”"
-            value={sharerName}
-          />
+            {error ? (
+              <Text
+                accessibilityRole="alert"
+                style={[typography.callout, { color: theme.colors.danger }]}
+              >
+                {error}
+              </Text>
+            ) : null}
 
-          <View style={styles.section}>
-            <Text style={[typography.label, { color: theme.colors.text }]}>Link works for</Text>
-            <View style={styles.pillRow}>
-              {shareLinkExpiries.map((option) => (
-                <Pill
-                  key={option}
-                  label={EXPIRY_LABELS[option]}
-                  role="radio"
-                  selected={expiry === option}
-                  onPress={() => setExpiry(option)}
-                />
-              ))}
-            </View>
-          </View>
-
-          {error ? (
-            <Text
-              accessibilityRole="alert"
-              style={[typography.callout, { color: theme.colors.danger }]}
+            <Button
+              accessibilityLabel="Create link"
+              icon="link-variant"
+              loading={busy}
+              disabled={busy}
+              onPress={() => void create()}
             >
-              {error}
-            </Text>
-          ) : null}
-
-          <Button
-            accessibilityLabel="Create link"
-            icon="link-variant"
-            loading={busy}
-            disabled={busy}
-            onPress={() => void create()}
-          >
-            Create link
-          </Button>
-        </>
-      )}
+              Create link
+            </Button>
+          </>
+        )}
+      </View>
     </BottomSheet>
   );
 }
@@ -249,6 +254,7 @@ function Pill({
 }
 
 const styles = StyleSheet.create({
+  body: { gap: spacing.lg },
   section: { gap: spacing.xs },
   pillRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.xs },
   pill: {
