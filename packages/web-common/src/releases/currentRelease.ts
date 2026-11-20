@@ -14,34 +14,24 @@ export const currentRelease: ProductRelease = {
   releasedOn: "November 20, 2026",
   changes: [
     {
-      title: "Onboarding that fits how you're paid",
+      title: "Bill edits no longer restart the app",
       description:
-        "Setup now asks how often you get paid, how you like to budget, and up to three kinds of spending to watch. Your answers shape a Suggested for you card on the dashboard and Home and the AI Assistant's first question, and you can change them in Account Settings or More, on web and mobile.",
+        "In Android 0.2.67, editing or deleting a bill no longer sends you back to the Opening Zoption screen and then Home, and pulling to refresh keeps you on the screen you were using.",
     },
     {
-      title: "A cleaner Goals page",
+      title: "A simpler Adjust balance",
       description:
-        "On mobile, Goals now looks like Budgets: one saved so far total with a progress bar, goals grouped into Active, Paused, and Completed, and how much is left on each. On the web, Goals & debt shows overall progress, what is left to save, and your total minimum debt payments.",
+        "On Android, the Edit account screen lists each balance once at a normal size, and Save changes records the new balance, so there is no separate Adjust balance button to tap.",
     },
     {
-      title: "Every month budgets count on the dashboard",
+      title: "Shared balances stay current",
       description:
-        "The web dashboard now counts budget limits set to Every month, so its totals match the Budgets page and the Set a monthly budget step in Get started is checked off.",
+        "A balance link you share now shows the account's current balance with the time it was updated, plus the balance when you shared it. Links shared before this keep showing the amount they were created with.",
     },
     {
-      title: "Receipt scanning and Assistant fixes",
+      title: "Pick dates from a calendar",
       description:
-        "On mobile, receipt scanning no longer stays on Checking receipt scanning, and the AI Assistant shows bold words as bold instead of asterisks.",
-    },
-    {
-      title: "Delete your account from anywhere",
-      description:
-        "zoption.site/delete-account explains how to delete your Zoption account from the Android app, the web app, or by email, and what is deleted or kept.",
-    },
-    {
-      title: "Android 0.2.66 comes from Google Play",
-      description:
-        "The Android app now ships only through Google Play, so the APK download and its in-app updater are gone, and Plan and billing on Android no longer offers PayPal or Dodo Payments checkout. A plan bought on the web still applies on your phone.",
+        "On Android, bill and receipt dates open the same calendar pop-up as transactions.",
     },
   ],
 };
@@ -56,6 +46,42 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.8.0",
+    releasedOn: "November 20, 2026",
+    changes: [
+      {
+        title: "Onboarding that fits how you're paid",
+        description:
+          "Setup now asks how often you get paid, how you like to budget, and up to three kinds of spending to watch. Your answers shape a Suggested for you card on the dashboard and Home and the AI Assistant's first question, and you can change them in Account Settings or More, on web and mobile.",
+      },
+      {
+        title: "A cleaner Goals page",
+        description:
+          "On mobile, Goals now looks like Budgets: one saved so far total with a progress bar, goals grouped into Active, Paused, and Completed, and how much is left on each. On the web, Goals & debt shows overall progress, what is left to save, and your total minimum debt payments.",
+      },
+      {
+        title: "Every month budgets count on the dashboard",
+        description:
+          "The web dashboard now counts budget limits set to Every month, so its totals match the Budgets page and the Set a monthly budget step in Get started is checked off.",
+      },
+      {
+        title: "Receipt scanning and Assistant fixes",
+        description:
+          "On mobile, receipt scanning no longer stays on Checking receipt scanning, and the AI Assistant shows bold words as bold instead of asterisks.",
+      },
+      {
+        title: "Delete your account from anywhere",
+        description:
+          "zoption.site/delete-account explains how to delete your Zoption account from the Android app, the web app, or by email, and what is deleted or kept.",
+      },
+      {
+        title: "Android 0.2.66 comes from Google Play",
+        description:
+          "The Android app now ships only through Google Play, so the APK download and its in-app updater are gone, and Plan and billing on Android no longer offers PayPal or Dodo Payments checkout. A plan bought on the web still applies on your phone.",
+      },
+    ],
+  },
   {
     version: "4.7.0",
     releasedOn: "November 19, 2026",
