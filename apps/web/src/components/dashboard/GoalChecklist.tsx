@@ -19,7 +19,7 @@ import { financialGoalsQueryOptions } from "../../queries/goals";
 import "./GoalChecklist.css";
 
 /** Renders a CTA or checklist target: a link for a route, a button for an in-app action. */
-function GoalTarget({
+export function GoalTarget({
   target,
   className,
   onAction,

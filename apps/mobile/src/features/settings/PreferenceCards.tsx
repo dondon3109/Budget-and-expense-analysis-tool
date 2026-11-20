@@ -8,6 +8,7 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 import { typography } from "@/ui/tokens";
 import { VoiceLanguagePicker } from "@/ui/voice-language-picker";
 import { GoalSettingsCard } from "@/features/primary-goal/GoalSettingsCard";
+import { MoneyPreferencesCard } from "@/features/primary-goal/MoneyPreferencesCard";
 import { PetSettingsCard } from "@/features/pet/PetSettingsCard";
 import { UsageAnalyticsCard } from "@/features/usage-analytics/UsageAnalytics";
 import { DailyReminderCard } from "./DailyReminderCard";
@@ -15,7 +16,7 @@ import { ReduceMotionCard } from "./ReduceMotionCard";
 import { SoundEffectsCard } from "./SoundEffectsCard";
 import { WorkspaceCurrencyCard } from "./WorkspaceCurrencyCard";
 
-/** Currency, goal, theme, voice language, daily reminder, pet, sound, motion, and usage analytics pickers as one group, each folded to its current choice until opened. */
+/** Currency, goal, money habits, theme, voice language, daily reminder, pet, sound, motion, and usage analytics pickers as one group, each folded to its current choice until opened. */
 export function PreferenceCards() {
   const theme = useZoptionTheme();
   const themePreference = useThemeStore((state) => state.preference);
@@ -26,6 +27,7 @@ export function PreferenceCards() {
     <MenuGroup title="Preferences">
       <WorkspaceCurrencyCard />
       <GoalSettingsCard />
+      <MoneyPreferencesCard />
       <CollapsibleCard
         title="Theme"
         summary={themePreferenceLabel(themePreference)}

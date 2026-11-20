@@ -1,10 +1,11 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import type { PetView } from "@zoption/shared";
+import { emptyMoneyPreferences, hasMoneyPreferences, type PetView } from "@zoption/shared";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { EggPicker } from "@/features/pet/EggPicker";
 import { usePetActions } from "@/features/pet/use-pet-actions";
 import { GoalChoices } from "@/features/primary-goal/GoalChoices";
+import { PreferenceChoices } from "@/features/primary-goal/PreferenceChoices";
 import { useGoalActions } from "@/features/primary-goal/use-goal-actions";
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
@@ -170,6 +171,39 @@ export function GoalsStep({ progress, onNext }: StepProps) {
       {actions.error ? <Failure message={actions.error} /> : null}
       {/* Skip always moves on, even offline; the goal prompt asks again on a later launch. */}
       <Button variant="quiet" onPress={() => void actions.skip().finally(onNext)}>
+        Skip for now
+      </Button>
+    </SetupDialog>
+  );
+}
+
+/**
+ * Pay cadence, budgeting style, and spending focus, asked here only while none are saved. Every
+ * answer is optional: Continue with nothing picked saves nothing, and Skip always moves on, even
+ * offline.
+ */
+export function PreferencesStep({ progress, onNext }: StepProps) {
+  const actions = useGoalActions();
+  return (
+    <SetupDialog
+      progress={progress}
+      title="How do you manage money?"
+      description="Zoption uses these to suggest your first steps and tailor what the assistant asks about."
+    >
+      <PreferenceChoices
+        preferences={emptyMoneyPreferences}
+        confirmLabel="Continue"
+        disabled={actions.busy}
+        onSave={(preferences) => {
+          if (!hasMoneyPreferences(preferences)) {
+            onNext();
+            return;
+          }
+          void actions.savePreferences(preferences).then((saved) => saved && onNext());
+        }}
+      />
+      {actions.error ? <Failure message={actions.error} /> : null}
+      <Button variant="quiet" disabled={actions.busy} onPress={onNext}>
         Skip for now
       </Button>
     </SetupDialog>

@@ -1,5 +1,6 @@
 import {
   currencyMetadata,
+  hasMoneyPreferences,
   onboardingCashSchema,
   parseAmountToMinor,
   type Currency,
@@ -13,12 +14,15 @@ import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatu
 import { CurrencyPicker } from "../components/onboarding/CurrencyPicker";
 import { GoalPicker } from "../components/onboarding/GoalPicker";
 import { PersonalizeStep } from "../components/onboarding/PersonalizeStep";
+import { PreferencesPicker } from "../components/onboarding/PreferencesPicker";
 import { isApiRequestError } from "../lib/api";
 import { userWorkspace, type AuthenticatedWorkspace } from "../lib/workspace";
 import {
   useGoalProfile,
   useMarkGoalShown,
+  useMoneyPreferences,
   useSaveGoals,
+  useSaveMoneyPreferences,
   useSkipGoal,
 } from "../queries/goalProfile";
 import {
@@ -28,7 +32,15 @@ import {
 } from "../queries/onboarding";
 import "./OnboardingPage.css";
 
-const STEPS = ["Your goal", "Base currency", "Starting cash", "Make it yours"] as const;
+const STEPS = [
+  "Your goal",
+  "Your money habits",
+  "Base currency",
+  "Starting cash",
+  "Make it yours",
+] as const;
+
+const STEP_INDEX = { goal: 0, preferences: 1, currency: 2, cash: 3, complete: 4 } as const;
 
 /** The user's calendar day, which the server cannot know. */
 function localDate(): string {
@@ -93,6 +105,41 @@ function GoalStep({
   );
 }
 
+/**
+ * Pay cadence, budgeting style, and spending focus. Like the goal, it never blocks: a saved answer,
+ * a failed save, and a skip all move on.
+ */
+function PreferencesStep({
+  workspace,
+  onDone,
+}: {
+  workspace: AuthenticatedWorkspace;
+  onDone: () => void;
+}) {
+  const save = useSaveMoneyPreferences(workspace);
+  return (
+    <div className="auth-form">
+      <p className="onboarding-help">
+        Zoption uses these to suggest your first steps and tailor what the AI asks about. Answer any
+        you like.
+      </p>
+      <PreferencesPicker
+        preferences={{ incomeCadence: null, budgetingStyle: null, spendingFocus: [] }}
+        disabled={save.isPending}
+        confirmLabel="Continue"
+        onSave={(preferences) =>
+          hasMoneyPreferences(preferences)
+            ? save.mutateAsync(preferences).then(onDone, onDone)
+            : onDone()
+        }
+      />
+      <button className="button secondary" type="button" disabled={save.isPending} onClick={onDone}>
+        Skip
+      </button>
+    </div>
+  );
+}
+
 function Stepper({ current }: { current: number }) {
   return (
     <ol className="onboarding-stepper" aria-label="Setup progress">
@@ -136,6 +183,7 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const navigate = useNavigate();
   const stateQuery = useOnboarding(workspace);
   const goalQuery = useGoalProfile(workspace);
+  const preferencesQuery = useMoneyPreferences(workspace);
   const saveCurrency = useSaveOnboardingCurrency(workspace);
   const saveCash = useSaveOnboardingCashBalance(workspace);
   const currencyId = useId();
@@ -147,9 +195,13 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const [steppedBack, setSteppedBack] = useState(false);
   const [finished, setFinished] = useState(false);
   const [goalDismissed, setGoalDismissed] = useState(false);
+  const [preferencesDismissed, setPreferencesDismissed] = useState(false);
   const [openingBalanceSkipped, setOpeningBalanceSkipped] = useState(false);
 
-  if (stateQuery.isPending || (stateQuery.data?.step === "currency" && goalQuery.isPending))
+  if (
+    stateQuery.isPending ||
+    (stateQuery.data?.step === "currency" && (goalQuery.isPending || preferencesQuery.isPending))
+  )
     return (
       <FullPageLoadingStatus
         title="Getting your setup ready"
@@ -192,7 +244,21 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
     !goalDismissed &&
     goalProfile?.goal === null &&
     !goalProfile.skipped;
-  const view = finished ? "complete" : askGoal ? "goal" : steppedBack ? "currency" : state.step;
+  // The same rule for the money habits, which come right after the goal.
+  const askPreferences =
+    state.step === "currency" &&
+    !finished &&
+    !preferencesDismissed &&
+    preferencesQuery.isSuccess &&
+    !hasMoneyPreferences(preferencesQuery.data);
+  const view = currentView();
+  function currentView() {
+    if (finished) return "complete";
+    if (askGoal) return "goal";
+    if (askPreferences) return "preferences";
+    if (steppedBack) return "currency";
+    return state.step;
+  }
   const selected = pickedCurrency ?? state.currency;
   const { symbol } = currencyMetadata[state.currency];
   const amountCheck = checkAmount(amount);
@@ -231,11 +297,13 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
       title={
         view === "goal"
           ? "What brings you to Zoption?"
-          : view === "currency"
-            ? "Choose your base currency"
-            : view === "cash"
-              ? "How much cash do you have?"
-              : "Make it yours"
+          : view === "preferences"
+            ? "How do you manage money?"
+            : view === "currency"
+              ? "Choose your base currency"
+              : view === "cash"
+                ? "How much cash do you have?"
+                : "Make it yours"
       }
       description={
         view === "complete"
@@ -243,9 +311,13 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
           : "A few quick questions, then you can start tracking."
       }
     >
-      <Stepper current={view === "goal" ? 0 : view === "currency" ? 1 : view === "cash" ? 2 : 3} />
+      <Stepper current={STEP_INDEX[view]} />
 
       {view === "goal" && <GoalStep workspace={workspace} onDone={() => setGoalDismissed(true)} />}
+
+      {view === "preferences" && (
+        <PreferencesStep workspace={workspace} onDone={() => setPreferencesDismissed(true)} />
+      )}
 
       {view === "currency" && (
         <form className="auth-form" onSubmit={(event) => void confirmCurrency(event)}>

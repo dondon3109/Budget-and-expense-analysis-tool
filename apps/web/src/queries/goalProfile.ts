@@ -1,6 +1,14 @@
+import type { MoneyPreferences } from "@zoption/shared";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getGoalProfile, markGoalShown, saveGoals, skipGoal } from "../lib/api";
+import {
+  getGoalProfile,
+  getMoneyPreferences,
+  markGoalShown,
+  saveGoals,
+  saveMoneyPreferences,
+  skipGoal,
+} from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 
@@ -38,4 +46,22 @@ export function useSkipGoal(workspace: AuthenticatedWorkspace) {
 
 export function useMarkGoalShown(workspace: AuthenticatedWorkspace) {
   return useMutation({ mutationFn: () => markGoalShown(workspace) });
+}
+
+/** The workspace's money preferences, which tailor dashboard suggestions and assistant prompts. */
+export function useMoneyPreferences(workspace: AuthenticatedWorkspace) {
+  return useQuery({
+    queryKey: queryKeys.moneyPreferences(workspace),
+    queryFn: () => getMoneyPreferences(workspace),
+    staleTime: Infinity,
+  });
+}
+
+export function useSaveMoneyPreferences(workspace: AuthenticatedWorkspace) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MoneyPreferences) => saveMoneyPreferences(workspace, input),
+    onSuccess: (preferences) =>
+      queryClient.setQueryData(queryKeys.moneyPreferences(workspace), preferences),
+  });
 }

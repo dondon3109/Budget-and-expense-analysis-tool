@@ -44,7 +44,7 @@ import { queryKeys } from "../lib/queryKeys";
 import { userWorkspace } from "../lib/workspace";
 import { assistantPreferencesQueryOptions } from "../queries/assistant";
 import { invalidateBillingSummary } from "../queries/billing";
-import { useGoalProfile } from "../queries/goalProfile";
+import { useGoalProfile, useMoneyPreferences } from "../queries/goalProfile";
 import { invalidateAfterAccountWrite } from "../queries/accounts";
 import { invalidateAfterTransactionWrite } from "../queries/transactions";
 import "./AssistantPage.css";
@@ -60,6 +60,7 @@ export function AssistantPage() {
   const navigate = useNavigate();
   const billingQuery = useBillingSummary(workspace);
   const goal = useGoalProfile(workspace).data?.goal ?? null;
+  const moneyPreferences = useMoneyPreferences(workspace).data ?? null;
   const [liveText, setLiveText] = useState("");
   const { activeThreadId, draft, setActiveThreadId, setDraft, startNewChat } =
     useAssistantSession();
@@ -396,6 +397,7 @@ export function AssistantPage() {
           workspace={workspace}
           assistantName={assistantName}
           goal={goal}
+          moneyPreferences={moneyPreferences}
           onClose={() => setVoiceOpen(false)}
           onTurnComplete={(result) => {
             cacheTurn(result);
@@ -484,6 +486,7 @@ export function AssistantPage() {
               <AssistantConversation
                 assistantName={assistantName}
                 goal={goal}
+                moneyPreferences={moneyPreferences}
                 messages={messages.data?.items ?? []}
                 pendingMessage={pendingMessage}
                 loading={sendMutation.isPending || (Boolean(activeThreadId) && messages.isLoading)}

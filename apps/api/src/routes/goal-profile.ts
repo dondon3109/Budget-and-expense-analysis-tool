@@ -1,4 +1,4 @@
-import { goalSelectionSchema, goalsSelectionSchema } from "@zoption/shared";
+import { goalSelectionSchema, goalsSelectionSchema, moneyPreferencesSchema } from "@zoption/shared";
 import { Hono } from "hono";
 
 import type { GoalProfileRepository } from "../db/goal-profile";
@@ -41,6 +41,22 @@ export function createGoalProfileRoutes(repository: GoalProfileRepository) {
     const input = parseInput(goalsSelectionSchema, await readJson(context), "Choose a goal.");
     return context.json(
       await repository.selectGoals(context.env, context.get("tenant").tenantId, input),
+    );
+  });
+
+  // Pay cadence, budgeting style, and spending focus. Asked with the goals, so not gated either.
+  routes.get("/preferences", async (context) =>
+    context.json(await repository.getPreferences(context.env, context.get("tenant").tenantId)),
+  );
+
+  routes.put("/preferences", async (context) => {
+    const input = parseInput(
+      moneyPreferencesSchema,
+      await readJson(context),
+      "Check your money preferences.",
+    );
+    return context.json(
+      await repository.savePreferences(context.env, context.get("tenant").tenantId, input),
     );
   });
 

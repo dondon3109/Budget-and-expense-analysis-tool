@@ -3,6 +3,7 @@ import {
   assistantTransactionDraftSchema,
   DEFAULT_ASSISTANT_MODEL,
   type AssistantTransactionDraft,
+  type MoneyPreferences,
   type PrimaryGoal,
 } from "@zoption/shared";
 import { goalProfileRepository } from "../db/goal-profile";
@@ -161,6 +162,7 @@ function providerMessages(
   policy: AssistantTurnPolicy,
   memory: string,
   goal: PrimaryGoal | null,
+  preferences: MoneyPreferences | null,
 ): AssistantProviderMessage[] {
   // Two system messages so a provider can cache the shared rules apart from this turn's
   // context; chat-completions providers receive them joined, rules first.
@@ -175,6 +177,7 @@ function providerMessages(
         policy,
         memory,
         goal,
+        preferences,
       ),
     },
     ...boundedHistory(history).map((item) => ({ role: item.role, content: item.content }) as const),
@@ -327,12 +330,23 @@ export function createAssistantOrchestrator(
       // Correlates this turn's metadata-only diagnostics. The draft, the question,
       // and any transcript text stay out of the Worker logs.
       const correlationId = crypto.randomUUID();
-      // The goal only personalizes tone; a failed read must never block the turn.
+      // The goal and preferences only personalize tone; a failed read must never block the turn.
       const goal = await goalProfileRepository
         .get(env, tenantId)
         .then((profile) => profile.goal)
         .catch(() => null);
-      const messages = providerMessages(history, message, identity, policy, memory, goal);
+      const preferences = await goalProfileRepository
+        .getPreferences(env, tenantId)
+        .catch(() => null);
+      const messages = providerMessages(
+        history,
+        message,
+        identity,
+        policy,
+        memory,
+        goal,
+        preferences,
+      );
       // A turn can need all four provider calls (tool round, draft, corrective
       // retry) at up to the per-call provider ceiling each, plus tool time, so
       // the overall budget must comfortably exceed 4 x provider timeout.

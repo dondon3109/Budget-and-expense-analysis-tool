@@ -115,3 +115,13 @@
   width: 100%;
   margin-top: 12px;
 }
+
+.preferences-picker {
+  display: grid;
+  gap: 20px;
+}
+
+.goal-picker .goal-picker-option:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

@@ -10,38 +10,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
 
-// Kept in step with `primaryGoals` in packages/shared/src/goals.ts (a test checks).
-export const primaryGoals = [
-  "track_spending",
-  "build_budget",
-  "save_for_goal",
-  "reduce_debt",
-  "understand_habits",
-  "just_exploring",
-  "other",
-] as const;
-
-export const timestamps = {
-  createdAt: text("created_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-  updatedAt: text("updated_at")
-    .notNull()
-    .default(sql`(datetime('now'))`),
-};
-
-export const tenants = sqliteTable("tenants", {
-  id: text("id").primaryKey(),
-  kind: text("kind", { enum: ["user", "family"] }).notNull(),
-  name: text("name").notNull(),
-  currency: text("currency").notNull().default("PHP"),
-  primaryGoal: text("primary_goal", { enum: primaryGoals }),
-  goalSelectedAt: text("goal_selected_at"),
-  goalSkipped: integer("goal_skipped", { mode: "boolean" }).notNull().default(false),
-  goalOtherText: text("goal_other_text"),
-  secondaryGoals: text("secondary_goals").notNull().default("[]"),
-  ...timestamps,
-});
+import { tenants, timestamps } from "./schema-tenants";
 
 export const userTenants = sqliteTable(
   "user_tenants",
@@ -998,3 +967,4 @@ export * from "./schema-push";
 export * from "./schema-family";
 export * from "./schema-sharing";
 export * from "./schema-billing";
+export * from "./schema-tenants";

@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { saveGoals, skipGoal } from "@/api/goal-profile";
+import { saveGoals, saveMoneyPreferences, skipGoal } from "@/api/goal-profile";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
-import type { PrimaryGoal } from "@zoption/shared";
+import type { MoneyPreferences, PrimaryGoal } from "@zoption/shared";
 
 /** `goals` is in the order they were picked; the first is the lead goal. */
 export type GoalChoice = { goals: PrimaryGoal[]; otherText?: string };
@@ -15,6 +15,7 @@ export type GoalChoice = { goals: PrimaryGoal[]; otherText?: string };
 export function useGoalActions() {
   const session = useSessionSnapshot();
   const setProfile = useGoalProfileStore((state) => state.setProfile);
+  const setPreferences = useGoalProfileStore((state) => state.setPreferences);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,5 +45,7 @@ export function useGoalActions() {
         const { goal, otherText, selectedAt, skipped } = await skipGoal(api);
         setProfile({ goals: goal ? [goal] : [], otherText, selectedAt, skipped });
       }),
+    savePreferences: (preferences: MoneyPreferences) =>
+      run(async (api) => setPreferences(await saveMoneyPreferences(api, preferences))),
   };
 }

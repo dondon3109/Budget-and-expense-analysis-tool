@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 
-import { skipGoal } from "@/api/goal-profile";
+import { saveMoneyPreferences, skipGoal } from "@/api/goal-profile";
 import { saveOnboardingCash } from "@/api/onboarding";
 import { choosePetEgg, setPetEnabled } from "@/api/pet";
 import { babyPet, noPet } from "@/features/pet/pet-test-fixtures";
@@ -16,7 +16,11 @@ jest.mock("expo-router", () => ({
   router: { back: jest.fn(), push: jest.fn(), replace: jest.fn() },
 }));
 jest.mock("@/api/pet", () => ({ setPetEnabled: jest.fn(), choosePetEgg: jest.fn() }));
-jest.mock("@/api/goal-profile", () => ({ saveGoals: jest.fn(), skipGoal: jest.fn() }));
+jest.mock("@/api/goal-profile", () => ({
+  saveGoals: jest.fn(),
+  skipGoal: jest.fn(),
+  saveMoneyPreferences: jest.fn(),
+}));
 jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({ subject: "user-1", getAccessToken: async () => "token" }),
 }));
@@ -147,5 +151,43 @@ describe("OnboardingScreen", () => {
     await fireEvent.press(continueButton());
     expect(await screen.findByText("Offline.")).toBeTruthy();
     expect(router.back).not.toHaveBeenCalled();
+  });
+
+  it("asks the money habits after the pet when none are saved, and saves the answers", async () => {
+    useGoalProfileStore
+      .getState()
+      .setPreferences({ incomeCadence: null, budgetingStyle: null, spendingFocus: [] });
+    jest.mocked(setPetEnabled).mockResolvedValue({ ...noPet, enabled: false });
+    jest.mocked(saveMoneyPreferences).mockImplementation(async (_api, input) => input);
+    await saveCash("0");
+
+    await fireEvent.press(continueButton());
+    await fireEvent.press(await screen.findByRole("radio", { name: /No pet for now/ }));
+    await fireEvent.press(continueButton());
+    expect(await screen.findByText("How do you manage money?")).toBeTruthy();
+
+    await fireEvent.press(screen.getByRole("radio", { name: "Twice a month (kinsenas)" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Bills and subscriptions" }));
+    await fireEvent.press(continueButton());
+    expect(await screen.findByText("Thank you for setting up Zoption")).toBeTruthy();
+    expect(saveMoneyPreferences).toHaveBeenCalledWith(
+      { accessToken: "token" },
+      { incomeCadence: "semi_monthly", budgetingStyle: null, spendingFocus: ["bills"] },
+    );
+    expect(useGoalProfileStore.getState().preferences?.incomeCadence).toBe("semi_monthly");
+  });
+
+  it("leaves the money habits out when they are saved or unknown", async () => {
+    useGoalProfileStore
+      .getState()
+      .setPreferences({ incomeCadence: "monthly", budgetingStyle: null, spendingFocus: [] });
+    jest.mocked(setPetEnabled).mockResolvedValue({ ...noPet, enabled: false });
+    await saveCash("0");
+
+    await fireEvent.press(continueButton());
+    await fireEvent.press(await screen.findByRole("radio", { name: /No pet for now/ }));
+    await fireEvent.press(continueButton());
+    expect(await screen.findByText("Thank you for setting up Zoption")).toBeTruthy();
+    expect(screen.queryByText("How do you manage money?")).toBeNull();
   });
 });

@@ -17,6 +17,7 @@ import { useOnboardingPrompt } from "@/features/onboarding/use-onboarding-prompt
 import { PetMomentModal } from "@/features/pet/PetMomentModal";
 import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
+import { PreferenceSuggestionsCard } from "@/features/primary-goal/PreferenceSuggestionsCard";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
 import { useSyncState } from "@/sync/sync-state";
 import { ErrorState, OfflineBanner, Skeleton, SyncStatus, ViewSwitch } from "@/ui/components";
@@ -152,7 +153,12 @@ export function HomeScreen() {
             </>
           ) : null}
           {inFamily ? null : (
-            <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
+            <>
+              <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
+              <PreferenceSuggestionsCard
+                hasBudget={view.summary.budgetProgress.some((item) => item.limitMinor > 0)}
+              />
+            </>
           )}
           {hasTransactions ? (
             <>

@@ -1,5 +1,7 @@
 import {
   goalsProfileSchema,
+  moneyPreferencesSchema,
+  type MoneyPreferences,
   type GoalsProfile,
   type GoalsSelection,
   type PrimaryGoal,
@@ -41,4 +43,23 @@ export async function skipGoal(workspace: AuthenticatedWorkspace): Promise<GoalP
 /** Records that the goal screen was shown; the server keeps one row per workspace. */
 export async function markGoalShown(workspace: AuthenticatedWorkspace): Promise<void> {
   await requestJson<void>(workspace, `${PATH}/goal/shown`, { method: "POST" });
+}
+
+/** Pay cadence, budgeting style, and spending focus; unanswered fields are null or empty. */
+export async function getMoneyPreferences(
+  workspace: AuthenticatedWorkspace,
+): Promise<MoneyPreferences> {
+  return moneyPreferencesSchema.parse(await requestJson(workspace, `${PATH}/preferences`));
+}
+
+export async function saveMoneyPreferences(
+  workspace: AuthenticatedWorkspace,
+  input: MoneyPreferences,
+): Promise<MoneyPreferences> {
+  return moneyPreferencesSchema.parse(
+    await requestJson(workspace, `${PATH}/preferences`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  );
 }

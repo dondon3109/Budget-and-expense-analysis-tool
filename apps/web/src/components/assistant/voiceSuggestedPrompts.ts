@@ -1,4 +1,9 @@
-import { goalConfigFor, type PrimaryGoal } from "@zoption/shared";
+import {
+  goalConfigFor,
+  preferenceStarterPrompt,
+  type MoneyPreferences,
+  type PrimaryGoal,
+} from "@zoption/shared";
 
 export const VOICE_SUGGESTED_PROMPTS = [
   "How much did I spend this month?",
@@ -14,10 +19,14 @@ export const VOICE_SUGGESTED_PROMPTS_TAGALOG = [
   "Aling utang ang dapat kong unahing bayaran?",
 ] as const;
 
-/** Suggestions for the empty state; the goal's starter prompt leads when a goal is set. */
+/**
+ * Suggestions for the empty state; the goal's starter prompt leads when a goal is set, then the
+ * money preferences' one.
+ */
 export function voiceSuggestedPrompts(
   voiceLanguage: string,
   goal: PrimaryGoal | null | undefined,
+  preferences?: MoneyPreferences | null,
 ): readonly string[] {
   // Auto and Tagalog interleave both languages so a short list still shows each.
   const defaults =
@@ -27,6 +36,9 @@ export function voiceSuggestedPrompts(
           VOICE_SUGGESTED_PROMPTS[index]!,
           tagalog,
         ]);
-  const starter = goalConfigFor(goal).starterPrompt;
-  return starter ? [starter, ...defaults.filter((prompt) => prompt !== starter)] : defaults;
+  const starters = [goalConfigFor(goal).starterPrompt, preferenceStarterPrompt(preferences)].filter(
+    (starter): starter is string => Boolean(starter),
+  );
+  if (starters.length === 0) return defaults;
+  return [...new Set([...starters, ...defaults])];
 }

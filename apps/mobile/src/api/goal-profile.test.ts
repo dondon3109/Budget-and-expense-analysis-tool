@@ -2,7 +2,14 @@ jest.mock("@/config/public-config", () => ({
   publicConfig: { apiUrl: "https://api.zoption.test" },
 }));
 
-import { getGoalsProfile, markGoalShown, saveGoals, skipGoal } from "./goal-profile";
+import {
+  getGoalsProfile,
+  getMoneyPreferences,
+  markGoalShown,
+  saveGoals,
+  saveMoneyPreferences,
+  skipGoal,
+} from "./goal-profile";
 
 const profile = {
   goals: ["build_budget", "reduce_debt"],
@@ -66,5 +73,30 @@ describe("goal profile api", () => {
       const fetchImpl = jest.fn(() => Promise.resolve(jsonResponse(body)));
       await expect(getGoalsProfile({ accessToken: "token", fetchImpl })).rejects.toThrow();
     }
+  });
+
+  it("reads and PUTs the money habits, and rejects an unknown value", async () => {
+    const preferences = {
+      incomeCadence: "semi_monthly",
+      budgetingStyle: null,
+      spendingFocus: ["food"],
+    } as const;
+    const fetchImpl = jest.fn(() => Promise.resolve(jsonResponse(preferences)));
+    await expect(getMoneyPreferences({ accessToken: "token", fetchImpl })).resolves.toEqual(
+      preferences,
+    );
+    await saveMoneyPreferences(
+      { accessToken: "token", fetchImpl },
+      { ...preferences, spendingFocus: ["food"] },
+    );
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      "https://api.zoption.test/api/app/profile/preferences",
+      expect.objectContaining({ method: "PUT" }),
+    );
+
+    const bad = jest.fn(() =>
+      Promise.resolve(jsonResponse({ ...preferences, incomeCadence: "daily" })),
+    );
+    await expect(getMoneyPreferences({ accessToken: "token", fetchImpl: bad })).rejects.toThrow();
   });
 });

@@ -7,7 +7,12 @@ import {
   type GoalSelection,
   type GoalsProfile,
   type GoalsSelection,
+  incomeCadences,
+  budgetingStyles,
+  type MoneyPreferences,
   type PrimaryGoal,
+  spendingFocuses,
+  type SpendingFocus,
 } from "@zoption/shared";
 
 import type { Bindings } from "../types";
@@ -22,6 +27,13 @@ export interface GoalProfileRepository {
   selectGoals(env: Bindings, tenantId: string, input: GoalsSelection): Promise<GoalsProfile>;
   /** Skipping never clears a goal that was already chosen. */
   skip(env: Bindings, tenantId: string): Promise<GoalProfile>;
+  getPreferences(env: Bindings, tenantId: string): Promise<MoneyPreferences>;
+  /** Replaces every preference; a null or empty field clears that answer. */
+  savePreferences(
+    env: Bindings,
+    tenantId: string,
+    input: MoneyPreferences,
+  ): Promise<MoneyPreferences>;
 }
 
 interface GoalRow {
@@ -52,6 +64,43 @@ function parseSecondary(json: string, lead: PrimaryGoal | null): PrimaryGoal[] {
     seen.add(goal);
     return true;
   });
+}
+
+interface PreferencesRow {
+  incomeCadence: string | null;
+  budgetingStyle: string | null;
+  spendingFocus: string;
+}
+
+function knownOrNull<T extends string>(values: readonly T[], value: string | null): T | null {
+  return values.includes(value as T) ? (value as T) : null;
+}
+
+/** The CHECKs keep the columns valid; anything unexpected reads as not answered anyway. */
+function parseFocus(json: string): SpendingFocus[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(json);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const known = new Set<unknown>(spendingFocuses);
+  return [...new Set(parsed)].filter((key): key is SpendingFocus => known.has(key));
+}
+
+async function loadPreferences(env: Bindings, tenantId: string): Promise<MoneyPreferences> {
+  const row = await env.DB.prepare(
+    `SELECT income_cadence AS incomeCadence, budgeting_style AS budgetingStyle,
+       spending_focus AS spendingFocus FROM tenants WHERE id = ?`,
+  )
+    .bind(tenantId)
+    .first<PreferencesRow>();
+  return {
+    incomeCadence: knownOrNull(incomeCadences, row?.incomeCadence ?? null),
+    budgetingStyle: knownOrNull(budgetingStyles, row?.budgetingStyle ?? null),
+    spendingFocus: parseFocus(row?.spendingFocus ?? "[]"),
+  };
 }
 
 async function loadGoals(env: Bindings, tenantId: string): Promise<GoalsProfile> {
@@ -203,5 +252,24 @@ export const goalProfileRepository: GoalProfileRepository = {
       ).bind(tenantId),
     ]);
     return loadProfile(env, tenantId);
+  },
+
+  getPreferences: loadPreferences,
+
+  async savePreferences(env, tenantId, input) {
+    await env.DB.prepare(
+      `UPDATE tenants
+         SET income_cadence = ?, budgeting_style = ?, spending_focus = ?,
+             updated_at = datetime('now')
+         WHERE id = ?`,
+    )
+      .bind(
+        input.incomeCadence,
+        input.budgetingStyle,
+        JSON.stringify(input.spendingFocus),
+        tenantId,
+      )
+      .run();
+    return loadPreferences(env, tenantId);
   },
 };

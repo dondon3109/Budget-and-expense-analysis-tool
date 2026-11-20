@@ -1,5 +1,6 @@
 import {
   CURRENT_ASSISTANT_VOICE_CONSENT_VERSION,
+  type MoneyPreferences,
   type PrimaryGoal,
   type AssistantTurnResult,
   type AssistantVoicePreferences,
@@ -71,6 +72,7 @@ interface Caption {
 
 interface AssistantVoiceConversationProps {
   goal?: PrimaryGoal | null;
+  moneyPreferences?: MoneyPreferences | null;
   workspace: AuthenticatedWorkspace;
   assistantName: string;
   onClose: () => void;
@@ -97,6 +99,7 @@ export function AssistantVoiceConversation({
   workspace,
   assistantName,
   goal,
+  moneyPreferences,
   onClose,
   onTurnComplete,
 }: AssistantVoiceConversationProps) {
@@ -911,7 +914,7 @@ export function AssistantVoiceConversation({
                   role="group"
                   aria-label="Suggested questions"
                 >
-                  {voiceSuggestedPrompts(voiceLanguage, goal)
+                  {voiceSuggestedPrompts(voiceLanguage, goal, moneyPreferences)
                     .slice(0, 4)
                     .map((prompt) => (
                       <button
