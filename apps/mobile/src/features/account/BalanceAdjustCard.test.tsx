@@ -1,47 +1,38 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
+import { useState } from "react";
 
-import { useLocalReferenceData, useLocalWorkspace } from "@/db/local-workspace-state";
-import type { LocalWorkspace } from "@/db/workspace";
+import type { Currency, CurrencyTotals } from "@zoption/shared";
+
 import { BalanceAdjustCard } from "./BalanceAdjustCard";
+import { emptyBalanceDraft, type BalanceDraft } from "./balance-adjustment";
 
-jest.mock("@/db/local-workspace-state", () => ({
-  useLocalReferenceData: jest.fn(),
-  useLocalWorkspace: jest.fn(),
-}));
+const onDraft = jest.fn();
 
-jest.mock("@/sync/sync-state", () => ({
-  useSyncState: () => ({ retry: jest.fn() }),
-}));
-
-const createTransaction = jest.fn();
+/** Holds the draft the way the account editor does. */
+function Harness(props: {
+  accountType: string;
+  balancesByCurrency: CurrencyTotals;
+  selectedCurrency?: Currency;
+}) {
+  const [draft, setDraft] = useState<BalanceDraft>(emptyBalanceDraft);
+  return (
+    <BalanceAdjustCard
+      accountCurrency="PHP"
+      draft={draft}
+      onDraftChange={(next) => {
+        onDraft(next);
+        setDraft(next);
+      }}
+      {...props}
+    />
+  );
+}
 
 describe("BalanceAdjustCard", () => {
-  beforeEach(() => {
-    createTransaction.mockReset().mockResolvedValue("tx-adjust");
-    jest.mocked(useLocalWorkspace).mockReturnValue({
-      workspace: { transactionMutations: { createTransaction } } as unknown as LocalWorkspace,
-    } as ReturnType<typeof useLocalWorkspace>);
-    jest.mocked(useLocalReferenceData).mockReturnValue({
-      data: {
-        accounts: [],
-        categories: [
-          { id: "cat-income", name: "Uncategorized", kind: "income" },
-          { id: "cat-expense", name: "Uncategorized", kind: "expense" },
-        ],
-      },
-    } as unknown as ReturnType<typeof useLocalReferenceData>);
-  });
+  beforeEach(() => onDraft.mockReset());
 
-  it("opens a USD balance in a PHP bank account", async () => {
-    await render(
-      <BalanceAdjustCard
-        accountId="acc-bank"
-        accountName="Bank"
-        accountType="checking"
-        accountCurrency="PHP"
-        balancesByCurrency={{ PHP: 50_000 }}
-      />,
-    );
+  it("drafts an opening USD balance in a PHP bank account", async () => {
+    await render(<Harness accountType="checking" balancesByCurrency={{ PHP: 50_000 }} />);
 
     // The new-currency picker stays hidden until the user asks to add one.
     expect(screen.queryByRole("button", { name: "New currency" })).toBeNull();
@@ -51,69 +42,34 @@ describe("BalanceAdjustCard", () => {
     expect(screen.queryByLabelText("Philippine Peso (PHP)")).toBeNull();
     await fireEvent.press(screen.getByLabelText("US Dollar (USD)"));
     await fireEvent.changeText(screen.getByPlaceholderText("0.00"), "120");
-    await fireEvent.press(screen.getByRole("button", { name: "Add USD balance" }));
 
-    await waitFor(() =>
-      expect(createTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          kind: "income",
-          accountId: "acc-bank",
-          amountMinor: 12_000,
-          currency: "USD",
-        }),
-      ),
-    );
+    expect(onDraft).toHaveBeenLastCalledWith({ adding: true, newCurrency: "USD", amount: "120" });
   });
 
-  it("lists every currency a bank account holds", async () => {
+  it("lists each held balance once, highlighting the one being adjusted", async () => {
     await render(
-      <BalanceAdjustCard
-        accountId="acc-bank"
-        accountName="Bank"
+      <Harness
         accountType="savings"
-        accountCurrency="PHP"
-        balancesByCurrency={{ PHP: 50_000, USD: 12_000 }}
-      />,
-    );
-
-    expect(screen.getByLabelText("Balances by currency")).toBeTruthy();
-    expect(screen.getByText("USD ")).toBeTruthy();
-  });
-
-  it("adjusts the held currency chosen in the editor, with no picker of its own", async () => {
-    await render(
-      <BalanceAdjustCard
-        accountId="acc-bank"
-        accountName="Bank"
-        accountType="savings"
-        accountCurrency="PHP"
         balancesByCurrency={{ PHP: 50_000, USD: 12_000 }}
         selectedCurrency="USD"
       />,
     );
 
-    expect(screen.queryByRole("button", { name: "Currency" })).toBeNull();
+    expect(screen.getByLabelText("Balances by currency")).toBeTruthy();
+    expect(screen.getByText("PHP")).toBeTruthy();
+    expect(screen.getByText("USD")).toBeTruthy();
+    // No separate "Current USD" line repeats the selected balance.
+    expect(screen.queryByText(/Current/)).toBeNull();
+    // The editor's Save changes books the change; the card has no button of its own.
+    expect(screen.queryByRole("button", { name: "Adjust balance" })).toBeNull();
     await fireEvent.changeText(screen.getByPlaceholderText("0.00"), "100");
-    await fireEvent.press(screen.getByRole("button", { name: "Adjust balance" }));
-
-    await waitFor(() =>
-      expect(createTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({ kind: "expense", amountMinor: 2_000, currency: "USD" }),
-      ),
-    );
+    expect(screen.getByText(/120\.00 → 100\.00/)).toBeTruthy();
   });
 
   it("keeps a cash account in its own currency", async () => {
-    await render(
-      <BalanceAdjustCard
-        accountId="acc-cash"
-        accountName="Cash"
-        accountType="cash"
-        accountCurrency="PHP"
-        balancesByCurrency={{ PHP: 50_000 }}
-      />,
-    );
+    await render(<Harness accountType="cash" balancesByCurrency={{ PHP: 50_000 }} />);
 
     expect(screen.queryByRole("button", { name: "Add new currency" })).toBeNull();
+    expect(screen.getByText("PHP")).toBeTruthy();
   });
 });
