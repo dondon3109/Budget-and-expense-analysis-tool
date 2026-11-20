@@ -40,7 +40,8 @@ export function SharedLinksSettings({ workspace }: { workspace: AuthenticatedWor
       </div>
       <p className="shared-links-lead">
         Links you created to a single transaction or balance. Anyone holding one sees only that
-        snapshot. Turning a link off stops it working at once.
+        transaction, or that balance as shared and as it is now. Turning a link off stops it working
+        at once.
       </p>
       {linksQuery.isPending && <p className="shared-links-empty">Loading links…</p>}
       {linksQuery.isError && (

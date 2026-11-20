@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import {
   fetchPublicShare,
+  formatCheckedAt,
   formatShareDate,
   formatShareMoney,
   tokenFromHash,
@@ -16,10 +17,14 @@ type CardState =
   | { status: "failed" }
   | { status: "ready"; share: PublicShare };
 
+/** How often an open page re-reads a live balance link. */
+const LIVE_REFRESH_MS = 60_000;
+
 /**
- * The share page's only island: it reads the token from the fragment, fetches the frozen
- * snapshot, and renders it. Nothing about the share is in the static HTML, so a link-preview
- * crawler only ever sees the generic page.
+ * The share page's only island: it reads the token from the fragment, fetches the share, and
+ * renders it. Nothing about the share is in the static HTML, so a link-preview crawler only ever
+ * sees the generic page. A live balance link is re-read every minute while the page is visible,
+ * so a revoke or expiry also takes the open page down.
  */
 export function ShareCard() {
   const [state, setState] = useState<CardState>({ status: "loading" });
@@ -31,15 +36,35 @@ export function ShareCard() {
       return;
     }
     let active = true;
-    fetchPublicShare(token)
-      .then((share) => {
-        if (active) setState(share ? { status: "ready", share } : { status: "unavailable" });
-      })
-      .catch(() => {
-        if (active) setState({ status: "failed" });
-      });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = (refresh: boolean) => {
+      fetchPublicShare(token)
+        .then((share) => {
+          if (!active) return;
+          setState(share ? { status: "ready", share } : { status: "unavailable" });
+          if (share?.live) timer = setTimeout(refreshWhenVisible, LIVE_REFRESH_MS);
+        })
+        .catch(() => {
+          if (!active) return;
+          // A failed refresh keeps the last balance; its "Updated" time shows how old it is.
+          if (!refresh) {
+            setState({ status: "failed" });
+            return;
+          }
+          timer = setTimeout(refreshWhenVisible, LIVE_REFRESH_MS);
+        });
+    };
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        load(true);
+        return;
+      }
+      document.addEventListener("visibilitychange", () => load(true), { once: true });
+    };
+    load(false);
     return () => {
       active = false;
+      clearTimeout(timer);
     };
   }, []);
 
@@ -67,8 +92,31 @@ export function ShareCard() {
     );
   }
 
-  const { snapshot, sharerName } = state.share;
+  const { snapshot, live, sharerName } = state.share;
   const sharer = sharerName ?? "A Zoption user";
+
+  if (snapshot.kind === "balance" && live) {
+    return (
+      <section className="share-card" aria-labelledby="share-card-title">
+        <p className="eyebrow">{sharer} shared a balance</p>
+        <div className="share-card-icon" aria-hidden="true">
+          <Wallet size={22} />
+        </div>
+        <h1 id="share-card-title" className="share-card-amount">
+          {formatShareMoney(live.amountMinor, live.currency)}
+        </h1>
+        <p className="share-card-meta">
+          Current balance · Updated {formatCheckedAt(live.checkedAt)}
+        </p>
+        <dl className="share-card-details">
+          <div>
+            <dt>When shared, {formatShareDate(snapshot.asOf)}</dt>
+            <dd>{formatShareMoney(snapshot.amountMinor, snapshot.currency)}</dd>
+          </div>
+        </dl>
+      </section>
+    );
+  }
 
   if (snapshot.kind === "balance") {
     return (

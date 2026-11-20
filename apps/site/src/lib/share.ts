@@ -22,8 +22,16 @@ export interface SharedBalance {
   asOf: string;
 }
 
+/** The shared account's balance when the page last asked; only balance links made live have it. */
+export interface LiveBalance {
+  amountMinor: number;
+  currency: string;
+  checkedAt: string;
+}
+
 export interface PublicShare {
   snapshot: SharedTransaction | SharedBalance;
+  live: LiveBalance | null;
   sharerName: string | null;
   expiresAt: string | null;
 }
@@ -53,11 +61,24 @@ function isSnapshot(value: unknown): value is PublicShare["snapshot"] {
   );
 }
 
+function isLiveBalance(value: unknown): value is LiveBalance {
+  return (
+    isRecord(value) &&
+    Number.isInteger(value.amountMinor) &&
+    typeof value.currency === "string" &&
+    typeof value.checkedAt === "string"
+  );
+}
+
 export function parsePublicShare(value: unknown): PublicShare | null {
   if (!isRecord(value) || !isSnapshot(value.snapshot)) return null;
   if (!optionalText(value.sharerName) || !optionalText(value.expiresAt)) return null;
+  // A Worker older than live balances omits `live`; read that as a frozen link.
+  const live = value.live ?? null;
+  if (live !== null && !isLiveBalance(live)) return null;
   return {
     snapshot: value.snapshot,
+    live,
     sharerName: value.sharerName,
     expiresAt: value.expiresAt,
   };
@@ -88,6 +109,16 @@ export function formatShareMoney(amountMinor: number, currency: string): string 
   } catch {
     return `${currency} ${Math.round(amountMinor / 100)}`;
   }
+}
+
+/** When the live balance was read, in the viewer's own time zone: "3:04 PM" today, else with the date. */
+export function formatCheckedAt(checkedAt: string, now = new Date()): string {
+  const at = new Date(checkedAt);
+  const sameDay = at.toDateString() === now.toDateString();
+  return new Intl.DateTimeFormat(
+    "en-PH",
+    sameDay ? { timeStyle: "short" } : { dateStyle: "medium", timeStyle: "short" },
+  ).format(at);
 }
 
 export function formatShareDate(date: string): string {
