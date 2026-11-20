@@ -25,17 +25,18 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
+      "Onboarding that fits how you're paid",
       "A cleaner Goals page",
       "Every month budgets count on the dashboard",
       "Receipt scanning and Assistant fixes",
       "Delete your account from anywhere",
-      "Android 0.2.65 comes from Google Play",
+      "Android 0.2.66 comes from Google Play",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Android 0\.2\.65/);
+    expect(copy).toMatch(/Android 0\.2\.66/);
     expect(copy).not.toMatch(/Android Beta/);
   });
 
