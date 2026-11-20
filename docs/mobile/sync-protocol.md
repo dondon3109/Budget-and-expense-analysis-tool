@@ -239,6 +239,16 @@ cuts that pair: a limit of one still returns both legs when the pair is first, w
 overflow a non-empty page starts the next page. A cursor inside a pair or malformed group fails closed
 with `full_resync_required`. The shared response remains bounded to 200 changes.
 
+A bill's changes all carry the group token `subscription:<id>`, which has no revision, so every edit,
+payment, and delete of that bill or its charge shares it. Pull keeps a bill change and the charge
+change right after it on one page, and treats every other change in that group as an ordinary
+single change: a lone bill edit or delete, or a cursor between two of one bill's changes, is valid and
+never asks for a full resync.
+
+On the phone, a full resync after the app is open reopens the rebuilt file in place: the shown screens
+stay mounted on the previous workspace until the new one opens, so the user never drops back to the
+full-screen loader or to Home.
+
 The mobile transport uses the fixed pull path, caps decoded response size, and validates the shared
 schema before persistence. Each page and its cursor commit on the keyed SQLCipher connection in one
 transaction. A process interruption therefore leaves either the prior page/cursor or the complete new
