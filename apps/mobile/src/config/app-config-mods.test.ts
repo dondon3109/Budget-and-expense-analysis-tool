@@ -16,7 +16,10 @@ interface IntrospectedConfig {
       android: {
         manifest: {
           manifest: {
-            application: { "meta-data"?: { $: Record<string, string> }[] }[];
+            application: {
+              "meta-data"?: { $: Record<string, string> }[];
+              service?: { $: Record<string, string> }[];
+            }[];
           };
         };
       };
@@ -57,5 +60,17 @@ describe("native config produced by prebuild", () => {
       "android:name": "expo.modules.notifications.default_notification_icon",
       "android:resource": "@drawable/notification_icon",
     });
+  }, 60_000);
+
+  it("declares no foreground service", async () => {
+    const config = await introspect("production");
+    const { manifest } = config._internal.modResults.android.manifest;
+
+    // Play asks for a declaration and demo video for every foreground service
+    // type. Only the service is checked: introspect starts from a local
+    // android/ tree when one exists, which keeps permissions an older prebuild
+    // wrote, while release builds always prebuild with --clean.
+    const services = manifest.application[0]?.service ?? [];
+    expect(services.filter((entry) => entry.$["android:foregroundServiceType"])).toEqual([]);
   }, 60_000);
 });
