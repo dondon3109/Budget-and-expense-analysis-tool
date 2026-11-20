@@ -51,8 +51,9 @@ function failureMessage(error: unknown): string {
 }
 
 /**
- * Creates a public, read-only snapshot link for one transaction or balance. Only the amount is
- * always shown; every other field is opt in, and the snapshot never changes after it is made.
+ * Creates a public, read-only link for one transaction or balance. Only the amount is always
+ * shown; every other field is opt in. A transaction link never changes after it is made; a balance
+ * link shows the balance as shared and the account's balance now.
  * The parent mounts the sheet per target, so each opening starts from the defaults.
  */
 export function ShareLinkSheet({ target, visible, onDismiss }: ShareLinkSheetProps) {
@@ -109,7 +110,9 @@ export function ShareLinkSheet({ target, visible, onDismiss }: ShareLinkSheetPro
       {/* The sheet stacks its children with no gap of its own, so the body spaces its sections. */}
       <View style={styles.body}>
         <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-          Anyone with the link sees a frozen snapshot, never your accounts or other transactions.
+          {target.kind === "transaction"
+            ? "Anyone with the link sees a frozen snapshot, never your accounts or other transactions."
+            : "Anyone with the link sees this balance as shared and as it is now, updated live, never your other accounts or transactions."}{" "}
           You can turn links off in Settings on the web.
         </Text>
 

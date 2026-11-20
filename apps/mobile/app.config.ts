@@ -184,6 +184,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         "expo-audio",
         {
+          // Spoken replies play only while the app is open, so the media
+          // playback foreground service and its FOREGROUND_SERVICE permissions
+          // stay out; Play requires a declaration and demo video for them.
+          enableBackgroundPlayback: false,
           microphonePermission:
             "Zoption records your questions only when you choose voice input. Recordings are sent to Zoption for transcription and are not stored.",
         },

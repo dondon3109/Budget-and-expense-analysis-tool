@@ -549,6 +549,85 @@ describe("mobile sync pull repository", () => {
     expect(ids).toContain("web-charge");
   });
 
+  it("pulls and acknowledges lone bill edits and deletes without a full resync", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
+    const clientId = "00000000-0000-4000-8000-000000000004";
+    const start = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: null,
+      limit: 100,
+    });
+
+    // A bill whose charge is gone: each edit is a lone change in the bill's group.
+    database.exec("UPDATE subscriptions SET name = 'Netflix HD' WHERE id = 'subscription-1';");
+    const first = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: start.nextCursor,
+      limit: 100,
+    });
+    expect(first.changes).toMatchObject([
+      { entityType: "subscription", entityId: "subscription-1", payload: { name: "Netflix HD" } },
+    ]);
+    await repository.acknowledge(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      cursor: first.nextCursor,
+    });
+
+    // The next edit and the delete share that group, starting right after the cursor.
+    database.exec("UPDATE subscriptions SET name = 'Netflix 4K' WHERE id = 'subscription-1';");
+    database.exec("DELETE FROM subscriptions WHERE id = 'subscription-1';");
+    const second = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: first.nextCursor,
+      limit: 1,
+    });
+    expect(second.changes).toMatchObject([{ entityId: "subscription-1", operation: "upsert" }]);
+    await repository.acknowledge(env, "tenant-1", {
+      protocolVersion: 1,
+      clientId,
+      cursor: second.nextCursor,
+    });
+    const third = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: second.nextCursor,
+      limit: 1,
+    });
+    expect(third.changes).toMatchObject([{ entityId: "subscription-1", operation: "delete" }]);
+    expect(third.hasMore).toBe(false);
+  });
+
+  it("keeps a bill and its charge on one page", async () => {
+    const { env, database } = createSyncEnvironment();
+    const repository = createMobileSyncRepository(vi.fn(async () => "zoption_pro" as const));
+    const start = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: null,
+      limit: 100,
+    });
+    database.exec(
+      "BEGIN;" +
+        "UPDATE subscriptions SET name = 'Lone edit' WHERE id = 'subscription-1';" +
+        "INSERT INTO subscriptions (id, tenant_id, account_id, category_id, name, amount_minor, billing_cycle, next_billing_date, status) VALUES ('web-sub', 'tenant-1', 'account-1', 'category-1', 'Spotify', 19900, 'monthly', '2026-09-05', 'active');" +
+        "INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, kind, subscription_id) VALUES ('web-charge', 'tenant-1', 'account-1', 'category-1', '2026-09-05', 'Spotify', -19900, 'expense', 'web-sub');" +
+        "COMMIT;",
+    );
+
+    const first = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: start.nextCursor,
+      limit: 2,
+    });
+    expect(first.changes.map((change) => change.entityId)).toEqual(["subscription-1"]);
+    const second = await repository.pull(env, "tenant-1", {
+      protocolVersion: 1,
+      cursor: first.nextCursor,
+      limit: 2,
+    });
+    expect(second.changes.map((change) => change.entityId)).toEqual(["web-sub", "web-charge"]);
+  });
+
   it("requires a safe full resync when a cursor is ahead of server state", async () => {
     const { env } = createSyncEnvironment();
     const repository = createMobileSyncRepository();

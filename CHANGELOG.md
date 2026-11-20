@@ -57,6 +57,8 @@ All notable product changes are documented here.
 
 - On mobile, the account editor's Adjust current balance card is simpler: it lists your balance in each currency once, highlights the one you're adjusting, and uses the app's normal text size. Type the new balance and tap Save changes; there is no separate Adjust balance button to tap first. To reverse an adjustment, delete its Balance adjustment entry from your history.
 - On mobile, the Share balance and Share transaction sheets have more space between the description, the name field, the link duration, and the Create link button.
+- A shared balance link now shows the account's current balance, updated live, next to the balance when you shared it, with when it was last updated. It still shows nothing else from the account, and turning the link off or letting it expire stops both. Balance links made before this change keep showing only the frozen amount; transaction links never change.
+- On mobile, a bill's next billing date and a scanned receipt's date are picked from a calendar pop-up, the same one transactions use, instead of typed as YYYY-MM-DD.
 - On Android, Plan and billing no longer offers PayPal or Dodo Payments checkout or plan changes, because Google Play allows only its own billing in the app. A plan bought on the web still applies on your phone, and you can still cancel renewal there.
 - A cleaner Goals page, on web and mobile. On the phone it now looks like Budgets: one "saved so far" total with a progress bar, goals grouped into Active, Paused, and Completed, and each goal showing how much is left and its target date. On the web, Goals & debt shows overall progress, how much is left to save, and your total minimum debt payments, with active goals and debts listed first.
 - The Android app now ships only through Google Play. The website APK download, its in-app updater, and the download page's install steps are gone; zoption.site/install now says the app is coming to Google Play and points to the web app until the listing opens. Anyone with the old APK installed should sync, uninstall it, and install from Google Play.
@@ -96,6 +98,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: editing or deleting a bill no longer makes the app jump to the "Opening Zoption…" screen and back to Home on the next sync or refresh. If the phone ever has to rebuild its local copy from the server, the screen you are on now stays open while it does.
 - Mobile: the AI Assistant shows **bold** words in its replies as bold text instead of showing the asterisks.
 - Mobile: receipt scanning no longer stays on "Checking receipt scanning…", and the Import screen's title reads "Import".
 - The web dashboard counts your "Every month" budget limits, so the "Set a monthly budget" step in Get started is checked off and the budget totals match the Budgets page, instead of only seeing limits set on that month.

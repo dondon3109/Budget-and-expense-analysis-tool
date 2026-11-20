@@ -9,7 +9,7 @@ import {
 import type { AuthenticatedWorkspace } from "../workspace";
 import { requestJson } from "./transport";
 
-/** Freezes a snapshot and returns its link. The URL holds the token and is shown only now. */
+/** Creates a share link and returns it. The URL holds the token and is shown only now. */
 export async function createShareLink(
   workspace: AuthenticatedWorkspace,
   input: ShareLinkCreateInput,

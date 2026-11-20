@@ -61,6 +61,7 @@ describe("share link repository", () => {
     expect(row.token_hash).toMatch(/^[0-9a-f]{64}$/u);
     expect(row.token_hash).not.toContain(created.token);
     expect(await shares.readPublic(env, created.token)).toEqual({
+      live: null,
       snapshot: {
         kind: "transaction",
         direction: "expense",
@@ -97,6 +98,50 @@ describe("share link repository", () => {
     expect(share?.sharerName).toBe("Don");
     expect(created.expiresAt).toBeNull();
     expect(JSON.stringify(share)).not.toContain("BPI");
+  });
+
+  it("shows a balance link's live balance next to the frozen one", async () => {
+    const { env, database, shares } = setup();
+    const created = await shares.create(env, TENANT, "owner", {
+      kind: "balance",
+      accountId: "account-bpi",
+      expiry: "never",
+    });
+    database.exec(`
+      INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, kind)
+        VALUES ('tx-later', '${TENANT}', 'account-bpi', 'category-food', '2026-10-20', 'Rent', -1000000, 'expense');
+    `);
+
+    const share = await shares.readPublic(env, created.token);
+    expect(share?.snapshot).toMatchObject({ amountMinor: 3975000 });
+    expect(share?.live).toEqual({
+      amountMinor: 2975000,
+      currency: "PHP",
+      checkedAt: expect.any(String),
+    });
+    expect(JSON.stringify(share)).not.toContain("account-bpi");
+
+    database.exec("UPDATE accounts SET archived = 1 WHERE id = 'account-bpi'");
+    expect((await shares.readPublic(env, created.token))?.live).toBeNull();
+  });
+
+  it("keeps transaction links and links made before live balances frozen", async () => {
+    const { env, database, shares } = setup();
+    const balance = await shares.create(env, TENANT, "owner", {
+      kind: "balance",
+      accountId: "account-bpi",
+      expiry: "never",
+    });
+    const transaction = await shares.create(env, TENANT, "owner", {
+      kind: "transaction",
+      transactionId: "tx-lunch",
+      show: showNothing,
+      expiry: "never",
+    });
+    database.exec("UPDATE share_links SET live_balance = 0 WHERE kind = 'balance'");
+
+    expect((await shares.readPublic(env, balance.token))?.live).toBeNull();
+    expect((await shares.readPublic(env, transaction.token))?.live).toBeNull();
   });
 
   it("cannot share another workspace's rows or a transfer", async () => {

@@ -19,8 +19,8 @@ import {
   Card,
   ConfirmationDialog,
   CurrencyCode,
+  DateField,
   ErrorState,
-  formatDateInput,
   FormField,
   SelectionField,
   Skeleton,
@@ -282,20 +282,15 @@ export function SubscriptionEditorScreen() {
                 sheetTitle="Choose a billing cycle"
                 value={billingCycle}
               />
-              <FormField
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!saving}
+              <DateField
+                disabled={saving}
                 error={errors.nextBillingDate}
-                keyboardType="numbers-and-punctuation"
                 label="Next billing date"
-                maxLength={10}
-                onChangeText={(value) => {
-                  setNextBillingDate(formatDateInput(value));
+                onChange={(value) => {
+                  setNextBillingDate(value);
                   setErrors((current) => ({ ...current, nextBillingDate: undefined }));
                   setMessage(null);
                 }}
-                placeholder="YYYY-MM-DD"
                 value={nextBillingDate}
               />
               <SelectionField

@@ -83,6 +83,23 @@ export function decodeMobileSyncChange(
   }
 }
 
+/**
+ * A bill's changes share the group `subscription:<id>` with no revision in it, so every later
+ * edit, payment, or delete of that bill or its charge lands in the same group. Only a bill change
+ * written together with its charge is one unit; a lone bill edit or delete is an ordinary change,
+ * and a cursor may sit between two of that bill's changes. Transfer groups carry a revision and
+ * stay strict pairs.
+ */
+export function isSubscriptionGroup(atomicGroupId: string | null): boolean {
+  return atomicGroupId?.startsWith("subscription:") ?? false;
+}
+
+function isBillWithCharge(first: MobileSyncChangeRow, second: MobileSyncChangeRow | undefined) {
+  if (!second || second.atomicGroupId !== first.atomicGroupId) return false;
+  const kinds = [first.entityType, second.entityType];
+  return kinds.includes("subscription") && kinds.includes("transaction");
+}
+
 export function atomicMobileSyncPage(
   rows: MobileSyncChangeRow[],
   limit: number,
@@ -96,14 +113,18 @@ export function atomicMobileSyncPage(
       index += 1;
       continue;
     }
+    if (isSubscriptionGroup(row.atomicGroupId)) {
+      // Keep a bill and its charge on one page when they arrive together.
+      const size = isBillWithCharge(row, rows[index + 1]) ? 2 : 1;
+      if (page.length > 0 && page.length + size > limit) break;
+      page.push(...rows.slice(index, index + size));
+      index += size;
+      continue;
+    }
     let end = index + 1;
     while (rows[end]?.atomicGroupId === row.atomicGroupId) end += 1;
     const group = rows.slice(index, end);
-    const kinds = group.map((item) => item.entityType);
-    const validTransfer = group.length === 2 && kinds.every((kind) => kind === "transaction");
-    const validSubscription =
-      group.length === 2 && kinds.includes("subscription") && kinds.includes("transaction");
-    if (!validTransfer && !validSubscription) {
+    if (group.length !== 2 || group.some((item) => item.entityType !== "transaction")) {
       throw new HttpError(
         409,
         "full_resync_required",
