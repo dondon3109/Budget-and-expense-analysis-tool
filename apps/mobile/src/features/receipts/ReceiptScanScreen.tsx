@@ -28,10 +28,10 @@ import { useSyncState } from "@/sync/sync-state";
 import {
   Button,
   Card,
+  DateField,
   ErrorState,
   FormField,
   SelectionField,
-  formatDateInput,
   formatMoneyMinor,
 } from "@/ui/components";
 import { Screen } from "@/ui/screen";
@@ -703,18 +703,14 @@ export function ReceiptScanScreen() {
                   placeholder="e.g. Jollibee"
                   maxLength={140}
                 />
-                <FormField
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="numbers-and-punctuation"
+                <DateField
+                  disabled={saving}
                   label="Date"
-                  maxLength={10}
                   value={date}
-                  onChangeText={(value) => {
-                    setDate(formatDateInput(value));
+                  onChange={(value) => {
+                    setDate(value);
                     setMessage(null);
                   }}
-                  placeholder="YYYY-MM-DD"
                 />
                 <ItemKindSelector value={kind} disabled={saving} onChange={changeKind} />
                 {kind === "transfer" ? (
