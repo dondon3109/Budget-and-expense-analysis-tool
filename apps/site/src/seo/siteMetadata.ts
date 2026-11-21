@@ -99,7 +99,7 @@ export interface SitemapEntry extends SitemapFields {
 const WEBSITE_ID = `${SITE_ORIGIN}/#website`;
 const WEB_APPLICATION_ID = `${SITE_ORIGIN}/#webapplication`;
 const WEBSITE_DESCRIPTION =
-  "A private budget and expense tracker with a Free plan for reviewing imported transactions, budgets, and monthly cash flow.";
+  "Zoption is a private budget and expense tracker with English and Tagalog voice entry, receipt scanning, PDF/CSV/Excel bank imports, bill tracking, and 47-currency support without bank logins.";
 
 function websiteNode(): StructuredDataNode {
   return {
@@ -125,14 +125,14 @@ function homepageStructuredData(): StructuredDataGraph {
     operatingSystem: "Web",
     url: SITE_ORIGIN,
     description:
-      "A private budget and expense tracker with a Free plan for reviewing imported transactions, budgets, and monthly cash flow without a direct bank connection.",
+      "A private budget and expense tracker with a Free plan, voice entry, receipt scanning, and PDF/CSV/Excel bank statement imports without connecting to your bank.",
     inLanguage: "en",
     isPartOf: { "@id": WEBSITE_ID },
     featureList: [
-      "Start with a Free plan and upgrade only for higher limits and Pro features.",
-      "Map columns, catch errors, and prevent duplicate entries.",
-      "See totals, trends, categories, and budget progress together.",
-      "Start from a clean workspace and add only the records you choose.",
+      "Log expenses by voice in English or Tagalog, paste bank and e-wallet SMS alerts, or scan receipts without storing the image.",
+      "Import PDF, CSV, XLS, and XLSX bank statements with column mapping, row-by-row preview, and duplicate checks without bank logins.",
+      "Track category budgets, recurring bills on a monthly calendar, savings interest, and accounts across 47 currencies in whole centavos.",
+      "Use a consent-gated AI assistant grounded in your ledger, starting on a Free plan (500 monthly AI actions) with a 7-day Pro trial.",
     ],
   };
   return structuredDataGraph(websiteNode(), application);
@@ -145,64 +145,94 @@ type FaqItem = {
 
 const FAQ_ITEMS: FaqItem[] = [
   {
+    question: "What is Zoption?",
+    answer:
+      "Zoption is a private budget and expense tracker for web and Android (coming to Google Play). It tracks spending, category budgets, recurring bills, savings interest, and family workspaces across 47 currencies without ever asking for your bank password.",
+  },
+  {
     question: "Can I use Zoption for free?",
     answer:
-      "Yes. Create an account and use Zoption's Free plan without paying. It includes core tracking features with plan limits; choose Budget or Pro only if you want higher limits and additional features.",
-  },
-  {
-    question: "Does Zoption connect to my bank?",
-    answer:
-      "No. Zoption does not connect to banks or ask for banking credentials. You import a CSV, Excel, or bank export file — or add rows yourself — and review every entry before anything is saved.",
-  },
-  {
-    question: "What file formats can I import?",
-    answer:
-      "CSV, XLSX, and XLS. Pick a workbook, choose a worksheet, and see it visualized after you review each row.",
-  },
-  {
-    question: "Is my workspace private?",
-    answer:
-      "Your workspace starts empty and contains only the records you choose to add. For details on how account, financial, and imported-transaction information is handled, see the Privacy Policy.",
-  },
-  {
-    question: "How are money amounts stored?",
-    answer:
-      "Amounts are represented safely in integer centavos and totaled in plain language, so the calculations stay transparent and easy to follow.",
+      "Yes. The Free plan is ₱0 forever with unlimited manual entries, 500 shared AI actions per month, 1 committed bank statement import per month, and unlimited custom accounts. Every new account also gets a 7-day Zoption Pro trial with no credit card required.",
   },
   {
     question: "Do I need financial expertise to use Zoption?",
     answer:
-      "No. Zoption keeps the language jargon-free and every calculation transparent, so you can track expenses and set budgets without a finance background.",
+      "No. Setup adapts to how often you get paid and which spending categories you want to watch, and every total and budget bar is shown in plain language.",
   },
   {
-    question: "How does the AI Financial Assistant work, and what does it read?",
+    question: "Is there an Android app, and does Zoption work offline?",
     answer:
-      "The assistant is optional and requires separate, versioned consent. It answers questions about your workspace, reads only what you ask about, and explains the reasoning behind each answer. It can also act on your behalf: it logs a transaction from your past entries, and it can propose adding, editing, or removing a subscription, savings goal, debt, account, category, budget, or existing transaction. It prepares each change as a draft or proposal, and nothing is applied until you tap Save or Confirm.",
+      "The native Zoption Android app is in testing on Google Play. It stores an encrypted copy of your workspace on the device so you can log transactions, budgets, and goals offline and sync when you reconnect. Until the Play listing opens, you can use the same account on the web app at app.zoption.site.",
   },
   {
-    question: "Can I track monthly bills and subscriptions?",
+    question: "Does Zoption connect to my bank?",
     answer:
-      "Yes. Log a bill, such as electricity, water, internet, or a streaming subscription, and Zoption records its next charge as an expense, so your balance reflects what's paid. You can also switch to the bill calendar to view upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.",
+      "No. Zoption does not connect to banks or ask for banking credentials. You add entries by voice, receipt photo, bank or e-wallet SMS paste, manual entry, or downloaded PDF, CSV, and Excel statements, and you review every row before saving.",
   },
   {
-    question: "How does automatic savings interest work?",
+    question: "What file formats can I import?",
     answer:
-      "Automatic interest is a Pro feature. On a savings account you can set the annual rate and pay day you want, and Zoption accrues interest daily, monthly, or yearly and adds the earned amount to your balance automatically.",
+      "PDF bank statements, Excel workbooks (.xlsx and .xls), and CSV files. Zoption includes built-in column presets for BDO, BPI, MariBank, Bank of America, and JPMorgan Chase, plus a generic preset for any other bank or e-wallet export. You pick a sheet if needed, preview every row, and catch duplicates before saving.",
+  },
+  {
+    question: "How does voice expense entry work?",
+    answer:
+      "Tap the microphone on web or Android and speak naturally in English or Tagalog. Zoption transcribes your sentence and fills an editable draft with the amount, merchant, date, and category so you can check and save it with one tap.",
+  },
+  {
+    question: "How does receipt photo scanning work?",
+    answer:
+      "Photograph a paper receipt or upload an e-receipt screenshot. Zoption extracts the store name, date, subtotal, tax, total, and line items into an editable draft and checks for duplicates. Receipt scanning asks for separate consent, and the image is never stored.",
+  },
+  {
+    question: "What currencies does Zoption support?",
+    answer:
+      "Zoption supports 47 common currencies, including PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, AED, SAR, and INR. Each account keeps its own currency without altering stored amounts, while cash flow charts convert other currencies into your workspace currency using daily exchange rates.",
+  },
+  {
+    question: "How are money amounts stored?",
+    answer:
+      "Amounts are stored as exact integer minor units (centavos) rather than floating-point decimals, so totals and budgets match your bank and receipt figures without rounding drift.",
   },
   {
     question: "How do transfers between accounts work?",
     answer:
-      "Transfer between your own accounts and Zoption shows the exact amount that arrives after any fee is deducted, then adds the transfer to the ledger. Transfers work across your accounts in both dollars and pesos.",
+      "Record a transfer between any of your accounts across 47 supported currencies, include any transfer fee, and see the exact amount that arrives before adding it to your ledger.",
+  },
+  {
+    question: "Can I track monthly bills and subscriptions?",
+    answer:
+      "Yes. Log recurring bills such as electricity, water, internet, rent, or streaming subscriptions to track payment schedules and cash-flow impact on an interactive monthly bill calendar. On Zoption Pro and Family Pro, you can also log each time you use a service to see cost per use and flag subscriptions unused for 30 days.",
+  },
+  {
+    question: "How does automatic savings interest work?",
+    answer:
+      "Automatic savings interest is included on Zoption Budget, Zoption Pro, and Family plans. Set the annual interest rate and pay day on any savings account, and Zoption accrues interest daily, monthly, or yearly and adds the earned amount to your balance automatically.",
+  },
+  {
+    question: "How does the AI Financial Assistant work, and what does it read?",
+    answer:
+      "The assistant is optional and uses a separate, versioned consent flow. It reads only the ledger records relevant to your question, calculates totals mathematically from your real entries, and can draft transactions or propose edits to bills, goals, debts, accounts, categories, budgets, or existing transactions. Nothing is applied until you tap Save or Confirm.",
+  },
+  {
+    question: "Is my workspace private?",
+    answer:
+      "Your workspace starts empty, is isolated to your account, and contains only the records you choose to add. Zoption shows no ads and never sells spending data. See the Privacy Policy for full handling details.",
   },
   {
     question: "How can I export or delete my data?",
     answer:
-      "Exports are available through the current filtered transaction CSV feature. You may request deletion of your account and associated data through the account deletion control in your account settings; an ongoing paid subscription must be canceled or otherwise resolved first.",
+      "Filtered CSV transaction export is included on Zoption Budget, Zoption Pro, and during your 7-day Pro trial. You can delete your account and associated data at any time from Account Settings in the web or Android app, or follow the steps on /delete-account. Active paid subscriptions must be canceled first.",
+  },
+  {
+    question: "Can I budget with my family or partner?",
+    answer:
+      "Yes. Family Budget (₱499/month or ₱4,990/year) and Family Pro (₱799/month or ₱7,990/year) cover one shared family space for up to 6 people, with shared budgets, remittances, receipts, and comments, while giving every member their own Budget or Pro personal workspace. You can also share read-only budget envelope or balance links from your workspace.",
   },
   {
     question: "How does Zoption billing work?",
     answer:
-      "Zoption offers monthly and annual paid subscription options through PayPal or Dodo Payments. Prices are charged in Philippine pesos, and subscriptions renew automatically for the selected interval unless you cancel renewal. You can request cancellation through Plan and billing in Zoption.",
+      "Personal plans are Free (₱0), Zoption Budget (₱149/month or ₱1,490/year), and Zoption Pro (₱249/month or ₱2,490/year). Family plans for up to 6 people are Family Budget (₱499/month or ₱4,990/year) and Family Pro (₱799/month or ₱7,990/year). Annual plans include 2 months free. Web checkout is processed in Philippine pesos through PayPal or Dodo Payments, and you can upgrade, downgrade, or cancel renewal anytime in Plan and billing.",
   },
   {
     question: "How do I add Zoption as a Preferred Source in Google Search and AI results?",
@@ -221,7 +251,7 @@ function faqStructuredData(): StructuredDataGraph {
       "@id": `${SITE_ORIGIN}/faq#webpage`,
       name: "FAQ — Zoption",
       description:
-        "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, bill tracking, savings interest, the AI assistant, privacy, and billing.",
+        "Plain-language answers on voice entry, receipt scanning, PDF/CSV/Excel bank imports, 47 currencies, bills, family plans, the AI assistant, privacy, and billing.",
       url: `${SITE_ORIGIN}/faq`,
       inLanguage: "en",
       dateModified: FAQ_LAST_MODIFIED,
@@ -293,9 +323,9 @@ function installPageStructuredData(): StructuredDataGraph {
 // <lastmod> and WebPage dateModified, so a stale value misrepresents freshness to
 // crawlers. Update the constant whenever the corresponding page copy changes, and
 // keep it in sync with sitemap.lastModified — seo-metadata.test.ts enforces both.
-const LANDING_LAST_MODIFIED = "2026-11-19";
-const PRICING_LAST_MODIFIED = "2026-11-19";
-const GUIDES_LAST_MODIFIED = "2026-11-19";
+const LANDING_LAST_MODIFIED = "2026-11-21";
+const PRICING_LAST_MODIFIED = "2026-11-21";
+const GUIDES_LAST_MODIFIED = "2026-11-21";
 
 function guidesIndexPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/guides`;
@@ -326,17 +356,17 @@ function guidePageStructuredData(guide: FinanceGuide): StructuredDataGraph {
     isPartOf: { "@id": WEBSITE_ID },
   });
 }
-const FAQ_LAST_MODIFIED = "2026-11-15";
-const CHANGELOG_LAST_MODIFIED = "2026-11-20";
+const FAQ_LAST_MODIFIED = "2026-11-21";
+const CHANGELOG_LAST_MODIFIED = "2026-11-21";
 const TERMS_LAST_MODIFIED = "2026-10-19";
 const PRIVACY_LAST_MODIFIED = "2026-10-19";
 const COOKIE_POLICY_LAST_MODIFIED = "2026-10-22";
 const DELETE_ACCOUNT_LAST_MODIFIED = "2026-11-20";
-const IMPORT_LAST_MODIFIED = "2026-10-03";
-const TOOLS_LAST_MODIFIED = "2026-11-16";
-const SUBSCRIPTION_TOOL_LAST_MODIFIED = "2026-11-16";
-const INSTALL_LAST_MODIFIED = "2026-11-19";
-const TUTORIALS_LAST_MODIFIED = "2026-11-15";
+const IMPORT_LAST_MODIFIED = "2026-11-21";
+const TOOLS_LAST_MODIFIED = "2026-11-21";
+const SUBSCRIPTION_TOOL_LAST_MODIFIED = "2026-11-21";
+const INSTALL_LAST_MODIFIED = "2026-11-21";
+const TUTORIALS_LAST_MODIFIED = "2026-11-21";
 
 function pricingPageStructuredData(): StructuredDataGraph {
   const url = `${SITE_ORIGIN}/pricing`;
@@ -494,9 +524,9 @@ function budgetCalculatorMetadata(): PublicRouteMetadata {
 
 export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata> = {
   "/": {
-    title: "Zoption — Budgeting App with Voice Input & Receipt Scanning",
+    title: "Zoption — Private Budgeting App with Voice & Receipt Scanning",
     description:
-      "Zoption (z-option) is a free budgeting app to track transactions, set a budget, save money, and log expenses by voice input or receipt scan. No bank connection needed.",
+      "Free private budgeting app and expense tracker. Log spending by English or Tagalog voice, scan receipts, import bank statements, and track bills with no bank login.",
     canonical: SITE_ORIGIN,
     robots: "index,follow",
     structuredData: homepageStructuredData(),
@@ -509,7 +539,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/pricing": {
     title: "Pricing & Plans — Zoption",
     description:
-      "Start for free, or choose Budget for ₱149/month, Pro for ₱249/month, or a family plan. Private budget tracking, voice and receipt entry, bank statement imports, and no direct bank credential sharing.",
+      "Start free with 500 monthly AI actions and a 7-day Pro trial, or pick Budget (₱149/mo), Pro (₱249/mo), or Family plans up to 6 people. No bank login required.",
     canonical: `${SITE_ORIGIN}/pricing`,
     robots: "index,follow",
     structuredData: pricingPageStructuredData(),
@@ -594,7 +624,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/faq": {
     title: "FAQ — Zoption",
     description:
-      "Plain-language answers about tracking expenses, importing CSV or Excel exports, budgets, bill tracking, savings interest, the AI assistant, privacy, and billing.",
+      "Plain-language answers on voice entry, receipt scanning, PDF/CSV/Excel bank imports, 47 currencies, bills, family plans, the AI assistant, privacy, and billing.",
     canonical: `${SITE_ORIGIN}/faq`,
     robots: "index,follow",
     structuredData: faqStructuredData(),
@@ -607,7 +637,7 @@ export const PUBLIC_ROUTE_METADATA: Record<PublicRoutePath, PublicRouteMetadata>
   "/install": {
     title: "Zoption for Android — Coming to Google Play",
     description:
-      "The native Zoption Android app, with offline-first entry and receipt scanning, is in testing on Google Play. Use the same account on the web today.",
+      "The native Zoption Android app is in testing on Google Play with encrypted offline-first entry, voice logging, and receipt scanning. Use the same account on the web today.",
     canonical: `${SITE_ORIGIN}/install`,
     robots: "index,follow",
     structuredData: installPageStructuredData(),

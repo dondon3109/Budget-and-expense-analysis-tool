@@ -63,7 +63,7 @@ describe("landing page", () => {
     expect(screen.getByRole("button", { name: /^Choose theme/ })).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Learn more" })).toBeInTheDocument();
     expect(screen.getByRole("list", { name: "Zoption at a glance" })).toBeInTheDocument();
-    expect(screen.getByText(/no payment required\. upgrade only/i)).toBeInTheDocument();
+    expect(screen.getByText(/no payment required\. free forever/i)).toBeInTheDocument();
     expect(screen.getByText("Can I use Zoption for free?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ask Zoption support" })).toBeInTheDocument();
   });
@@ -90,7 +90,7 @@ describe("landing page", () => {
       within(modules).getByRole("heading", { name: "Move money without surprises." }),
     ).toBeInTheDocument();
     expect(
-      within(modules).getByRole("heading", { name: "Put your savings to work while you sleep." }),
+      within(modules).getByRole("heading", { name: "Track savings interest automatically." }),
     ).toBeInTheDocument();
     expect(
       within(modules).getByRole("heading", { name: "Ask your numbers, not a chatbot." }),
@@ -136,6 +136,13 @@ describe("landing page", () => {
     const visualTrack = formatsSection.querySelector(".formats-track");
     expect(visualTrack).toHaveAttribute("aria-hidden", "true");
     expect(visualTrack?.querySelectorAll('[data-marquee-copy="duplicate"]')).toHaveLength(1);
+    expect(within(formatsSection).getByRole("link", { name: "BDO guide" })).toHaveAttribute(
+      "href",
+      "/import/bdo-statement",
+    );
+    expect(
+      within(formatsSection).getByRole("link", { name: "All import formats" }),
+    ).toHaveAttribute("href", "/import");
   });
 
   it("labels the dashboard artwork as illustrative and explains the empty start", () => {
@@ -227,9 +234,19 @@ describe("landing page", () => {
     renderLanding();
 
     const spotlight = screen.getByRole("region", {
-      name: /never type a transaction again/i,
+      name: /skip manual typing\. talk, snap, or import\./i,
     });
     expect(spotlight).toBeInTheDocument();
+
+    // All four panels stay in the static HTML for crawlers, with inactive panels hidden.
+    const voicePanel = spotlight.querySelector("#spotlight-panel-voice");
+    const receiptPanel = spotlight.querySelector("#spotlight-panel-receipt");
+    const filesPanel = spotlight.querySelector("#spotlight-panel-files");
+    const assistantPanel = spotlight.querySelector("#spotlight-panel-assistant");
+    expect(voicePanel).not.toHaveAttribute("hidden");
+    expect(receiptPanel).toHaveAttribute("hidden");
+    expect(filesPanel).toHaveAttribute("hidden");
+    expect(assistantPanel).toHaveAttribute("hidden");
 
     // Verify Voice Entry is active by default (Top Priority)
     expect(within(spotlight).getByRole("tab", { name: /voice entry/i })).toHaveAttribute(
@@ -243,13 +260,16 @@ describe("landing page", () => {
     const receiptTab = within(spotlight).getByRole("tab", { name: /scan receipt/i });
     await user.click(receiptTab);
     expect(receiptTab).toHaveAttribute("aria-selected", "true");
+    expect(receiptPanel).not.toHaveAttribute("hidden");
+    expect(voicePanel).toHaveAttribute("hidden");
     expect(within(spotlight).getByText(/take a picture of any receipt/i)).toBeInTheDocument();
-    expect(within(spotlight).getByText(/smart ocr scanner/i)).toBeInTheDocument();
+    expect(within(spotlight).getByText(/receipt scanner/i)).toBeInTheDocument();
 
     // Switch to PDF, CSV & Excel
     const filesTab = within(spotlight).getByRole("tab", { name: /pdf, csv & excel/i });
     await user.click(filesTab);
     expect(filesTab).toHaveAttribute("aria-selected", "true");
+    expect(filesPanel).not.toHaveAttribute("hidden");
     expect(within(spotlight).getByText(/import pdf, csv, and excel files/i)).toBeInTheDocument();
     expect(within(spotlight).getByText(/multi-format dropzone/i)).toBeInTheDocument();
 
@@ -257,6 +277,7 @@ describe("landing page", () => {
     const aiTab = within(spotlight).getByRole("tab", { name: /ai assistant/i });
     await user.click(aiTab);
     expect(aiTab).toHaveAttribute("aria-selected", "true");
+    expect(assistantPanel).not.toHaveAttribute("hidden");
     expect(
       within(spotlight).getByText(/ask your numbers, not a generic chatbot/i),
     ).toBeInTheDocument();

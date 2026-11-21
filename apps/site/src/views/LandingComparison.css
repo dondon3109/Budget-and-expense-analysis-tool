@@ -141,3 +141,28 @@
     color: var(--lp-accent-strong);
   }
 }
+
+/* Inactive spotlight panels remain in the static HTML for crawlers and ARIA controls. */
+.spotlight-grid[hidden] {
+  display: none;
+}
+
+.formats-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 20px;
+  max-width: 760px;
+  margin: 24px auto 0;
+  font-size: 13.5px;
+}
+
+.formats-links a {
+  color: var(--lp-dark-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.formats-links a:hover {
+  opacity: 0.8;
+}

@@ -20,7 +20,7 @@ describe("GuidesIndexPage", () => {
       screen.getByRole("heading", { level: 1, name: "Personal Finance & Budgeting Guides" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/In-depth tutorials and actionable strategies for private budgeting/i),
+      screen.getByText(/Practical guides for private budgeting, e-wallet tracking/i),
     ).toBeInTheDocument();
 
     const breadcrumbs = screen.getByRole("navigation", { name: "Breadcrumb" });

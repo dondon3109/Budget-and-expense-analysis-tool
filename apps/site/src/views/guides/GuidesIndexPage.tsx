@@ -18,8 +18,8 @@ export function GuidesIndexPage() {
   return (
     <LegalPageLayout
       title="Personal Finance & Budgeting Guides"
-      summary="In-depth tutorials and actionable strategies for private budgeting, e-wallet tracking, subscription management, and digital banking in the Philippines."
-      lastUpdated="September 16, 2026"
+      summary="Practical guides for private budgeting, e-wallet tracking, subscription cleanup, and digital banking in the Philippines."
+      lastUpdated="November 21, 2026"
     >
       <div className="guides-index-page">
         <nav

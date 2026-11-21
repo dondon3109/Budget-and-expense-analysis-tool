@@ -10,30 +10,29 @@ export function FeatureModules() {
   return (
     <section className="facet-modules" id="modules" aria-labelledby="modules-title">
       <div className="section-head">
-        <p className="eyebrow">Six modules, one calm view</p>
-        <h2 id="modules-title">Everything that shapes your month, in one quiet place.</h2>
+        <p className="eyebrow">Six modules, one workspace</p>
+        <h2 id="modules-title">Everything that shapes your month, in one place.</h2>
         <p className="section-lead">
-          Zoption works the way you actually track money — reviewing files, following budgets, and
-          noticing the recurring costs that quietly add up.
+          Import bank files, follow category limits, watch upcoming bills on a calendar, track
+          savings interest, and ask questions about your own ledger.
         </p>
       </div>
 
       <div className="facets">
         <article className="facet import-support">
           <div className="facet-text">
-            <p className="facet-kicker">Filing</p>
+            <p className="facet-kicker">Imports</p>
             <h3>Import from the files you already use.</h3>
             <h4>Start with Excel</h4>
             <h4>Bring your bank export</h4>
             <p>
-              Whether it&rsquo;s a bank export or a spreadsheet, choosing a CSV, XLSX, or XLS
-              workbook opens a preview where you map columns, catch errors, and flag duplicates —
-              before any row is saved.
+              Upload a PDF bank statement, CSV, XLSX, or XLS workbook. Zoption opens a preview where
+              you map columns, fix any unreadable row, and flag duplicates before anything saves.
             </p>
             <div className="facet-tags">
-              <span>CSV &middot; XLSX &middot; XLS</span>
+              <span>PDF &middot; CSV &middot; XLSX &middot; XLS</span>
               <span>Preview-first review</span>
-              <span>Duplicate prevention</span>
+              <span>Duplicate checks</span>
             </div>
           </div>
           <div className="facet-visual" aria-hidden="true">
@@ -134,15 +133,15 @@ export function FeatureModules() {
             <p className="facet-kicker">Bill tracking</p>
             <h3>Name the bills that quietly repeat.</h3>
             <p>
-              Log a bill, from electricity and internet to streaming, and Zoption records its next
-              charge as an expense. Switch to the bill calendar to track payment schedules, upcoming
-              billing cycles, and cash-flow impact on an interactive month-by-month grid.
+              Log electricity, internet, rent, and streaming charges so they appear on an
+              interactive month-by-month bill calendar with cash-flow impact. On Pro, track cost per
+              use and spot subscriptions you have not touched in 30 days.
             </p>
             <div className="facet-tags">
               <span>Bill calendar</span>
               <span>Payment schedules</span>
               <span>Cash-flow impact</span>
-              <span>Yearly bills</span>
+              <span>Unused bill alerts</span>
             </div>
           </div>
           <div className="facet-visual" aria-hidden="true">
@@ -174,14 +173,13 @@ export function FeatureModules() {
             <p className="facet-kicker">Transferring</p>
             <h3>Move money without surprises.</h3>
             <p>
-              Transfer between your own accounts and see the exact amount that arrives after any fee
-              is deducted — then add the transfer to the ledger. No guessing what a move really
-              costs.
+              Record transfers between your own accounts, deduct any transfer fee upfront, and see
+              the exact amount arriving on the other side before adding it to your ledger.
             </p>
             <div className="facet-tags">
               <span>Fee-aware transfers</span>
               <span>Across your accounts</span>
-              <span>Dollar &amp; peso</span>
+              <span>47 currencies</span>
             </div>
           </div>
           <div className="facet-visual" aria-hidden="true">
@@ -195,7 +193,7 @@ export function FeatureModules() {
             </div>
             <div className="bill-row">
               <span>To &middot; Savings</span>
-              <small>0.6% interest on</small>
+              <small>6% p.a. interest on</small>
             </div>
             <div className="balance-row transfer-result">
               <span>After ₱15 transfer fee</span>
@@ -207,11 +205,11 @@ export function FeatureModules() {
         <article className="facet">
           <div className="facet-text">
             <p className="facet-kicker">Savings</p>
-            <h3>Put your savings to work while you sleep.</h3>
+            <h3>Track savings interest automatically.</h3>
             <p>
-              Turn a savings account on and set the annual rate and pay day you want. Zoption
-              accrues interest daily, monthly, or yearly and adds the earned amount to your balance
-              — automatically.
+              Set the annual interest rate and payout schedule on any high-yield savings account. On
+              Budget and Pro, Zoption accrues interest daily, monthly, or yearly and adds the earned
+              amount to your balance automatically.
             </p>
             <div className="facet-tags">
               <button
@@ -245,26 +243,26 @@ export function FeatureModules() {
                 Yearly
               </button>
               <span>Your rate, your pay day</span>
-              <span>Interest on</span>
+              <span>Budget &amp; Pro</span>
             </div>
           </div>
           <div className="facet-visual">
             <div className="balance-row" aria-hidden="true">
               <span>Savings</span>
-              <b>₱28,500</b>
+              <b>₱30,000</b>
             </div>
             <div className="balance-row interest-row">
               <span aria-hidden="true">
                 <PiggyBank size={14} aria-hidden="true" />{" "}
                 {savingsEnabled
-                  ? `0.6% p.a. · ${
+                  ? `6% p.a. · ${
                       activeSavingsCadence === "monthly"
                         ? "monthly pay day"
                         : activeSavingsCadence === "daily"
                           ? "daily accrual"
                           : "yearly pay day"
                     }`
-                  : "0.6% p.a. · Interest paused"}
+                  : "6% p.a. · Interest paused"}
               </span>
               <button
                 type="button"
@@ -297,10 +295,10 @@ export function FeatureModules() {
                 <TrendingUp size={13} aria-hidden="true" />
                 {savingsEnabled
                   ? activeSavingsCadence === "daily"
-                    ? "+₱7.13 daily"
+                    ? "+₱4.93 daily"
                     : activeSavingsCadence === "monthly"
-                      ? "+₱214 last month"
-                      : "+₱2,568 annual yield"
+                      ? "+₱150 last month"
+                      : "+₱1,800 annual yield"
                   : "Paused (₱0)"}
               </span>
             </div>
@@ -309,19 +307,19 @@ export function FeatureModules() {
 
         <article className="facet">
           <div className="facet-text">
-            <p className="facet-kicker">Assist &mdash; always grounded</p>
+            <p className="facet-kicker">AI assistant</p>
             <h3>Ask your numbers, not a chatbot.</h3>
             <p>
               The AI Financial Assistant answers questions about <em>your</em> data with evidence
-              and clear limits. It reads only what you ask about, explains the reasoning behind each
-              answer, and can log a transaction or propose a change to your budgets, goals, debts,
-              bills, accounts, or categories. Nothing is applied until you tap Save or Confirm.
+              and clear limits. It reads only what you ask about, explains the math behind each
+              answer, and can draft transactions or propose changes to budgets, goals, debts, bills,
+              accounts, or categories. Nothing saves until you tap Save or Confirm.
             </p>
             <div className="facet-tags">
               <span>Your data only</span>
               <span>Grounded answers</span>
               <span>You approve changes</span>
-              <span>You consent first</span>
+              <span>Separate consent</span>
             </div>
           </div>
           <div className="facet-visual" aria-hidden="true">
