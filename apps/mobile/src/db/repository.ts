@@ -115,6 +115,7 @@ const calendarTransactionItemSchema = z.object({
   date: z.string(),
   description: z.string(),
   amount_minor: z.number().int().safe(),
+  currency: z.enum(currencies),
   kind: z.enum(["income", "expense", "transfer"]),
 });
 
@@ -386,8 +387,9 @@ export class LocalWorkspaceRepository {
   }
 
   async queryTransactions(query: TransactionQuery = {}): Promise<LocalTransactionItem[]> {
-    const limit = query.limit ?? 100;
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > 200) {
+    // A month filter already bounds the query to one calendar month; without a month, cap the read.
+    const limit = query.limit ?? (query.month ? null : 100);
+    if (limit !== null && (!Number.isSafeInteger(limit) || limit < 1 || limit > 200)) {
       throw new Error("Choose a transaction page size from 1 to 200.");
     }
     const conditions: string[] = [
@@ -422,14 +424,14 @@ export class LocalWorkspaceRepository {
       params.push(search, search);
     }
 
-    params.push(limit);
+    const limitClause = limit !== null ? "\nLIMIT ?" : "";
+    if (limit !== null) params.push(limit);
     const where = conditions.join(" AND ");
     // Transaction ids are random UUIDs, so they cannot order a day by recency.
     // rowid follows the local insert order, which puts the newest entry first.
     const sql = `${transactionListSelect}
 WHERE ${where}
-ORDER BY transaction_row.date DESC, transaction_row.rowid DESC
-LIMIT ?`;
+ORDER BY transaction_row.date DESC, transaction_row.rowid DESC${limitClause}`;
     return mapTransactionRows(await this.database.getAllAsync(sql, ...params));
   }
 
@@ -722,7 +724,7 @@ LIMIT ?`;
     const monthEnd = this.nextMonthStart(monthStart);
     const [transactionRows, subscriptionRows, eventItems] = await Promise.all([
       this.database.getAllAsync(
-        `SELECT id, date, description, amount_minor, kind
+        `SELECT id, date, description, amount_minor, currency, kind
          FROM transactions
          WHERE deleted_at IS NULL AND date >= ? AND date < ?
            AND (transfer_group_id IS NULL OR id = (
@@ -757,6 +759,7 @@ LIMIT ?`;
         id: decoded.id,
         description: decoded.description,
         amountMinor: decoded.amount_minor,
+        currency: decoded.currency,
         kind: decoded.kind,
       });
     }

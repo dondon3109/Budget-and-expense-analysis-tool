@@ -1,3 +1,5 @@
+import { currencies, type Currency } from "@zoption/shared";
+
 import type { LocalBudgetOccasion, LocalCalendarDay } from "@/db/view-models";
 
 import type { CalendarCell } from "./calendar-month-grid";
@@ -5,6 +7,38 @@ import type { CalendarCell } from "./calendar-month-grid";
 export interface DayTotals {
   incomeMinor: number;
   expenseMinor: number;
+}
+
+export type DayTotalsByCurrency = Partial<Record<Currency, DayTotals>>;
+
+/** Per-currency income and spending of one day; transfers move money between accounts and count as neither. */
+export function dayTotalsByCurrency(day: LocalCalendarDay | undefined): DayTotalsByCurrency {
+  const totals: DayTotalsByCurrency = {};
+  for (const transaction of day?.transactions ?? []) {
+    if (transaction.kind !== "income" && transaction.kind !== "expense") continue;
+    const entry = totals[transaction.currency] ?? { incomeMinor: 0, expenseMinor: 0 };
+    if (transaction.kind === "income") entry.incomeMinor += Math.abs(transaction.amountMinor);
+    else entry.expenseMinor += Math.abs(transaction.amountMinor);
+    totals[transaction.currency] = entry;
+  }
+  return totals;
+}
+
+/** Per-currency income and spending across the month without ever adding different currencies together. */
+export function monthTotalsByCurrency(days: readonly LocalCalendarDay[]): DayTotalsByCurrency {
+  const totals: DayTotalsByCurrency = {};
+  for (const day of days) {
+    const perCurrency = dayTotalsByCurrency(day);
+    for (const currency of currencies) {
+      const entry = perCurrency[currency];
+      if (!entry) continue;
+      const sum = totals[currency] ?? { incomeMinor: 0, expenseMinor: 0 };
+      sum.incomeMinor += entry.incomeMinor;
+      sum.expenseMinor += entry.expenseMinor;
+      totals[currency] = sum;
+    }
+  }
+  return totals;
 }
 
 /** Income and spending of one day; a transfer moves money between accounts and counts as neither. */
@@ -59,9 +93,14 @@ export function calendarCellsFromDays(
     if (day.events.length) summary.push(plural(day.events.length, "event"));
     if (day.subscriptionBills.length) summary.push(plural(day.subscriptionBills.length, "bill"));
     if (day.transactions.length) summary.push(plural(day.transactions.length, "transaction"));
+    const byCurrency = dayTotalsByCurrency(day);
+    const populated = currencies.filter((currency) => byCurrency[currency] !== undefined);
+    const singleTotals = populated.length === 1 ? byCurrency[populated[0]!] : undefined;
     cells.set(day.date, {
       ...cell,
-      ...dayTotals(day),
+      incomeMinor: singleTotals?.incomeMinor ?? 0,
+      expenseMinor: singleTotals?.expenseMinor ?? 0,
+      mixedCurrency: populated.length > 1,
       hasEvent: day.events.length > 0,
       hasBill: day.subscriptionBills.length > 0,
       summary,

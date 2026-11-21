@@ -44,24 +44,30 @@ export function AuthenticatedGate({ children }: PropsWithChildren) {
     return <Redirect href="/(public)/sign-in" />;
   }
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
-  const workspace = (
+  const gate = <LocalWorkspaceGate identity={identity}>{children}</LocalWorkspaceGate>;
+  // Load the workspace record and open SQLite in parallel with the app-lock check
+  // instead of waiting for each SecureStore read in series. Every screen, SyncProvider,
+  // and SharedReceiptHandoff still stays gated behind AppLockGate.
+  return (
     <ActiveWorkspaceProvider subject={session.subject}>
       <ActiveLocalWorkspace>
-        <LocalWorkspaceGate identity={identity}>{children}</LocalWorkspaceGate>
+        {session.status === "guest" ? (
+          gate
+        ) : (
+          <AppLockGate subject={session.subject}>{gate}</AppLockGate>
+        )}
       </ActiveLocalWorkspace>
     </ActiveWorkspaceProvider>
   );
-  // The app lock protects an account's data; a guest has no account to lock.
-  if (session.status === "guest") return workspace;
-  return <AppLockGate subject={session.subject}>{workspace}</AppLockGate>;
 }
 
 /** Opens the local file of the workspace shown: personal, or the family switched to. */
 function ActiveLocalWorkspace({ children }: PropsWithChildren) {
   const active = useActiveWorkspace();
-  if (active.status === "loading") return null;
   return (
-    <LocalWorkspaceProvider subject={active.workspaceSubject}>{children}</LocalWorkspaceProvider>
+    <LocalWorkspaceProvider subject={active.status === "ready" ? active.workspaceSubject : null}>
+      {children}
+    </LocalWorkspaceProvider>
   );
 }
 

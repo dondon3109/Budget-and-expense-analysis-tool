@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { currencies, type Currency } from "@zoption/shared";
 import { useSessionSnapshot } from "@/auth/session-state";
 import {
   useBudgetOccasions,
@@ -13,11 +14,16 @@ import {
 } from "@/db/local-workspace-state";
 import { useSyncState } from "@/sync/sync-state";
 import type { LocalBudgetOccasion, LocalCalendarDay } from "@/db/view-models";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { ErrorState, MoneyValue, Skeleton, SyncStatus } from "@/ui/components";
 import { elevation, radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { buildBudgetMonthView } from "../budgets/budget-month-view";
-import { calendarCellsFromDays, monthTotals } from "./calendar-day-summary";
+import {
+  calendarCellsFromDays,
+  monthTotalsByCurrency,
+  type DayTotalsByCurrency,
+} from "./calendar-day-summary";
 import { CalendarMonthGrid } from "./CalendarMonthGrid";
 import { monthLabel, todayIso } from "./event-form";
 import { withTapSound } from "@/features/sounds/sound-effects";
@@ -52,48 +58,60 @@ function dayTitle(date: string): string {
 
 /** The month's income, spending, and what its budget has left, as three plain columns. */
 function MonthSummary({
-  incomeMinor,
-  expenseMinor,
+  totals,
   budgetLeftMinor,
 }: {
-  incomeMinor: number;
-  expenseMinor: number;
+  totals: DayTotalsByCurrency;
   budgetLeftMinor: number | null;
 }) {
   const theme = useZoptionTheme();
-  const columns = [
-    { label: "Income", amountMinor: incomeMinor, tone: "income" as const },
-    { label: "Expenses", amountMinor: expenseMinor, tone: "expense" as const },
-    {
-      label: "Budget left",
-      amountMinor: budgetLeftMinor ?? 0,
-      tone:
-        budgetLeftMinor !== null && budgetLeftMinor < 0
-          ? ("expense" as const)
-          : ("default" as const),
-      empty: budgetLeftMinor === null,
-    },
-  ];
+  const workspaceCurrency = useWorkspaceCurrency();
+  const populated = currencies.filter((currency) => totals[currency] !== undefined);
+  const visibleCurrencies: Currency[] = populated.length > 0 ? populated : [workspaceCurrency];
   return (
     <View style={styles.summary}>
-      {columns.map((column) => (
-        <View key={column.label} style={styles.summaryColumn}>
-          <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-            {column.label}
-          </Text>
-          {column.empty ? (
-            <Text style={[typography.headline, { color: theme.colors.textMuted }]}>—</Text>
-          ) : (
-            <MoneyValue
-              amountMinor={column.amountMinor}
-              maxFontSizeMultiplier={1.2}
-              numberOfLines={1}
-              style={styles.summaryAmount}
-              tone={column.tone}
-            />
-          )}
-        </View>
-      ))}
+      <View style={styles.summaryColumn}>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Income</Text>
+        {visibleCurrencies.map((currency) => (
+          <MoneyValue
+            key={currency}
+            amountMinor={totals[currency]?.incomeMinor ?? 0}
+            currency={currency}
+            maxFontSizeMultiplier={1.2}
+            numberOfLines={1}
+            style={styles.summaryAmount}
+            tone="income"
+          />
+        ))}
+      </View>
+      <View style={styles.summaryColumn}>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Expenses</Text>
+        {visibleCurrencies.map((currency) => (
+          <MoneyValue
+            key={currency}
+            amountMinor={totals[currency]?.expenseMinor ?? 0}
+            currency={currency}
+            maxFontSizeMultiplier={1.2}
+            numberOfLines={1}
+            style={styles.summaryAmount}
+            tone="expense"
+          />
+        ))}
+      </View>
+      <View style={styles.summaryColumn}>
+        <Text style={[typography.caption, { color: theme.colors.textMuted }]}>Budget left</Text>
+        {budgetLeftMinor === null ? (
+          <Text style={[typography.headline, { color: theme.colors.textMuted }]}>—</Text>
+        ) : (
+          <MoneyValue
+            amountMinor={budgetLeftMinor}
+            maxFontSizeMultiplier={1.2}
+            numberOfLines={1}
+            style={styles.summaryAmount}
+            tone={budgetLeftMinor < 0 ? "expense" : "default"}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -227,6 +245,7 @@ function DayAgenda({
           </View>
           <MoneyValue
             amountMinor={transaction.amountMinor}
+            currency={transaction.currency}
             style={styles.agendaAmount}
             tone={
               transaction.kind === "transfer"
@@ -261,7 +280,7 @@ export function CalendarScreen() {
     () => calendarCellsFromDays(state.month?.days ?? [], occasions.occasions),
     [state.month, occasions.occasions],
   );
-  const totals = useMemo(() => monthTotals(state.month?.days ?? []), [state.month]);
+  const totals = useMemo(() => monthTotalsByCurrency(state.month?.days ?? []), [state.month]);
   const budgetView = useMemo(
     () => (budgetPlan.data ? buildBudgetMonthView(budgetPlan.data) : null),
     [budgetPlan.data],
@@ -352,8 +371,7 @@ export function CalendarScreen() {
             budgetLeftMinor={
               budgetView && budgetView.totalLimitMinor > 0 ? budgetView.totalRemainingMinor : null
             }
-            expenseMinor={totals.expenseMinor}
-            incomeMinor={totals.incomeMinor}
+            totals={totals}
           />
           <CalendarMonthGrid
             cells={cells}

@@ -17,10 +17,19 @@ function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
 }
 
-export async function workspaceAlias(subject: string): Promise<string> {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, subject, {
+const aliasCache = new Map<string, Promise<string>>();
+
+export function workspaceAlias(subject: string): Promise<string> {
+  const cached = aliasCache.get(subject);
+  if (cached) return cached;
+  const pending = Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, subject, {
     encoding: Crypto.CryptoEncoding.HEX,
+  }).catch((error: unknown) => {
+    aliasCache.delete(subject);
+    throw error;
   });
+  aliasCache.set(subject, pending);
+  return pending;
 }
 
 export function workspaceKeyAlias(alias: string): string {

@@ -64,7 +64,7 @@ const LocalWorkspaceContext = createContext<LocalWorkspaceSnapshot | null>(null)
 export function LocalWorkspaceProvider({
   subject,
   children,
-}: PropsWithChildren<{ subject: string }>) {
+}: PropsWithChildren<{ subject: string | null }>) {
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<Omit<LocalWorkspaceSnapshot, "retry" | "reopen">>({
     status: "opening",
@@ -77,6 +77,11 @@ export function LocalWorkspaceProvider({
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
+    if (!subject) {
+      readySubjectRef.current = null;
+      setSnapshot({ status: "opening", workspace: null, message: null });
+      return;
+    }
     // Reopening the file already shown (sync rebuilt it from the server) keeps the last workspace
     // until the new one is open. Going back to "opening" would make the authenticated gate swap
     // every screen for the full-screen loader and remount navigation on Home, dropping the form
@@ -640,7 +645,6 @@ export function useLocalTransactions(
         search,
         kind,
         month,
-        limit: month ? 200 : undefined,
       }),
     [search, kind, month],
   );

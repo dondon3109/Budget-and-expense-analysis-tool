@@ -13,7 +13,20 @@ import android.os.Bundle
 class ZoptionShareReceiverActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    sharedStream(intent)?.let { ZoptionSharedReceiptStore.accept(this, it) }
+    val uri = sharedStream(intent)
+    if (uri == null) {
+      openAppAndFinish()
+      return
+    }
+    // Keep the translucent activity alive until the background copy finishes so Android's
+    // temporary FLAG_GRANT_READ_URI_PERMISSION stays valid without blocking the main thread.
+    ZoptionSharedReceiptStore.acceptAsync(this, uri) {
+      runOnUiThread { openAppAndFinish() }
+    }
+  }
+
+  private fun openAppAndFinish() {
+    if (isFinishing || isDestroyed) return
     packageManager.getLaunchIntentForPackage(packageName)?.let { launch ->
       launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
       startActivity(launch)
