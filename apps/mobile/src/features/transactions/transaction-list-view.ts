@@ -77,11 +77,16 @@ export function monthStartForDate(date: Date): string {
   return `${date.getFullYear()}-${month}-01`;
 }
 
+const weekdayShortFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  timeZone: "UTC",
+});
+
 export function transactionDayLabel(date: string): { day: string; weekday: string } {
   const parsed = new Date(date + "T00:00:00Z");
   return {
     day: String(parsed.getUTCDate()),
-    weekday: parsed.toLocaleDateString(undefined, { weekday: "short", timeZone: "UTC" }),
+    weekday: weekdayShortFormatter.format(parsed),
   };
 }
 

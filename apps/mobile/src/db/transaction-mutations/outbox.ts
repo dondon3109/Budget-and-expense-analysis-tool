@@ -40,17 +40,18 @@ export class LocalMutationOutbox {
       throw new Error("Choose a synchronization push size from 1 to 50.");
     }
     return this.writer.run(async () => {
+      // Skip opening a write transaction on the common case where nothing is queued.
+      const graphRows = z.array(outboxGraphRowSchema).parse(
+        await this.database.getAllAsync(
+          `SELECT operation_id, dependency_ids_json, state, next_attempt_at, created_sequence
+           FROM sync_outbox
+           WHERE state IN ('pending', 'sending', 'retryable', 'failed', 'conflicted')
+           ORDER BY CASE WHEN state = 'sending' THEN 0 ELSE 1 END, created_sequence`,
+        ),
+      );
+      if (graphRows.length === 0) return null;
       let request: MobileSyncPushRequest | null = null;
       await this.database.withTransactionAsync(async () => {
-        const graphRows = z.array(outboxGraphRowSchema).parse(
-          await this.database.getAllAsync(
-            `SELECT operation_id, dependency_ids_json, state, next_attempt_at, created_sequence
-             FROM sync_outbox
-             WHERE state IN ('pending', 'sending', 'retryable', 'failed', 'conflicted')
-             ORDER BY CASE WHEN state = 'sending' THEN 0 ELSE 1 END, created_sequence`,
-          ),
-        );
-        if (graphRows.length === 0) return;
         const nodes = new Map(
           graphRows.map((row) => {
             let dependencyIds: unknown;

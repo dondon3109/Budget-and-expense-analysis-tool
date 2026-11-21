@@ -9,12 +9,13 @@ import {
   type PropsWithChildren,
 } from "react";
 
-import type { BudgetQuery, SubscriptionUsageList } from "@zoption/shared";
+import type { AccountRecord, BudgetQuery, SubscriptionUsageList } from "@zoption/shared";
 
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 
-import { useLocalQuery } from "./local-workspace/use-local-query";
+import { LocalQueryActivity, useLocalQuery } from "./local-workspace/use-local-query";
+export { LocalQueryActivity };
 import type { LocalRemittance, LocalRemittanceOverview } from "./remittance-queries";
 import {
   closeLocalWorkspace,
@@ -63,7 +64,7 @@ const LocalWorkspaceContext = createContext<LocalWorkspaceSnapshot | null>(null)
 export function LocalWorkspaceProvider({
   subject,
   children,
-}: PropsWithChildren<{ subject: string }>) {
+}: PropsWithChildren<{ subject: string | null }>) {
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<Omit<LocalWorkspaceSnapshot, "retry" | "reopen">>({
     status: "opening",
@@ -76,6 +77,11 @@ export function LocalWorkspaceProvider({
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
+    if (!subject) {
+      readySubjectRef.current = null;
+      setSnapshot({ status: "opening", workspace: null, message: null });
+      return;
+    }
     // Reopening the file already shown (sync rebuilt it from the server) keeps the last workspace
     // until the new one is open. Going back to "opening" would make the authenticated gate swap
     // every screen for the full-screen loader and remount navigation on Home, dropping the form
@@ -169,11 +175,30 @@ export function useDashboardData(anchorDate: string): {
   );
   const { data, error, retry } = useLocalQuery(workspace, {
     read,
-    tables: ["accounts", "categories", "transactions"],
+    tables: ["accounts", "budgets", "categories", "transactions"],
     empty: null,
     errorMessage: "Dashboard data could not be read from encrypted local storage.",
   });
   return { data, error, retry };
+}
+
+const readAccountBalances = (workspace: LocalWorkspace) =>
+  workspace.repository.getAccountBalances();
+
+/** Accounts with their per-currency balances, without loading the dashboard transaction window. */
+export function useAccountBalances(): {
+  accounts: AccountRecord[];
+  error: string | null;
+  retry: () => void;
+} {
+  const { workspace } = useLocalWorkspace();
+  const { data, error, retry } = useLocalQuery<AccountRecord[]>(workspace, {
+    read: readAccountBalances,
+    tables: ["accounts", "transactions"],
+    empty: NO_ROWS,
+    errorMessage: "Account balances could not be read from encrypted local storage.",
+  });
+  return { accounts: data, error, retry };
 }
 
 export function useBudgetPlan(period: BudgetQuery): {
@@ -620,7 +645,6 @@ export function useLocalTransactions(
         search,
         kind,
         month,
-        limit: month ? 200 : undefined,
       }),
     [search, kind, month],
   );

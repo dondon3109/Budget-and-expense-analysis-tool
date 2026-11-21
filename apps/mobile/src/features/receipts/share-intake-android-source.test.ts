@@ -27,5 +27,12 @@ describe("Android share intake", () => {
     expect(store).toContain("uri.authority?.startsWith(context.packageName) != false");
     expect(store).toContain("MAX_BYTES = 8L * 1024 * 1024");
     expect(store).toContain("context.cacheDir");
+    expect(store).toContain("acceptAsync");
+  });
+
+  it("copies shared streams off the main thread before launching the app", () => {
+    const activity = read("java/site/zoption/shareintake/ZoptionShareReceiverActivity.kt");
+    expect(activity).toContain("ZoptionSharedReceiptStore.acceptAsync");
+    expect(activity).toContain("runOnUiThread");
   });
 });

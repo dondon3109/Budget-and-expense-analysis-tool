@@ -64,8 +64,10 @@ export function createCashflowAxis(maxMinor: number): CashflowAxis {
   };
 }
 
+const axisTickFormatter = new Intl.NumberFormat("en-US");
+
 export function formatAxisTick(valueMinor: number, currency: Currency = "PHP"): string {
-  return `${currencyMetadata[currency].symbol}${Math.round(valueMinor / 100).toLocaleString("en-US")}`;
+  return `${currencyMetadata[currency].symbol}${axisTickFormatter.format(Math.round(valueMinor / 100))}`;
 }
 
 export function compactDateLabel(date: string, granularity: CashflowTrend["granularity"]): string {

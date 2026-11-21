@@ -6,23 +6,48 @@ import { useAmountsHidden } from "@/stores/hide-amounts-store";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { useZoptionTheme } from "@/ui/theme-provider";
 
+// Cache Intl.NumberFormat instances per (currency, digits) pair: constructing them
+// inside every MoneyValue render allocates two ICU formatters per row in Hermes.
+const currencyFormatters = new Map<string, Intl.NumberFormat>();
+const plainFormatters = new Map<string, Intl.NumberFormat>();
+
+function getCurrencyFormatter(currency: Currency, digits: number): Intl.NumberFormat {
+  const key = `${currency}:${digits}`;
+  let formatter = currencyFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(currencyMetadata[currency].locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+    currencyFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
+function getPlainFormatter(currency: Currency, digits: number): Intl.NumberFormat {
+  const key = `${currency}:${digits}`;
+  let formatter = plainFormatters.get(key);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(currencyMetadata[currency].locale, {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+    plainFormatters.set(key, formatter);
+  }
+  return formatter;
+}
+
 /** Two decimals, except none for a whole amount in a zero-decimal currency such as JPY. */
 export function formatMoneyMinor(amountMinor: number, currency: Currency): string {
   const digits = currencyFractionDigits(currency, amountMinor);
-  return new Intl.NumberFormat(currencyMetadata[currency].locale, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(amountMinor / 100);
+  return getCurrencyFormatter(currency, digits).format(amountMinor / 100);
 }
 
 export function moneyAccessibilityLabel(amountMinor: number, currency: Currency): string {
   const digits = currencyFractionDigits(currency, amountMinor);
-  const formatted = new Intl.NumberFormat(currencyMetadata[currency].locale, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(Math.abs(amountMinor) / 100);
+  const formatted = getPlainFormatter(currency, digits).format(Math.abs(amountMinor) / 100);
   return `${amountMinor < 0 ? "negative " : ""}${formatted} ${currencyMetadata[currency].plural}`;
 }
 

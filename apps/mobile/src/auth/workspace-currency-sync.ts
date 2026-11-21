@@ -19,19 +19,27 @@ export function useWorkspaceCurrencySync(): void {
   useEffect(() => {
     if (status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject)) return;
     let controller = new AbortController();
+    let sawBackground = false;
     const refresh = async (signal: AbortSignal): Promise<void> => {
       try {
         const accessToken = await getAccessToken(false);
+        if (signal.aborted) return;
         const settings = await getWorkspaceSettings({ accessToken, workspaceId, signal });
+        if (signal.aborted) return;
         useWorkspaceCurrencyStore.getState().setCurrency(settings.currency);
       } catch {
         // Offline or unreachable: keep the cached currency.
       }
     };
     void refresh(controller.signal);
-    // The setting can change on another device, so re-read it when the app returns.
+    // The setting can change on another device, so re-read it when returning from background.
     const appState = AppState.addEventListener("change", (next) => {
-      if (next !== "active") return;
+      if (next === "background") {
+        sawBackground = true;
+        return;
+      }
+      if (next !== "active" || !sawBackground) return;
+      sawBackground = false;
       controller.abort();
       controller = new AbortController();
       void refresh(controller.signal);

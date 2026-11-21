@@ -7,6 +7,7 @@ import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.util.concurrent.Executors
 import org.json.JSONObject
 
 /**
@@ -20,7 +21,20 @@ object ZoptionSharedReceiptStore {
   private const val DIRECTORY = "zoption-shared-receipts"
   private const val PREFERENCES = "zoption_share_intake"
   private const val PENDING = "pending"
+  private val executor = Executors.newSingleThreadExecutor()
 
+  /** Copies the shared stream on a background thread so slow providers cannot ANR the receiver. */
+  fun acceptAsync(context: Context, uri: Uri, onComplete: () -> Unit) {
+    executor.execute {
+      try {
+        accept(context, uri)
+      } finally {
+        onComplete()
+      }
+    }
+  }
+
+  @Synchronized
   fun accept(context: Context, uri: Uri): Boolean {
     // Only a content URI granted by the sharing app. A file:// URI, or one of Zoption's own
     // providers, could point a share at Zoption's private files and upload them.
@@ -62,6 +76,7 @@ object ZoptionSharedReceiptStore {
   }
 
   /** Returns the pending image once, then forgets it. */
+  @Synchronized
   fun consume(context: Context): Map<String, Any>? {
     val preferences = preferences(context)
     val pending = preferences.getString(PENDING, null) ?: return null

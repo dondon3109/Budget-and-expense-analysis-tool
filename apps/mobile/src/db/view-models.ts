@@ -148,6 +148,7 @@ export interface LocalCalendarDay {
     id: string;
     description: string;
     amountMinor: number;
+    currency: Currency;
     kind: TransactionKind;
   }[];
   subscriptionBills: {

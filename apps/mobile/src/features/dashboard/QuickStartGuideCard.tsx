@@ -15,28 +15,30 @@ const QUICK_START_GUIDE_DISMISSED_KEY = "zoption_quick_start_guide_dismissed";
 export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: string }) {
   const theme = useZoptionTheme();
   const [collapsed, setCollapsed] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  // Start unresolved so returning users who already dismissed the guide do not see it flash.
+  const [status, setStatus] = useState<"loading" | "visible" | "dismissed">("loading");
 
   useEffect(() => {
     let active = true;
     void SecureStore.getItemAsync(QUICK_START_GUIDE_DISMISSED_KEY)
       .then((val) => {
-        if (active && val === "true") {
-          setDismissed(true);
-        }
+        if (!active) return;
+        setStatus(val === "true" ? "dismissed" : "visible");
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setStatus("visible");
+      });
     return () => {
       active = false;
     };
   }, []);
 
   const handleDismiss = () => {
-    setDismissed(true);
+    setStatus("dismissed");
     void SecureStore.setItemAsync(QUICK_START_GUIDE_DISMISSED_KEY, "true").catch(() => undefined);
   };
 
-  if (dismissed) {
+  if (status !== "visible") {
     return null;
   }
 

@@ -14,20 +14,32 @@ export function usePushRegistration(): void {
   useEffect(() => {
     if (status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject)) return;
     if (!pushProjectId()) return;
+    let active = true;
+    let sawBackground = false;
     const register = async () => {
       try {
-        await registerForPush(await getAccessToken(false));
+        const token = await getAccessToken(false);
+        if (!active) return;
+        await registerForPush(token);
       } catch {
         // Offline or Firebase unavailable: the next foreground tries again.
       }
     };
     void register();
     const appState = AppState.addEventListener("change", (state) => {
-      if (state === "active") void register();
+      if (state === "background") {
+        sawBackground = true;
+        return;
+      }
+      if (state === "active" && sawBackground) {
+        sawBackground = false;
+        void register();
+      }
     });
     // FCM can rotate the device token while the app runs.
     const tokenChange = Notifications.addPushTokenListener(() => void register());
     return () => {
+      active = false;
       appState.remove();
       tokenChange.remove();
     };

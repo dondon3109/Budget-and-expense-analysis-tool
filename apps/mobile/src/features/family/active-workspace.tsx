@@ -64,7 +64,9 @@ export function ActiveWorkspaceProvider({
 }: PropsWithChildren<{ subject: string }>) {
   const session = useSessionSnapshot();
   const netInfo = useNetInfo();
-  const reachable = netInfo.isInternetReachable ?? netInfo.isConnected;
+  // Key on offline rather than nullable reachability so NetInfo's null -> true startup
+  // transition does not abort and double-fire the workspace requests.
+  const offline = (netInfo.isInternetReachable ?? netInfo.isConnected) === false;
   const [record, setRecord] = useState<WorkspaceRecord | null>(null);
   const [listAttempt, setListAttempt] = useState(0);
   const recordRef = useRef<WorkspaceRecord>(EMPTY_WORKSPACE_RECORD);
@@ -98,7 +100,7 @@ export function ActiveWorkspaceProvider({
   const { status: sessionStatus, getAccessToken } = session;
   useEffect(() => {
     if (!loaded || sessionStatus !== "signed-in" || isDummyDevelopmentSubject(subject)) return;
-    if (reachable === false) return;
+    if (offline) return;
     const controller = new AbortController();
     void (async () => {
       try {
@@ -106,7 +108,9 @@ export function ActiveWorkspaceProvider({
         const list = await listWorkspaces({ accessToken, signal: controller.signal });
         if (controller.signal.aborted) return;
         const { record: next, gone } = mergeWorkspaceList(recordRef.current, list.workspaces);
-        commit(() => next);
+        if (JSON.stringify(next) !== JSON.stringify(recordRef.current)) {
+          commit(() => next);
+        }
         for (const familyId of gone) {
           await discardLocalWorkspace(familySubject(subject, familyId)).catch(() => undefined);
         }
@@ -115,13 +119,13 @@ export function ActiveWorkspaceProvider({
       }
     })();
     return () => controller.abort();
-  }, [commit, getAccessToken, listAttempt, loaded, reachable, sessionStatus, subject]);
+  }, [commit, getAccessToken, listAttempt, loaded, offline, sessionStatus, subject]);
 
   // The family shown is re-read online on every list refresh, which a closing or lapsed refusal
   // from sync also asks for, so the phone learns it is closing or unpaid and stops offering changes.
   const activeId = record?.active ?? null;
   useEffect(() => {
-    if (!activeId || sessionStatus !== "signed-in" || reachable === false) return;
+    if (!activeId || sessionStatus !== "signed-in" || offline) return;
     const controller = new AbortController();
     void (async () => {
       try {
@@ -150,7 +154,7 @@ export function ActiveWorkspaceProvider({
       }
     })();
     return () => controller.abort();
-  }, [activeId, commit, getAccessToken, listAttempt, reachable, sessionStatus]);
+  }, [activeId, commit, getAccessToken, listAttempt, offline, sessionStatus]);
 
   const switchTo = useCallback(
     (familyId: string | null) => commit((current) => ({ ...current, active: familyId })),

@@ -129,6 +129,15 @@ describe("encrypted local workspace repository", () => {
     expect(monthSql).toContain("transaction_row.date >= ?");
     expect(monthSql).toContain("transaction_row.date < date(?, '+1 month')");
     expect(monthParams).toEqual(["2026-08-01", "2026-08-01", 200]);
+
+    await repository.queryTransactions({ month: "2026-08-01" });
+    const [fullMonthSql, ...fullMonthParams] = getAllAsync.mock.calls[3] as [
+      string,
+      ...Array<string | number>,
+    ];
+    expect(fullMonthSql).not.toContain("LIMIT");
+    expect(fullMonthParams).toEqual(["2026-08-01", "2026-08-01"]);
+
     await expect(repository.queryTransactions({ month: "2026-08-02" })).rejects.toThrow(
       "Use the first day of the month.",
     );

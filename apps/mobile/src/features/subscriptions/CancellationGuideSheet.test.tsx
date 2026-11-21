@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { Linking } from "react-native";
 
 import {
-  useDashboardData,
+  useAccountBalances,
   useLocalReferenceData,
   useLocalWorkspace,
   useSubscriptions,
@@ -26,7 +26,7 @@ jest.mock("expo-router", () => ({
 jest.mock("./SubscriptionRoiCard", () => ({ SubscriptionRoiCard: () => null }));
 
 jest.mock("@/db/local-workspace-state", () => ({
-  useDashboardData: jest.fn(),
+  useAccountBalances: jest.fn(),
   useLocalWorkspace: jest.fn(),
   useSubscriptions: jest.fn(),
   useLocalReferenceData: jest.fn(),
@@ -149,8 +149,8 @@ describe("SubscriptionsScreen cancellation wiring", () => {
       error: null,
       retry: jest.fn(),
     });
-    jest.mocked(useDashboardData).mockReturnValue({
-      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
+    jest.mocked(useAccountBalances).mockReturnValue({
+      accounts: [],
       error: null,
       retry: jest.fn(),
     });

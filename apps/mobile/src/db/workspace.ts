@@ -77,11 +77,13 @@ async function configureEncryptedDatabase(database: SQLiteDatabase, key: string)
       { cause: error },
     );
   }
-  await database.execAsync("PRAGMA foreign_keys = ON");
-  await database.execAsync("PRAGMA journal_mode = WAL");
-  await database.execAsync("PRAGMA synchronous = FULL");
-  await database.execAsync("PRAGMA secure_delete = ON");
-  await database.execAsync("PRAGMA busy_timeout = 5000");
+  await database.execAsync(`
+    PRAGMA foreign_keys = ON;
+    PRAGMA journal_mode = WAL;
+    PRAGMA synchronous = FULL;
+    PRAGMA secure_delete = ON;
+    PRAGMA busy_timeout = 5000;
+  `);
 }
 
 async function assertWorkspaceSubject(database: SQLiteDatabase, subject: string): Promise<void> {
@@ -124,11 +126,13 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
 
 async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
   const alias = await workspaceAlias(subject);
-  const generation = await getWorkspaceGeneration(alias);
+  const [generation, key] = await Promise.all([
+    getWorkspaceGeneration(alias),
+    getOrCreateWorkspaceKey(alias),
+    ensureLocalDataBackupProtection(),
+  ]);
   const name = databaseNameForGeneration(alias, generation);
-  const key = await getOrCreateWorkspaceKey(alias);
   markStartupPhase("workspace:key");
-  await ensureLocalDataBackupProtection();
   const database = await openDatabaseAsync(name, {
     enableChangeListener: true,
     useNewConnection: true,
@@ -249,13 +253,16 @@ async function buildSnapshotGeneration({
       clientId,
     );
     const collected = await collectSnapshotPages(fetchPage);
-    for (const change of collected.changes) {
-      await applySnapshotChange(database, change);
-    }
-    await database.runAsync(
-      "UPDATE sync_metadata SET server_cursor = ? WHERE singleton = 1",
-      collected.resumeCursor,
-    );
+    // Apply the entire snapshot inside one transaction instead of fsyncing per row.
+    await database.withTransactionAsync(async () => {
+      for (const change of collected.changes) {
+        await applySnapshotChange(database, change);
+      }
+      await database.runAsync(
+        "UPDATE sync_metadata SET server_cursor = ? WHERE singleton = 1",
+        collected.resumeCursor,
+      );
+    });
     await verifySnapshotGeneration(database, subject, clientId, collected.resumeCursor);
   } catch (error) {
     await database.closeAsync().catch(() => undefined);

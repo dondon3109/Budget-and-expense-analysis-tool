@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { router } from "expo-router";
 
 import {
-  useDashboardData,
+  useAccountBalances,
   useLocalReferenceData,
   useLocalWorkspace,
   useSubscriptions,
@@ -24,7 +24,7 @@ jest.mock("expo-router", () => ({
 jest.mock("./SubscriptionRoiCard", () => ({ SubscriptionRoiCard: () => null }));
 
 jest.mock("@/db/local-workspace-state", () => ({
-  useDashboardData: jest.fn(),
+  useAccountBalances: jest.fn(),
   useLocalWorkspace: jest.fn(),
   useSubscriptions: jest.fn(),
   useLocalReferenceData: jest.fn(),
@@ -112,8 +112,8 @@ describe("SubscriptionsScreen", () => {
       error: null,
       retry: jest.fn(),
     });
-    jest.mocked(useDashboardData).mockReturnValue({
-      data: { transactions: [], recentTransactions: [], accounts: [], budgets: [] },
+    jest.mocked(useAccountBalances).mockReturnValue({
+      accounts: [],
       error: null,
       retry: jest.fn(),
     });
@@ -187,5 +187,48 @@ describe("SubscriptionsScreen", () => {
     await fireEvent.press(canceledChip);
     expect(screen.getByText("Gym Membership")).toBeTruthy();
     expect(screen.queryByLabelText("Netflix, 549.00 Philippine pesos, active")).toBeNull();
+  });
+
+  it("excludes other currencies from the forecast starting balance", async () => {
+    jest.mocked(useSubscriptions).mockReturnValue({
+      subscriptions: [mockSubscriptions[0]!],
+      loading: false,
+      error: null,
+      retry: jest.fn(),
+    });
+    jest.mocked(useAccountBalances).mockReturnValue({
+      accounts: [
+        {
+          id: "acc-php",
+          name: "PHP Wallet",
+          type: "cash",
+          currency: "PHP",
+          balanceMinor: 100_000,
+          balancesByCurrency: { PHP: 100_000 },
+          archived: false,
+          system: false,
+          interest: { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null },
+        },
+        {
+          id: "acc-usd",
+          name: "USD Savings",
+          type: "savings",
+          currency: "USD",
+          balanceMinor: 500_000,
+          balancesByCurrency: { USD: 500_000 },
+          archived: false,
+          system: false,
+          interest: { enabled: false, annualRateBasisPoints: null, frequency: null, payDay: null },
+        },
+      ],
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<SubscriptionsScreen />);
+
+    // 1,000.00 PHP balance minus 549.00 PHP Netflix = 451.00 PHP; USD balance is not mixed in.
+    expect(screen.getAllByText(/451\.00/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/5,451/)).toBeNull();
   });
 });

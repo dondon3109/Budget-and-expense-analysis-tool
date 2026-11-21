@@ -17,7 +17,7 @@ interface Migration {
   sql: string;
 }
 
-export const LOCAL_SCHEMA_VERSION = 19;
+export const LOCAL_SCHEMA_VERSION = 20;
 
 export const migrations: readonly Migration[] = [
   {
@@ -873,6 +873,31 @@ export const migrations: readonly Migration[] = [
         action TEXT NOT NULL CHECK (action IN ('check_in', 'undo', 'track', 'untrack')),
         used_on TEXT
       );
+    `,
+  },
+  {
+    version: 20,
+    // Hot-path indexes for transfer peer joins, debt pending payments, occasion budgets,
+    // reverse date+rowid ordering, covering account balance sums, and conflict lookups.
+    name: "query_performance_indexes",
+    sql: `
+      CREATE INDEX IF NOT EXISTS transactions_transfer_group_idx
+        ON transactions(transfer_group_id)
+        WHERE transfer_group_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS transactions_debt_idx
+        ON transactions(debt_id)
+        WHERE debt_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS budgets_occasion_idx
+        ON budgets(occasion_id)
+        WHERE occasion_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS transactions_active_date_idx
+        ON transactions(date)
+        WHERE deleted_at IS NULL;
+      CREATE INDEX IF NOT EXISTS transactions_account_balance_idx
+        ON transactions(account_id, currency, kind, transfer_group_id, amount_minor)
+        WHERE deleted_at IS NULL AND account_id IS NOT NULL;
+      CREATE INDEX IF NOT EXISTS sync_conflicts_entity_idx
+        ON sync_conflicts(entity_type, entity_id, resolved_at);
     `,
   },
 ] as const;
