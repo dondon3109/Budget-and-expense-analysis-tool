@@ -11,27 +11,27 @@ export interface ProductRelease {
 
 export const currentRelease: ProductRelease = {
   version: __APP_VERSION__,
-  releasedOn: "November 20, 2026",
+  releasedOn: "November 21, 2026",
   changes: [
     {
-      title: "Bill edits no longer restart the app",
+      title: "A quicker first setup",
       description:
-        "In Android 0.2.68, editing or deleting a bill no longer sends you back to the Opening Zoption screen and then Home, and pulling to refresh keeps you on the screen you were using.",
+        "Setup now runs currency, starting cash, your goal, your money habits, then Make it yours, on web and mobile. Zoption suggests a currency from your device, and leaving the cash blank counts as zero. On Android, tapping Not now leaves a Resume setup card on Home.",
     },
     {
-      title: "A simpler Adjust balance",
+      title: "Create an account in the Android app",
       description:
-        "On Android, the Edit account screen lists each balance once at a normal size, and Save changes records the new balance, so there is no separate Adjust balance button to tap.",
+        "Sign up with your email and a password right from the Android sign-in screen. Guest mode now says up front that entries saved on the phone stay there and do not move into an account.",
     },
     {
-      title: "Shared balances stay current",
+      title: "Steadier receipt scanning",
       description:
-        "A balance link you share now shows the account's current balance with the time it was updated, plus the balance when you shared it. Links shared before this keep showing the amount they were created with.",
+        "On Android you can correct a misread receipt total, HEIC and very large photos are converted before upload, and a slow upload stops with a message instead of spinning. On the web, amounts show exact centavos in your workspace currency.",
     },
     {
-      title: "Pick dates from a calendar",
+      title: "Android 0.2.69 installs on more devices",
       description:
-        "On Android, bill and receipt dates open the same calendar pop-up as transactions.",
+        "Wi-Fi, camera, and microphone are no longer required, so Google Play offers Zoption on phones and tablets without them. The notification permission now waits until setup is done.",
     },
   ],
 };
@@ -46,6 +46,32 @@ export const currentRelease: ProductRelease = {
  */
 export const releaseHistory: readonly ProductRelease[] = [
   currentRelease,
+  {
+    version: "4.9.0",
+    releasedOn: "November 21, 2026",
+    changes: [
+      {
+        title: "Bill edits no longer restart the app",
+        description:
+          "In Android 0.2.68, editing or deleting a bill no longer sends you back to the Opening Zoption screen and then Home, and pulling to refresh keeps you on the screen you were using.",
+      },
+      {
+        title: "A simpler Adjust balance",
+        description:
+          "On Android, the Edit account screen lists each balance once at a normal size, and Save changes records the new balance, so there is no separate Adjust balance button to tap.",
+      },
+      {
+        title: "Shared balances stay current",
+        description:
+          "A balance link you share now shows the account's current balance with the time it was updated, plus the balance when you shared it. Links shared before this keep showing the amount they were created with.",
+      },
+      {
+        title: "Pick dates from a calendar",
+        description:
+          "On Android, bill and receipt dates open the same calendar pop-up as transactions.",
+      },
+    ],
+  },
   {
     version: "4.8.0",
     releasedOn: "November 20, 2026",

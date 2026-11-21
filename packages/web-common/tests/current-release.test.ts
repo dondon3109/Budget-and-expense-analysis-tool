@@ -25,17 +25,22 @@ const notes = (version: string) =>
 describe("current release notes", () => {
   it("lists only what the running version shipped", () => {
     expect(currentRelease.changes.map((change) => change.title)).toEqual([
-      "Bill edits no longer restart the app",
-      "A simpler Adjust balance",
-      "Shared balances stay current",
-      "Pick dates from a calendar",
+      "A quicker first setup",
+      "Create an account in the Android app",
+      "Steadier receipt scanning",
+      "Android 0.2.69 installs on more devices",
     ]);
 
     const copy = currentRelease.changes
       .map((change) => `${change.title} ${change.description}`)
       .join(" ");
-    expect(copy).toMatch(/Android 0\.2\.68/);
+    expect(copy).toMatch(/Android 0\.2\.69/);
     expect(copy).not.toMatch(/Android Beta/);
+  });
+
+  it("keeps the bill edit and shared balance notes as 4.9.0", () => {
+    expect(titles("4.9.0")).toContain("Bill edits no longer restart the app");
+    expect(notes("4.9.0")).toMatch(/Android 0\.2\.68/);
   });
 
   it("keeps the onboarding and Google Play notes as 4.8.0", () => {
@@ -256,6 +261,7 @@ describe("current release notes", () => {
 
   it("lists each shipped version once, newest first", () => {
     expect(releaseHistory.slice(1).map((entry) => entry.version)).toEqual([
+      "4.9.0",
       "4.8.0",
       "4.7.0",
       "4.6.1",
