@@ -96,6 +96,7 @@ const withLegacyBackHandling: ConfigPlugin = (config) =>
 const OPTIONAL_ANDROID_FEATURES = [
   "android.hardware.wifi",
   "android.hardware.camera",
+  "android.hardware.camera.autofocus",
   "android.hardware.microphone",
 ] as const;
 

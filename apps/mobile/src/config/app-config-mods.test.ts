@@ -84,6 +84,7 @@ describe("native config produced by prebuild", () => {
       expect.arrayContaining([
         { "android:name": "android.hardware.wifi", "android:required": "false" },
         { "android:name": "android.hardware.camera", "android:required": "false" },
+        { "android:name": "android.hardware.camera.autofocus", "android:required": "false" },
         { "android:name": "android.hardware.microphone", "android:required": "false" },
       ]),
     );
