@@ -46,8 +46,9 @@ export function AuthenticatedGate({ children }: PropsWithChildren) {
   if (!session.subject) return <Redirect href="/(public)/sign-in" />;
   const gate = <LocalWorkspaceGate identity={identity}>{children}</LocalWorkspaceGate>;
   // Load the workspace record and open SQLite in parallel with the app-lock check
-  // instead of waiting for each SecureStore read in series. Every screen, SyncProvider,
-  // and SharedReceiptHandoff still stays gated behind AppLockGate.
+  // instead of waiting for each SecureStore read in series. AppLockGate holds every
+  // screen, SyncProvider, and SharedReceiptHandoff only until it has read the lock kind;
+  // after that they mount beneath the lock screen, which covers them until unlock.
   return (
     <ActiveWorkspaceProvider subject={session.subject}>
       <ActiveLocalWorkspace>
