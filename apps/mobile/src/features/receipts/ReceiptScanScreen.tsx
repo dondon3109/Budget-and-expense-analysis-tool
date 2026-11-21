@@ -55,7 +55,11 @@ import {
 } from "./receipt-review";
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
-import { prepareReceiptPhoto, prepareScanPhoto } from "@/features/family/receipt-photo";
+import {
+  prepareReceiptPhoto,
+  prepareScanPhoto,
+  ReceiptPhotoError,
+} from "@/features/family/receipt-photo";
 import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 type PrefsPhase = "loading" | "consent" | "ready" | "unavailable" | "error";
@@ -313,7 +317,7 @@ export function ReceiptScanScreen() {
         return;
       }
       setMessage(
-        error instanceof Error
+        error instanceof ApiTransportError || error instanceof ReceiptPhotoError
           ? error.message
           : "The receipt could not be scanned. Try again with a clearer photo.",
       );

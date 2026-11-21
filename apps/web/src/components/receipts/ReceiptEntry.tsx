@@ -78,13 +78,13 @@ function defaultCategory(
   categories: CategoryRecord[],
   kind: TransactionKind,
 ): CategoryRecord | undefined {
-  const usable = categories.filter(
-    (category) => !category.archived && !category.locked && category.kind === kind,
-  );
-  return (
-    usable.find(
-      (category) => category.system && category.name.toLocaleLowerCase("en") === "uncategorized",
-    ) ?? usable[0]
+  return categories.find(
+    (category) =>
+      !category.archived &&
+      !category.locked &&
+      category.kind === kind &&
+      category.system &&
+      category.name.toLocaleLowerCase("en") === "uncategorized",
   );
 }
 
@@ -553,6 +553,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
                 aria-invalid={Boolean(categoryError)}
                 aria-describedby={categoryError ? "receipt-category-error" : undefined}
               >
+                <option value="">Choose a category</option>
                 {categories
                   .filter(
                     (category) => !category.archived && !category.locked && category.kind === kind,

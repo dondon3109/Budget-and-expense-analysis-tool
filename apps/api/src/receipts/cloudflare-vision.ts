@@ -43,6 +43,7 @@ const candidateSchema = z
     amountMinor: z.number().int().nullish(),
     kind: z.enum(transactionKinds).nullish(),
     categoryName: z.string().nullish(),
+    // Allow up to 60 raw lines before service.ts strips summary/discount rows and caps at 30.
     items: z.array(candidateItemSchema).max(60).nullish(),
     payment: candidatePaymentSchema.nullish(),
     rawText: z.string().nullish(),

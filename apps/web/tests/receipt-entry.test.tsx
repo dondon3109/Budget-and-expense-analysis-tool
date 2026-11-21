@@ -436,4 +436,29 @@ describe("ReceiptEntry", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("The receipt could not be read.");
     expect(screen.queryByRole("button", { name: "Continue to preview" })).not.toBeInTheDocument();
   });
+
+  it("leaves the category unselected when Uncategorized is missing instead of picking another category", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
+      merchant: "Corner Store",
+      date: "2026-08-13",
+      amountMinor: -12_000,
+      currency: "PHP",
+      kind: "expense",
+      rawText: "",
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReceiptEntry workspace={workspace} categories={[categories[0]!]} onContinue={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+
+    expect(await screen.findByLabelText("Category")).toHaveValue("");
+  });
 });

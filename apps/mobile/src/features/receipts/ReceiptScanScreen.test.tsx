@@ -261,4 +261,16 @@ describe("ReceiptScanScreen payment confirmations", () => {
     expect(getReceiptPreferences).not.toHaveBeenCalled();
     expect(extractReceipt).not.toHaveBeenCalled();
   });
+
+  it("hides unexpected native error details behind the generic scan failure message", async () => {
+    jest.mocked(extractReceipt).mockRejectedValueOnce(new Error("E_IMAGE_MANIPULATOR_DECODE"));
+    await render(<ReceiptScanScreen />);
+
+    await fireEvent.press(await screen.findByLabelText("Choose receipt photo from library"));
+
+    expect(
+      await screen.findByText("The receipt could not be scanned. Try again with a clearer photo."),
+    ).toBeTruthy();
+    expect(screen.queryByText("E_IMAGE_MANIPULATOR_DECODE")).toBeNull();
+  });
 });
