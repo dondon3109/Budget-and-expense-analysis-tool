@@ -1,4 +1,4 @@
-import { CURRENT_RECEIPT_CONSENT_VERSION } from "@zoption/shared";
+import { CURRENT_RECEIPT_CONSENT_VERSION, receiptDraftSchema } from "@zoption/shared";
 import { afterAll, describe, expect, it, vi } from "vitest";
 
 import { createReceiptService } from "../src/receipts/service";
@@ -505,6 +505,37 @@ describe("receipt service", () => {
     expect(draft.merchant).toBe("BDO");
     expect(draft.payment).toEqual({ provider: "BDO", type: "bank_transfer" });
     expect(draft.items).toBeUndefined();
+  });
+
+  it("truncates oversized merchant names and keeps valid payment fields when sentAmountMinor is malformed", async () => {
+    const service = createReceiptService(
+      repository(),
+      paymentProvider({
+        merchant: "Jollibee\n" + "A".repeat(260),
+        amountMinor: 25_000,
+        payment: {
+          provider: "GCash",
+          type: "send_money",
+          counterparty: "Maria\nSantos",
+          referenceNo: "1234 5678",
+          feeMinor: 1_500,
+          sentAmountMinor: 12.5,
+        },
+      }),
+    );
+
+    const draft = await service.extract(env, TENANT_ID, receiptImage(), { includePayment: true });
+
+    expect(receiptDraftSchema.safeParse(draft).success).toBe(true);
+    expect(draft.merchant).toHaveLength(240);
+    expect(draft.merchant).not.toContain("\n");
+    expect(draft.payment).toEqual({
+      provider: "GCash",
+      type: "send_money",
+      counterparty: "Maria Santos",
+      referenceNo: "12345678",
+      feeMinor: 1_500,
+    });
   });
 
   it("rejects an unreadable merchant or amount with 422", async () => {

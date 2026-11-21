@@ -25,12 +25,17 @@ export function createReceiptRoutes(service: ReceiptService) {
   });
 
   routes.post("/extract", async (context) => {
-    const form = await context.req.formData();
+    let form: FormData;
+    try {
+      form = await context.req.formData();
+    } catch {
+      throw new HttpError(400, "invalid_request", "Send the receipt photo as multipart form data.");
+    }
     const image = form.get("image");
     if (!(image instanceof File) || image.size === 0 || image.size > MAX_IMAGE_BYTES) {
       throw new HttpError(400, "invalid_receipt_image", "Choose a receipt photo up to 8 MB.");
     }
-    const mediaType = image.type.split(";", 1)[0]?.toLowerCase();
+    const mediaType = image.type.split(";", 1)[0]?.trim().toLowerCase();
     if (!mediaType || !ACCEPTED_IMAGE_TYPES.has(mediaType)) {
       throw new HttpError(415, "unsupported_receipt_image", "Use a JPEG, PNG, or WebP photo.");
     }

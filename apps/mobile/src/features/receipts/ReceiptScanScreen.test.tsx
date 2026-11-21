@@ -1,10 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReceiptDraft } from "@zoption/shared";
 
-import { extractReceipt } from "@/api/receipt-scan";
+import { extractReceipt, getReceiptPreferences } from "@/api/receipt-scan";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import type { TransactionFormData } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { ReceiptScanScreen } from "./ReceiptScanScreen";
 import { takeSharedReceipt } from "./SharedReceiptHandoff";
@@ -51,7 +53,7 @@ jest.mock("@/db/local-workspace-state", () => ({
 jest.mock("@/sync/sync-state", () => ({ useSyncState: jest.fn() }));
 
 jest.mock("@/features/family/active-workspace", () => ({
-  useActiveWorkspace: () => ({ family: null, writable: true }),
+  useActiveWorkspace: jest.fn(() => ({ family: null, writable: true })),
 }));
 
 jest.mock("expo-secure-store", () => ({
@@ -108,6 +110,11 @@ async function scan(draft: ReceiptDraft): Promise<void> {
 describe("ReceiptScanScreen payment confirmations", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useLastUsedAccountStore.setState({ accountId: null });
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: null,
+      writable: true,
+    } as ReturnType<typeof useActiveWorkspace>);
     jest
       .mocked(useSyncState)
       .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
@@ -191,5 +198,67 @@ describe("ReceiptScanScreen payment confirmations", () => {
       fileName: "shared-1.png",
       mimeType: "image/png",
     });
+  });
+
+  it("picks another source account when last-used account matches a cash-in wallet", async () => {
+    useLastUsedAccountStore.setState({ accountId: "a-gcash" });
+    await scan({
+      ...gcashSend,
+      merchant: "BPI",
+      amountMinor: 101_500,
+      kind: "transfer",
+      payment: { provider: "GCash", type: "cash_in", feeMinor: 1_500 },
+    });
+
+    await fireEvent.press(screen.getByLabelText("Save scanned transfer"));
+
+    await waitFor(() => expect(createTransaction).toHaveBeenCalledTimes(1));
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "transfer",
+        fromAccountId: "a-bpi",
+        toAccountId: "a-gcash",
+      }),
+    );
+  });
+
+  it("lets the user correct a misread receipt total on an itemized receipt and save", async () => {
+    await scan({
+      merchant: "Jollibee",
+      date: "2026-09-30",
+      amountMinor: 28_600,
+      currency: "PHP",
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18_500 },
+        { description: "Peach mango pie", amountMinor: 10_000 },
+      ],
+      rawText: "JOLLIBEE TOTAL 285.00",
+    });
+
+    await fireEvent.press(screen.getByLabelText("Save 2 scanned items"));
+    expect(createTransactions).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(screen.getByDisplayValue("286.00"), "285.00");
+    await fireEvent.press(screen.getByLabelText("Save 2 scanned items"));
+
+    await waitFor(() => expect(createTransactions).toHaveBeenCalledTimes(1));
+    expect(createTransactions).toHaveBeenCalledWith([
+      expect.objectContaining({ description: "Jollibee · Chickenjoy", amountMinor: 18_500 }),
+      expect.objectContaining({ description: "Jollibee · Peach mango pie", amountMinor: 10_000 }),
+    ]);
+  });
+
+  it("blocks receipt scanning in a read-only family workspace without calling the API", async () => {
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: { id: "family-1", name: "Home", role: "viewer" },
+      writable: false,
+    } as ReturnType<typeof useActiveWorkspace>);
+
+    await render(<ReceiptScanScreen />);
+
+    expect(await screen.findByText("Cannot scan in this family workspace")).toBeTruthy();
+    expect(getReceiptPreferences).not.toHaveBeenCalled();
+    expect(extractReceipt).not.toHaveBeenCalled();
   });
 });
