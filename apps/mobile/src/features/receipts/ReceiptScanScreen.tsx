@@ -40,11 +40,14 @@ import { useZoptionTheme } from "@/ui/theme-provider";
 
 import { ItemKindSelector, type ReceiptKind } from "./ItemKindSelector";
 import { ReceiptConsent } from "./ReceiptConsent";
+import { ReceiptItemsEditor } from "./ReceiptItemsEditor";
 import { ReceiptTransferFields } from "./ReceiptTransferFields";
 import { takeSharedReceipt } from "./SharedReceiptHandoff";
 import {
   accountForProvider,
+  parsePositiveMinor,
   receiptNotes,
+  resolveTransferAccounts,
   reviewedItemsTotalMinor,
   reviewItemsFromReceipt,
   type ReceiptReviewCategory,
@@ -52,14 +55,12 @@ import {
 } from "./receipt-review";
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
-import { prepareReceiptPhoto } from "@/features/family/receipt-photo";
-
-const MIME_BY_EXTENSION: Record<string, "image/jpeg" | "image/png" | "image/webp"> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
+import {
+  prepareReceiptPhoto,
+  prepareScanPhoto,
+  ReceiptPhotoError,
+} from "@/features/family/receipt-photo";
+import { discardTemporarySourceFile } from "@/files/temporary-source-file";
 
 type PrefsPhase = "loading" | "consent" | "ready" | "unavailable" | "error";
 
@@ -107,12 +108,15 @@ export function ReceiptScanScreen() {
   const [toAccountId, setToAccountId] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [transferFee, setTransferFee] = useState("");
+  const [receiptTotal, setReceiptTotal] = useState("");
   const lastUsedAccountId = useLastUsedAccountStore((state) => state.accountId);
+  const setLastUsedAccountId = useLastUsedAccountStore((state) => state.setAccountId);
   const [items, setItems] = useState<ReceiptReviewItem[]>([]);
   const [showRawText, setShowRawText] = useState(false);
   const [singleReceiptNoticeOpen, setSingleReceiptNoticeOpen] = useState(true);
   // A family scan keeps its photo on every entry it saves, unless the person turns it off.
-  const inFamily = useActiveWorkspace().family !== null;
+  const { family, writable } = useActiveWorkspace();
+  const inFamily = family !== null;
   const [scannedPhoto, setScannedPhoto] = useState<ReceiptPhotoAsset | null>(null);
   const [keepPhoto, setKeepPhoto] = useState(true);
 
@@ -146,12 +150,25 @@ export function ReceiptScanScreen() {
   );
   const activeCurrency: Currency = (selectedAccount?.currency as Currency) ?? "PHP";
   const reviewedTotalMinor = useMemo(() => reviewedItemsTotalMinor(items), [items]);
-  const receiptTotalMinor = draft ? Math.abs(draft.amountMinor) : null;
+  const receiptTotalMinor = useMemo(
+    () => (draft ? parsePositiveMinor(receiptTotal) : null),
+    [draft, receiptTotal],
+  );
   const hasExtractedLines = Boolean(draft?.items?.length);
   const totalsMatch =
     reviewedTotalMinor !== null &&
     receiptTotalMinor !== null &&
     reviewedTotalMinor === receiptTotalMinor;
+  const accountsRef = useRef(accounts);
+  const categoriesRef = useRef(categories);
+  const accountIdRef = useRef(accountId);
+  const lastUsedAccountIdRef = useRef(lastUsedAccountId);
+  useEffect(() => {
+    accountsRef.current = accounts;
+    categoriesRef.current = categories;
+    accountIdRef.current = accountId;
+    lastUsedAccountIdRef.current = lastUsedAccountId;
+  }, [accountId, accounts, categories, lastUsedAccountId]);
 
   useEffect(() => {
     mounted.current = true;
@@ -220,8 +237,9 @@ export function ReceiptScanScreen() {
   }, [withToken]);
 
   useEffect(() => {
+    if (!writable) return;
     void loadPreferences();
-  }, [loadPreferences]);
+  }, [loadPreferences, writable]);
 
   const acceptConsent = async (): Promise<void> => {
     setConsentBusy(true);
@@ -246,29 +264,41 @@ export function ReceiptScanScreen() {
     setMessage(null);
     setDraft(null);
     setItems([]);
+    setToAccountId("");
+    setReceiptTotal("");
     setScannedPhoto(asset);
+    let temporaryUri: string | null = null;
     try {
-      const extension =
-        asset.fileName?.split(".").pop()?.toLowerCase() ?? asset.mimeType?.split("/")[1] ?? "";
-      const mimeType = MIME_BY_EXTENSION[extension] ?? "image/jpeg";
+      const prepared = await prepareScanPhoto(asset);
+      if (prepared.temporary) temporaryUri = prepared.uri;
       const extracted = await withToken((token) =>
         extractReceipt(
           { accessToken: token },
-          {
-            uri: asset.uri,
-            fileName: asset.fileName ?? `receipt.${extension || "jpg"}`,
-            mimeType,
-          },
+          { uri: prepared.uri, fileName: prepared.fileName, mimeType: prepared.mimeType },
         ),
       );
       if (!mounted.current) return;
+      const latestAccounts = accountsRef.current;
+      const latestCategories = categoriesRef.current;
       const extractedKind: ReceiptKind = extracted.kind;
-      const reviewItems = reviewItemsFromReceipt(extracted, categories, extractedKind);
+      const reviewItems = reviewItemsFromReceipt(extracted, latestCategories, extractedKind);
       // A GCash screenshot belongs to the GCash account: it paid, or a cash-in landed in it.
-      const providerAccount = accountForProvider(accounts, extracted.payment?.provider);
-      if (extractedKind === "transfer") setToAccountId(providerAccount?.id ?? "");
-      else if (providerAccount) setAccountId(providerAccount.id);
-      setTransferAmount(formatMinorForInput(Math.abs(extracted.amountMinor)));
+      if (extractedKind === "transfer") {
+        const resolved = resolveTransferAccounts(
+          latestAccounts,
+          accountIdRef.current,
+          lastUsedAccountIdRef.current,
+          extracted,
+        );
+        setAccountId(resolved.fromAccountId);
+        setToAccountId(resolved.toAccountId);
+      } else {
+        const providerAccount = accountForProvider(latestAccounts, extracted.payment?.provider);
+        if (providerAccount) setAccountId(providerAccount.id);
+      }
+      const formattedTotal = formatMinorForInput(Math.abs(extracted.amountMinor));
+      setReceiptTotal(formattedTotal);
+      setTransferAmount(formattedTotal);
       setTransferFee(
         extracted.payment?.feeMinor ? formatMinorForInput(extracted.payment.feeMinor) : "",
       );
@@ -287,18 +317,19 @@ export function ReceiptScanScreen() {
         return;
       }
       setMessage(
-        error instanceof ApiTransportError
+        error instanceof ApiTransportError || error instanceof ReceiptPhotoError
           ? error.message
           : "The receipt could not be scanned. Try again with a clearer photo.",
       );
     } finally {
+      if (temporaryUri) discardTemporarySourceFile(temporaryUri);
       if (mounted.current) setScanning(false);
     }
   };
 
   // A screenshot shared from GCash or a bank app is read as soon as scanning is ready.
   useEffect(() => {
-    if (phase !== "ready" || scanning) return;
+    if (!writable || phase !== "ready" || scanning) return;
     const shared = takeSharedReceipt();
     if (shared) void readAsset(shared);
   });
@@ -342,6 +373,18 @@ export function ReceiptScanScreen() {
       const id = `manual-${nextItemId.current++}`;
       return [...current, { id, description: "", amount: "", categoryId: fallback }];
     });
+    setMessage(null);
+  };
+
+  const removeItem = (id: string): void => {
+    setItems((current) => current.filter((candidate) => candidate.id !== id));
+    setMessage(null);
+  };
+
+  const selectAccount = (nextId: string): void => {
+    setAccountId(nextId);
+    if (nextId === toAccountId) setToAccountId("");
+    setMessage(null);
   };
 
   type Mutations = NonNullable<typeof local.workspace>["transactionMutations"];
@@ -354,6 +397,7 @@ export function ReceiptScanScreen() {
     try {
       const mutations = local.workspace.transactionMutations;
       const savedIds = await write(mutations);
+      if (accountId) setLastUsedAccountId(accountId);
       if (inFamily && keepPhoto && scannedPhoto) {
         try {
           const photo = await prepareReceiptPhoto(scannedPhoto);
@@ -361,7 +405,9 @@ export function ReceiptScanScreen() {
         } catch (error) {
           Alert.alert(
             "Entries saved without the photo",
-            error instanceof Error ? error.message : "The receipt photo could not be kept.",
+            error instanceof ReceiptPhotoError
+              ? error.message
+              : "The receipt photo could not be kept.",
           );
         }
       }
@@ -411,9 +457,15 @@ export function ReceiptScanScreen() {
   };
 
   const confirm = async (): Promise<void> => {
-    if (!local.workspace) return;
+    if (!local.workspace || !writable) return;
     if (!accountId) {
-      setMessage("Choose the account that paid for this receipt before saving.");
+      setMessage(
+        kind === "transfer"
+          ? "Choose the account the money left before saving."
+          : kind === "income"
+            ? "Choose the account that received this money before saving."
+            : "Choose the account that paid for this receipt before saving.",
+      );
       return;
     }
     if (!merchant.trim()) {
@@ -432,11 +484,17 @@ export function ReceiptScanScreen() {
       setMessage("Enter a valid amount for every receipt item.");
       return;
     }
-    if (hasExtractedLines && !totalsMatch) {
-      setMessage(
-        `The items add to ${formatReceiptAmount(reviewedTotalMinor, activeCurrency)}, but the receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}. Correct the amounts or add the missing fee or discount before saving.`,
-      );
-      return;
+    if (hasExtractedLines) {
+      if (receiptTotalMinor === null) {
+        setMessage("Enter a valid receipt total before saving.");
+        return;
+      }
+      if (!totalsMatch) {
+        setMessage(
+          `The items add to ${formatReceiptAmount(reviewedTotalMinor, activeCurrency)}, but the receipt total is ${formatReceiptAmount(receiptTotalMinor, activeCurrency)}. Correct the amounts or receipt total before saving.`,
+        );
+        return;
+      }
     }
 
     const inputs: Array<Extract<TransactionInput, { kind: "expense" | "income" }>> = [];
@@ -530,6 +588,35 @@ export function ReceiptScanScreen() {
       ) : null}
     </Card>
   );
+
+  const accountLabel =
+    kind === "transfer" ? "From account" : kind === "income" ? "Received into" : "Paid from";
+  const accountHint =
+    kind === "transfer"
+      ? "Select the account the money left."
+      : kind === "income"
+        ? "Select the account that received this money."
+        : "Select the account that paid for this receipt.";
+  const summaryOk = reviewedTotalMinor !== null && (!hasExtractedLines || totalsMatch);
+  const saveButtonLabel =
+    kind === "transfer"
+      ? "Save transfer"
+      : kind === "income"
+        ? items.length === 1
+          ? "Save 1 income"
+          : `Save ${items.length} income entries`
+        : `Save ${items.length} expense${items.length === 1 ? "" : "s"}`;
+
+  if (!writable) {
+    return (
+      <Screen hasHeader title="Scan receipt">
+        <ErrorState
+          title="Cannot scan in this family workspace"
+          message="This family workspace is read-only right now. Switch to your personal workspace to scan receipts."
+        />
+      </Screen>
+    );
+  }
 
   return (
     <Screen hasHeader title="Scan receipt">
@@ -639,14 +726,14 @@ export function ReceiptScanScreen() {
                 <View
                   accessibilityRole="summary"
                   accessibilityLabel={
-                    totalsMatch
-                      ? `Item total ${formatReceiptAmount(reviewedTotalMinor ?? 0, activeCurrency)} matches the receipt total.`
-                      : `Items need review. Receipt total is ${formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}.`
+                    summaryOk
+                      ? `Total ${formatReceiptAmount(reviewedTotalMinor ?? 0, activeCurrency)} is ready to save.`
+                      : `Items need review. Receipt total is ${receiptTotalMinor === null ? "missing" : formatReceiptAmount(receiptTotalMinor, activeCurrency)}.`
                   }
                   style={[
                     styles.reconciliation,
                     {
-                      backgroundColor: totalsMatch
+                      backgroundColor: summaryOk
                         ? theme.colors.brandSoft
                         : theme.colors.warningSoft,
                     },
@@ -654,24 +741,24 @@ export function ReceiptScanScreen() {
                 >
                   <MaterialCommunityIcons
                     accessibilityElementsHidden
-                    color={totalsMatch ? theme.colors.brand : theme.colors.warning}
-                    name={totalsMatch ? "check-circle-outline" : "alert-circle-outline"}
+                    color={summaryOk ? theme.colors.brand : theme.colors.warning}
+                    name={summaryOk ? "check-circle-outline" : "alert-circle-outline"}
                     size={24}
                   />
                   <View className="min-w-0 flex-1 gap-1">
                     <Text style={[typography.headline, { color: theme.colors.text }]}>
                       {reviewedTotalMinor === null
                         ? "Enter every item amount"
-                        : totalsMatch
-                          ? "Items match the receipt total"
-                          : "Items need review before saving"}
+                        : !hasExtractedLines
+                          ? "Ready to save"
+                          : totalsMatch
+                            ? "Items match the receipt total"
+                            : "Items need review before saving"}
                     </Text>
                     <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                      Items:{" "}
-                      {reviewedTotalMinor === null
-                        ? "—"
-                        : formatReceiptAmount(reviewedTotalMinor, activeCurrency)}{" "}
-                      · Receipt: {formatReceiptAmount(receiptTotalMinor ?? 0, activeCurrency)}
+                      {hasExtractedLines
+                        ? `Items: ${reviewedTotalMinor === null ? "—" : formatReceiptAmount(reviewedTotalMinor, activeCurrency)} · Receipt: ${receiptTotalMinor === null ? "—" : formatReceiptAmount(receiptTotalMinor, activeCurrency)}`
+                        : `Total: ${reviewedTotalMinor === null ? "—" : formatReceiptAmount(reviewedTotalMinor, activeCurrency)}`}
                     </Text>
                     {!hasExtractedLines ? (
                       <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
@@ -685,13 +772,13 @@ export function ReceiptScanScreen() {
 
               <View className="w-full gap-4">
                 <SelectionField
-                  label={kind === "transfer" ? "From account" : "Paid from"}
+                  label={accountLabel}
                   value={accountId}
                   options={accountOptions}
                   placeholder="Choose an account"
-                  sheetTitle="Paid from"
-                  hint="Select the account that paid for this receipt."
-                  onSelect={setAccountId}
+                  sheetTitle={accountLabel}
+                  hint={accountHint}
+                  onSelect={selectAccount}
                 />
                 <FormField
                   label="Merchant"
@@ -713,6 +800,19 @@ export function ReceiptScanScreen() {
                   }}
                 />
                 <ItemKindSelector value={kind} disabled={saving} onChange={changeKind} />
+                {kind !== "transfer" && hasExtractedLines ? (
+                  <FormField
+                    label="Receipt total"
+                    value={receiptTotal}
+                    onChangeText={(value) => {
+                      setReceiptTotal(value);
+                      setMessage(null);
+                    }}
+                    placeholder="0.00"
+                    keyboardType="decimal-pad"
+                    hint="Correct this if the printed receipt total was misread."
+                  />
+                ) : null}
                 {kind === "transfer" ? (
                   <ReceiptTransferFields
                     accountOptions={accountOptions}
@@ -720,7 +820,10 @@ export function ReceiptScanScreen() {
                     toAccountId={toAccountId}
                     amount={transferAmount}
                     fee={transferFee}
-                    onToAccountChange={setToAccountId}
+                    onToAccountChange={(value) => {
+                      setToAccountId(value);
+                      setMessage(null);
+                    }}
                     onAmountChange={(value) => {
                       setTransferAmount(value);
                       setMessage(null);
@@ -734,106 +837,14 @@ export function ReceiptScanScreen() {
               </View>
 
               {kind === "transfer" ? null : (
-                <View className="w-full gap-3">
-                  <View className="flex-row items-end justify-between gap-3">
-                    <View className="min-w-0 flex-1 gap-1">
-                      <Text
-                        accessibilityRole="header"
-                        style={[typography.headline, { color: theme.colors.text }]}
-                      >
-                        Receipt items
-                      </Text>
-                      <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                        Correct, remove, or add an item before saving.
-                      </Text>
-                    </View>
-                    <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                      {items.length}/30
-                    </Text>
-                  </View>
-                  {items.map((item, index) => (
-                    <Card key={item.id} style={styles.itemCard}>
-                      <View className="flex-row items-center justify-between gap-3">
-                        <Text style={[typography.label, { color: theme.colors.text }]}>
-                          Item {index + 1}
-                        </Text>
-                        <Pressable
-                          accessibilityRole="button"
-                          accessibilityLabel={`Remove item ${index + 1}`}
-                          accessibilityState={{ disabled: items.length === 1 || saving }}
-                          disabled={items.length === 1 || saving}
-                          onPress={withTapSound(() =>
-                            setItems((current) =>
-                              current.filter((candidate) => candidate.id !== item.id),
-                            ),
-                          )}
-                          style={({ pressed }) => [
-                            styles.removeItem,
-                            {
-                              backgroundColor: pressed ? theme.colors.dangerSoft : "transparent",
-                              opacity: items.length === 1 || saving ? 0.45 : 1,
-                            },
-                          ]}
-                        >
-                          <MaterialCommunityIcons
-                            accessibilityElementsHidden
-                            color={theme.colors.danger}
-                            name="trash-can-outline"
-                            size={19}
-                          />
-                          <Text style={[typography.label, { color: theme.colors.danger }]}>
-                            Remove
-                          </Text>
-                        </Pressable>
-                      </View>
-                      <FormField
-                        label="Description"
-                        value={item.description}
-                        onChangeText={(value) => updateItem(item.id, { description: value })}
-                        placeholder="e.g. Chickenjoy"
-                        maxLength={160}
-                      />
-                      <FormField
-                        label="Amount"
-                        value={item.amount}
-                        onChangeText={(value) => updateItem(item.id, { amount: value })}
-                        placeholder="0.00"
-                        keyboardType="decimal-pad"
-                      />
-                      <SelectionField
-                        label="Category"
-                        value={item.categoryId}
-                        options={categoryOptions}
-                        placeholder="Choose a category"
-                        sheetTitle={`Category for item ${index + 1}`}
-                        onSelect={(categoryId) => updateItem(item.id, { categoryId })}
-                      />
-                    </Card>
-                  ))}
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Add receipt item"
-                    accessibilityState={{ disabled: items.length >= 30 || saving }}
-                    disabled={items.length >= 30 || saving}
-                    onPress={withTapSound(addItem)}
-                    style={({ pressed }) => [
-                      styles.addItem,
-                      {
-                        backgroundColor: pressed ? theme.colors.brandSoft : theme.colors.surface,
-                        borderColor: theme.colors.border,
-                        opacity: items.length >= 30 || saving ? 0.45 : 1,
-                      },
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      accessibilityElementsHidden
-                      color={theme.colors.brand}
-                      name="plus"
-                      size={21}
-                    />
-                    <Text style={[typography.label, { color: theme.colors.brand }]}>Add item</Text>
-                  </Pressable>
-                </View>
+                <ReceiptItemsEditor
+                  items={items}
+                  categoryOptions={categoryOptions}
+                  saving={saving}
+                  onUpdate={updateItem}
+                  onRemove={removeItem}
+                  onAdd={addItem}
+                />
               )}
 
               {draft.rawText.trim() ? (
@@ -908,9 +919,7 @@ export function ReceiptScanScreen() {
                 loading={saving}
                 onPress={() => void confirm()}
               >
-                {kind === "transfer"
-                  ? "Save transfer"
-                  : `Save ${items.length} ${kind}${items.length === 1 ? "" : "s"}`}
+                {saveButtonLabel}
               </Button>
             </View>
           ) : null}
@@ -944,26 +953,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.sm,
-  },
-  itemCard: { gap: spacing.md },
-  removeItem: {
-    minHeight: touchTarget,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xxs,
-  },
-  addItem: {
-    minHeight: touchTarget,
-    borderWidth: 1,
-    borderRadius: radii.md,
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
   },
   rawToggle: {
     minHeight: touchTarget,

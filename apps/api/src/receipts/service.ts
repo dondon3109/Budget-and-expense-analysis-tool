@@ -157,13 +157,22 @@ function applyDiscount(items: ReceiptDraftItem[], discountMinor: number): Receip
   });
 }
 
+/** Flattens line breaks and trims to the schema ceiling so strict clients never reject a draft. */
+function cleanLabel(value: string | undefined, maxLength: number): string {
+  return (value ?? "")
+    .replace(/[\r\n]+/g, " ")
+    .trim()
+    .slice(0, maxLength)
+    .trim();
+}
+
 function normalizeItems(
   candidate: ReceiptVisionCandidate,
   totalMinor: number,
 ): ReceiptDraftItem[] | undefined {
   if (!candidate.items) return undefined;
   const lines = candidate.items.flatMap((item) => {
-    const description = item.description?.trim();
+    const description = cleanLabel(item.description, 160);
     if (
       !description ||
       isSummaryLine(description) ||
@@ -187,10 +196,11 @@ function normalizeItems(
       discountMinor -= item.amountMinor;
       continue;
     }
+    const categoryName = cleanLabel(item.categoryName, 80);
     items.push({
-      description: item.description.slice(0, 160),
+      description: item.description,
       amountMinor: Math.abs(item.amountMinor),
-      ...(item.categoryName?.trim() ? { categoryName: item.categoryName.trim().slice(0, 80) } : {}),
+      ...(categoryName ? { categoryName } : {}),
     });
   }
   items = items.slice(0, 30);
@@ -215,13 +225,13 @@ function normalizePayment(
   candidate: ReceiptVisionCandidate["payment"],
   totalMinor: number,
 ): ReceiptPayment | undefined {
-  const provider = candidate?.provider?.trim().slice(0, 60);
+  const provider = cleanLabel(candidate?.provider, 60);
   if (!candidate || !provider) return undefined;
   const fee = candidate.feeMinor;
   const parsed = receiptPaymentSchema.safeParse({
     provider,
     type: candidate.type ?? "other",
-    counterparty: candidate.counterparty?.trim().slice(0, 160) || undefined,
+    counterparty: cleanLabel(candidate.counterparty, 160) || undefined,
     // Apps print reference numbers in spaced groups; one unbroken run is what people search for.
     referenceNo: candidate.referenceNo?.replace(/\s+/g, "").slice(0, 60) || undefined,
     feeMinor:
@@ -229,7 +239,9 @@ function normalizePayment(
         ? fee
         : undefined,
     sentAmountMinor:
-      candidate.sentAmountMinor !== undefined && candidate.sentAmountMinor > 0
+      typeof candidate.sentAmountMinor === "number" &&
+      Number.isSafeInteger(candidate.sentAmountMinor) &&
+      candidate.sentAmountMinor > 0
         ? candidate.sentAmountMinor
         : undefined,
     sentCurrency: /^[A-Z]{3}$/.test(candidate.sentCurrency ?? "")
@@ -298,7 +310,8 @@ export function createReceiptService(
         ? normalizePayment(candidate.payment, amountMinor)
         : undefined;
     // A wallet screenshot that names no recipient still names the wallet that sent it.
-    const merchant = candidate.merchant?.trim() || payment?.counterparty || payment?.provider || "";
+    const merchant =
+      cleanLabel(candidate.merchant, 240) || payment?.counterparty || payment?.provider || "";
     if (!merchant) {
       throw new HttpError(
         422,
@@ -326,15 +339,14 @@ export function createReceiptService(
         ? paymentItems(payment, amountMinor)
         : undefined
       : normalizeItems(candidate, amountMinor);
+    const categoryName = cleanLabel(candidate.categoryName, 80);
     return {
       merchant,
       date: normalizeImportDate(candidate.date?.trim() ?? "") ?? currentDateInTimeZone(env),
       amountMinor,
       currency,
       kind,
-      ...(candidate.categoryName?.trim()
-        ? { categoryName: candidate.categoryName.trim().slice(0, 80) }
-        : {}),
+      ...(categoryName ? { categoryName } : {}),
       ...(items ? { items } : {}),
       ...(payment && includePayment ? { payment } : {}),
       rawText: candidate.rawText?.trim().slice(0, 6_000) ?? "",

@@ -13,11 +13,12 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 const BINARY_CHUNK_SIZE = 32_768;
 const MAX_RESPONSE_CHARACTERS = 12_000;
 
+// Item fields are nullish because JSON-schema decoding often fills omitted optional fields with null.
 const candidateItemSchema = z
   .object({
-    description: z.string().optional(),
-    amountMinor: z.number().int().optional(),
-    categoryName: z.string().optional(),
+    description: z.string().nullish(),
+    amountMinor: z.number().int().nullish(),
+    categoryName: z.string().nullish(),
   })
   .strict();
 
@@ -42,9 +43,10 @@ const candidateSchema = z
     amountMinor: z.number().int().nullish(),
     kind: z.enum(transactionKinds).nullish(),
     categoryName: z.string().nullish(),
-    items: z.array(candidateItemSchema).max(30).nullish(),
+    // Allow up to 60 raw lines before service.ts strips summary/discount rows and caps at 30.
+    items: z.array(candidateItemSchema).max(60).nullish(),
     payment: candidatePaymentSchema.nullish(),
-    rawText: z.string().max(6_000).nullish(),
+    rawText: z.string().nullish(),
   })
   .strict();
 
@@ -88,7 +90,7 @@ const RESPONSE_JSON_SCHEMA = {
         properties: {
           description: { type: "string" },
           amountMinor: { type: "integer" },
-          categoryName: { type: "string" },
+          categoryName: nullableString,
         },
         required: ["description", "amountMinor"],
       },
@@ -214,7 +216,7 @@ function parseCandidate(text: string): ReceiptVisionCandidate | undefined {
     categoryName: candidate.data.categoryName?.trim() || undefined,
     items: candidate.data.items?.map((item) => ({
       description: item.description?.trim() || undefined,
-      amountMinor: item.amountMinor,
+      amountMinor: item.amountMinor ?? undefined,
       categoryName: item.categoryName?.trim() || undefined,
     })),
     payment: candidate.data.payment ? candidatePayment(candidate.data.payment) : undefined,

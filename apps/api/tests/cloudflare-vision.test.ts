@@ -210,6 +210,38 @@ describe("Cloudflare vision provider", () => {
     });
   });
 
+  it("accepts null optional item fields and long receipts without failing validation", async () => {
+    const run = vi.fn(async () => ({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              merchant: "SM Supermarket",
+              date: "2026-09-30",
+              amountMinor: 28500,
+              kind: "expense",
+              categoryName: null,
+              items: [
+                { description: "Rice", amountMinor: 18500, categoryName: null },
+                { description: "Milk", amountMinor: 10000, categoryName: "Groceries" },
+              ],
+              payment: null,
+              rawText: "A".repeat(6_500),
+            }),
+          },
+        },
+      ],
+    }));
+
+    const result = await cloudflareVisionProvider.extract(environment(run), receiptImage());
+
+    expect(result.items).toEqual([
+      { description: "Rice", amountMinor: 18500, categoryName: undefined },
+      { description: "Milk", amountMinor: 10000, categoryName: "Groceries" },
+    ]);
+    expect(result.rawText).toHaveLength(6_500);
+  });
+
   it("rejects a response without a usable JSON candidate", async () => {
     const run = vi.fn(async () => ({ response: "Sorry, I could not read this." }));
     await expect(

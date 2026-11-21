@@ -1,11 +1,13 @@
 import {
   CURRENT_RECEIPT_CONSENT_VERSION,
+  currencyMetadata,
   formatMinorAmount,
   parseAmountToMinor,
   receiptItemDescription,
   receiptPaymentTypeLabel,
   transactionKinds,
   type CategoryRecord,
+  type Currency,
   type ReceiptDraft,
   type TransactionKind,
 } from "@zoption/shared";
@@ -13,10 +15,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Camera, Info, LoaderCircle, Plus, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
-import { extractReceipt, getReceiptPreferences, grantReceiptConsent } from "../../lib/api";
-import { formatMoney } from "../../lib/formatters";
+import {
+  ApiRequestError,
+  extractReceipt,
+  getReceiptPreferences,
+  grantReceiptConsent,
+} from "../../lib/api";
 import { queryKeys } from "../../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { useWorkspaceCurrency } from "../../lib/workspaceCurrency";
 import { ReceiptConsent } from "./ReceiptConsent";
 import "./receipts.css";
 
@@ -41,6 +48,25 @@ interface ReceiptItemRow {
 }
 
 const MAX_RECEIPT_ITEMS = 30;
+const MAX_RECEIPT_IMAGE_BYTES = 8 * 1024 * 1024;
+const ACCEPTED_RECEIPT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+const exactFormatterCache = new Map<Currency, Intl.NumberFormat>();
+
+/** Exact centavo formatting for draft reconciliation, unaffected by whole-unit rounding or amount hiding. */
+function formatReceiptMoney(amountMinor: number, currency: Currency): string {
+  let formatter = exactFormatterCache.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(currencyMetadata[currency].locale, {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+    exactFormatterCache.set(currency, formatter);
+  }
+  return formatter.format(amountMinor / 100);
+}
 
 interface ReceiptEntryProps {
   workspace: AuthenticatedWorkspace;
@@ -48,14 +74,16 @@ interface ReceiptEntryProps {
   onContinue: (draft: ReceiptEntryDraft) => void;
 }
 
-function uncategorizedCategory(
+function defaultCategory(
   categories: CategoryRecord[],
   kind: TransactionKind,
 ): CategoryRecord | undefined {
   return categories.find(
     (category) =>
-      category.system &&
+      !category.archived &&
+      !category.locked &&
       category.kind === kind &&
+      category.system &&
       category.name.toLocaleLowerCase("en") === "uncategorized",
   );
 }
@@ -80,12 +108,14 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** Returns null while any item amount is incomplete or invalid. */
+/** Returns null while any item amount is incomplete, non-positive, or invalid. */
 function itemsTotalMinor(items: ReceiptItemRow[]): number | null {
   let total = 0;
   for (const item of items) {
     try {
-      total += parseAmountToMinor(item.amountText);
+      const amount = parseAmountToMinor(item.amountText);
+      if (amount <= 0) return null;
+      total += amount;
     } catch {
       return null;
     }
@@ -95,7 +125,8 @@ function itemsTotalMinor(items: ReceiptItemRow[]): number | null {
 
 function totalMinorOrNull(amountText: string): number | null {
   try {
-    return Math.abs(parseAmountToMinor(amountText));
+    const amount = Math.abs(parseAmountToMinor(amountText));
+    return amount > 0 ? amount : null;
   } catch {
     return null;
   }
@@ -103,10 +134,13 @@ function totalMinorOrNull(amountText: string): number | null {
 
 export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntryProps) {
   const queryClient = useQueryClient();
+  const workspaceCurrency = useWorkspaceCurrency();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const nextItemId = useRef(1);
+  const selectionIdRef = useRef(0);
   const [imageFile, setImageFile] = useState<File>();
   const [imageUrl, setImageUrl] = useState<string>();
+  const [fileError, setFileError] = useState<string>();
   const [draft, setDraft] = useState<ReceiptDraft>();
   const [merchant, setMerchant] = useState("");
   const [date, setDate] = useState("");
@@ -131,8 +165,9 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
     },
   });
   const extractionMutation = useMutation({
-    mutationFn: (file: File) => extractReceipt(workspace, file),
-    onSuccess: (extracted) => {
+    mutationFn: ({ file }: { file: File; selectionId: number }) => extractReceipt(workspace, file),
+    onSuccess: (extracted, variables) => {
+      if (variables.selectionId !== selectionIdRef.current) return;
       setDraft(extracted);
       setMerchant(extracted.merchant);
       setDate(extracted.date);
@@ -140,7 +175,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
       setKind(extracted.kind);
       const category =
         matchedCategory(categories, extracted.kind, extracted.categoryName) ??
-        uncategorizedCategory(categories, extracted.kind);
+        defaultCategory(categories, extracted.kind);
       setCategoryId(category?.id ?? "");
       setItems(
         (extracted.items ?? []).slice(0, MAX_RECEIPT_ITEMS).map((item, index) => ({
@@ -155,6 +190,12 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
       setCategoryError(undefined);
       setItemsError(undefined);
     },
+    onError: (error, variables) => {
+      if (variables.selectionId !== selectionIdRef.current) return;
+      if (error instanceof ApiRequestError && error.code === "receipt_consent_required") {
+        void queryClient.invalidateQueries({ queryKey: queryKeys.receiptPreferences(workspace) });
+      }
+    },
   });
 
   useEffect(
@@ -168,21 +209,39 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
     const file = event.currentTarget.files?.[0];
     event.currentTarget.value = "";
     if (!file) return;
+    selectionIdRef.current += 1;
     if (imageUrl) URL.revokeObjectURL(imageUrl);
-    setImageFile(file);
-    setImageUrl(URL.createObjectURL(file));
     setDraft(undefined);
     setItems([]);
     setAmountError(undefined);
     setCategoryError(undefined);
     setItemsError(undefined);
     extractionMutation.reset();
+
+    const mediaType = file.type.split(";", 1)[0]?.trim().toLowerCase() ?? "";
+    if (!ACCEPTED_RECEIPT_TYPES.has(mediaType)) {
+      setImageFile(undefined);
+      setImageUrl(undefined);
+      setFileError("Use a JPEG, PNG, or WebP photo.");
+      return;
+    }
+    if (file.size === 0 || file.size > MAX_RECEIPT_IMAGE_BYTES) {
+      setImageFile(undefined);
+      setImageUrl(undefined);
+      setFileError("Choose a receipt photo up to 8 MB.");
+      return;
+    }
+    setFileError(undefined);
+    setImageFile(file);
+    setImageUrl(URL.createObjectURL(file));
   }
 
   function retake() {
+    selectionIdRef.current += 1;
     if (imageUrl) URL.revokeObjectURL(imageUrl);
     setImageFile(undefined);
     setImageUrl(undefined);
+    setFileError(undefined);
     setDraft(undefined);
     setItems([]);
     setAmountError(undefined);
@@ -194,7 +253,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
 
   function changeKind(next: TransactionKind) {
     setKind(next);
-    setCategoryId(uncategorizedCategory(categories, next)?.id ?? "");
+    setCategoryId(defaultCategory(categories, next)?.id ?? "");
     setCategoryError(undefined);
   }
 
@@ -248,17 +307,18 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
       });
       return;
     }
+    const activeCurrency = draft?.currency ?? workspaceCurrency;
     const lines: ReceiptEntryLine[] = [];
     for (const [index, item] of items.entries()) {
       let itemAmountMinor: number;
       try {
-        itemAmountMinor = Math.abs(parseAmountToMinor(item.amountText));
+        itemAmountMinor = parseAmountToMinor(item.amountText);
       } catch {
         setItemsError("Item " + (index + 1) + ": enter a plain amount.");
         return;
       }
-      if (!item.description.trim() || itemAmountMinor === 0) {
-        setItemsError("Item " + (index + 1) + ": enter a description and a non-zero amount.");
+      if (!item.description.trim() || itemAmountMinor <= 0) {
+        setItemsError("Item " + (index + 1) + ": enter a description and a positive amount.");
         return;
       }
       lines.push({
@@ -272,9 +332,9 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
     if (itemsMinor !== Math.abs(amountMinor)) {
       setItemsError(
         "The items add to " +
-          formatMoney(itemsMinor) +
+          formatReceiptMoney(itemsMinor, activeCurrency) +
           ", but the receipt total is " +
-          formatMoney(Math.abs(amountMinor)) +
+          formatReceiptMoney(Math.abs(amountMinor), activeCurrency) +
           ". Correct the amounts, add the missing line, or save as one total.",
       );
       return;
@@ -303,6 +363,8 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
   }
 
   const preferences = preferencesQuery.data;
+  const activeCurrency = draft?.currency ?? workspaceCurrency;
+  const currencySymbol = currencyMetadata[activeCurrency].symbol;
   const consentRequired =
     !preferences ||
     !preferences.consentedAt ||
@@ -368,14 +430,22 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
             accept="image/jpeg,image/png,image/webp"
             capture="environment"
             aria-label="Choose receipt photo"
+            disabled={extractionMutation.isPending}
             onChange={chooseImage}
           />
         </label>
+        {fileError && (
+          <p className="receipt-error" role="alert">
+            {fileError}
+          </p>
+        )}
         {imageFile && !extractionMutation.isPending && !draft && (
           <button
             className="button primary"
             type="button"
-            onClick={() => extractionMutation.mutate(imageFile)}
+            onClick={() =>
+              extractionMutation.mutate({ file: imageFile, selectionId: selectionIdRef.current })
+            }
           >
             Read receipt
           </button>
@@ -411,7 +481,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
                 receiptPaymentTypeLabel(draft.payment.type),
                 draft.payment.referenceNo ? "Ref " + draft.payment.referenceNo : null,
                 draft.payment.feeMinor !== undefined
-                  ? "Fee " + formatMoney(draft.payment.feeMinor)
+                  ? "Fee " + formatReceiptMoney(draft.payment.feeMinor, activeCurrency)
                   : null,
               ]
                 .filter(Boolean)
@@ -438,7 +508,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
               />
             </label>
             <label>
-              <span>Amount (₱)</span>
+              <span>Amount ({currencySymbol})</span>
               <input
                 inputMode="decimal"
                 value={amountText}
@@ -483,6 +553,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
                 aria-invalid={Boolean(categoryError)}
                 aria-describedby={categoryError ? "receipt-category-error" : undefined}
               >
+                <option value="">Choose a category</option>
                 {categories
                   .filter(
                     (category) => !category.archived && !category.locked && category.kind === kind,
@@ -515,7 +586,7 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
                       placeholder="Item"
                     />
                     <input
-                      aria-label={"Item " + (index + 1) + " amount (₱)"}
+                      aria-label={"Item " + (index + 1) + " amount (" + currencySymbol + ")"}
                       inputMode="decimal"
                       value={item.amountText}
                       onChange={(event) =>
@@ -539,8 +610,12 @@ export function ReceiptEntry({ workspace, categories, onContinue }: ReceiptEntry
                     .join(" ")}
                   role="status"
                 >
-                  Items {reviewedItemsMinor === null ? "—" : formatMoney(reviewedItemsMinor)} ·
-                  Receipt {receiptMinor === null ? "—" : formatMoney(receiptMinor)}
+                  Items{" "}
+                  {reviewedItemsMinor === null
+                    ? "—"
+                    : formatReceiptMoney(reviewedItemsMinor, activeCurrency)}{" "}
+                  · Receipt{" "}
+                  {receiptMinor === null ? "—" : formatReceiptMoney(receiptMinor, activeCurrency)}
                 </div>
                 {itemsError && (
                   <small className="receipt-items-error" role="alert">

@@ -1,4 +1,10 @@
-import { parseAmountToMinor, receiptPaymentNote, type ReceiptDraft } from "@zoption/shared";
+import {
+  parseAmountToMinor,
+  preferredTransactionAccount,
+  receiptPaymentNote,
+  type AccountType,
+  type ReceiptDraft,
+} from "@zoption/shared";
 
 import { formatMinorForInput } from "@/features/transactions/transaction-form";
 
@@ -55,17 +61,48 @@ export function reviewItemsFromReceipt(
   }));
 }
 
-/** Returns null while an item has an incomplete or invalid amount. */
+/** Returns null when the input is incomplete, invalid, or not strictly positive. */
+export function parsePositiveMinor(value: string): number | null {
+  try {
+    const amount = parseAmountToMinor(value);
+    return amount > 0 ? amount : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Returns null while any item has an incomplete, zero, negative, or invalid amount. */
 export function reviewedItemsTotalMinor(items: ReceiptReviewItem[]): number | null {
   let total = 0;
   for (const item of items) {
-    try {
-      total += parseAmountToMinor(item.amount);
-    } catch {
-      return null;
-    }
+    const amount = parsePositiveMinor(item.amount);
+    if (amount === null) return null;
+    total += amount;
   }
   return total;
+}
+
+/**
+ * Picks the from/to accounts for a scanned confirmation without colliding them. A cash-in
+ * lands in the provider wallet (`toAccountId`), so if the default source account is that same
+ * wallet, pick the counterparty/merchant account or another account as `fromAccountId`.
+ */
+export function resolveTransferAccounts<T extends { id: string; name: string; type: AccountType }>(
+  accounts: readonly T[],
+  currentFromId: string,
+  lastUsedAccountId: string | null,
+  draft: ReceiptDraft,
+): { fromAccountId: string; toAccountId: string } {
+  const providerAccount = accountForProvider(accounts, draft.payment?.provider);
+  const toAccountId = providerAccount?.id ?? "";
+  if (!toAccountId || currentFromId !== toAccountId) {
+    return { fromAccountId: currentFromId, toAccountId };
+  }
+  const otherAccounts = accounts.filter((account) => account.id !== toAccountId);
+  const sourceAccount =
+    accountForProvider(otherAccounts, draft.payment?.counterparty ?? draft.merchant) ??
+    preferredTransactionAccount(otherAccounts, lastUsedAccountId);
+  return { fromAccountId: sourceAccount?.id ?? "", toAccountId };
 }
 
 /**
@@ -74,7 +111,7 @@ export function reviewedItemsTotalMinor(items: ReceiptReviewItem[]): number | nu
  * "My savings" account by accident.
  */
 export function accountForProvider<T extends { id: string; name: string }>(
-  accounts: T[],
+  accounts: readonly T[],
   provider: string | undefined,
 ): T | undefined {
   const needle = provider?.trim().toLocaleLowerCase("en") ?? "";

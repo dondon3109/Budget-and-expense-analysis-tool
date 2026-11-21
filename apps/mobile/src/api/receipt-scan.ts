@@ -12,7 +12,8 @@ import { File } from "expo-file-system";
 import { telemetry } from "@/telemetry/telemetry";
 import { publicConfig } from "@/config/public-config";
 
-import { ApiTransportError, apiRequest, mapApiError } from "./authenticated";
+import { fetchMultipartWithTimeout } from "./assistant-voice";
+import { ApiTransportError, apiRequest, decodeJson, mapApiError } from "./authenticated";
 import {
   extractDummyReceipt,
   getDummyReceiptPreferences,
@@ -79,46 +80,47 @@ export async function extractReceipt(api: ReceiptApi, image: ReceiptImage): Prom
   // Asks for e-wallet and bank confirmation details, which this build's draft schema knows.
   form.append("detail", RECEIPT_DRAFT_PAYMENT_DETAIL);
   const fetchImpl = api.fetchImpl ?? fetch;
-  let timedOut = false;
-  const timeout = setTimeout(() => {
-    timedOut = true;
-  }, RECEIPT_EXTRACT_TIMEOUT_MS);
   let response: Response;
   try {
-    // NOTE: intentionally no AbortSignal here. On Android, RN's fetch rejects
-    // a FormData upload locally with "Network request failed" before any
-    // socket activity when a JS AbortController signal is attached. The
-    // server's provider timeout bounds the work; the local timer only fails
-    // the UI promise when no response arrives in time.
-    response = await fetchImpl(publicConfig.apiUrl + "/api/app/receipts/extract", {
-      method: "POST",
-      headers: { Authorization: "Bearer " + api.accessToken },
-      body: form,
-    });
-  } catch {
-    if (timedOut) {
-      throw new ApiTransportError(
-        "Reading the receipt is taking too long. Try again with a clearer photo.",
-        "network",
-        0,
-      );
-    }
+    response = await fetchMultipartWithTimeout(
+      fetchImpl,
+      publicConfig.apiUrl + "/api/app/receipts/extract",
+      {
+        method: "POST",
+        headers: { Accept: "application/json", Authorization: "Bearer " + api.accessToken },
+        body: form,
+        signal: api.signal,
+      },
+      RECEIPT_EXTRACT_TIMEOUT_MS,
+      "Reading the receipt is taking too long. Try again with a clearer photo.",
+    );
+  } catch (error) {
+    if (error instanceof ApiTransportError) throw error;
+    if (error instanceof Error && error.name === "AbortError") throw error;
     throw new ApiTransportError(
       "Zoption could not be reached. Connect to the internet and retry.",
       "network",
       0,
     );
-  } finally {
-    clearTimeout(timeout);
   }
   if (!response.ok) {
     throw mapApiError(
       response.status,
-      (await response.json().catch(() => ({}))) as never,
+      (await decodeJson(response).catch(() => ({}))) as never,
       receiptFallback,
     );
   }
-  const draft = receiptDraftSchema.parse(await response.json());
+  let draft: ReceiptDraft;
+  try {
+    draft = receiptDraftSchema.parse(await decodeJson(response));
+  } catch (error) {
+    if (error instanceof ApiTransportError) throw error;
+    throw new ApiTransportError(
+      "Zoption returned an unrecognized response.",
+      "invalid_response",
+      response.status,
+    );
+  }
   void telemetry.capture("receipt_scanned");
   return draft;
 }

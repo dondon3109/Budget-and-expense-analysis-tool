@@ -3,6 +3,7 @@ import type { CategoryRecord, ReceiptDraft } from "@zoption/shared";
 import {
   accountForProvider,
   receiptNotes,
+  resolveTransferAccounts,
   reviewedItemsTotalMinor,
   reviewItemsFromReceipt,
 } from "./receipt-review";
@@ -75,9 +76,20 @@ describe("receipt review items", () => {
     expect(reviewedItemsTotalMinor(items)).toBe(24_500);
   });
 
-  it("sums reviewed amounts", () => {
+  it("sums reviewed amounts and rejects zero or negative item amounts", () => {
     const items = reviewItemsFromReceipt(draft, categories, "expense");
     expect(reviewedItemsTotalMinor(items)).toBe(28_500);
+    expect(
+      reviewedItemsTotalMinor([
+        { id: "1", description: "Chickenjoy", amount: "250.00", categoryId: "dining" },
+        { id: "2", description: "Discount", amount: "-50.00", categoryId: "dining" },
+      ]),
+    ).toBeNull();
+    expect(
+      reviewedItemsTotalMinor([
+        { id: "1", description: "Freebie", amount: "0.00", categoryId: "dining" },
+      ]),
+    ).toBeNull();
   });
 });
 
@@ -110,5 +122,23 @@ describe("scanned payment confirmations", () => {
   it("keeps the reference number in the notes", () => {
     expect(receiptNotes(gcash)).toBe("Scanned receipt · GCash Send money · Ref 2045596729825");
     expect(receiptNotes({ ...gcash, payment: undefined })).toBe("Scanned receipt");
+  });
+
+  it("avoids colliding from/to accounts when the last-used account is the cash-in wallet", () => {
+    const accounts = [
+      { id: "a-bpi", name: "BPI Savings", type: "checking" as const },
+      { id: "a-gcash", name: "GCash", type: "other" as const },
+    ];
+    const cashIn: ReceiptDraft = {
+      ...gcash,
+      merchant: "BPI",
+      kind: "transfer",
+      payment: { provider: "GCash", type: "cash_in", feeMinor: 1_500 },
+    };
+
+    expect(resolveTransferAccounts(accounts, "a-gcash", "a-gcash", cashIn)).toEqual({
+      fromAccountId: "a-bpi",
+      toAccountId: "a-gcash",
+    });
   });
 });

@@ -1,10 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReceiptDraft } from "@zoption/shared";
+import { Alert } from "react-native";
 
-import { extractReceipt } from "@/api/receipt-scan";
+import { extractReceipt, getReceiptPreferences } from "@/api/receipt-scan";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import type { TransactionFormData } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
+import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { prepareReceiptPhoto, ReceiptPhotoError } from "@/features/family/receipt-photo";
+import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { ReceiptScanScreen } from "./ReceiptScanScreen";
 import { takeSharedReceipt } from "./SharedReceiptHandoff";
@@ -51,7 +55,12 @@ jest.mock("@/db/local-workspace-state", () => ({
 jest.mock("@/sync/sync-state", () => ({ useSyncState: jest.fn() }));
 
 jest.mock("@/features/family/active-workspace", () => ({
-  useActiveWorkspace: () => ({ family: null, writable: true }),
+  useActiveWorkspace: jest.fn(() => ({ family: null, writable: true })),
+}));
+
+jest.mock("@/features/family/receipt-photo", () => ({
+  ...jest.requireActual("@/features/family/receipt-photo"),
+  prepareReceiptPhoto: jest.fn(),
 }));
 
 jest.mock("expo-secure-store", () => ({
@@ -62,6 +71,7 @@ jest.mock("expo-secure-store", () => ({
 
 const createTransaction = jest.fn().mockResolvedValue("transfer-1");
 const createTransactions = jest.fn().mockResolvedValue(["txn-1"]);
+const queueReceiptUpload = jest.fn().mockResolvedValue(undefined);
 
 function category(id: string, name: string, kind: "income" | "expense" | "transfer") {
   return { id, name, kind, color: "#64748B", iconEmoji: null, pending: false };
@@ -108,12 +118,17 @@ async function scan(draft: ReceiptDraft): Promise<void> {
 describe("ReceiptScanScreen payment confirmations", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useLastUsedAccountStore.setState({ accountId: null });
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: null,
+      writable: true,
+    } as ReturnType<typeof useActiveWorkspace>);
     jest
       .mocked(useSyncState)
       .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
     jest.mocked(useLocalWorkspace).mockReturnValue({
       workspace: {
-        transactionMutations: { createTransaction, createTransactions },
+        transactionMutations: { createTransaction, createTransactions, queueReceiptUpload },
       } as unknown as LocalWorkspace,
       status: "ready",
       message: null,
@@ -190,6 +205,129 @@ describe("ReceiptScanScreen payment confirmations", () => {
       uri: "file:///cache/zoption-shared-receipts/shared-1.png",
       fileName: "shared-1.png",
       mimeType: "image/png",
+    });
+  });
+
+  it("picks another source account when last-used account matches a cash-in wallet", async () => {
+    useLastUsedAccountStore.setState({ accountId: "a-gcash" });
+    await scan({
+      ...gcashSend,
+      merchant: "BPI",
+      amountMinor: 101_500,
+      kind: "transfer",
+      payment: { provider: "GCash", type: "cash_in", feeMinor: 1_500 },
+    });
+
+    await fireEvent.press(screen.getByLabelText("Save scanned transfer"));
+
+    await waitFor(() => expect(createTransaction).toHaveBeenCalledTimes(1));
+    expect(createTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "transfer",
+        fromAccountId: "a-bpi",
+        toAccountId: "a-gcash",
+      }),
+    );
+  });
+
+  it("lets the user correct a misread receipt total on an itemized receipt and save", async () => {
+    await scan({
+      merchant: "Jollibee",
+      date: "2026-09-30",
+      amountMinor: 28_600,
+      currency: "PHP",
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18_500 },
+        { description: "Peach mango pie", amountMinor: 10_000 },
+      ],
+      rawText: "JOLLIBEE TOTAL 285.00",
+    });
+
+    await fireEvent.press(screen.getByLabelText("Save 2 scanned items"));
+    expect(createTransactions).not.toHaveBeenCalled();
+
+    await fireEvent.changeText(screen.getByDisplayValue("286.00"), "285.00");
+    await fireEvent.press(screen.getByLabelText("Save 2 scanned items"));
+
+    await waitFor(() => expect(createTransactions).toHaveBeenCalledTimes(1));
+    expect(createTransactions).toHaveBeenCalledWith([
+      expect.objectContaining({ description: "Jollibee · Chickenjoy", amountMinor: 18_500 }),
+      expect.objectContaining({ description: "Jollibee · Peach mango pie", amountMinor: 10_000 }),
+    ]);
+  });
+
+  it("blocks receipt scanning in a read-only family workspace without calling the API", async () => {
+    jest.mocked(useActiveWorkspace).mockReturnValue({
+      family: { id: "family-1", name: "Home", role: "viewer" },
+      writable: false,
+    } as ReturnType<typeof useActiveWorkspace>);
+
+    await render(<ReceiptScanScreen />);
+
+    expect(await screen.findByText("Cannot scan in this family workspace")).toBeTruthy();
+    expect(getReceiptPreferences).not.toHaveBeenCalled();
+    expect(extractReceipt).not.toHaveBeenCalled();
+  });
+
+  it("hides unexpected native error details behind the generic scan failure message", async () => {
+    jest.mocked(extractReceipt).mockRejectedValueOnce(new Error("E_IMAGE_MANIPULATOR_DECODE"));
+    await render(<ReceiptScanScreen />);
+
+    await fireEvent.press(await screen.findByLabelText("Choose receipt photo from library"));
+
+    expect(
+      await screen.findByText("The receipt could not be scanned. Try again with a clearer photo."),
+    ).toBeTruthy();
+    expect(screen.queryByText("E_IMAGE_MANIPULATOR_DECODE")).toBeNull();
+  });
+
+  describe("keeping the photo in a family", () => {
+    beforeEach(() => {
+      jest.mocked(useActiveWorkspace).mockReturnValue({
+        family: { id: "family-1", name: "Home", role: "member" },
+        writable: true,
+      } as ReturnType<typeof useActiveWorkspace>);
+    });
+
+    it("hides unexpected native error details when the photo cannot be kept", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+      jest
+        .mocked(prepareReceiptPhoto)
+        .mockRejectedValueOnce(new Error("E_IMAGE_MANIPULATOR_DECODE"));
+      await scan(gcashSend);
+
+      await fireEvent.press(screen.getByLabelText("Save 1 scanned item"));
+
+      await waitFor(() =>
+        expect(alert).toHaveBeenCalledWith(
+          "Entries saved without the photo",
+          "The receipt photo could not be kept.",
+        ),
+      );
+      expect(createTransactions).toHaveBeenCalledTimes(1);
+      expect(queueReceiptUpload).not.toHaveBeenCalled();
+    });
+
+    it("shows the photo validation message when the photo is too large to keep", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+      jest
+        .mocked(prepareReceiptPhoto)
+        .mockRejectedValueOnce(
+          new ReceiptPhotoError(
+            "This photo is too large to keep. Try a closer picture of the receipt.",
+          ),
+        );
+      await scan(gcashSend);
+
+      await fireEvent.press(screen.getByLabelText("Save 1 scanned item"));
+
+      await waitFor(() =>
+        expect(alert).toHaveBeenCalledWith(
+          "Entries saved without the photo",
+          "This photo is too large to keep. Try a closer picture of the receipt.",
+        ),
+      );
     });
   });
 });

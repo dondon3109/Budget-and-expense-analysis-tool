@@ -8,6 +8,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ReceiptEntry, type ReceiptEntryDraft } from "../src/components/receipts/ReceiptEntry";
+import { ApiRequestError } from "../src/lib/api";
 
 const apiMocks = vi.hoisted(() => ({
   getReceiptPreferences: vi.fn(),
@@ -15,7 +16,10 @@ const apiMocks = vi.hoisted(() => ({
   extractReceipt: vi.fn(),
 }));
 
-vi.mock("../src/lib/api", () => apiMocks);
+vi.mock("../src/lib/api", async (importOriginal) => ({
+  ...(await importOriginal()),
+  ...apiMocks,
+}));
 
 const workspace = { key: "user:test-user" as const, userId: "test-user" };
 
@@ -238,7 +242,7 @@ describe("ReceiptEntry", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
 
     expect(
-      await screen.findByText("Maya · Bills payment · Ref MB12345 · Fee ₱15"),
+      await screen.findByText("Maya · Bills payment · Ref MB12345 · Fee ₱15.00"),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
 
@@ -352,6 +356,73 @@ describe("ReceiptEntry", () => {
     expect(onContinue).not.toHaveBeenCalled();
   });
 
+  it("shows exact centavos on mismatch and rejects negative item amounts consistently", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
+      merchant: "Jollibee",
+      date: "2026-08-13",
+      amountMinor: -28540,
+      currency: "PHP",
+      kind: "expense",
+      items: [
+        { description: "Chickenjoy", amountMinor: 18500 },
+        { description: "Pie", amountMinor: 10020 },
+      ],
+      rawText: "",
+    });
+    const onContinue = vi.fn();
+    renderEntry(onContinue);
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+    expect(await screen.findByLabelText("Item 1 description")).toHaveValue("Chickenjoy");
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The items add to ₱285.20, but the receipt total is ₱285.40.",
+    );
+
+    fireEvent.change(screen.getByLabelText("Item 2 amount (₱)"), { target: { value: "-50.00" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue to preview" }));
+    expect(screen.getByRole("alert")).toHaveTextContent("positive amount");
+    expect(onContinue).not.toHaveBeenCalled();
+  });
+
+  it("rejects unsupported or oversized photos before calling extract", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    renderEntry();
+
+    const input = await screen.findByLabelText("Choose receipt photo");
+    fireEvent.change(input, {
+      target: { files: [new File(["heic"], "receipt.heic", { type: "image/heic" })] },
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("Use a JPEG, PNG, or WebP photo.");
+    expect(screen.queryByRole("button", { name: "Read receipt" })).not.toBeInTheDocument();
+
+    const bigFile = new File(["x"], "huge.jpg", { type: "image/jpeg" });
+    Object.defineProperty(bigFile, "size", { value: 9 * 1024 * 1024 });
+    fireEvent.change(input, { target: { files: [bigFile] } });
+    expect(screen.getByRole("alert")).toHaveTextContent("Choose a receipt photo up to 8 MB.");
+    expect(apiMocks.extractReceipt).not.toHaveBeenCalled();
+  });
+
+  it("returns to the consent gate when extract rejects with receipt_consent_required", async () => {
+    apiMocks.getReceiptPreferences
+      .mockResolvedValueOnce(consentedPreferences)
+      .mockResolvedValueOnce({ ...consentedPreferences, consentedAt: null, consentVersion: 0 });
+    apiMocks.extractReceipt.mockRejectedValue(
+      new ApiRequestError("Accept the AI entry notice first.", 409, "receipt_consent_required"),
+    );
+    renderEntry();
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+
+    expect(
+      await screen.findByText("Use AI to draft. You approve every field."),
+    ).toBeInTheDocument();
+  });
+
   it("surfaces provider failures as an alert and offers no draft", async () => {
     apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
     apiMocks.extractReceipt.mockRejectedValue(
@@ -364,5 +435,30 @@ describe("ReceiptEntry", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("The receipt could not be read.");
     expect(screen.queryByRole("button", { name: "Continue to preview" })).not.toBeInTheDocument();
+  });
+
+  it("leaves the category unselected when Uncategorized is missing instead of picking another category", async () => {
+    apiMocks.getReceiptPreferences.mockResolvedValue(consentedPreferences);
+    apiMocks.extractReceipt.mockResolvedValue({
+      merchant: "Corner Store",
+      date: "2026-08-13",
+      amountMinor: -12_000,
+      currency: "PHP",
+      kind: "expense",
+      rawText: "",
+    });
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ReceiptEntry workspace={workspace} categories={[categories[0]!]} onContinue={vi.fn()} />
+      </QueryClientProvider>,
+    );
+
+    await choosePhoto();
+    fireEvent.click(await screen.findByRole("button", { name: "Read receipt" }));
+
+    expect(await screen.findByLabelText("Category")).toHaveValue("");
   });
 });
