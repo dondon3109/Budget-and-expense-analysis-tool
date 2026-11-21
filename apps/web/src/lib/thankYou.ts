@@ -33,31 +33,3 @@ export const thankYouCopy: Record<ThankYouFlow, ThankYouContent> = {
       "Your feedback helps others discover a private, integer-accurate way to track expenses and manage budgets without sharing online banking passwords.",
   },
 };
-
-// Set on the browser that created the account so the first workspace visit, even after the
-// email-confirmation round trip, shows the welcome once.
-const SIGNUP_PENDING_KEY = "zoption:thank-you:signup";
-
-export function markSignupThankYouPending(): void {
-  try {
-    window.localStorage.setItem(SIGNUP_PENDING_KEY, "1");
-  } catch {
-    // Storage can be blocked; the welcome is optional.
-  }
-}
-
-export function isSignupThankYouPending(): boolean {
-  try {
-    return window.localStorage.getItem(SIGNUP_PENDING_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function clearSignupThankYouPending(): void {
-  try {
-    window.localStorage.removeItem(SIGNUP_PENDING_KEY);
-  } catch {
-    // See markSignupThankYouPending.
-  }
-}

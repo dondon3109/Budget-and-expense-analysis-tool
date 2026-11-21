@@ -100,8 +100,11 @@ export function OnboardingScreen() {
 
   // Other first-launch prompts (usage analytics, daily reminder permission) wait while setup is open.
   useEffect(() => {
-    useOnboardingStore.getState().setOpen(true);
-    void telemetry.capture("onboarding_started");
+    const store = useOnboardingStore.getState();
+    store.setOpen(true);
+    if (store.state && store.state.step !== "complete" && !store.dismissed) {
+      void telemetry.capture("onboarding_started");
+    }
     return () => useOnboardingStore.getState().setOpen(false);
   }, []);
 

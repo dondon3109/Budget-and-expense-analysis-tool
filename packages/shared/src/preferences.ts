@@ -177,7 +177,7 @@ function styleSuggestion(
     case "zero_based":
       return {
         id: "zero_based",
-        title: budgetingStyleLabel("zero_based", currency),
+        title: currency === "PHP" ? "Give every peso a job" : "Give all your income a job",
         detail:
           "Budget your whole income across categories and savings until nothing is unplanned.",
         target: "/app/budgets",

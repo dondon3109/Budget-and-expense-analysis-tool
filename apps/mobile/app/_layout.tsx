@@ -74,8 +74,11 @@ function SplashRelease() {
 function DailyReminderSession() {
   const status = useSessionSnapshot().status;
   const onboardingOpen = useOnboardingStore((store) => store.open);
-  const onboardingComplete = useOnboardingStore((store) => store.state?.step === "complete");
-  const allowPrompt = status === "signed-in" && onboardingComplete && !onboardingOpen;
+  const onboardingSettled = useOnboardingStore(
+    (store) => store.state?.step === "complete" || store.dismissed,
+  );
+  const allowPrompt =
+    status === "guest" || (status === "signed-in" && onboardingSettled && !onboardingOpen);
   useDailyReminderSession(status, allowPrompt);
   return null;
 }

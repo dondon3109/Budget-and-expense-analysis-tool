@@ -151,25 +151,24 @@ describe("HomeScreen", () => {
   });
 
   it("shows the empty view when starter accounts and an opening balance exist without real transactions", async () => {
+    const openingEntry = {
+      id: "opening-1",
+      date: localIsoDate(new Date()),
+      description: "Opening cash balance",
+      amountMinor: 50_000,
+      currency: "PHP" as const,
+      kind: "income" as const,
+      categoryId: "cat-opening",
+      categoryName: "Opening balance",
+      categorySystemKey: "opening:income",
+      categoryColor: "#6b7280",
+      categoryIconEmoji: null,
+      accountName: "Cash",
+    };
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
-        transactions: [],
-        recentTransactions: [
-          {
-            id: "opening-1",
-            date: localIsoDate(new Date()),
-            description: "Opening cash balance",
-            amountMinor: 50_000,
-            currency: "PHP",
-            kind: "income",
-            categoryId: "cat-opening",
-            categoryName: "Opening balance",
-            categorySystemKey: "opening:income",
-            categoryColor: "#6b7280",
-            categoryIconEmoji: null,
-            accountName: "Cash",
-          },
-        ],
+        transactions: [openingEntry],
+        recentTransactions: [openingEntry],
         accounts: [
           {
             id: "acc-cash",

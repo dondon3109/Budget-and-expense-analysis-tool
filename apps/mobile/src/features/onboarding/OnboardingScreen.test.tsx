@@ -185,4 +185,22 @@ describe("OnboardingScreen", () => {
     await saveCash("0", "Make it yours");
     expect(screen.queryByText("How do you manage money?")).toBeNull();
   });
+
+  it("does not fire onboarding_started on the complete fallback or a repeat open after Not now", async () => {
+    useOnboardingStore.getState().setState({ step: "complete", currency: "PHP" });
+    const completeView = await render(<OnboardingScreen />);
+    expect(telemetry.capture).not.toHaveBeenCalledWith("onboarding_started");
+    await completeView.unmount();
+
+    useOnboardingStore.getState().reset();
+    useOnboardingStore.getState().setState({ step: "cash", currency: "PHP" });
+    const first = await render(<OnboardingScreen />);
+    expect(telemetry.capture).toHaveBeenCalledWith("onboarding_started");
+    await fireEvent.press(screen.getByRole("button", { name: "Not now" }));
+    await first.unmount();
+
+    jest.mocked(telemetry.capture).mockClear();
+    await render(<OnboardingScreen />);
+    expect(telemetry.capture).not.toHaveBeenCalledWith("onboarding_started");
+  });
 });

@@ -31,7 +31,6 @@ import {
   personalCheckoutUnavailable,
   suggestedPersonalPlan,
 } from "../components/billing/PlanCheckoutDialog";
-import { ThankYouDialog } from "../components/common/ThankYouDialog";
 import { AddTransactionDialog } from "../components/dashboard/AddTransactionDialog";
 import { AccountsPanel } from "../components/dashboard/AccountsPanel";
 import { ShareLinkModal } from "../components/sharing/ShareLinkModal";
@@ -71,7 +70,6 @@ import {
 import { calculatePercentageChange, isDashboardEmpty, trendState } from "../lib/dashboard";
 import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
-import { clearSignupThankYouPending, isSignupThankYouPending } from "../lib/thankYou";
 import { useFamily, useMyBalanceShares } from "../queries/families";
 import { useGoalProfile } from "../queries/goalProfile";
 import { transactionsQueryOptions } from "../queries/transactions";
@@ -105,7 +103,6 @@ export function DashboardPage() {
   const cashflowView = chosenCashflowView ?? (isPaid && !family ? "monthly" : "weekly");
   const [historyPage, setHistoryPage] = useState(1);
   const [isProCheckoutOpen, setIsProCheckoutOpen] = useState(false);
-  const [signupThankYouOpen, setSignupThankYouOpen] = useState(isSignupThankYouPending);
   const [migrationWizardOpen, setMigrationWizardOpen] = useState(false);
   const [addTransactionOpen, setAddTransactionOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -636,18 +633,6 @@ export function DashboardPage() {
           onClose={closeProCheckout}
         />
       )}
-      {signupThankYouOpen &&
-        hasCompletedInitialDashboardExperience &&
-        !hasPostAuthCheckoutIntent &&
-        !isProCheckoutOpen && (
-          <ThankYouDialog
-            flow="signup"
-            onClose={() => {
-              clearSignupThankYouPending();
-              setSignupThankYouOpen(false);
-            }}
-          />
-        )}
       {addTransactionOpen && (
         <AddTransactionDialog workspace={workspace} onClose={() => setAddTransactionOpen(false)} />
       )}

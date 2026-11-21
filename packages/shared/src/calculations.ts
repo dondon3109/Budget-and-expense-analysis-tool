@@ -293,11 +293,13 @@ export function buildDashboardSummary(
 
   const monthly = new Map<string, { incomeMinor: number; expenseMinor: number }>();
   for (const transaction of transactions) {
-    if (transaction.kind === "transfer") continue;
+    const isIncome = countsAsIncome(transaction);
+    const isExpense = transaction.kind === "expense";
+    if (!isIncome && !isExpense) continue;
     const month = transaction.date.slice(0, 7);
     const current = monthly.get(month) ?? { incomeMinor: 0, expenseMinor: 0 };
-    if (countsAsIncome(transaction)) current.incomeMinor += Math.abs(transaction.amountMinor);
-    if (transaction.kind === "expense") current.expenseMinor += Math.abs(transaction.amountMinor);
+    if (isIncome) current.incomeMinor += Math.abs(transaction.amountMinor);
+    if (isExpense) current.expenseMinor += Math.abs(transaction.amountMinor);
     monthly.set(month, current);
   }
 

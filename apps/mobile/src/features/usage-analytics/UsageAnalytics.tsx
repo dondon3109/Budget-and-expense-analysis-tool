@@ -41,10 +41,10 @@ export function UsageAnalyticsPromptHost() {
   const { needsChoice } = useAccountLink();
   const thankYouOpen = useThankYouOpen();
   const setupOpen = useOnboardingStore((state) => state.open);
-  const setupIncomplete = useOnboardingStore(
-    (state) => state.state !== null && state.state.step !== "complete",
+  const setupPending = useOnboardingStore(
+    (state) => state.state !== null && state.state.step !== "complete" && !state.dismissed,
   );
-  const visible = needsChoice && !thankYouOpen && !setupOpen && !setupIncomplete;
+  const visible = needsChoice && !thankYouOpen && !setupOpen && !setupPending;
   const decline = () => void chooseAccountLink("declined");
 
   return (

@@ -162,7 +162,7 @@ describe("currency-localized onboarding labels and locale suggestion", () => {
       prefs({ budgetingStyle: "zero_based", spendingFocus: ["family_support"] }),
       "USD",
     );
-    expect(usdSuggestions[0]?.title).toBe("Zero-based: give all income a job");
+    expect(usdSuggestions[0]?.title).toBe("Give all your income a job");
     const catSuggestions = preferenceSuggestions(
       prefs({ budgetingStyle: "category_limits", spendingFocus: ["family_support"] }),
       "USD",

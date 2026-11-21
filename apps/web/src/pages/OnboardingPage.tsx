@@ -18,7 +18,6 @@ import { GoalPicker } from "../components/onboarding/GoalPicker";
 import { PersonalizeStep } from "../components/onboarding/PersonalizeStep";
 import { PreferencesPicker } from "../components/onboarding/PreferencesPicker";
 import { isApiRequestError } from "../lib/api";
-import { clearSignupThankYouPending } from "../lib/thankYou";
 import { userWorkspace, type AuthenticatedWorkspace } from "../lib/workspace";
 import {
   useGoalProfile,
@@ -374,7 +373,6 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   function finishSetup(wantsPet: boolean) {
     captureFunnelEvent("onboarding_step_completed", { step: "personalize" });
     captureFunnelEvent("onboarding_completed", {});
-    clearSignupThankYouPending();
     void navigate(wantsPet ? "/app/pet?from=onboarding" : "/app");
   }
 
