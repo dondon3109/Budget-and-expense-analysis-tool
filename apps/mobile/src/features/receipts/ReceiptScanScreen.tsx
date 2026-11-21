@@ -405,7 +405,9 @@ export function ReceiptScanScreen() {
         } catch (error) {
           Alert.alert(
             "Entries saved without the photo",
-            error instanceof Error ? error.message : "The receipt photo could not be kept.",
+            error instanceof ReceiptPhotoError
+              ? error.message
+              : "The receipt photo could not be kept.",
           );
         }
       }

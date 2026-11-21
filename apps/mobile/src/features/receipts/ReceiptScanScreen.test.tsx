@@ -1,11 +1,13 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import type { ReceiptDraft } from "@zoption/shared";
+import { Alert } from "react-native";
 
 import { extractReceipt, getReceiptPreferences } from "@/api/receipt-scan";
 import { useLocalWorkspace, useTransactionFormData } from "@/db/local-workspace-state";
 import type { TransactionFormData } from "@/db/view-models";
 import type { LocalWorkspace } from "@/db/workspace";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
+import { prepareReceiptPhoto, ReceiptPhotoError } from "@/features/family/receipt-photo";
 import { useLastUsedAccountStore } from "@/stores/last-used-account-store";
 import { useSyncState } from "@/sync/sync-state";
 import { ReceiptScanScreen } from "./ReceiptScanScreen";
@@ -56,6 +58,11 @@ jest.mock("@/features/family/active-workspace", () => ({
   useActiveWorkspace: jest.fn(() => ({ family: null, writable: true })),
 }));
 
+jest.mock("@/features/family/receipt-photo", () => ({
+  ...jest.requireActual("@/features/family/receipt-photo"),
+  prepareReceiptPhoto: jest.fn(),
+}));
+
 jest.mock("expo-secure-store", () => ({
   getItemAsync: jest.fn(async () => null),
   setItemAsync: jest.fn(async () => undefined),
@@ -64,6 +71,7 @@ jest.mock("expo-secure-store", () => ({
 
 const createTransaction = jest.fn().mockResolvedValue("transfer-1");
 const createTransactions = jest.fn().mockResolvedValue(["txn-1"]);
+const queueReceiptUpload = jest.fn().mockResolvedValue(undefined);
 
 function category(id: string, name: string, kind: "income" | "expense" | "transfer") {
   return { id, name, kind, color: "#64748B", iconEmoji: null, pending: false };
@@ -120,7 +128,7 @@ describe("ReceiptScanScreen payment confirmations", () => {
       .mockReturnValue({ status: "synced", message: null, retry: jest.fn() });
     jest.mocked(useLocalWorkspace).mockReturnValue({
       workspace: {
-        transactionMutations: { createTransaction, createTransactions },
+        transactionMutations: { createTransaction, createTransactions, queueReceiptUpload },
       } as unknown as LocalWorkspace,
       status: "ready",
       message: null,
@@ -272,5 +280,54 @@ describe("ReceiptScanScreen payment confirmations", () => {
       await screen.findByText("The receipt could not be scanned. Try again with a clearer photo."),
     ).toBeTruthy();
     expect(screen.queryByText("E_IMAGE_MANIPULATOR_DECODE")).toBeNull();
+  });
+
+  describe("keeping the photo in a family", () => {
+    beforeEach(() => {
+      jest.mocked(useActiveWorkspace).mockReturnValue({
+        family: { id: "family-1", name: "Home", role: "member" },
+        writable: true,
+      } as ReturnType<typeof useActiveWorkspace>);
+    });
+
+    it("hides unexpected native error details when the photo cannot be kept", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+      jest
+        .mocked(prepareReceiptPhoto)
+        .mockRejectedValueOnce(new Error("E_IMAGE_MANIPULATOR_DECODE"));
+      await scan(gcashSend);
+
+      await fireEvent.press(screen.getByLabelText("Save 1 scanned item"));
+
+      await waitFor(() =>
+        expect(alert).toHaveBeenCalledWith(
+          "Entries saved without the photo",
+          "The receipt photo could not be kept.",
+        ),
+      );
+      expect(createTransactions).toHaveBeenCalledTimes(1);
+      expect(queueReceiptUpload).not.toHaveBeenCalled();
+    });
+
+    it("shows the photo validation message when the photo is too large to keep", async () => {
+      const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+      jest
+        .mocked(prepareReceiptPhoto)
+        .mockRejectedValueOnce(
+          new ReceiptPhotoError(
+            "This photo is too large to keep. Try a closer picture of the receipt.",
+          ),
+        );
+      await scan(gcashSend);
+
+      await fireEvent.press(screen.getByLabelText("Save 1 scanned item"));
+
+      await waitFor(() =>
+        expect(alert).toHaveBeenCalledWith(
+          "Entries saved without the photo",
+          "This photo is too large to keep. Try a closer picture of the receipt.",
+        ),
+      );
+    });
   });
 });
