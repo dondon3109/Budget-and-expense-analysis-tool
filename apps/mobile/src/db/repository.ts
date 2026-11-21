@@ -5,6 +5,7 @@ import {
   monthStartSchema,
   resolveCategoryEmoji,
   subscriptionBillingDateForMonth,
+  type AccountRecord,
   type BudgetQuery,
   type Currency,
   type CurrencyTotals,
@@ -483,77 +484,89 @@ LIMIT ?`;
     return readTransactionFormData(this.database, id);
   }
 
+  async getAccountBalances(): Promise<AccountRecord[]> {
+    const [accountRows, balanceRows] = await Promise.all([
+      this.database.getAllAsync(`
+        SELECT
+          a.id,
+          a.name,
+          a.type,
+          a.currency,
+          a.archived,
+          a.system,
+          a.interest_json
+        FROM accounts a
+        WHERE a.deleted_at IS NULL
+        ORDER BY a.archived, a.name COLLATE NOCASE
+      `),
+      // Each account's balance in every currency it holds entries in; transfers count once.
+      this.database.getAllAsync(`
+        SELECT account_id, currency, SUM(amount_minor) AS balance_minor FROM transactions
+        WHERE deleted_at IS NULL AND account_id IS NOT NULL
+          AND (kind != 'transfer' OR transfer_group_id IS NOT NULL)
+        GROUP BY account_id, currency
+      `),
+    ]);
+    const balancesByAccount = new Map<string, CurrencyTotals>();
+    for (const row of balanceRows) {
+      const { account_id: id, currency, balance_minor } = accountBalanceRowSchema.parse(row);
+      const existing = balancesByAccount.get(id);
+      if (existing) {
+        existing[currency] = balance_minor;
+      } else {
+        balancesByAccount.set(id, { [currency]: balance_minor });
+      }
+    }
+    return accountRows.map((row) => {
+      const decoded = dashboardAccountRowSchema.parse(row);
+      const balancesByCurrency = balancesByAccount.get(decoded.id) ?? {};
+      return {
+        id: decoded.id,
+        name: decoded.name,
+        type: decoded.type,
+        currency: decoded.currency,
+        balanceMinor: balancesByCurrency[decoded.currency] ?? 0,
+        balancesByCurrency,
+        archived: decoded.archived === 1,
+        system: decoded.system === 1,
+        interest: decodeInterest(decoded.interest_json),
+      };
+    });
+  }
+
   async getDashboardData(anchorDate: string): Promise<LocalDashboardData> {
     // The dashboard aggregates over a bounded window rather than the whole
     // ledger: the summary reads the current month and the chart the widest
     // view, both of which sit inside `cashflowWindowStart`. The newest rows
     // are a separate three row read so Home still knows the ledger is not
     // empty after it has been dormant for longer than that window.
-    const transactionRows = await this.database.getAllAsync(
-      `${dashboardTransactionSelect} AND t.date >= ? ${dashboardTransactionOrder}`,
-      cashflowWindowStart(anchorDate),
-    );
-    const recentRows = await this.database.getAllAsync(
-      `${dashboardTransactionSelect} ${dashboardTransactionOrder} LIMIT ${RECENT_ACTIVITY_LIMIT}`,
-    );
-
-    const accountRows = await this.database.getAllAsync(`
-      SELECT
-        a.id,
-        a.name,
-        a.type,
-        a.currency,
-        a.archived,
-        a.system,
-        a.interest_json
-      FROM accounts a
-      WHERE a.deleted_at IS NULL
-      ORDER BY a.archived, a.name COLLATE NOCASE
-    `);
-    // Each account's balance in every currency it holds entries in; transfers count once.
-    const balanceRows = await this.database.getAllAsync(`
-      SELECT account_id, currency, SUM(amount_minor) AS balance_minor FROM transactions
-      WHERE deleted_at IS NULL AND account_id IS NOT NULL
-        AND (kind != 'transfer' OR transfer_group_id IS NOT NULL)
-      GROUP BY account_id, currency
-    `);
-    const balancesByAccount = new Map<string, CurrencyTotals>();
-    for (const row of balanceRows) {
-      const { account_id: id, currency, balance_minor } = accountBalanceRowSchema.parse(row);
-      balancesByAccount.set(id, { ...balancesByAccount.get(id), [currency]: balance_minor });
-    }
-
-    const budgetRows = await this.database.getAllAsync(`
-      SELECT
-        b.category_id,
-        c.name AS category_name,
-        c.color AS category_color,
-        b.month,
-        b.limit_minor
-      FROM budgets b
-      INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
-      WHERE b.deleted_at IS NULL
-      ORDER BY b.month, c.name COLLATE NOCASE
-    `);
+    const [transactionRows, recentRows, accounts, budgetRows] = await Promise.all([
+      this.database.getAllAsync(
+        `${dashboardTransactionSelect} AND t.date >= ? ${dashboardTransactionOrder}`,
+        cashflowWindowStart(anchorDate),
+      ),
+      this.database.getAllAsync(
+        `${dashboardTransactionSelect} ${dashboardTransactionOrder} LIMIT ${RECENT_ACTIVITY_LIMIT}`,
+      ),
+      this.getAccountBalances(),
+      this.database.getAllAsync(`
+        SELECT
+          b.category_id,
+          c.name AS category_name,
+          c.color AS category_color,
+          b.month,
+          b.limit_minor
+        FROM budgets b
+        INNER JOIN categories c ON c.id = b.category_id AND c.deleted_at IS NULL
+        WHERE b.deleted_at IS NULL
+        ORDER BY b.month, c.name COLLATE NOCASE
+      `),
+    ]);
 
     return {
       transactions: transactionRows.map(decodeDashboardTransaction),
       recentTransactions: recentRows.map(decodeDashboardTransaction),
-      accounts: accountRows.map((row) => {
-        const decoded = dashboardAccountRowSchema.parse(row);
-        const balancesByCurrency = balancesByAccount.get(decoded.id) ?? {};
-        return {
-          id: decoded.id,
-          name: decoded.name,
-          type: decoded.type,
-          currency: decoded.currency,
-          balanceMinor: balancesByCurrency[decoded.currency] ?? 0,
-          balancesByCurrency,
-          archived: decoded.archived === 1,
-          system: decoded.system === 1,
-          interest: decodeInterest(decoded.interest_json),
-        };
-      }),
+      accounts,
       budgets: budgetRows.map((row) => {
         const decoded = budgetRowSchema.parse(row);
         return {

@@ -10,10 +10,13 @@ import {
 
 import type { LocalDashboardData } from "@/db/view-models";
 
-export interface DashboardView {
+export interface DashboardOverview {
   summary: DashboardSummary;
-  cashflow: CashflowTrend;
   accountBalances: AccountBalanceSummary;
+}
+
+export interface DashboardView extends DashboardOverview {
+  cashflow: CashflowTrend;
 }
 
 function monthPeriod(anchorDate: string): { from: string; to: string } {
@@ -24,12 +27,11 @@ function monthPeriod(anchorDate: string): { from: string; to: string } {
   return { from: `${month}-01`, to: `${month}-${String(lastDay).padStart(2, "0")}` };
 }
 
-export function buildDashboardView(
+export function buildDashboardOverview(
   data: LocalDashboardData,
   anchorDate: string,
-  cashflowView: CashflowTrend["view"] = "weekly",
   workspaceCurrency: Currency = "PHP",
-): DashboardView {
+): DashboardOverview {
   const accountBalances = summarizeAccountBalances(data.accounts, workspaceCurrency);
   return {
     summary: buildDashboardSummary(
@@ -38,13 +40,34 @@ export function buildDashboardView(
       monthPeriod(anchorDate),
       accountBalances,
     ),
-    // Mobile has no exchange rate, so the trend counts only workspace-currency entries.
-    cashflow: buildCashflowTrend(
-      data.transactions.filter((transaction) => transaction.currency === workspaceCurrency),
-      cashflowView,
-      anchorDate,
-    ),
     accountBalances,
+  };
+}
+
+export function buildDashboardCashflow(
+  data: LocalDashboardData,
+  anchorDate: string,
+  cashflowView: CashflowTrend["view"] = "weekly",
+  workspaceCurrency: Currency = "PHP",
+): CashflowTrend {
+  // Mobile has no exchange rate, so the trend counts only workspace-currency entries.
+  return buildCashflowTrend(
+    data.transactions.filter((transaction) => transaction.currency === workspaceCurrency),
+    cashflowView,
+    anchorDate,
+  );
+}
+
+export function buildDashboardView(
+  data: LocalDashboardData,
+  anchorDate: string,
+  cashflowView: CashflowTrend["view"] = "weekly",
+  workspaceCurrency: Currency = "PHP",
+): DashboardView {
+  const overview = buildDashboardOverview(data, anchorDate, workspaceCurrency);
+  return {
+    ...overview,
+    cashflow: buildDashboardCashflow(data, anchorDate, cashflowView, workspaceCurrency),
   };
 }
 

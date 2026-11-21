@@ -17,6 +17,7 @@ interface ConfirmationDialogProps {
 
 export function ConfirmationDialog(props: ConfirmationDialogProps) {
   const theme = useZoptionTheme();
+  if (!props.visible) return null;
   return (
     <Modal
       animationType="fade"

@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useRef, type ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { LocalQueryActivity } from "@/db/local-workspace-state";
 import { SubscriptionsScreen } from "@/features/subscriptions/SubscriptionsScreen";
 import { ViewSwitch } from "@/ui/components";
 import { BudgetsScreen } from "./BudgetsScreen";
@@ -49,13 +50,15 @@ export function BudgetsTab() {
 
 function PlanViewPane({ active, children }: { active: boolean; children: ReactNode }) {
   return (
-    <View
-      accessibilityElementsHidden={!active}
-      importantForAccessibility={active ? "auto" : "no-hide-descendants"}
-      style={[styles.fill, !active && styles.hidden]}
-    >
-      {children}
-    </View>
+    <LocalQueryActivity active={active}>
+      <View
+        accessibilityElementsHidden={!active}
+        importantForAccessibility={active ? "auto" : "no-hide-descendants"}
+        style={[styles.fill, !active && styles.hidden]}
+      >
+        {children}
+      </View>
+    </LocalQueryActivity>
   );
 }
 

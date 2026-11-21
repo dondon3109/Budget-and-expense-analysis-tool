@@ -19,11 +19,13 @@ export function useGoalProfileSync(): void {
     void (async () => {
       try {
         const accessToken = await getAccessToken(false);
+        if (controller.signal.aborted) return;
         const api = { accessToken, signal: controller.signal };
         const [profile, preferences] = await Promise.allSettled([
           getGoalsProfile(api),
           getMoneyPreferences(api),
         ]);
+        if (controller.signal.aborted) return;
         if (profile.status === "fulfilled")
           useGoalProfileStore.getState().setProfile(profile.value);
         if (preferences.status === "fulfilled") {

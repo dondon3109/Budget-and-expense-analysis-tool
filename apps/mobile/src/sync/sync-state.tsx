@@ -202,7 +202,9 @@ export function SyncProvider({
   const familyId = active.family?.id ?? null;
   const familyName = active.family?.name ?? null;
   const netInfo = useNetInfo();
-  const reachable = netInfo.isInternetReachable ?? netInfo.isConnected;
+  // NetInfo starts at null before resolving to true; keying on offline avoids aborting and
+  // restarting the launch sync once connectivity settles.
+  const offline = (netInfo.isInternetReachable ?? netInfo.isConnected) === false;
   const [attempt, setAttempt] = useState(0);
   const [snapshot, setSnapshot] = useState<Omit<SyncSnapshot, "retry">>({
     status: "waiting",
@@ -247,7 +249,7 @@ export function SyncProvider({
       });
       return;
     }
-    if (reachable === false) {
+    if (offline) {
       setSnapshot({
         status: "waiting",
         message: "Offline. Showing records already protected on this device.",
@@ -491,7 +493,7 @@ export function SyncProvider({
     familyName,
     forgetFamily,
     markSynced,
-    reachable,
+    offline,
     refreshFamilies,
     reopen,
     session,

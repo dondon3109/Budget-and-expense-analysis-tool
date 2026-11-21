@@ -43,6 +43,8 @@ import {
   monthStartForDate,
   shiftMonthStart,
   summarizeTransactions,
+  type CategorySummaryItem,
+  type TransactionDateGroup,
 } from "./transaction-list-view";
 import { CategorySummaryRow, DateHeader, TotalsValue, TransactionItemRow } from "./TransactionRows";
 import { CalendarMonthGrid } from "@/features/calendar/CalendarMonthGrid";
@@ -60,6 +62,14 @@ const viewTabs: Array<{ key: ViewMode; label: string }> = [
   { key: "monthly", label: "Monthly" },
   { key: "summary", label: "Summary" },
 ];
+
+const EMPTY_ITEMS: LocalTransactionItem[] = [];
+const EMPTY_CALENDAR_CELLS = new Map<
+  string,
+  ReturnType<typeof calendarCellsFromTransactions> extends Map<string, infer V> ? V : never
+>();
+const transactionKeyExtractor = (item: LocalTransactionItem) => item.transaction.id;
+const summaryKeyExtractor = (item: CategorySummaryItem) => item.key;
 
 function HeaderIcon({
   icon,
@@ -108,8 +118,10 @@ export function TransactionsScreen() {
   const me = useSessionSnapshot().subject;
   // The same family rule as the editor: a row this person may not change cannot be selected,
   // since the Worker refuses the delete and a viewer's refusal discards the family's copy.
-  const canDelete = (item: LocalTransactionItem): boolean =>
-    writable && canChangeEntry(family, me, item);
+  const canDelete = useCallback(
+    (item: LocalTransactionItem): boolean => writable && canChangeEntry(family, me, item),
+    [family, me, writable],
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -143,32 +155,54 @@ export function TransactionsScreen() {
     />
   );
 
-  const items = useMemo(() => local.items ?? [], [local.items]);
+  const items = local.items ?? EMPTY_ITEMS;
   const totals = useMemo(() => summarizeTransactions(items), [items]);
-  const dateGroups = useMemo(() => groupTransactionsByDate(items), [items]);
-  const calendarCells = useMemo(() => calendarCellsFromTransactions(dateGroups), [dateGroups]);
+  const dateGroups = useMemo(
+    () => (view === "daily" || view === "calendar" ? groupTransactionsByDate(items) : []),
+    [items, view],
+  );
+  const dailySections = useMemo(
+    () => (view === "daily" ? dateGroups.map((group) => ({ ...group, data: group.items })) : []),
+    [dateGroups, view],
+  );
+  const calendarCells = useMemo(
+    () => (view === "calendar" ? calendarCellsFromTransactions(dateGroups) : EMPTY_CALENDAR_CELLS),
+    [dateGroups, view],
+  );
   // Derived so changing month never leaves a selection outside the visible month.
   const activeDate = selectedDate.startsWith(month.slice(0, 7)) ? selectedDate : month;
   const activeDayItems = useMemo(
-    () => dateGroups.find((group) => group.date === activeDate)?.items ?? [],
-    [dateGroups, activeDate],
+    () =>
+      view === "calendar"
+        ? (dateGroups.find((group) => group.date === activeDate)?.items ?? EMPTY_ITEMS)
+        : EMPTY_ITEMS,
+    [dateGroups, activeDate, view],
   );
-  const summaryItems = useMemo(() => categorySummary(items), [items]);
+  const summaryItems = useMemo(
+    () => (view === "summary" ? categorySummary(items) : []),
+    [items, view],
+  );
   const existingTransactions = useMemo(
     () =>
-      items.map((i) => ({
-        id: i.transaction.id,
-        date: i.transaction.date,
-        amountMinor: i.transaction.amountMinor,
-        description: i.transaction.description,
-        notes: i.transaction.notes,
-      })),
-    [items],
+      smsQuickPasteVisible
+        ? items.map((i) => ({
+            id: i.transaction.id,
+            date: i.transaction.date,
+            amountMinor: i.transaction.amountMinor,
+            description: i.transaction.description,
+            notes: i.transaction.notes,
+          }))
+        : [],
+    [items, smsQuickPasteVisible],
   );
 
   // Derived from the live list, so a row that left the month or filter never
   // inflates the count, and select mode ends when nothing selected is visible.
-  const selectedItems = items.filter((i) => selectedIds.includes(i.transaction.id) && canDelete(i));
+  const selectedIdSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const selectedItems = useMemo(
+    () => items.filter((i) => selectedIdSet.has(i.transaction.id) && canDelete(i)),
+    [canDelete, items, selectedIdSet],
+  );
   const selecting = selectedItems.length > 0;
   const toggleSelected = useCallback((id: string) => {
     setDeleteError(null);
@@ -176,6 +210,41 @@ export function TransactionsScreen() {
       current.includes(id) ? current.filter((value) => value !== id) : [...current, id],
     );
   }, []);
+
+  const renderDailyItem = useCallback(
+    ({ item }: { item: LocalTransactionItem }) => (
+      <TransactionItemRow
+        item={item}
+        onToggleSelect={canDelete(item) ? toggleSelected : undefined}
+        selected={selectedIdSet.has(item.transaction.id)}
+        selecting={selecting}
+      />
+    ),
+    [canDelete, selectedIdSet, selecting, toggleSelected],
+  );
+
+  const renderMonthlyItem = useCallback(
+    ({ item }: { item: LocalTransactionItem }) => (
+      <TransactionItemRow
+        item={item}
+        onToggleSelect={canDelete(item) ? toggleSelected : undefined}
+        selected={selectedIdSet.has(item.transaction.id)}
+        selecting={selecting}
+        showDate
+      />
+    ),
+    [canDelete, selectedIdSet, selecting, toggleSelected],
+  );
+
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: TransactionDateGroup }) => <DateHeader section={section} />,
+    [],
+  );
+
+  const renderSummaryItem = useCallback(
+    ({ item }: { item: CategorySummaryItem }) => <CategorySummaryRow item={item} />,
+    [],
+  );
 
   const deleteSelected = async () => {
     setConfirmDelete(false);
@@ -473,24 +542,20 @@ export function TransactionsScreen() {
             alwaysBounceVertical
             contentContainerStyle={[
               styles.listContent,
-              dateGroups.length === 0 && styles.emptyList,
+              dailySections.length === 0 && styles.emptyList,
             ]}
-            sections={dateGroups.map((group) => ({ ...group, data: group.items }))}
-            keyExtractor={(item) => item.transaction.id}
+            sections={dailySections}
+            keyExtractor={transactionKeyExtractor}
             keyboardShouldPersistTaps="handled"
+            initialNumToRender={16}
+            maxToRenderPerBatch={12}
+            windowSize={7}
             ListEmptyComponent={emptyState}
             ListHeaderComponent={filterPanel}
             refreshControl={refreshControl}
-            renderItem={({ item }) => (
-              <TransactionItemRow
-                item={item}
-                onToggleSelect={canDelete(item) ? toggleSelected : undefined}
-                selected={selectedIds.includes(item.transaction.id)}
-                selecting={selecting}
-              />
-            )}
-            extraData={selectedIds}
-            renderSectionHeader={({ section }) => <DateHeader section={section} />}
+            renderItem={renderDailyItem}
+            extraData={selectedIdSet}
+            renderSectionHeader={renderSectionHeader}
             showsVerticalScrollIndicator={false}
             stickySectionHeadersEnabled
           />
@@ -499,8 +564,11 @@ export function TransactionsScreen() {
             alwaysBounceVertical
             contentContainerStyle={styles.listContent}
             data={activeDayItems}
-            extraData={selectedIds}
-            keyExtractor={(item) => item.transaction.id}
+            extraData={selectedIdSet}
+            initialNumToRender={16}
+            maxToRenderPerBatch={12}
+            windowSize={7}
+            keyExtractor={transactionKeyExtractor}
             ListHeaderComponent={
               <CalendarMonthGrid
                 cells={calendarCells}
@@ -511,14 +579,7 @@ export function TransactionsScreen() {
               />
             }
             refreshControl={refreshControl}
-            renderItem={({ item }) => (
-              <TransactionItemRow
-                item={item}
-                onToggleSelect={canDelete(item) ? toggleSelected : undefined}
-                selected={selectedIds.includes(item.transaction.id)}
-                selecting={selecting}
-              />
-            )}
+            renderItem={renderDailyItem}
             showsVerticalScrollIndicator={false}
           />
         ) : view === "summary" ? (
@@ -529,11 +590,14 @@ export function TransactionsScreen() {
               summaryItems.length === 0 && styles.emptyList,
             ]}
             data={summaryItems}
-            keyExtractor={(item) => item.key}
+            initialNumToRender={16}
+            maxToRenderPerBatch={12}
+            windowSize={7}
+            keyExtractor={summaryKeyExtractor}
             ListEmptyComponent={emptyState}
             ListHeaderComponent={filterPanel}
             refreshControl={refreshControl}
-            renderItem={({ item }) => <CategorySummaryRow item={item} />}
+            renderItem={renderSummaryItem}
             showsVerticalScrollIndicator={false}
           />
         ) : (
@@ -541,20 +605,15 @@ export function TransactionsScreen() {
             alwaysBounceVertical
             contentContainerStyle={[styles.listContent, items.length === 0 && styles.emptyList]}
             data={items}
-            keyExtractor={(item) => item.transaction.id}
+            initialNumToRender={16}
+            maxToRenderPerBatch={12}
+            windowSize={7}
+            keyExtractor={transactionKeyExtractor}
             ListEmptyComponent={emptyState}
             ListHeaderComponent={filterPanel}
             refreshControl={refreshControl}
-            extraData={selectedIds}
-            renderItem={({ item }) => (
-              <TransactionItemRow
-                item={item}
-                onToggleSelect={canDelete(item) ? toggleSelected : undefined}
-                selected={selectedIds.includes(item.transaction.id)}
-                selecting={selecting}
-                showDate
-              />
-            )}
+            extraData={selectedIdSet}
+            renderItem={renderMonthlyItem}
             showsVerticalScrollIndicator={false}
           />
         )}

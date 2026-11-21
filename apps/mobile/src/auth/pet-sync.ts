@@ -16,17 +16,33 @@ export function usePetSync(): void {
   useEffect(() => {
     if (status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject)) return;
     const controller = new AbortController();
+    let sawBackground = false;
+    let inFlight = false;
     const checkIn = async () => {
+      if (inFlight) return;
+      inFlight = true;
       try {
         const accessToken = await getAccessToken(false);
-        usePetStore.getState().setPet(await checkInPet({ accessToken, signal: controller.signal }));
+        if (controller.signal.aborted) return;
+        const pet = await checkInPet({ accessToken, signal: controller.signal });
+        if (controller.signal.aborted) return;
+        usePetStore.getState().setPet(pet);
       } catch {
         // Offline or unreachable: the next foreground tries again.
+      } finally {
+        inFlight = false;
       }
     };
     void checkIn();
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void checkIn();
+      if (state === "background") {
+        sawBackground = true;
+        return;
+      }
+      if (state === "active" && sawBackground) {
+        sawBackground = false;
+        void checkIn();
+      }
     });
     return () => {
       subscription.remove();

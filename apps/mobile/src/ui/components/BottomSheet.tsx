@@ -26,6 +26,7 @@ interface BottomSheetProps extends PropsWithChildren {
 
 export function BottomSheet({ visible, title, onDismiss, children }: BottomSheetProps) {
   const theme = useZoptionTheme();
+  if (!visible) return null;
   return (
     <Modal
       animationType={Platform.OS === "ios" ? "slide" : "fade"}

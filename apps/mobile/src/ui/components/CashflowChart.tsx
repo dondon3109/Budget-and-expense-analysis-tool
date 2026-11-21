@@ -1,5 +1,5 @@
 import type { CashflowTrend } from "@zoption/shared";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Dimensions, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Svg, { Circle, Line, Path, Text as SvgText } from "react-native-svg";
@@ -49,48 +49,172 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const points = cashflow.points;
-  const maximumMinor = points.reduce(
-    (largest, point) => Math.max(largest, point.incomeMinor, point.expenseMinor),
-    0,
-  );
-  const incomeTotalMinor = points.reduce((sum, point) => sum + point.incomeMinor, 0);
-  const expenseTotalMinor = points.reduce((sum, point) => sum + point.expenseMinor, 0);
+  const { maximumMinor, incomeTotalMinor, expenseTotalMinor } = useMemo(() => {
+    let max = 0;
+    let income = 0;
+    let expense = 0;
+    for (const point of points) {
+      if (point.incomeMinor > max) max = point.incomeMinor;
+      if (point.expenseMinor > max) max = point.expenseMinor;
+      income += point.incomeMinor;
+      expense += point.expenseMinor;
+    }
+    return { maximumMinor: max, incomeTotalMinor: income, expenseTotalMinor: expense };
+  }, [points]);
   const axis = useMemo(() => createCashflowAxis(maximumMinor), [maximumMinor]);
-  const geometry = buildChartGeometry(width, points.length, axis.domainMax);
-  const tickInterval = xAxisInterval(points.length, cashflow.granularity);
+  const geometry = useMemo(
+    () => buildChartGeometry(width, points.length, axis.domainMax),
+    [width, points.length, axis.domainMax],
+  );
+  const tickInterval = useMemo(
+    () => xAxisInterval(points.length, cashflow.granularity),
+    [points.length, cashflow.granularity],
+  );
+  const { incomeD, expenseD } = useMemo(
+    () => ({
+      incomeD: linePathD(points, (point) => point.incomeMinor, geometry),
+      expenseD: linePathD(points, (point) => point.expenseMinor, geometry),
+    }),
+    [points, geometry],
+  );
+  const summaryLabel = useMemo(() => chartSummaryLabel(cashflow, currency), [cashflow, currency]);
 
-  const incomeD = linePathD(points, (point) => point.incomeMinor, geometry);
-  const expenseD = linePathD(points, (point) => point.expenseMinor, geometry);
+  useEffect(() => {
+    setSelectedIndex(null);
+  }, [cashflow.view]);
 
-  function selectAt(x: number): void {
-    const index = indexForPosition(x, width, points.length);
-    if (index !== null) setSelectedIndex(index);
-  }
+  const selectAt = useCallback(
+    (x: number): void => {
+      const index = indexForPosition(x, width, points.length);
+      if (index !== null) setSelectedIndex(index);
+    },
+    [width, points.length],
+  );
 
-  function toggleAt(x: number): void {
-    const index = indexForPosition(x, width, points.length);
-    if (index === null) return;
-    setSelectedIndex((current) => (current === index ? null : index));
-  }
+  const toggleAt = useCallback(
+    (x: number): void => {
+      const index = indexForPosition(x, width, points.length);
+      if (index === null) return;
+      setSelectedIndex((current) => (current === index ? null : index));
+    },
+    [width, points.length],
+  );
 
-  const pan = Gesture.Pan()
-    .runOnJS(true)
-    .activeOffsetX([-10, 10])
-    .failOffsetY([-10, 10])
-    .onBegin((event) => selectAt(event.x))
-    .onUpdate((event) => selectAt(event.x))
-    .onEnd((event) => {
-      if (
-        Math.abs(event.translationX) < TAP_SLOP_PX &&
-        Math.abs(event.translationY) < TAP_SLOP_PX
-      ) {
-        toggleAt(event.x);
-      }
-    });
-  const tap = Gesture.Tap()
-    .runOnJS(true)
-    .onEnd((event) => toggleAt(event.x));
-  const gesture = Gesture.Race(tap, pan);
+  const gesture = useMemo(() => {
+    const pan = Gesture.Pan()
+      .runOnJS(true)
+      .activeOffsetX([-10, 10])
+      .failOffsetY([-10, 10])
+      .onBegin((event) => selectAt(event.x))
+      .onUpdate((event) => selectAt(event.x))
+      .onEnd((event) => {
+        if (
+          Math.abs(event.translationX) < TAP_SLOP_PX &&
+          Math.abs(event.translationY) < TAP_SLOP_PX
+        ) {
+          toggleAt(event.x);
+        }
+      });
+    const tap = Gesture.Tap()
+      .runOnJS(true)
+      .onEnd((event) => toggleAt(event.x));
+    return Gesture.Race(tap, pan);
+  }, [selectAt, toggleAt]);
+
+  // Keep the static grid, paths, and labels memoized so scrubbing only re-renders the active cursor.
+  const staticBackdrop = useMemo(
+    () => (
+      <>
+        {axis.ticks.map((tick) => {
+          const tickY = geometry.yAt(tick);
+          return (
+            <Line
+              key={tick}
+              x1={CHART_GUTTER_LEFT}
+              x2={width - CHART_GUTTER_RIGHT}
+              y1={tickY}
+              y2={tickY}
+              stroke={theme.colors.border}
+              strokeWidth={1}
+            />
+          );
+        })}
+        {axis.ticks.map((tick) => (
+          <SvgText
+            key={`label-${tick}`}
+            x={CHART_GUTTER_LEFT - 6}
+            y={geometry.yAt(tick) + 3.5}
+            fontSize={10}
+            fill={theme.colors.textMuted}
+            textAnchor="end"
+          >
+            {amountsHidden ? hiddenMoney(currency) : formatAxisTick(tick, currency)}
+          </SvgText>
+        ))}
+        {width > 0 ? (
+          <>
+            <Path
+              testID="cashflow-income-line"
+              d={incomeD}
+              fill="none"
+              fillOpacity={0}
+              stroke={theme.colors.income}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <Path
+              testID="cashflow-expense-line"
+              d={expenseD}
+              fill="none"
+              fillOpacity={0}
+              stroke={theme.colors.expense}
+              strokeWidth={2}
+              strokeDasharray={[6, 5]}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {points.map((point, index) => {
+              const show =
+                tickInterval === 0 ||
+                index % (tickInterval + 1) === 0 ||
+                index === points.length - 1;
+              if (!show) return null;
+              const anchor = index === 0 ? "start" : index === points.length - 1 ? "end" : "middle";
+              return (
+                <SvgText
+                  key={point.date}
+                  x={geometry.xAt(index)}
+                  y={CHART_HEIGHT - 6}
+                  fontSize={10}
+                  fill={theme.colors.textMuted}
+                  textAnchor={anchor}
+                >
+                  {compactDateLabel(point.date, cashflow.granularity)}
+                </SvgText>
+              );
+            })}
+          </>
+        ) : null}
+      </>
+    ),
+    [
+      amountsHidden,
+      axis.ticks,
+      cashflow.granularity,
+      currency,
+      expenseD,
+      geometry,
+      incomeD,
+      points,
+      theme.colors.border,
+      theme.colors.expense,
+      theme.colors.income,
+      theme.colors.textMuted,
+      tickInterval,
+      width,
+    ],
+  );
 
   const selectedPoint = selectedIndex !== null ? points[selectedIndex] : undefined;
   const activeX = selectedIndex !== null ? geometry.xAt(selectedIndex) : 0;
@@ -99,11 +223,13 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
     Math.max(CALLOUT_HALF_WIDTH, width - CALLOUT_HALF_WIDTH),
   );
 
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = event.nativeEvent.layout.width;
+    setWidth((current) => (current === nextWidth ? current : nextWidth));
+  }, []);
+
   return (
-    <View
-      style={styles.wrap}
-      onLayout={(event: LayoutChangeEvent) => setWidth(event.nativeEvent.layout.width)}
-    >
+    <View style={styles.wrap} onLayout={handleLayout}>
       {width > 0 && selectedPoint ? (
         <View
           pointerEvents="none"
@@ -162,110 +288,39 @@ export function CashflowChart({ cashflow }: CashflowChartProps) {
         <View
           accessible
           accessibilityRole="image"
-          accessibilityLabel={chartSummaryLabel(cashflow, currency)}
+          accessibilityLabel={summaryLabel}
           collapsable={false}
         >
           <Svg width={width} height={CHART_HEIGHT}>
-            {axis.ticks.map((tick) => {
-              const tickY = geometry.yAt(tick);
-              return (
-                <Line
-                  key={tick}
-                  x1={CHART_GUTTER_LEFT}
-                  x2={width - CHART_GUTTER_RIGHT}
-                  y1={tickY}
-                  y2={tickY}
-                  stroke={theme.colors.border}
-                  strokeWidth={1}
-                />
-              );
-            })}
-            {axis.ticks.map((tick) => (
-              <SvgText
-                key={`label-${tick}`}
-                x={CHART_GUTTER_LEFT - 6}
-                y={geometry.yAt(tick) + 3.5}
-                fontSize={10}
-                fill={theme.colors.textMuted}
-                textAnchor="end"
-              >
-                {amountsHidden ? hiddenMoney(currency) : formatAxisTick(tick, currency)}
-              </SvgText>
-            ))}
-            {width > 0 ? (
+            {staticBackdrop}
+            {width > 0 && selectedIndex !== null && selectedPoint ? (
               <>
-                <Path
-                  testID="cashflow-income-line"
-                  d={incomeD}
-                  fill="none"
-                  fillOpacity={0}
-                  stroke={theme.colors.income}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
+                <Line
+                  x1={activeX}
+                  x2={activeX}
+                  y1={CHART_GUTTER_TOP}
+                  y2={CHART_HEIGHT - CHART_GUTTER_BOTTOM}
+                  stroke={theme.colors.textMuted}
+                  strokeWidth={1}
+                  strokeDasharray={[3, 4]}
+                  opacity={0.6}
                 />
-                <Path
-                  testID="cashflow-expense-line"
-                  d={expenseD}
-                  fill="none"
-                  fillOpacity={0}
-                  stroke={theme.colors.expense}
+                <Circle
+                  cx={activeX}
+                  cy={geometry.yAt(selectedPoint.incomeMinor)}
+                  r={4.5}
+                  fill={theme.colors.income}
+                  stroke={theme.colors.surfaceRaised}
                   strokeWidth={2}
-                  strokeDasharray={[6, 5]}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
                 />
-                {points.map((point, index) => {
-                  const show =
-                    tickInterval === 0 ||
-                    index % (tickInterval + 1) === 0 ||
-                    index === points.length - 1;
-                  if (!show) return null;
-                  const anchor =
-                    index === 0 ? "start" : index === points.length - 1 ? "end" : "middle";
-                  return (
-                    <SvgText
-                      key={point.date}
-                      x={geometry.xAt(index)}
-                      y={CHART_HEIGHT - 6}
-                      fontSize={10}
-                      fill={theme.colors.textMuted}
-                      textAnchor={anchor}
-                    >
-                      {compactDateLabel(point.date, cashflow.granularity)}
-                    </SvgText>
-                  );
-                })}
-                {selectedIndex !== null && selectedPoint ? (
-                  <>
-                    <Line
-                      x1={activeX}
-                      x2={activeX}
-                      y1={CHART_GUTTER_TOP}
-                      y2={CHART_HEIGHT - CHART_GUTTER_BOTTOM}
-                      stroke={theme.colors.textMuted}
-                      strokeWidth={1}
-                      strokeDasharray={[3, 4]}
-                      opacity={0.6}
-                    />
-                    <Circle
-                      cx={activeX}
-                      cy={geometry.yAt(selectedPoint.incomeMinor)}
-                      r={4.5}
-                      fill={theme.colors.income}
-                      stroke={theme.colors.surfaceRaised}
-                      strokeWidth={2}
-                    />
-                    <Circle
-                      cx={activeX}
-                      cy={geometry.yAt(selectedPoint.expenseMinor)}
-                      r={4.5}
-                      fill={theme.colors.expense}
-                      stroke={theme.colors.surfaceRaised}
-                      strokeWidth={2}
-                    />
-                  </>
-                ) : null}
+                <Circle
+                  cx={activeX}
+                  cy={geometry.yAt(selectedPoint.expenseMinor)}
+                  r={4.5}
+                  fill={theme.colors.expense}
+                  stroke={theme.colors.surfaceRaised}
+                  strokeWidth={2}
+                />
               </>
             ) : null}
           </Svg>

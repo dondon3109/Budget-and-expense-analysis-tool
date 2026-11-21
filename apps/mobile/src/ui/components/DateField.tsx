@@ -13,14 +13,23 @@ import { BottomSheet } from "./BottomSheet";
 
 const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
 
+const shortDateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+const longDateFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 function dateLabel(date: string, weekday?: "long"): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, {
-    weekday,
-    month: weekday ? "long" : "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return weekday ? longDateFormatter.format(parsed) : shortDateFormatter.format(parsed);
 }
 
 interface DateFieldProps {

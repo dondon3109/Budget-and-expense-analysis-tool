@@ -29,7 +29,7 @@ import { BalanceCard } from "./BalanceCard";
 import { BudgetCard } from "./BudgetCard";
 import { CashflowCard } from "./CashflowCard";
 import { CashflowForecastCard } from "./CashflowForecastCard";
-import { buildDashboardView, localIsoDate } from "./dashboard-view";
+import { buildDashboardCashflow, buildDashboardOverview, localIsoDate } from "./dashboard-view";
 import { HomeEmptyView } from "./HomeEmptyView";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
@@ -75,16 +75,21 @@ export function HomeScreen() {
   const { openFeature } = useAccountGate();
   const [homeView, setHomeView] = useState<HomeViewName>("overview");
   const [cashflowView, setCashflowView] = useState<CashflowTrend["view"]>("weekly");
-  const view = useMemo(
+  const overview = useMemo(
     () =>
-      dashboard.data
-        ? buildDashboardView(dashboard.data, today, cashflowView, workspaceCurrency)
+      dashboard.data ? buildDashboardOverview(dashboard.data, today, workspaceCurrency) : null,
+    [dashboard.data, today, workspaceCurrency],
+  );
+  const cashflow = useMemo(
+    () =>
+      dashboard.data && homeView === "analytics"
+        ? buildDashboardCashflow(dashboard.data, today, cashflowView, workspaceCurrency)
         : null,
-    [dashboard.data, today, cashflowView, workspaceCurrency],
+    [dashboard.data, homeView, today, cashflowView, workspaceCurrency],
   );
   const hasTransactions = Boolean(
-    view &&
-    (view.summary.monthlyTrend.length > 0 ||
+    overview &&
+    (overview.summary.monthlyTrend.length > 0 ||
       (dashboard.data?.recentTransactions.length ?? 0) > 0 ||
       (dashboard.data?.accounts.length ?? 0) > 0),
   );
@@ -137,7 +142,7 @@ export function HomeScreen() {
           onRetry={dashboard.retry}
           title="Local data unavailable"
         />
-      ) : !view ? (
+      ) : !overview ? (
         <View accessibilityLabel="Loading dashboard" style={{ gap: spacing.sm }}>
           <Skeleton height={120} />
           <Skeleton height={120} />
@@ -154,9 +159,13 @@ export function HomeScreen() {
           ) : null}
           {inFamily ? null : (
             <>
-              <QuickStartGuideCard firstAccountId={view.summary.accountBalances?.items[0]?.id} />
+              <QuickStartGuideCard
+                firstAccountId={overview.summary.accountBalances?.items[0]?.id}
+              />
               <PreferenceSuggestionsCard
-                hasBudget={view.summary.budgetProgress.some((item) => item.limitMinor > 0)}
+                hasBudget={overview.summary.budgetProgress.some((item) => item.limitMinor > 0)}
+                hasSubscription={subscriptions.subscriptions.length > 0}
+                subscriptionsLoading={subscriptions.loading}
               />
             </>
           )}
@@ -164,17 +173,17 @@ export function HomeScreen() {
             <>
               {homeView === "overview" ? (
                 <>
-                  <BalanceCard summary={view.summary} />
+                  <BalanceCard summary={overview.summary} />
                   {inFamily ? null : (
                     <>
                       <SafeToSpendHero
-                        startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                        startingBalanceMinor={overview.accountBalances.overallBalanceMinor}
                         subscriptions={subscriptions.subscriptions}
                         remainingBudgetMinor={
-                          view.summary.budgetProgress.length > 0
+                          overview.summary.budgetProgress.length > 0
                             ? Math.max(
                                 0,
-                                view.summary.budgetProgress.reduce(
+                                overview.summary.budgetProgress.reduce(
                                   (sum, item) => sum + item.remainingMinor,
                                   0,
                                 ),
@@ -187,24 +196,26 @@ export function HomeScreen() {
                     </>
                   )}
                   <TopCategorySection
-                    summary={view.summary}
+                    summary={overview.summary}
                     onViewAll={() => setHomeView("analytics")}
                   />
                 </>
               ) : (
                 <>
-                  <MonthSummaryCard summary={view.summary} />
-                  <CashflowCard
-                    cashflow={view.cashflow}
-                    isPaid={isPaid}
-                    onSelectView={setCashflowView}
-                    selectedView={cashflowView}
-                  />
-                  <SpendingByCategory summary={view.summary} />
-                  <BudgetCard summary={view.summary} />
+                  <MonthSummaryCard summary={overview.summary} />
+                  {cashflow ? (
+                    <CashflowCard
+                      cashflow={cashflow}
+                      isPaid={isPaid}
+                      onSelectView={setCashflowView}
+                      selectedView={cashflowView}
+                    />
+                  ) : null}
+                  <SpendingByCategory summary={overview.summary} />
+                  <BudgetCard summary={overview.summary} />
                   {inFamily ? null : (
                     <CashflowForecastCard
-                      startingBalanceMinor={view.accountBalances.overallBalanceMinor}
+                      startingBalanceMinor={overview.accountBalances.overallBalanceMinor}
                       subscriptions={subscriptions.subscriptions}
                     />
                   )}

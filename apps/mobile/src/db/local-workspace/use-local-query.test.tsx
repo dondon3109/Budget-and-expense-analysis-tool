@@ -1,8 +1,9 @@
+import type { PropsWithChildren } from "react";
 import { act, renderHook } from "@testing-library/react-native";
 
 import type { LocalWorkspace } from "../workspace";
 import { subscribeToLocalChanges } from "./change-stream";
-import { useLocalQuery, type LocalQueryOptions } from "./use-local-query";
+import { LocalQueryActivity, useLocalQuery, type LocalQueryOptions } from "./use-local-query";
 
 jest.mock("./change-stream", () => ({ subscribeToLocalChanges: jest.fn() }));
 
@@ -132,5 +133,53 @@ describe("useLocalQuery", () => {
 
     await act(async () => settle(["late"]));
     expect(result.current.data).toBe(NO_ROWS);
+  });
+
+  it("drops an older read that finishes after a newer read", async () => {
+    const resolvers: Array<(rows: string[]) => void> = [];
+    const read = jest.fn(
+      () =>
+        new Promise<string[]>((resolve) => {
+          resolvers.push(resolve);
+        }),
+    );
+    const { result } = await renderHook(() => useLocalQuery(workspace, options(read)));
+
+    await act(async () => refreshFromTableChange?.());
+    expect(resolvers).toHaveLength(2);
+
+    await act(async () => resolvers[1]!([`fresh`]));
+    expect(result.current.data).toEqual(["fresh"]);
+
+    await act(async () => resolvers[0]!([`stale`]));
+    expect(result.current.data).toEqual(["fresh"]);
+  });
+
+  it("defers table-change refreshes while inactive and flushes once active again", async () => {
+    const read = jest.fn(async () => ["first"]);
+    let active = true;
+    const wrapper = ({ children }: PropsWithChildren) => (
+      <LocalQueryActivity active={active}>{children}</LocalQueryActivity>
+    );
+    const { result, rerender } = await renderHook(() => useLocalQuery(workspace, options(read)), {
+      wrapper,
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+
+    active = false;
+    await rerender({});
+
+    read.mockResolvedValueOnce(["updated"]);
+    await act(async () => {
+      refreshFromTableChange?.();
+      refreshFromTableChange?.();
+    });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toEqual(["first"]);
+
+    active = true;
+    await rerender({});
+    expect(read).toHaveBeenCalledTimes(2);
+    expect(result.current.data).toEqual(["updated"]);
   });
 });

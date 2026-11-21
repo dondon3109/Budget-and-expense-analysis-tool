@@ -7,17 +7,17 @@ import {
   activeMonthlyCostByCurrency,
   otherCurrenciesWithAmounts,
   resolveCategoryEmoji,
+  summarizeAccountBalances,
 } from "@zoption/shared";
 
 import {
-  useDashboardData,
+  useAccountBalances,
   useLocalReferenceData,
   useLocalWorkspace,
   useSubscriptions,
 } from "@/db/local-workspace-state";
 import type { LocalSubscriptionItem } from "@/db/view-models";
 import { CashflowForecastCard } from "@/features/dashboard/CashflowForecastCard";
-import { localIsoDate } from "@/features/dashboard/dashboard-view";
 import { useSyncState } from "@/sync/sync-state";
 import { CancellationGuideSheet } from "./CancellationGuideSheet";
 import { SubscriptionRoiCard } from "./SubscriptionRoiCard";
@@ -46,13 +46,18 @@ type SubscriptionFilter = "all" | "active" | "canceled";
 export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) {
   const local = useLocalWorkspace();
   const state = useSubscriptions();
-  const dashboard = useDashboardData(localIsoDate(new Date()));
+  const accountBalances = useAccountBalances();
   const reference = useLocalReferenceData();
+  const workspaceCurrency = useWorkspaceCurrency();
   const [filter, setFilter] = useState<SubscriptionFilter>("all");
   const [guideSubscription, setGuideSubscription] = useState<LocalSubscriptionItem | null>(null);
   const theme = useZoptionTheme();
   // Set when an idle-bill nudge opened this screen.
   const { highlight } = useLocalSearchParams<{ highlight?: string }>();
+  const startingBalanceMinor = useMemo(
+    () => summarizeAccountBalances(accountBalances.accounts, workspaceCurrency).overallBalanceMinor,
+    [accountBalances.accounts, workspaceCurrency],
+  );
 
   const addSubscription = (): void => {
     router.push("/(app)/subscription");
@@ -101,9 +106,10 @@ export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) 
   const handleRefresh = useCallback(async () => {
     sync.retry();
     state.retry();
+    accountBalances.retry();
     reference.retry();
     await new Promise((resolve) => setTimeout(resolve, 650));
-  }, [reference, state, sync]);
+  }, [accountBalances, reference, state, sync]);
 
   return (
     <Screen
@@ -154,12 +160,7 @@ export function SubscriptionsScreen({ viewSwitch }: { viewSwitch?: ReactNode }) 
           <SubscriptionRoiCard highlightId={highlight} subscriptions={state.subscriptions} />
 
           <CashflowForecastCard
-            startingBalanceMinor={
-              dashboard.data?.accounts.reduce(
-                (total, account) => total + (account.balanceMinor ?? 0),
-                0,
-              ) ?? 0
-            }
+            startingBalanceMinor={startingBalanceMinor}
             subscriptions={activeSubscriptions}
           />
 

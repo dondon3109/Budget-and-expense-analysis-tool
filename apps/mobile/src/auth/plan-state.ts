@@ -12,10 +12,34 @@ export type PlanStatus = "loading" | "ready" | "unknown";
 // unknown or unreachable plan always fails closed to the Free view.
 let cachedSubject: string | null = null;
 let cachedPlan: Plan | null = null;
+// Shares one in-flight request when several mounted screens call usePlan() at launch.
+let inFlight: { subject: string; token: object; promise: Promise<Plan> } | null = null;
 
 export function clearPlanCache(): void {
   cachedSubject = null;
   cachedPlan = null;
+  inFlight = null;
+}
+
+function fetchPlanForSubject(
+  subject: string,
+  getAccessToken: (refresh: boolean) => Promise<string>,
+): Promise<Plan> {
+  if (inFlight && inFlight.subject === subject) return inFlight.promise;
+  const token = {};
+  const promise = (async () => {
+    const accessToken = await getAccessToken(false);
+    const next = await readPlan({ accessToken });
+    if (inFlight?.token === token) {
+      cachedSubject = subject;
+      cachedPlan = next;
+    }
+    return next;
+  })().finally(() => {
+    if (inFlight?.token === token) inFlight = null;
+  });
+  inFlight = { subject, token, promise };
+  return promise;
 }
 
 export function usePlan(): { plan: Plan | null; status: PlanStatus; retry: () => void } {
@@ -45,36 +69,34 @@ export function usePlan(): { plan: Plan | null; status: PlanStatus; retry: () =>
       return;
     }
 
-    const controller = new AbortController();
     let active = true;
     setStatus("loading");
 
-    const run = async (): Promise<void> => {
-      try {
-        const accessToken = await getAccessToken(false);
-        const next = await readPlan({ accessToken, signal: controller.signal });
-        cachedSubject = subject;
-        cachedPlan = next;
+    void fetchPlanForSubject(subject, getAccessToken)
+      .then((next) => {
         if (active) {
           setPlan(next);
           setStatus("ready");
         }
-      } catch (error) {
+      })
+      .catch(() => {
         if (!active) return;
-        if (error instanceof DOMException && error.name === "AbortError") return;
         // Fail closed: without a confirmed plan the Free view is rendered.
         setPlan(null);
         setStatus("unknown");
-      }
-    };
+      });
 
-    void run();
     return () => {
       active = false;
-      controller.abort();
     };
   }, [attempt, getAccessToken, sessionStatus, subject]);
 
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const retry = useCallback(() => {
+    if (cachedSubject === subject) {
+      cachedSubject = null;
+      cachedPlan = null;
+    }
+    setAttempt((value) => value + 1);
+  }, [subject]);
   return { plan, status, retry };
 }

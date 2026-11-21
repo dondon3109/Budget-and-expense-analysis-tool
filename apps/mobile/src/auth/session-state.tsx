@@ -264,9 +264,11 @@ export function SessionProvider({ children }: PropsWithChildren) {
 
     void (async () => {
       if (Platform.OS === "android") {
-        bootCountRef.current = await readAndroidBootCount();
-        if (!active) return;
-        const storedBoot = await readStoredAndroidBootCount();
+        const [bootCount, storedBoot] = await Promise.all([
+          readAndroidBootCount(),
+          readStoredAndroidBootCount(),
+        ]);
+        bootCountRef.current = bootCount;
         if (!active) return;
         if (sessionEndedWithDeviceBoot(storedBoot, bootCountRef.current)) {
           try {

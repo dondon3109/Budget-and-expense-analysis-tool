@@ -6,6 +6,7 @@ import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { InteractionManager } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -101,7 +102,6 @@ export default function RootLayout() {
     // launch-to-first-transaction funnel; the device id lives only this launch.
     void telemetry.init();
     void telemetry.capture("app_session_started");
-    warmUpSounds();
     void registerBackgroundSyncTask().catch(() => {
       // Background sync is a best-effort convenience; registration failure must
       // never affect foreground behavior.
@@ -110,21 +110,30 @@ export default function RootLayout() {
   }, []);
 
   // These stores set skipHydration, so a saved value is only read when something
-  // asks for it. Without this the voice language, reduce motion, hide balance, assistant voice options, mic
-  // capture consent, last used account, and the forecast's closed On track all start at their defaults
-  // on every launch. The theme store hydrates in ZoptionThemeProvider, which
-  // renders nothing until it has. The daily reminder store hydrates in
-  // DailyReminderSession, once the session is known to be signed in.
+  // asks for it. First-frame display preferences hydrate right away; the rest
+  // wait until after the initial transition so they do not queue behind session,
+  // theme, and SQLCipher key reads on Android Keystore. Sound players warm only
+  // once the saved toggle is known to be enabled.
   useEffect(() => {
-    void useVoiceLanguageStore.persist.rehydrate();
-    void useSoundEffectsStore.persist.rehydrate();
     void useReduceMotionStore.persist.rehydrate();
     void useHideAmountsStore.persist.rehydrate();
-    void useAssistantVoiceOptionsStore.persist.rehydrate();
-    void useMicCaptureConsentStore.persist.rehydrate();
-    void useLastUsedAccountStore.persist.rehydrate();
     void useWorkspaceCurrencyStore.persist.rehydrate();
-    void useForecastOnTrackStore.persist.rehydrate();
+    let active = true;
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (!active) return;
+      void useVoiceLanguageStore.persist.rehydrate();
+      void useAssistantVoiceOptionsStore.persist.rehydrate();
+      void useMicCaptureConsentStore.persist.rehydrate();
+      void useLastUsedAccountStore.persist.rehydrate();
+      void useForecastOnTrackStore.persist.rehydrate();
+      void Promise.resolve(useSoundEffectsStore.persist.rehydrate()).finally(() => {
+        if (active && useSoundEffectsStore.getState().enabled) warmUpSounds();
+      });
+    });
+    return () => {
+      active = false;
+      task.cancel();
+    };
   }, []);
 
   return (

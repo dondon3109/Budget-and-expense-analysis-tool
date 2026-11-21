@@ -39,14 +39,15 @@ function shiftMonth(month: string, delta: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+const dayTitleFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
 function dayTitle(date: string): string {
-  const parsed = new Date(date + "T00:00:00Z");
-  return parsed.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
+  return dayTitleFormatter.format(new Date(date + "T00:00:00Z"));
 }
 
 /** The month's income, spending, and what its budget has left, as three plain columns. */

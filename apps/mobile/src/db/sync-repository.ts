@@ -611,11 +611,13 @@ export class LocalSyncRepository {
     });
   }
 
-  async recordFailure(): Promise<void> {
-    await this.database.runAsync(
-      `UPDATE sync_metadata
-       SET consecutive_failures = consecutive_failures + 1
-       WHERE singleton = 1`,
-    );
+  recordFailure(): Promise<void> {
+    return this.writer.run(async () => {
+      await this.database.runAsync(
+        `UPDATE sync_metadata
+         SET consecutive_failures = consecutive_failures + 1
+         WHERE singleton = 1`,
+      );
+    });
   }
 }

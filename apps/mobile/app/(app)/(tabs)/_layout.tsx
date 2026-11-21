@@ -1,5 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { Tabs } from "expo-router";
+import { Tabs, useFocusEffect } from "expo-router";
+import { useCallback, useState, type ReactElement } from "react";
 import {
   Easing,
   Platform,
@@ -10,10 +11,26 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LocalQueryActivity } from "@/db/local-workspace-state";
 import { playSound } from "@/features/sounds/sound-effects";
 import { useReduceMotion } from "@/ui/reduce-motion";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, typography } from "@/ui/tokens";
+
+function TabScreenActivity({ children }: { children: ReactElement }) {
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+  return <LocalQueryActivity active={focused}>{children}</LocalQueryActivity>;
+}
+
+const renderTabScreenLayout = ({ children }: { children: ReactElement }) => (
+  <TabScreenActivity>{children}</TabScreenActivity>
+);
 
 function TabIcon({
   name,
@@ -66,6 +83,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      screenLayout={renderTabScreenLayout}
       screenListeners={{ tabPress: () => playSound("tap") }}
       screenOptions={{
         headerShown: false,

@@ -17,14 +17,16 @@ interface CalendarMonthGridProps {
   onSelectDate: (date: string) => void;
 }
 
+const calendarDateFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 function calendarDateLabel(date: string): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  return calendarDateFormatter.format(new Date(`${date}T00:00:00Z`));
 }
 
 function dayAccessibilityLabel(

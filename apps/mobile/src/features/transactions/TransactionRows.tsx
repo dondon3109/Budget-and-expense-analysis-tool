@@ -1,5 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { router } from "expo-router";
+import { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { currencies, resolveCategoryEmoji, type Currency } from "@zoption/shared";
@@ -50,7 +51,7 @@ export function TotalsValue({
   );
 }
 
-export function TransactionItemRow({
+export const TransactionItemRow = memo(function TransactionItemRow({
   item,
   showDate = false,
   selecting = false,
@@ -67,6 +68,13 @@ export function TransactionItemRow({
 }) {
   const theme = useZoptionTheme();
   const { transaction } = item;
+  const emoji =
+    transaction.categoryIconEmoji ??
+    resolveCategoryEmoji({
+      name: transaction.categoryName,
+      iconEmoji: transaction.categoryIconEmoji,
+      kind: transaction.kind,
+    });
   const stateLabel =
     item.syncState === "conflicted"
       ? "Needs review"
@@ -128,15 +136,7 @@ export function TransactionItemRow({
       ) : null}
       <View style={styles.categoryColumn}>
         <View style={styles.categoryLine}>
-          <CategoryBadge
-            emoji={resolveCategoryEmoji({
-              name: transaction.categoryName,
-              iconEmoji: transaction.categoryIconEmoji,
-              kind: transaction.kind,
-            })}
-            color={transaction.categoryColor}
-            size={26}
-          />
+          <CategoryBadge emoji={emoji} color={transaction.categoryColor} size={26} />
           <Text
             numberOfLines={1}
             style={[typography.caption, styles.categoryText, { color: theme.colors.textMuted }]}
@@ -166,9 +166,9 @@ export function TransactionItemRow({
       />
     </Pressable>
   );
-}
+});
 
-export function DateHeader({ section }: { section: TransactionDateGroup }) {
+export const DateHeader = memo(function DateHeader({ section }: { section: TransactionDateGroup }) {
   const theme = useZoptionTheme();
   const label = transactionDayLabel(section.date);
   return (
@@ -197,9 +197,13 @@ export function DateHeader({ section }: { section: TransactionDateGroup }) {
       </View>
     </View>
   );
-}
+});
 
-export function CategorySummaryRow({ item }: { item: CategorySummaryItem }) {
+export const CategorySummaryRow = memo(function CategorySummaryRow({
+  item,
+}: {
+  item: CategorySummaryItem;
+}) {
   const theme = useZoptionTheme();
   return (
     <View
@@ -230,7 +234,7 @@ export function CategorySummaryRow({ item }: { item: CategorySummaryItem }) {
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   totalValues: { alignItems: "center", minWidth: 0 },
