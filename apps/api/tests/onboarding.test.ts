@@ -176,8 +176,6 @@ describe("cash step", () => {
     expect(rows("SELECT name, currency FROM accounts ORDER BY name")).toEqual([
       { name: "Bank", currency: "USD" },
       { name: "Cash", currency: "USD" },
-      { name: "GCash", currency: "USD" },
-      { name: "Maya", currency: "USD" },
     ]);
     expect(rows("SELECT account_id, amount_minor, currency, kind, date FROM transactions")).toEqual(
       [
@@ -195,6 +193,17 @@ describe("cash step", () => {
       balanceMinor: number;
     }>;
     expect(accounts.find((account) => account.name === "Cash")?.balanceMinor).toBe(12_345);
+  });
+
+  it("keeps GCash and Maya for PHP workspaces", async () => {
+    const { call, rows } = createHarness();
+    expect((await finishOnboarding(call, ALICE, "PHP", 0)).status).toBe(200);
+    expect(rows("SELECT name, currency FROM accounts ORDER BY name")).toEqual([
+      { name: "Bank", currency: "PHP" },
+      { name: "Cash", currency: "PHP" },
+      { name: "GCash", currency: "PHP" },
+      { name: "Maya", currency: "PHP" },
+    ]);
   });
 
   it("books no opening entry on a workspace that already has entries", async () => {

@@ -6,17 +6,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ThankYouDialog } from "../src/components/common/ThankYouDialog";
-import {
-  clearSignupThankYouPending,
-  isSignupThankYouPending,
-  markSignupThankYouPending,
-  thankYouCopy,
-  type ThankYouFlow,
-} from "../src/lib/thankYou";
+import { thankYouCopy, type ThankYouFlow } from "../src/lib/thankYou";
 
 afterEach(() => {
   cleanup();
-  window.localStorage.clear();
 });
 
 describe("ThankYouDialog", () => {
@@ -29,18 +22,10 @@ describe("ThankYouDialog", () => {
 
   it("closes from Continue", () => {
     const onClose = vi.fn();
-    render(<ThankYouDialog flow="signup" onClose={onClose} />);
+    render(<ThankYouDialog flow="pro" onClose={onClose} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     expect(onClose).toHaveBeenCalledOnce();
-  });
-
-  it("remembers a new signup until the welcome is dismissed", () => {
-    expect(isSignupThankYouPending()).toBe(false);
-    markSignupThankYouPending();
-    expect(isSignupThankYouPending()).toBe(true);
-    clearSignupThankYouPending();
-    expect(isSignupThankYouPending()).toBe(false);
   });
 });

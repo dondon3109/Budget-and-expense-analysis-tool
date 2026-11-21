@@ -10,6 +10,8 @@ interface OnboardingStoreState {
   prompted: boolean;
   /** Setup is on screen, so other first-launch prompts hold back. */
   open: boolean;
+  /** Setup closed at least once this launch, so deferred prompts can run even if the user chose Not now. */
+  dismissed: boolean;
   setState: (state: OnboardingState) => void;
   markPrompted: () => void;
   setOpen: (open: boolean) => void;
@@ -20,8 +22,13 @@ export const useOnboardingStore = create<OnboardingStoreState>()((set) => ({
   state: null,
   prompted: false,
   open: false,
+  dismissed: false,
   setState: (state) => set({ state }),
   markPrompted: () => set({ prompted: true }),
-  setOpen: (open) => set({ open }),
-  reset: () => set({ state: null, prompted: false, open: false }),
+  setOpen: (open) =>
+    set((current) => ({
+      open,
+      dismissed: current.dismissed || (current.open && !open),
+    })),
+  reset: () => set({ state: null, prompted: false, open: false, dismissed: false }),
 }));

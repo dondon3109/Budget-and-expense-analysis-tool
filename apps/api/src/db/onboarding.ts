@@ -89,8 +89,17 @@ export const onboardingRepository: OnboardingRepository = {
     // so a double submit or a retry changes nothing the second time. A workspace that already has
     // entries (synced from mobile) keeps its balances: no opening entry is booked on top of them.
     await env.DB.batch([
-      // Cash, Bank, and GCash were created in PHP before the currency was chosen. Untouched, they
-      // take the workspace currency exactly as a newly created account does.
+      // Cash, Bank, GCash, and Maya were created in PHP before the currency was chosen. Untouched
+      // PH-specific e-wallets are removed for non-PHP workspaces, and remaining untouched starter
+      // accounts take the workspace currency.
+      env.DB.prepare(
+        `DELETE FROM accounts
+           WHERE tenant_id = ?1 AND system_key IN ('account:gcash', 'account:maya')
+             AND (SELECT currency FROM tenants WHERE id = ?1) != 'PHP'
+             AND NOT EXISTS (
+               SELECT 1 FROM transactions WHERE account_id = accounts.id AND deleted_at IS NULL)
+             AND EXISTS (SELECT 1 FROM tenants WHERE id = ?1 AND onboarding_step = 'cash')`,
+      ).bind(tenantId),
       env.DB.prepare(
         `UPDATE accounts SET currency = (SELECT currency FROM tenants WHERE id = ?1)
            WHERE tenant_id = ?1 AND system_key IS NOT NULL

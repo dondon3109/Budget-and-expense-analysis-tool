@@ -21,7 +21,7 @@ import {
   type PetSpecies,
   type PetView,
 } from "@zoption/shared";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../auth/AuthProvider";
 import { AppShell } from "../components/layout/AppShell";
@@ -355,6 +355,8 @@ function PetStats({ pet, isFree }: { pet: PetView; isFree: boolean }) {
 /** The pet companion on the web: the same pet as the phone app, from the sidebar. */
 export function PetPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const fromOnboarding = searchParams.get("from") === "onboarding";
   const workspace = userWorkspace(user!);
   const pet = usePet(workspace);
   const chooseEgg = useChoosePetEgg(workspace);
@@ -488,6 +490,11 @@ export function PetPage() {
                 onChange={(color) => setColor.mutate(color)}
               />
             )}
+            {fromOnboarding ? (
+              <Link className="button primary" to="/app">
+                Go to dashboard
+              </Link>
+            ) : null}
           </div>
         )}
 

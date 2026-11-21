@@ -99,9 +99,7 @@ describe("LoginPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
-    await waitFor(() =>
-      expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app?proCheckout=open"),
-    );
+    await waitFor(() => expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app"));
   });
 
   it("shows a recoverable social sign-in error without provider details", async () => {
@@ -157,19 +155,15 @@ describe("LoginPage", () => {
     expect(screen.queryByText("Preparing your workspace")).not.toBeInTheDocument();
 
     await act(async () => resolveSignIn?.());
-    await waitFor(() =>
-      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
-    );
+    await waitFor(() => expect(screen.getByTestId("current-path")).toHaveTextContent("/app"));
   });
 
-  it("opens the checkout chooser after a direct sign-in", async () => {
+  it("opens the dashboard without forcing checkout after a direct sign-in", async () => {
     renderLogin();
     fillCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    await waitFor(() =>
-      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
-    );
+    await waitFor(() => expect(screen.getByTestId("current-path")).toHaveTextContent("/app"));
   });
 
   it("preserves an explicit return destination after sign-in", async () => {

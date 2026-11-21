@@ -3,11 +3,13 @@ import {
   hasMoneyPreferences,
   onboardingCashSchema,
   parseAmountToMinor,
+  suggestCurrencyForLocale,
   type Currency,
 } from "@zoption/shared";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 
+import { captureFunnelEvent } from "../analytics/funnel";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatus";
@@ -33,14 +35,22 @@ import {
 import "./OnboardingPage.css";
 
 const STEPS = [
-  "Your goal",
-  "Your money habits",
   "Base currency",
   "Starting cash",
+  "Your goal",
+  "Your money habits",
   "Make it yours",
 ] as const;
 
-const STEP_INDEX = { goal: 0, preferences: 1, currency: 2, cash: 3, complete: 4 } as const;
+type OnboardingView = "currency" | "cash" | "goal" | "preferences" | "complete";
+
+const STEP_INDEX: Record<OnboardingView, number> = {
+  currency: 0,
+  cash: 1,
+  goal: 2,
+  preferences: 3,
+  complete: 4,
+};
 
 /** The user's calendar day, which the server cannot know. */
 function localDate(): string {
@@ -50,9 +60,9 @@ function localDate(): string {
   return `${now.getFullYear()}-${month}-${day}`;
 }
 
-/** The message for the amount field, or the parsed minor units when it is valid. */
+/** Blank input means zero cash; malformed or out-of-range input returns an inline message. */
 function checkAmount(value: string): { error: string } | { amountMinor: number } {
-  if (!value.trim()) return { error: "Enter the cash you have on hand, or 0." };
+  if (!value.trim()) return { amountMinor: 0 };
   let amountMinor: number;
   try {
     amountMinor = parseAmountToMinor(value);
@@ -66,15 +76,24 @@ function checkAmount(value: string): { error: string } | { amountMinor: number }
   return { amountMinor };
 }
 
+function browserLocale(): string | undefined {
+  return typeof navigator === "undefined" ? undefined : navigator.language;
+}
+
 /**
- * Never blocks: a saved answer, a failed save, and a skip all move on to the next step.
+ * Surfaces save errors instead of silently advancing; Skip always moves on so a flaky connection
+ * cannot trap the user.
  */
 function GoalStep({
   workspace,
-  onDone,
+  currency,
+  onSaved,
+  onSkipped,
 }: {
   workspace: AuthenticatedWorkspace;
-  onDone: () => void;
+  currency: Currency;
+  onSaved: () => void;
+  onSkipped: () => void;
 }) {
   const saveGoal = useSaveGoals(workspace);
   const skipGoal = useSkipGoal(workspace);
@@ -89,15 +108,23 @@ function GoalStep({
         legend="Your goals"
         goals={[]}
         otherText={null}
+        currency={currency}
         disabled={saveGoal.isPending || skipGoal.isPending}
         confirmLabel="Continue"
-        onChoose={(choice) => saveGoal.mutateAsync(choice).then(onDone, onDone)}
+        onChoose={(choice) => {
+          saveGoal.mutate(choice, { onSuccess: onSaved });
+        }}
       />
+      {saveGoal.isError && (
+        <p className="form-error" role="alert">
+          Your goal could not be saved. Try again or skip for now.
+        </p>
+      )}
       <button
         className="button secondary"
         type="button"
         disabled={saveGoal.isPending || skipGoal.isPending}
-        onClick={() => skipGoal.mutate(undefined, { onSettled: onDone })}
+        onClick={() => skipGoal.mutate(undefined, { onSettled: onSkipped })}
       >
         Skip
       </button>
@@ -106,15 +133,21 @@ function GoalStep({
 }
 
 /**
- * Pay cadence, budgeting style, and spending focus. Like the goal, it never blocks: a saved answer,
- * a failed save, and a skip all move on.
+ * Pay cadence, budgeting style, and spending focus. Save failures stay on the step with an inline
+ * error; Skip (or Continue with nothing picked) always moves on.
  */
 function PreferencesStep({
   workspace,
-  onDone,
+  currency,
+  onBack,
+  onSaved,
+  onSkipped,
 }: {
   workspace: AuthenticatedWorkspace;
-  onDone: () => void;
+  currency: Currency;
+  onBack?: () => void;
+  onSaved: () => void;
+  onSkipped: () => void;
 }) {
   const save = useSaveMoneyPreferences(workspace);
   return (
@@ -125,17 +158,42 @@ function PreferencesStep({
       </p>
       <PreferencesPicker
         preferences={{ incomeCadence: null, budgetingStyle: null, spendingFocus: [] }}
+        currency={currency}
         disabled={save.isPending}
         confirmLabel="Continue"
-        onSave={(preferences) =>
-          hasMoneyPreferences(preferences)
-            ? save.mutateAsync(preferences).then(onDone, onDone)
-            : onDone()
-        }
+        onSave={(preferences) => {
+          if (!hasMoneyPreferences(preferences)) {
+            onSkipped();
+            return;
+          }
+          save.mutate(preferences, { onSuccess: onSaved });
+        }}
       />
-      <button className="button secondary" type="button" disabled={save.isPending} onClick={onDone}>
-        Skip
-      </button>
+      {save.isError && (
+        <p className="form-error" role="alert">
+          Your money habits could not be saved. Try again or skip for now.
+        </p>
+      )}
+      <div className="onboarding-actions">
+        {onBack && (
+          <button
+            className="button secondary"
+            type="button"
+            disabled={save.isPending}
+            onClick={onBack}
+          >
+            Back
+          </button>
+        )}
+        <button
+          className="button secondary"
+          type="button"
+          disabled={save.isPending}
+          onClick={onSkipped}
+        >
+          Skip
+        </button>
+      </div>
     </div>
   );
 }
@@ -188,20 +246,23 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const saveCash = useSaveOnboardingCashBalance(workspace);
   const currencyId = useId();
   const amountId = useId();
-  // Local only: a pick not yet confirmed, the typed amount, and whether the user stepped back.
+  // Local only: a pick not yet confirmed, the typed amount, and post-cash step progression.
   const [pickedCurrency, setPickedCurrency] = useState<Currency>();
-  const [amount, setAmount] = useState("0");
+  const [amount, setAmount] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [steppedBack, setSteppedBack] = useState(false);
   const [finished, setFinished] = useState(false);
-  const [goalDismissed, setGoalDismissed] = useState(false);
-  const [preferencesDismissed, setPreferencesDismissed] = useState(false);
+  const [postCashStep, setPostCashStep] = useState<"goal" | "preferences" | "complete">("complete");
+  const [canReturnToGoal, setCanReturnToGoal] = useState(false);
+  const [canReturnToPreferences, setCanReturnToPreferences] = useState(false);
   const [openingBalanceSkipped, setOpeningBalanceSkipped] = useState(false);
 
-  if (
-    stateQuery.isPending ||
-    (stateQuery.data?.step === "currency" && (goalQuery.isPending || preferencesQuery.isPending))
-  )
+  const shouldTrackStart = stateQuery.data !== undefined && stateQuery.data.step !== "complete";
+  useEffect(() => {
+    if (shouldTrackStart) captureFunnelEvent("onboarding_started", {});
+  }, [shouldTrackStart]);
+
+  if (stateQuery.isPending)
     return (
       <FullPageLoadingStatus
         title="Getting your setup ready"
@@ -235,39 +296,42 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
   const finishing = saveCash.isPending || saveCash.isSuccess;
   if (state.step === "complete" && !finished && !finishing) return <Navigate to="/app" replace />;
 
-  // Only a new workspace that has neither chosen nor skipped sees the goal, and only until it
-  // answers once here. If the goal profile fails to load, setup carries on without it.
-  const goalProfile = goalQuery.data;
-  const askGoal =
-    state.step === "currency" &&
-    !finished &&
-    !goalDismissed &&
-    goalProfile?.goal === null &&
-    !goalProfile.skipped;
-  // The same rule for the money habits, which come right after the goal.
-  const askPreferences =
-    state.step === "currency" &&
-    !finished &&
-    !preferencesDismissed &&
-    preferencesQuery.isSuccess &&
-    !hasMoneyPreferences(preferencesQuery.data);
-  const view = currentView();
-  function currentView() {
-    if (finished) return "complete";
-    if (askGoal) return "goal";
-    if (askPreferences) return "preferences";
-    if (steppedBack) return "currency";
-    return state.step;
-  }
-  const selected = pickedCurrency ?? state.currency;
+  const needsGoal = goalQuery.isSuccess && goalQuery.data.goal === null && !goalQuery.data.skipped;
+  const needsPreferences =
+    preferencesQuery.isSuccess && !hasMoneyPreferences(preferencesQuery.data);
+
+  const view: OnboardingView = finished
+    ? postCashStep
+    : steppedBack
+      ? "currency"
+      : state.step === "complete"
+        ? "cash"
+        : state.step;
+
+  // Suggest a locale currency only on a fresh currency step before the user picks one.
+  const initialCurrency =
+    !steppedBack && state.step === "currency" && state.currency === "PHP"
+      ? suggestCurrencyForLocale(browserLocale())
+      : state.currency;
+  const selected = pickedCurrency ?? initialCurrency;
   const { symbol } = currencyMetadata[state.currency];
   const amountCheck = checkAmount(amount);
   const amountError = submitted && "error" in amountCheck ? amountCheck.error : undefined;
+
+  function enterPostCashFlow() {
+    setFinished(true);
+    setCanReturnToGoal(needsGoal);
+    setCanReturnToPreferences(needsPreferences);
+    if (needsGoal) setPostCashStep("goal");
+    else if (needsPreferences) setPostCashStep("preferences");
+    else setPostCashStep("complete");
+  }
 
   async function confirmCurrency(event: FormEvent) {
     event.preventDefault();
     try {
       await saveCurrency.mutateAsync({ currency: selected });
+      captureFunnelEvent("onboarding_step_completed", { step: "currency" });
       setSteppedBack(false);
     } catch {
       // The error state below tells the user to try again.
@@ -283,26 +347,47 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
         amountMinor: amountCheck.amountMinor,
         date: localDate(),
       });
+      captureFunnelEvent("onboarding_step_completed", { step: "cash" });
       setOpeningBalanceSkipped(amountCheck.amountMinor > 0 && !result.openingBalanceBooked);
-      setFinished(true);
+      enterPostCashFlow();
     } catch (error) {
       // A repeat submit after a success already created the account; the state is complete.
-      if (isApiRequestError(error) && error.code === "onboarding_complete") setFinished(true);
+      if (isApiRequestError(error) && error.code === "onboarding_complete") enterPostCashFlow();
     }
+  }
+
+  function advanceFromGoal(skipped: boolean) {
+    captureFunnelEvent(skipped ? "onboarding_step_skipped" : "onboarding_step_completed", {
+      step: "goal",
+    });
+    setPostCashStep(canReturnToPreferences ? "preferences" : "complete");
+  }
+
+  function advanceFromPreferences(skipped: boolean) {
+    captureFunnelEvent(skipped ? "onboarding_step_skipped" : "onboarding_step_completed", {
+      step: "preferences",
+    });
+    setPostCashStep("complete");
+  }
+
+  function finishSetup(wantsPet: boolean) {
+    captureFunnelEvent("onboarding_step_completed", { step: "personalize" });
+    captureFunnelEvent("onboarding_completed", {});
+    void navigate(wantsPet ? "/app/pet?from=onboarding" : "/app");
   }
 
   return (
     <AuthLayout
       eyebrow="Welcome to Zoption"
       title={
-        view === "goal"
-          ? "What brings you to Zoption?"
-          : view === "preferences"
-            ? "How do you manage money?"
-            : view === "currency"
-              ? "Choose your base currency"
-              : view === "cash"
-                ? "How much cash do you have?"
+        view === "currency"
+          ? "Choose your base currency"
+          : view === "cash"
+            ? "How much cash do you have?"
+            : view === "goal"
+              ? "What brings you to Zoption?"
+              : view === "preferences"
+                ? "How do you manage money?"
                 : "Make it yours"
       }
       description={
@@ -312,12 +397,6 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
       }
     >
       <Stepper current={STEP_INDEX[view]} />
-
-      {view === "goal" && <GoalStep workspace={workspace} onDone={() => setGoalDismissed(true)} />}
-
-      {view === "preferences" && (
-        <PreferencesStep workspace={workspace} onDone={() => setPreferencesDismissed(true)} />
-      )}
 
       {view === "currency" && (
         <form className="auth-form" onSubmit={(event) => void confirmCurrency(event)}>
@@ -355,6 +434,7 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
                 type="text"
                 inputMode="decimal"
                 autoComplete="off"
+                placeholder="0.00"
                 value={amount}
                 disabled={saveCash.isPending}
                 aria-invalid={amountError ? true : undefined}
@@ -365,7 +445,7 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
           </label>
           <p id={`${amountId}-help`} className="onboarding-help">
             How much physical cash do you have right now? This becomes the opening balance of your
-            Cash account. Enter 0 if you have none.
+            Cash account. Leave blank or enter 0 if you have none.
           </p>
           {amountError && (
             <p className="form-error" role="alert">
@@ -393,6 +473,25 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
         </form>
       )}
 
+      {view === "goal" && (
+        <GoalStep
+          workspace={workspace}
+          currency={state.currency}
+          onSaved={() => advanceFromGoal(false)}
+          onSkipped={() => advanceFromGoal(true)}
+        />
+      )}
+
+      {view === "preferences" && (
+        <PreferencesStep
+          workspace={workspace}
+          currency={state.currency}
+          onBack={canReturnToGoal ? () => setPostCashStep("goal") : undefined}
+          onSaved={() => advanceFromPreferences(false)}
+          onSkipped={() => advanceFromPreferences(true)}
+        />
+      )}
+
       {view === "complete" && (
         <>
           <p className="onboarding-help" role="status">
@@ -400,10 +499,16 @@ function Onboarding({ workspace }: { workspace: ReturnType<typeof userWorkspace>
             {openingBalanceSkipped &&
               " Your cash amount was not added to the Cash account. You can adjust the balance from the dashboard."}
           </p>
-          <PersonalizeStep
-            workspace={workspace}
-            onDone={(wantsPet) => navigate(wantsPet ? "/app/pet" : "/app")}
-          />
+          <PersonalizeStep workspace={workspace} onDone={finishSetup} />
+          {(canReturnToPreferences || canReturnToGoal) && (
+            <button
+              className="button secondary"
+              type="button"
+              onClick={() => setPostCashStep(canReturnToPreferences ? "preferences" : "goal")}
+            >
+              Back
+            </button>
+          )}
         </>
       )}
     </AuthLayout>

@@ -9,12 +9,20 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import "./QuickStartTutorial.css";
 
 const STORAGE_KEY = "zoption:quick-start-tutorial-state";
+
+function readSavedState(): string | null {
+  try {
+    return localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
 export interface QuickStartTutorialProps {
   onAddTransaction?: () => void;
@@ -27,21 +35,8 @@ export function QuickStartTutorial({
   onAdjustBalance,
   onMigrateSpreadsheet,
 }: QuickStartTutorialProps) {
-  const [dismissed, setDismissed] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "dismissed") {
-        setDismissed(true);
-      } else if (saved === "collapsed") {
-        setCollapsed(true);
-      }
-    } catch {
-      // Storage unavailable
-    }
-  }, []);
+  const [dismissed, setDismissed] = useState(() => readSavedState() === "dismissed");
+  const [collapsed, setCollapsed] = useState(() => readSavedState() === "collapsed");
 
   function handleDismiss() {
     setDismissed(true);

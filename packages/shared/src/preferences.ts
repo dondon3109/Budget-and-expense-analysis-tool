@@ -4,6 +4,7 @@
 
 import { z } from "zod";
 
+import type { Currency } from "./currencies";
 import type { GoalCtaTarget } from "./goalConfig";
 
 export const incomeCadences = ["monthly", "semi_monthly", "weekly", "irregular"] as const;
@@ -15,6 +16,12 @@ export const incomeCadenceLabels: Record<IncomeCadence, string> = {
   weekly: "Every week",
   irregular: "It varies (freelance, sideline, commissions)",
 };
+
+/** Pay cadence label localized to the workspace currency. */
+export function incomeCadenceLabel(cadence: IncomeCadence, currency: Currency = "PHP"): string {
+  if (cadence === "semi_monthly" && currency !== "PHP") return "Twice a month";
+  return incomeCadenceLabels[cadence];
+}
 
 export const budgetingStyles = [
   "category_limits",
@@ -30,6 +37,12 @@ export const budgetingStyleLabels: Record<BudgetingStyle, string> = {
   zero_based: "Give every peso a job",
   not_sure: "Not sure yet",
 };
+
+/** Budgeting style label localized to the workspace currency. */
+export function budgetingStyleLabel(style: BudgetingStyle, currency: Currency = "PHP"): string {
+  if (style === "zero_based" && currency !== "PHP") return "Zero-based: give all income a job";
+  return budgetingStyleLabels[style];
+}
 
 export const spendingFocuses = [
   "food",
@@ -49,6 +62,12 @@ export const spendingFocusLabels: Record<SpendingFocus, string> = {
   family_support: "Family support / padala",
   fun: "Going out and hobbies",
 };
+
+/** Spending focus label localized to the workspace currency. */
+export function spendingFocusLabel(focus: SpendingFocus, currency: Currency = "PHP"): string {
+  if (focus === "family_support" && currency !== "PHP") return "Family support";
+  return spendingFocusLabels[focus];
+}
 
 export const SPENDING_FOCUS_MAX = 3;
 
@@ -131,10 +150,11 @@ const cadenceSuggestions: Record<IncomeCadence, PreferenceSuggestion> = {
 function styleSuggestion(
   style: BudgetingStyle,
   focus: readonly SpendingFocus[],
+  currency: Currency = "PHP",
 ): PreferenceSuggestion {
   switch (style) {
     case "category_limits": {
-      const named = focus.map((key) => spendingFocusLabels[key].toLowerCase()).join(", ");
+      const named = focus.map((key) => spendingFocusLabel(key, currency).toLowerCase()).join(", ");
       return {
         id: "category_limits",
         title: "Set your first category limits",
@@ -157,7 +177,7 @@ function styleSuggestion(
     case "zero_based":
       return {
         id: "zero_based",
-        title: "Give every peso a job",
+        title: currency === "PHP" ? "Give every peso a job" : "Give all your income a job",
         detail:
           "Budget your whole income across categories and savings until nothing is unplanned.",
         target: "/app/budgets",
@@ -190,11 +210,14 @@ const billsSuggestion: PreferenceSuggestion = {
  */
 export function preferenceSuggestions(
   preferences: MoneyPreferences | null | undefined,
+  currency: Currency = "PHP",
 ): PreferenceSuggestion[] {
   if (!preferences) return [];
   const candidates: PreferenceSuggestion[] = [];
   if (preferences.budgetingStyle) {
-    candidates.push(styleSuggestion(preferences.budgetingStyle, preferences.spendingFocus));
+    candidates.push(
+      styleSuggestion(preferences.budgetingStyle, preferences.spendingFocus, currency),
+    );
   }
   if (preferences.incomeCadence) candidates.push(cadenceSuggestions[preferences.incomeCadence]);
   if (preferences.spendingFocus.includes("bills")) candidates.push(billsSuggestion);
@@ -211,8 +234,9 @@ export function preferenceSuggestions(
 export function openPreferenceSuggestions(
   preferences: MoneyPreferences | null | undefined,
   done: Readonly<Record<SuggestionSignal, boolean>>,
+  currency: Currency = "PHP",
 ): PreferenceSuggestion[] {
-  return preferenceSuggestions(preferences)
+  return preferenceSuggestions(preferences, currency)
     .filter((suggestion) => !done[suggestion.signal])
     .slice(0, PREFERENCE_SUGGESTIONS_MAX);
 }

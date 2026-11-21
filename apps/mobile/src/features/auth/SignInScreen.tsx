@@ -5,6 +5,7 @@ import { StyleSheet, Text, View, type TextInput } from "react-native";
 import { authErrorMessage, emailSchema } from "@/auth/auth-validation";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDevelopmentAppVariant } from "@/config/app-variant";
+import { telemetry } from "@/telemetry/telemetry";
 import { Button, FormField } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -58,6 +59,7 @@ export function SignInScreen() {
     setGuestBusy(true);
     try {
       await continueAsGuest();
+      void telemetry.capture("guest_session_started");
       router.replace("/(app)/(tabs)");
     } catch {
       setGuestBusy(false);
@@ -110,7 +112,10 @@ export function SignInScreen() {
   }
 
   return (
-    <Screen title="Welcome back" description="Use the same Zoption identity as the website.">
+    <Screen
+      title="Sign in to Zoption"
+      description="Sign in or create an account to sync across your phone and the web."
+    >
       <View className="w-full gap-4">
         <FormField
           label="Email"
@@ -188,10 +193,23 @@ export function SignInScreen() {
         >
           Forgot password?
         </Button>
+        <Button
+          variant="secondary"
+          disabled={!configured || busy || dummyBusy || googleBusy}
+          onPress={() => router.push("/(public)/sign-up")}
+        >
+          Create an account
+        </Button>
         {status === "guest" ? (
-          <Button variant="quiet" onPress={() => router.back()}>
-            Not now
-          </Button>
+          <>
+            <Text style={[typography.caption, styles.footnote, { color: theme.colors.textMuted }]}>
+              Signing in opens your account workspace separately. Entries saved on this device as a
+              guest do not transfer into an account.
+            </Text>
+            <Button variant="quiet" onPress={() => router.back()}>
+              Not now
+            </Button>
+          </>
         ) : null}
         <View accessibilityLabel="Social sign-in options" style={styles.dividerRow}>
           <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
@@ -221,8 +239,9 @@ export function SignInScreen() {
               Continue without an account
             </Button>
             <Text style={[typography.caption, styles.footnote, { color: theme.colors.textMuted }]}>
-              Without an account your data stays on this device. An account adds backup and sync
-              across your phone and the web, the AI Assistant, receipt scanning and voice entry.
+              Without an account your data stays only on this device and will not transfer if you
+              sign in later. An account adds backup and sync across your phone and the web, the AI
+              Assistant, receipt scanning and voice entry.
             </Text>
           </>
         ) : null}

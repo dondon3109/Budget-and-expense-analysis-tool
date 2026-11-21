@@ -1,11 +1,13 @@
 import {
   GOAL_OTHER_TEXT_MAX_LENGTH,
-  primaryGoalLabels,
+  primaryGoalLabel,
   primaryGoals,
+  type Currency,
   type PrimaryGoal,
 } from "@zoption/shared";
 import { useId, useState } from "react";
 
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import "./GoalPicker.css";
 
 export type GoalChoice = { goals: PrimaryGoal[]; otherText?: string };
@@ -15,6 +17,7 @@ type GoalPickerProps = {
   /** The saved goals, lead goal first. */
   goals: PrimaryGoal[];
   otherText: string | null;
+  currency?: Currency;
   disabled: boolean;
   /** Label of the button that saves the picks. */
   confirmLabel: string;
@@ -29,11 +32,13 @@ export function GoalPicker({
   legend,
   goals,
   otherText,
+  currency,
   disabled,
   confirmLabel,
   onChoose,
 }: GoalPickerProps) {
   const noteId = useId();
+  const activeCurrency = currency ?? workspaceCurrency();
   // Local only: the picks and note the user has not confirmed yet.
   const [picked, setPicked] = useState<PrimaryGoal[]>();
   const [note, setNote] = useState<string>();
@@ -60,7 +65,7 @@ export function GoalPicker({
               checked={selected.includes(option)}
               onChange={() => toggle(option)}
             />
-            <span>{primaryGoalLabels[option]}</span>
+            <span>{primaryGoalLabel(option, activeCurrency)}</span>
             {selected.length > 1 && selected[0] === option && (
               <span className="goal-picker-badge">Main focus</span>
             )}

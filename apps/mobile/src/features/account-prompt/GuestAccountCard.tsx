@@ -19,7 +19,8 @@ export function GuestAccountCard() {
         You're using Zoption without an account
       </Text>
       <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-        Your data stays on this device. With an account you get:
+        Your data stays only on this device and will not transfer if you sign in later. With an
+        account you get:
       </Text>
       {accountBenefits.map((benefit) => (
         <Text key={benefit} style={[typography.callout, { color: theme.colors.text }]}>

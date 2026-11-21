@@ -427,6 +427,27 @@ describe("dashboard calculations", () => {
       },
     ]);
   });
+
+  it("does not add a monthly trend entry for an opening balance row alone", () => {
+    const result = buildDashboardSummary(
+      [
+        {
+          ...baseTransaction,
+          id: "opening-1",
+          date: "2026-07-01",
+          description: "Opening cash balance",
+          kind: "income",
+          amountMinor: 50_000,
+          categoryName: "Opening balance",
+          categorySystemKey: "opening:income",
+        },
+      ],
+      [],
+      { from: "2026-07-01", to: "2026-07-31" },
+    );
+    expect(result.metrics.moneyInMinor).toBe(0);
+    expect(result.monthlyTrend).toEqual([]);
+  });
 });
 
 describe("transfer fee insight calculations", () => {

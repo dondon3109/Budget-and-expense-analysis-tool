@@ -69,22 +69,47 @@ interface GoalChecklistProps {
   onAction: (action: GoalCtaAction) => void;
 }
 
+function checklistDismissKey(workspaceKey: string): string {
+  return `zoption:goal-checklist-dismissed:${workspaceKey}`;
+}
+
+function isDismissedInStorage(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
+}
+
 /** First-run checklist for the chosen goal (at most three items). Hidden once finished or closed. */
 export function GoalChecklist({ workspace, goal, signals, onAction }: GoalChecklistProps) {
   const items = goalConfigFor(goal).checklist;
-  const [closed, setClosed] = useState(false);
+  const dismissKey = checklistDismissKey(workspace.key);
+  const [closed, setClosed] = useState(() => isDismissedInStorage(dismissKey));
   const needs = (signal: GoalChecklistSignal) => items.some((item) => item.signal === signal);
   const goalsQuery = useQuery({
     ...financialGoalsQueryOptions(workspace),
-    enabled: needs("has_savings_goal"),
+    enabled: !closed && needs("has_savings_goal"),
   });
-  const debtsQuery = useQuery({ ...debtsQueryOptions(workspace), enabled: needs("has_debt") });
+  const debtsQuery = useQuery({
+    ...debtsQueryOptions(workspace),
+    enabled: !closed && needs("has_debt"),
+  });
   const threadsQuery = useQuery({
     queryKey: queryKeys.assistantThreads(workspace),
     queryFn: () => getAssistantThreads(workspace),
-    enabled: needs("has_assistant_thread"),
+    enabled: !closed && needs("has_assistant_thread"),
   });
   if (closed || items.length === 0) return null;
+
+  function dismiss() {
+    setClosed(true);
+    try {
+      localStorage.setItem(dismissKey, "1");
+    } catch {
+      // Storage unavailable
+    }
+  }
 
   const done: Record<GoalChecklistSignal, boolean | undefined> = {
     ...signals,
@@ -104,7 +129,7 @@ export function GoalChecklist({ workspace, goal, signals, onAction }: GoalCheckl
           className="icon-button"
           type="button"
           aria-label="Dismiss checklist"
-          onClick={() => setClosed(true)}
+          onClick={dismiss}
         >
           <X size={16} aria-hidden="true" />
         </button>

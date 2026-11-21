@@ -1,13 +1,15 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
   GOAL_OTHER_TEXT_MAX_LENGTH,
-  primaryGoalLabels,
+  primaryGoalLabel,
   primaryGoals,
+  type Currency,
   type PrimaryGoal,
 } from "@zoption/shared";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Button, FormField } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -19,6 +21,7 @@ interface GoalChoicesProps {
   /** The saved goals, lead goal first. */
   goals: PrimaryGoal[];
   otherText: string | null;
+  currency?: Currency;
   disabled: boolean;
   /** Label of the button that saves the picks. */
   confirmLabel: string;
@@ -32,11 +35,14 @@ interface GoalChoicesProps {
 export function GoalChoices({
   goals,
   otherText,
+  currency,
   disabled,
   confirmLabel,
   onChoose,
 }: GoalChoicesProps) {
   const theme = useZoptionTheme();
+  const workspaceCurrency = useWorkspaceCurrency();
+  const activeCurrency = currency ?? workspaceCurrency;
   // Local only: the picks and note the user has not confirmed yet.
   const [picked, setPicked] = useState<PrimaryGoal[]>();
   const [note, setNote] = useState<string>();
@@ -55,11 +61,12 @@ export function GoalChoices({
       </Text>
       {primaryGoals.map((option) => {
         const active = selected.includes(option);
+        const label = primaryGoalLabel(option, activeCurrency);
         return (
           <Pressable
             key={option}
             accessibilityRole="checkbox"
-            accessibilityLabel={primaryGoalLabels[option]}
+            accessibilityLabel={label}
             accessibilityState={{ checked: active, disabled }}
             disabled={disabled}
             onPress={withTapSound(() => toggle(option))}
@@ -72,9 +79,7 @@ export function GoalChoices({
             ]}
           >
             <View style={{ flex: 1, gap: 2 }}>
-              <Text style={[typography.body, { color: theme.colors.text }]}>
-                {primaryGoalLabels[option]}
-              </Text>
+              <Text style={[typography.body, { color: theme.colors.text }]}>{label}</Text>
               {selected.length > 1 && selected[0] === option ? (
                 <Text style={[typography.caption, { color: theme.colors.brand }]}>Main focus</Text>
               ) : null}

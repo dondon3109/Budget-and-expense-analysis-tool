@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 
+import { suggestCurrencyForLocale } from "../src/currencies";
 import { goalCtaActions, goalCtaRoutes } from "../src/goalConfig";
+import { primaryGoalLabel } from "../src/goals";
 import {
+  budgetingStyleLabel,
   budgetingStyles,
   emptyMoneyPreferences,
   hasMoneyPreferences,
+  incomeCadenceLabel,
   incomeCadences,
   leadStarterPrompts,
   moneyPreferencesSchema,
@@ -12,6 +16,7 @@ import {
   preferenceStarterPrompt,
   preferenceSuggestions,
   preferencesContextLine,
+  spendingFocusLabel,
   type MoneyPreferences,
 } from "../src/preferences";
 
@@ -139,5 +144,39 @@ describe("preference prompts", () => {
         prefs({ incomeCadence: "weekly", budgetingStyle: "not_sure", spendingFocus: ["fun"] }),
       ),
     ).toBe("User preferences: paid weekly; budgeting style not_sure; watching fun.");
+  });
+});
+
+describe("currency-localized onboarding labels and locale suggestion", () => {
+  it("keeps PH phrasing for PHP and drops it for other currencies", () => {
+    expect(incomeCadenceLabel("semi_monthly", "PHP")).toBe("Twice a month (kinsenas)");
+    expect(incomeCadenceLabel("semi_monthly", "USD")).toBe("Twice a month");
+    expect(budgetingStyleLabel("zero_based", "PHP")).toBe("Give every peso a job");
+    expect(budgetingStyleLabel("zero_based", "USD")).toBe("Zero-based: give all income a job");
+    expect(spendingFocusLabel("family_support", "PHP")).toBe("Family support / padala");
+    expect(spendingFocusLabel("family_support", "EUR")).toBe("Family support");
+    expect(primaryGoalLabel("reduce_debt", "PHP")).toBe("Pay off debt / utang");
+    expect(primaryGoalLabel("reduce_debt", "USD")).toBe("Pay off debt");
+
+    const usdSuggestions = preferenceSuggestions(
+      prefs({ budgetingStyle: "zero_based", spendingFocus: ["family_support"] }),
+      "USD",
+    );
+    expect(usdSuggestions[0]?.title).toBe("Give all your income a job");
+    const catSuggestions = preferenceSuggestions(
+      prefs({ budgetingStyle: "category_limits", spendingFocus: ["family_support"] }),
+      "USD",
+    );
+    expect(catSuggestions[0]?.detail).not.toContain("padala");
+  });
+
+  it("suggests a supported currency from BCP 47 locales and falls back to PHP", () => {
+    expect(suggestCurrencyForLocale("en-US")).toBe("USD");
+    expect(suggestCurrencyForLocale("en_PH")).toBe("PHP");
+    expect(suggestCurrencyForLocale("fr-FR")).toBe("EUR");
+    expect(suggestCurrencyForLocale("ja-JP")).toBe("JPY");
+    expect(suggestCurrencyForLocale("zh-Hant-TW")).toBe("TWD");
+    expect(suggestCurrencyForLocale("en")).toBe("PHP");
+    expect(suggestCurrencyForLocale(undefined)).toBe("PHP");
   });
 });

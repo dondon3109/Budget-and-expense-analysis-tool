@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { resetAccountLinkForTests, setSignedInAccount } from "@/telemetry/account-link";
 import { telemetry } from "@/telemetry/telemetry";
 import { UsageAnalyticsCard, UsageAnalyticsPromptHost } from "./UsageAnalytics";
@@ -31,6 +32,7 @@ async function signIn(next = account) {
 beforeEach(() => {
   secureStore.__store.clear();
   resetAccountLinkForTests();
+  useOnboardingStore.getState().reset();
   jest.clearAllMocks();
 });
 
@@ -85,5 +87,22 @@ describe("usage analytics account link", () => {
 
     expect(telemetry.reset).toHaveBeenCalled();
     expect(secureStore.__store.get("zoption.analytics.account-link.user-1")).toBe("declined");
+  });
+
+  it("waits while first-run setup is pending or open, and shows after setup is dismissed", async () => {
+    useOnboardingStore.getState().setState({ step: "currency", currency: "PHP" });
+    await render(<UsageAnalyticsPromptHost />);
+    await signIn();
+    expect(screen.queryByText("Help improve Zoption")).toBeNull();
+
+    await act(async () => {
+      useOnboardingStore.getState().setOpen(true);
+    });
+    expect(screen.queryByText("Help improve Zoption")).toBeNull();
+
+    await act(async () => {
+      useOnboardingStore.getState().setOpen(false);
+    });
+    expect(screen.getByText("Help improve Zoption")).toBeTruthy();
   });
 });

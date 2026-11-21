@@ -1,5 +1,10 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { emptyMoneyPreferences, hasMoneyPreferences, type PetView } from "@zoption/shared";
+import {
+  emptyMoneyPreferences,
+  hasMoneyPreferences,
+  type Currency,
+  type PetView,
+} from "@zoption/shared";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { EggPicker } from "@/features/pet/EggPicker";
@@ -10,6 +15,7 @@ import { useGoalActions } from "@/features/primary-goal/use-goal-actions";
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { usePetStore } from "@/stores/pet-store";
+import { telemetry } from "@/telemetry/telemetry";
 import { Button } from "@/ui/components";
 import { ThemePicker } from "@/ui/theme-picker";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -18,20 +24,6 @@ import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 import { SetupDialog, type SetupProgress } from "./SetupDialog";
 
 type StepProps = { progress: SetupProgress; onNext: () => void };
-
-/** Theme, saved on the device as soon as it is tapped. */
-export function ThemeStep({ progress, onNext }: StepProps) {
-  return (
-    <SetupDialog
-      progress={progress}
-      title="Pick a look"
-      description="Choose how Zoption looks. You can change it anytime in More."
-    >
-      <ThemePicker />
-      <Button onPress={onNext}>Continue</Button>
-    </SetupDialog>
-  );
-}
 
 const PET_CHOICES = [
   {
@@ -54,11 +46,10 @@ export function canPickEgg(pet: PetView | null): boolean {
 }
 
 /**
- * Whether a streak pet should cheer the user on. The choice is lifted so the step track can show
- * or drop the egg step as it changes. A yes that leads to the egg step saves nothing yet; any
- * other answer is saved on the Worker only when it changes the setting.
+ * Combined Theme + Streak pet step (matching web's Make it yours). Theme saves on tap; pet choice
+ * only calls the Worker when it differs from the current setting and does not lead to the egg step.
  */
-export function PetStep({
+export function PersonalizeStep({
   progress,
   wantsPet,
   onWantsPet,
@@ -67,59 +58,71 @@ export function PetStep({
   const theme = useZoptionTheme();
   const pet = usePetStore((state) => state.pet);
   const actions = usePetActions();
+  const eggNext = wantsPet && canPickEgg(pet);
 
   const saveChoice = async () => {
-    const eggNext = wantsPet && canPickEgg(pet);
     if (!eggNext && pet && pet.enabled !== wantsPet && !(await actions.setEnabled(wantsPet))) {
       return;
     }
     usePetStore.getState().markIntroduced();
+    void telemetry.capture("onboarding_step_completed", { step: "personalize" });
     onNext();
   };
 
   return (
     <SetupDialog
       progress={progress}
-      title="Want a streak pet?"
-      description="A pet that grows as you keep logging. You can change this anytime."
+      title="Make it yours"
+      description="Pick a look and decide if a streak pet should cheer you on. You can change both anytime."
     >
-      <View accessibilityRole="radiogroup" accessibilityLabel="Streak pet" style={styles.choices}>
-        {PET_CHOICES.map((choice) => {
-          const selected = choice.value === wantsPet;
-          return (
-            <Pressable
-              key={choice.title}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
-              disabled={actions.busy}
-              onPress={withTapSound(() => onWantsPet(choice.value))}
-              style={[
-                styles.choice,
-                {
-                  backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
-                  borderColor: selected ? theme.colors.brand : theme.colors.border,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                accessibilityElementsHidden
-                name={choice.icon}
-                size={26}
-                color={selected ? theme.colors.brand : theme.colors.textMuted}
-              />
-              <View style={styles.choiceCopy}>
-                <Text style={[typography.label, { color: theme.colors.text }]}>{choice.title}</Text>
-                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
-                  {choice.detail}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
+      <View style={styles.section}>
+        <Text style={[typography.label, { color: theme.colors.text }]}>Theme</Text>
+        <ThemePicker />
       </View>
+
+      <View style={styles.section}>
+        <Text style={[typography.label, { color: theme.colors.text }]}>Streak pet</Text>
+        <View accessibilityRole="radiogroup" accessibilityLabel="Streak pet" style={styles.choices}>
+          {PET_CHOICES.map((choice) => {
+            const selected = choice.value === wantsPet;
+            return (
+              <Pressable
+                key={choice.title}
+                accessibilityRole="radio"
+                accessibilityState={{ selected }}
+                disabled={actions.busy}
+                onPress={withTapSound(() => onWantsPet(choice.value))}
+                style={[
+                  styles.choice,
+                  {
+                    backgroundColor: selected ? theme.colors.brandSoft : theme.colors.surface,
+                    borderColor: selected ? theme.colors.brand : theme.colors.border,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  accessibilityElementsHidden
+                  name={choice.icon}
+                  size={26}
+                  color={selected ? theme.colors.brand : theme.colors.textMuted}
+                />
+                <View style={styles.choiceCopy}>
+                  <Text style={[typography.label, { color: theme.colors.text }]}>
+                    {choice.title}
+                  </Text>
+                  <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                    {choice.detail}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      </View>
+
       {actions.error ? <Failure message={actions.error} /> : null}
       <Button loading={actions.busy} disabled={actions.busy} onPress={() => void saveChoice()}>
-        Continue
+        {eggNext ? "Pick my egg" : "Start tracking"}
       </Button>
     </SetupDialog>
   );
@@ -132,7 +135,10 @@ export function EggStep({ progress, onNext }: StepProps) {
 
   const chooseEgg = async (...egg: Parameters<typeof actions.chooseEgg>) => {
     if (pet && !pet.enabled && !(await actions.setEnabled(true))) return;
-    if (await actions.chooseEgg(...egg)) onNext();
+    if (await actions.chooseEgg(...egg)) {
+      void telemetry.capture("onboarding_step_completed", { step: "egg" });
+      onNext();
+    }
   };
 
   return (
@@ -144,7 +150,14 @@ export function EggStep({ progress, onNext }: StepProps) {
       <EggPicker busy={actions.busy} onChoose={(...egg) => void chooseEgg(...egg)} />
       {actions.error ? <Failure message={actions.error} /> : null}
       {/* The pet page offers the eggs again, so skipping loses nothing. */}
-      <Button variant="quiet" disabled={actions.busy} onPress={onNext}>
+      <Button
+        variant="quiet"
+        disabled={actions.busy}
+        onPress={() => {
+          void telemetry.capture("onboarding_step_skipped", { step: "egg" });
+          onNext();
+        }}
+      >
         Pick one later
       </Button>
     </SetupDialog>
@@ -152,7 +165,7 @@ export function EggStep({ progress, onNext }: StepProps) {
 }
 
 /** The goals, asked here only while the Worker says none were chosen or skipped. */
-export function GoalsStep({ progress, onNext }: StepProps) {
+export function GoalsStep({ progress, currency, onNext }: StepProps & { currency: Currency }) {
   const profile = useGoalProfileStore((state) => state.profile);
   const actions = useGoalActions();
   return (
@@ -163,14 +176,28 @@ export function GoalsStep({ progress, onNext }: StepProps) {
     >
       <GoalChoices
         goals={profile?.goals ?? []}
+        currency={currency}
         confirmLabel="Continue"
         otherText={profile?.otherText ?? null}
         disabled={actions.busy}
-        onChoose={(choice) => void actions.save(choice).then((saved) => saved && onNext())}
+        onChoose={(choice) =>
+          void actions.save(choice).then((saved) => {
+            if (saved) {
+              void telemetry.capture("onboarding_step_completed", { step: "goal" });
+              onNext();
+            }
+          })
+        }
       />
       {actions.error ? <Failure message={actions.error} /> : null}
       {/* Skip always moves on, even offline; the goal prompt asks again on a later launch. */}
-      <Button variant="quiet" onPress={() => void actions.skip().finally(onNext)}>
+      <Button
+        variant="quiet"
+        onPress={() => {
+          void telemetry.capture("onboarding_step_skipped", { step: "goal" });
+          void actions.skip().finally(onNext);
+        }}
+      >
         Skip for now
       </Button>
     </SetupDialog>
@@ -182,7 +209,11 @@ export function GoalsStep({ progress, onNext }: StepProps) {
  * answer is optional: Continue with nothing picked saves nothing, and Skip always moves on, even
  * offline.
  */
-export function PreferencesStep({ progress, onNext }: StepProps) {
+export function PreferencesStep({
+  progress,
+  currency,
+  onNext,
+}: StepProps & { currency: Currency }) {
   const actions = useGoalActions();
   return (
     <SetupDialog
@@ -192,18 +223,32 @@ export function PreferencesStep({ progress, onNext }: StepProps) {
     >
       <PreferenceChoices
         preferences={emptyMoneyPreferences}
+        currency={currency}
         confirmLabel="Continue"
         disabled={actions.busy}
         onSave={(preferences) => {
           if (!hasMoneyPreferences(preferences)) {
+            void telemetry.capture("onboarding_step_skipped", { step: "preferences" });
             onNext();
             return;
           }
-          void actions.savePreferences(preferences).then((saved) => saved && onNext());
+          void actions.savePreferences(preferences).then((saved) => {
+            if (saved) {
+              void telemetry.capture("onboarding_step_completed", { step: "preferences" });
+              onNext();
+            }
+          });
         }}
       />
       {actions.error ? <Failure message={actions.error} /> : null}
-      <Button variant="quiet" disabled={actions.busy} onPress={onNext}>
+      <Button
+        variant="quiet"
+        disabled={actions.busy}
+        onPress={() => {
+          void telemetry.capture("onboarding_step_skipped", { step: "preferences" });
+          onNext();
+        }}
+      >
         Skip for now
       </Button>
     </SetupDialog>
@@ -227,7 +272,7 @@ export function SavedStep({
   );
 }
 
-/** The thank-you that closes setup. Without `progress` it stands alone, for a finished workspace. */
+/** Fallback closing card when someone opens `/onboarding` for an already finished workspace. */
 export function FinalStep({ progress, onDone }: { progress?: SetupProgress; onDone: () => void }) {
   return (
     <SetupDialog
@@ -251,6 +296,7 @@ function Failure({ message }: { message: string }) {
 }
 
 const styles = StyleSheet.create({
+  section: { gap: spacing.xs },
   choices: { gap: spacing.sm },
   choice: {
     minHeight: touchTarget,

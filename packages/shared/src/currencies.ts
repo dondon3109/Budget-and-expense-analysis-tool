@@ -420,3 +420,88 @@ export function addToCurrencyTotal(
 export function otherCurrenciesWithAmounts(totals: CurrencyTotals, except: Currency): Currency[] {
   return currencies.filter((currency) => currency !== except && (totals[currency] ?? 0) !== 0);
 }
+
+const REGION_CURRENCY: Readonly<Record<string, Currency>> = {
+  PH: "PHP",
+  US: "USD",
+  GB: "GBP",
+  UK: "GBP",
+  JP: "JPY",
+  CN: "CNY",
+  HK: "HKD",
+  TW: "TWD",
+  KR: "KRW",
+  SG: "SGD",
+  MY: "MYR",
+  TH: "THB",
+  ID: "IDR",
+  VN: "VND",
+  IN: "INR",
+  PK: "PKR",
+  BD: "BDT",
+  LK: "LKR",
+  NP: "NPR",
+  AU: "AUD",
+  NZ: "NZD",
+  CA: "CAD",
+  MX: "MXN",
+  BR: "BRL",
+  AR: "ARS",
+  CL: "CLP",
+  CO: "COP",
+  PE: "PEN",
+  CH: "CHF",
+  SE: "SEK",
+  NO: "NOK",
+  DK: "DKK",
+  PL: "PLN",
+  CZ: "CZK",
+  HU: "HUF",
+  TR: "TRY",
+  IL: "ILS",
+  AE: "AED",
+  SA: "SAR",
+  QA: "QAR",
+  KW: "KWD",
+  BH: "BHD",
+  OM: "OMR",
+  EG: "EGP",
+  ZA: "ZAR",
+  NG: "NGN",
+  KE: "KES",
+  AT: "EUR",
+  BE: "EUR",
+  CY: "EUR",
+  DE: "EUR",
+  EE: "EUR",
+  ES: "EUR",
+  FI: "EUR",
+  FR: "EUR",
+  GR: "EUR",
+  HR: "EUR",
+  IE: "EUR",
+  IT: "EUR",
+  LT: "EUR",
+  LU: "EUR",
+  LV: "EUR",
+  MT: "EUR",
+  NL: "EUR",
+  PT: "EUR",
+  SI: "EUR",
+  SK: "EUR",
+};
+
+/** Suggests a starting currency from a BCP 47 locale tag (e.g. `en-US`, `fil-PH`), defaulting to PHP. */
+export function suggestCurrencyForLocale(locale: string | null | undefined): Currency {
+  if (!locale) return "PHP";
+  const parts = locale.trim().split(/[-_]/);
+  // Look for a two-letter ISO 3166-1 region subtag after the language subtag.
+  for (let index = 1; index < parts.length; index += 1) {
+    const part = parts[index];
+    if (part && /^[a-zA-Z]{2}$/.test(part)) {
+      const matched = REGION_CURRENCY[part.toUpperCase()];
+      if (matched) return matched;
+    }
+  }
+  return "PHP";
+}

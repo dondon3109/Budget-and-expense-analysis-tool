@@ -240,6 +240,17 @@ describe("daily reminder at launch", () => {
     expect(useDailyReminderStore.getState().enabled).toBe(true);
   });
 
+  it("defers the OS permission prompt when allowPrompt is false until onboarding completes", async () => {
+    notifications.getPermissionsAsync.mockResolvedValue(permission(false));
+
+    await startDailyReminder({ allowPrompt: false });
+
+    expect(notifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+    // Leaves enabled true so the prompt can still run once onboarding completes.
+    expect(useDailyReminderStore.getState().enabled).toBe(true);
+  });
+
   it("reschedules without prompting when permission is already granted", async () => {
     jest.mocked(SecureStore.getItemAsync).mockResolvedValue(saved(true));
     notifications.getPermissionsAsync.mockResolvedValue(permission(true));

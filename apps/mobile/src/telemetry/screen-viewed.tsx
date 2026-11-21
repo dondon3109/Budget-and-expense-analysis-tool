@@ -10,6 +10,7 @@ import { telemetry } from "./telemetry";
  */
 const SCREENS: Record<string, string> = {
   "/": "home",
+  "/onboarding": "onboarding",
   "/transactions": "transactions",
   "/budgets": "budgets",
   "/more": "more",

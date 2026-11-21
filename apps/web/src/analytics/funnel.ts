@@ -9,6 +9,7 @@ import { ensurePostHogInitialized, isAnalyticsConsented } from "./PostHogAnalyti
 /** The signed-in pages `page_viewed` can name; admin pages are left out on purpose. */
 export type AppPage =
   | "overview"
+  | "onboarding"
   | "assistant"
   | "calendar"
   | "transactions"
@@ -20,6 +21,8 @@ export type AppPage =
   | "settings"
   | "tutorials"
   | "support";
+
+export type OnboardingFunnelStep = "currency" | "cash" | "goal" | "preferences" | "personalize";
 
 type NoProperties = Record<string, never>;
 
@@ -43,6 +46,10 @@ export interface FunnelEventProperties {
       | { method: SocialAuthProvider; outcome: "redirect_started" | "failed" }
     );
   app_session_started: NoProperties;
+  onboarding_started: NoProperties;
+  onboarding_step_completed: { step: OnboardingFunnelStep };
+  onboarding_step_skipped: { step: "goal" | "preferences" };
+  onboarding_completed: NoProperties;
   first_import_committed: NoProperties;
   assistant_consent_granted: NoProperties;
   assistant_first_question: { surface: "chat" | "voice" };
@@ -80,6 +87,10 @@ const FUNNEL_PROPERTY_KEYS: Record<FunnelEventName, readonly string[]> = {
   signup_viewed: ["source"],
   signup_submitted: ["method", "outcome", "source"],
   app_session_started: [],
+  onboarding_started: [],
+  onboarding_step_completed: ["step"],
+  onboarding_step_skipped: ["step"],
+  onboarding_completed: [],
   first_import_committed: [],
   assistant_consent_granted: [],
   assistant_first_question: ["surface"],
@@ -116,6 +127,7 @@ const FUNNEL_PROPERTY_KEYS: Record<FunnelEventName, readonly string[]> = {
  */
 const ONCE_PER_PAGE_LOAD_EVENTS = new Set<FunnelEventName>([
   "app_session_started",
+  "onboarding_started",
   "first_import_committed",
   "assistant_first_question",
 ]);

@@ -1,6 +1,7 @@
 import {
   openPreferenceSuggestions,
   preferenceSuggestions,
+  type Currency,
   type GoalCtaAction,
   type SuggestionSignal,
 } from "@zoption/shared";
@@ -9,6 +10,7 @@ import { X } from "lucide-react";
 import { useState } from "react";
 
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import { useMoneyPreferences } from "../../queries/goalProfile";
 import { financialGoalsQueryOptions } from "../../queries/goals";
 import { subscriptionsQueryOptions } from "../../queries/subscriptions";
@@ -17,11 +19,24 @@ import "./PreferenceSuggestions.css";
 
 interface PreferenceSuggestionsProps {
   workspace: AuthenticatedWorkspace;
+  currency?: Currency;
   /** Already loaded by the dashboard. */
   hasBudget: boolean;
   /** `YYYY-MM-01`, for the subscriptions read. */
   month: string;
   onAction: (action: GoalCtaAction) => void;
+}
+
+function suggestionsDismissKey(workspaceKey: string): string {
+  return `zoption:preference-suggestions-dismissed:${workspaceKey}`;
+}
+
+function isDismissedInStorage(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === "1";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -30,23 +45,35 @@ interface PreferenceSuggestionsProps {
  */
 export function PreferenceSuggestions({
   workspace,
+  currency,
   hasBudget,
   month,
   onAction,
 }: PreferenceSuggestionsProps) {
-  const [closed, setClosed] = useState(false);
+  const dismissKey = suggestionsDismissKey(workspace.key);
+  const [closed, setClosed] = useState(() => isDismissedInStorage(dismissKey));
+  const activeCurrency = currency ?? workspaceCurrency();
   const preferences = useMoneyPreferences(workspace).data;
-  const candidates = preferenceSuggestions(preferences);
+  const candidates = preferenceSuggestions(preferences, activeCurrency);
   const needs = (signal: SuggestionSignal) => candidates.some((item) => item.signal === signal);
   const goalsQuery = useQuery({
     ...financialGoalsQueryOptions(workspace),
-    enabled: needs("has_savings_goal"),
+    enabled: !closed && needs("has_savings_goal"),
   });
   const subscriptionsQuery = useQuery({
     ...subscriptionsQueryOptions(workspace, month),
-    enabled: needs("has_subscription"),
+    enabled: !closed && needs("has_subscription"),
   });
   if (closed || candidates.length === 0) return null;
+
+  function dismiss() {
+    setClosed(true);
+    try {
+      localStorage.setItem(dismissKey, "1");
+    } catch {
+      // Storage unavailable
+    }
+  }
 
   const done = {
     has_budget: hasBudget,
@@ -55,11 +82,15 @@ export function PreferenceSuggestions({
   };
   // Wait for every signal so a suggestion never flashes in and then disappears.
   if (candidates.some((item) => done[item.signal] === undefined)) return null;
-  const open = openPreferenceSuggestions(preferences, {
-    has_budget: done.has_budget,
-    has_savings_goal: done.has_savings_goal === true,
-    has_subscription: done.has_subscription === true,
-  });
+  const open = openPreferenceSuggestions(
+    preferences,
+    {
+      has_budget: done.has_budget,
+      has_savings_goal: done.has_savings_goal === true,
+      has_subscription: done.has_subscription === true,
+    },
+    activeCurrency,
+  );
   if (open.length === 0) return null;
 
   return (
@@ -70,7 +101,7 @@ export function PreferenceSuggestions({
           className="icon-button"
           type="button"
           aria-label="Dismiss suggestions"
-          onClick={() => setClosed(true)}
+          onClick={dismiss}
         >
           <X size={16} aria-hidden="true" />
         </button>

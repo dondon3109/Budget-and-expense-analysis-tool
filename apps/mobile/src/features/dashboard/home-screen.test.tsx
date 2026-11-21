@@ -150,6 +150,47 @@ describe("HomeScreen", () => {
     expect(screen.queryByLabelText("Remittance calculator")).toBeNull();
   });
 
+  it("shows the empty view when starter accounts and an opening balance exist without real transactions", async () => {
+    const openingEntry = {
+      id: "opening-1",
+      date: localIsoDate(new Date()),
+      description: "Opening cash balance",
+      amountMinor: 50_000,
+      currency: "PHP" as const,
+      kind: "income" as const,
+      categoryId: "cat-opening",
+      categoryName: "Opening balance",
+      categorySystemKey: "opening:income",
+      categoryColor: "#6b7280",
+      categoryIconEmoji: null,
+      accountName: "Cash",
+    };
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: {
+        transactions: [openingEntry],
+        recentTransactions: [openingEntry],
+        accounts: [
+          {
+            id: "acc-cash",
+            name: "Cash",
+            type: "cash",
+            currency: "PHP",
+            balanceMinor: 50_000,
+            archived: false,
+            system: true,
+          },
+        ],
+        budgets: [],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    await render(<HomeScreen />);
+    expect(screen.getByText("Welcome to your workspace")).toBeTruthy();
+    expect(screen.queryByText("Quick start guide")).toBeNull();
+  });
+
   it("renders quick actions and onboarding step cards when workspace has no transactions", async () => {
     jest.mocked(useDashboardData).mockReturnValue({
       data: {
