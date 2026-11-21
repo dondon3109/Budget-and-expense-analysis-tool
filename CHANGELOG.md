@@ -123,6 +123,11 @@ All notable product changes are documented here.
 - Web: the Occasions budget list no longer shows another plan's category editor after switching tabs.
 - Web: focus rings on form fields no longer cover the text beneath them, the edit-account form lays out its grouped fields, and the dashboard no longer scrolls sideways on phones.
 - Web: the dashboard's account list no longer slices a row in half at the bottom of the balance card; the row fades out to show there is more to scroll.
+- Mobile calendar: day and month totals no longer add different currencies together. Each currency is totaled on its own, and a day with entries in more than one currency is marked as mixed.
+- Mobile: a month with more than 200 transactions now shows all of them in Transactions and the calendar, instead of stopping at the first 200.
+- Mobile Bills: the cash flow forecast starts from your balance in the workspace currency, instead of adding balances in different currencies together.
+- Android: sharing a photo or screenshot to Zoption no longer freezes the screen while the file is copied.
+- Mobile: Zoption opens faster, and the first sync after launch no longer starts over while the phone's connection is still being checked.
 
 ## 3.10.0 — 2026-10-10
 
