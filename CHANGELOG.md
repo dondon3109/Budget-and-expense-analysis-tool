@@ -6,6 +6,10 @@ All notable product changes are documented here.
 
 ### Added
 
+- Android: create a Zoption account with your email and a password from the sign-in screen, with a confirmation email when one is needed.
+- On Android, tapping Not now during setup leaves a Resume setup card on Home until your currency and starting cash are saved.
+- Receipt scanning on Android has an editable Receipt total on itemized receipts, so a misread total no longer blocks saving.
+
 - Personalized onboarding, on web and mobile: setup now asks how often you get paid (including twice a month), how you like to budget (category limits, 50/30/20, or every peso a job), and up to three kinds of spending to watch. Zoption uses your answers for a "Suggested for you" card on the dashboard and Home (for example, budget for each payday, build a buffer for lean months, or add your bills), a matching first question for the AI Assistant, and to tailor the assistant's advice. Every question is optional, and you can change your answers in Account Settings on the web or More on the phone.
 - zoption.site/delete-account explains how to delete your Zoption account from the Android app, the web app, or by email, and what is deleted or kept. It is linked from the site footer.
 - About Zoption, on web and mobile: the web app's Account Settings shows the web version and release date, and the phone's More tab opens an About page with the app version, build number, and whether it came from Google Play or the Android Beta APK. The APK updater now sits on that page, and a Google Play install gets a Check for updates option that opens Zoption in the Play Store.
@@ -55,6 +59,12 @@ All notable product changes are documented here.
 
 ### Changed
 
+- First-run setup runs in the same order on web and mobile: base currency, starting cash, your goal, your money habits, then Make it yours (theme and streak pet). Zoption suggests a currency from your browser or phone settings, and leaving the starting cash blank counts as zero. Mobile setup drops from up to 8 steps to 5 or 6.
+- Workspaces in a currency other than PHP no longer start with GCash and Maya accounts, and setup wording that only fits the Philippines is shown only in PHP workspaces.
+- Mobile asks for notification permission, and shows the "Help us improve Zoption" prompt, only after setup closes instead of during sign-in or setup.
+- Mobile guest mode, the sign-in screen, and the account prompt now say that entries saved on the phone without an account do not move into an account when you sign in.
+- Web: signing in or creating an account opens the dashboard instead of the Pro checkout, the separate welcome pop-up after signup is gone, and the Get started checklist and Suggested for you card stay dismissed once closed.
+- Android: Wi-Fi, camera, and microphone are marked optional, so Google Play offers Zoption on devices without them.
 - On mobile, the account editor's Adjust current balance card is simpler: it lists your balance in each currency once, highlights the one you're adjusting, and uses the app's normal text size. Type the new balance and tap Save changes; there is no separate Adjust balance button to tap first. To reverse an adjustment, delete its Balance adjustment entry from your history.
 - On mobile, the Share balance and Share transaction sheets have more space between the description, the name field, the link duration, and the Create link button.
 - A shared balance link now shows the account's current balance, updated live, next to the balance when you shared it, with when it was last updated. It still shows nothing else from the account, and turning the link off or letting it expire stops both. Balance links made before this change keep showing only the frozen amount; transaction links never change.
@@ -98,6 +108,11 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- New workspaces on web and mobile keep showing the empty-state guide and goal suggestions after entering starting cash, until you log a real transaction. The opening cash entry no longer ticks off "Log your first expense" or adds an empty month to the trend charts.
+- Mobile setup no longer skips the goal and money habit questions when they load after setup opens.
+- Web: if your workspace cannot load, you see a Try again screen instead of being sent back to first-run setup.
+- Receipt scanning on Android converts HEIC and photos over 8 MB before upload, stops a stuck upload with a message instead of spinning forever, no longer picks the same account for both sides of a cash-in, and is blocked with a clear message in a read-only family.
+- Receipt scanning on web and mobile rejects zero or negative item amounts, no longer fails on receipts with a very long merchant name or many lines, and on the web shows exact centavos in your workspace currency and no longer picks an unrelated category when Uncategorized is missing.
 - Mobile: editing or deleting a bill no longer makes the app jump to the "Opening Zoption…" screen and back to Home on the next sync or refresh. If the phone ever has to rebuild its local copy from the server, the screen you are on now stays open while it does.
 - Mobile: the AI Assistant shows **bold** words in its replies as bold text instead of showing the asterisks.
 - Mobile: receipt scanning no longer stays on "Checking receipt scanning…", and the Import screen's title reads "Import".
