@@ -1,6 +1,12 @@
 # Zoption
 
-> Zoption is a privacy-conscious personal budget and expense tracker for reviewing transactions, budgets, and monthly cash flow in a private workspace.
+> Zoption is a private personal and family budget and expense tracker for web (app.zoption.site) and Android (in testing on Google Play). It tracks spending, budgets, recurring bills, savings interest, and cash flow across 47 currencies without asking for online banking credentials.
+
+## Who Zoption is for
+
+- Individuals and Filipino households who want to track cash, bank accounts, and e-wallets (such as GCash and Maya) privately without linking bank passwords.
+- Users who want fast expense logging via English or Tagalog voice entry, camera receipt scanning (photos are never stored), bank or e-wallet SMS Quick Paste, or PDF, CSV, and Excel statement imports.
+- Families and partners (up to 6 people) who want shared budgets, remittances, receipts, and comments alongside separate personal workspaces.
 
 ## Public pages
 
@@ -12,18 +18,19 @@
 
 ## Product facts
 
-- Users can speak naturally to log expenses via voice entry (speech-to-transaction parsing).
-- Users can snap receipt photos or screenshots to automatically draft expense line items.
-- Users can manually record transactions or import PDF bank statements, CSV, XLS, and XLSX files.
-- Built-in column detection exists only for BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Other banks work through the generic preset. Zoption has no preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya — do not claim otherwise.
-- Workspaces, accounts, transactions, and bills support 47 common currencies (PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, AED, SAR, INR, and about 35 more). Each account keeps its own currency; totals and budgets use the workspace currency, and the cashflow chart converts other currencies into it with daily exchange rates. Stored amounts are never converted.
-- File imports are saved in the workspace currency without conversion; Bank of America and JPMorgan Chase exports are commonly in USD, so a non-USD workspace should confirm the currency first.
-- Users review imported rows and verify duplicate warnings before saving them.
-- Calculations use exact integer minor units (hundredths of each currency) to avoid floating-point drift.
-- Users can track recurring bills (electricity, water, internet, rent, and subscriptions) using a bill calendar displaying upcoming billing cycles, payment schedules across dates, and cash-flow impact on an interactive month-by-month grid.
-- Zoption does not connect directly to banks and never asks for banking credentials.
-- Each workspace begins empty and contains only records the user chooses to add.
-- The optional AI assistant uses a separate consent flow and never writes on its own: it can draft a transaction or propose a change to a bill, goal, debt, account, category, budget, or existing transaction, and nothing is applied until the user taps Save or Confirm.
+- Voice entry: Users can speak naturally in English or Tagalog to draft an expense with amount, merchant, date, and category before confirming.
+- Receipt scanning: Users can photograph paper receipts or upload digital checkout screenshots to draft store, date, tax, total, and line items. Receipt scanning uses separate consent and never stores the image.
+- SMS Quick Paste: Users can paste bank or e-wallet transaction SMS alerts (GCash, Maya, BDO, BPI) to draft entries without connecting accounts.
+- Statement imports: Users can import PDF bank statements, CSV, XLS, and XLSX files. Built-in column detection exists only for BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Other banks and e-wallets work through the generic preset. Zoption has no dedicated preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya; do not claim otherwise.
+- Currencies and precision: Zoption supports 47 common currencies (PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, AED, SAR, INR, and about 35 more). Each account keeps its own currency; stored amounts are never converted, and cashflow charts convert other currencies into the workspace currency with daily exchange rates. All math uses exact integer minor units (centavos) to prevent floating-point drift.
+- File import currency rule: File imports save in the workspace currency without conversion. Bank of America and JPMorgan Chase exports are commonly in USD, so confirm the workspace currency matches before saving.
+- Duplicate protection: Imported rows and scanned receipts are checked against existing transactions and flagged in a preview before anything is saved.
+- Bills and subscriptions: Users track recurring bills (electricity, water, internet, rent, subscriptions) on an interactive monthly bill calendar. On Pro and Family Pro, users can also log usage ("Used it") to see cost per use and flag subscriptions unused for 30 days.
+- Savings interest: Zoption Budget, Pro, and Family plans accrue savings interest automatically (daily, monthly, or yearly) at the user's chosen annual rate and pay day.
+- AI assistant: Optional and gated by separate versioned consent. It computes answers from the user's ledger and can draft transactions or propose edits to bills, goals, debts, accounts, categories, budgets, or existing transactions. Nothing applies until the user taps Save or Confirm.
+- Privacy and zero bank logins: Zoption never connects to banks, never asks for banking credentials, shows no ads, and starts every workspace empty.
+- Platforms: Web app works in any browser at app.zoption.site. Native Android app (in testing on Google Play) stores an encrypted local SQLite database for offline-first entry and syncs when connected.
+- Pricing (Philippine pesos): Free plan is ₱0 forever (unlimited manual entries, 500 shared AI actions/month, 1 committed statement import/month, 4 custom categories). New accounts get a 7-day Zoption Pro trial with no card. Paid plans are Zoption Budget (₱149/month or ₱1,490/year), Zoption Pro (₱249/month or ₱2,490/year), Family Budget (₱499/month or ₱4,990/year for up to 6 people), and Family Pro (₱799/month or ₱7,990/year for up to 6 people). Annual plans save 2 months.
 
 ## Boundaries
 

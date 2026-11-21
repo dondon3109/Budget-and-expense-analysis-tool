@@ -87,14 +87,14 @@ export function BudgetPlannerCalculator() {
             </div>
           </div>
           <a className="button primary full-width" href={appUrl("/signup")} {...NEW_TAB}>
-            Build your first budget — Start free <ArrowRight size={16} aria-hidden="true" />
+            Start your free budget <ArrowRight size={16} aria-hidden="true" />
           </a>
           <a className="button secondary" href="/tools/50-30-20-calculator">
             Split your salary with the 50/30/20 calculator
           </a>
           <small className="calculator-disclaimer">
-            Based on an average 10% budget margin achieved through active category envelope targets
-            and duplicate expense prevention.
+            Illustrative estimate assuming a 10% monthly margin and ₱350 saved per category from
+            catching overruns early. Actual savings depend on your spending.
           </small>
         </div>
       </div>

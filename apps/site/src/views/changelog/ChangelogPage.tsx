@@ -41,10 +41,10 @@ export function ChangelogPage() {
       </div>
 
       <section className="changelog-page-cta">
-        <h2>Experience Zoption's private workspace</h2>
+        <h2>Try Zoption in your own private workspace</h2>
         <p>
-          Import your statements, record spending with speech or receipts, and plan budgets with
-          exact centavo accuracy — starting completely free and private.
+          Import bank statements, log spending by voice or receipt photo, and plan budgets with
+          exact centavo accuracy. Free plan included, plus a 7-day Pro trial with no card required.
         </p>
         <div className="changelog-cta-actions">
           <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>

@@ -48,8 +48,8 @@ export function ImportHubPage() {
   return (
     <LegalPageLayout
       title="Import bank statements into Zoption"
-      summary="Bring CSV, Excel, or PDF transaction history from your bank into a private peso budget tracker — reviewed row by row, with no bank connection."
-      lastUpdated="August 30, 2026"
+      summary="Bring CSV, Excel, or PDF transaction history from your bank into a private budget tracker, reviewed row by row with no bank connection."
+      lastUpdated="November 21, 2026"
     >
       <section className="import-guide-section">
         <h2>Statements you can import</h2>

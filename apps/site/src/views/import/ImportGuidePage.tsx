@@ -3,7 +3,7 @@ import { detectedColumnLabels, IMPORT_GUIDES, type ImportGuide } from "./importG
 import "./ImportGuidePage.css";
 import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
-export const IMPORT_GUIDE_LAST_UPDATED = "August 30, 2026";
+export const IMPORT_GUIDE_LAST_UPDATED = "November 21, 2026";
 
 function ImportGuideBody({ guide }: { guide: ImportGuide }) {
   const columns = detectedColumnLabels(guide.presetId);
@@ -42,7 +42,7 @@ function ImportGuideBody({ guide }: { guide: ImportGuide }) {
         <p>
           Nothing is saved until you say so. Zoption shows a preview with every parsed row, flags
           rows it cannot read, warns you about likely duplicates, and commits your import as a
-          single unit — so a partial import can never leave your ledger half-updated.
+          single unit so a partial import never leaves your ledger half-updated.
         </p>
         <p>
           Once saved, the entries feed your category spending, budget progress, six-month trend, and

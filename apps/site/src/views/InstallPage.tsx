@@ -34,15 +34,16 @@ export function InstallPage() {
           </div>
           <div className="install-hero-summary">
             <p className="install-hero-lead">
-              The native Android app is in testing on Google Play. Your workspace lives on the
-              device, entries work offline, and a photo of a receipt drafts the expense for you.
+              The native Android app is in testing on Google Play. Your workspace sits encrypted on
+              your phone so entries work offline, while voice logging, SMS Quick Paste, and camera
+              receipt scanning draft expenses in seconds.
             </p>
             <ul className="install-benefits" aria-label="Android app benefits">
               <li>
                 <Check size={17} aria-hidden="true" /> The same Zoption account and workspace
               </li>
               <li>
-                <Check size={17} aria-hidden="true" /> Offline-first entries that sync later
+                <Check size={17} aria-hidden="true" /> Encrypted offline entries that sync later
               </li>
               <li>
                 <Check size={17} aria-hidden="true" /> Installs and updates through Google Play
@@ -101,10 +102,10 @@ export function InstallPage() {
             <article>
               <Globe2 size={22} aria-hidden="true" />
               <div>
-                <h3>The website remains available</h3>
+                <h3>The web app stays available</h3>
                 <p>
-                  Installation is optional. Open zoption.site in any supported browser whenever that
-                  is more convenient.
+                  Installation is optional. Open app.zoption.site in any browser whenever that is
+                  more convenient, using the same account and workspace.
                 </p>
               </div>
             </article>

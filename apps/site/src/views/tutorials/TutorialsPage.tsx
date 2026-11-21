@@ -128,27 +128,27 @@ const TUTORIALS_DATA: TutorialSection[] = [
   {
     id: "bank-csv-imports",
     category: "Importing Data",
-    title: "Importing Bank Statements & CSVs",
+    title: "Importing Bank Statements (PDF, CSV & Excel)",
     icon: FileSpreadsheet,
     summary:
-      "Bulk import past bank and e-wallet statements with smart column mapping and duplicate detection.",
+      "Bulk import past bank and e-wallet statements with column mapping and duplicate checks.",
     actionText: "Go to Import Hub",
     actionHref: "/app/import",
     steps: [
       {
-        title: "Download your statement CSV",
+        title: "Download your bank statement file",
         description:
-          "Log into your online banking or e-wallet (BDO, BPI, UnionBank, GCash, Maya, Bank of America, etc.) and download your transaction history as a CSV file.",
+          "Sign in to your online banking or e-wallet and download your transaction history as a PDF, CSV, or Excel (.xlsx/.xls) file.",
       },
       {
         title: "Upload to the Import Hub",
         description:
-          "Go to Import in Zoption and drag-and-drop your file. Zoption recognizes standard bank formats automatically.",
+          "Go to Import in Zoption and drop your file. Built-in presets recognize BDO, BPI, MariBank, Bank of America, and JPMorgan Chase automatically, and the generic preset maps standard headings for any other bank or e-wallet.",
       },
       {
         title: "Review duplicate checks & category matches",
         description:
-          "Zoption checks each row against existing ledger transactions to prevent double-counting. Confirm the categories and import in one click.",
+          "Zoption checks each row against existing ledger transactions to prevent double-counting. Review every row in the preview, confirm the categories, and import in one click.",
       },
     ],
   },
@@ -330,8 +330,11 @@ export function TutorialsPage() {
 
       <section className="tutorials-help-banner">
         <div>
-          <h2>Still need assistance?</h2>
-          <p>Our support team and AI Assistant are available 24/7 to answer your questions.</p>
+          <h2>Still need help?</h2>
+          <p>
+            The built-in AI Support Assistant answers questions 24/7, and our support team replies
+            within 24 to 48 business hours.
+          </p>
         </div>
         <div className="tutorials-help-actions">
           <a href={appUrl("/signup")} {...NEW_TAB} className="button primary">

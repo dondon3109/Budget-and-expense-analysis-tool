@@ -89,10 +89,10 @@ describe("public SEO metadata", () => {
             inLanguage: "en",
             isPartOf: { "@id": websiteId },
             featureList: [
-              "Start with a Free plan and upgrade only for higher limits and Pro features.",
-              "Map columns, catch errors, and prevent duplicate entries.",
-              "See totals, trends, categories, and budget progress together.",
-              "Start from a clean workspace and add only the records you choose.",
+              "Log expenses by voice in English or Tagalog, paste bank and e-wallet SMS alerts, or scan receipts without storing the image.",
+              "Import PDF, CSV, XLS, and XLSX bank statements with column mapping, row-by-row preview, and duplicate checks without bank logins.",
+              "Track category budgets, recurring bills on a monthly calendar, savings interest, and accounts across 47 currencies in whole centavos.",
+              "Use a consent-gated AI assistant grounded in your ledger, starting on a Free plan (500 monthly AI actions) with a 7-day Pro trial.",
             ],
           }),
         ]);

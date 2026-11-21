@@ -8,7 +8,7 @@ import { averageMonthlyMinor, yearlyCostMinor } from "./subscriptionCosts";
 import "./BudgetCalculatorPage.css";
 import "./SubscriptionCalculatorPage.css";
 
-export const SUBSCRIPTION_CALCULATOR_LAST_UPDATED = "November 16, 2026";
+export const SUBSCRIPTION_CALCULATOR_LAST_UPDATED = "November 21, 2026";
 
 /** Round monthly charges, to show how a small bill adds up; not any provider's price. */
 const EXAMPLE_MONTHLY_MINOR = [9_900, 14_900, 29_900, 54_900];
@@ -18,7 +18,7 @@ export function SubscriptionCalculatorPage({ calculator }: { calculator?: ReactN
   return (
     <LegalPageLayout
       title="Subscription Cost Calculator for Philippine Pesos"
-      summary="Add up every streaming, app, gym, and auto-debit subscription you pay for and see what they cost you per month and per year. Runs entirely in your browser — nothing you type is sent anywhere, and you do not need an account."
+      summary="Add up every streaming, app, gym, and auto-debit subscription you pay for and see what they cost you per month and per year. Runs entirely in your browser, nothing you type is sent anywhere, and you do not need an account."
       lastUpdated={SUBSCRIPTION_CALCULATOR_LAST_UPDATED}
     >
       {calculator}
@@ -115,7 +115,7 @@ export function SubscriptionCalculatorPage({ calculator }: { calculator?: ReactN
           data-site-event="subscription_calculator_signup_clicked"
           {...NEW_TAB}
         >
-          Track your subscriptions in Zoption — start free
+          Track your subscriptions in Zoption for free
         </a>
       </p>
     </LegalPageLayout>

@@ -79,34 +79,34 @@ export function LandingPage({
               Zoption makes your money clear. Decide <em>what comes next.</em>
             </h1>
             <p className="hero-lead">
-              Start for free with a private budgeting app and expense tracker. Record transactions
-              by voice input or receipt scan, import a bank file, set a budget, save money toward
-              your goals, and understand monthly cash flow — without connecting to your bank.
+              A private budget and expense tracker that never asks for your bank password. Speak an
+              expense in English or Tagalog, snap a receipt, paste a bank or e-wallet SMS, or upload
+              a statement file. Track budgets, bills, and savings across 47 currencies.
             </p>
             <div className="hero-actions">
               <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>
                 Start for free <ArrowRight size={18} aria-hidden="true" />
               </a>
               <a className="button secondary" href="#fast-entry">
-                Explore Voice &amp; Scan
+                See how fast entry works
               </a>
             </div>
             <p className="hero-cta-note">
-              <Check size={15} aria-hidden="true" /> No payment required. Upgrade only if you want
-              higher limits and Pro features.
+              <Check size={15} aria-hidden="true" /> No payment required. Free forever with 500
+              monthly AI actions, plus a 7-day Zoption Pro trial.
             </p>
             <ul className="hero-proof" aria-label="Zoption at a glance">
               <li>
-                <strong>Voice &amp; Photo Entry</strong>
-                <span>just talk or snap receipts</span>
+                <strong>Voice &amp; Receipt Entry</strong>
+                <span>English &amp; Tagalog voice, scans never stored</span>
               </li>
               <li>
-                <strong>PDF &amp; Excel Imports</strong>
-                <span>universal bank file mapper</span>
+                <strong>PDF, CSV &amp; Excel</strong>
+                <span>preview every row, skip duplicates</span>
               </li>
               <li>
-                <strong>Free Plan &amp; AI</strong>
-                <span>grounded &amp; private by design</span>
+                <strong>Free Forever &amp; 7-Day Pro</strong>
+                <span>no card, no bank login required</span>
               </li>
             </ul>
           </div>
@@ -147,7 +147,7 @@ export function LandingPage({
               </div>
             </div>
             <p className="preview-disclaimer">
-              Illustrative values only. Your workspace begins without transactions or budgets.
+              Sample figures only. Your workspace begins without transactions or budgets.
             </p>
           </div>
         </section>
@@ -165,7 +165,9 @@ export function LandingPage({
                 <span className="pillar-badge">Top Feature</span>
               </div>
               <strong>Voice Transaction Entry</strong>
-              <p>Speak naturally to log expenses — zero manual typing needed</p>
+              <p>
+                Speak in English or Tagalog to draft an expense with amount, store, and category
+              </p>
             </div>
           </div>
           <div className="pillar-item highlight-pillar">
@@ -176,8 +178,11 @@ export function LandingPage({
               <div className="pillar-badge-slot">
                 <span className="pillar-badge">Top Feature</span>
               </div>
-              <strong>Instant Receipt Scanner</strong>
-              <p>Snap a photo of paper or digital receipts to extract totals automatically</p>
+              <strong>Receipt Photo Scanner</strong>
+              <p>
+                Extract store, date, and totals from paper or digital receipts without storing the
+                photo
+              </p>
             </div>
           </div>
           <div className="pillar-item">
@@ -187,7 +192,10 @@ export function LandingPage({
             <div>
               <div className="pillar-badge-slot" />
               <strong>PDF, CSV &amp; Excel Importer</strong>
-              <p>Universal statement mapper with exact centavo deduplication</p>
+              <p>
+                Upload bank statements or spreadsheets, map columns, and catch duplicates before
+                saving
+              </p>
             </div>
           </div>
           <div className="pillar-item">
@@ -196,8 +204,11 @@ export function LandingPage({
             </div>
             <div>
               <div className="pillar-badge-slot" />
-              <strong>Grounded AI Assistant</strong>
-              <p>Ask, log, and update your budget in chat &mdash; you confirm every change</p>
+              <strong>Consent-Gated AI Assistant</strong>
+              <p>
+                Ask questions about your ledger or draft budget updates. Nothing saves until you tap
+                Confirm
+              </p>
             </div>
           </div>
         </section>
@@ -215,12 +226,12 @@ export function LandingPage({
            ============================================================ */}
         <section className="comparison-section" id="compare" aria-labelledby="compare-title">
           <div className="section-head">
-            <p className="eyebrow">The Zoption Advantage</p>
+            <p className="eyebrow">Why Zoption</p>
             <h2 id="compare-title">Why private budgeting beats bank-linked apps.</h2>
             <p className="section-lead">
-              Fintech apps demand your bank password, harvest your financial habits for credit card
-              ads, and round decimals. Zoption gives you total control, zero credential risk, and
-              exact centavo accuracy.
+              Bank-linked trackers ask for your online banking login, break when your bank changes
+              security, and profile your spending for credit offers. Zoption works from your voice,
+              receipts, SMS alerts, and downloaded statements, with exact centavo math.
             </p>
           </div>
 
@@ -240,7 +251,7 @@ export function LandingPage({
               </colgroup>
               <thead>
                 <tr>
-                  <th scope="col">Capability &amp; Security Standard</th>
+                  <th scope="col">What matters</th>
                   <th scope="col">Typical Finance Apps</th>
                   <th scope="col" className="zoption-col">
                     Zoption Private Workspace
@@ -250,145 +261,147 @@ export function LandingPage({
               <tbody>
                 <tr>
                   <td>
-                    <strong>Voice &amp; spoken entry</strong>
-                    <small>Speak to add transactions on the go</small>
+                    <strong>Voice &amp; SMS entry</strong>
+                    <small>Log cash, card, and e-wallet spending in seconds</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Manual typing only &middot; no voice parser</span>
+                      <span>Manual forms only</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Instant speech-to-transaction parsing &amp; 1-tap save</span>
+                      <span>English &amp; Tagalog voice entry plus bank/e-wallet SMS paste</span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
                     <strong>Receipt photo scanning</strong>
-                    <small>Camera &amp; screenshot expense extraction</small>
+                    <small>Paper bills and checkout screenshots</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Locked behind expensive plans or manual entry</span>
+                      <span>Locked on top tiers or keeps receipt photos on servers</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Smart OCR for paper &amp; digital bills with line items</span>
+                      <span>
+                        Included on Free plan; extracts totals &amp; never stores the photo
+                      </span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
                     <strong>PDF, Excel &amp; CSV statements</strong>
-                    <small>Upload e-statements &amp; multi-sheet workbooks</small>
+                    <small>Import bank history without live scraping</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Rigid, error-prone or locked behind paywalls</span>
+                      <span>Rigid templates or paid-only file imports</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Universal PDF, CSV, XLSX &amp; XLS with deduplication</span>
+                      <span>PDF, CSV, XLSX &amp; XLS with preview and duplicate checks</span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <strong>AI financial insights</strong>
-                    <small>Intelligence and conversational tools</small>
+                    <strong>AI financial assistant</strong>
+                    <small>Answers and budget updates</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Unverified chatbots with write access</span>
+                      <span>Generic advice or unchecked writes to your records</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Grounded with evidence; saves only on your tap</span>
+                      <span>Consent-gated, ledger-backed math; saves only on your tap</span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
                     <strong>Bank login credentials</strong>
-                    <small>Access required to track your balance</small>
+                    <small>What you hand over to get started</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Mandatory bank passwords &amp; screen scraping</span>
+                      <span>Online banking passwords or third-party screen scraping</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Never requested &middot; 100% private file import</span>
+                      <span>Never requested; you bring files or entries you choose</span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <strong>Data privacy &amp; profiling</strong>
-                    <small>How your transactions are handled</small>
+                    <strong>Ads &amp; data profiling</strong>
+                    <small>How the app makes money</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Aggregated for ad targeting &amp; lending offers</span>
+                      <span>Loan ads and spending profiles sold to partners</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Zero ad tracking &middot; only records you choose</span>
+                      <span>Zero ads; funded strictly by optional paid plans</span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
                     <strong>Calculation precision</strong>
-                    <small>How balances and totals are computed</small>
+                    <small>How totals stay accurate across 47 currencies</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Floating-point drift &amp; rounded decimals</span>
+                      <span>Floating-point rounding drift</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Exact integer centavo accuracy</span>
+                      <span>Whole integer centavos end to end</span>
                     </span>
                   </td>
                 </tr>
                 <tr>
                   <td>
-                    <strong>Native mobile experience</strong>
-                    <small>Android and on-the-go tracking</small>
+                    <strong>Web &amp; Android access</strong>
+                    <small>Use on desktop and phone with one account</small>
                   </td>
                   <td>
                     <span className="comparison-cell-value risk">
                       <X size={15} aria-hidden="true" />
-                      <span>Cloud-locked web wrappers</span>
+                      <span>No offline entry when signal drops</span>
                     </span>
                   </td>
                   <td className="zoption-col">
                     <span className="comparison-cell-value advantage">
                       <Check size={15} aria-hidden="true" />
-                      <span>Native Android app with receipt scanning</span>
+                      <span>Web app today, plus native Android with encrypted offline SQLite</span>
                     </span>
                   </td>
                 </tr>
@@ -402,18 +415,20 @@ export function LandingPage({
             <p className="eyebrow">Zoption for Android</p>
             <h2 id="install-promo-title">Coming soon to Google Play.</h2>
             <p>
-              The native Android app is in testing on Google Play: your workspace on the device,
-              offline-first entry, and camera receipt scanning.
+              The native Android app is in testing on Google Play. Your workspace sits encrypted on
+              your phone for offline-first entry that syncs later, plus camera receipt scanning and
+              voice logging.
             </p>
             <ul className="install-promo-points">
               <li>
-                <Check size={16} aria-hidden="true" /> Same account and workspace
+                <Check size={16} aria-hidden="true" /> Same account and workspace as the web app
               </li>
               <li>
-                <Check size={16} aria-hidden="true" /> Receipt scanning with your approval
+                <Check size={16} aria-hidden="true" /> Encrypted offline entries that sync when you
+                reconnect
               </li>
               <li>
-                <Check size={16} aria-hidden="true" /> Installs and updates through Google Play
+                <Check size={16} aria-hidden="true" /> Installs and updates only through Google Play
               </li>
             </ul>
           </div>
@@ -433,8 +448,9 @@ export function LandingPage({
               </a>
             </div>
             <p className="install-promo-note">
-              Until the listing opens, use Zoption on the web with the same account. Zoption remains
-              online-first, so authenticated financial operations require an internet connection.
+              Until the Google Play listing opens, use the same account on the web app in any
+              browser. Web actions need an internet connection; on Android, entries work offline and
+              sync once you are back online.
             </p>
           </div>
         </section>
@@ -444,8 +460,9 @@ export function LandingPage({
             <p className="eyebrow">Start from a file you already have</p>
             <h2 id="banks-title">Bring a bank or spreadsheet export.</h2>
             <p className="section-lead">
-              Choose a CSV, XLSX, or XLS file with built-in mapping for these common formats, then
-              review every row before anything is saved.
+              Upload a PDF bank statement, CSV, XLSX, or XLS file. Built-in presets detect columns
+              for these banks, a generic preset handles any other bank or e-wallet export, and you
+              review every row before saving.
             </p>
           </div>
           <div className="formats-marquee" aria-hidden="true">
@@ -468,6 +485,14 @@ export function LandingPage({
               <li key={name}>{name}</li>
             ))}
           </ul>
+          <nav className="formats-links" aria-label="Bank statement import guides">
+            <a href="/import/bdo-statement">BDO guide</a>
+            <a href="/import/bpi-statement">BPI guide</a>
+            <a href="/import/maribank-statement">MariBank guide</a>
+            <a href="/import/bank-of-america-statement">Bank of America guide</a>
+            <a href="/import/jpmorgan-statement">JPMorgan Chase guide</a>
+            <a href="/import">All import formats</a>
+          </nav>
           <p className="formats-disclaimer">
             Bank names are shown to indicate supported export formats only. Zoption is not
             affiliated with or endorsed by these institutions.
@@ -476,11 +501,11 @@ export function LandingPage({
 
         <section className="approach" id="approach" aria-labelledby="approach-title">
           <div className="section-head">
-            <p className="eyebrow">Designed for real decisions</p>
-            <h2 id="approach-title">Your money, one rhythm at a time.</h2>
+            <p className="eyebrow">How it works</p>
+            <h2 id="approach-title">Three steps to a clear month.</h2>
             <p className="section-lead">
-              Keep a simple manual rhythm: log what moves, let Zoption do the arithmetic, and decide
-              from the same picture your budgets are built from.
+              No bank linking, no broken spreadsheet formulas. Record spending your way, check the
+              exact math, and see what is safe to spend next.
             </p>
           </div>
           <div className="rhythm">
@@ -488,24 +513,24 @@ export function LandingPage({
               <span className="step-n">01</span>
               <h3>Log what moves</h3>
               <p>
-                Import a file, or add a row yourself. You&rsquo;re in control of what enters your
-                workspace — only what you choose is ever saved.
+                Speak an expense, scan a receipt, paste a bank or GCash SMS, or import a statement
+                file. Only rows you confirm ever reach your workspace.
               </p>
             </article>
             <article className="step">
               <span className="step-n">02</span>
-              <h3>Review the math</h3>
+              <h3>Check exact totals</h3>
               <p>
-                Zoption keeps amounts in exact centavos and shows every calculation in plain
-                language, so the picture matches your own figures.
+                Zoption stores amounts in whole centavos across 47 currencies, groups entries into
+                your categories, and flags duplicates before they distort your balance.
               </p>
             </article>
             <article className="step">
               <span className="step-n">03</span>
-              <h3>Decide what&rsquo;s next</h3>
+              <h3>Decide what&apos;s next</h3>
               <p>
-                Budgets, bills, savings interest, and an assistant — all pointing at the same
-                monthly view, ready for one next move.
+                Track monthly budgets, upcoming bills on the calendar, savings interest, or shared
+                family budgets, and ask the AI assistant when you want a breakdown.
               </p>
             </article>
           </div>
@@ -518,8 +543,8 @@ export function LandingPage({
             </a>
           </div>
           <p className="cta-note">
-            No payment required. Your workspace starts empty and private, with no bank credentials
-            to hand over.
+            Free forever with 500 monthly AI actions and a 7-day Zoption Pro trial. No card or bank
+            password needed.
           </p>
         </section>
 
@@ -530,83 +555,85 @@ export function LandingPage({
             <p className="eyebrow">Common questions</p>
             <h2 id="faq-title">Budget and expense tracking, plainly answered.</h2>
             <p className="section-lead">
-              How Zoption handles voice entry, receipt scanning, file imports, privacy, and money
-              math.
+              Direct answers on voice entry, receipt scanning, bank imports, pricing, privacy, and
+              how Zoption calculates your totals.
             </p>
           </div>
           <div className="faq-list">
             <details className="faq-item">
               <summary>How does Voice Entry work?</summary>
               <p className="faq-answer">
-                Tap the microphone and speak naturally in English or Taglish, such as &ldquo;Spent
-                ₱540 for groceries at Robinsons Supermarket today&rdquo;. Zoption transcribes your
-                speech, extracts the amount, auto-detects the merchant, and assigns the correct
-                budget envelope. You review and save with a single tap — no typing required.
+                Tap the microphone and speak in English or Tagalog, such as &ldquo;Spent ₱540 for
+                groceries at Robinsons Supermarket today&rdquo;. Zoption transcribes your speech and
+                drafts the amount, store, date, and category. You check the draft and save with one
+                tap.
               </p>
             </details>
             <details className="faq-item">
               <summary>How does Receipt Photo Scanning work?</summary>
               <p className="faq-answer">
-                Snap a picture of any paper receipt or upload a digital invoice screenshot.
-                Zoption&rsquo;s vision engine extracts the store name, date, subtotal, sales tax,
-                and line items automatically, then suggests the appropriate category envelope for
-                your review.
+                Take a photo of a paper receipt or upload a checkout screenshot. Zoption reads the
+                store name, date, tax, total, and line items into an editable draft for your review.
+                The image is read to build the draft and is never stored.
               </p>
             </details>
             <details className="faq-item">
-              <summary>What file formats can I import?</summary>
+              <summary>What file formats and banks can I import?</summary>
               <p className="faq-answer">
-                PDF bank statements, multi-sheet Excel workbooks (.xlsx, .xls), and CSV files. Pick
-                a document, map columns, filter duplicates, and preview every single row before
-                committing it to your private ledger.
+                You can import PDF bank statements, Excel workbooks (.xlsx and .xls), and CSV files.
+                Built-in presets detect columns for BDO, BPI, MariBank, Bank of America, and
+                JPMorgan Chase, while the generic preset covers any other bank or e-wallet export.
+                Every row is previewed and checked for duplicates before saving.
               </p>
             </details>
             <details className="faq-item">
               <summary>How does the AI Financial Assistant work?</summary>
               <p className="faq-answer">
-                The assistant answers questions about your real numbers with grounded evidence and
-                verified mathematical calculations. It operates only with your explicit consent. It
-                can also log transactions and prepare changes to your bills, goals, debts, accounts,
-                categories, budgets, and existing transactions, but nothing is applied until you tap
-                Save or Confirm.
+                The assistant is optional and asks for separate consent. It answers questions using
+                math computed from your real ledger, never guesses totals, and can draft
+                transactions or propose edits to bills, goals, debts, accounts, categories, or
+                budgets. Nothing changes until you tap Save or Confirm.
               </p>
             </details>
             <details className="faq-item">
               <summary>Can I use Zoption for free?</summary>
               <p className="faq-answer">
-                Yes. Create an account and use Zoption&rsquo;s Free plan without paying. It includes
-                core tracking features with plan limits; choose Budget or Pro only if you want
-                higher limits and additional features.
+                Yes. The Free plan is ₱0 forever with unlimited manual entries, 500 shared AI
+                actions per month, and 1 committed statement import per month. Every new account
+                also starts with a 7-day Zoption Pro trial with no card required. Paid plans start
+                at ₱149/month for Budget, ₱249/month for Pro, and ₱499/month for Family plans up to
+                6 people.
               </p>
             </details>
             <details className="faq-item">
               <summary>Does Zoption connect to my bank?</summary>
               <p className="faq-answer">
-                No. Zoption never connects to banks or asks for banking credentials. You import a
-                PDF, CSV, Excel, or bank export file — or add rows yourself — and review every entry
-                before anything is saved.
+                No. Zoption never connects to banks or asks for banking passwords. You log spending
+                by voice, receipt scan, SMS paste, manual entry, or downloaded statement files, and
+                you review every entry before anything is saved.
               </p>
             </details>
             <details className="faq-item">
               <summary>Is my workspace private?</summary>
               <p className="faq-answer">
-                Your workspace starts empty and contains only the records you choose to add. For
-                details about how account, financial, and imported-transaction information is
-                handled, see the Privacy Policy.
+                Your workspace starts empty, is isolated to your account, and has no ads or spending
+                profiles sold to third parties. For full details on how data is stored and deleted,
+                see the Privacy Policy.
               </p>
             </details>
             <details className="faq-item">
-              <summary>How are money amounts stored?</summary>
+              <summary>How are money amounts and currencies handled?</summary>
               <p className="faq-answer">
-                Amounts are represented safely in integer centavos and totaled in plain language, so
-                the calculations stay transparent and easy to follow.
+                Amounts are stored in exact integer minor units (centavos) so totals never suffer
+                from floating-point rounding drift. Zoption supports 47 currencies including PHP,
+                USD, EUR, GBP, JPY, SGD, and AED, with each account keeping its own currency.
               </p>
             </details>
             <details className="faq-item">
               <summary>Do I need financial expertise to use Zoption?</summary>
               <p className="faq-answer">
-                No. Zoption keeps the language jargon-free and every calculation transparent, so you
-                can track expenses and set budgets without a finance background.
+                No. Setup adapts to how often you get paid and which categories you want to watch,
+                and every total and budget bar is written in plain language.
               </p>
             </details>
           </div>
@@ -628,7 +655,7 @@ function StickyMobileCta() {
       <div className="sticky-mobile-cta-content">
         <div className="sticky-mobile-cta-text">
           <strong>Start for free</strong>
-          <span>100% private · No card needed</span>
+          <span>500 free AI actions/mo · No card needed</span>
         </div>
         <div className="sticky-mobile-cta-actions">
           <a className="button primary compact" href={appUrl("/signup")} {...NEW_TAB}>

@@ -101,10 +101,16 @@ const COMPARISON_ROWS: { category: string; features: ComparisonFeature[] }[] = [
         pro: "Week, month, and 6-month",
       },
       {
-        name: "Interactive Bill Calendar",
+        name: "Interactive bill calendar",
         free: "Basic list",
         budget: "Interactive monthly grid",
         pro: "Interactive monthly grid",
+      },
+      {
+        name: "Subscription usage tracking & 30-day unused alerts",
+        free: "Not included",
+        budget: "Not included",
+        pro: "Included",
       },
       {
         name: "Streak pet",
@@ -141,10 +147,10 @@ const COMPARISON_ROWS: { category: string; features: ComparisonFeature[] }[] = [
     category: "Platforms & Support",
     features: [
       {
-        name: "Progressive Web App (PWA) and Android app",
-        free: "Included",
-        budget: "Included",
-        pro: "Included",
+        name: "Web app & Android app",
+        free: "Web now, Android coming to Google Play",
+        budget: "Web now, Android coming to Google Play",
+        pro: "Web now, Android coming to Google Play",
       },
       {
         name: "Customer support",
@@ -165,7 +171,7 @@ const PRICING_FAQS = [
   {
     question: "What is the difference between Budget and Pro?",
     answer:
-      "Zoption Budget unlocks every paid feature: live voice chat, automatic interest, full cash flow analytics, export, the bill calendar, and a streak pet that grows to Legend. Zoption Pro doubles the AI actions to 2,000 a month, raises imports to 10 a month, removes the custom category limit, and answers support within 24 hours.",
+      "Zoption Budget unlocks live voice chat, automatic savings interest, full cash flow analytics, filtered CSV export, the bill calendar, and a streak pet that grows to Legend. Zoption Pro doubles AI actions to 2,000 a month, raises imports to 10 a month, removes the custom category limit, adds subscription usage tracking with 30-day unused bill alerts, and answers support within 24 hours.",
   },
   {
     question: "How do the family plans work?",
@@ -175,12 +181,12 @@ const PRICING_FAQS = [
   {
     question: "Can I use Zoption for free permanently?",
     answer:
-      "Yes. The Free plan has no trial expiration and does not ask for credit card information. Core tracking, budgeting, and 500 shared AI actions per month—chat, voice chat, receipt scanning, PDF statement entry, and transaction voice entry—are yours for as long as you want.",
+      "Yes. The Free plan has no expiration and does not ask for a credit card. Core tracking, budgeting, and 500 shared AI actions per month (covering chat, voice entry, receipt scanning, and PDF statement entry) stay free for as long as you want.",
   },
   {
     question: "Why does Zoption avoid direct bank credential connections?",
     answer:
-      "Connecting bank accounts often requires sharing online banking credentials with third-party aggregators and dealing with broken sync connections. Zoption lets you import standard bank statements (PDF, CSV, Excel) or record entries by voice in seconds—keeping your financial passwords 100% private.",
+      "Connecting bank accounts asks you to hand over online banking logins to third-party aggregators and deal with broken syncs. Zoption lets you import standard bank statements (PDF, CSV, Excel), scan receipts, paste SMS alerts, or speak expenses in seconds, keeping your banking passwords private.",
   },
   {
     question: "What currencies and billing methods are supported?",
@@ -244,12 +250,14 @@ const PRO_CARD: PaidPlanCard = {
   plan: "pro",
   name: "Zoption Pro",
   badge: "Power Tracker",
-  description: "Everything in Budget with double the AI actions and no category limit.",
+  description:
+    "Everything in Budget, double the AI actions, no category cap, and subscription ROI tracking.",
   cta: "Start with Pro",
   inclusions: [
     "2,000 AI actions a month in the same shared pool",
     "10 committed statement imports per month",
     "Unlimited custom categories",
+    "Subscription usage tracking with cost-per-use and 30-day unused bill alerts",
     "Direct priority support within 24 hours",
   ],
 };
@@ -356,8 +364,8 @@ export function PricingPage() {
           </div>
           <h1>Clear, honest pricing. Start for free, upgrade when ready.</h1>
           <p className="pricing-lead">
-            A private budget and expense tracker without direct bank connections, credential risks,
-            or advertising monetization.
+            Every new account includes a 7-day Zoption Pro trial with no card required, then stays
+            free forever unless you upgrade. No bank logins and no ads on any plan.
           </p>
 
           <div className="pricing-toggles">
@@ -445,7 +453,7 @@ export function PricingPage() {
               </li>
               <li className="pricing-card-feature-item">
                 <Check size={18} className="pricing-check-icon" aria-hidden="true" />
-                <span>Offline PWA &amp; Android app</span>
+                <span>Web app today, plus Android app coming to Google Play</span>
               </li>
             </ul>
           </article>
@@ -531,10 +539,10 @@ export function PricingPage() {
         </section>
 
         <section className="pricing-bottom-cta">
-          <h2>Ready to bring clarity to your money?</h2>
+          <h2>Start tracking without handing over your bank login.</h2>
           <p>
-            Join thousands of users organizing their personal finances privately. No bank password
-            sharing, no ads, and no spreadsheets that break.
+            Begin on the Free plan with a 7-day Pro trial included. No credit card, no ads, and no
+            spreadsheets to repair.
           </p>
           <div className="pricing-bottom-actions">
             <a className="button primary" href={appUrl("/signup")} {...NEW_TAB}>

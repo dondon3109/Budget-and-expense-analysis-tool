@@ -7,10 +7,15 @@ import { appUrl, NEW_TAB } from "../../lib/appUrl";
 
 /** Categories are declared here so the published FAQ list stays the single source of answers. */
 const FAQ_CATEGORY_BY_QUESTION: Record<string, string> = {
+  "What is Zoption?": "Getting started",
   "Can I use Zoption for free?": "Getting started",
   "Do I need financial expertise to use Zoption?": "Getting started",
+  "Is there an Android app, and does Zoption work offline?": "Getting started",
   "Does Zoption connect to my bank?": "Importing your data",
   "What file formats can I import?": "Importing your data",
+  "How does voice expense entry work?": "Budgets & tracking",
+  "How does receipt photo scanning work?": "Budgets & tracking",
+  "What currencies does Zoption support?": "Budgets & tracking",
   "How are money amounts stored?": "Budgets & tracking",
   "How do transfers between accounts work?": "Budgets & tracking",
   "Can I track monthly bills and subscriptions?": "Budgets & tracking",
@@ -18,6 +23,7 @@ const FAQ_CATEGORY_BY_QUESTION: Record<string, string> = {
   "How does the AI Financial Assistant work, and what does it read?": "AI assistant",
   "Is my workspace private?": "Privacy & data",
   "How can I export or delete my data?": "Privacy & data",
+  "Can I budget with my family or partner?": "Plans & billing",
   "How does Zoption billing work?": "Plans & billing",
   "How do I add Zoption as a Preferred Source in Google Search and AI results?": "Finding Zoption",
 };
@@ -86,8 +92,8 @@ export function FaqPage() {
   return (
     <LegalPageLayout
       title="Frequently asked questions"
-      summary="Plain-language answers about how Zoption tracks expenses, imports files, follows budgets, and handles your data."
-      lastUpdated="August 30, 2026"
+      summary="Plain-language answers on voice entry, receipt scanning, bank file imports, multi-currency budgets, bills, family plans, the AI assistant, privacy, and pricing."
+      lastUpdated="November 21, 2026"
     >
       <nav className="faq-page-categories" aria-label="FAQ categories">
         {categories.map((category) => (
@@ -131,8 +137,8 @@ export function FaqPage() {
 
       <section className="faq-page-cta">
         <p>
-          Still unsure? Create your workspace and see how Zoption turns your own files and entries
-          into a clear monthly picture — it starts empty and private, with no bank connection.
+          Still unsure? Create your free workspace and try it with your own files or entries. It
+          starts empty and private, with no bank connection and a 7-day Pro trial included.
         </p>
         <a className="button" href={appUrl("/signup")} {...NEW_TAB}>
           Create your workspace

@@ -30,7 +30,7 @@ export interface ImportGuide {
 const SHARED_EXPORT_STEPS = [
   "Sign in to your online banking and open the transaction history or statement page for the account you want to review.",
   "Choose the date range you want, then use the download or export option.",
-  "If your bank asks for a format, pick CSV, Excel (.xlsx or .xls), or PDF — Zoption reads all of them.",
+  "If your bank asks for a format, pick CSV, Excel (.xlsx or .xls), or PDF. Zoption reads all of them.",
   "In Zoption, open Import, choose the file, and check the preview before you save anything.",
 ];
 
@@ -45,20 +45,20 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     shortName: "BDO",
     title: "Import BDO Statements into Zoption — CSV, Excel & PDF",
     description:
-      "Bring BDO transaction history into a private peso budget tracker. Zoption detects BDO debit and credit columns, previews every row, and blocks duplicates — with no bank connection.",
+      "Import BDO transaction history into a private peso budget tracker. Zoption detects BDO debit and credit columns, previews every row, and flags duplicates with no bank connection.",
     heading: "Import BDO statements into Zoption",
     summary:
-      "Turn a downloaded BDO transaction history into categorised expenses, budget progress, and a monthly cash-flow picture — without connecting Zoption to your bank.",
+      "Turn a downloaded BDO transaction history into categorized expenses, budget progress, and a monthly cash-flow picture without connecting Zoption to your bank.",
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "BDO exports often split amounts into separate Debit and Credit columns. Zoption detects that layout and reads both, so withdrawals and deposits land with the right sign.",
-      "Where a running balance or reference number is present, Zoption recognises those headings and leaves them out of the amount columns.",
+      "Where a running balance or reference number is present, Zoption recognizes those headings and leaves them out of the amount columns.",
     ],
     questions: [
       {
         question: "Do I need to reformat a BDO export before importing it?",
         answer:
-          "Usually not. Select the BDO preset — or let Zoption detect it from the file — and the date, description, and amount columns are matched for you. You can remap any column in the preview if something looks off.",
+          "Usually not. Select the BDO preset, or let Zoption detect it from the file, and the date, description, and amount columns are matched for you. You can remap any column in the preview if something looks off.",
       },
       {
         question: "Will importing the same statement twice create duplicates?",
@@ -74,14 +74,14 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     shortName: "BPI",
     title: "Import BPI Statements into Zoption — CSV, Excel & PDF",
     description:
-      "Bring BPI transaction history into a private peso budget tracker. Zoption matches BPI debit and credit columns, previews every row, and blocks duplicates — with no bank connection.",
+      "Import BPI transaction history into a private peso budget tracker. Zoption matches BPI debit and credit columns, previews every row, and flags duplicates with no bank connection.",
     heading: "Import BPI statements into Zoption",
     summary:
-      "Turn a downloaded BPI transaction history into categorised expenses, budget progress, and a monthly cash-flow picture — without connecting Zoption to your bank.",
+      "Turn a downloaded BPI transaction history into categorized expenses, budget progress, and a monthly cash-flow picture without connecting Zoption to your bank.",
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "BPI exports use either a single Amount column or separate Debit and Credit columns. Zoption detects which one your file has and switches automatically.",
-      "Headings such as Branch, Transaction Description, and Running Balance are recognised, so the description column is not mistaken for an amount.",
+      "Headings such as Branch, Transaction Description, and Running Balance are recognized, so the description column is not mistaken for an amount.",
     ],
     questions: [
       {
@@ -103,14 +103,14 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     shortName: "MariBank",
     title: "Import MariBank Statements into Zoption — CSV, Excel & PDF",
     description:
-      "Bring MariBank transaction history into a private peso budget tracker. Zoption reads MariBank's transaction-time column, previews every row, and blocks duplicates — with no bank connection.",
+      "Import MariBank transaction history into a private peso budget tracker. Zoption reads MariBank's transaction-time column, previews every row, and flags duplicates with no bank connection.",
     heading: "Import MariBank statements into Zoption",
     summary:
-      "Turn a downloaded MariBank transaction history into categorised expenses, budget progress, and a monthly cash-flow picture — without connecting Zoption to your bank.",
+      "Turn a downloaded MariBank transaction history into categorized expenses, budget progress, and a monthly cash-flow picture without connecting Zoption to your bank.",
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "MariBank history typically puts the date and time in one Transaction time column. Zoption reads that combined column and uses the calendar date for each entry.",
-      "Transaction type headings such as Transaction type and Transaction status are recognised, which helps separate money in from money out.",
+      "Transaction type headings such as Transaction type and Transaction status are recognized, which helps separate money in from money out.",
     ],
     questions: [
       {
@@ -132,10 +132,10 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     shortName: "Bank of America",
     title: "Import Bank of America Statements into Zoption — CSV & Excel",
     description:
-      "Bring Bank of America transaction history into a private peso budget tracker. Zoption matches Posted Date and Payee columns, previews every row, and blocks duplicates — with no bank connection.",
+      "Import Bank of America transaction history into a private budget tracker. Zoption matches Posted Date and Payee columns, previews every row, and flags duplicates with no bank connection.",
     heading: "Import Bank of America statements into Zoption",
     summary:
-      "Turn a downloaded Bank of America transaction history into categorised expenses and budget progress, alongside your peso accounts, without connecting Zoption to your bank.",
+      "Turn a downloaded Bank of America transaction history into categorized expenses and budget progress, alongside your other currency accounts, without connecting Zoption to your bank.",
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "Bank of America exports use a Posted Date and a Payee or Description column. Zoption matches both and reads a single Amount column with signed values.",
@@ -150,7 +150,7 @@ export const IMPORT_GUIDES: ImportGuide[] = [
       {
         question: "Which date does Zoption use?",
         answer:
-          "The Posted Date column, which reflects when the transaction settled rather than when it was authorised. That keeps your monthly totals consistent with the statement.",
+          "The Posted Date column, which reflects when the transaction settled rather than when it was authorized. That keeps your monthly totals consistent with the statement.",
       },
     ],
   },
@@ -161,10 +161,10 @@ export const IMPORT_GUIDES: ImportGuide[] = [
     shortName: "JPMorgan Chase",
     title: "Import Chase & JPMorgan Statements into Zoption — CSV & Excel",
     description:
-      "Bring Chase and JPMorgan transaction history into a private peso budget tracker. Zoption matches Posting Date and Details columns, previews every row, and blocks duplicates — with no bank connection.",
+      "Import Chase and JPMorgan transaction history into a private budget tracker. Zoption matches Posting Date and Details columns, previews every row, and flags duplicates with no bank connection.",
     heading: "Import Chase and JPMorgan statements into Zoption",
     summary:
-      "Turn a downloaded Chase or JPMorgan transaction history into categorised expenses and budget progress, alongside your peso accounts, without connecting Zoption to your bank.",
+      "Turn a downloaded Chase or JPMorgan transaction history into categorized expenses and budget progress, alongside your other currency accounts, without connecting Zoption to your bank.",
     exportSteps: SHARED_EXPORT_STEPS,
     notes: [
       "Chase and JPMorgan exports use a Posting Date and a Details or Description column. Zoption matches both and reads a single signed Amount column.",

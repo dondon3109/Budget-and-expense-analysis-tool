@@ -51,7 +51,7 @@ describe("FAQ page", () => {
   it("renders each answer as a native disclosure, so every answer is in the HTML", () => {
     renderPage();
 
-    const answer = screen.getByText(/CSV, XLSX, and XLS\. Pick a workbook, choose a worksheet/i);
+    const answer = screen.getByText(/PDF bank statements, Excel workbooks/i);
     const item = answer.closest("details");
     expect(item).toHaveAttribute("id", "what-file-formats-can-i-import");
     expect(item).not.toHaveAttribute("open");

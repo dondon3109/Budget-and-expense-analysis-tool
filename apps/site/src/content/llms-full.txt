@@ -1,39 +1,42 @@
 # Zoption Complete Specification (llms-full.txt)
 
-> Zoption is a privacy-conscious personal budget and expense tracking platform for reviewing transactions, budgets, recurring charges, and monthly cash flow in a private workspace without sharing online banking credentials.
+> Zoption is a private personal and family budget and expense tracking platform for reviewing transactions, budgets, recurring bills, savings interest, and monthly cash flow in an isolated workspace without sharing online banking credentials.
 
 ## Public Endpoints & Canonical URLs
 
 {{public-pages}}
 
 ## Core Architecture & Security Model
-1. **Zero Bank Credentials**: Zoption never integrates with credential-scraping aggregators (such as Plaid or Yodlee). Users import standard export files (CSV, Excel XLS/XLSX, PDF bank statements) or input entries via voice/camera.
+1. **Zero Bank Credentials**: Zoption never integrates with credential-scraping aggregators (such as Plaid or Yodlee). Users log spending by English or Tagalog voice, camera receipt scanning (photos are never stored), bank/e-wallet SMS Quick Paste, manual entry, or standard export files (PDF, CSV, Excel XLS/XLSX).
 2. **Exact Minor-Unit Arithmetic**: Every amount is stored as an integer count of hundredths of its currency (1 PHP = 100 centavos) to eliminate floating-point rounding errors. Zoption supports 47 common currencies (PHP, USD, EUR, GBP, JPY, AUD, CAD, SGD, AED, SAR, INR, and about 35 more); each account keeps its own currency, and the cashflow chart converts other currencies into the workspace currency with daily exchange rates.
-3. **Offline-First PWA & Android**: Workspaces function offline via Service Workers and local SQLite storage on Android, syncing changes to tenant-isolated Cloudflare D1 storage when connected.
-4. **Consent-Gated AI Assistant**: The optional financial AI assistant never writes on its own, operates on explicit versioned user consent, can draft a transaction or propose a change to a bill, goal, debt, account, category, budget, or existing transaction, and applies nothing until the user taps Save or Confirm.
+3. **Web App & Offline-First Android**: The web app runs in any browser at app.zoption.site (online-first). The native Android app (in testing on Google Play) stores an encrypted local SQLite database on the device so transactions, budgets, and goals work offline and sync to tenant-isolated Cloudflare D1 storage when connected. Sign-in, receipt scanning, and the AI assistant require an internet connection.
+4. **Consent-Gated AI Assistant**: The optional financial AI assistant never writes on its own, operates on explicit versioned user consent, computes answers from the user's ledger, can draft a transaction or propose a change to a bill, goal, debt, account, category, budget, or existing transaction, and applies nothing until the user taps Save or Confirm.
+5. **Receipt Scanning Privacy**: Receipt scanning uses its own separate consent flow. Images are read only to produce an editable transaction draft and are never stored.
+6. **Sharing & Family Workspaces**: Users can share read-only budget envelope or live balance links without exposing bank logins, or create a shared family space for up to 6 people with shared budgets, remittances, receipts, and comments.
 
 ## Pricing Plans (Philippine Pesos - PHP)
 - **Free Plan (₱0 / forever)**:
   - Unlimited manual entries, plus one shared AI usage pool.
-  - 500 AI actions per Manila calendar month, shared across assistant chat, voice chat, receipt scanning, PDF statement entry, and transaction voice entry.
-  - Universal bank statement importer (1 committed import per month).
+  - 500 AI actions per Manila calendar month, shared across assistant chat, voice entry, receipt scanning, and PDF statement entry.
+  - Bank statement importer (1 committed import per month).
   - Starter accounts (Cash, GCash, Maya, Bank), unlimited custom accounts, and 4 custom budget categories.
-  - Offline PWA and the native Android app (coming to Google Play).
-- **Zoption Budget (₱149 / month or ₱1,490 / year — 2 months free)**:
+  - Web app today, plus native Android app (coming to Google Play).
+- **Zoption Budget (₱149 / month or ₱1,490 / year, 2 months free)**:
   - 1,000 AI actions per month in the same shared pool, plus live streaming voice chat (paid plans only: a live platform-funded socket has no per-request boundary to meter).
   - 5 committed statement imports per month.
   - 10 custom categories.
   - Automatic high-yield savings interest compounding calculation (daily, monthly, yearly).
   - Full cash flow analytics (week, month, and 6-month views).
-  - Bill calendar for recurring bill tracking and cash-flow impact.
+  - Interactive monthly bill calendar for recurring bill tracking and cash-flow impact.
   - Filtered CSV transaction data export.
   - Streak pet growth to Legend.
   - Direct support within 48 hours.
-- **Zoption Pro (₱249 / month or ₱2,490 / year — 2 months free)**:
+- **Zoption Pro (₱249 / month or ₱2,490 / year, 2 months free)**:
   - Everything in Budget.
   - 2,000 AI actions per month in the same shared pool.
   - 10 committed statement imports per month.
   - Unlimited custom categories.
+  - Subscription usage tracking ("Used it" cost-per-use tracking, weekly streaks, and 30-day unused bill flags).
   - Priority support within 24 hours.
 - **Family Budget (₱499 / month or ₱4,990 / year)** and **Family Pro (₱799 / month or ₱7,990 / year)**:
   - One shared family space for up to 6 people, the owner included.
@@ -42,11 +45,11 @@
 - New accounts get a 7-day Zoption Pro trial with no card. Upgrades take effect right away; downgrades take effect at the end of the paid period.
 
 ## Supported File Import Formats
-- Bank statement CSVs with built-in column detection for: BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Any other bank works through the generic preset, which matches the common Date, Description, Amount, Debit, and Credit headings.
+- Bank statement CSVs with built-in column detection for: BDO, BPI, MariBank, Bank of America, and JPMorgan Chase. Any other bank or e-wallet works through the generic preset, which matches common Date, Description, Amount, Debit, and Credit headings.
 - Microsoft Excel Workbooks (`.xlsx`, `.xls`)
 - PDF Bank Statements with automatic transaction row extraction
 
-Zoption has no import preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya. Do not state or imply that it does — those exports still work, but only through the generic preset, without bank-specific column detection.
+Zoption has no import preset for Metrobank, UnionBank, Landbank, Security Bank, RCBC, GCash, or Maya. Do not state or imply that it does. Those exports still work, but only through the generic preset, without bank-specific column detection.
 
 Bank of America and JPMorgan Chase exports are commonly denominated in USD. File imports are saved in the workspace currency without conversion, so the export currency must match it.
 
