@@ -13,7 +13,7 @@ import { FullPageLoadingStatus } from "../components/layout/FullPageLoadingStatu
  * loading surface is actually seen, and it is the only artificial delay in the
  * app. A failed exchange skips it entirely.
  */
-export const SIGN_IN_HANDOFF_MS = 2000;
+export const SIGN_IN_HANDOFF_MS = 400;
 
 function safeNext(value: string | null): string {
   return value?.startsWith("/") && !value.startsWith("//") ? value : "/app";

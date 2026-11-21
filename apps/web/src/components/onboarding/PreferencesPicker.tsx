@@ -1,21 +1,24 @@
 import {
-  budgetingStyleLabels,
+  budgetingStyleLabel,
   budgetingStyles,
-  incomeCadenceLabels,
+  incomeCadenceLabel,
   incomeCadences,
   SPENDING_FOCUS_MAX,
-  spendingFocusLabels,
+  spendingFocusLabel,
   spendingFocuses,
+  type Currency,
   type MoneyPreferences,
   type SpendingFocus,
 } from "@zoption/shared";
 import { useId, useState } from "react";
 
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import "./GoalPicker.css";
 
 type PreferencesPickerProps = {
   /** The saved answers. */
   preferences: MoneyPreferences;
+  currency?: Currency;
   disabled: boolean;
   confirmLabel: string;
   onSave: (preferences: MoneyPreferences) => void;
@@ -27,11 +30,13 @@ type PreferencesPickerProps = {
  */
 export function PreferencesPicker({
   preferences,
+  currency,
   disabled,
   confirmLabel,
   onSave,
 }: PreferencesPickerProps) {
   const name = useId();
+  const activeCurrency = currency ?? workspaceCurrency();
   // Local only: answers the user has not confirmed yet.
   const [draft, setDraft] = useState<MoneyPreferences>();
   const current = draft ?? preferences;
@@ -58,7 +63,7 @@ export function PreferencesPicker({
                 checked={current.incomeCadence === option}
                 onChange={() => setDraft({ ...current, incomeCadence: option })}
               />
-              <span>{incomeCadenceLabels[option]}</span>
+              <span>{incomeCadenceLabel(option, activeCurrency)}</span>
             </label>
           ))}
         </div>
@@ -76,7 +81,7 @@ export function PreferencesPicker({
                 checked={current.budgetingStyle === option}
                 onChange={() => setDraft({ ...current, budgetingStyle: option })}
               />
-              <span>{budgetingStyleLabels[option]}</span>
+              <span>{budgetingStyleLabel(option, activeCurrency)}</span>
             </label>
           ))}
         </div>
@@ -98,7 +103,7 @@ export function PreferencesPicker({
                   disabled={!checked && focusFull}
                   onChange={() => toggleFocus(option)}
                 />
-                <span>{spendingFocusLabels[option]}</span>
+                <span>{spendingFocusLabel(option, activeCurrency)}</span>
               </label>
             );
           })}

@@ -16,7 +16,7 @@ export function createOnboardingRoutes(repository: OnboardingRepository) {
     const input = parseInput(
       onboardingCurrencySchema,
       await readJson(context),
-      "Choose PHP or USD.",
+      "Choose a supported currency.",
     );
     return context.json(
       await repository.saveCurrency(context.env, context.get("tenant").tenantId, input),

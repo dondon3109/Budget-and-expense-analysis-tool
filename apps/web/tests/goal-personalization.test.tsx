@@ -42,6 +42,7 @@ const workspace: AuthenticatedWorkspace = { key: "user:test-user", userId: "test
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  localStorage.clear();
 });
 
 describe("assistant starter prompts", () => {
@@ -177,6 +178,18 @@ describe("goal CTA and checklist", () => {
     expect(items).toHaveLength(3);
     expect(items.map((item) => item.dataset.done)).toEqual(["false", "true", "false"]);
     fireEvent.click(screen.getByRole("button", { name: "Dismiss checklist" }));
+    expect(screen.queryByRole("list")).toBeNull();
+
+    // Dismissal persists across reloads for the same workspace.
+    cleanup();
+    renderWithProviders(
+      <GoalChecklist
+        workspace={workspace}
+        goal="save_for_goal"
+        signals={{ has_transaction: true, has_budget: false }}
+        onAction={() => undefined}
+      />,
+    );
     expect(screen.queryByRole("list")).toBeNull();
   });
 

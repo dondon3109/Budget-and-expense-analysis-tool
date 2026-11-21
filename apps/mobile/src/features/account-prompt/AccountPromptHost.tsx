@@ -12,7 +12,7 @@ export function AccountPromptHost() {
 
   const benefits = accountBenefits.map((benefit) => `• ${benefit}`).join("\n");
   const message = feature
-    ? `${accountFeatures[feature]} needs a Zoption account. You're using Zoption on this device only.\n\nWith an account you get:\n${benefits}`
+    ? `${accountFeatures[feature]} needs a Zoption account. You're using Zoption on this device only.\n\nWith an account you get:\n${benefits}\n\nNote: entries saved in guest mode stay on this device and do not transfer into an account.`
     : "";
 
   return (

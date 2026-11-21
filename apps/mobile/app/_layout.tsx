@@ -21,6 +21,7 @@ import { CrashScreen } from "@/features/navigation/CrashScreen";
 import { useMicCaptureConsentStore } from "@/features/voice/mic-capture-consent";
 import { useForecastOnTrackStore } from "@/stores/forecast-on-track-store";
 import { useHideAmountsStore } from "@/stores/hide-amounts-store";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useReduceMotionStore } from "@/stores/reduce-motion-store";
 import { useSoundEffectsStore } from "@/stores/sound-effects-store";
 import { useAssistantVoiceOptionsStore } from "@/stores/assistant-voice-store";
@@ -66,9 +67,16 @@ function SplashRelease() {
   return null;
 }
 
-/** Restores the daily reminder for a signed-in session and clears it otherwise. */
+/**
+ * Restores the daily reminder for a signed-in or guest session and clears it otherwise. Defers the
+ * OS permission prompt until first-run setup finishes so it never interrupts sign-in or onboarding.
+ */
 function DailyReminderSession() {
-  useDailyReminderSession(useSessionSnapshot().status);
+  const status = useSessionSnapshot().status;
+  const onboardingOpen = useOnboardingStore((store) => store.open);
+  const onboardingComplete = useOnboardingStore((store) => store.state?.step === "complete");
+  const allowPrompt = status === "signed-in" && onboardingComplete && !onboardingOpen;
+  useDailyReminderSession(status, allowPrompt);
   return null;
 }
 

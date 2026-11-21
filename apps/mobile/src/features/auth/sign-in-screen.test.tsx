@@ -42,12 +42,19 @@ describe("sign-in screen social options", () => {
     mockStatus = "signed-out";
   });
 
-  it("lets a signed-out user continue without an account", async () => {
+  it("lets a signed-out user continue without an account and warns about guest data transfer", async () => {
     await render(<SignInScreen />);
+    expect(screen.getByText(/will not transfer if you sign in later/)).toBeTruthy();
     expect(screen.getByText(/An account adds backup and sync/)).toBeTruthy();
     await fireEvent.press(screen.getByRole("button", { name: "Continue without an account" }));
     expect(mockContinueAsGuest).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/(app)/(tabs)"));
+  });
+
+  it("opens the account creation screen from Create an account", async () => {
+    await render(<SignInScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Create an account" }));
+    expect(router.push).toHaveBeenCalledWith("/(public)/sign-up");
   });
 
   it("offers Not now instead of guest mode to an existing guest", async () => {

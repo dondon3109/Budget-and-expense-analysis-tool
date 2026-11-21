@@ -7,7 +7,7 @@ import { AuthLayout } from "../components/auth/AuthLayout";
 import { PasswordField } from "../components/auth/PasswordField";
 import { SocialAuthButtons } from "../components/auth/SocialAuthButtons";
 function safeRedirect(value: string | null): string {
-  return value?.startsWith("/") && !value.startsWith("//") ? value : "/app?proCheckout=open";
+  return value?.startsWith("/") && !value.startsWith("//") ? value : "/app";
 }
 
 export function LoginPage() {

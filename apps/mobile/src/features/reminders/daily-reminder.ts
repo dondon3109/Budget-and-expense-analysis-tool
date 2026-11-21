@@ -78,35 +78,34 @@ export async function applyDailyReminder(enabled: boolean): Promise<DailyReminde
  * straight to signed-out without an identity transition, so
  * clearUserScopedRuntimeState never runs for it.
  */
-export function useDailyReminderSession(status: SessionStatus): void {
+export function useDailyReminderSession(status: SessionStatus, allowPrompt = true): void {
   useEffect(() => {
     // Best-effort like background sync: a notification failure must never
     // affect startup or sign-in.
     if (status === "signed-in" || status === "guest")
-      void startDailyReminder().catch(() => undefined);
+      void startDailyReminder({ allowPrompt }).catch(() => undefined);
     if (status === "signed-out") void clearDailyReminder().catch(() => undefined);
-  }, [status]);
+  }, [allowPrompt, status]);
 }
 
 /**
  * Shows the reminders while the app is open, then loads the saved choice and
- * makes the OS schedule match it. Runs when a session is signed in. Reminders
- * are on by default, so this is where a new install asks for notification
- * permission; a refusal turns them off, so the prompt is not repeated. This
- * also repairs drift, such as an iOS reinstall that keeps the saved choice in
- * the Keychain but drops the scheduled notifications.
+ * makes the OS schedule match it. When `allowPrompt` is false (for example while
+ * first-run setup is open), already-granted permissions still reschedule, but the
+ * OS permission prompt waits until onboarding finishes.
  */
-export function startDailyReminder(): Promise<void> {
+export function startDailyReminder(options?: { allowPrompt?: boolean }): Promise<void> {
+  const allowPrompt = options?.allowPrompt ?? true;
   useDailyReminderRestoredStore.setState({ restored: false });
   // `finally`, not a success path: a failed restore must not leave the card
   // waiting forever. It then shows whatever choice was loaded, if any.
-  restoring = restoreDailyReminder().finally(() => {
+  restoring = restoreDailyReminder(allowPrompt).finally(() => {
     useDailyReminderRestoredStore.setState({ restored: true });
   });
   return restoring;
 }
 
-async function restoreDailyReminder(): Promise<void> {
+async function restoreDailyReminder(allowPrompt: boolean): Promise<void> {
   Notifications.setNotificationHandler({
     handleNotification: (notification) => {
       const identifier = notification.request.identifier;
@@ -132,7 +131,10 @@ async function restoreDailyReminder(): Promise<void> {
     return;
   }
   await ensureChannel();
-  if (!(await hasNotificationPermission())) {
+  if (!allowPrompt) {
+    const current = await Notifications.getPermissionsAsync();
+    if (!current.granted) return;
+  } else if (!(await hasNotificationPermission())) {
     await turnOff();
     return;
   }

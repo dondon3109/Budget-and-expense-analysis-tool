@@ -1,15 +1,17 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
 
+import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
 import { getOnboardingState } from "@/api/onboarding";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
+import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
 /**
- * Opens first-run setup once per launch while the Worker says it is unfinished. It never blocks:
- * the screen can be dismissed, an offline launch (state unknown) skips it, and a guest or the demo
- * workspace has no Worker state to read.
+ * Opens first-run setup once per launch while the Worker says it is unfinished. Fetches the goal
+ * profile and money preferences alongside onboarding state before pushing the modal so setup never
+ * freezes `askGoals` / `askPreferences` to false on a startup race.
  */
 export function useOnboardingPrompt(): void {
   const { subject, status, getAccessToken } = useSessionSnapshot();
@@ -22,9 +24,25 @@ export function useOnboardingPrompt(): void {
     void (async () => {
       try {
         const accessToken = await getAccessToken(false);
-        const state = await getOnboardingState({ accessToken, signal: controller.signal });
+        const api = { accessToken, signal: controller.signal };
+        const state = await getOnboardingState(api);
         useOnboardingStore.getState().setState(state);
         if (state.step === "complete") return;
+
+        // Ensure goals and money preferences are settled in the store before opening setup.
+        const goalStore = useGoalProfileStore.getState();
+        const [profileResult, preferencesResult] = await Promise.allSettled([
+          goalStore.profile ? Promise.resolve(goalStore.profile) : getGoalsProfile(api),
+          goalStore.preferences ? Promise.resolve(goalStore.preferences) : getMoneyPreferences(api),
+        ]);
+        if (controller.signal.aborted) return;
+        if (profileResult.status === "fulfilled") {
+          useGoalProfileStore.getState().setProfile(profileResult.value);
+        }
+        if (preferencesResult.status === "fulfilled") {
+          useGoalProfileStore.getState().setPreferences(preferencesResult.value);
+        }
+
         useOnboardingStore.getState().markPrompted();
         router.push("/(app)/onboarding");
       } catch {

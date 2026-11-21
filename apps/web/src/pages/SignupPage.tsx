@@ -11,7 +11,6 @@ import { PasswordField } from "../components/auth/PasswordField";
 import { PasswordGuidance } from "../components/auth/PasswordGuidance";
 import { SocialAuthButtons } from "../components/auth/SocialAuthButtons";
 import { signupSourceFrom } from "../lib/signupSource";
-import { markSignupThankYouPending } from "../lib/thankYou";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -68,7 +67,6 @@ export function SignupPage() {
     setBusy(true);
     try {
       const result = await signUp(normalizedEmail, password);
-      markSignupThankYouPending();
       if (result.confirmationRequired) {
         setConfirmationSent(true);
         captureFunnelEvent("signup_submitted", {
@@ -82,7 +80,7 @@ export function SignupPage() {
           outcome: "signed_in",
           source,
         });
-        void navigate("/app?proCheckout=open", { replace: true });
+        void navigate("/app", { replace: true });
       }
     } catch (submitError) {
       captureFunnelEvent("signup_submitted", { method: "password", outcome: "failed", source });
@@ -106,7 +104,7 @@ export function SignupPage() {
       source,
     });
     try {
-      await signInWithSocial(provider, "/app?proCheckout=open");
+      await signInWithSocial(provider, "/app");
     } catch {
       captureFunnelEvent("signup_submitted", { method: provider, outcome: "failed", source });
       setError(

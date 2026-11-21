@@ -82,9 +82,7 @@ describe("SignupPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
-    await waitFor(() =>
-      expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app?proCheckout=open"),
-    );
+    await waitFor(() => expect(authState.signInWithSocial).toHaveBeenCalledWith("google", "/app"));
     expect(screen.getByRole("button", { name: "Connecting to Google…" })).toBeDisabled();
     expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
       method: "google",
@@ -188,9 +186,7 @@ describe("SignupPage", () => {
     fillValidCredentials();
     fireEvent.click(screen.getByRole("button", { name: "Create account" }));
 
-    await waitFor(() =>
-      expect(screen.getByTestId("current-path")).toHaveTextContent("/app?proCheckout=open"),
-    );
+    await waitFor(() => expect(screen.getByTestId("current-path")).toHaveTextContent("/app"));
     expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("signup_submitted", {
       method: "password",
       outcome: "signed_in",

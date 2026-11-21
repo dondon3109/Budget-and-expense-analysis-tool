@@ -42,6 +42,33 @@ type RouteCommitReporterProps = {
   onCommit: (locationKey: string) => void;
 };
 
+function OnboardingLoadError({
+  locationKey,
+  onCommit,
+  onRetry,
+}: {
+  locationKey: string;
+  onCommit: (locationKey: string) => void;
+  onRetry: () => void;
+}) {
+  const reportSettled = usePrivateAppStartupReadiness();
+  useEffect(() => {
+    onCommit(locationKey);
+    reportSettled(true);
+    return () => reportSettled(false);
+  }, [locationKey, onCommit, reportSettled]);
+
+  return (
+    <main className="full-page-status error-state" role="alert">
+      <strong>We could not load your workspace</strong>
+      <span>Check your connection and try again.</span>
+      <button className="button primary" type="button" onClick={onRetry}>
+        Try again
+      </button>
+    </main>
+  );
+}
+
 /**
  * Renders the private page in the active workspace's currency. Amounts without their own currency
  * read it when they format, so the page is keyed by it (and by the workspace, so switching starts
@@ -49,16 +76,34 @@ type RouteCommitReporterProps = {
  * than rendering in PHP and remounting (and dropping a started draft) when USD arrives. A
  * workspace that has not finished first-run onboarding is sent there instead of the private page.
  */
-function WorkspaceCurrencyBoundary({ children }: { children: ReactNode }) {
+function WorkspaceCurrencyBoundary({
+  locationKey,
+  onCommit,
+  children,
+}: {
+  locationKey: string;
+  onCommit: (locationKey: string) => void;
+  children: ReactNode;
+}) {
   const { personal, workspace } = useActiveWorkspace();
   const settings = useWorkspaceSettings(workspace);
   // First-run onboarding belongs to the person's own workspace, never a family.
   const onboarding = useOnboarding(personal);
   const hidden = useAmountsHidden();
   if (settings.isPending || onboarding.isPending) return null;
+  // Fail closed on load failure with an inline retry instead of sending returning users to
+  // first-run onboarding.
+  if (onboarding.isError) {
+    return (
+      <OnboardingLoadError
+        locationKey={locationKey}
+        onCommit={onCommit}
+        onRetry={() => void onboarding.refetch()}
+      />
+    );
+  }
   // The Worker refuses ledger data until onboarding finishes; this sends the user to finish it.
-  // A failed load goes there too: the onboarding page can retry, and sends a finished user back.
-  if (onboarding.isError || (onboarding.data && onboarding.data.step !== "complete")) {
+  if (onboarding.data && onboarding.data.step !== "complete") {
     return <Navigate to="/onboarding" replace />;
   }
   const currency = settings.data?.currency ?? "PHP";
@@ -162,7 +207,7 @@ export function PrivateAppStartupGate() {
             }
           >
             <ActiveWorkspaceProvider user={user}>
-              <WorkspaceCurrencyBoundary>
+              <WorkspaceCurrencyBoundary locationKey={location.key} onCommit={handleRouteCommit}>
                 <Outlet />
                 <RouteCommitReporter locationKey={location.key} onCommit={handleRouteCommit} />
               </WorkspaceCurrencyBoundary>

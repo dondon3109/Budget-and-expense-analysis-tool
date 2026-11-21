@@ -3,6 +3,8 @@
 
 import { z } from "zod";
 
+import type { Currency } from "./currencies";
+
 export const primaryGoals = [
   "track_spending",
   "build_budget",
@@ -24,6 +26,12 @@ export const primaryGoalLabels: Record<PrimaryGoal, string> = {
   just_exploring: "Just looking around",
   other: "Other",
 };
+
+/** Display label for a goal, keeping PH phrasing for PHP workspaces only. */
+export function primaryGoalLabel(goal: PrimaryGoal, currency: Currency = "PHP"): string {
+  if (goal === "reduce_debt" && currency !== "PHP") return "Pay off debt";
+  return primaryGoalLabels[goal];
+}
 
 export const goalEventNames = [
   "onboarding_goal_shown",

@@ -1,6 +1,7 @@
-import { primaryGoalLabels } from "@zoption/shared";
+import { primaryGoalLabel } from "@zoption/shared";
 
 import type { AuthenticatedWorkspace } from "../../lib/workspace";
+import { workspaceCurrency } from "../../lib/workspaceCurrency";
 import {
   useGoalProfile,
   useMoneyPreferences,
@@ -44,7 +45,7 @@ export function GoalSettings({ workspace }: { workspace: AuthenticatedWorkspace 
               ? `Current goals: ${profile.goals
                   .map(
                     (goal) =>
-                      primaryGoalLabels[goal] +
+                      primaryGoalLabel(goal, workspaceCurrency()) +
                       (goal === "other" && profile.otherText ? ` (${profile.otherText})` : ""),
                   )
                   .join(", ")}`

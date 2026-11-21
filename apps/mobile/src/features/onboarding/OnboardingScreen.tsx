@@ -4,6 +4,7 @@ import {
   hasMoneyPreferences,
   onboardingCashSchema,
   parseAmountToMinor,
+  suggestCurrencyForLocale,
   type Currency,
 } from "@zoption/shared";
 import { router } from "expo-router";
@@ -18,6 +19,7 @@ import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { usePetStore } from "@/stores/pet-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
+import { telemetry } from "@/telemetry/telemetry";
 import { Button, FormField, SelectionField } from "@/ui/components";
 import { formatMoneyMinor } from "@/ui/components/MoneyValue";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -29,15 +31,14 @@ import {
   EggStep,
   FinalStep,
   GoalsStep,
-  PetStep,
-  SavedStep,
+  PersonalizeStep,
   PreferencesStep,
-  ThemeStep,
+  SavedStep,
 } from "./SetupSteps";
 
-/** The message for the amount field, or the parsed minor units when it is valid. */
+/** Blank input means zero cash; malformed or out-of-range input returns an inline message. */
 function checkAmount(value: string): { error: string } | { amountMinor: number } {
-  if (!value.trim()) return { error: "Enter the cash you have on hand, or 0." };
+  if (!value.trim()) return { amountMinor: 0 };
   let amountMinor: number;
   try {
     amountMinor = parseAmountToMinor(value);
@@ -49,17 +50,21 @@ function checkAmount(value: string): { error: string } | { amountMinor: number }
   return { amountMinor };
 }
 
-type SetupStep = "currency" | "cash" | "theme" | "pet" | "egg" | "goals" | "preferences" | "final";
+function deviceLocale(): string | undefined {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().locale;
+  } catch {
+    return undefined;
+  }
+}
+
+type SetupStep = "currency" | "cash" | "goals" | "preferences" | "personalize" | "egg";
 
 /**
- * First-run setup as one modal over Home: base currency, cash on hand, theme, streak pet (and its
- * egg after a yes), the goals when none were chosen yet, the money habits when none are saved,
- * then a closing thank-you, with the step
- * track under the card.
- * Currency and cash need a connection and answer on the Worker, which owns them; Not now just
- * leaves, and setup is offered again on the next launch until the cash step completes. Every done
- * number on the track goes back to its step; once the cash is saved the Worker locks both, so
- * those two show what was saved and where to change it.
+ * First-run setup as one modal over Home (aligned with web): base currency, cash on hand, goals
+ * (when unset), money habits (when unset), then Make it yours (theme + streak pet, plus egg picker
+ * after a yes). Currency and cash need a connection and answer on the Worker; Not now leaves, and
+ * Home offers a quick resume card until cash completes.
  */
 export function OnboardingScreen() {
   const theme = useZoptionTheme();
@@ -72,49 +77,56 @@ export function OnboardingScreen() {
   const [cash, setCash] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The Worker's finished state, held back until Final closes so Home's goal and pet prompts
+  // The Worker's finished state, held back until setup closes so Home's goal and pet prompts
   // cannot push a page over setup while it is still open.
   const [finished, setFinished] = useState<typeof state>(null);
-  const [local, setLocal] = useState<SetupStep>("theme");
+  const [local, setLocal] = useState<SetupStep>("personalize");
   // The Worker takes a new currency until the cash is saved, so step 2 can return to step 1.
   const [editingCurrency, setEditingCurrency] = useState(false);
   const [savedCashMinor, setSavedCashMinor] = useState(0);
   const [wantsPet, setWantsPet] = useState(true);
-  // Fixed when the pet step is left, so choosing the egg does not renumber the track.
+  // Fixed when the personalize step is left, so choosing the egg does not renumber the track.
   const [withEgg, setWithEgg] = useState(false);
   const pet = usePetStore((store) => store.pet);
-  // Fixed at open, so saving the goals does not renumber the track under the user.
-  const [askGoals] = useState(() => {
-    const profile = useGoalProfileStore.getState().profile;
-    return Boolean(profile && profile.goals.length === 0 && !profile.skipped);
-  });
-  // The same for the money habits: only once the Worker answered, and only while none are saved.
-  const [askPreferences] = useState(() => {
-    const preferences = useGoalProfileStore.getState().preferences;
-    return preferences !== null && !hasMoneyPreferences(preferences);
-  });
+  const profile = useGoalProfileStore((store) => store.profile);
+  const preferences = useGoalProfileStore((store) => store.preferences);
+  // Computed before cash finishes (reactively if profile/preferences arrive late) and frozen once
+  // entering post-cash steps so saving goals/preferences never renumbers the track under the user.
+  const [postCashFlags, setPostCashFlags] = useState<{ goals: boolean; preferences: boolean }>();
+  const askGoals =
+    postCashFlags?.goals ?? Boolean(profile && profile.goals.length === 0 && !profile.skipped);
+  const askPreferences =
+    postCashFlags?.preferences ?? (preferences !== null && !hasMoneyPreferences(preferences));
 
-  // Other first-launch prompts (usage analytics) wait while setup is on screen.
+  // Other first-launch prompts (usage analytics, daily reminder permission) wait while setup is open.
   useEffect(() => {
     useOnboardingStore.getState().setOpen(true);
+    void telemetry.capture("onboarding_started");
     return () => useOnboardingStore.getState().setOpen(false);
   }, []);
 
-  const steps: SetupStep[] = ["currency", "cash", "theme", "pet"];
-  const beforePet = local === "theme" || local === "pet";
-  if (beforePet ? wantsPet && canPickEgg(pet) : withEgg) steps.push("egg");
+  const steps: SetupStep[] = ["currency", "cash"];
   if (askGoals) steps.push("goals");
   if (askPreferences) steps.push("preferences");
-  steps.push("final");
+  steps.push("personalize");
+  const beforeEgg = local !== "egg";
+  if (beforeEgg ? wantsPet && canPickEgg(pet) : withEgg) steps.push("egg");
+
+  const completeAndClose = () => {
+    void telemetry.capture("onboarding_completed");
+    if (finished) setState(finished);
+    router.back();
+  };
+
   // The egg step stays behind once an egg is chosen, since the Worker takes one egg.
   const backTo = (index: number) => {
     const target = steps[index];
-    if (!target || target === "final") return;
+    if (!target) return;
     if (!finished) {
       if (target === "currency") setEditingCurrency(true);
       return;
     }
-    setLocal(target === "egg" && !canPickEgg(pet) ? "pet" : target);
+    setLocal(target === "egg" && !canPickEgg(pet) ? "personalize" : target);
   };
   const progressAt = (step: SetupStep) => ({
     current: steps.indexOf(step),
@@ -122,7 +134,14 @@ export function OnboardingScreen() {
     backFrom: 0,
     onBack: backTo,
   });
-  const next = () => setLocal((current) => steps[steps.indexOf(current) + 1] ?? "final");
+  const advanceFrom = (step: SetupStep) => {
+    const nextStep = steps[steps.indexOf(step) + 1];
+    if (!nextStep) {
+      completeAndClose();
+      return;
+    }
+    setLocal(nextStep);
+  };
 
   if (finished) {
     const progress = progressAt(local);
@@ -133,7 +152,7 @@ export function OnboardingScreen() {
           title="Your currency"
           value={currencyMetadata[finished.currency].label}
           note="Saved. You can change it anytime in More, under Currency."
-          onNext={next}
+          onNext={() => advanceFrom("currency")}
         />
       );
     }
@@ -144,36 +163,44 @@ export function OnboardingScreen() {
           title="Your cash on hand"
           value={formatMoneyMinor(savedCashMinor, finished.currency)}
           note="Saved as your Cash balance. To change it, open Cash from Home and adjust the balance."
-          onNext={next}
+          onNext={() => advanceFrom("cash")}
         />
       );
     }
-    if (local === "theme") return <ThemeStep progress={progress} onNext={next} />;
-    if (local === "pet") {
+    if (local === "goals") {
       return (
-        <PetStep
+        <GoalsStep
+          progress={progress}
+          currency={finished.currency}
+          onNext={() => advanceFrom("goals")}
+        />
+      );
+    }
+    if (local === "preferences") {
+      return (
+        <PreferencesStep
+          progress={progress}
+          currency={finished.currency}
+          onNext={() => advanceFrom("preferences")}
+        />
+      );
+    }
+    if (local === "personalize") {
+      return (
+        <PersonalizeStep
           progress={progress}
           wantsPet={wantsPet}
           onWantsPet={setWantsPet}
           onNext={() => {
-            setWithEgg(steps.includes("egg"));
-            next();
+            const eggNext = wantsPet && canPickEgg(pet);
+            setWithEgg(eggNext);
+            if (eggNext) setLocal("egg");
+            else completeAndClose();
           }}
         />
       );
     }
-    if (local === "egg") return <EggStep progress={progress} onNext={next} />;
-    if (local === "goals") return <GoalsStep progress={progress} onNext={next} />;
-    if (local === "preferences") return <PreferencesStep progress={progress} onNext={next} />;
-    return (
-      <FinalStep
-        progress={progress}
-        onDone={() => {
-          setState(finished);
-          router.back();
-        }}
-      />
-    );
+    return <EggStep progress={progress} onNext={completeAndClose} />;
   }
 
   if (!state || state.step === "complete") return <FinalStep onDone={() => router.back()} />;
@@ -190,8 +217,15 @@ export function OnboardingScreen() {
     }
   };
 
+  const dismiss = () => {
+    void telemetry.capture("onboarding_dismissed", {
+      step: state.step === "currency" || editingCurrency ? "currency" : "cash",
+    });
+    router.back();
+  };
+
   const notNow = (
-    <Button variant="secondary" disabled={busy} onPress={() => router.back()}>
+    <Button variant="secondary" disabled={busy} onPress={dismiss}>
       Not now
     </Button>
   );
@@ -202,13 +236,18 @@ export function OnboardingScreen() {
   ) : null;
 
   if (state.step === "currency" || editingCurrency) {
-    const currency = picked ?? state.currency;
+    const initialCurrency =
+      !editingCurrency && state.step === "currency" && state.currency === "PHP"
+        ? suggestCurrencyForLocale(deviceLocale())
+        : state.currency;
+    const currency = picked ?? initialCurrency;
     const saveCurrency = () =>
       run(async (accessToken) => {
         const next = await saveOnboardingCurrency({ accessToken }, { currency });
         setCurrency(next.currency);
         setState(next);
         setEditingCurrency(false);
+        void telemetry.capture("onboarding_step_completed", { step: "currency" });
       });
     return (
       <SetupDialog
@@ -245,7 +284,11 @@ export function OnboardingScreen() {
         { accessToken },
         { amountMinor: checked.amountMinor, date: localIsoDate(new Date()) },
       );
+      void telemetry.capture("onboarding_step_completed", { step: "cash" });
       setSavedCashMinor(checked.amountMinor);
+      const flags = { goals: askGoals, preferences: askPreferences };
+      setPostCashFlags(flags);
+      setLocal(flags.goals ? "goals" : flags.preferences ? "preferences" : "personalize");
       setFinished({ step: result.step, currency: result.currency });
       // The opening entry is booked on the Worker, so pull it to this device.
       sync.retry();
@@ -255,7 +298,7 @@ export function OnboardingScreen() {
     <SetupDialog
       progress={progressAt("cash")}
       title="How much cash do you have?"
-      description={`Physical cash on hand in ${currencyMetadata[state.currency].label}. Enter 0 if you have none.`}
+      description={`Physical cash on hand in ${currencyMetadata[state.currency].label}. Leave blank or enter 0 if you have none.`}
     >
       <FormField
         label="Cash on hand"

@@ -1,18 +1,20 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
-  budgetingStyleLabels,
+  budgetingStyleLabel,
   budgetingStyles,
-  incomeCadenceLabels,
+  incomeCadenceLabel,
   incomeCadences,
   SPENDING_FOCUS_MAX,
-  spendingFocusLabels,
+  spendingFocusLabel,
   spendingFocuses,
+  type Currency,
   type MoneyPreferences,
 } from "@zoption/shared";
 import { useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
+import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
@@ -20,6 +22,7 @@ import { radii, spacing, touchTarget, typography } from "@/ui/tokens";
 interface PreferenceChoicesProps {
   /** The saved answers. */
   preferences: MoneyPreferences;
+  currency?: Currency;
   disabled: boolean;
   confirmLabel: string;
   onSave: (preferences: MoneyPreferences) => void;
@@ -31,10 +34,13 @@ interface PreferenceChoicesProps {
  */
 export function PreferenceChoices({
   preferences,
+  currency,
   disabled,
   confirmLabel,
   onSave,
 }: PreferenceChoicesProps) {
+  const workspaceCurrency = useWorkspaceCurrency();
+  const activeCurrency = currency ?? workspaceCurrency;
   // Local only: answers the user has not confirmed yet.
   const [draft, setDraft] = useState<MoneyPreferences>();
   const current = draft ?? preferences;
@@ -47,7 +53,7 @@ export function PreferenceChoices({
           <Choice
             key={option}
             kind="radio"
-            label={incomeCadenceLabels[option]}
+            label={incomeCadenceLabel(option, activeCurrency)}
             active={current.incomeCadence === option}
             disabled={disabled}
             onPress={() => setDraft({ ...current, incomeCadence: option })}
@@ -59,7 +65,7 @@ export function PreferenceChoices({
           <Choice
             key={option}
             kind="radio"
-            label={budgetingStyleLabels[option]}
+            label={budgetingStyleLabel(option, activeCurrency)}
             active={current.budgetingStyle === option}
             disabled={disabled}
             onPress={() => setDraft({ ...current, budgetingStyle: option })}
@@ -73,7 +79,7 @@ export function PreferenceChoices({
             <Choice
               key={option}
               kind="checkbox"
-              label={spendingFocusLabels[option]}
+              label={spendingFocusLabel(option, activeCurrency)}
               active={active}
               disabled={disabled || (!active && focusFull)}
               onPress={() =>

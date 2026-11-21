@@ -1,8 +1,9 @@
+import { OPENING_BALANCE_CATEGORY_SYSTEM_KEY, type CashflowTrend } from "@zoption/shared";
 import { router } from "expo-router";
 
 import { openBills } from "@/features/budgets/open-bills";
 import { useCallback, useMemo, useState } from "react";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
@@ -19,11 +20,20 @@ import { usePetIntroPrompt } from "@/features/pet/use-pet-intro-prompt";
 import { useGoalPrompt } from "@/features/primary-goal/goal-personalization";
 import { PreferenceSuggestionsCard } from "@/features/primary-goal/PreferenceSuggestionsCard";
 import { RemittanceCalculatorCard } from "@/features/remittance/RemittanceCalculatorCard";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSyncState } from "@/sync/sync-state";
-import { ErrorState, OfflineBanner, Skeleton, SyncStatus, ViewSwitch } from "@/ui/components";
+import {
+  Button,
+  Card,
+  ErrorState,
+  OfflineBanner,
+  Skeleton,
+  SyncStatus,
+  ViewSwitch,
+} from "@/ui/components";
 import { Screen } from "@/ui/screen";
-import { spacing } from "@/ui/tokens";
-import type { CashflowTrend } from "@zoption/shared";
+import { useZoptionTheme } from "@/ui/theme-provider";
+import { spacing, typography } from "@/ui/tokens";
 
 import { BalanceCard } from "./BalanceCard";
 import { BudgetCard } from "./BudgetCard";
@@ -64,6 +74,8 @@ export function HomeScreen() {
   useOnboardingPrompt();
   useGoalPrompt();
   usePetIntroPrompt();
+  const theme = useZoptionTheme();
+  const onboardingState = useOnboardingStore((store) => store.state);
   const sync = useSyncState();
   // A guest never syncs, so the pill says where the data lives instead of "Waiting to sync".
   const guest = useSessionSnapshot().status === "guest";
@@ -87,12 +99,18 @@ export function HomeScreen() {
         : null,
     [dashboard.data, homeView, today, cashflowView, workspaceCurrency],
   );
-  const hasTransactions = Boolean(
-    overview &&
-    (overview.summary.monthlyTrend.length > 0 ||
-      (dashboard.data?.recentTransactions.length ?? 0) > 0 ||
-      (dashboard.data?.accounts.length ?? 0) > 0),
+  // Exclude starter accounts and the system opening-balance entry so new users actually see the
+  // empty state and their goal CTA before logging their first real transaction.
+  const hasRealRecentTransaction = Boolean(
+    dashboard.data?.recentTransactions.some(
+      (item) => item.categorySystemKey !== OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+    ),
   );
+  const hasTransactions = Boolean(
+    overview && (overview.summary.monthlyTrend.length > 0 || hasRealRecentTransaction),
+  );
+  const canResumeSetup =
+    !guest && !inFamily && onboardingState !== null && onboardingState.step !== "complete";
   const isPaid = planState.plan !== null && planState.plan !== "free";
   const showViewSwitch = menuView === "home" && !dashboard.error && hasTransactions;
 
@@ -157,11 +175,28 @@ export function HomeScreen() {
               <SharedBalancesCard />
             </>
           ) : null}
+          {canResumeSetup ? (
+            <Card accessibilityLabel="Finish workspace setup">
+              <View style={{ gap: spacing.xs }}>
+                <Text style={[typography.headline, { color: theme.colors.text }]}>
+                  Finish setting up your workspace
+                </Text>
+                <Text style={[typography.caption, { color: theme.colors.textMuted }]}>
+                  Pick your base currency and starting cash so your totals match reality.
+                </Text>
+                <Button size="compact" onPress={() => router.push("/(app)/onboarding")}>
+                  Resume setup
+                </Button>
+              </View>
+            </Card>
+          ) : null}
           {inFamily ? null : (
             <>
-              <QuickStartGuideCard
-                firstAccountId={overview.summary.accountBalances?.items[0]?.id}
-              />
+              {hasTransactions ? (
+                <QuickStartGuideCard
+                  firstAccountId={overview.summary.accountBalances?.items[0]?.id}
+                />
+              ) : null}
               <PreferenceSuggestionsCard
                 hasBudget={overview.summary.budgetProgress.some((item) => item.limitMinor > 0)}
                 hasSubscription={subscriptions.subscriptions.length > 0}

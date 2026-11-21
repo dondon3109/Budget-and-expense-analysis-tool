@@ -5,6 +5,7 @@ import { captureFunnelEvent, type AppPage } from "./funnel";
 
 const APP_PAGES: Record<string, AppPage> = {
   "/app": "overview",
+  "/onboarding": "onboarding",
   "/app/assistant": "assistant",
   "/app/calendar": "calendar",
   "/app/transactions": "transactions",

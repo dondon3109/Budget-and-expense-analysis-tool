@@ -9,6 +9,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const funnel = vi.hoisted(() => ({ captureFunnelEvent: vi.fn() }));
+
+vi.mock("../src/analytics/funnel", () => funnel);
+
 vi.mock("../src/auth/AuthProvider", () => ({
   useAuth: () => ({ loading: false, user: { id: "user-1" } }),
 }));
@@ -91,14 +95,20 @@ function renderPage() {
 
 const personalizeHeading = () => screen.findByRole("heading", { name: "Make it yours" });
 
+async function finishCashStep() {
+  await screen.findByRole("textbox", { name: /Physical cash on hand/ });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+}
+
 describe("OnboardingPage", () => {
   const unset = { goals: [], goal: null, otherText: null, selectedAt: null, skipped: false };
 
   beforeEach(() => {
-    // Most cases are about the later steps, so the goal is already answered unless a case resets it.
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-PH");
+    funnel.captureFunnelEvent.mockReset();
+    // Most cases focus on currency/cash/personalize, so goal and habits start answered unless reset.
     vi.mocked(getGoalProfile).mockResolvedValue({ ...unset, skipped: true });
     vi.mocked(markGoalShown).mockResolvedValue();
-    // Answered too, so the money habits step stays out of the cases about later steps.
     vi.mocked(getMoneyPreferences).mockResolvedValue({
       incomeCadence: "monthly",
       budgetingStyle: null,
@@ -132,15 +142,17 @@ describe("OnboardingPage", () => {
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     window.localStorage.clear();
   });
 
-  it("walks the three steps and lands on the dashboard", async () => {
+  it("walks currency, cash, and personalize, records funnel events, and lands on the dashboard", async () => {
     renderPage();
 
     const trigger = await screen.findByRole("button", { name: /Base currency/ });
     expect(trigger).toHaveTextContent("PHP Philippine Peso");
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("onboarding_started", {});
     fireEvent.click(trigger);
     expect(screen.getByRole("radio", { name: /PHP.*Philippine Peso/ })).toBeChecked();
     expect(screen.getByRole("radio", { name: /USD.*US Dollar/ })).not.toBeChecked();
@@ -152,9 +164,13 @@ describe("OnboardingPage", () => {
     await waitFor(() =>
       expect(saveOnboardingCurrency).toHaveBeenCalledWith(expect.anything(), { currency: "USD" }),
     );
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("onboarding_step_completed", {
+      step: "currency",
+    });
 
     const amount = await screen.findByRole("textbox", { name: /Physical cash on hand/ });
-    expect(amount).toHaveValue("0");
+    expect(amount).toHaveValue("");
+    expect(amount).toHaveAttribute("placeholder", "0.00");
     expect(screen.getByLabelText("USD")).toHaveTextContent("$");
 
     fireEvent.change(amount, { target: { value: "1,250.50" } });
@@ -173,14 +189,35 @@ describe("OnboardingPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Go to dashboard" }));
     expect(await screen.findByText("Dashboard page")).toBeInTheDocument();
     expect(setPetEnabled).toHaveBeenCalledWith(expect.anything(), false);
+    expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("onboarding_completed", {});
+  });
+
+  it("suggests a starting currency from browser locale on a fresh currency step", async () => {
+    vi.spyOn(navigator, "language", "get").mockReturnValue("en-US");
+    renderPage();
+
+    const trigger = await screen.findByRole("button", { name: /Base currency/ });
+    expect(trigger).toHaveTextContent("USD US Dollar");
+  });
+
+  it("treats a blank cash field as zero without blocking", async () => {
+    vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
+    renderPage();
+
+    await finishCashStep();
+    await waitFor(() =>
+      expect(saveOnboardingCashBalance).toHaveBeenCalledWith(expect.anything(), {
+        amountMinor: 0,
+        date: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+    );
   });
 
   it("sends a new user who wants a pet to the egg picker without another request", async () => {
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
     renderPage();
 
-    await screen.findByRole("textbox", { name: /Physical cash on hand/ });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+    await finishCashStep();
     await personalizeHeading();
     await waitFor(() => expect(checkInPet).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "Pick my egg" }));
@@ -192,7 +229,6 @@ describe("OnboardingPage", () => {
     ["abc", "Enter a number with no more than two decimal places."],
     ["12.345", "Enter a number with no more than two decimal places."],
     ["-5", "Cash on hand cannot be negative."],
-    ["", "Enter the cash you have on hand, or 0."],
     ["99999999999", "That amount is too large."],
   ])("shows an inline error for %j and saves nothing", async (value, message) => {
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
@@ -229,8 +265,7 @@ describe("OnboardingPage", () => {
     );
     renderPage();
 
-    await screen.findByRole("textbox", { name: /Physical cash on hand/ });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm cash balance" }));
+    await finishCashStep();
     expect(await personalizeHeading()).toBeInTheDocument();
   });
 
@@ -251,7 +286,6 @@ describe("OnboardingPage", () => {
 
   it("shows the finished screen even while workspace data refetches after the save", async () => {
     vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
-    // An active dashboard-like query makes the post-save invalidation take a moment.
     function SlowWorkspaceQuery() {
       useQuery({
         queryKey: ["workspace", "user:user-1", "dashboard"],
@@ -278,7 +312,6 @@ describe("OnboardingPage", () => {
   });
 
   it("offers a retry when the setup state fails to load", async () => {
-    // The query retries once before it reports the failure.
     vi.mocked(getOnboardingState).mockRejectedValue(new Error("offline"));
     renderPage();
 
@@ -306,18 +339,19 @@ describe("OnboardingPage", () => {
 
   describe("goal step", () => {
     beforeEach(() => {
+      vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
       vi.mocked(getGoalProfile).mockResolvedValue(unset);
     });
 
-    it("shows the goal first, records it once, and saves the picks before moving on", async () => {
+    it("asks the goal after cash, records it once, and saves the picks before Make it yours", async () => {
       renderPage();
+      await finishCashStep();
 
       expect(await screen.findByRole("group", { name: "Your goals" })).toBeInTheDocument();
       expect(screen.getByText("So we can set up the right starting point for you.")).toBeVisible();
       expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent("Your goal");
       expect(markGoalShown).toHaveBeenCalledTimes(1);
 
-      // Several can be picked, and nothing is saved until Continue, so keyboard users can roam.
       fireEvent.click(screen.getByRole("checkbox", { name: "Save for something specific" }));
       fireEvent.click(screen.getByRole("checkbox", { name: "Pay off debt / utang" }));
       expect(saveGoals).not.toHaveBeenCalled();
@@ -330,11 +364,26 @@ describe("OnboardingPage", () => {
           otherText: "",
         }),
       );
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
+    });
+
+    it("localizes debt phrasing for non-PHP workspaces", async () => {
+      vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "USD" });
+      vi.mocked(saveOnboardingCashBalance).mockResolvedValue({
+        step: "complete",
+        currency: "USD",
+        openingBalanceBooked: false,
+      });
+      renderPage();
+      await finishCashStep();
+
+      expect(await screen.findByRole("checkbox", { name: "Pay off debt" })).toBeInTheDocument();
+      expect(screen.queryByRole("checkbox", { name: /utang/ })).not.toBeInTheDocument();
     });
 
     it("needs at least one goal before Continue", async () => {
       renderPage();
+      await finishCashStep();
 
       expect(await screen.findByRole("button", { name: "Continue" })).toBeDisabled();
       fireEvent.click(screen.getByRole("checkbox", { name: "Just looking around" }));
@@ -345,38 +394,39 @@ describe("OnboardingPage", () => {
 
     it("skips without blocking and remembers the skip", async () => {
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
       await waitFor(() => expect(skipGoal).toHaveBeenCalledTimes(1));
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
+      expect(funnel.captureFunnelEvent).toHaveBeenCalledWith("onboarding_step_skipped", {
+        step: "goal",
+      });
     });
 
     it("continues even when the skip request fails", async () => {
       vi.mocked(skipGoal).mockRejectedValue(new Error("offline"));
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
     });
 
-    it("skips straight to the currency step", async () => {
-      renderPage();
-
-      fireEvent.click(await screen.findByRole("button", { name: "Skip" }));
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
-    });
-
-    it("continues when saving the goals fails", async () => {
+    it("surfaces an inline error instead of silently advancing when saving goals fails", async () => {
       vi.mocked(saveGoals).mockRejectedValue(new Error("offline"));
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("checkbox", { name: "Just looking around" }));
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent("could not be saved");
+      expect(screen.queryByRole("heading", { name: "Make it yours" })).not.toBeInTheDocument();
     });
 
     it("saves the optional note with Other", async () => {
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("checkbox", { name: "Other" }));
       expect(saveGoals).not.toHaveBeenCalled();
@@ -391,7 +441,7 @@ describe("OnboardingPage", () => {
           otherText: "Plan a wedding",
         }),
       );
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
     });
 
     it("never shows a finished workspace the goal", async () => {
@@ -402,19 +452,19 @@ describe("OnboardingPage", () => {
       expect(markGoalShown).not.toHaveBeenCalled();
     });
 
-    it("does not ask again once the goal is chosen or when the profile will not load", async () => {
+    it("skips the goal when the profile fails to load", async () => {
       vi.mocked(getGoalProfile).mockRejectedValue(new Error("offline"));
       renderPage();
+      await finishCashStep();
 
-      expect(
-        await screen.findByRole("button", { name: /Base currency/ }, { timeout: 4000 }),
-      ).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
       expect(markGoalShown).not.toHaveBeenCalled();
     });
   });
 
   describe("money habits step", () => {
     beforeEach(() => {
+      vi.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
       vi.mocked(getMoneyPreferences).mockResolvedValue({
         incomeCadence: null,
         budgetingStyle: null,
@@ -422,9 +472,10 @@ describe("OnboardingPage", () => {
       });
     });
 
-    it("comes after the goal and saves the answers before the currency", async () => {
+    it("comes after the goal, supports Back, and saves answers before Make it yours", async () => {
       vi.mocked(getGoalProfile).mockResolvedValue(unset);
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("checkbox", { name: "Just looking around" }));
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
@@ -435,6 +486,17 @@ describe("OnboardingPage", () => {
       expect(screen.getByRole("listitem", { current: "step" })).toHaveTextContent(
         "Your money habits",
       );
+
+      // Stepping back returns to the goal step.
+      fireEvent.click(screen.getByRole("button", { name: "Back" }));
+      expect(
+        await screen.findByRole("heading", { name: "What brings you to Zoption?" }),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+      expect(
+        await screen.findByRole("heading", { name: "How do you manage money?" }),
+      ).toBeInTheDocument();
+
       fireEvent.click(screen.getByRole("radio", { name: "Twice a month (kinsenas)" }));
       fireEvent.click(screen.getByRole("radio", { name: /50\/30\/20/ }));
       fireEvent.click(screen.getByRole("checkbox", { name: "Food and groceries" }));
@@ -449,11 +511,12 @@ describe("OnboardingPage", () => {
           spendingFocus: ["food", "bills"],
         }),
       );
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
     });
 
     it("allows at most three spending areas", async () => {
       renderPage();
+      await finishCashStep();
 
       for (const name of ["Food and groceries", "Transport", "Shopping"]) {
         fireEvent.click(await screen.findByRole("checkbox", { name }));
@@ -465,19 +528,22 @@ describe("OnboardingPage", () => {
 
     it("skips, or continues with nothing picked, without saving", async () => {
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("button", { name: "Continue" }));
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await personalizeHeading()).toBeInTheDocument();
       expect(saveMoneyPreferences).not.toHaveBeenCalled();
     });
 
-    it("continues when the save fails", async () => {
+    it("surfaces an inline error when saving preferences fails", async () => {
       vi.mocked(saveMoneyPreferences).mockRejectedValue(new Error("offline"));
       renderPage();
+      await finishCashStep();
 
       fireEvent.click(await screen.findByRole("radio", { name: "Every week" }));
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-      expect(await screen.findByRole("button", { name: /Base currency/ })).toBeInTheDocument();
+      expect(await screen.findByRole("alert")).toHaveTextContent("could not be saved");
+      expect(screen.queryByRole("heading", { name: "Make it yours" })).not.toBeInTheDocument();
     });
   });
 });

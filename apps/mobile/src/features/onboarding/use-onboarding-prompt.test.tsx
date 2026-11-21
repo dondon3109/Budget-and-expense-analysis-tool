@@ -1,7 +1,9 @@
 import { render, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 
+import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
 import { getOnboardingState } from "@/api/onboarding";
+import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
 import { useOnboardingPrompt } from "./use-onboarding-prompt";
@@ -15,6 +17,10 @@ jest.mock("@/auth/session-state", () => ({
   }),
 }));
 jest.mock("@/api/onboarding", () => ({ getOnboardingState: jest.fn() }));
+jest.mock("@/api/goal-profile", () => ({
+  getGoalsProfile: jest.fn(),
+  getMoneyPreferences: jest.fn(),
+}));
 
 function Probe() {
   useOnboardingPrompt();
@@ -25,12 +31,26 @@ describe("useOnboardingPrompt", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useOnboardingStore.getState().reset();
+    useGoalProfileStore.getState().reset();
+    jest.mocked(getGoalsProfile).mockResolvedValue({
+      goals: [],
+      otherText: null,
+      selectedAt: null,
+      skipped: false,
+    });
+    jest.mocked(getMoneyPreferences).mockResolvedValue({
+      incomeCadence: null,
+      budgetingStyle: null,
+      spendingFocus: [],
+    });
   });
 
-  it("opens setup once while the Worker says it is unfinished", async () => {
+  it("loads goals and preferences before opening setup so neither races", async () => {
     jest.mocked(getOnboardingState).mockResolvedValue({ step: "currency", currency: "PHP" });
     const view = await render(<Probe />);
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/(app)/onboarding"));
+    expect(useGoalProfileStore.getState().profile).not.toBeNull();
+    expect(useGoalProfileStore.getState().preferences).not.toBeNull();
     await view.rerender(<Probe />);
     expect(router.push).toHaveBeenCalledTimes(1);
   });

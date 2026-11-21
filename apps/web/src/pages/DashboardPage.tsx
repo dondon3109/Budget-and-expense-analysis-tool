@@ -1,4 +1,9 @@
-import { goalConfigFor, personalBillingPlans, type GoalCtaAction } from "@zoption/shared";
+import {
+  goalConfigFor,
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  personalBillingPlans,
+  type GoalCtaAction,
+} from "@zoption/shared";
 import type {
   AccountBalanceSummaryItem,
   CashflowTrendView,
@@ -286,10 +291,21 @@ export function DashboardPage() {
       if (right.name === "Cash") return 1;
       return left.name.localeCompare(right.name);
     });
+  // The onboarding opening balance is a system entry, not user-logged spending or income.
+  const realTransactionCount =
+    transactionHistoryQuery.data === undefined
+      ? undefined
+      : Math.max(
+          0,
+          transactionHistoryQuery.data.total -
+            transactionHistoryQuery.data.items.filter(
+              (item) => item.categorySystemKey === OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+            ).length,
+        );
   const empty =
     !family &&
-    transactionHistoryQuery.data !== undefined &&
-    isDashboardEmpty(data, cashflowTrendQuery.data, transactionHistoryQuery.data.total);
+    realTransactionCount !== undefined &&
+    isDashboardEmpty(data, cashflowTrendQuery.data, realTransactionCount);
   // Totals lead with the workspace currency; other currencies follow as secondary lines.
   const baseCurrency = data.currency;
   const overallBalanceMinor = accountBalances?.balancesByCurrency[baseCurrency] ?? 0;
@@ -443,17 +459,19 @@ export function DashboardPage() {
 
         {!family && (
           <>
-            <QuickStartTutorial
-              onAddTransaction={() => setAddTransactionOpen(true)}
-              onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
-              onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
-            />
+            {!empty && (
+              <QuickStartTutorial
+                onAddTransaction={() => setAddTransactionOpen(true)}
+                onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
+                onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
+              />
+            )}
 
             <GoalChecklist
               workspace={workspace}
               goal={goal}
               signals={{
-                has_transaction: (transactionHistoryQuery.data?.total ?? 0) > 0,
+                has_transaction: (realTransactionCount ?? 0) > 0,
                 has_budget: data.budgetProgress.some((row) => row.limitMinor > 0),
               }}
               onAction={runGoalAction}
@@ -461,6 +479,7 @@ export function DashboardPage() {
 
             <PreferenceSuggestions
               workspace={workspace}
+              currency={baseCurrency}
               hasBudget={data.budgetProgress.some((row) => row.limitMinor > 0)}
               month={monthStart(currentDashboardMonth)}
               onAction={runGoalAction}

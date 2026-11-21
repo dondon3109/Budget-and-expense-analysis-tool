@@ -72,6 +72,10 @@ export interface SessionContextValue extends SessionSnapshot {
   configured: boolean;
   getAccessToken: (refresh: boolean) => Promise<string>;
   signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (
+    email: string,
+    password: string,
+  ) => Promise<{ confirmationRequired: boolean }>;
   signInWithGoogle: () => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   exchangeCodeForSession: (code: string) => Promise<void>;
@@ -108,6 +112,7 @@ const SessionContext = createContext<SessionContextValue>({
   configured: false,
   getAccessToken: unavailable,
   signInWithPassword: unavailable,
+  signUpWithPassword: unavailable,
   signInWithGoogle: unavailable,
   sendPasswordReset: unavailable,
   exchangeCodeForSession: unavailable,
@@ -379,6 +384,25 @@ export function SessionProvider({ children }: PropsWithChildren) {
     [demoEnabled, signInWithDummyAccount],
   );
 
+  const signUpWithPassword = useCallback(async (email: string, password: string) => {
+    const { data, error } = await getSupabaseClient().auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: Linking.createURL("/auth/callback") },
+    });
+    if (error) {
+      // Mask existing accounts the same way web signup does.
+      if (/already registered|already exists/i.test(error.message)) {
+        return { confirmationRequired: true };
+      }
+      throw error;
+    }
+    if (data.user && data.user.identities?.length === 0) {
+      return { confirmationRequired: true };
+    }
+    return { confirmationRequired: !data.session };
+  }, []);
+
   const getAccessToken = useCallback(
     async (refresh: boolean) => {
       if (subjectRef.current === GUEST_SUBJECT) {
@@ -544,6 +568,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       configured: isSupabaseConfigured,
       getAccessToken,
       signInWithPassword,
+      signUpWithPassword,
       signInWithGoogle,
       sendPasswordReset,
       exchangeCodeForSession,
@@ -560,6 +585,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
       signInWithGoogle,
       sendPasswordReset,
       signInWithPassword,
+      signUpWithPassword,
       signOut,
       snapshot,
       updatePassword,
