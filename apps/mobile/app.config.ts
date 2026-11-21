@@ -86,6 +86,41 @@ const withLegacyBackHandling: ConfigPlugin = (config) =>
   });
 
 /**
+ * Permissions merged from native modules (ACCESS_WIFI_STATE from netinfo,
+ * CAMERA from expo-image-picker, RECORD_AUDIO from expo-audio) cause aapt2 to
+ * imply required hardware features, which blocks installation on devices
+ * without them (cellular-only tablets, desktops, Android XR) and triggers
+ * Play Console's hardware-availability block. None of these features are
+ * required to run Zoption, so mark them optional.
+ */
+const OPTIONAL_ANDROID_FEATURES = [
+  "android.hardware.wifi",
+  "android.hardware.camera",
+  "android.hardware.microphone",
+] as const;
+
+const withOptionalHardwareFeatures: ConfigPlugin = (config) =>
+  withAndroidManifest(config, (cfg) => {
+    const manifest = cfg.modResults.manifest;
+    const features = manifest["uses-feature"] ?? [];
+    for (const name of OPTIONAL_ANDROID_FEATURES) {
+      const existing = features.find((entry) => entry.$["android:name"] === name);
+      if (existing) {
+        existing.$["android:required"] = "false";
+      } else {
+        features.push({
+          $: {
+            "android:name": name,
+            "android:required": "false",
+          },
+        });
+      }
+    }
+    manifest["uses-feature"] = features;
+    return cfg;
+  });
+
+/**
  * expo-notifications' config plugin always writes the `aps-environment` push
  * entitlement, and prebuild applies that plugin whenever the package is
  * installed, listed or not. Server push is Android only for now, so strip the
@@ -196,6 +231,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       // element type just does not model them.
       withDevClientPermissionCleanup as unknown as [string, unknown],
       withLegacyBackHandling as unknown as [string, unknown],
+      withOptionalHardwareFeatures as unknown as [string, unknown],
       // Local config plugin: rewrites android/app/build.gradle after every
       // prebuild so release builds sign with the permanent Zoption key
       // (gitignored keystore.properties or CI env vars) instead of the

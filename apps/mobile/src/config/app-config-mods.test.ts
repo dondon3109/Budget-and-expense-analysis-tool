@@ -16,6 +16,7 @@ interface IntrospectedConfig {
       android: {
         manifest: {
           manifest: {
+            "uses-feature"?: { $: Record<string, string> }[];
             application: {
               "meta-data"?: { $: Record<string, string> }[];
               service?: { $: Record<string, string> }[];
@@ -72,5 +73,19 @@ describe("native config produced by prebuild", () => {
     // wrote, while release builds always prebuild with --clean.
     const services = manifest.application[0]?.service ?? [];
     expect(services.filter((entry) => entry.$["android:foregroundServiceType"])).toEqual([]);
+  }, 60_000);
+
+  it("marks implied Android hardware features as optional", async () => {
+    const config = await introspect("production");
+    const { manifest } = config._internal.modResults.android.manifest;
+
+    const features = (manifest["uses-feature"] ?? []).map((entry) => entry.$);
+    expect(features).toEqual(
+      expect.arrayContaining([
+        { "android:name": "android.hardware.wifi", "android:required": "false" },
+        { "android:name": "android.hardware.camera", "android:required": "false" },
+        { "android:name": "android.hardware.microphone", "android:required": "false" },
+      ]),
+    );
   }, 60_000);
 });
