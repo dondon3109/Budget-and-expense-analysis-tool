@@ -5,6 +5,7 @@ import { act, render, waitFor } from "@testing-library/react-native";
 import { acknowledgeMobileSync, pullMobileSync } from "@/api/mobile-sync";
 import { useSessionSnapshot, type SessionContextValue } from "@/auth/session-state";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
+import { LocalSyncApplyError } from "@/db/sync-repository";
 import type { LocalWorkspace } from "@/db/workspace";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 
@@ -157,9 +158,47 @@ describe("SyncProvider initial sync state", () => {
     expect(latest.hasSynced).toBe(true);
     expect(workspace.hasSynced).toBe(true);
 
-    // Later refreshes must never drop hasSynced back to false.
+    // Later refreshes must never drop hasSynced back to false, even while the follow-up run syncs.
     await act(async () => latest.retry());
     expect(latest.hasSynced).toBe(true);
+    await waitFor(() => expect(pullMobileSync).toHaveBeenCalledTimes(3));
+    expect(latest.hasSynced).toBe(true);
+  });
+
+  it("retries the pull loop when acknowledgement hits a cursor mismatch", async () => {
+    const workspace = makeWorkspace(false);
+    jest
+      .mocked(workspace.syncRepository.recordAcknowledgement)
+      .mockRejectedValueOnce(new LocalSyncApplyError("cursor raced", "cursor_mismatch"))
+      .mockResolvedValueOnce(undefined);
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      status: "ready",
+      workspace,
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    jest.mocked(pullMobileSync).mockResolvedValue({
+      protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+      changes: [],
+      nextCursor: "v1.1",
+      hasMore: false,
+    });
+    jest.mocked(acknowledgeMobileSync).mockResolvedValue({
+      protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+      acknowledgedCursor: "v1.1",
+      retentionFloorCursor: "v1.0",
+    });
+
+    await render(
+      <SyncProvider enabled={true}>
+        <Probe />
+      </SyncProvider>,
+    );
+
+    await waitFor(() => expect(latest.status).toBe("synced"));
+    expect(latest.hasSynced).toBe(true);
+    expect(pullMobileSync).toHaveBeenCalledTimes(2);
   });
 
   it("reports hasSynced true immediately for an already-synced workspace even offline", async () => {

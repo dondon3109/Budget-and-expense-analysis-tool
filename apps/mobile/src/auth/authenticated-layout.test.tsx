@@ -49,7 +49,9 @@ const workspaceRoutes = <Text>Workspace routes</Text>;
 const session = (snapshot: {
   status: SessionContextValue["status"];
   subject: string | null;
-}): SessionContextValue => snapshot as SessionContextValue;
+  signOut?: SessionContextValue["signOut"];
+}): SessionContextValue =>
+  ({ signOut: jest.fn(async () => undefined), ...snapshot }) as SessionContextValue;
 
 const personalActive = {
   status: "ready" as const,
@@ -243,5 +245,44 @@ describe("authenticated layout session gate", () => {
     });
     await view.rerender(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
     expect(await screen.findByText("You're offline")).toBeTruthy();
+
+    // Syncing a fresh family lets the user back out to Personal without waiting.
+    jest.mocked(useSyncState).mockReturnValue({
+      status: "syncing",
+      message: null,
+      retry,
+      hasSynced: false,
+      offline: false,
+    });
+    await view.rerender(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
+    expect(screen.getByLabelText("Syncing your workspace")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Switch to Personal" }));
+    expect(switchTo).toHaveBeenCalledTimes(2);
+  });
+
+  it("offers sign out on a personal workspace when initial sync cannot finish", async () => {
+    const signOut = jest.fn(async () => undefined);
+    jest
+      .mocked(useSessionSnapshot)
+      .mockReturnValue(session({ status: "signed-in", subject: "user-1", signOut }));
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      workspace: { hasSynced: false } as LocalWorkspace,
+      status: "ready",
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    jest.mocked(useSyncState).mockReturnValue({
+      status: "full-resync-required",
+      message: "Recovery failed.",
+      retry: jest.fn(),
+      hasSynced: false,
+      offline: false,
+    });
+
+    await render(<AuthenticatedGate>{workspaceRoutes}</AuthenticatedGate>);
+    expect(await screen.findByText("Couldn't sync your workspace")).toBeTruthy();
+    await fireEvent.press(screen.getByRole("button", { name: "Sign out" }));
+    expect(signOut).toHaveBeenCalledTimes(1);
   });
 });

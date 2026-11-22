@@ -1,4 +1,4 @@
-import { describeWorkspaceOpenFailure } from "./workspace";
+import { describeWorkspaceOpenFailure, resolveWorkspaceHasSynced } from "./workspace";
 
 describe("workspace open failure classification", () => {
   it("gives recovery guidance for corrupted database files", () => {
@@ -23,5 +23,29 @@ describe("workspace open failure classification", () => {
     expect(describeWorkspaceOpenFailure(undefined)).toBe(
       "The encrypted local workspace could not be opened on this device.",
     );
+  });
+});
+
+describe("resolveWorkspaceHasSynced", () => {
+  const fresh = {
+    localOnly: false,
+    generation: 1,
+    serverCursor: null,
+    serverAcknowledgedCursor: null,
+    outboxCount: 0,
+  };
+
+  it("returns false for a fresh file and for one killed mid-initial-pull", () => {
+    expect(resolveWorkspaceHasSynced(fresh)).toBe(false);
+    expect(resolveWorkspaceHasSynced({ ...fresh, serverCursor: "v1.5k" })).toBe(false);
+  });
+
+  it("returns true once acknowledged, rebuilt from a snapshot, local-only, or holding outbox rows", () => {
+    expect(resolveWorkspaceHasSynced({ ...fresh, serverAcknowledgedCursor: "v1.5k" })).toBe(true);
+    expect(resolveWorkspaceHasSynced({ ...fresh, generation: 2, serverCursor: "v1.5k" })).toBe(
+      true,
+    );
+    expect(resolveWorkspaceHasSynced({ ...fresh, localOnly: true })).toBe(true);
+    expect(resolveWorkspaceHasSynced({ ...fresh, outboxCount: 1 })).toBe(true);
   });
 });

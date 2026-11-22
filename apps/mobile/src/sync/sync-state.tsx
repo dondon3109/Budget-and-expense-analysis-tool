@@ -57,6 +57,8 @@ const SyncContext = createContext<SyncSnapshot>({
   status: "waiting",
   message: null,
   retry: () => undefined,
+  hasSynced: true,
+  offline: false,
 });
 
 /**
@@ -350,11 +352,19 @@ export function SyncProvider({
                 ),
               ),
             );
-            await workspace.syncRepository.recordAcknowledgement(
-              acknowledgement.acknowledgedCursor,
-              acknowledgement.retentionFloorCursor,
-            );
+            try {
+              await workspace.syncRepository.recordAcknowledgement(
+                acknowledgement.acknowledgedCursor,
+                acknowledgement.retentionFloorCursor,
+              );
+            } catch (error) {
+              if (error instanceof LocalSyncApplyError && error.code === "cursor_mismatch") {
+                continue;
+              }
+              throw error;
+            }
             workspace.hasSynced = true;
+            setSyncedWorkspace(workspace);
             // From here the family opens offline (the switcher allows it).
             if (familyId) {
               markSynced(familyId);
@@ -369,7 +379,6 @@ export function SyncProvider({
             if (requestRef.current === requestId) {
               const schedule = await scheduleOutstandingRetry();
               if (!stale()) {
-                setSyncedWorkspace(workspace);
                 setSnapshot({
                   status:
                     schedule.blockedCount > 0
@@ -489,15 +498,10 @@ export function SyncProvider({
 
     // A fresh workspace is held behind the full-screen loader with no screen reading SQLite yet,
     // so start its initial sync immediately instead of waiting INITIAL_SYNC_DELAY_MS.
-    if (!workspace.hasSynced) {
-      void run();
-      return () => {
-        controller.abort();
-        if (retryTimer) clearTimeout(retryTimer);
-      };
-    }
-
-    const startTimer = setTimeout(() => void run(), INITIAL_SYNC_DELAY_MS);
+    const startTimer = setTimeout(
+      () => void run(),
+      workspace.hasSynced ? INITIAL_SYNC_DELAY_MS : 0,
+    );
     return () => {
       clearTimeout(startTimer);
       controller.abort();
