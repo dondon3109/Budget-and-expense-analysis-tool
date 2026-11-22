@@ -108,6 +108,7 @@ All notable product changes are documented here.
 
 ### Fixed
 
+- Mobile: signing into an existing account on a freshly installed app now stays on the loading screen until the first sync finishes, instead of flashing new-user setup and tutorial steps while records are still downloading.
 - New workspaces on web and mobile keep showing the empty-state guide and goal suggestions after entering starting cash, until you log a real transaction. The opening cash entry no longer ticks off "Log your first expense" or adds an empty month to the trend charts.
 - Mobile setup no longer skips the goal and money habit questions when they load after setup opens.
 - Web: if your workspace cannot load, you see a Try again screen instead of being sent back to first-run setup.

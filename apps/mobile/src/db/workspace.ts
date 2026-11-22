@@ -53,6 +53,8 @@ export interface LocalWorkspace {
   transactionMutations: LocalTransactionMutationRepository;
   schemaVersion: number;
   generation: number;
+  /** True once this local workspace has finished an initial sync, or never syncs with the server. */
+  hasSynced: boolean;
 }
 
 export interface LocalWorkspaceSignOutRisk {
@@ -167,6 +169,18 @@ async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
         { cause: error },
       );
     }
+    const localOnly = isDummyDevelopmentSubject(subject) || isGuestSubject(subject);
+    const syncMeta = localOnly
+      ? null
+      : await database.getFirstAsync<{
+          server_cursor: string | null;
+          server_acknowledged_cursor: string | null;
+        }>(
+          "SELECT server_cursor, server_acknowledged_cursor FROM sync_metadata WHERE singleton = 1",
+        );
+    const hasSynced =
+      localOnly ||
+      Boolean(syncMeta?.server_acknowledged_cursor || (generation > 1 && syncMeta?.server_cursor));
     const writer = new LocalDatabaseWriter();
     const workspace = {
       database,
@@ -176,6 +190,7 @@ async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
       transactionMutations: new LocalTransactionMutationRepository(database, writer),
       schemaVersion,
       generation,
+      hasSynced,
     };
     return workspace;
   } catch (error) {

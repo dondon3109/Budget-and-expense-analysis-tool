@@ -41,6 +41,10 @@ interface SyncSnapshot {
   status: ForegroundSyncStatus;
   message: string | null;
   retry: () => void;
+  /** True once the open workspace has completed its first sync, or does not sync. */
+  hasSynced?: boolean;
+  /** True when NetInfo reports no internet connectivity. */
+  offline?: boolean;
 }
 
 interface SyncProviderProps extends PropsWithChildren {
@@ -206,6 +210,7 @@ export function SyncProvider({
   // restarting the launch sync once connectivity settles.
   const offline = (netInfo.isInternetReachable ?? netInfo.isConnected) === false;
   const [attempt, setAttempt] = useState(0);
+  const [syncedWorkspace, setSyncedWorkspace] = useState<LocalWorkspace | null>(null);
   const [snapshot, setSnapshot] = useState<Omit<SyncSnapshot, "retry">>({
     status: "waiting",
     message: null,
@@ -349,6 +354,7 @@ export function SyncProvider({
               acknowledgement.acknowledgedCursor,
               acknowledgement.retentionFloorCursor,
             );
+            workspace.hasSynced = true;
             // From here the family opens offline (the switcher allows it).
             if (familyId) {
               markSynced(familyId);
@@ -363,6 +369,7 @@ export function SyncProvider({
             if (requestRef.current === requestId) {
               const schedule = await scheduleOutstandingRetry();
               if (!stale()) {
+                setSyncedWorkspace(workspace);
                 setSnapshot({
                   status:
                     schedule.blockedCount > 0
@@ -480,6 +487,16 @@ export function SyncProvider({
       }
     };
 
+    // A fresh workspace is held behind the full-screen loader with no screen reading SQLite yet,
+    // so start its initial sync immediately instead of waiting INITIAL_SYNC_DELAY_MS.
+    if (!workspace.hasSynced) {
+      void run();
+      return () => {
+        controller.abort();
+        if (retryTimer) clearTimeout(retryTimer);
+      };
+    }
+
     const startTimer = setTimeout(() => void run(), INITIAL_SYNC_DELAY_MS);
     return () => {
       clearTimeout(startTimer);
@@ -526,7 +543,16 @@ export function SyncProvider({
     }
     setAttempt((value) => value + 1);
   }, [enabled, onUnavailableRetry]);
-  const value = useMemo(() => ({ ...snapshot, retry }), [retry, snapshot]);
+  const hasSynced =
+    !workspace ||
+    workspace.hasSynced ||
+    syncedWorkspace === workspace ||
+    session.status !== "signed-in" ||
+    isDummyDevelopmentSubject(session.subject);
+  const value = useMemo(
+    () => ({ ...snapshot, retry, hasSynced, offline }),
+    [hasSynced, offline, retry, snapshot],
+  );
   return <SyncContext.Provider value={value}>{children}</SyncContext.Provider>;
 }
 
