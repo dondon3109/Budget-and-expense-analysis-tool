@@ -1,6 +1,6 @@
 import type { LocalDashboardData } from "@/db/view-models";
 
-import { buildDashboardView } from "./dashboard-view";
+import { buildDashboardView, isEstablishedLedger } from "./dashboard-view";
 
 const account = {
   id: "account-1",
@@ -115,5 +115,65 @@ describe("buildDashboardView currency", () => {
     );
     const day = view.cashflow.points.find((point) => point.date === "2026-08-10");
     expect(day).toMatchObject({ incomeMinor: 50_000 });
+  });
+});
+
+describe("isEstablishedLedger", () => {
+  const starterAccount = { ...account, system: true };
+
+  it("returns false for a new ledger with only recent starter-account entries", () => {
+    expect(
+      isEstablishedLedger(
+        data({
+          accounts: [starterAccount],
+          transactions: [expense],
+          recentTransactions: [expense],
+        }),
+        "2026-08-14",
+      ),
+    ).toBe(false);
+  });
+
+  it("returns true for accounts with budgets, custom accounts, 5+ entries, or older history", () => {
+    expect(
+      isEstablishedLedger(
+        data({
+          accounts: [starterAccount],
+          transactions: [expense],
+          recentTransactions: [expense],
+          budgets: [
+            {
+              categoryId: "cat-food",
+              categoryName: "Food",
+              categoryColor: "#a0441f",
+              month: "2026-08",
+              limitMinor: 50_000,
+            },
+          ],
+        }),
+        "2026-08-14",
+      ),
+    ).toBe(true);
+    expect(isEstablishedLedger(data({ accounts: [account] }), "2026-08-14")).toBe(true);
+    expect(
+      isEstablishedLedger(
+        data({
+          accounts: [starterAccount],
+          transactions: [expense, expense, expense, expense, expense],
+          recentTransactions: [expense],
+        }),
+        "2026-08-14",
+      ),
+    ).toBe(true);
+    expect(
+      isEstablishedLedger(
+        data({
+          accounts: [starterAccount],
+          transactions: [],
+          recentTransactions: [{ ...expense, date: "2025-01-10" }],
+        }),
+        "2026-08-14",
+      ),
+    ).toBe(true);
   });
 });

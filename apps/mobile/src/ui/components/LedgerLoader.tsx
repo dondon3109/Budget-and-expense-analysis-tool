@@ -121,8 +121,9 @@ export function LedgerLoader({
 
 /**
  * The full-screen wait for every step of opening the app: finishing a sign-in, restoring the
- * session, and unlocking the local workspace. Each step mounts its own copy, so they share one
- * layout and one visible line and read as a single wait; only the screen-reader label names the step.
+ * session, unlocking the local workspace, and syncing a fresh workspace. Each step mounts its own
+ * copy, so they share one layout and one visible line and read as a single wait; only the
+ * screen-reader label names the step.
  */
 export function AppLoadingScreen({ accessibilityLabel }: { accessibilityLabel: string }) {
   const theme = useZoptionTheme();

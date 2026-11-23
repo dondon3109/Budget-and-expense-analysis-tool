@@ -1,6 +1,6 @@
 import { Redirect } from "expo-router";
-import type { PropsWithChildren } from "react";
-import { View } from "react-native";
+import { useState, type PropsWithChildren } from "react";
+import { Alert, View } from "react-native";
 
 import { useSessionSnapshot } from "@/auth/session-state";
 import { useWorkerIdentity } from "@/auth/worker-identity-state";
@@ -20,14 +20,15 @@ import { ActiveWorkspaceProvider, useActiveWorkspace } from "@/features/family/a
 import { FamilyPushTapHandler } from "@/features/family/family-push-tap";
 import { SubscriptionPushTapHandler } from "@/features/subscriptions/subscription-push-tap";
 import { SharedReceiptHandoff } from "@/features/receipts/SharedReceiptHandoff";
-import { SyncProvider } from "@/sync/sync-state";
+import { SyncProvider, useSyncState } from "@/sync/sync-state";
 import { ScreenViewedTracker } from "@/telemetry/screen-viewed";
-import { AppLoadingScreen, ErrorState } from "@/ui/components";
+import { AppLoadingScreen, Button, ErrorState } from "@/ui/components";
 
 /**
  * Everything the authenticated route group waits on before it renders `children`: the restored
- * session, the app lock, the encrypted local workspace, and the sync loop. A guest session gets
- * the local workspace only: no app lock, and sync stays off because it needs an account.
+ * session, the app lock, the encrypted local workspace, and for a freshly created workspace its
+ * first sync. A guest session gets the local workspace only: no app lock, and sync stays off
+ * because it needs an account.
  */
 export function AuthenticatedGate({ children }: PropsWithChildren) {
   const session = useSessionSnapshot();
@@ -106,16 +107,80 @@ function LocalWorkspaceGate({
           : null
       }
     >
-      {children}
-      <ScreenViewedTracker />
-      <DailyReminderTapHandler />
-      <FamilyPushTapHandler />
-      <SubscriptionPushTapHandler />
-      <SharedReceiptHandoff />
-      <PlanLimitHost />
-      <ThankYouHost />
-      <AccountPromptHost />
-      <UsageAnalyticsPromptHost />
+      <InitialSyncGate>
+        {children}
+        <ScreenViewedTracker />
+        <DailyReminderTapHandler />
+        <FamilyPushTapHandler />
+        <SubscriptionPushTapHandler />
+        <SharedReceiptHandoff />
+        <PlanLimitHost />
+        <ThankYouHost />
+        <AccountPromptHost />
+        <UsageAnalyticsPromptHost />
+      </InitialSyncGate>
     </SyncProvider>
   );
+}
+
+/**
+ * Holds a freshly created workspace behind the loading screen until its first sync finishes, so
+ * signing into an existing account on a new install does not flash empty setup and tutorial steps
+ * before its records arrive. Already-synced workspaces open straight away, including offline.
+ */
+function InitialSyncGate({ children }: PropsWithChildren) {
+  const session = useSessionSnapshot();
+  const active = useActiveWorkspace();
+  const sync = useSyncState();
+  const [signingOut, setSigningOut] = useState(false);
+
+  if (sync.hasSynced !== false) return children;
+  if (sync.offline || sync.status === "failed" || sync.status === "full-resync-required") {
+    const signOut = () => {
+      if (signingOut) return;
+      setSigningOut(true);
+      void session.signOut().catch((error: unknown) => {
+        setSigningOut(false);
+        Alert.alert(
+          "Couldn't sign out",
+          error instanceof Error ? error.message : "Zoption could not sign you out.",
+        );
+      });
+    };
+    return (
+      <View className="flex-1 items-center justify-center gap-3 px-6">
+        <ErrorState
+          title={sync.offline ? "You're offline" : "Couldn't sync your workspace"}
+          message={
+            sync.offline
+              ? "Connect to the internet to finish syncing your workspace."
+              : (sync.message ?? "Zoption could not finish syncing your workspace.")
+          }
+          onRetry={sync.retry}
+        />
+        {active.family ? (
+          <Button variant="quiet" onPress={() => active.switchTo(null)}>
+            Switch to Personal
+          </Button>
+        ) : (
+          <Button variant="quiet" loading={signingOut} onPress={signOut}>
+            Sign out
+          </Button>
+        )}
+      </View>
+    );
+  }
+  if (active.family) {
+    return (
+      <View className="flex-1">
+        <AppLoadingScreen accessibilityLabel="Syncing your workspace" />
+        <View className="items-center pb-10">
+          <Button variant="quiet" onPress={() => active.switchTo(null)}>
+            Switch to Personal
+          </Button>
+        </View>
+      </View>
+    );
+  }
+  return <AppLoadingScreen accessibilityLabel="Syncing your workspace" />;
 }

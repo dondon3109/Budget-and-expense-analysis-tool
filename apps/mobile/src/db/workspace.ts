@@ -53,6 +53,8 @@ export interface LocalWorkspace {
   transactionMutations: LocalTransactionMutationRepository;
   schemaVersion: number;
   generation: number;
+  /** True once this local workspace has finished an initial sync, or never syncs with the server. */
+  hasSynced: boolean;
 }
 
 export interface LocalWorkspaceSignOutRisk {
@@ -124,6 +126,23 @@ async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
   return workspace;
 }
 
+/**
+ * Whether an opened workspace already has a usable local copy and should open immediately instead
+ * of holding behind the first-sync loading screen. Never blocks a phone with unsynced local work.
+ */
+export function resolveWorkspaceHasSynced(state: {
+  localOnly: boolean;
+  generation: number;
+  serverCursor: string | null;
+  serverAcknowledgedCursor: string | null;
+  outboxCount: number;
+}): boolean {
+  if (state.localOnly) return true;
+  if (state.serverAcknowledgedCursor) return true;
+  if (state.generation > 1 && state.serverCursor) return true;
+  return state.outboxCount > 0;
+}
+
 async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
   const alias = await workspaceAlias(subject);
   const [generation, key] = await Promise.all([
@@ -167,6 +186,28 @@ async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
         { cause: error },
       );
     }
+    const localOnly = isDummyDevelopmentSubject(subject) || isGuestSubject(subject);
+    const syncRow = localOnly
+      ? null
+      : await database.getFirstAsync<{
+          server_cursor: string | null;
+          server_acknowledged_cursor: string | null;
+          outbox_count: number;
+        }>(
+          `SELECT
+             server_cursor,
+             server_acknowledged_cursor,
+             (SELECT count(*) FROM sync_outbox) AS outbox_count
+           FROM sync_metadata
+           WHERE singleton = 1`,
+        );
+    const hasSynced = resolveWorkspaceHasSynced({
+      localOnly,
+      generation,
+      serverCursor: syncRow?.server_cursor ?? null,
+      serverAcknowledgedCursor: syncRow?.server_acknowledged_cursor ?? null,
+      outboxCount: syncRow?.outbox_count ?? 0,
+    });
     const writer = new LocalDatabaseWriter();
     const workspace = {
       database,
@@ -176,6 +217,7 @@ async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
       transactionMutations: new LocalTransactionMutationRepository(database, writer),
       schemaVersion,
       generation,
+      hasSynced,
     };
     return workspace;
   } catch (error) {

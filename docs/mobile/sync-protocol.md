@@ -262,8 +262,11 @@ once. Pull, snapshot, and acknowledge draw from their own tenant budget of 300 r
 first sync on a new phone pulls page after page. A `429` inside a run waits its `Retry-After` (at most
 a minute, three times per request) and repeats the request; past that the run reports the limit and
 schedules its own retry, resuming from the durable cursor. NetInfo can delay an attempt but only the Worker response and local commit produce `synced`.
-Startup opens the immutable-subject-scoped local workspace without waiting for Worker availability;
-the independent Worker identity assertion gates synchronization, not offline reads.
+Startup opens an already-synced immutable-subject-scoped local workspace without waiting for Worker
+availability; the independent Worker identity assertion gates synchronization, not offline reads. A
+fresh local workspace that has never completed its first sync stays behind the full-screen loading
+screen until that initial sync acknowledges its cursor, so signing into an existing account on a new
+install never flashes empty setup or tutorial steps before its records arrive.
 
 ## Conflict policy
 
