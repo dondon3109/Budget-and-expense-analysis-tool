@@ -423,6 +423,8 @@ describe("HomeScreen", () => {
     // Total Balance card
     expect(screen.getByText("Total Balance")).toBeTruthy();
     expect(screen.getByText("Main Bank")).toBeTruthy();
+    // Returning accounts with established ledgers do not see the Quick start guide.
+    expect(screen.queryByText("Quick start guide")).toBeNull();
 
     // The overview shows only the category with the most spending this month
     expect(screen.getByText("Top spending category")).toBeTruthy();

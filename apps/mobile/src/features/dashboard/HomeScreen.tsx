@@ -39,7 +39,12 @@ import { BalanceCard } from "./BalanceCard";
 import { BudgetCard } from "./BudgetCard";
 import { CashflowCard } from "./CashflowCard";
 import { CashflowForecastCard } from "./CashflowForecastCard";
-import { buildDashboardCashflow, buildDashboardOverview, localIsoDate } from "./dashboard-view";
+import {
+  buildDashboardCashflow,
+  buildDashboardOverview,
+  isEstablishedLedger,
+  localIsoDate,
+} from "./dashboard-view";
 import { HomeEmptyView } from "./HomeEmptyView";
 import { MonthSummaryCard } from "./MonthSummaryCard";
 import { QuickActionBar } from "./QuickActionBar";
@@ -108,6 +113,9 @@ export function HomeScreen() {
   );
   const hasTransactions = Boolean(
     overview && (overview.summary.monthlyTrend.length > 0 || hasRealRecentTransaction),
+  );
+  const showQuickStartGuide = Boolean(
+    hasTransactions && dashboard.data && !isEstablishedLedger(dashboard.data, today),
   );
   const canResumeSetup =
     !guest && !inFamily && onboardingState !== null && onboardingState.step !== "complete";
@@ -192,7 +200,7 @@ export function HomeScreen() {
           ) : null}
           {inFamily ? null : (
             <>
-              {hasTransactions ? (
+              {showQuickStartGuide ? (
                 <QuickStartGuideCard
                   firstAccountId={overview.summary.accountBalances?.items[0]?.id}
                 />

@@ -1,6 +1,7 @@
 import {
   buildCashflowTrend,
   buildDashboardSummary,
+  OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
   summarizeAccountBalances,
   type AccountBalanceSummary,
   type CashflowTrend,
@@ -76,4 +77,31 @@ export function localIsoDate(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+const ESTABLISHED_LEDGER_DAYS = 7;
+const ESTABLISHED_LEDGER_TX_COUNT = 5;
+
+function isoDateDaysAgo(anchorDate: string, days: number): string {
+  const [year, month, day] = anchorDate.split("-").map(Number);
+  const cutoff = new Date(Date.UTC(year ?? 1970, (month ?? 1) - 1, (day ?? 1) - days));
+  return cutoff.toISOString().slice(0, 10);
+}
+
+/**
+ * True when the local ledger already looks like an active or returning workspace, so a fresh
+ * install does not greet an existing account with the "Quick start guide" tutorial card.
+ */
+export function isEstablishedLedger(data: LocalDashboardData, anchorDate: string): boolean {
+  if (data.budgets.some((item) => item.limitMinor > 0)) return true;
+  if (data.accounts.some((item) => !item.system)) return true;
+  const realTransactions = data.transactions.filter(
+    (item) => item.categorySystemKey !== OPENING_BALANCE_CATEGORY_SYSTEM_KEY,
+  );
+  if (realTransactions.length >= ESTABLISHED_LEDGER_TX_COUNT) return true;
+  const cutoff = isoDateDaysAgo(anchorDate, ESTABLISHED_LEDGER_DAYS);
+  if (realTransactions.some((item) => item.date < cutoff)) return true;
+  return data.recentTransactions.some(
+    (item) => item.categorySystemKey !== OPENING_BALANCE_CATEGORY_SYSTEM_KEY && item.date < cutoff,
+  );
 }
