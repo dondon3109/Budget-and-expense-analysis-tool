@@ -1,7 +1,17 @@
-import type { Debt, FinancialGoal, SubscriptionMonthSummary } from "@zoption/shared";
+import type {
+  AccountRecord,
+  BudgetPlan,
+  Debt,
+  FinancialGoal,
+  SubscriptionMonthSummary,
+} from "@zoption/shared";
 import { describe, expect, it } from "vitest";
 
-import { goalsAndDebtsResult, subscriptionsResult } from "../src/assistant/saved-plans";
+import {
+  goalsAndDebtsResult,
+  safeToSpendResult,
+  subscriptionsResult,
+} from "../src/assistant/saved-plans";
 import { createAssistantTurnPolicy } from "../src/assistant/turn-policy";
 
 function subscription(
@@ -160,4 +170,133 @@ describe("saved-plan turn policy", () => {
       expect(groups(message)).toContain("goals_overview");
     },
   );
+
+  it.each([
+    "What is my safe to spend?",
+    "Why is my safe to spend zero?",
+    "How much is safe to spend right now?",
+    "Magkano ang safe to spend ko?",
+  ])("reads safe to spend without requiring a reporting period for %s", (message) => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message,
+      currentDate: "2026-10-23",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.requiredToolGroups).toEqual(["safe_to_spend"]);
+    expect(policy.deterministicResponse).toBeUndefined();
+  });
+
+  it.each([
+    "How does safe to spend work?",
+    "What is safe to spend?",
+    "Paano gumagana ang safe to spend?",
+  ])("answers general safe-to-spend explanations without calling a tool for %s", (message) => {
+    const policy = createAssistantTurnPolicy({
+      history: [],
+      message,
+      currentDate: "2026-10-23",
+      timeZone: "Asia/Manila",
+      transactionBounds: null,
+    });
+    expect(policy.requiredToolGroups).toEqual([]);
+    expect(policy.deterministicResponse).toBeUndefined();
+  });
+});
+
+describe("safeToSpendResult", () => {
+  const account = (balanceMinor: number): AccountRecord => ({
+    id: "acc-1",
+    name: "Cash",
+    type: "cash",
+    currency: "PHP",
+    balanceMinor,
+    archived: false,
+  });
+
+  const budgetPlan = (limitMinor: number, spentMinor: number): BudgetPlan => ({
+    scope: "month",
+    month: "2026-08-01",
+    eventId: null,
+    title: null,
+    date: null,
+    currency: "PHP",
+    totalLimitMinor: limitMinor,
+    totalSpentMinor: spentMinor,
+    remainingMinor: limitMinor - spentMinor,
+    usedPercent: limitMinor === 0 ? 0 : Math.round((spentMinor / limitMinor) * 100),
+    items:
+      limitMinor > 0
+        ? [
+            {
+              categoryId: "cat-1",
+              categoryName: "Food",
+              categoryColor: "#000",
+              limitMinor,
+              spentMinor,
+              remainingMinor: limitMinor - spentMinor,
+              usedPercent: Math.round((spentMinor / limitMinor) * 100),
+              source: "month",
+            },
+          ]
+        : [],
+  });
+
+  const subs = (items: SubscriptionMonthSummary["items"]): SubscriptionMonthSummary => ({
+    month: "2026-08-01",
+    currency: "PHP",
+    totalMonthlyCostMinor: 0,
+    items,
+  });
+
+  it("paces the remaining monthly budget across days left in the week and caps by 30-day bills", () => {
+    // 2026-08-19 is Wednesday (5 days left in Monday-start week).
+    // PHP 5,000 remaining / 5 days = PHP 1,000, capped to PHP 700 by a PHP 800 bill against PHP 1,500 balance.
+    const result = safeToSpendResult({
+      through: "2026-08-19",
+      currency: "PHP",
+      accountItems: [account(150_000)],
+      budgetPlan: budgetPlan(700_000, 200_000),
+      subscriptionSummary: subs([
+        subscription("Cloud", 80_000, "2026-08-21"),
+        subscription("iCloud", 99, "2026-08-22", { currency: "USD" }),
+      ]),
+    });
+
+    expect(result.data).toMatchObject({
+      date: "2026-08-19",
+      daysLeftInWeek: 5,
+      basis: "monthly_budget",
+      safeToSpend: "PHP 700.00",
+      remainingMonthlyBudget: "PHP 5,000.00",
+      rawPaceBeforeBills: "PHP 1,000.00",
+      cappedByUpcomingBills: true,
+      upcomingBills30DaysTotal: "PHP 800.00",
+      minProjectedBalance30Days: "PHP 700.00",
+      minProjectedBalanceDate: "2026-08-21",
+      alert: null,
+    });
+    expect(result.dataQuality.signals.map((signal) => signal.code)).toEqual([
+      "other_currency_excluded",
+    ]);
+  });
+
+  it("falls back to balance when no budgets are set and flags deficit risk from upcoming bills", () => {
+    const result = safeToSpendResult({
+      through: "2026-08-19",
+      currency: "PHP",
+      accountItems: [account(50_000)],
+      budgetPlan: budgetPlan(0, 0),
+      subscriptionSummary: subs([subscription("Cloud", 80_000, "2026-08-21")]),
+    });
+
+    expect(result.data).toMatchObject({
+      basis: "account_balance",
+      remainingMonthlyBudget: null,
+      safeToSpend: "PHP 0.00",
+      cappedByUpcomingBills: true,
+      alert: { kind: "deficit_risk", deficitDate: "2026-08-21" },
+    });
+  });
 });

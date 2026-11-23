@@ -1,7 +1,16 @@
 import {
+  calculateSafeToSpend,
+  forecastSubscriptions,
+  getDaysLeftInWeek,
+  hasSpendingBasis,
   isSubscriptionUsageTracked,
+  overspendingAlert,
+  projectCashflow,
   subscriptionRoi,
+  summarizeAccountBalances,
+  type AccountRecord,
   type AssistantToolResultEnvelope,
+  type BudgetPlan,
   type Currency,
   type Debt,
   type FinancialGoal,
@@ -10,6 +19,14 @@ import {
   type SubscriptionUsageList,
 } from "@zoption/shared";
 
+import { readTier } from "../billing/entitlements";
+import type { AccountRepository } from "../db/accounts";
+import type { BudgetRepository } from "../db/budgets";
+import type { DebtRepository } from "../db/debts";
+import type { FinancialGoalRepository } from "../db/goals";
+import type { SubscriptionUsageRepository } from "../db/subscription-usage";
+import type { SubscriptionRepository } from "../db/subscriptions";
+import type { Bindings } from "../types";
 import type { DataQualityAssessment } from "./data-quality";
 import { shiftDays } from "./calendar-math";
 import { formatMoney, source } from "./record-format";
@@ -174,4 +191,146 @@ function usageSummary(item: SubscriptionMonthItem, usedOn: readonly string[], to
     costPerUse:
       roi.costPerUseMinor === null ? null : formatMoney(roi.costPerUseMinor, item.currency),
   };
+}
+
+export interface SafeToSpendResultInput {
+  through: string;
+  currency: Currency;
+  accountItems: readonly AccountRecord[];
+  budgetPlan: BudgetPlan;
+  subscriptionSummary: SubscriptionMonthSummary;
+}
+
+/**
+ * Matches the web and mobile Safe to spend card: remaining monthly budget (or overall balance
+ * when no budgets are set for the month), divided across the days left in the Monday-start week,
+ * capped so active workspace-currency subscriptions renewing in the next 30 days cannot push the
+ * projected balance below zero.
+ */
+export function safeToSpendResult({
+  through,
+  currency,
+  accountItems,
+  budgetPlan,
+  subscriptionSummary,
+}: SafeToSpendResultInput): AssistantToolResultEnvelope<unknown> {
+  const startingBalanceMinor = summarizeAccountBalances(accountItems, currency).overallBalanceMinor;
+  const hasBudget = budgetPlan.totalLimitMinor > 0;
+  const remainingBudgetMinor = hasBudget ? budgetPlan.remainingMinor : undefined;
+  const envelopeMinor = Math.max(0, remainingBudgetMinor ?? startingBalanceMinor);
+  const [year = 1970, monthNum = 1, day = 1] = through.split("-").map(Number);
+  // Build at local noon so getDay() reflects the trusted calendar date in any runtime timezone.
+  const daysLeftInWeek = getDaysLeftInWeek(new Date(year, monthNum - 1, day, 12, 0, 0), "monday");
+  const activeSubscriptions = forecastSubscriptions(subscriptionSummary.items, currency);
+  const excludedSubscriptionCount = subscriptionSummary.items.filter(
+    (item) => item.status === "active" && item.currency !== currency,
+  ).length;
+  const forecast = projectCashflow({
+    startingBalanceMinor,
+    subscriptions: activeSubscriptions,
+    horizonDays: 30,
+    startDate: through,
+  });
+  const calculation = calculateSafeToSpend({
+    remainingWeeklyEnvelopeMinor: envelopeMinor,
+    daysLeftInWeek,
+    forecast: { minProjectedBalanceMinor: forecast.minProjectedBalanceMinor },
+  });
+  const hasBasis = hasSpendingBasis({ startingBalanceMinor, remainingBudgetMinor });
+  const alert = overspendingAlert({
+    safeToSpendMinor: calculation.safeToSpendMinor,
+    forecast,
+    hasBasis,
+  });
+
+  const quality: DataQualityAssessment = { status: "reliable", signals: [] };
+  if (excludedSubscriptionCount > 0) {
+    quality.status = "limited";
+    quality.signals.push({
+      code: "other_currency_excluded",
+      message: `Safe to spend counts only active subscriptions billed in ${currency}, the workspace currency; subscriptions in other currencies are excluded.`,
+      count: excludedSubscriptionCount,
+    });
+  }
+
+  return source(
+    {
+      date: through,
+      currency,
+      safeToSpend: formatMoney(calculation.safeToSpendMinor, currency),
+      daysLeftInWeek: calculation.daysLeftInWeek,
+      basis: hasBudget ? "monthly_budget" : "account_balance",
+      startingBalance: formatMoney(startingBalanceMinor, currency),
+      remainingMonthlyBudget:
+        remainingBudgetMinor === undefined ? null : formatMoney(remainingBudgetMinor, currency),
+      rawPaceBeforeBills: formatMoney(calculation.rawDailyEnvelopeMinor, currency),
+      cappedByUpcomingBills: calculation.isForecastCapped,
+      upcomingBills30DaysTotal: formatMoney(forecast.totalBillsMinor, currency),
+      minProjectedBalance30Days: formatMoney(forecast.minProjectedBalanceMinor, currency),
+      minProjectedBalanceDate: forecast.minBalanceDate,
+      hasSpendingBasis: hasBasis,
+      alert: alert
+        ? {
+            kind: alert.kind,
+            ...(alert.kind === "deficit_risk" ? { deficitDate: alert.deficitDate } : {}),
+          }
+        : null,
+    },
+    "budgets",
+    { quality },
+  );
+}
+
+export interface SavedPlanDeps {
+  accounts: AccountRepository;
+  budgets: BudgetRepository;
+  debts: DebtRepository;
+  goals: FinancialGoalRepository;
+  subscriptions: SubscriptionRepository;
+  subscriptionUsage: SubscriptionUsageRepository;
+  workspaceCurrencyLoader: (env: Bindings, tenantId: string) => Promise<Currency>;
+}
+
+/** Loads the current month's subscriptions and Pro usage check-ins. */
+export async function loadSubscriptions(
+  deps: Pick<SavedPlanDeps, "subscriptions" | "subscriptionUsage">,
+  context: { env: Bindings; tenantId: string },
+  input: SubscriptionsReadInput,
+): Promise<AssistantToolResultEnvelope<unknown>> {
+  const month = `${input.through.slice(0, 7)}-01`;
+  const isPro = (await readTier(context.env, context.tenantId)) === "zoption_pro";
+  const [summary, usage] = await Promise.all([
+    deps.subscriptions.list(context.env, context.tenantId, month),
+    isPro ? deps.subscriptionUsage.list(context.env, context.tenantId, input.through) : null,
+  ]);
+  return subscriptionsResult(summary, input, usage);
+}
+
+/** Loads saved savings goals and debts in the workspace currency. */
+export async function loadGoalsAndDebts(
+  deps: Pick<SavedPlanDeps, "goals" | "debts" | "workspaceCurrencyLoader">,
+  context: { env: Bindings; tenantId: string },
+): Promise<AssistantToolResultEnvelope<unknown>> {
+  const [goalItems, debtItems, currency] = await Promise.all([
+    deps.goals.list(context.env, context.tenantId),
+    deps.debts.list(context.env, context.tenantId),
+    deps.workspaceCurrencyLoader(context.env, context.tenantId),
+  ]);
+  return goalsAndDebtsResult(goalItems, debtItems, currency);
+}
+
+/** Loads the current month's accounts, budget, and subscriptions to build safe-to-spend. */
+export async function loadSafeToSpend(
+  deps: Pick<SavedPlanDeps, "accounts" | "budgets" | "subscriptions" | "workspaceCurrencyLoader">,
+  context: { env: Bindings; tenantId: string },
+  through: string,
+): Promise<AssistantToolResultEnvelope<unknown>> {
+  const month = `${through.slice(0, 7)}-01`;
+  const [accountItems, budgetPlan, subscriptionSummary, currency] = await Promise.all([
+    deps.accounts.list(context.env, context.tenantId),
+    deps.budgets.get(context.env, context.tenantId, { scope: "month", month }),
+    deps.subscriptions.list(context.env, context.tenantId, month),
+    deps.workspaceCurrencyLoader(context.env, context.tenantId),
+  ]);
+  return safeToSpendResult({ through, currency, accountItems, budgetPlan, subscriptionSummary });
 }

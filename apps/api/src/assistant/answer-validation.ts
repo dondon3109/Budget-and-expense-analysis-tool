@@ -24,7 +24,7 @@ const COUNT_OR_DURATION_PATTERN =
 const SHAMING_PATTERN =
   /\b(?:irresponsible|a failure|bad with money|reckless spender|financially careless|iresponsable|bobo sa pera|aksaya sa pera|pabaya sa pera)\b/i;
 const INTERNAL_TOOL_PATTERN =
-  /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories|list_subscriptions|get_goals_and_debts|suggest_transaction_details|draft_transaction|propose_action)\b/i;
+  /\b(?:get_account_balances|get_period_summary|get_spending_by_category|get_budget_vs_actual|detect_recurring_charges|detect_spending_anomalies|calculate_debt_payoff|calculate_savings_goal|list_transactions|list_categories|list_subscriptions|get_goals_and_debts|get_safe_to_spend|suggest_transaction_details|draft_transaction|propose_action)\b/i;
 const REGULATED_RECOMMENDATION_PATTERN =
   /\b(?:you should|i recommend|best for you|right choice for you|dapat kang|inirerekomenda ko|pinakamainam para sa iyo)\b.{0,80}\b(?:buy|sell|invest|allocate|file|deduct|insurance|coverage|retirement|will|trust|legal structure|bumili|ibenta|mamuhunan|mag-invest|seguro|buwis|huling habilin|pensyon)\b/i;
 
@@ -46,6 +46,7 @@ const TOOL_GROUPS: Record<string, RequiredToolGroup | undefined> = {
   list_categories: "category_list",
   list_subscriptions: "subscription_list",
   get_goals_and_debts: "goals_overview",
+  get_safe_to_spend: "safe_to_spend",
   detect_recurring_charges: "recurring",
   detect_spending_anomalies: "anomaly",
   calculate_debt_payoff: "debt_projection",
@@ -70,6 +71,7 @@ const TOOL_FOR_GROUP: Record<RequiredToolGroup, string | null> = {
   category_list: "list_categories",
   subscription_list: "list_subscriptions",
   goals_overview: "get_goals_and_debts",
+  safe_to_spend: "get_safe_to_spend",
   recurring: "detect_recurring_charges",
   anomaly: "detect_spending_anomalies",
   debt_projection: null,
@@ -93,6 +95,7 @@ const SOURCE_LABELS: Record<string, string> = {
   list_categories: "Categories",
   list_subscriptions: "Subscriptions",
   get_goals_and_debts: "Goals and debts",
+  get_safe_to_spend: "Safe to spend",
   detect_recurring_charges: "Recurring charges",
   detect_spending_anomalies: "Spending anomalies",
   calculate_debt_payoff: "Debt payoff projection",
@@ -219,7 +222,8 @@ export function validateToolArguments(
   if (
     (name === "detect_recurring_charges" ||
       name === "suggest_transaction_details" ||
-      name === "list_subscriptions") &&
+      name === "list_subscriptions" ||
+      name === "get_safe_to_spend") &&
     values.through !== policy.currentDate
   ) {
     return "untrusted_current_date";
@@ -269,6 +273,7 @@ export function requiredGroupToolCall(
     case "detect_recurring_charges":
     case "suggest_transaction_details":
     case "list_subscriptions":
+    case "get_safe_to_spend":
       return { name, arguments: { through: policy.currentDate } };
     default:
       return null;

@@ -615,7 +615,11 @@ export function DashboardPage() {
                 Income includes income transactions. Expenses include expense transactions only;
                 transfers move money between accounts and do not change your overall balance.
                 Remaining budget is that month’s category plan minus recorded expenses in the
-                categories that have a limit, and it does not carry over.
+                categories that have a limit, and it does not carry over. Safe to spend this week
+                takes your remaining monthly budget (or your overall balance when you have no
+                budgets for the month), divides it across the days left in the Monday-to-Sunday
+                week, and caps it so active bills in your workspace currency renewing in the next 30
+                days do not push your projected balance below zero.
               </p>
             </details>
             {goalConfig.emphasis !== "recent_transactions" && transactionHistory}

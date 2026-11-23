@@ -20,7 +20,6 @@ import { categoryRepository, type CategoryRepository } from "../db/categories";
 import { debtRepository, type DebtRepository } from "../db/debts";
 import { loadDashboard } from "../db/dashboard";
 import { financialGoalRepository, type FinancialGoalRepository } from "../db/goals";
-import { readTier } from "../billing/entitlements";
 import {
   subscriptionUsageRepository,
   type SubscriptionUsageRepository,
@@ -43,8 +42,9 @@ import {
 } from "./calendar-math";
 import { loadAndProposeAction, type ActionProposal } from "./actions";
 import {
-  goalsAndDebtsResult,
-  subscriptionsResult,
+  loadGoalsAndDebts,
+  loadSafeToSpend,
+  loadSubscriptions,
   type SubscriptionsReadInput,
 } from "./saved-plans";
 import {
@@ -177,6 +177,10 @@ export interface FinancialReader {
     input: SubscriptionsReadInput,
   ): Promise<AssistantToolResultEnvelope<unknown>>;
   getGoalsAndDebts(context: FinancialReadContext): Promise<AssistantToolResultEnvelope<unknown>>;
+  getSafeToSpend(
+    context: FinancialReadContext,
+    through: string,
+  ): Promise<AssistantToolResultEnvelope<unknown>>;
   suggestTransactionDetails(
     context: FinancialReadContext,
     input: TransactionSuggestionInput,
@@ -936,24 +940,16 @@ export function createFinancialReader(
       );
     },
 
-    async listSubscriptions(context, input) {
-      const month = `${input.through.slice(0, 7)}-01`;
-      const isPro = (await readTier(context.env, context.tenantId)) === "zoption_pro";
-      const [summary, usage] = await Promise.all([
-        subscriptions.list(context.env, context.tenantId, month),
-        isPro ? subscriptionUsage.list(context.env, context.tenantId, input.through) : null,
-      ]);
-      return subscriptionsResult(summary, input, usage);
-    },
-
-    async getGoalsAndDebts(context) {
-      const [goalItems, debtItems, currency] = await Promise.all([
-        goals.list(context.env, context.tenantId),
-        debts.list(context.env, context.tenantId),
-        workspaceCurrencyLoader(context.env, context.tenantId),
-      ]);
-      return goalsAndDebtsResult(goalItems, debtItems, currency);
-    },
+    listSubscriptions: (context, input) =>
+      loadSubscriptions({ subscriptions, subscriptionUsage }, context, input),
+    getGoalsAndDebts: (context) =>
+      loadGoalsAndDebts({ goals, debts, workspaceCurrencyLoader }, context),
+    getSafeToSpend: (context, through) =>
+      loadSafeToSpend(
+        { accounts, budgets, subscriptions, workspaceCurrencyLoader },
+        context,
+        through,
+      ),
 
     async listCategories(context, kind) {
       const items = await categories.list(context.env, context.tenantId);
