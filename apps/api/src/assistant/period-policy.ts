@@ -22,7 +22,11 @@ export function hasExplicitPeriod(value: string): boolean {
   );
 }
 
+const SAFE_TO_SPEND_PATTERN =
+  /\bsafe[\s-]+to[\s-]+spend\b|\b(?:safe(?:ly)?\s+(?:to\s+)?spend|pwede(?:ng)?\s+gastusin|ligtas\s+gastusin)\b/i;
+
 export function isPeriodBoundAggregateRequest(message: string): boolean {
+  if (SAFE_TO_SPEND_PATTERN.test(message)) return false;
   return AGGREGATE_TERM_PATTERN.test(message) && AGGREGATE_REQUEST_PATTERN.test(message);
 }
 

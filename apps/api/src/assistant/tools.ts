@@ -7,6 +7,7 @@ import {
   assistantGoalsAndDebtsToolSchema,
   assistantPeriodSummaryToolSchema,
   assistantRecurringChargesToolSchema,
+  assistantSafeToSpendToolSchema,
   assistantSavingsGoalToolSchema,
   assistantSpendingAnomaliesToolSchema,
   assistantSpendingByCategoryToolSchema,
@@ -231,6 +232,22 @@ export const assistantToolDefinitions: AssistantToolDefinition[] = [
       description:
         "Get the user's saved savings goals with saved amount, target, remaining, progress, and target date, and saved debts with balance, APR, and minimum payment, plus authoritative totals for active ones.",
       parameters: { type: "object", properties: {}, additionalProperties: false },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_safe_to_spend",
+      description:
+        "Calculate the user's current Safe to spend this week figure and its breakdown: remaining monthly budget or balance fallback, days left in the Monday-to-Sunday week, 30-day upcoming bills forecast minimum, whether bills capped it, and any deficit or spent-out alert.",
+      parameters: {
+        type: "object",
+        properties: {
+          through: { type: "string", description: "Trusted current date YYYY-MM-DD" },
+        },
+        required: ["through"],
+        additionalProperties: false,
+      },
     },
   },
   {
@@ -540,6 +557,13 @@ export async function executeAssistantToolDetailed(
         args = parsed;
         validate(parsed);
         result = await reader.getGoalsAndDebts(context);
+        break;
+      }
+      case "get_safe_to_spend": {
+        const parsed = parseWithSchema(assistantSafeToSpendToolSchema, rawArguments);
+        args = parsed;
+        validate(parsed);
+        result = await reader.getSafeToSpend(context, parsed.through);
         break;
       }
       case "suggest_transaction_details": {

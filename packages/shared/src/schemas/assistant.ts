@@ -224,6 +224,12 @@ export const assistantSubscriptionsToolSchema = z
 
 export const assistantGoalsAndDebtsToolSchema = z.object({}).strict();
 
+export const assistantSafeToSpendToolSchema = z
+  .object({
+    through: isoDateSchema,
+  })
+  .strict();
+
 export const assistantSpendingAnomaliesToolSchema = z
   .object(assistantDateRangeShape)
   .strict()

@@ -84,6 +84,9 @@ function createReader(): FinancialReader {
     listCategories: vi.fn(async () => envelope({ items: [] })),
     listSubscriptions: vi.fn(async () => envelope({ items: [] }, "subscriptions")),
     getGoalsAndDebts: vi.fn(async () => envelope({ goals: [], debts: [] }, "goals")),
+    getSafeToSpend: vi.fn(async () =>
+      envelope({ safeToSpend: "PHP 1,000.00", daysLeftInWeek: 5 }, "budgets"),
+    ),
     suggestTransactionDetails: vi.fn(async () =>
       envelope({
         place: "Jollibee",
@@ -483,6 +486,7 @@ describe("assistant orchestration", () => {
       "list_categories",
       "list_subscriptions",
       "get_goals_and_debts",
+      "get_safe_to_spend",
       "suggest_transaction_details",
       "draft_transaction",
       "propose_action",
@@ -511,6 +515,12 @@ describe("assistant orchestration", () => {
         JSON.stringify({ accountId: "account-1" }),
       ),
     ).rejects.toThrow("arguments were invalid");
+    expect(validateToolArguments("get_safe_to_spend", { through: "2026-08-01" }, policy)).toBe(
+      "untrusted_current_date",
+    );
+    expect(
+      validateToolArguments("get_safe_to_spend", { through: policy.currentDate }, policy),
+    ).toBeNull();
   });
 
   it("returns a drafted transaction in metadata without showing its ids to the model", async () => {

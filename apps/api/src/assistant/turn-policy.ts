@@ -26,6 +26,7 @@ export type RequiredToolGroup =
   | "category_list"
   | "subscription_list"
   | "goals_overview"
+  | "safe_to_spend"
   | "recurring"
   | "anomaly"
   | "debt_projection"
@@ -257,7 +258,15 @@ function requiredGroups(message: string): RequiredToolGroup[] {
     groups.add("category_spending");
   }
   if (
+    /\bsafe[\s-]+to[\s-]+spend\b|\b(?:how much|magkano)\b[^.?!]{0,30}\b(?:safe(?:ly)?\s+(?:to\s+)?spend|pwede(?:ng)?\s+gastusin|ligtas\s+gastusin)\b/i.test(
+      message,
+    )
+  ) {
+    groups.add("safe_to_spend");
+  }
+  if (
     personalized &&
+    !groups.has("safe_to_spend") &&
     /\b(?:income|earn(?:ed|ing|s)?|expenses?|spend(?:ing|t)?|net|sav(?:e|ed|ings?)(?: rate)?|pay(?:ments?)?|paid|receive(?:d)?|cash flow|remaining|left|average|kita|kinita|sweldo|sahod|gastos|nagastos|nagasta|ipon|naipon|bayad|nagbayad|binayad|natira|natitira|kabuuan)\b/i.test(
       message,
     )
