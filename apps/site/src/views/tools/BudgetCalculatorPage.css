@@ -237,3 +237,335 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Guided layout and visual accents for the 50/30/20 calculator (additive so the
+   subscription calculator that also imports this stylesheet stays unaffected). */
+.calc-panel-guided {
+  grid-template-columns: 1fr;
+  gap: 22px;
+  padding: 20px;
+  background: var(--surface);
+}
+
+.calc-step {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.calc-splits-step {
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.calc-step-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.calc-step-head .calc-label {
+  margin: 0;
+}
+
+.calc-step-head-spread {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.calc-step-head-spread > .calc-step-head {
+  margin-bottom: 0;
+}
+
+.calc-step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--surface-hover);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  flex: none;
+}
+
+.calc-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calc-presets-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 32px;
+  padding: 4px 11px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.calc-chip:hover {
+  border-color: var(--ink);
+}
+
+.calc-chip.active {
+  border-color: var(--solid-bg);
+  background: var(--solid-bg);
+  color: var(--solid-text);
+}
+
+.calc-total-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.calc-total-pill.valid {
+  background: var(--income-soft);
+  color: var(--income-text);
+}
+
+.calc-total-pill.invalid {
+  background: var(--expense-soft);
+  color: var(--expense-text);
+}
+
+.calc-split-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.calc-split-card {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-soft);
+}
+
+.calc-split-card:focus-within {
+  border-color: var(--focus);
+  outline: 2px solid var(--focus);
+  outline-offset: -1px;
+}
+
+.calc-split-card-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.calc-bucket-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: none;
+}
+
+.calc-bucket-needs {
+  --bucket-color: var(--brand);
+}
+
+.calc-bucket-wants {
+  --bucket-color: var(--info);
+}
+
+.calc-bucket-savings {
+  --bucket-color: var(--budget);
+}
+
+.calc-bucket-needs .calc-bucket-dot,
+.calc-bucket-wants .calc-bucket-dot,
+.calc-bucket-savings .calc-bucket-dot {
+  background: var(--bucket-color);
+}
+
+.calc-split-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.calc-step-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.calc-step-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.calc-split-number {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  flex: 1;
+}
+
+.calc-split-number .calc-split-input {
+  width: 44px;
+  text-align: center;
+}
+
+.calc-balance-banner {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface-soft);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.legal-article .calc-balance-banner .calc-error {
+  margin: 0;
+}
+
+.calc-balance-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.calc-bar {
+  display: flex;
+  gap: 3px;
+  height: 10px;
+  margin-top: 16px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-hover);
+}
+
+.calc-bar-segment {
+  display: block;
+  height: 100%;
+  background: var(--bucket-color);
+  transition: width 160ms ease;
+}
+
+.calc-result-bucket {
+  background: var(--surface);
+  border-top: 3px solid var(--bucket-color);
+  display: flex;
+  flex-direction: column;
+}
+
+.calc-result-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.legal-article .calc-result-top .calc-result-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calc-result-badge {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--muted);
+}
+
+.legal-article .calc-result-bucket .calc-result-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+.legal-article .calc-example-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.legal-article .calc-example-tags li {
+  margin: 0;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 520;
+}
+
+.calc-cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.calc-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.calc-copy-btn:hover {
+  border-color: var(--ink);
+}
+
+@media (max-width: 760px) {
+  .calc-split-grid {
+    grid-template-columns: 1fr;
+  }
+}
