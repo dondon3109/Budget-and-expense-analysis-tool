@@ -156,6 +156,7 @@ export function HomeScreen() {
             onSelect={setMenuView}
             onOpenFamilies={() => openFeature("family", "/(app)/family")}
             onOpenFamilySettings={() => router.push("/(app)/family")}
+            onOpenBudgetCalculator={() => router.push("/(app)/budget-calculator")}
             onOpenPet={() => openFeature("pet", "/(app)/pet")}
           />
         </View>

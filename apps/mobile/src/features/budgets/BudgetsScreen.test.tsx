@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
 
 import { useBudgetOccasions, useBudgetPlan, useLocalWorkspace } from "@/db/local-workspace-state";
@@ -304,5 +305,27 @@ describe("BudgetsScreen", () => {
 
     expect(createEvent).not.toHaveBeenCalled();
     expect(screen.getByText("Check the highlighted details.")).toBeTruthy();
+  });
+
+  it("opens the 50/30/20 calculator from the Month and Every month headers", async () => {
+    mockPlan([budget()]);
+
+    await render(<BudgetsScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "50/30/20 calculator" }));
+    expect(router.push).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pathname: "/(app)/budget-calculator",
+        params: expect.objectContaining({ scope: "month" }),
+      }),
+    );
+
+    await fireEvent.press(screen.getByRole("tab", { name: "Every month" }));
+    await fireEvent.press(screen.getByRole("button", { name: "50/30/20 calculator" }));
+    expect(router.push).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pathname: "/(app)/budget-calculator",
+        params: expect.objectContaining({ scope: "every-month" }),
+      }),
+    );
   });
 });

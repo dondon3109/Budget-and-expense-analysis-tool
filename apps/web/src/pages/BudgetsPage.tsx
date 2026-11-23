@@ -27,6 +27,7 @@ import { formatFullMonth, formatMoney } from "../lib/formatters";
 import { useUnsavedChangesWarning } from "../hooks/useUnsavedChangesWarning";
 import { restoreOptimisticSnapshot, updateOptimistically } from "../lib/optimistic";
 import { queryKeys } from "../lib/queryKeys";
+import { useAccounts } from "../queries/accounts";
 import { budgetPlanKey, invalidateAfterBudgetWrite, useBudgets } from "../queries/budgets";
 import "./BudgetsPage.css";
 import { useWorkspaceCurrency } from "../lib/workspaceCurrency";
@@ -45,6 +46,10 @@ export function BudgetsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [clientError, setClientError] = useState<string>();
+  const [calculatorApplyStatus, setCalculatorApplyStatus] = useState<{
+    kind: "success" | "error";
+    message: string;
+  } | null>(null);
   /** A month the user picked while the plan was dirty, waiting on confirmation. */
   const [pendingMonth, setPendingMonth] = useState<string>();
   const initializedDraftShapeRef = useRef<string | undefined>(undefined);
@@ -60,6 +65,7 @@ export function BudgetsPage() {
         : { scope: "month", month: monthStart };
   const planKey = planQuery ? budgetPlanKey(planQuery) : monthStart;
   const budgetQuery = useBudgets(workspace, planQuery);
+  const accountsQuery = useAccounts(workspace);
 
   useEffect(() => {
     if (!budgetQuery.data) return;
@@ -76,6 +82,7 @@ export function BudgetsPage() {
     const restored = readBudgetDraft(planKey);
     setDrafts(restored ? { ...seeded, ...restored } : seeded);
     setClientError(undefined);
+    setCalculatorApplyStatus(null);
   }, [budgetQuery.data, planKey]);
 
   const saveMutation = useMutation({
@@ -119,6 +126,7 @@ export function BudgetsPage() {
       queryClient.setQueryData(queryKeys.budgets(workspace, planKey), data);
       // Saved work is no longer a draft, so nothing should be restored next visit.
       clearBudgetDraft(planKey);
+      setCalculatorApplyStatus(null);
     },
     onSettled: () => {
       void invalidateAfterBudgetWrite(queryClient, workspace);
@@ -233,6 +241,9 @@ export function BudgetsPage() {
         ? "Save occasion budget"
         : "Save monthly plan";
 
+  const showCalculator = tab === "month" || tab === "every-month";
+  const canEditBudgets = !family || family.role !== "viewer";
+
   return (
     <AppShell>
       <div className="dashboard-page budgets-page">
@@ -249,7 +260,7 @@ export function BudgetsPage() {
           </div>
           <div className="header-actions budgets-header-actions">
             {/* The calculator sits below the whole plan, so the header points to it. */}
-            {tab === "month" && (
+            {showCalculator && (
               <a className="button secondary" href="#budget-rule">
                 <Calculator size={17} aria-hidden="true" /> 50/30/20 calculator
               </a>
@@ -515,7 +526,34 @@ export function BudgetsPage() {
             />
           </>
         )}
-        {tab === "month" && <BudgetRuleCalculator />}
+        {showCalculator && (
+          <BudgetRuleCalculator
+            accounts={accountsQuery.data}
+            categories={data?.items.map((item) => ({
+              id: item.categoryId,
+              name: item.categoryName,
+              color: item.categoryColor,
+            }))}
+            currentPlanLimitMinor={data?.totalLimitMinor}
+            applyTargetLabel={planLabel}
+            canApply={canEditBudgets}
+            applyStatus={calculatorApplyStatus}
+            onApply={(items) => {
+              setDrafts((current) => {
+                const next = { ...current };
+                for (const item of items) {
+                  next[item.categoryId] = formatMinorAmount(item.limitMinor);
+                }
+                return next;
+              });
+              setClientError(undefined);
+              setCalculatorApplyStatus({
+                kind: "success",
+                message: `Applied to ${items.length} ${items.length === 1 ? "category" : "categories"} above. Review the amounts and click ${saveLabel}.`,
+              });
+            }}
+          />
+        )}
         {(pendingMonth || pendingParams) && (
           <ConfirmDialog
             title="Discard unsaved changes?"
