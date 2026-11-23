@@ -14,6 +14,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/app/transactions": "Transactions — Zoption",
   "/app/import": "Import transactions — Zoption",
   "/app/budgets": "Budgets — Zoption",
+  "/app/budgets/50-30-20": "50/30/20 calculator — Zoption",
   "/app/family": "Family — Zoption",
   "/app/subscriptions": "Bills — Zoption",
   "/app/pet": "Your pet — Zoption",

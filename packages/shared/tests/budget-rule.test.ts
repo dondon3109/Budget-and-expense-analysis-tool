@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { allocateBudget, DEFAULT_BUDGET_RULE_PERCENTAGES } from "../src/budgetRule";
+import {
+  accountSplitBalance,
+  allocateBudget,
+  DEFAULT_BUDGET_RULE_PERCENTAGES,
+  distributeBucketLimits,
+} from "../src/budgetRule";
 
 describe("allocateBudget", () => {
   it("splits a clean amount into the standard buckets", () => {
@@ -59,5 +64,65 @@ describe("allocateBudget", () => {
 
   it("leaves the shared defaults at 50/30/20", () => {
     expect(DEFAULT_BUDGET_RULE_PERCENTAGES).toEqual({ needs: 50, wants: 30, savings: 20 });
+  });
+});
+
+describe("accountSplitBalance", () => {
+  it("prefers the native currency entry from balancesByCurrency", () => {
+    expect(
+      accountSplitBalance({
+        currency: "USD",
+        balanceMinor: 100_00,
+        balancesByCurrency: { PHP: 500_000, USD: 250_00 },
+      }),
+    ).toEqual({ balanceMinor: 250_00, currency: "USD" });
+  });
+
+  it("falls back to balanceMinor and then zero when balancesByCurrency lacks the currency", () => {
+    expect(accountSplitBalance({ currency: "PHP", balanceMinor: 42_50 })).toEqual({
+      balanceMinor: 42_50,
+      currency: "PHP",
+    });
+    expect(accountSplitBalance({ currency: "PHP", balanceMinor: null })).toEqual({
+      balanceMinor: 0,
+      currency: "PHP",
+    });
+  });
+});
+
+describe("distributeBucketLimits", () => {
+  it("splits each bucket evenly in exact minor units without losing leftover centavos", () => {
+    const allocation = allocateBudget(10_000); // needs 5000, wants 3000, savings 2000
+    const limits = distributeBucketLimits(allocation, {
+      needs: ["housing", "food", "utilities"], // 5000 / 3 = 1667, 1667, 1666
+      wants: ["leisure"],
+      savings: [],
+    });
+
+    expect(limits).toEqual([
+      { categoryId: "housing", limitMinor: 1667, bucket: "needs" },
+      { categoryId: "food", limitMinor: 1667, bucket: "needs" },
+      { categoryId: "utilities", limitMinor: 1666, bucket: "needs" },
+      { categoryId: "leisure", limitMinor: 3000, bucket: "wants" },
+    ]);
+    const needsSum = limits
+      .filter((item) => item.bucket === "needs")
+      .reduce((sum, item) => sum + item.limitMinor, 0);
+    expect(needsSum).toBe(allocation.needs);
+  });
+
+  it("deduplicates category ids across buckets in needs/wants/savings order", () => {
+    const allocation = allocateBudget(100_00);
+    expect(
+      distributeBucketLimits(allocation, {
+        needs: ["food", "food"],
+        wants: ["food", "leisure"],
+        savings: ["debt"],
+      }),
+    ).toEqual([
+      { categoryId: "food", limitMinor: 50_00, bucket: "needs" },
+      { categoryId: "leisure", limitMinor: 30_00, bucket: "wants" },
+      { categoryId: "debt", limitMinor: 20_00, bucket: "savings" },
+    ]);
   });
 });

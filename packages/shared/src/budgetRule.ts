@@ -1,3 +1,5 @@
+import type { Currency, CurrencyTotals } from "./currencies";
+
 /**
  * Minor-unit exact 50/30/20 allocation, shared by the public calculator and the signed-in app.
  *
@@ -23,13 +25,73 @@ export type BudgetAllocation = BudgetRulePercentages & {
 };
 
 const BUCKET_ORDER = ["needs", "wants", "savings"] as const;
-type Bucket = (typeof BUCKET_ORDER)[number];
+export type BudgetRuleBucket = (typeof BUCKET_ORDER)[number];
 
 export const DEFAULT_BUDGET_RULE_PERCENTAGES: BudgetRulePercentages = {
   needs: 50,
   wants: 30,
   savings: 20,
 };
+
+export interface BudgetCategoryLimitAllocation {
+  categoryId: string;
+  limitMinor: number;
+  bucket: BudgetRuleBucket;
+}
+
+/** Reads the balance to split from an account in its own native currency (integer minor units). */
+export function accountSplitBalance(account: {
+  currency: Currency;
+  balanceMinor: number | null;
+  balancesByCurrency?: CurrencyTotals;
+}): { balanceMinor: number; currency: Currency } {
+  const nativeBalance = account.balancesByCurrency?.[account.currency];
+  return {
+    balanceMinor: nativeBalance ?? account.balanceMinor ?? 0,
+    currency: account.currency,
+  };
+}
+
+/**
+ * Distributes each bucket's allocated amount evenly across the expense categories assigned to it,
+ * using exact integer minor units so the category limits sum to the bucket total to the centavo.
+ * Unassigned buckets and categories are skipped; if an id appears in more than one bucket, the
+ * first bucket in needs/wants/savings order wins.
+ */
+export function distributeBucketLimits(
+  allocation: BudgetAllocation,
+  assignments: Record<BudgetRuleBucket, readonly string[]>,
+): BudgetCategoryLimitAllocation[] {
+  const seen = new Set<string>();
+  const result: BudgetCategoryLimitAllocation[] = [];
+
+  for (const bucket of BUCKET_ORDER) {
+    const categoryIds: string[] = [];
+    for (const id of assignments[bucket]) {
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      categoryIds.push(id);
+    }
+    if (categoryIds.length === 0) continue;
+
+    const bucketTotal = allocation[bucket];
+    if (!Number.isSafeInteger(bucketTotal) || bucketTotal < 0) {
+      throw new RangeError("Bucket total must be a non-negative integer in minor units.");
+    }
+    const base = Math.floor(bucketTotal / categoryIds.length);
+    const remainder = bucketTotal % categoryIds.length;
+
+    categoryIds.forEach((categoryId, index) => {
+      result.push({
+        categoryId,
+        limitMinor: base + (index < remainder ? 1 : 0),
+        bucket,
+      });
+    });
+  }
+
+  return result;
+}
 
 export function allocateBudget(
   incomeMinor: number,
@@ -71,7 +133,7 @@ export function allocateBudget(
     leftover -= 1;
   }
 
-  const allocated = {} as Record<Bucket, number>;
+  const allocated = {} as Record<BudgetRuleBucket, number>;
   for (const entry of entries) {
     allocated[entry.bucket] = entry.value;
   }

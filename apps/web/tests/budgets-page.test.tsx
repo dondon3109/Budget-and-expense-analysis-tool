@@ -9,7 +9,14 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createCalendarEvent, getBudgetOccasions, getBudgets, saveBudgets } from "../src/lib/api";
+import {
+  createCalendarEvent,
+  getAccounts,
+  getBudgetOccasions,
+  getBudgets,
+  saveBudgets,
+} from "../src/lib/api";
+import { BudgetCalculatorPage } from "../src/pages/BudgetCalculatorPage";
 import { BudgetsPage } from "../src/pages/BudgetsPage";
 import { ThemeProvider } from "../src/theme/ThemeProvider";
 
@@ -23,6 +30,7 @@ vi.mock("../src/auth/AuthProvider", () => ({
 }));
 
 vi.mock("../src/lib/api", () => ({
+  getAccounts: vi.fn(),
   getBudgets: vi.fn(),
   getBudgetOccasions: vi.fn(),
   createCalendarEvent: vi.fn(),
@@ -65,6 +73,7 @@ describe("BudgetsPage", () => {
   afterEach(() => window.sessionStorage.clear());
 
   beforeEach(() => {
+    vi.mocked(getAccounts).mockResolvedValue([]);
     vi.mocked(getBudgets).mockResolvedValue(budgetPlan);
     vi.mocked(saveBudgets).mockResolvedValue({ ...budgetPlan, totalLimitMinor: 900_000 });
     mocks.signOut.mockReset();
@@ -179,6 +188,91 @@ describe("BudgetsPage", () => {
     const link = screen.getByRole("link", { name: "50/30/20 calculator" });
     expect(link).toHaveAttribute("href", "#budget-rule");
     expect(document.getElementById("budget-rule")).toHaveAccessibleName("50/30/20 calculator");
+  });
+
+  it("shows the 50/30/20 calculator on Every month and applies an account balance split into drafts", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getAccounts).mockResolvedValue([
+      {
+        id: "acc-1",
+        name: "Bank",
+        type: "checking",
+        currency: "PHP",
+        balanceMinor: 2_000_000,
+        balancesByCurrency: { PHP: 2_000_000 },
+        archived: false,
+      },
+    ]);
+    vi.mocked(getBudgets).mockResolvedValue({ ...budgetPlan, scope: "every-month", month: null });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/budgets?scope=every-month"]}>
+          <QueryClientProvider client={queryClient}>
+            <BudgetsPage />
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    const foodInput = await screen.findByLabelText("Food & dining every-month budget");
+    expect(screen.getByRole("link", { name: "50/30/20 calculator" })).toHaveAttribute(
+      "href",
+      "#budget-rule",
+    );
+
+    await user.selectOptions(await screen.findByLabelText("Split from"), "acc-1");
+    const foodBucket = screen.getByRole("group", { name: "Food & dining bucket" });
+    await user.click(within(foodBucket).getByRole("button", { name: "Needs" }));
+    await user.click(screen.getByRole("button", { name: "Apply to Every month" }));
+
+    expect(foodInput).toHaveValue("10000.00");
+    expect(screen.getByText(/Applied to 1 category above/i)).toBeInTheDocument();
+  });
+
+  it("saves applied 50/30/20 limits directly from the standalone calculator page", async () => {
+    const user = userEvent.setup();
+    vi.mocked(getAccounts).mockResolvedValue([
+      {
+        id: "acc-1",
+        name: "Payroll",
+        type: "checking",
+        currency: "PHP",
+        balanceMinor: 3_000_000,
+        balancesByCurrency: { PHP: 3_000_000 },
+        archived: false,
+      },
+    ]);
+    vi.mocked(getBudgets).mockResolvedValue(budgetPlan);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    render(
+      <ThemeProvider>
+        <MemoryRouter initialEntries={["/app/budgets/50-30-20?month=2026-07"]}>
+          <QueryClientProvider client={queryClient}>
+            <Routes>
+              <Route path="/app/budgets/50-30-20" element={<BudgetCalculatorPage />} />
+            </Routes>
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    await user.selectOptions(await screen.findByLabelText("Split from"), "acc-1");
+    const foodBucket = await screen.findByRole("group", { name: "Food & dining bucket" });
+    await user.click(within(foodBucket).getByRole("button", { name: "Wants" }));
+    await user.click(screen.getByRole("button", { name: "Apply to July 2026" }));
+
+    await waitFor(() => expect(saveBudgets).toHaveBeenCalledOnce());
+    expect(vi.mocked(saveBudgets)).toHaveBeenCalledWith(
+      { key: "user:test-user", userId: "test-user" },
+      {
+        scope: "month",
+        month: "2026-07-01",
+        items: [{ categoryId: "food", limitMinor: 900_000 }],
+      },
+    );
   });
 
   it("flags unsaved edits and asks the browser to confirm before an unload", async () => {

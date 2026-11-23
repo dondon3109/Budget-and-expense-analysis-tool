@@ -35,7 +35,7 @@ import {
   updateAccountInterest,
 } from "./transaction-mutations/commands/accounts";
 import { archiveReferenceEntity } from "./transaction-mutations/commands/archive-reference";
-import { setBudgetLimit } from "./transaction-mutations/commands/budgets";
+import { setBudgetLimit, setBudgetLimits } from "./transaction-mutations/commands/budgets";
 import { createCategory, updateCategory } from "./transaction-mutations/commands/categories";
 import { createDebt, deleteDebt, updateDebt } from "./transaction-mutations/commands/debts";
 import { createEvent, deleteEvent, updateEvent } from "./transaction-mutations/commands/events";
@@ -186,6 +186,13 @@ export class LocalTransactionMutationRepository {
 
   setBudgetLimit(period: BudgetQuery, categoryId: string, limitMinor: number): Promise<void> {
     return setBudgetLimit(this.commands, period, categoryId, limitMinor);
+  }
+
+  setBudgetLimits(
+    period: BudgetQuery,
+    items: ReadonlyArray<{ categoryId: string; limitMinor: number }>,
+  ): Promise<void> {
+    return setBudgetLimits(this.commands, period, items);
   }
 
   createGoal(value: FinancialGoalInput): Promise<string> {
