@@ -7,7 +7,7 @@ import { BUDGET_CALCULATOR_SIGNUP_PATH } from "../../lib/siteEvents";
 import { allocateBudget, DEFAULT_BUDGET_RULE_PERCENTAGES } from "@zoption/shared/budget-rule";
 import "./BudgetCalculatorPage.css";
 
-export const BUDGET_CALCULATOR_LAST_UPDATED = "November 21, 2026";
+export const BUDGET_CALCULATOR_LAST_UPDATED = "November 23, 2026";
 
 const EXAMPLE_INCOMES_MINOR = [1_800_000, 3_000_000, 5_000_000];
 
