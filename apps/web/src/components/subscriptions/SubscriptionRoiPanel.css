@@ -1,50 +1,105 @@
-/* Subscription ROI: check-ins, cost per use, and the idle prompt. Flat surfaces, no gradients. */
+/* Subscription ROI: flat ledger section below the bills table. No floating card, no gradients. */
 
 .subscription-roi {
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin: 16px 0;
-  padding: 18px;
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
+  margin-top: 32px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
 }
 
 .subscription-roi-header,
 .subscription-roi-teaser {
   display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  color: var(--ink);
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.subscription-roi-header {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
 }
 
 .subscription-roi-teaser {
   flex-direction: row;
-  align-items: center;
+  padding-bottom: 8px;
 }
 
-.subscription-roi-teaser > div {
-  flex: 1;
+.subscription-roi-heading-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
 }
 
-.subscription-roi-header p,
-.subscription-roi-teaser p {
-  margin: 4px 0 0;
+.subscription-roi-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--brand) 18%, transparent);
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+
+.subscription-roi-title {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+.subscription-roi-subtitle {
+  margin: 3px 0 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.subscription-roi-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.subscription-roi-count {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-soft);
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 580;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.subscription-roi-count.idle {
+  border-color: color-mix(in srgb, var(--warning) 30%, var(--line));
+  background: var(--warning-soft);
+  color: var(--warning);
 }
 
 .subscription-roi-error {
-  margin: 0;
+  margin: 12px 0 0;
   color: var(--danger);
-  font-size: 14px;
+  font-size: 12.5px;
 }
 
 .subscription-roi-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -52,30 +107,42 @@
 
 .subscription-roi-row {
   display: grid;
-  grid-template-columns: minmax(140px, 1.2fr) minmax(220px, 2fr) auto;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(240px, 1.8fr) auto;
   align-items: center;
   gap: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-md);
+  padding: 15px 16px;
+  border-bottom: 1px solid var(--line);
+  transition: background-color 0.14s ease;
+}
+
+.subscription-roi-row:hover {
   background: var(--surface-soft);
 }
 
 .subscription-roi-row.idle {
-  border-color: var(--warning);
+  margin-top: 8px;
+  border: 1px solid color-mix(in srgb, var(--warning) 32%, var(--line));
+  border-left: 3px solid var(--warning);
+  border-radius: var(--radius-sm);
   background: var(--warning-soft);
 }
 
 .subscription-roi-name {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
+.subscription-roi-name strong {
+  color: var(--ink);
+  font-size: 13.5px;
+  font-weight: 650;
+}
+
 .subscription-roi-status {
-  font-size: 13px;
-  color: var(--muted);
+  font-size: 12px;
+  color: var(--subtle);
 }
 
 .subscription-roi-status.idle {
@@ -95,52 +162,188 @@
 }
 
 .subscription-roi-stats dt {
-  font-size: 12px;
-  color: var(--muted);
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 580;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .subscription-roi-stats dd {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin: 2px 0 0;
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 13px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  color: var(--ink);
+}
+
+.subscription-roi-stats dd.is-muted {
+  color: var(--subtle);
+  font-weight: 500;
 }
 
 .subscription-roi-actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.subscription-roi-used {
-  color: var(--success);
+.subscription-roi-untrack {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--subtle);
+  font-size: 12px;
+  font-weight: 580;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease;
 }
 
-@media (max-width: 720px) {
-  .subscription-roi-row {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
+.subscription-roi-untrack:hover:not(:disabled) {
+  color: var(--ink);
+  background: var(--surface-hover);
+}
 
-  .subscription-roi-actions {
-    justify-content: flex-start;
-  }
+.subscription-roi-untrack:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
 
-  .subscription-roi-teaser {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+.subscription-roi-cancel {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--line-strong));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--warning);
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.subscription-roi-cancel:hover {
+  border-color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.subscription-roi-checkin {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+}
+
+.subscription-roi-used {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 32%, var(--line-strong));
+  background: var(--success-soft);
+  box-shadow: none;
+}
+
+.subscription-roi-used:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--success) 52%, var(--line-strong));
+  background: var(--success-soft);
 }
 
 .subscription-roi-untracked {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  gap: 10px 12px;
+  padding-top: 14px;
+}
+
+.subscription-roi-untracked-label {
+  color: var(--subtle);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 580;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.subscription-roi-untracked-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  color: var(--muted);
-  font-size: 13px;
+}
+
+.subscription-roi-track-chip {
+  min-height: 34px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 580;
+  cursor: pointer;
+  transition:
+    color 0.14s ease,
+    background-color 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.subscription-roi-track-chip:hover:not(:disabled) {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--action) 40%, var(--line-strong));
+  background: var(--action-soft);
+  color: var(--action-strong);
+}
+
+.subscription-roi-track-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+@media (max-width: 760px) {
+  .subscription-roi-header,
+  .subscription-roi-teaser {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .subscription-roi-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 15px 12px;
+  }
+
+  .subscription-roi-actions {
+    justify-content: flex-start;
+  }
+
+  .subscription-roi-untrack,
+  .subscription-roi-cancel,
+  .subscription-roi-checkin,
+  .subscription-roi-track-chip {
+    min-height: 44px;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .subscription-roi-untrack,
+  .subscription-roi-cancel,
+  .subscription-roi-checkin,
+  .subscription-roi-track-chip {
+    min-height: 44px;
+  }
 }

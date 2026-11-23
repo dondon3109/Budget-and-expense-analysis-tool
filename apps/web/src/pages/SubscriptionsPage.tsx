@@ -376,23 +376,6 @@ export function SubscriptionsPage() {
               />
             </section>
 
-            {viewMode === "table" && (
-              <SubscriptionRoiPanel
-                isPro={isPro}
-                items={data.items}
-                usage={usageQuery.data}
-                today={today}
-                savingId={usageMutation.isPending ? usageMutation.variables.id : undefined}
-                error={usageMutation.error?.message ?? usageQuery.error?.message}
-                onCheckIn={(id) => usageMutation.mutate({ id, action: "check_in" })}
-                onUndo={(id) => usageMutation.mutate({ id, action: "undo" })}
-                onTrack={(id, tracked) =>
-                  usageMutation.mutate({ id, action: tracked ? "track" : "untrack" })
-                }
-                onCancel={(id) => statusMutation.mutate({ id, status: "canceled" })}
-              />
-            )}
-
             <section className="transactions-panel subscriptions-panel" aria-live="polite">
               <div className="transactions-panel-heading">
                 <div>
@@ -489,6 +472,26 @@ export function SubscriptionsPage() {
                 />
               )}
             </section>
+
+            {/* Placed below the table so bills come first and switching views never shifts the toggle. */}
+            {viewMode === "table" &&
+              !billingQuery.isPending &&
+              !(isPro && usageQuery.isPending) && (
+                <SubscriptionRoiPanel
+                  isPro={isPro}
+                  items={data.items}
+                  usage={usageQuery.data}
+                  today={today}
+                  savingId={usageMutation.isPending ? usageMutation.variables.id : undefined}
+                  error={usageMutation.error?.message ?? usageQuery.error?.message}
+                  onCheckIn={(id) => usageMutation.mutate({ id, action: "check_in" })}
+                  onUndo={(id) => usageMutation.mutate({ id, action: "undo" })}
+                  onTrack={(id, tracked) =>
+                    usageMutation.mutate({ id, action: tracked ? "track" : "untrack" })
+                  }
+                  onCancel={(id) => statusMutation.mutate({ id, status: "canceled" })}
+                />
+              )}
           </>
         )}
 

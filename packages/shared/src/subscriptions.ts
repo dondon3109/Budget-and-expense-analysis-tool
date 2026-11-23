@@ -104,6 +104,17 @@ const USAGE_TRACKED_KEYWORDS = [
   ...CANCELLATION_GUIDES.filter((guide) =>
     USAGE_TRACKED_GUIDE_CATEGORIES.has(guide.category),
   ).flatMap((guide) => guide.aliases),
+  "claude",
+  "anthropic",
+  "gemini",
+  "perplexity",
+  "cursor",
+  "notion",
+  "figma",
+  "hbo",
+  "playstation",
+  "xbox",
+  "nintendo",
   "gym",
   "fitness",
 ];

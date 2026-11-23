@@ -89,6 +89,18 @@ describe("SubscriptionRoiPanel", () => {
     expect(handlers.onTrack).toHaveBeenCalledWith("gym", false);
   });
 
+  it("omits the tracked list and adjusts copy when no bills are tracked yet", async () => {
+    const handlers = renderPanel({
+      items: [electric],
+      usage: { usage: [], tracking: [] },
+    });
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.getByText(/Pick a bill below to track cost per use/)).toBeInTheDocument();
+    expect(screen.getByText("Track usage")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Track Electric bill" }));
+    expect(handlers.onTrack).toHaveBeenCalledWith("electric", true);
+  });
+
   it("shows a Pro teaser instead of check-ins on other plans", () => {
     renderPanel({ isPro: false });
     expect(screen.getByText("Are your subscriptions worth it?")).toBeInTheDocument();
