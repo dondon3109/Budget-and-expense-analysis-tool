@@ -184,6 +184,11 @@ describe("SubscriptionsPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Monthly bills" })).toBeInTheDocument();
     expect(await screen.findByText("Total monthly cost")).toBeInTheDocument();
+    const table = screen.getByRole("table", { name: "Recurring bills" });
+    const usageSection = await screen.findByLabelText("Usage and value");
+    expect(
+      table.compareDocumentPosition(usageSection) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getAllByText("₱199")).toHaveLength(2);
     expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
       "Name",

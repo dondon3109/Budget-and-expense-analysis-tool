@@ -80,7 +80,14 @@ describe("previousSubscriptionBillingDate", () => {
 
 describe("isUsageTrackedByDefault", () => {
   it("starts services on and rent and utilities off", () => {
-    for (const name of ["Netflix Standard", "ChatGPT Plus", "Spotify Premium", "Disney+", "Gym"]) {
+    for (const name of [
+      "Netflix Standard",
+      "ChatGPT Plus",
+      "Claude Pro Sub",
+      "Spotify Premium",
+      "Disney+",
+      "Gym",
+    ]) {
       expect(isUsageTrackedByDefault(name), name).toBe(true);
     }
     for (const name of ["Electric bill", "Water", "Monthly rent", "Meralco", "Internet"]) {
