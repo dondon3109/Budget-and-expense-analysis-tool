@@ -67,15 +67,25 @@ export function ActiveWorkspaceProvider({
   // Key on offline rather than nullable reachability so NetInfo's null -> true startup
   // transition does not abort and double-fire the workspace requests.
   const offline = (netInfo.isInternetReachable ?? netInfo.isConnected) === false;
-  const [record, setRecord] = useState<WorkspaceRecord | null>(null);
+  const [loadedState, setLoadedState] = useState<{
+    subject: string;
+    record: WorkspaceRecord;
+  } | null>(null);
   const [listAttempt, setListAttempt] = useState(0);
   const recordRef = useRef<WorkspaceRecord>(EMPTY_WORKSPACE_RECORD);
+  const recordSubjectRef = useRef<string | null>(null);
+  // Derive synchronously so changing subject (such as guest -> signed-in) never exposes the
+  // previous subject's record for a render before the load effect clears it.
+  const record = loadedState?.subject === subject ? loadedState.record : null;
 
   const commit = useCallback(
     (change: (current: WorkspaceRecord) => WorkspaceRecord) => {
-      const next = change(recordRef.current);
+      const current =
+        recordSubjectRef.current === subject ? recordRef.current : EMPTY_WORKSPACE_RECORD;
+      const next = change(current);
+      recordSubjectRef.current = subject;
       recordRef.current = next;
-      setRecord(next);
+      setLoadedState({ subject, record: next });
       void saveWorkspaceRecord(subject, next).catch(() => undefined);
     },
     [subject],
@@ -83,13 +93,16 @@ export function ActiveWorkspaceProvider({
 
   useEffect(() => {
     let live = true;
-    setRecord(null);
+    recordSubjectRef.current = null;
+    recordRef.current = EMPTY_WORKSPACE_RECORD;
+    setLoadedState(null);
     void loadWorkspaceRecord(subject)
       .catch(() => EMPTY_WORKSPACE_RECORD)
       .then((loaded) => {
         if (!live) return;
+        recordSubjectRef.current = subject;
         recordRef.current = loaded;
-        setRecord(loaded);
+        setLoadedState({ subject, record: loaded });
       });
     return () => {
       live = false;
@@ -134,7 +147,7 @@ export function ActiveWorkspaceProvider({
           workspaceId: activeId,
           signal: controller.signal,
         });
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || recordSubjectRef.current !== subject) return;
         const known = recordRef.current.closing[activeId] ?? null;
         const lapsed = detail.plan === "lapsed";
         if (known === detail.closesAt && recordRef.current.lapsed.includes(activeId) === lapsed) {
@@ -154,7 +167,7 @@ export function ActiveWorkspaceProvider({
       }
     })();
     return () => controller.abort();
-  }, [activeId, commit, getAccessToken, listAttempt, offline, sessionStatus]);
+  }, [activeId, commit, getAccessToken, listAttempt, offline, sessionStatus, subject]);
 
   const switchTo = useCallback(
     (familyId: string | null) => commit((current) => ({ ...current, active: familyId })),

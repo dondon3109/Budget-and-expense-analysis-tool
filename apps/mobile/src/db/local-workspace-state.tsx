@@ -66,7 +66,10 @@ export function LocalWorkspaceProvider({
   children,
 }: PropsWithChildren<{ subject: string | null }>) {
   const [attempt, setAttempt] = useState(0);
-  const [snapshot, setSnapshot] = useState<Omit<LocalWorkspaceSnapshot, "retry" | "reopen">>({
+  const [snapshot, setSnapshot] = useState<
+    Omit<LocalWorkspaceSnapshot, "retry" | "reopen"> & { subject: string | null }
+  >({
+    subject: null,
     status: "opening",
     workspace: null,
     message: null,
@@ -79,7 +82,7 @@ export function LocalWorkspaceProvider({
     requestRef.current = requestId;
     if (!subject) {
       readySubjectRef.current = null;
-      setSnapshot({ status: "opening", workspace: null, message: null });
+      setSnapshot({ subject: null, status: "opening", workspace: null, message: null });
       return;
     }
     // Reopening the file already shown (sync rebuilt it from the server) keeps the last workspace
@@ -87,20 +90,21 @@ export function LocalWorkspaceProvider({
     // every screen for the full-screen loader and remount navigation on Home, dropping the form
     // the user was in. Reads in that short gap fail and keep their last value.
     if (readySubjectRef.current !== subject) {
-      setSnapshot({ status: "opening", workspace: null, message: null });
+      setSnapshot({ subject, status: "opening", workspace: null, message: null });
     }
     void openLocalWorkspace(subject)
       .then((workspace) => {
         if (requestRef.current === requestId) {
           markStartupPhase("workspace:ready");
           readySubjectRef.current = subject;
-          setSnapshot({ status: "ready", workspace, message: null });
+          setSnapshot({ subject, status: "ready", workspace, message: null });
         }
       })
       .catch((error: unknown) => {
         if (requestRef.current === requestId) {
           readySubjectRef.current = null;
           setSnapshot({
+            subject,
             status: "error",
             workspace: null,
             message: describeWorkspaceOpenFailure(error),
@@ -116,7 +120,20 @@ export function LocalWorkspaceProvider({
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
   const reopen = useCallback(() => setAttempt((value) => value + 1), []);
-  const value = useMemo(() => ({ ...snapshot, retry, reopen }), [reopen, retry, snapshot]);
+  const value = useMemo(() => {
+    // Switching subject (guest -> signed-in, or personal <-> family) hides the previous file on
+    // the very render the subject changes so InitialSyncGate never sees a stale workspace.
+    if (!subject || snapshot.subject !== subject) {
+      return { status: "opening" as const, workspace: null, message: null, retry, reopen };
+    }
+    return {
+      status: snapshot.status,
+      workspace: snapshot.workspace,
+      message: snapshot.message,
+      retry,
+      reopen,
+    };
+  }, [reopen, retry, snapshot, subject]);
   return <LocalWorkspaceContext.Provider value={value}>{children}</LocalWorkspaceContext.Provider>;
 }
 

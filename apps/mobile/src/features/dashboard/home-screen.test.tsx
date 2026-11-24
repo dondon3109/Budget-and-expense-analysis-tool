@@ -188,6 +188,8 @@ describe("HomeScreen", () => {
 
     await render(<HomeScreen />);
     expect(screen.getByText("Welcome to your workspace")).toBeTruthy();
+    expect(screen.getByText("Total Balance")).toBeTruthy();
+    expect(screen.getByText("Cash")).toBeTruthy();
     expect(screen.queryByText("Quick start guide")).toBeNull();
   });
 
@@ -210,7 +212,8 @@ describe("HomeScreen", () => {
     expect(screen.getByRole("button", { name: "Scan receipt" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "AI Assistant" })).toBeTruthy();
 
-    // Onboarding guide
+    // Onboarding guide (no zero-balance card until starting cash or a transaction exists)
+    expect(screen.queryByText("Total Balance")).toBeNull();
     expect(screen.getByText("Welcome to your workspace")).toBeTruthy();
     expect(screen.getByText("Build your real financial picture")).toBeTruthy();
     expect(screen.getByText("Option A: Bring your data")).toBeTruthy();

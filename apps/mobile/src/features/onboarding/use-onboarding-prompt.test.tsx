@@ -1,10 +1,12 @@
-import { render, waitFor } from "@testing-library/react-native";
+import { act, render, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
+import { AppState, type AppStateStatus } from "react-native";
 
 import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
 import { getOnboardingState } from "@/api/onboarding";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 
 import { useOnboardingPrompt } from "./use-onboarding-prompt";
 
@@ -66,5 +68,33 @@ describe("useOnboardingPrompt", () => {
     await render(<Probe />);
     await waitFor(() => expect(getOnboardingState).toHaveBeenCalledTimes(2));
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("refreshes incomplete onboarding state when returning from the background", async () => {
+    let appStateChange: ((state: AppStateStatus) => void) | undefined;
+    const spy = jest.spyOn(AppState, "addEventListener").mockImplementation((_type, listener) => {
+      appStateChange = listener;
+      return { remove: jest.fn() };
+    });
+    try {
+      jest
+        .mocked(getOnboardingState)
+        .mockResolvedValueOnce({ step: "cash", currency: "PHP" })
+        .mockResolvedValueOnce({ step: "complete", currency: "USD" });
+
+      await render(<Probe />);
+      await waitFor(() => expect(router.push).toHaveBeenCalledTimes(1));
+
+      await act(async () => {
+        appStateChange?.("background");
+        appStateChange?.("active");
+      });
+
+      await waitFor(() => expect(useOnboardingStore.getState().state?.step).toBe("complete"));
+      expect(useWorkspaceCurrencyStore.getState().currency).toBe("USD");
+      expect(router.push).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

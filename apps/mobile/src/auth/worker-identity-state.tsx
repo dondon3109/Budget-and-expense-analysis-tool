@@ -34,7 +34,10 @@ const WorkerIdentityContext = createContext<WorkerIdentitySnapshot>({
 export function WorkerIdentityProvider({ children }: PropsWithChildren) {
   const { getAccessToken, signOut, status: sessionStatus, subject } = useSessionSnapshot();
   const [attempt, setAttempt] = useState(0);
-  const [snapshot, setSnapshot] = useState<Omit<WorkerIdentitySnapshot, "retry">>({
+  const [snapshot, setSnapshot] = useState<
+    Omit<WorkerIdentitySnapshot, "retry"> & { subject: string | null }
+  >({
+    subject: null,
     status: "idle",
     message: null,
   });
@@ -44,18 +47,18 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     if (sessionStatus !== "signed-in" || !subject) {
-      setSnapshot({ status: "idle", message: null });
+      setSnapshot({ subject: null, status: "idle", message: null });
       return;
     }
 
     if (isDummyDevelopmentSubject(subject)) {
-      setSnapshot({ status: "verified", message: null });
+      setSnapshot({ subject, status: "verified", message: null });
       return;
     }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20_000);
-    setSnapshot({ status: "checking", message: null });
+    setSnapshot({ subject, status: "checking", message: null });
 
     const run = async (): Promise<void> => {
       try {
@@ -70,12 +73,13 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
           await verifyWorkerIdentity({ subject, accessToken, signal: controller.signal });
         }
         if (requestRef.current === requestId) {
-          setSnapshot({ status: "verified", message: null });
+          setSnapshot({ subject, status: "verified", message: null });
         }
       } catch (error) {
         if (requestRef.current !== requestId) return;
         if (error instanceof DOMException && error.name === "AbortError") {
           setSnapshot({
+            subject,
             status: "error",
             message: "Workspace verification took too long. Check your connection and try again.",
           });
@@ -96,6 +100,7 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
         }
         if (error instanceof WorkerIdentityError && error.code === "session_expired") {
           setSnapshot({
+            subject,
             status: "error",
             message:
               "You're still signed in. Zoption could not refresh the connection. Your entries stay on this phone.",
@@ -104,12 +109,14 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
         }
         if (isAuthRetryableFetchError(error)) {
           setSnapshot({
+            subject,
             status: "error",
             message: "You're offline. Changes stay on this device and sync when you reconnect.",
           });
           return;
         }
         setSnapshot({
+          subject,
           status: "error",
           message:
             error instanceof Error
@@ -129,19 +136,30 @@ export function WorkerIdentityProvider({ children }: PropsWithChildren) {
   }, [attempt, getAccessToken, sessionStatus, signOut, subject]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const value = useMemo(() => {
+    if (sessionStatus !== "signed-in" || !subject) {
+      return { status: "idle" as const, message: null, retry };
+    }
+    if (isDummyDevelopmentSubject(subject)) {
+      return { status: "verified" as const, message: null, retry };
+    }
+    if (snapshot.subject !== subject) {
+      return { status: "checking" as const, message: null, retry };
+    }
+    return { status: snapshot.status, message: snapshot.message, retry };
+  }, [retry, sessionStatus, snapshot, subject]);
 
   // A check that failed offline, including an offline start, runs again once
   // the device reconnects, so sync resumes without the user asking.
   useEffect(() => {
-    if (snapshot.status !== "error") return;
+    if (value.status !== "error") return;
     let wasReachable: boolean | null = null;
     return NetInfo.addEventListener((state) => {
       const reachable = state.isInternetReachable ?? state.isConnected;
       if (wasReachable === false && reachable) retry();
       wasReachable = reachable;
     });
-  }, [retry, snapshot.status]);
-  const value = useMemo(() => ({ ...snapshot, retry }), [retry, snapshot]);
+  }, [retry, value.status]);
 
   return <WorkerIdentityContext.Provider value={value}>{children}</WorkerIdentityContext.Provider>;
 }

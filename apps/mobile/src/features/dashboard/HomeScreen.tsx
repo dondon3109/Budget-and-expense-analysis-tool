@@ -114,6 +114,11 @@ export function HomeScreen() {
   const hasTransactions = Boolean(
     overview && (overview.summary.monthlyTrend.length > 0 || hasRealRecentTransaction),
   );
+  const hasAccountBalance = Boolean(
+    overview &&
+    (overview.accountBalances.overallBalanceMinor !== 0 ||
+      Object.values(overview.accountBalances.balancesByCurrency).some((balance) => balance !== 0)),
+  );
   const showQuickStartGuide = Boolean(
     hasTransactions && dashboard.data && !isEstablishedLedger(dashboard.data, today),
   );
@@ -266,7 +271,10 @@ export function HomeScreen() {
               )}
             </>
           ) : (
-            <HomeEmptyView syncing={sync.status === "syncing"} />
+            <>
+              {hasAccountBalance ? <BalanceCard summary={overview.summary} /> : null}
+              <HomeEmptyView syncing={sync.status === "syncing"} />
+            </>
           )}
         </View>
       )}

@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { useEffect } from "react";
+import { AppState } from "react-native";
 
 import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
 import { getOnboardingState } from "@/api/onboarding";
@@ -7,6 +8,7 @@ import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 
 /**
  * Opens first-run setup once per launch while the Worker says it is unfinished. Fetches the goal
@@ -26,6 +28,7 @@ export function useOnboardingPrompt(): void {
         const accessToken = await getAccessToken(false);
         const api = { accessToken, signal: controller.signal };
         const state = await getOnboardingState(api);
+        if (controller.signal.aborted) return;
         useOnboardingStore.getState().setState(state);
         if (state.step === "complete") return;
 
@@ -51,4 +54,42 @@ export function useOnboardingPrompt(): void {
     })();
     return () => controller.abort();
   }, [getAccessToken, prompted, status, subject]);
+
+  // If setup was finished on web or another device, clear the Resume setup card when returning.
+  useEffect(() => {
+    if (status !== "signed-in" || !subject || isDummyDevelopmentSubject(subject)) return;
+    let controller = new AbortController();
+    let sawBackground = false;
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "background") {
+        sawBackground = true;
+        return;
+      }
+      if (next !== "active" || !sawBackground) return;
+      sawBackground = false;
+      const store = useOnboardingStore.getState();
+      if (store.open || store.state?.step === "complete") return;
+      controller.abort();
+      controller = new AbortController();
+      const { signal } = controller;
+      void (async () => {
+        try {
+          const accessToken = await getAccessToken(false);
+          if (signal.aborted) return;
+          const latest = await getOnboardingState({ accessToken, signal });
+          if (signal.aborted || useOnboardingStore.getState().open) return;
+          useOnboardingStore.getState().setState(latest);
+          if (latest.step === "complete") {
+            useWorkspaceCurrencyStore.getState().setCurrency(latest.currency);
+          }
+        } catch {
+          // Offline or unreachable: keep the cached state until the next foreground or resume.
+        }
+      })();
+    });
+    return () => {
+      subscription.remove();
+      controller.abort();
+    };
+  }, [getAccessToken, status, subject]);
 }

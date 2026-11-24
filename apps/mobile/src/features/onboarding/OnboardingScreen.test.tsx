@@ -1,13 +1,15 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
 
+import { ApiTransportError } from "@/api/authenticated";
 import { saveMoneyPreferences, skipGoal } from "@/api/goal-profile";
-import { saveOnboardingCash } from "@/api/onboarding";
+import { getOnboardingState, saveOnboardingCash } from "@/api/onboarding";
 import { choosePetEgg, setPetEnabled } from "@/api/pet";
 import { babyPet, noPet } from "@/features/pet/pet-test-fixtures";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { usePetStore } from "@/stores/pet-store";
+import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 import { telemetry } from "@/telemetry/telemetry";
 
 import { OnboardingScreen } from "./OnboardingScreen";
@@ -31,6 +33,7 @@ jest.mock("react-native-safe-area-context", () => ({
 }));
 jest.mock("@/sync/sync-state", () => ({ useSyncState: () => ({ retry: mockRetry }) }));
 jest.mock("@/api/onboarding", () => ({
+  getOnboardingState: jest.fn(),
   saveOnboardingCurrency: jest.fn(),
   saveOnboardingCash: jest.fn(),
 }));
@@ -200,7 +203,86 @@ describe("OnboardingScreen", () => {
     await first.unmount();
 
     jest.mocked(telemetry.capture).mockClear();
+    jest.mocked(getOnboardingState).mockResolvedValue({ step: "cash", currency: "PHP" });
     await render(<OnboardingScreen />);
     expect(telemetry.capture).not.toHaveBeenCalledWith("onboarding_started");
+  });
+
+  it("commits completion on unmount after cash is saved so Android Back never strands Resume setup", async () => {
+    jest
+      .mocked(saveOnboardingCash)
+      .mockResolvedValue({ step: "complete", currency: "USD", openingBalanceBooked: true });
+    const view = await render(<OnboardingScreen />);
+    await fireEvent.changeText(screen.getByLabelText("Cash on hand"), "500");
+    await fireEvent.press(continueButton());
+    await screen.findByText("Make it yours");
+
+    // Still held back while the post-cash step is open.
+    expect(useOnboardingStore.getState().state?.step).toBe("cash");
+
+    // Simulate Android Back dismissing the route without pressing Start tracking.
+    await view.unmount();
+    expect(useOnboardingStore.getState().state).toEqual({ step: "complete", currency: "USD" });
+    expect(useWorkspaceCurrencyStore.getState().currency).toBe("USD");
+    expect(useGoalProfileStore.getState().prompted).toBe(true);
+    expect(usePetStore.getState().introduced).toBe(true);
+  });
+
+  it("reconciles 409 onboarding_complete by updating state, retrying sync, and closing", async () => {
+    jest
+      .mocked(saveOnboardingCash)
+      .mockRejectedValue(
+        new ApiTransportError(
+          "Onboarding is already complete.",
+          "conflict",
+          409,
+          "onboarding_complete",
+        ),
+      );
+    jest.mocked(getOnboardingState).mockResolvedValue({ step: "complete", currency: "EUR" });
+
+    await render(<OnboardingScreen />);
+    await fireEvent.press(continueButton());
+
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(useOnboardingStore.getState().state).toEqual({ step: "complete", currency: "EUR" });
+    expect(useWorkspaceCurrencyStore.getState().currency).toBe("EUR");
+    expect(mockRetry).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Onboarding is already complete.")).toBeNull();
+  });
+
+  it("falls back to complete when reconciling 409 onboarding_complete and refresh fails", async () => {
+    jest
+      .mocked(saveOnboardingCash)
+      .mockRejectedValue(
+        new ApiTransportError(
+          "Onboarding is already complete.",
+          "conflict",
+          409,
+          "onboarding_complete",
+        ),
+      );
+    jest.mocked(getOnboardingState).mockRejectedValue(new Error("offline"));
+
+    await render(<OnboardingScreen />);
+    await fireEvent.press(continueButton());
+
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(useOnboardingStore.getState().state).toEqual({ step: "complete", currency: "PHP" });
+    expect(mockRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes immediately on Resume setup when the Worker already marked onboarding complete", async () => {
+    useOnboardingStore.getState().setOpen(true);
+    useOnboardingStore.getState().setOpen(false);
+    expect(useOnboardingStore.getState().dismissed).toBe(true);
+    jest.mocked(getOnboardingState).mockResolvedValue({ step: "complete", currency: "JPY" });
+
+    await render(<OnboardingScreen />);
+
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(useOnboardingStore.getState().state).toEqual({ step: "complete", currency: "JPY" });
+    expect(useWorkspaceCurrencyStore.getState().currency).toBe("JPY");
+    expect(mockRetry).toHaveBeenCalledTimes(1);
   });
 });

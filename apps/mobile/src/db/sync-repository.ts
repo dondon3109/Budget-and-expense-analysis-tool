@@ -17,6 +17,7 @@ import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
 import { SYNC_ENTITY_TABLES } from "./entity-tables";
+import { notifyLocalChanges } from "./local-workspace/change-stream";
 
 export type SyncEntityType = (typeof mobileSyncEntityTypes)[number];
 
@@ -536,6 +537,7 @@ export class LocalSyncRepository {
   constructor(
     private readonly database: SQLiteDatabase,
     private readonly writer = new LocalDatabaseWriter(),
+    private readonly databaseName?: string,
   ) {}
 
   async getCursor(): Promise<string | null> {
@@ -608,6 +610,12 @@ export class LocalSyncRepository {
           lastServerTimestamp,
         );
       });
+      if (this.databaseName && parsed.data.changes.length > 0) {
+        const tables = [
+          ...new Set(parsed.data.changes.map((change) => SYNC_ENTITY_TABLES[change.entityType])),
+        ];
+        notifyLocalChanges(this.databaseName, tables);
+      }
     });
   }
 

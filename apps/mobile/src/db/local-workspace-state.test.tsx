@@ -76,4 +76,31 @@ describe("LocalWorkspaceProvider", () => {
     await act(async () => family.resolve(rebuilt));
     expect(latest).toMatchObject({ status: "ready", workspace: rebuilt });
   });
+
+  it("hides the previous workspace synchronously on the render a new subject arrives", async () => {
+    const observed: Array<{ status: string; workspace: LocalWorkspace | null }> = [];
+    const TrackingProbe = () => {
+      const value = useLocalWorkspace();
+      observed.push({ status: value.status, workspace: value.workspace });
+      return null;
+    };
+    const next = deferred<LocalWorkspace>();
+    jest.mocked(openLocalWorkspace).mockResolvedValueOnce(first).mockReturnValueOnce(next.promise);
+    const view = await render(
+      <LocalWorkspaceProvider subject="zoption-guest">
+        <TrackingProbe />
+      </LocalWorkspaceProvider>,
+    );
+    observed.length = 0;
+
+    await view.rerender(
+      <LocalWorkspaceProvider subject="user-1">
+        <TrackingProbe />
+      </LocalWorkspaceProvider>,
+    );
+    // The very first render under the new subject must never expose the guest workspace.
+    expect(observed[0]).toEqual({ status: "opening", workspace: null });
+    await act(async () => next.resolve(rebuilt));
+    expect(observed.at(-1)).toEqual({ status: "ready", workspace: rebuilt });
+  });
 });

@@ -28,6 +28,8 @@ import type {
 } from "@zoption/shared";
 
 import { LocalDatabaseWriter } from "./database-writer";
+import { SYNC_ENTITY_TABLES } from "./entity-tables";
+import { notifyLocalChanges } from "./local-workspace/change-stream";
 import {
   createAccount,
   retryAccountInterestSync,
@@ -116,6 +118,7 @@ export class LocalTransactionMutationRepository {
     private readonly randomUuid: () => string = Crypto.randomUUID,
     private readonly now: () => Date = () => new Date(),
     private readonly random: () => number = Math.random,
+    private readonly databaseName?: string,
   ) {
     this.store = new LocalMutationStore(database);
     this.conflicts = new LocalConflictRepository(database, writer, this.store, randomUuid, now);
@@ -476,8 +479,22 @@ export class LocalTransactionMutationRepository {
     return this.conflicts.resolveEventConflict(entityId, resolution);
   }
 
-  applyPushResponse(request: MobileSyncPushRequest, value: MobileSyncPushResponse): Promise<void> {
-    return this.outbox.applyPushResponse(request, value);
+  async applyPushResponse(
+    request: MobileSyncPushRequest,
+    value: MobileSyncPushResponse,
+  ): Promise<void> {
+    await this.outbox.applyPushResponse(request, value);
+    if (this.databaseName && request.operations.length > 0) {
+      const tables = new Set<string>(["sync_outbox", "sync_conflicts"]);
+      for (const operation of request.operations) {
+        tables.add(
+          operation.entityType === "transfer"
+            ? "transactions"
+            : SYNC_ENTITY_TABLES[operation.entityType],
+        );
+      }
+      notifyLocalChanges(this.databaseName, [...tables]);
+    }
   }
 
   recordPushFailure(
