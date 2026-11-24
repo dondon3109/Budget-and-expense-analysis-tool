@@ -251,7 +251,8 @@ describe("OnboardingScreen", () => {
     expect(screen.queryByText("Onboarding is already complete.")).toBeNull();
   });
 
-  it("falls back to complete when reconciling 409 onboarding_complete and refresh fails", async () => {
+  it("falls back to complete when reconciling 409 onboarding_complete and refresh fails without clobbering currency", async () => {
+    useWorkspaceCurrencyStore.getState().setCurrency("USD");
     jest
       .mocked(saveOnboardingCash)
       .mockRejectedValue(
@@ -269,7 +270,77 @@ describe("OnboardingScreen", () => {
 
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(useOnboardingStore.getState().state).toEqual({ step: "complete", currency: "PHP" });
+    expect(useWorkspaceCurrencyStore.getState().currency).toBe("USD");
     expect(mockRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns to currency with a notice on 409 onboarding_step_out_of_order", async () => {
+    jest
+      .mocked(saveOnboardingCash)
+      .mockRejectedValue(
+        new ApiTransportError(
+          "Choose your currency first.",
+          "conflict",
+          409,
+          "onboarding_step_out_of_order",
+        ),
+      );
+    jest.mocked(getOnboardingState).mockResolvedValue({ step: "currency", currency: "PHP" });
+
+    await render(<OnboardingScreen />);
+    await fireEvent.press(continueButton());
+
+    expect(await screen.findByText("Choose your currency")).toBeTruthy();
+    expect(screen.getByText("Choose your currency first.")).toBeTruthy();
+    expect(router.back).not.toHaveBeenCalled();
+  });
+
+  it("commits completion when Android Back unmounts while cash save is still in flight", async () => {
+    let resolveSave!: (value: {
+      step: "complete";
+      currency: "USD";
+      openingBalanceBooked: boolean;
+    }) => void;
+    jest.mocked(saveOnboardingCash).mockReturnValue(
+      new Promise((resolve) => {
+        resolveSave = resolve;
+      }),
+    );
+    const view = await render(<OnboardingScreen />);
+    await fireEvent.changeText(screen.getByLabelText("Cash on hand"), "250");
+    await fireEvent.press(continueButton());
+
+    // Unmount before the Worker answers.
+    await view.unmount();
+    expect(useOnboardingStore.getState().state?.step).toBe("cash");
+
+    resolveSave({ step: "complete", currency: "USD", openingBalanceBooked: true });
+    await waitFor(() =>
+      expect(useOnboardingStore.getState().state).toEqual({ step: "complete", currency: "USD" }),
+    );
+    expect(useWorkspaceCurrencyStore.getState().currency).toBe("USD");
+    expect(useGoalProfileStore.getState().prompted).toBe(true);
+    expect(usePetStore.getState().introduced).toBe(true);
+  });
+
+  it("does not leak finished state or prompt flags into the next session when reset before unmount", async () => {
+    jest
+      .mocked(saveOnboardingCash)
+      .mockResolvedValue({ step: "complete", currency: "USD", openingBalanceBooked: true });
+    const view = await render(<OnboardingScreen />);
+    await fireEvent.changeText(screen.getByLabelText("Cash on hand"), "500");
+    await fireEvent.press(continueButton());
+    await screen.findByText("Make it yours");
+
+    // Simulate sign-out clearing user-scoped runtime stores before the screen unmounts.
+    useOnboardingStore.getState().reset();
+    useGoalProfileStore.getState().reset();
+    usePetStore.getState().reset();
+
+    await view.unmount();
+    expect(useOnboardingStore.getState().state).toBeNull();
+    expect(useGoalProfileStore.getState().prompted).toBe(false);
+    expect(usePetStore.getState().introduced).toBe(false);
   });
 
   it("closes immediately on Resume setup when the Worker already marked onboarding complete", async () => {

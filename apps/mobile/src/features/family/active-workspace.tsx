@@ -78,6 +78,7 @@ export function ActiveWorkspaceProvider({
   // previous subject's record for a render before the load effect clears it.
   const record = loadedState?.subject === subject ? loadedState.record : null;
 
+  // Consumers stay unmounted while `status === "loading"`, so commits only run once loaded.
   const commit = useCallback(
     (change: (current: WorkspaceRecord) => WorkspaceRecord) => {
       const current =

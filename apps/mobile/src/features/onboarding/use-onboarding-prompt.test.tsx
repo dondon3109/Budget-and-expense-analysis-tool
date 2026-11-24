@@ -10,7 +10,11 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
 
 import { useOnboardingPrompt } from "./use-onboarding-prompt";
 
+const mockRetrySync = jest.fn();
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("@/sync/sync-state", () => ({
+  useSyncState: () => ({ retry: mockRetrySync }),
+}));
 jest.mock("@/auth/session-state", () => ({
   useSessionSnapshot: () => ({
     status: "signed-in",
@@ -92,6 +96,7 @@ describe("useOnboardingPrompt", () => {
 
       await waitFor(() => expect(useOnboardingStore.getState().state?.step).toBe("complete"));
       expect(useWorkspaceCurrencyStore.getState().currency).toBe("USD");
+      expect(mockRetrySync).toHaveBeenCalledTimes(1);
       expect(router.push).toHaveBeenCalledTimes(1);
     } finally {
       spy.mockRestore();

@@ -9,6 +9,7 @@ import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
+import { useSyncState } from "@/sync/sync-state";
 
 /**
  * Opens first-run setup once per launch while the Worker says it is unfinished. Fetches the goal
@@ -17,6 +18,7 @@ import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
  */
 export function useOnboardingPrompt(): void {
   const { subject, status, getAccessToken } = useSessionSnapshot();
+  const { retry: retrySync } = useSyncState();
   const prompted = useOnboardingStore((state) => state.prompted);
 
   useEffect(() => {
@@ -78,9 +80,10 @@ export function useOnboardingPrompt(): void {
           if (signal.aborted) return;
           const latest = await getOnboardingState({ accessToken, signal });
           if (signal.aborted || useOnboardingStore.getState().open) return;
+          useWorkspaceCurrencyStore.getState().setCurrency(latest.currency);
           useOnboardingStore.getState().setState(latest);
           if (latest.step === "complete") {
-            useWorkspaceCurrencyStore.getState().setCurrency(latest.currency);
+            retrySync();
           }
         } catch {
           // Offline or unreachable: keep the cached state until the next foreground or resume.
@@ -91,5 +94,5 @@ export function useOnboardingPrompt(): void {
       subscription.remove();
       controller.abort();
     };
-  }, [getAccessToken, status, subject]);
+  }, [getAccessToken, retrySync, status, subject]);
 }

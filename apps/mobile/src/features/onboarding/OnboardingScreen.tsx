@@ -6,6 +6,7 @@ import {
   parseAmountToMinor,
   suggestCurrencyForLocale,
   type Currency,
+  type OnboardingState,
 } from "@zoption/shared";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -85,6 +86,7 @@ export function OnboardingScreen() {
   const finishedRef = useRef<typeof state>(null);
   const closedNormallyRef = useRef(false);
   const mountedRef = useRef(true);
+  const sessionGenerationRef = useRef(useOnboardingStore.getState().sessionGeneration);
   const getAccessTokenRef = useRef(session.getAccessToken);
   getAccessTokenRef.current = session.getAccessToken;
   const syncRetryRef = useRef(sync.retry);
@@ -111,6 +113,8 @@ export function OnboardingScreen() {
   useEffect(() => {
     mountedRef.current = true;
     const store = useOnboardingStore.getState();
+    const mountGeneration = store.sessionGeneration;
+    sessionGenerationRef.current = mountGeneration;
     const shouldRefreshOnResume =
       store.dismissed && store.state !== null && store.state.step !== "complete";
     store.setOpen(true);
@@ -125,9 +129,21 @@ export function OnboardingScreen() {
       void (async () => {
         try {
           const accessToken = await getAccessTokenRef.current(false);
-          if (controller.signal.aborted || finishedRef.current) return;
+          if (
+            controller.signal.aborted ||
+            finishedRef.current ||
+            useOnboardingStore.getState().sessionGeneration !== mountGeneration
+          ) {
+            return;
+          }
           const latest = await getOnboardingState({ accessToken, signal: controller.signal });
-          if (controller.signal.aborted || finishedRef.current) return;
+          if (
+            controller.signal.aborted ||
+            finishedRef.current ||
+            useOnboardingStore.getState().sessionGeneration !== mountGeneration
+          ) {
+            return;
+          }
           useWorkspaceCurrencyStore.getState().setCurrency(latest.currency);
           useOnboardingStore.getState().setState(latest);
           if (latest.step === "complete") {
@@ -143,6 +159,9 @@ export function OnboardingScreen() {
     return () => {
       mountedRef.current = false;
       controller.abort();
+      // A sign-out or identity transition already reset user-scoped stores; never write the
+      // departing session's onboarding completion or prompt flags into the next session.
+      if (useOnboardingStore.getState().sessionGeneration !== mountGeneration) return;
       if (finishedRef.current) {
         if (!closedNormallyRef.current) {
           // Exiting post-cash steps via Android Back should land on Home without immediately
@@ -257,25 +276,34 @@ export function OnboardingScreen() {
 
   if (!state || state.step === "complete") return <FinalStep onDone={() => router.back()} />;
 
+  const sameSession = () =>
+    useOnboardingStore.getState().sessionGeneration === sessionGenerationRef.current;
+
   const reconcileConflict = async (
     accessToken: string,
-    fallbackComplete: boolean,
+    serverCode: "onboarding_complete" | "onboarding_step_out_of_order",
   ): Promise<boolean> => {
-    let latest = null;
+    let latest: OnboardingState | null = null;
+    let refreshedCurrency = false;
     try {
       latest = await getOnboardingState({ accessToken });
+      refreshedCurrency = true;
     } catch {
-      if (fallbackComplete) {
-        latest = { step: "complete" as const, currency: state.currency };
+      if (serverCode === "onboarding_complete") {
+        latest = { step: "complete", currency: state.currency };
       }
     }
-    if (!latest) return false;
-    setCurrency(latest.currency);
+    if (!latest || !sameSession()) return false;
+    // Update the workspace currency store only from an authoritative Worker read, never from a
+    // cached fallback that could be stale if setup finished on web in another currency.
+    if (refreshedCurrency) setCurrency(latest.currency);
     setState(latest);
-    setEditingCurrency(false);
+    if (mountedRef.current) setEditingCurrency(false);
     if (latest.step === "complete") {
       sync.retry();
       if (mountedRef.current) router.back();
+    } else if (serverCode === "onboarding_step_out_of_order" && mountedRef.current) {
+      setError("Choose your currency first.");
     }
     return true;
   };
@@ -288,6 +316,7 @@ export function OnboardingScreen() {
       accessToken = await session.getAccessToken(false);
       await request(accessToken);
     } catch (failure) {
+      if (!sameSession()) return;
       if (
         accessToken &&
         failure instanceof ApiTransportError &&
@@ -295,11 +324,9 @@ export function OnboardingScreen() {
         (failure.serverCode === "onboarding_complete" ||
           failure.serverCode === "onboarding_step_out_of_order")
       ) {
-        if (await reconcileConflict(accessToken, failure.serverCode === "onboarding_complete")) {
-          return;
-        }
+        if (await reconcileConflict(accessToken, failure.serverCode)) return;
       }
-      if (mountedRef.current) {
+      if (mountedRef.current && sameSession()) {
         setError(failure instanceof Error ? failure.message : "Your setup could not be saved.");
       }
     } finally {
@@ -334,9 +361,10 @@ export function OnboardingScreen() {
     const saveCurrency = () =>
       run(async (accessToken) => {
         const next = await saveOnboardingCurrency({ accessToken }, { currency });
+        if (!sameSession()) return;
         setCurrency(next.currency);
         setState(next);
-        setEditingCurrency(false);
+        if (mountedRef.current) setEditingCurrency(false);
         void telemetry.capture("onboarding_step_completed", { step: "currency" });
       });
     return (
@@ -374,17 +402,26 @@ export function OnboardingScreen() {
         { accessToken },
         { amountMinor: checked.amountMinor, date: localIsoDate(new Date()) },
       );
+      if (!sameSession()) return;
       void telemetry.capture("onboarding_step_completed", { step: "cash" });
       setCurrency(result.currency);
+      const nextFinished = { step: result.step, currency: result.currency };
+      finishedRef.current = nextFinished;
+      // The opening entry is booked on the Worker, so pull it to this device.
+      sync.retry();
+      if (!mountedRef.current) {
+        // Back was pressed while the cash save was in flight: commit completion now so Home
+        // clears Resume setup without immediately opening standalone goal or pet prompts.
+        useGoalProfileStore.getState().markPrompted();
+        usePetStore.getState().markIntroduced();
+        useOnboardingStore.getState().setState(nextFinished);
+        return;
+      }
       setSavedCashMinor(checked.amountMinor);
       const flags = { goals: askGoals, preferences: askPreferences };
       setPostCashFlags(flags);
       setLocal(flags.goals ? "goals" : flags.preferences ? "preferences" : "personalize");
-      const nextFinished = { step: result.step, currency: result.currency };
-      finishedRef.current = nextFinished;
       setFinished(nextFinished);
-      // The opening entry is booked on the Worker, so pull it to this device.
-      sync.retry();
     });
   };
   return (

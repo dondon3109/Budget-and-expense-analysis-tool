@@ -12,6 +12,8 @@ interface OnboardingStoreState {
   open: boolean;
   /** Setup closed at least once this launch, so deferred prompts can run even if the user chose Not now. */
   dismissed: boolean;
+  /** Bumped on every identity reset so an unmounting screen cannot write stale state into the next session. */
+  sessionGeneration: number;
   setState: (state: OnboardingState) => void;
   markPrompted: () => void;
   setOpen: (open: boolean) => void;
@@ -23,6 +25,7 @@ export const useOnboardingStore = create<OnboardingStoreState>()((set) => ({
   prompted: false,
   open: false,
   dismissed: false,
+  sessionGeneration: 0,
   setState: (state) => set({ state }),
   markPrompted: () => set({ prompted: true }),
   setOpen: (open) =>
@@ -30,5 +33,12 @@ export const useOnboardingStore = create<OnboardingStoreState>()((set) => ({
       open,
       dismissed: current.dismissed || (current.open && !open),
     })),
-  reset: () => set({ state: null, prompted: false, open: false, dismissed: false }),
+  reset: () =>
+    set((current) => ({
+      state: null,
+      prompted: false,
+      open: false,
+      dismissed: false,
+      sessionGeneration: current.sessionGeneration + 1,
+    })),
 }));
