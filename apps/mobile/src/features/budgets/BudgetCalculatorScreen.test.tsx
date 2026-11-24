@@ -136,6 +136,14 @@ describe("BudgetCalculatorScreen", () => {
     expect(screen.getByText(/Applied 3 category limits to July 2026/)).toBeTruthy();
   });
 
+  it("explains a negative take-home amount instead of crashing", async () => {
+    await render(<BudgetCalculatorScreen />);
+
+    await fireEvent.changeText(screen.getByLabelText(/Monthly take-home pay/), "-500");
+    expect(screen.getByText("Enter an amount of zero or more.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Apply to July 2026" })).toBeDisabled();
+  });
+
   it("blocks apply on currency mismatch and explains zero-balance accounts", async () => {
     await render(<BudgetCalculatorScreen />);
 

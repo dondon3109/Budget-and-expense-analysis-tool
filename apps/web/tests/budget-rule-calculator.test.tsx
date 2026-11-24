@@ -108,6 +108,31 @@ describe("BudgetRuleCalculator", () => {
     expect(screen.getByRole("alert").textContent).toMatch(/two decimal places/);
   });
 
+  it("explains a negative amount instead of crashing", () => {
+    render(<BudgetRuleCalculator />);
+    fireEvent.change(screen.getByLabelText("Monthly take-home pay"), {
+      target: { value: "-500" },
+    });
+    expect(screen.getByRole("alert").textContent).toMatch(/zero or more/);
+    expect(results()).toEqual(["—", "—", "—"]);
+  });
+
+  it("clamps a negative percentage so a split totalling 100 cannot crash", () => {
+    render(<BudgetRuleCalculator />);
+    fireEvent.change(screen.getByLabelText("Monthly take-home pay"), {
+      target: { value: "1000" },
+    });
+    fireEvent.change(screen.getByLabelText("Wants"), { target: { value: "80" } });
+    // -10 / 80 / 30 adds up to 100 but used to reach allocateBudget and throw in render.
+    fireEvent.change(screen.getByLabelText("Savings & debt payoff"), {
+      target: { value: "30" },
+    });
+    fireEvent.change(screen.getByLabelText("Needs"), { target: { value: "-10" } });
+    expect(screen.getByLabelText<HTMLInputElement>("Needs").value).toBe("0");
+    expect(screen.getByRole("alert").textContent).toMatch(/add up to 110/);
+    expect(results()).toEqual(["—", "—", "—"]);
+  });
+
   it("follows the workspace currency", () => {
     setWorkspaceCurrency("USD");
     render(<BudgetRuleCalculator />);
