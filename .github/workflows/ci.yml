@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   # ready_for_review reruns CI (and dependency-review) when the maintainer marks a bugfix draft
-  # ready, the click that also arms auto-merge, so the review of its dependencies is fresh.
+  # ready, so the review of its dependencies is fresh before it is merged.
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   # A pull request the bugfix automation opens uses the run token, which does not trigger

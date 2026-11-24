@@ -1,9 +1,9 @@
 # Only paths that can move money, widen access, or change what runs with deploy credentials have
-# an owner. Everything else merges on green CI. The main ruleset requires Code Owner review, so
-# a pull request that touches any line below waits for the owner, auto-merge or not.
+# an owner. The main ruleset requires Code Owner review, so a pull request that touches any line
+# below needs the owner's approval before it can merge.
 # release.yml's approval summary reads this file to say whether a release batch touched them.
-# package.json and pnpm-lock.yaml are deliberately not owned: npm updates auto-merge behind CI
-# and dependency-review (see docs/deployment.md).
+# package.json and pnpm-lock.yaml are deliberately not owned: npm updates need only CI and
+# dependency-review (see docs/deployment.md).
 
 # Workflows, composite actions, this file, and the Dependabot config.
 /.github/ @dondon3109
