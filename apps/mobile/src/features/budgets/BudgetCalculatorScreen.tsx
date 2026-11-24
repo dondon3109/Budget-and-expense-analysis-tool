@@ -49,7 +49,10 @@ const BUCKETS = [
 function parseIncome(input: string): { incomeMinor: number } | { error: string } | null {
   if (!input.trim()) return null;
   try {
-    return { incomeMinor: parseAmountToMinor(input) };
+    const incomeMinor = parseAmountToMinor(input);
+    // allocateBudget throws on a negative amount, and it runs during render.
+    if (incomeMinor < 0) return { error: "Enter an amount of zero or more." };
+    return { incomeMinor };
   } catch (error) {
     return { error: error instanceof MoneyParseError ? error.message : "Enter a valid amount." };
   }

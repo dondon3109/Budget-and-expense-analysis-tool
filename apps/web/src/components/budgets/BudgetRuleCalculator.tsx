@@ -63,7 +63,10 @@ export interface BudgetRuleCalculatorProps {
 function parseIncome(input: string): { incomeMinor: number } | { error: string } | null {
   if (!input.trim()) return null;
   try {
-    return { incomeMinor: parseAmountToMinor(input) };
+    const incomeMinor = parseAmountToMinor(input);
+    // allocateBudget throws on a negative amount, and it runs during render.
+    if (incomeMinor < 0) return { error: "Enter an amount of zero or more." };
+    return { incomeMinor };
   } catch (error) {
     return { error: error instanceof MoneyParseError ? error.message : "Enter a valid amount." };
   }
@@ -148,7 +151,9 @@ export function BudgetRuleCalculator({
 
   function updatePercentage(key: BudgetRuleBucket, raw: string) {
     const next = Number.parseInt(raw, 10);
-    setPercentages((current) => ({ ...current, [key]: Number.isNaN(next) ? 0 : next }));
+    // A negative share that still totals 100 would reach allocateBudget and throw in render.
+    const clamped = Number.isNaN(next) ? 0 : Math.min(100, Math.max(0, next));
+    setPercentages((current) => ({ ...current, [key]: clamped }));
   }
 
   function toggleCategoryBucket(categoryId: string, bucket: BudgetRuleBucket) {
