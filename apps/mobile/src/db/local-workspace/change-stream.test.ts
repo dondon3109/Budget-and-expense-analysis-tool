@@ -1,6 +1,6 @@
 import { addDatabaseChangeListener } from "expo-sqlite";
 
-import { subscribeToLocalChanges } from "./change-stream";
+import { notifyLocalChanges, subscribeToLocalChanges } from "./change-stream";
 
 type ChangeListener = Parameters<typeof addDatabaseChangeListener>[0];
 
@@ -91,5 +91,29 @@ describe("local change stream", () => {
     const again = subscribeToLocalChanges("workspace-a.db", ["goals"], jest.fn());
     expect(addDatabaseChangeListener).toHaveBeenCalledTimes(2);
     again();
+  });
+
+  it("coalesces explicit post-commit notifications with native events for matching tables", () => {
+    const matching = jest.fn();
+    const otherTable = jest.fn();
+    const otherDb = jest.fn();
+    const unsubA = subscribeToLocalChanges("workspace-a.db", ["transactions"], matching);
+    const unsubB = subscribeToLocalChanges("workspace-a.db", ["budgets"], otherTable);
+    const unsubC = subscribeToLocalChanges("workspace-b.db", ["transactions"], otherDb);
+
+    emit("/data/workspace-a.db", "transactions");
+    jest.advanceTimersByTime(30);
+    notifyLocalChanges("workspace-a.db", ["accounts", "transactions"]);
+    jest.advanceTimersByTime(30);
+    expect(matching).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(20);
+    expect(matching).toHaveBeenCalledTimes(1);
+    expect(otherTable).not.toHaveBeenCalled();
+    expect(otherDb).not.toHaveBeenCalled();
+
+    unsubA();
+    unsubB();
+    unsubC();
   });
 });

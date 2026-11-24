@@ -28,12 +28,14 @@ export interface QuickStartTutorialProps {
   onAddTransaction?: () => void;
   onAdjustBalance?: () => void;
   onMigrateSpreadsheet?: () => void;
+  onDismiss?: () => void;
 }
 
 export function QuickStartTutorial({
   onAddTransaction,
   onAdjustBalance,
   onMigrateSpreadsheet,
+  onDismiss,
 }: QuickStartTutorialProps) {
   const [dismissed, setDismissed] = useState(() => readSavedState() === "dismissed");
   const [collapsed, setCollapsed] = useState(() => readSavedState() === "collapsed");
@@ -45,6 +47,7 @@ export function QuickStartTutorial({
     } catch {
       // Storage unavailable
     }
+    onDismiss?.();
   }
 
   function handleToggleCollapse() {

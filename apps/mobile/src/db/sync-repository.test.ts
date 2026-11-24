@@ -6,7 +6,12 @@ import type { MobileSyncPullResponse } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { migrations } from "./migrations";
+import { notifyLocalChanges } from "./local-workspace/change-stream";
 import { LocalSyncRepository } from "./sync-repository";
+
+jest.mock("./local-workspace/change-stream", () => ({
+  notifyLocalChanges: jest.fn(),
+}));
 
 class TestDatabase {
   readonly native = new DatabaseSync(":memory:");
@@ -638,5 +643,27 @@ describe("atomic encrypted pull application", () => {
     await expect(repository.applyPullPage(null, bootstrapPage)).rejects.toMatchObject({
       code: "cursor_mismatch",
     });
+  });
+
+  it("notifies local subscribers of touched tables after a pull page commits and never on rollback", async () => {
+    jest.mocked(notifyLocalChanges).mockClear();
+    const repository = new LocalSyncRepository(
+      database as unknown as SQLiteDatabase,
+      undefined,
+      "workspace-test.db",
+    );
+    await repository.applyPullPage(null, bootstrapPage);
+    expect(notifyLocalChanges).toHaveBeenCalledTimes(1);
+    expect(notifyLocalChanges).toHaveBeenCalledWith("workspace-test.db", [
+      "accounts",
+      "categories",
+      "transactions",
+    ]);
+
+    jest.mocked(notifyLocalChanges).mockClear();
+    await expect(repository.applyPullPage(null, bootstrapPage)).rejects.toMatchObject({
+      code: "cursor_mismatch",
+    });
+    expect(notifyLocalChanges).not.toHaveBeenCalled();
   });
 });

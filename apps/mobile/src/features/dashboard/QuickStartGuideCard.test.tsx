@@ -9,8 +9,11 @@ jest.mock("expo-secure-store", () => ({
 }));
 
 import * as SecureStore from "expo-secure-store";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { router } from "expo-router";
+
+import { dismissQuickStart } from "@/api/onboarding";
+import { useSessionSnapshot } from "@/auth/session-state";
 import { QuickStartGuideCard } from "./QuickStartGuideCard";
 
 jest.mock("expo-router", () => ({
@@ -19,10 +22,27 @@ jest.mock("expo-router", () => ({
   },
 }));
 
+jest.mock("@/api/onboarding", () => ({
+  dismissQuickStart: jest.fn(async () => ({ dismissed: true })),
+}));
+
+jest.mock("@/auth/session-state", () => ({
+  useSessionSnapshot: jest.fn(() => ({
+    status: "signed-out",
+    subject: null,
+    getAccessToken: jest.fn(async () => "token"),
+  })),
+}));
+
 describe("QuickStartGuideCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSecureValues.clear();
+    jest.mocked(useSessionSnapshot).mockReturnValue({
+      status: "signed-out",
+      subject: null,
+      getAccessToken: jest.fn(async () => "token"),
+    } as never);
   });
 
   it("renders 4 onboarding steps and triggers navigation", async () => {
@@ -74,16 +94,33 @@ describe("QuickStartGuideCard", () => {
     expect(screen.queryByText("Adjust starting balances")).toBeNull();
     expect(screen.queryByRole("button", { name: "Reopen quick start guide" })).toBeNull();
     expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
-      "zoption_quick_start_guide_dismissed",
+      "zoption_quick_start_guide_dismissed.default",
       "true",
     );
   });
 
-  it("does not render when already dismissed in SecureStore", async () => {
+  it("does not render when already dismissed in SecureStore (legacy or scoped)", async () => {
     mockSecureValues.set("zoption_quick_start_guide_dismissed", "true");
 
     await render(<QuickStartGuideCard firstAccountId="acc-cash-1" />);
 
     expect(screen.queryByText("Quick start guide")).toBeNull();
+  });
+
+  it("persists dismissal to the Worker and per-subject storage when signed in", async () => {
+    jest.mocked(useSessionSnapshot).mockReturnValue({
+      status: "signed-in",
+      subject: "user-1",
+      getAccessToken: jest.fn(async () => "token-1"),
+    } as never);
+
+    await render(<QuickStartGuideCard firstAccountId="acc-cash-1" />);
+    await fireEvent.press(screen.getByRole("button", { name: "Dismiss guide" }));
+
+    expect(SecureStore.setItemAsync).toHaveBeenCalledWith(
+      "zoption_quick_start_guide_dismissed.user-1",
+      "true",
+    );
+    await waitFor(() => expect(dismissQuickStart).toHaveBeenCalledWith({ accessToken: "token-1" }));
   });
 });

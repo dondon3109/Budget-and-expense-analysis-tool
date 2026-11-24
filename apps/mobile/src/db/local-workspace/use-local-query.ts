@@ -9,8 +9,17 @@ import {
   type PropsWithChildren,
 } from "react";
 
+import { telemetry } from "@/telemetry/telemetry";
+
 import type { LocalWorkspace } from "../workspace";
 import { subscribeToLocalChanges } from "./change-stream";
+
+const CLOSED_DATABASE_ERROR = /Access to closed resource|database(?: connection)? is closed/i;
+
+function isClosedWorkspaceError(workspace: LocalWorkspace, cause: unknown): boolean {
+  if (workspace.closed) return true;
+  return cause instanceof Error && CLOSED_DATABASE_ERROR.test(cause.message);
+}
 
 const LocalQueryActiveContext = createContext<boolean>(true);
 
@@ -45,6 +54,11 @@ export interface LocalQueryOptions<T> {
    * loading flag, so a refresh does not cost them the extra renders of toggling it.
    */
   initialLoading?: boolean;
+  /**
+   * Called when a read fails because the workspace handle was closed, or when the user retries on
+   * a closed handle, so the provider can reopen a fresh connection instead of staying stuck.
+   */
+  onClosedWorkspace?: () => void;
 }
 
 export interface LocalQueryResult<T> {
@@ -61,12 +75,17 @@ export interface LocalQueryResult<T> {
  */
 export function useLocalQuery<T>(
   workspace: LocalWorkspace | null,
-  { read, tables, empty, errorMessage, initialLoading }: LocalQueryOptions<T>,
+  { read, tables, empty, errorMessage, initialLoading, onClosedWorkspace }: LocalQueryOptions<T>,
 ): LocalQueryResult<T> {
   const trackLoading = initialLoading !== undefined;
   const queryActive = useContext(LocalQueryActiveContext);
   const queryActiveRef = useRef(queryActive);
   queryActiveRef.current = queryActive;
+  const workspaceRef = useRef(workspace);
+  workspaceRef.current = workspace;
+  const onClosedWorkspaceRef = useRef(onClosedWorkspace);
+  onClosedWorkspaceRef.current = onClosedWorkspace;
+  const reopenedForRef = useRef<LocalWorkspace | null>(null);
   const dirtyRef = useRef(false);
   const flushRef = useRef<(() => void) | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -102,6 +121,15 @@ export function useLocalQuery<T>(
         .catch((cause: unknown) => {
           if (!active || requestId !== requestSeq) return;
           settled = true;
+          if (isClosedWorkspaceError(workspace, cause)) {
+            workspace.closed = true;
+            if (onClosedWorkspaceRef.current && reopenedForRef.current !== workspace) {
+              reopenedForRef.current = workspace;
+              onClosedWorkspaceRef.current();
+              return;
+            }
+          }
+          void telemetry.captureException(cause, "local-query");
           setError(typeof errorMessage === "string" ? errorMessage : errorMessage(cause));
           if (trackLoading) setLoading(false);
         });
@@ -137,6 +165,11 @@ export function useLocalQuery<T>(
     }
   }, [queryActive]);
 
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+  const retry = useCallback(() => {
+    if (workspaceRef.current?.closed && onClosedWorkspaceRef.current) {
+      onClosedWorkspaceRef.current();
+    }
+    setAttempt((value) => value + 1);
+  }, []);
   return { data, loading, error, retry };
 }

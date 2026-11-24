@@ -1,6 +1,10 @@
 import { Stack, router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import {
+  KeyboardAwareScrollView,
+  type KeyboardAwareScrollViewRef,
+} from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   DEBT_OVERPAYMENT_MESSAGE,
@@ -78,6 +82,12 @@ type PhotoDraft = { mimeType: string; base64: string } | null | undefined;
 
 /** Selection id for the "New category" row; never a real category id. */
 const NEW_CATEGORY_OPTION = "__new_category__";
+const NOTES_MIN_HEIGHT = 104;
+// KeyboardAwareScrollView measures from the active cursor line rather than the bottom edge of a
+// multiline field; clearing by the full notes box + bottom padding keeps the whole Notes field
+// focused above the keyboard (and gives transfers room to scroll since Notes is their last field).
+const EDITOR_KEYBOARD_BOTTOM_OFFSET = NOTES_MIN_HEIGHT + spacing.xxl;
+const EDITOR_EXTRA_KEYBOARD_SPACE = NOTES_MIN_HEIGHT;
 
 export function TransactionEditorScreen() {
   const params = useLocalSearchParams<{
@@ -100,6 +110,7 @@ export function TransactionEditorScreen() {
   const formData = useTransactionFormData(id);
   const theme = useZoptionTheme();
   const initializedFor = useRef<string | null>(null);
+  const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
   const [values, setValues] = useState<TransactionFormValues>(emptyTransactionForm);
   const [errors, setErrors] = useState<TransactionFormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
@@ -307,33 +318,34 @@ export function TransactionEditorScreen() {
           formData.data?.categories.find((item) => item.id === baseValues.categoryId)?.name,
         ),
     };
+    const failValidation = (fieldErrors: TransactionFormErrors): false => {
+      setErrors(fieldErrors);
+      playSound("error");
+      setMessage("Check the highlighted details.");
+      // Scroll back to the top banner and upper fields when saving fails while scrolled down at Notes.
+      if (!fieldErrors.notes) {
+        scrollRef.current?.scrollTo({ y: 0, animated: true });
+      }
+      return false;
+    };
     if (
       targetValues.kind === "expense" &&
       !targetValues.debtId &&
       debtRequired &&
       debtPaymentApplies(targetValues, undefined)
     ) {
-      setErrors({ debtId: "Choose the debt this pays." });
-      playSound("error");
-      setMessage("Check the highlighted details.");
-      return false;
+      return failValidation({ debtId: "Choose the debt this pays." });
     }
     const parsed = parseTransactionForm(targetValues);
     if (!parsed.success) {
-      setErrors(parsed.errors);
-      playSound("error");
-      setMessage("Check the highlighted details.");
-      return false;
+      return failValidation(parsed.errors);
     }
     const paidDebtId = parsed.input.kind === "income" ? null : parsed.input.debtId;
     const paidDebt = debts.find((debt) => debt.id === paidDebtId);
     // Debt balances already net out payments waiting to sync, this entry too when it has not
     // synced; the stored entry is given back so an edit is judged on its new amount alone.
     if (paidDebt && overpaysDebt(parsed.input, paidDebt, formData.data?.transaction?.input)) {
-      setErrors({ amount: DEBT_OVERPAYMENT_MESSAGE });
-      playSound("error");
-      setMessage("Check the highlighted details.");
-      return false;
+      return failValidation({ amount: DEBT_OVERPAYMENT_MESSAGE });
     }
     setSaving(true);
     setMessage(null);
@@ -490,122 +502,145 @@ export function TransactionEditorScreen() {
         }}
       />
       <EntryReveal>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 48 : 0}
+        <KeyboardAwareScrollView
+          ref={scrollRef}
+          bottomOffset={EDITOR_KEYBOARD_BOTTOM_OFFSET}
+          contentContainerStyle={styles.content}
+          contentInsetAdjustmentBehavior="automatic"
+          extraKeyboardSpace={EDITOR_EXTRA_KEYBOARD_SPACE}
+          keyboardShouldPersistTaps="handled"
           style={styles.safe}
         >
-          <ScrollView
-            contentContainerStyle={styles.content}
-            contentInsetAdjustmentBehavior="automatic"
-            keyboardShouldPersistTaps="handled"
-          >
-            {blockedState === "conflicted" ? (
-              <Card style={{ backgroundColor: theme.colors.warningSoft }}>
-                <Text style={[typography.headline, { color: theme.colors.text }]}>
-                  Conflict preserved
-                </Text>
-                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                  Zoption kept both versions. Editing stays disabled until conflict resolution is
-                  available.
-                </Text>
-                {id ? (
-                  <Button
-                    onPress={() =>
-                      router.push({
-                        pathname: "/(app)/transaction-conflict",
-                        params: { id },
-                      })
-                    }
-                    variant="secondary"
-                  >
-                    Review conflict
-                  </Button>
-                ) : null}
-              </Card>
-            ) : blockedState === "failed" ? (
-              <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
-                <Text style={[typography.headline, { color: theme.colors.text }]}>
-                  Sync needs repair
-                </Text>
-                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                  This saved operation was rejected and remains protected on this device.
-                </Text>
-              </Card>
-            ) : familyLocked ? (
-              <Card>
-                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                  {closesAt
-                    ? "This family is closing, so nothing in it can change."
-                    : family?.role === "viewer"
-                      ? "You can view this family but not change it."
-                      : "Only the person who added this entry, or the family's owner, can change it."}
-                </Text>
-              </Card>
-            ) : blockedState === "pending" ? (
-              <SyncStatus state="pending" />
-            ) : null}
-
-            {!hasChoices ? (
-              <Card>
-                <Text style={[typography.headline, { color: theme.colors.text }]}>
-                  Account setup needed
-                </Text>
-                <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
-                  Add at least one active account and an available {values.kind} category before
-                  saving.
-                </Text>
-              </Card>
-            ) : null}
-
-            {message ? (
-              <Text
-                accessibilityRole="alert"
-                style={[typography.callout, { color: theme.colors.danger }]}
-              >
-                {message}
+          {blockedState === "conflicted" ? (
+            <Card style={{ backgroundColor: theme.colors.warningSoft }}>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                Conflict preserved
               </Text>
-            ) : null}
-            <AmountHero
-              autoFocus={!editing && !voiceMode}
-              currency={currency.currency}
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                Zoption kept both versions. Editing stays disabled until conflict resolution is
+                available.
+              </Text>
+              {id ? (
+                <Button
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(app)/transaction-conflict",
+                      params: { id },
+                    })
+                  }
+                  variant="secondary"
+                >
+                  Review conflict
+                </Button>
+              ) : null}
+            </Card>
+          ) : blockedState === "failed" ? (
+            <Card style={{ backgroundColor: theme.colors.dangerSoft }}>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                Sync needs repair
+              </Text>
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                This saved operation was rejected and remains protected on this device.
+              </Text>
+            </Card>
+          ) : familyLocked ? (
+            <Card>
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                {closesAt
+                  ? "This family is closing, so nothing in it can change."
+                  : family?.role === "viewer"
+                    ? "You can view this family but not change it."
+                    : "Only the person who added this entry, or the family's owner, can change it."}
+              </Text>
+            </Card>
+          ) : blockedState === "pending" ? (
+            <SyncStatus state="pending" />
+          ) : null}
+
+          {!hasChoices ? (
+            <Card>
+              <Text style={[typography.headline, { color: theme.colors.text }]}>
+                Account setup needed
+              </Text>
+              <Text style={[typography.callout, { color: theme.colors.textMuted }]}>
+                Add at least one active account and an available {values.kind} category before
+                saving.
+              </Text>
+            </Card>
+          ) : null}
+
+          {message ? (
+            <Text
+              accessibilityRole="alert"
+              style={[typography.callout, { color: theme.colors.danger }]}
+            >
+              {message}
+            </Text>
+          ) : null}
+          <AmountHero
+            autoFocus={!editing && !voiceMode}
+            currency={currency.currency}
+            editable={!saving && !mutationBlocked}
+            error={errors.amount}
+            kind={values.kind}
+            onChangeText={(value) => updateValue("amount", value)}
+            value={values.amount}
+          />
+          {transfer ? (
+            <FormField
               editable={!saving && !mutationBlocked}
-              error={errors.amount}
-              kind={values.kind}
-              onChangeText={(value) => updateValue("amount", value)}
-              value={values.amount}
+              error={errors.transferFee}
+              hint={netReceived ? `Receiver gets ${netReceived} ${currency.currency}.` : undefined}
+              keyboardType="decimal-pad"
+              label="Transfer fee (optional)"
+              maxLength={18}
+              onChangeText={(value) => updateValue("transferFee", value)}
+              placeholder="0.00"
+              trailing={currencyTag}
+              value={values.transferFee}
             />
-            {transfer ? (
-              <FormField
-                editable={!saving && !mutationBlocked}
-                error={errors.transferFee}
-                hint={
-                  netReceived ? `Receiver gets ${netReceived} ${currency.currency}.` : undefined
-                }
-                keyboardType="decimal-pad"
-                label="Transfer fee (optional)"
-                maxLength={18}
-                onChangeText={(value) => updateValue("transferFee", value)}
-                placeholder="0.00"
-                trailing={currencyTag}
-                value={values.transferFee}
-              />
-            ) : null}
+          ) : null}
+          <AccountIconPicker
+            disabled={saving || mutationBlocked}
+            error={errors.accountId}
+            label={transfer ? "From account" : "Account"}
+            onSelect={(accountId) => {
+              const account = formData.data?.accounts.find((item) => item.id === accountId);
+              setValues((current) => ({
+                ...current,
+                accountId,
+                // Picking the account already on the other side swaps the two sides.
+                toAccountId:
+                  transfer && accountId === current.toAccountId
+                    ? current.accountId
+                    : current.toAccountId,
+                currency: account?.currency ?? current.currency,
+              }));
+              setErrors((current) => ({
+                ...current,
+                accountId: undefined,
+                toAccountId: undefined,
+              }));
+              setMessage(null);
+            }}
+            options={accountOptions}
+            value={values.accountId}
+          />
+          {transfer ? (
             <AccountIconPicker
               disabled={saving || mutationBlocked}
-              error={errors.accountId}
-              label={transfer ? "From account" : "Account"}
-              onSelect={(accountId) => {
-                const account = formData.data?.accounts.find((item) => item.id === accountId);
+              error={errors.toAccountId}
+              label="To account"
+              onSelect={(toAccountId) => {
+                const swapped = toAccountId === values.accountId;
+                const source = swapped
+                  ? formData.data?.accounts.find((item) => item.id === values.toAccountId)
+                  : undefined;
                 setValues((current) => ({
                   ...current,
-                  accountId,
-                  // Picking the account already on the other side swaps the two sides.
-                  toAccountId:
-                    transfer && accountId === current.toAccountId
-                      ? current.accountId
-                      : current.toAccountId,
-                  currency: account?.currency ?? current.currency,
+                  toAccountId,
+                  accountId: swapped ? current.toAccountId : current.accountId,
+                  currency: source?.currency ?? current.currency,
                 }));
                 setErrors((current) => ({
                   ...current,
@@ -615,205 +650,174 @@ export function TransactionEditorScreen() {
                 setMessage(null);
               }}
               options={accountOptions}
-              value={values.accountId}
-            />
-            {transfer ? (
-              <AccountIconPicker
-                disabled={saving || mutationBlocked}
-                error={errors.toAccountId}
-                label="To account"
-                onSelect={(toAccountId) => {
-                  const swapped = toAccountId === values.accountId;
-                  const source = swapped
-                    ? formData.data?.accounts.find((item) => item.id === values.toAccountId)
-                    : undefined;
-                  setValues((current) => ({
-                    ...current,
-                    toAccountId,
-                    accountId: swapped ? current.toAccountId : current.accountId,
-                    currency: source?.currency ?? current.currency,
-                  }));
-                  setErrors((current) => ({
-                    ...current,
-                    accountId: undefined,
-                    toAccountId: undefined,
-                  }));
-                  setMessage(null);
-                }}
-                options={accountOptions}
-                value={values.toAccountId}
-              />
-            ) : null}
-            {currency.choosable ? (
-              <EntryCurrencyField
-                disabled={saving || mutationBlocked}
-                onChange={(code) => updateValue("currency", code)}
-                value={currency.currency}
-              />
-            ) : null}
-            <SelectionField
-              disabled={saving || mutationBlocked}
-              error={errors.categoryId}
-              label="Category"
-              onSelect={(categoryId) => {
-                if (categoryId === NEW_CATEGORY_OPTION) {
-                  setCreatingCategory(true);
-                  return;
-                }
-                updateValue("categoryId", categoryId);
-              }}
-              options={
-                canCreateCategory
-                  ? [...categoryOptions, { id: NEW_CATEGORY_OPTION, label: "+ New category" }]
-                  : categoryOptions
-              }
-              placeholder="Choose a category"
-              sheetTitle={`Choose ${values.kind} category`}
-              value={values.categoryId}
-            />
-            {paysDebt ? (
-              <DebtPaymentField
-                debts={debts}
-                disabled={saving || mutationBlocked}
-                error={errors.debtId}
-                onChange={(debtId) => updateValue("debtId", debtId)}
-                required={debtRequired}
-                value={values.debtId}
-              />
-            ) : null}
-            {creatingCategory && canCreateCategory && localWorkspace ? (
-              <NewCategoryInline
-                kind={values.kind}
-                categoryCount={categories.length}
-                createCategory={(input) =>
-                  localWorkspace.transactionMutations.createCategory(input)
-                }
-                onCreated={(categoryId) => {
-                  updateValue("categoryId", categoryId);
-                  setCreatingCategory(false);
-                  sync.retry();
-                }}
-                onCancel={() => setCreatingCategory(false)}
-              />
-            ) : null}
-            <DateField
-              disabled={saving || mutationBlocked}
-              error={errors.date}
-              label="Date"
-              onChange={(date) => updateValue("date", date)}
-              value={values.date}
-            />
-            <FormField
-              autoCapitalize="sentences"
-              editable={!saving && !mutationBlocked}
-              error={errors.notes}
-              label="Notes"
-              maxLength={500}
-              multiline
-              onChangeText={(value) => updateValue("notes", value)}
-              placeholder="Add context for yourself"
-              style={styles.notes}
-              textAlignVertical="top"
-              value={values.notes}
-            />
-            {!transfer ? (
-              <TransactionPhotoField
-                disabled={saving || mutationBlocked}
-                family={Boolean(familyApi)}
-                onError={setMessage}
-                onPick={(photo) => {
-                  setPhotoDraft(photo);
-                  setMessage(null);
-                }}
-                onRemove={() => setPhotoDraft(null)}
-                photoUri={photoUri}
-              />
-            ) : null}
-
-            {id && !transfer && !family ? (
-              <ShareLinkButton
-                target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }}
-              />
-            ) : null}
-            {id && savedEntry && savedEntry.input.kind !== "transfer" ? (
-              <ShareToFamilyButton
-                target={{
-                  kind: "transaction",
-                  id,
-                  direction: savedEntry.input.kind,
-                  categoryName:
-                    formData.data?.categories.find(
-                      (category) => category.id === savedEntry.input.categoryId,
-                    )?.name ?? "",
-                  hasNote: Boolean(savedEntry.input.notes),
-                  synced: savedEntry.syncState === "synced",
-                }}
-              />
-            ) : null}
-            {editing ? (
-              <Button
-                accessibilityLabel={transfer ? "Delete transfer" : "Delete transaction"}
-                disabled={mutationBlocked}
-                onPress={() => setConfirmDelete(true)}
-                variant="quiet"
-              >
-                Delete {transfer ? "transfer" : "transaction"}
-              </Button>
-            ) : null}
-            {family && id ? (
-              <FamilyEntryPanel
-                authorUserId={formData.data.transaction?.authorUserId ?? null}
-                subject={{ kind: "transaction", subjectId: id }}
-              />
-            ) : null}
-          </ScrollView>
-          {voiceMode ? (
-            <TransactionVoiceEntry
-              disabled={!hasChoices || saving || mutationBlocked}
-              categories={formData.data?.categories
-                .filter((category) => !category.pending)
-                .map((category) => category.name)}
-              onDraft={(draft) => {
-                const nextKind = draft.kind;
-                const nextKindCategories =
-                  formData.data?.categories.filter(
-                    (category) => category.kind === nextKind && !category.pending,
-                  ) ?? [];
-                const matchingCategory = matchCategory(nextKindCategories, draft.categoryName, {
-                  kind: nextKind,
-                  contextText: draft.transcript,
-                });
-                const fallbackCategory = defaultTransactionCategory(nextKindCategories, nextKind);
-                const activeAccounts =
-                  formData.data?.accounts.filter((account) => !account.pending) ?? [];
-                const fromAccount =
-                  activeAccounts.find((account) => account.id === values.accountId) ??
-                  activeAccounts[0];
-                const nextValues: TransactionFormValues = {
-                  ...values,
-                  kind: nextKind,
-                  accountId: fromAccount?.id ?? values.accountId,
-                  toAccountId:
-                    nextKind === "transfer"
-                      ? (activeAccounts.find((account) => account.id !== fromAccount?.id)?.id ?? "")
-                      : "",
-                  categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? values.categoryId,
-                  date: draft.date,
-                  description: draft.description,
-                  amount: formatMinorForInput(draft.amountMinor),
-                  transferFee: "",
-                  currency: draft.currency,
-                  notes: values.notes,
-                };
-                setValues(nextValues);
-                setVoiceDrafted(true);
-                setErrors({});
-                setMessage(null);
-              }}
-              onClose={() => setVoiceMode(false)}
+              value={values.toAccountId}
             />
           ) : null}
-        </KeyboardAvoidingView>
+          {currency.choosable ? (
+            <EntryCurrencyField
+              disabled={saving || mutationBlocked}
+              onChange={(code) => updateValue("currency", code)}
+              value={currency.currency}
+            />
+          ) : null}
+          <SelectionField
+            disabled={saving || mutationBlocked}
+            error={errors.categoryId}
+            label="Category"
+            onSelect={(categoryId) => {
+              if (categoryId === NEW_CATEGORY_OPTION) {
+                setCreatingCategory(true);
+                return;
+              }
+              updateValue("categoryId", categoryId);
+            }}
+            options={
+              canCreateCategory
+                ? [...categoryOptions, { id: NEW_CATEGORY_OPTION, label: "+ New category" }]
+                : categoryOptions
+            }
+            placeholder="Choose a category"
+            sheetTitle={`Choose ${values.kind} category`}
+            value={values.categoryId}
+          />
+          {paysDebt ? (
+            <DebtPaymentField
+              debts={debts}
+              disabled={saving || mutationBlocked}
+              error={errors.debtId}
+              onChange={(debtId) => updateValue("debtId", debtId)}
+              required={debtRequired}
+              value={values.debtId}
+            />
+          ) : null}
+          {creatingCategory && canCreateCategory && localWorkspace ? (
+            <NewCategoryInline
+              kind={values.kind}
+              categoryCount={categories.length}
+              createCategory={(input) => localWorkspace.transactionMutations.createCategory(input)}
+              onCreated={(categoryId) => {
+                updateValue("categoryId", categoryId);
+                setCreatingCategory(false);
+                sync.retry();
+              }}
+              onCancel={() => setCreatingCategory(false)}
+            />
+          ) : null}
+          <DateField
+            disabled={saving || mutationBlocked}
+            error={errors.date}
+            label="Date"
+            onChange={(date) => updateValue("date", date)}
+            value={values.date}
+          />
+          <FormField
+            autoCapitalize="sentences"
+            editable={!saving && !mutationBlocked}
+            error={errors.notes}
+            label="Notes"
+            maxLength={500}
+            multiline
+            onChangeText={(value) => updateValue("notes", value)}
+            placeholder="Add context for yourself"
+            style={styles.notes}
+            textAlignVertical="top"
+            value={values.notes}
+          />
+          {!transfer ? (
+            <TransactionPhotoField
+              disabled={saving || mutationBlocked}
+              family={Boolean(familyApi)}
+              onError={setMessage}
+              onPick={(photo) => {
+                setPhotoDraft(photo);
+                setMessage(null);
+              }}
+              onRemove={() => setPhotoDraft(null)}
+              photoUri={photoUri}
+            />
+          ) : null}
+
+          {id && !transfer && !family ? (
+            <ShareLinkButton target={{ kind: "transaction", id, hasNote: Boolean(values.notes) }} />
+          ) : null}
+          {id && savedEntry && savedEntry.input.kind !== "transfer" ? (
+            <ShareToFamilyButton
+              target={{
+                kind: "transaction",
+                id,
+                direction: savedEntry.input.kind,
+                categoryName:
+                  formData.data?.categories.find(
+                    (category) => category.id === savedEntry.input.categoryId,
+                  )?.name ?? "",
+                hasNote: Boolean(savedEntry.input.notes),
+                synced: savedEntry.syncState === "synced",
+              }}
+            />
+          ) : null}
+          {editing ? (
+            <Button
+              accessibilityLabel={transfer ? "Delete transfer" : "Delete transaction"}
+              disabled={mutationBlocked}
+              onPress={() => setConfirmDelete(true)}
+              variant="quiet"
+            >
+              Delete {transfer ? "transfer" : "transaction"}
+            </Button>
+          ) : null}
+          {family && id ? (
+            <FamilyEntryPanel
+              authorUserId={formData.data.transaction?.authorUserId ?? null}
+              subject={{ kind: "transaction", subjectId: id }}
+            />
+          ) : null}
+        </KeyboardAwareScrollView>
+        {voiceMode ? (
+          <TransactionVoiceEntry
+            disabled={!hasChoices || saving || mutationBlocked}
+            categories={formData.data?.categories
+              .filter((category) => !category.pending)
+              .map((category) => category.name)}
+            onDraft={(draft) => {
+              const nextKind = draft.kind;
+              const nextKindCategories =
+                formData.data?.categories.filter(
+                  (category) => category.kind === nextKind && !category.pending,
+                ) ?? [];
+              const matchingCategory = matchCategory(nextKindCategories, draft.categoryName, {
+                kind: nextKind,
+                contextText: draft.transcript,
+              });
+              const fallbackCategory = defaultTransactionCategory(nextKindCategories, nextKind);
+              const activeAccounts =
+                formData.data?.accounts.filter((account) => !account.pending) ?? [];
+              const fromAccount =
+                activeAccounts.find((account) => account.id === values.accountId) ??
+                activeAccounts[0];
+              const nextValues: TransactionFormValues = {
+                ...values,
+                kind: nextKind,
+                accountId: fromAccount?.id ?? values.accountId,
+                toAccountId:
+                  nextKind === "transfer"
+                    ? (activeAccounts.find((account) => account.id !== fromAccount?.id)?.id ?? "")
+                    : "",
+                categoryId: matchingCategory?.id ?? fallbackCategory?.id ?? values.categoryId,
+                date: draft.date,
+                description: draft.description,
+                amount: formatMinorForInput(draft.amountMinor),
+                transferFee: "",
+                currency: draft.currency,
+                notes: values.notes,
+              };
+              setValues(nextValues);
+              setVoiceDrafted(true);
+              setErrors({});
+              setMessage(null);
+            }}
+            onClose={() => setVoiceMode(false)}
+          />
+        ) : null}
       </EntryReveal>
       <ConfirmationDialog
         confirmLabel="Delete"
@@ -839,5 +843,5 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
   },
-  notes: { minHeight: 104 },
+  notes: { minHeight: NOTES_MIN_HEIGHT },
 });

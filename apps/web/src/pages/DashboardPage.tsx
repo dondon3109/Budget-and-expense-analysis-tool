@@ -72,6 +72,7 @@ import { formatFullMonth, formatMonth } from "../lib/formatters";
 import { queryKeys } from "../lib/queryKeys";
 import { useFamily, useMyBalanceShares } from "../queries/families";
 import { useGoalProfile } from "../queries/goalProfile";
+import { useDismissQuickStart, useQuickStartState } from "../queries/onboarding";
 import { transactionsQueryOptions } from "../queries/transactions";
 import "./DashboardPage.css";
 // AccountsPanel.css holds the account rules that used to close DashboardPage.css, so it loads
@@ -108,6 +109,8 @@ export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const personalGoal = useGoalProfile(personal).data?.goal ?? null;
   const goal = family ? null : personalGoal;
+  const quickStartQuery = useQuickStartState(personal, !family);
+  const dismissQuickStart = useDismissQuickStart(personal);
   const familyDetail = useFamily(family?.role === "owner" ? workspace : undefined).data;
   const goalConfig = goalConfigFor(goal);
   const subscribeTriggerRef = useRef<HTMLElement | null>(null);
@@ -456,11 +459,12 @@ export function DashboardPage() {
 
         {!family && (
           <>
-            {!empty && (
+            {!empty && quickStartQuery.data?.dismissed === false && (
               <QuickStartTutorial
                 onAddTransaction={() => setAddTransactionOpen(true)}
                 onAdjustBalance={() => activeAccounts[0] && setAdjustingAccount(activeAccounts[0])}
                 onMigrateSpreadsheet={() => setMigrationWizardOpen(true)}
+                onDismiss={() => dismissQuickStart.mutate()}
               />
             )}
 

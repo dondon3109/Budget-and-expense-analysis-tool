@@ -202,7 +202,12 @@ export function SyncProvider({
   onUnavailableRetry,
 }: SyncProviderProps) {
   const { workspace, reopen } = useLocalWorkspace();
-  const session = useSessionSnapshot();
+  const {
+    status: sessionStatus,
+    subject: sessionSubject,
+    getAccessToken,
+    signOut: signOutSession,
+  } = useSessionSnapshot();
   const active = useActiveWorkspace();
   const { markSynced, forgetFamily, refresh: refreshFamilies, workspaceSubject } = active;
   const familyId = active.family?.id ?? null;
@@ -222,13 +227,13 @@ export function SyncProvider({
   // Every other workspace on this phone that may hold changes made before a switch. They upload
   // after the shown one syncs, once per launch, switch, or background run, never pulling.
   const drainTargets = useMemo<DrainTarget[]>(() => {
-    if (!session.subject) return [];
-    const subject = session.subject;
+    if (!sessionSubject) return [];
+    const subject = sessionSubject;
     const families = active.synced
       .filter((id) => id !== familyId && active.families.some((family) => family.id === id))
       .map((id) => ({ subject: familySubject(subject, id), workspaceId: id }));
     return familyId ? [{ subject, workspaceId: null }, ...families] : families;
-  }, [active.families, active.synced, familyId, session.subject]);
+  }, [active.families, active.synced, familyId, sessionSubject]);
   const drainTargetsRef = useRef(drainTargets);
   const drainRequestedRef = useRef(true);
   useEffect(() => {
@@ -241,8 +246,8 @@ export function SyncProvider({
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
-    if (!workspace || session.status !== "signed-in") return;
-    if (isDummyDevelopmentSubject(session.subject)) {
+    if (!workspace || sessionStatus !== "signed-in") return;
+    if (isDummyDevelopmentSubject(sessionSubject)) {
       setSnapshot({
         status: "synced",
         message: null,
@@ -305,9 +310,9 @@ export function SyncProvider({
       if (controller.signal.aborted) return;
       try {
         const auth: SyncAuth = {
-          token: await session.getAccessToken(false),
+          token: await getAccessToken(false),
           refreshed: false,
-          getAccessToken: session.getAccessToken,
+          getAccessToken,
         };
         if (!(await pushOutbox(workspace, familyId, auth, controller.signal, stale))) return;
         for (let pageNumber = 0; pageNumber < 250; pageNumber += 1) {
@@ -402,7 +407,7 @@ export function SyncProvider({
         if (stale()) return;
         await workspace.syncRepository.recordFailure().catch(() => undefined);
         if (error instanceof MobileSyncTransportError && error.code === "account_deleted") {
-          await session.signOut({ preserveLocalWorkspace: true }).catch(() => undefined);
+          await signOutSession({ preserveLocalWorkspace: true }).catch(() => undefined);
           return;
         }
         if (
@@ -431,14 +436,14 @@ export function SyncProvider({
             return;
           }
           try {
-            await recoverLocalWorkspace(
-              workspaceSubject,
-              await session.getAccessToken(false),
-              familyId,
-            );
+            const accessToken = await getAccessToken(false);
+            if (stale()) return;
+            await recoverLocalWorkspace(workspaceSubject, accessToken, familyId);
+            if (stale()) return;
             reopen();
             setSnapshot({ status: "waiting", message: null });
           } catch {
+            if (stale()) return;
             setSnapshot({
               status: "failed",
               message: "This family's copy could not be refreshed. Try again when online.",
@@ -448,14 +453,17 @@ export function SyncProvider({
         }
         if (error instanceof MobileSyncTransportError && error.code === "full_resync_required") {
           try {
-            if (!session.subject) {
+            if (!sessionSubject) {
               throw new Error("Sign in again to recover this workspace.", { cause: error });
             }
-            const recoveryToken = await session.getAccessToken(true);
+            const recoveryToken = await getAccessToken(true);
+            if (stale()) return;
             await recoverLocalWorkspace(workspaceSubject, recoveryToken, familyId);
+            if (stale()) return;
             reopen();
             setSnapshot({ status: "waiting", message: null });
           } catch {
+            if (stale()) return;
             setSnapshot({
               status: "full-resync-required",
               message:
@@ -513,11 +521,14 @@ export function SyncProvider({
     familyId,
     familyName,
     forgetFamily,
+    getAccessToken,
     markSynced,
     offline,
     refreshFamilies,
     reopen,
-    session,
+    sessionStatus,
+    sessionSubject,
+    signOutSession,
     unavailableMessage,
     workspace,
     workspaceSubject,
@@ -528,7 +539,7 @@ export function SyncProvider({
   // declines instead of half-synchronizing without the workspace and session.
   // A background run also uploads what other workspaces on this phone still hold.
   useEffect(() => {
-    if (!workspace || session.status !== "signed-in" || !enabled) {
+    if (!workspace || sessionStatus !== "signed-in" || !enabled) {
       setBackgroundSyncRunner(null);
       return;
     }
@@ -538,7 +549,7 @@ export function SyncProvider({
       return Promise.resolve();
     });
     return () => setBackgroundSyncRunner(null);
-  }, [enabled, session.status, workspace]);
+  }, [enabled, sessionStatus, workspace]);
 
   const retry = useCallback(() => {
     if (!enabled) {
@@ -551,8 +562,8 @@ export function SyncProvider({
     !workspace ||
     workspace.hasSynced ||
     syncedWorkspace === workspace ||
-    session.status !== "signed-in" ||
-    isDummyDevelopmentSubject(session.subject);
+    sessionStatus !== "signed-in" ||
+    isDummyDevelopmentSubject(sessionSubject);
   const value = useMemo(
     () => ({ ...snapshot, retry, hasSynced, offline }),
     [hasSynced, offline, retry, snapshot],

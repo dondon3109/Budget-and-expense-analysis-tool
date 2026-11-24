@@ -172,10 +172,12 @@ export function SessionProvider({ children }: PropsWithChildren) {
     }
     subjectRef.current = nextSubject;
     initializedRef.current = true;
-    setSnapshot({
-      status: nextSubject ? "signed-in" : "signed-out",
-      subject: nextSubject,
-    });
+    const nextStatus: SessionStatus = nextSubject ? "signed-in" : "signed-out";
+    setSnapshot((prev) =>
+      prev.status === nextStatus && prev.subject === nextSubject
+        ? prev
+        : { status: nextStatus, subject: nextSubject },
+    );
   }, []);
 
   const enterGuest = useCallback(() => {
@@ -544,20 +546,26 @@ export function SessionProvider({ children }: PropsWithChildren) {
         });
       }
       await clearAndroidBootCount();
-      isDummySessionRef.current = false;
-      clearUserScopedRuntimeState();
-      // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
-      // Reset here only when that listener did not already clear PostHog.
-      if (subjectRef.current === subject) void telemetry.reset();
-      setSignedInAccount(null);
+      if (subjectRef.current === subject || subjectRef.current === null) {
+        isDummySessionRef.current = false;
+        clearUserScopedRuntimeState();
+        // Supabase may already have emitted SIGNED_OUT while auth.signOut awaited.
+        // Reset here only when that listener did not already clear PostHog.
+        if (subjectRef.current === subject) void telemetry.reset();
+        setSignedInAccount(null);
+      }
 
       if (subject && !options.preserveLocalWorkspace) {
         for (const localSubject of localSubjects) await discardLocalWorkspace(localSubject);
         await clearWorkspaceRecord(subject).catch(() => undefined);
         await clearAppLock(subject);
       }
-      subjectRef.current = null;
-      setSnapshot(signedOutSession);
+      if (subjectRef.current === subject || subjectRef.current === null) {
+        subjectRef.current = null;
+        setSnapshot((prev) =>
+          prev.status === "signed-out" && prev.subject === null ? prev : signedOutSession,
+        );
+      }
     },
     [getAccessToken],
   );

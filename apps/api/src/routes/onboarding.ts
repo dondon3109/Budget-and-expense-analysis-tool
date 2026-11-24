@@ -34,5 +34,13 @@ export function createOnboardingRoutes(repository: OnboardingRepository) {
     );
   });
 
+  routes.get("/quick-start", async (context) =>
+    context.json(await repository.getQuickStart(context.env, context.get("tenant").tenantId)),
+  );
+
+  routes.post("/quick-start/dismiss", async (context) =>
+    context.json(await repository.dismissQuickStart(context.env, context.get("tenant").tenantId)),
+  );
+
   return routes;
 }

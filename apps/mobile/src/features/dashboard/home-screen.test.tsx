@@ -4,6 +4,7 @@ import { router } from "expo-router";
 import { HomeScreen } from "./HomeScreen";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { usePlan } from "@/auth/plan-state";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSyncState } from "@/sync/sync-state";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 import { localIsoDate } from "./dashboard-view";
@@ -74,6 +75,7 @@ const family = {
 describe("HomeScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    useOnboardingStore.getState().reset();
     jest.mocked(useSyncState).mockReturnValue({
       status: "synced",
       message: null,
@@ -188,6 +190,8 @@ describe("HomeScreen", () => {
 
     await render(<HomeScreen />);
     expect(screen.getByText("Welcome to your workspace")).toBeTruthy();
+    expect(screen.getByText("Total Balance")).toBeTruthy();
+    expect(screen.getByText("Cash")).toBeTruthy();
     expect(screen.queryByText("Quick start guide")).toBeNull();
   });
 
@@ -210,7 +214,8 @@ describe("HomeScreen", () => {
     expect(screen.getByRole("button", { name: "Scan receipt" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "AI Assistant" })).toBeTruthy();
 
-    // Onboarding guide
+    // Onboarding guide (no zero-balance card until starting cash or a transaction exists)
+    expect(screen.queryByText("Total Balance")).toBeNull();
     expect(screen.getByText("Welcome to your workspace")).toBeTruthy();
     expect(screen.getByText("Build your real financial picture")).toBeTruthy();
     expect(screen.getByText("Option A: Bring your data")).toBeTruthy();
@@ -543,5 +548,57 @@ describe("HomeScreen", () => {
 
     expect(mockSyncRetry).toHaveBeenCalledTimes(1);
     expect(mockDashboardRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the quick start guide until the Worker confirms it is not dismissed", async () => {
+    const expense = {
+      id: "tx-1",
+      date: localIsoDate(new Date()),
+      description: "Coffee",
+      amountMinor: -120_00,
+      currency: "PHP" as const,
+      kind: "expense" as const,
+      categoryId: "cat-food",
+      categoryName: "Food",
+      categoryColor: "#2f65c8",
+      categoryIconEmoji: null,
+      accountName: "Cash",
+    };
+    jest.mocked(useDashboardData).mockReturnValue({
+      data: {
+        transactions: [expense],
+        recentTransactions: [expense],
+        accounts: [
+          {
+            id: "acc-cash",
+            name: "Cash",
+            type: "cash",
+            currency: "PHP",
+            balanceMinor: 100_00,
+            balancesByCurrency: { PHP: 100_00 },
+            archived: false,
+            system: true,
+          },
+        ],
+        budgets: [],
+      },
+      error: null,
+      retry: jest.fn(),
+    });
+
+    const view = await render(<HomeScreen />);
+    expect(screen.queryByText("Quick start guide")).toBeNull();
+
+    await act(async () => {
+      useOnboardingStore.getState().setQuickStartDismissed(false);
+    });
+    await view.rerender(<HomeScreen />);
+    expect(await screen.findByText("Quick start guide")).toBeTruthy();
+
+    await act(async () => {
+      useOnboardingStore.getState().setQuickStartDismissed(true);
+    });
+    await view.rerender(<HomeScreen />);
+    expect(screen.queryByText("Quick start guide")).toBeNull();
   });
 });

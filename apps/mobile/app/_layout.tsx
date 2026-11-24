@@ -150,8 +150,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        {/* Android keeps the manifest's pan mode; only a chat screen's KeyboardAvoidingView
-            switches to resize while it is mounted, so the composer sits on the keyboard. */}
+        {/* Android keeps the manifest's pan mode; only chat screens and the transaction
+            editor switch to resize while mounted, keeping composers and headers clear. */}
         <KeyboardProvider>
           <SessionProvider>
             <SplashRelease />

@@ -7,6 +7,7 @@ import { Text, View } from "react-native";
 
 import { usePlan } from "@/auth/plan-state";
 import { useSessionSnapshot } from "@/auth/session-state";
+import { isDummyDevelopmentSubject } from "@/db/demo-seed";
 import { useDashboardData, useSubscriptions } from "@/db/local-workspace-state";
 import { useAccountGate } from "@/features/account-prompt/use-account-gate";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
@@ -81,9 +82,11 @@ export function HomeScreen() {
   usePetIntroPrompt();
   const theme = useZoptionTheme();
   const onboardingState = useOnboardingStore((store) => store.state);
+  const quickStartDismissed = useOnboardingStore((store) => store.quickStartDismissed);
   const sync = useSyncState();
+  const session = useSessionSnapshot();
   // A guest never syncs, so the pill says where the data lives instead of "Waiting to sync".
-  const guest = useSessionSnapshot().status === "guest";
+  const guest = session.status === "guest";
   const planState = usePlan();
   const workspaceCurrency = useWorkspaceCurrency();
   // A family has no subscriptions, goals, or setup guide, so their cards stay personal.
@@ -114,8 +117,18 @@ export function HomeScreen() {
   const hasTransactions = Boolean(
     overview && (overview.summary.monthlyTrend.length > 0 || hasRealRecentTransaction),
   );
+  const hasAccountBalance = Boolean(
+    overview &&
+    (overview.accountBalances.overallBalanceMinor !== 0 ||
+      Object.values(overview.accountBalances.balancesByCurrency).some((balance) => balance !== 0)),
+  );
+  const quickStartAllowed =
+    guest || isDummyDevelopmentSubject(session.subject) ? true : quickStartDismissed === false;
   const showQuickStartGuide = Boolean(
-    hasTransactions && dashboard.data && !isEstablishedLedger(dashboard.data, today),
+    quickStartAllowed &&
+    hasTransactions &&
+    dashboard.data &&
+    !isEstablishedLedger(dashboard.data, today),
   );
   const canResumeSetup =
     !guest && !inFamily && onboardingState !== null && onboardingState.step !== "complete";
@@ -266,7 +279,10 @@ export function HomeScreen() {
               )}
             </>
           ) : (
-            <HomeEmptyView syncing={sync.status === "syncing"} />
+            <>
+              {hasAccountBalance ? <BalanceCard summary={overview.summary} /> : null}
+              <HomeEmptyView syncing={sync.status === "syncing"} />
+            </>
           )}
         </View>
       )}

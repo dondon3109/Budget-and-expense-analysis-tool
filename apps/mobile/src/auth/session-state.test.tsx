@@ -525,4 +525,84 @@ describe("SessionProvider and dummy session handling", () => {
       expect(mockSecureValues.has(ANDROID_BOOT_COUNT_KEY)).toBe(false);
     });
   });
+
+  it("keeps the session context reference stable when TOKEN_REFRESHED repeats the same subject", async () => {
+    let onAuth: ((event: string, session: Session | null) => void) | null = null;
+    mockAuth.onAuthStateChange.mockImplementation((callback) => {
+      onAuth = callback;
+      return { data: { subscription: { unsubscribe: jest.fn() } } };
+    });
+    mockCurrentSession = {
+      access_token: "token-1",
+      refresh_token: "refresh-1",
+      user: { id: "real-user-id", email: "user@example.com" } as Session["user"],
+    } as Session;
+
+    const snapshots: Array<ReturnType<typeof useSessionSnapshot>> = [];
+    await act(async () => {
+      render(
+        <SessionProvider>
+          <TestConsumer onSnapshot={(snap) => snapshots.push(snap)} />
+        </SessionProvider>,
+      );
+    });
+    await waitFor(() => expect(snapshots.at(-1)?.status).toBe("signed-in"));
+    const signedInSnap = snapshots.at(-1);
+    const countBeforeRefresh = snapshots.length;
+
+    await act(async () => {
+      onAuth?.("TOKEN_REFRESHED", {
+        ...mockCurrentSession!,
+        access_token: "token-2",
+      });
+    });
+
+    expect(snapshots).toHaveLength(countBeforeRefresh);
+    expect(snapshots.at(-1)).toBe(signedInSnap);
+  });
+
+  it("does not clobber a newer session if signOut finishes workspace cleanup afterwards", async () => {
+    let onAuth: ((event: string, session: Session | null) => void) | null = null;
+    mockAuth.onAuthStateChange.mockImplementation((callback) => {
+      onAuth = callback;
+      return { data: { subscription: { unsubscribe: jest.fn() } } };
+    });
+    let releaseDiscard!: () => void;
+    (discardLocalWorkspace as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseDiscard = resolve;
+        }),
+    );
+    mockAuth.signOut.mockImplementationOnce(() => {
+      mockCurrentSession = null;
+      onAuth?.("SIGNED_OUT", null);
+      return Promise.resolve({ error: null });
+    });
+
+    const latest = await renderSignedInSession();
+    let signOutPromise!: Promise<void>;
+    await act(async () => {
+      signOutPromise = latest.current!.signOut();
+    });
+    await waitFor(() => expect(discardLocalWorkspace).toHaveBeenCalledWith("real-user-id"));
+
+    await act(async () => {
+      onAuth?.("SIGNED_IN", {
+        access_token: "next-token",
+        refresh_token: "next-refresh",
+        user: { id: "next-user-id", email: "next@example.com" } as Session["user"],
+      } as Session);
+    });
+    expect(latest.current?.status).toBe("signed-in");
+    expect(latest.current?.subject).toBe("next-user-id");
+
+    await act(async () => {
+      releaseDiscard();
+      await signOutPromise;
+    });
+
+    expect(latest.current?.status).toBe("signed-in");
+    expect(latest.current?.subject).toBe("next-user-id");
+  });
 });

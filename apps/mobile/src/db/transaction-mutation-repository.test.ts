@@ -6,8 +6,13 @@ import type { MobileSyncPushResponse } from "@zoption/shared";
 import type { SQLiteDatabase } from "expo-sqlite";
 
 import { LocalDatabaseWriter } from "./database-writer";
+import { notifyLocalChanges } from "./local-workspace/change-stream";
 import { migrations } from "./migrations";
 import { LocalTransactionMutationRepository } from "./transaction-mutation-repository";
+
+jest.mock("./local-workspace/change-stream", () => ({
+  notifyLocalChanges: jest.fn(),
+}));
 
 class TestDatabase {
   readonly native = new DatabaseSync(":memory:");
@@ -578,6 +583,56 @@ describe("durable local transaction mutations", () => {
     expect(database.native.prepare("SELECT count(*) AS count FROM sync_outbox").get()).toEqual({
       count: 0,
     });
+  });
+
+  it("notifies local subscribers of outbox, conflicts, and mapped entity tables after applyPushResponse commits", async () => {
+    jest.mocked(notifyLocalChanges).mockClear();
+    let index = 0;
+    const mutations = new LocalTransactionMutationRepository(
+      database as unknown as SQLiteDatabase,
+      new LocalDatabaseWriter(),
+      () => uuids[index++] ?? crypto.randomUUID(),
+      () => new Date("2026-08-13T16:00:00.000Z"),
+      () => 0.5,
+      "workspace-push.db",
+    );
+    await mutations.createTransaction({
+      kind: "transfer",
+      fromAccountId: "account-1",
+      toAccountId: "account-2",
+      categoryId: "category-transfer",
+      amountMinor: 5_000,
+      currency: "PHP",
+      date: "2026-08-13",
+      description: "Move to savings",
+    });
+    const request = (await mutations.getPushBatch())!;
+    const response: MobileSyncPushResponse = {
+      protocolVersion: 1,
+      results: [
+        {
+          operationId: request.operations[0]!.operationId,
+          entityType: "transfer",
+          entityId: request.operations[0]!.entityId,
+          status: "acknowledged",
+          revision: 1,
+        },
+      ],
+    };
+
+    await mutations.applyPushResponse(request, response);
+    expect(notifyLocalChanges).toHaveBeenCalledTimes(1);
+    expect(notifyLocalChanges).toHaveBeenCalledWith("workspace-push.db", [
+      "sync_outbox",
+      "sync_conflicts",
+      "transactions",
+    ]);
+
+    jest.mocked(notifyLocalChanges).mockClear();
+    await expect(mutations.applyPushResponse(request, response)).rejects.toMatchObject({
+      code: "invalid_outbox",
+    });
+    expect(notifyLocalChanges).not.toHaveBeenCalled();
   });
 
   it("preserves local and server versions when an edit conflicts", async () => {

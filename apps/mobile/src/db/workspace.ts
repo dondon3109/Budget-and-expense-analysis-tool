@@ -55,6 +55,8 @@ export interface LocalWorkspace {
   generation: number;
   /** True once this local workspace has finished an initial sync, or never syncs with the server. */
   hasSynced: boolean;
+  /** True once `database` has been closed and must not be reused by readers or subsequent opens. */
+  closed?: boolean;
 }
 
 export interface LocalWorkspaceSignOutRisk {
@@ -103,7 +105,7 @@ async function assertWorkspaceSubject(database: SQLiteDatabase, subject: string)
   }
 }
 
-let current: { subject: string; workspace: LocalWorkspace } | null = null;
+let current: { subject: string; workspace: LocalWorkspace; leases: Set<symbol> } | null = null;
 let operation = Promise.resolve();
 
 function serialize<T>(task: () => Promise<T>): Promise<T> {
@@ -115,14 +117,27 @@ function serialize<T>(task: () => Promise<T>): Promise<T> {
   return next;
 }
 
-async function openWorkspaceInternal(subject: string): Promise<LocalWorkspace> {
-  if (current?.subject === subject) return current.workspace;
-  if (current) {
-    await current.workspace.database.closeAsync();
-    current = null;
+async function closeCurrentWorkspace(): Promise<void> {
+  if (!current) return;
+  const closing = current;
+  current = null;
+  const alreadyClosed = closing.workspace.closed === true;
+  closing.workspace.closed = true;
+  if (alreadyClosed) {
+    await closing.workspace.database.closeAsync().catch(() => undefined);
+  } else {
+    await closing.workspace.database.closeAsync();
   }
+}
+
+async function openWorkspaceInternal(subject: string, lease?: symbol): Promise<LocalWorkspace> {
+  if (current?.subject === subject && !current.workspace.closed) {
+    if (lease) current.leases.add(lease);
+    return current.workspace;
+  }
+  await closeCurrentWorkspace();
   const workspace = await openWorkspaceFile(subject);
-  current = { subject, workspace };
+  current = { subject, workspace, leases: new Set(lease ? [lease] : []) };
   return workspace;
 }
 
@@ -213,11 +228,19 @@ async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
       database,
       databaseName: name,
       repository: new LocalWorkspaceRepository(database),
-      syncRepository: new LocalSyncRepository(database, writer),
-      transactionMutations: new LocalTransactionMutationRepository(database, writer),
+      syncRepository: new LocalSyncRepository(database, writer, name),
+      transactionMutations: new LocalTransactionMutationRepository(
+        database,
+        writer,
+        undefined,
+        undefined,
+        undefined,
+        name,
+      ),
       schemaVersion,
       generation,
       hasSynced,
+      closed: false,
     };
     return workspace;
   } catch (error) {
@@ -226,8 +249,12 @@ async function openWorkspaceFile(subject: string): Promise<LocalWorkspace> {
   }
 }
 
-export function openLocalWorkspace(subject: string): Promise<LocalWorkspace> {
-  return serialize(() => openWorkspaceInternal(subject));
+/**
+ * Opens or reuses the encrypted workspace for `subject`. Passing a per-mount `lease` keeps the
+ * shared handle open while overlapping mounts (such as Android OAuth deep-link handoff) settle.
+ */
+export function openLocalWorkspace(subject: string, lease?: symbol): Promise<LocalWorkspace> {
+  return serialize(() => openWorkspaceInternal(subject, lease));
 }
 
 /**
@@ -241,11 +268,12 @@ export function withDetachedWorkspace<T>(
   task: (workspace: LocalWorkspace) => Promise<T>,
 ): Promise<T> {
   return serialize(async () => {
-    if (current?.subject === subject) return task(current.workspace);
+    if (current?.subject === subject && !current.workspace.closed) return task(current.workspace);
     const workspace = await openWorkspaceFile(subject);
     try {
       return await task(workspace);
     } finally {
+      workspace.closed = true;
       await workspace.database.closeAsync().catch(() => undefined);
     }
   });
@@ -331,7 +359,9 @@ export function recoverLocalWorkspace(
     const name = databaseNameForGeneration(alias, nextGeneration);
 
     const workspace =
-      current?.subject === subject ? current.workspace : await openWorkspaceInternal(subject);
+      current?.subject === subject && !current.workspace.closed
+        ? current.workspace
+        : await openWorkspaceInternal(subject);
     const clientId = await workspace.transactionMutations.clientId();
 
     const pageFetcher: SnapshotPageFetcher = (snapshotCursor, offset) =>
@@ -347,8 +377,7 @@ export function recoverLocalWorkspace(
 
     await setWorkspaceGeneration(alias, nextGeneration);
     if (current?.subject === subject) {
-      await current.workspace.database.closeAsync();
-      current = null;
+      await closeCurrentWorkspace();
     }
     await deleteDatabaseAsync(databaseNameForGeneration(alias, currentGeneration)).catch(
       () => undefined,
@@ -371,11 +400,11 @@ export async function inspectLocalWorkspaceForSignOut(
   return risk;
 }
 
-export function closeLocalWorkspace(subject?: string): Promise<void> {
+export function closeLocalWorkspace(subject?: string, lease?: symbol): Promise<void> {
   return serialize(async () => {
     if (!current || (subject && current.subject !== subject)) return;
-    await current.workspace.database.closeAsync();
-    current = null;
+    if (lease && (!current.leases.delete(lease) || current.leases.size > 0)) return;
+    await closeCurrentWorkspace();
   });
 }
 
@@ -385,8 +414,7 @@ export function discardLocalWorkspace(subject: string): Promise<void> {
     const generation = await getWorkspaceGeneration(alias);
     const name = databaseNameForGeneration(alias, generation);
     if (current?.subject === subject) {
-      await current.workspace.database.closeAsync();
-      current = null;
+      await closeCurrentWorkspace();
     }
     await deleteDatabaseAsync(name).catch((error: unknown) => {
       if (!(error instanceof Error) || !/not found|no such file/i.test(error.message)) throw error;

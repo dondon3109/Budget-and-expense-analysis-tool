@@ -18,22 +18,38 @@ const CHANGE_COALESCE_MS = 50;
 
 const localChangeStreams = new Map<string, LocalChangeStream>();
 
+function scheduleSubscribers(stream: LocalChangeStream, tables: readonly string[]): void {
+  for (const subscriber of stream.subscribers) {
+    if (!tables.some((table) => subscriber.tables.has(table))) continue;
+    if (subscriber.timer) clearTimeout(subscriber.timer);
+    subscriber.timer = setTimeout(() => {
+      subscriber.timer = null;
+      subscriber.refresh();
+    }, CHANGE_COALESCE_MS);
+  }
+}
+
 function createLocalChangeStream(databaseName: string): LocalChangeStream {
   const subscribers = new Set<LocalChangeSubscriber>();
   const subscription = addDatabaseChangeListener((event) => {
     if (!event.databaseFilePath.endsWith(databaseName)) return;
-    for (const subscriber of subscribers) {
-      if (!subscriber.tables.has(event.tableName)) continue;
-      if (subscriber.timer) clearTimeout(subscriber.timer);
-      subscriber.timer = setTimeout(() => {
-        subscriber.timer = null;
-        subscriber.refresh();
-      }, CHANGE_COALESCE_MS);
-    }
+    scheduleSubscribers(stream, [event.tableName]);
   });
   const stream: LocalChangeStream = { subscription, subscribers };
   localChangeStreams.set(databaseName, stream);
   return stream;
+}
+
+/**
+ * Schedules a coalesced post-commit refresh for every mounted query watching `tables` on
+ * `databaseName`. Sync calls this after a pull or push transaction commits so screens refresh
+ * reliably even when native update-hook events fire before COMMIT or are missed.
+ */
+export function notifyLocalChanges(databaseName: string, tables: readonly string[]): void {
+  if (tables.length === 0) return;
+  const stream = localChangeStreams.get(databaseName);
+  if (!stream) return;
+  scheduleSubscribers(stream, tables);
 }
 
 /**

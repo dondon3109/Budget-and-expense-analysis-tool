@@ -3,6 +3,7 @@ import {
   type OnboardingCashInput,
   type OnboardingCashResult,
   type OnboardingState,
+  type QuickStartState,
   type WorkspaceSettings,
 } from "@zoption/shared";
 
@@ -19,6 +20,8 @@ export interface OnboardingRepository {
     tenantId: string,
     input: OnboardingCashInput,
   ): Promise<OnboardingCashResult>;
+  getQuickStart(env: Bindings, tenantId: string): Promise<QuickStartState>;
+  dismissQuickStart(env: Bindings, tenantId: string): Promise<QuickStartState>;
 }
 
 type Step = OnboardingState["step"];
@@ -36,6 +39,18 @@ async function loadState(env: Bindings, tenantId: string): Promise<OnboardingSta
     loadWorkspaceCurrency(env, tenantId),
   ]);
   return { step, currency };
+}
+
+/** Accounts older than 7 days no longer need the first-run Quick start guide. */
+async function loadQuickStart(env: Bindings, tenantId: string): Promise<QuickStartState> {
+  const row = await env.DB.prepare(
+    `SELECT quick_start_dismissed AS dismissed,
+            created_at <= datetime('now', '-7 days') AS agedOut
+     FROM tenants WHERE id = ?`,
+  )
+    .bind(tenantId)
+    .first<{ dismissed: number; agedOut: number }>();
+  return { dismissed: Boolean(row && (row.dismissed === 1 || row.agedOut === 1)) };
 }
 
 /**
@@ -160,5 +175,16 @@ export const onboardingRepository: OnboardingRepository = {
       .bind(`${tenantId}:transaction:opening-balance`)
       .first<{ found: number }>();
     return { ...(await loadState(env, tenantId)), openingBalanceBooked: booked !== null };
+  },
+
+  getQuickStart: loadQuickStart,
+
+  async dismissQuickStart(env, tenantId) {
+    await env.DB.prepare(
+      "UPDATE tenants SET quick_start_dismissed = 1, updated_at = datetime('now') WHERE id = ?",
+    )
+      .bind(tenantId)
+      .run();
+    return loadQuickStart(env, tenantId);
   },
 };
