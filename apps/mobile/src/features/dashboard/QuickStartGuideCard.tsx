@@ -4,6 +4,10 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { dismissQuickStart } from "@/api/onboarding";
+import { useSessionSnapshot } from "@/auth/session-state";
+import { isDummyDevelopmentSubject } from "@/db/demo-seed";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { Button, Card } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { radii, spacing, typography } from "@/ui/tokens";
@@ -12,18 +16,27 @@ import { openAddTransaction } from "@/features/transactions/AddTransactionPicker
 
 const QUICK_START_GUIDE_DISMISSED_KEY = "zoption_quick_start_guide_dismissed";
 
+export function quickStartDismissStorageKey(subject: string | null): string {
+  return `${QUICK_START_GUIDE_DISMISSED_KEY}.${subject ?? "default"}`;
+}
+
 export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: string }) {
   const theme = useZoptionTheme();
+  const { subject, status: sessionStatus, getAccessToken } = useSessionSnapshot();
   const [collapsed, setCollapsed] = useState(false);
   // Start unresolved so returning users who already dismissed the guide do not see it flash.
   const [status, setStatus] = useState<"loading" | "visible" | "dismissed">("loading");
 
   useEffect(() => {
     let active = true;
-    void SecureStore.getItemAsync(QUICK_START_GUIDE_DISMISSED_KEY)
-      .then((val) => {
+    setStatus("loading");
+    void Promise.all([
+      SecureStore.getItemAsync(quickStartDismissStorageKey(subject)).catch(() => null),
+      SecureStore.getItemAsync(QUICK_START_GUIDE_DISMISSED_KEY).catch(() => null),
+    ])
+      .then(([scoped, legacy]) => {
         if (!active) return;
-        setStatus(val === "true" ? "dismissed" : "visible");
+        setStatus(scoped === "true" || legacy === "true" ? "dismissed" : "visible");
       })
       .catch(() => {
         if (active) setStatus("visible");
@@ -31,11 +44,19 @@ export function QuickStartGuideCard({ firstAccountId }: { firstAccountId?: strin
     return () => {
       active = false;
     };
-  }, []);
+  }, [subject]);
 
   const handleDismiss = () => {
     setStatus("dismissed");
-    void SecureStore.setItemAsync(QUICK_START_GUIDE_DISMISSED_KEY, "true").catch(() => undefined);
+    useOnboardingStore.getState().setQuickStartDismissed(true);
+    void SecureStore.setItemAsync(quickStartDismissStorageKey(subject), "true").catch(
+      () => undefined,
+    );
+    if (sessionStatus === "signed-in" && subject && !isDummyDevelopmentSubject(subject)) {
+      void getAccessToken(false)
+        .then((accessToken) => dismissQuickStart({ accessToken }))
+        .catch(() => undefined);
+    }
   };
 
   if (status !== "visible") {

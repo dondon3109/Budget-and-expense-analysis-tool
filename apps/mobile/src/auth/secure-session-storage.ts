@@ -7,6 +7,7 @@ const manifestSchema = z
   .object({
     version: z.literal(1),
     chunks: z.number().int().positive().max(64),
+    slot: z.union([z.literal(0), z.literal(1)]).optional(),
   })
   .strict();
 
@@ -40,8 +41,8 @@ function manifestKey(key: string): string {
   return `${key}.manifest`;
 }
 
-function chunkKey(key: string, index: number): string {
-  return `${key}.chunk.${index}`;
+function chunkKey(key: string, index: number, slot?: 0 | 1): string {
+  return slot === undefined ? `${key}.chunk.${index}` : `${key}.s${slot}.chunk.${index}`;
 }
 
 async function readManifest(key: string): Promise<z.infer<typeof manifestSchema> | null> {
@@ -64,7 +65,7 @@ export const secureSessionStorage: SupportedStorage = {
 
     const chunks = await Promise.all(
       Array.from({ length: manifest.chunks }, (_, index) =>
-        SecureStore.getItemAsync(chunkKey(key, index), secureStoreOptions),
+        SecureStore.getItemAsync(chunkKey(key, index, manifest.slot), secureStoreOptions),
       ),
     );
     if (chunks.some((chunk) => chunk === null)) return null;
@@ -73,22 +74,31 @@ export const secureSessionStorage: SupportedStorage = {
 
   async setItem(key, value) {
     const previousManifest = await readManifest(key);
+    // Stage into the inactive slot so an interrupted write leaves the current session intact.
+    const nextSlot: 0 | 1 = previousManifest?.slot === 0 ? 1 : 0;
     const chunks = Array.from(
       { length: Math.max(1, Math.ceil(value.length / CHUNK_SIZE)) },
       (_, index) => value.slice(index * CHUNK_SIZE, (index + 1) * CHUNK_SIZE),
     );
 
     for (const [index, chunk] of chunks.entries()) {
-      await SecureStore.setItemAsync(chunkKey(key, index), chunk, secureStoreOptions);
+      await SecureStore.setItemAsync(chunkKey(key, index, nextSlot), chunk, secureStoreOptions);
     }
     await SecureStore.setItemAsync(
       manifestKey(key),
-      JSON.stringify({ version: 1, chunks: chunks.length }),
+      JSON.stringify({ version: 1, chunks: chunks.length, slot: nextSlot }),
       secureStoreOptions,
     );
 
-    for (let index = chunks.length; index < (previousManifest?.chunks ?? 0); index += 1) {
-      await SecureStore.deleteItemAsync(chunkKey(key, index), secureStoreOptions);
+    if (previousManifest) {
+      await Promise.all(
+        Array.from({ length: previousManifest.chunks }, (_, index) =>
+          SecureStore.deleteItemAsync(
+            chunkKey(key, index, previousManifest.slot),
+            secureStoreOptions,
+          ).catch(() => undefined),
+        ),
+      );
     }
   },
 
@@ -99,7 +109,7 @@ export const secureSessionStorage: SupportedStorage = {
     if (manifest) {
       await Promise.all(
         Array.from({ length: manifest.chunks }, (_, index) =>
-          SecureStore.deleteItemAsync(chunkKey(key, index), secureStoreOptions),
+          SecureStore.deleteItemAsync(chunkKey(key, index, manifest.slot), secureStoreOptions),
         ),
       );
     }

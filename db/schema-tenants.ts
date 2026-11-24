@@ -44,5 +44,8 @@ export const tenants = sqliteTable("tenants", {
   incomeCadence: text("income_cadence", { enum: incomeCadences }),
   budgetingStyle: text("budgeting_style", { enum: budgetingStyles }),
   spendingFocus: text("spending_focus").notNull().default("[]"),
+  quickStartDismissed: integer("quick_start_dismissed", { mode: "boolean" })
+    .notNull()
+    .default(false),
   ...timestamps,
 });

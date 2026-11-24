@@ -1,9 +1,11 @@
 import { act, render, waitFor } from "@testing-library/react-native";
+import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { AppState, type AppStateStatus } from "react-native";
 
 import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
-import { getOnboardingState } from "@/api/onboarding";
+import { dismissQuickStart, getOnboardingState, getQuickStartState } from "@/api/onboarding";
+import { quickStartDismissStorageKey } from "@/features/dashboard/QuickStartGuideCard";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
@@ -12,6 +14,10 @@ import { useOnboardingPrompt } from "./use-onboarding-prompt";
 
 const mockRetrySync = jest.fn();
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
+jest.mock("expo-secure-store", () => ({
+  getItemAsync: jest.fn(async () => null),
+  setItemAsync: jest.fn(async () => undefined),
+}));
 jest.mock("@/sync/sync-state", () => ({
   useSyncState: () => ({ retry: mockRetrySync }),
 }));
@@ -22,7 +28,11 @@ jest.mock("@/auth/session-state", () => ({
     getAccessToken: async () => "token",
   }),
 }));
-jest.mock("@/api/onboarding", () => ({ getOnboardingState: jest.fn() }));
+jest.mock("@/api/onboarding", () => ({
+  getOnboardingState: jest.fn(),
+  getQuickStartState: jest.fn(),
+  dismissQuickStart: jest.fn(),
+}));
 jest.mock("@/api/goal-profile", () => ({
   getGoalsProfile: jest.fn(),
   getMoneyPreferences: jest.fn(),
@@ -36,6 +46,7 @@ function Probe() {
 describe("useOnboardingPrompt", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.spyOn(AppState, "addEventListener").mockImplementation(() => ({ remove: jest.fn() }));
     useOnboardingStore.getState().reset();
     useGoalProfileStore.getState().reset();
     jest.mocked(getGoalsProfile).mockResolvedValue({
@@ -49,6 +60,9 @@ describe("useOnboardingPrompt", () => {
       budgetingStyle: null,
       spendingFocus: [],
     });
+    jest.mocked(getQuickStartState).mockResolvedValue({ dismissed: false });
+    jest.mocked(dismissQuickStart).mockResolvedValue({ dismissed: true });
+    jest.mocked(SecureStore.getItemAsync).mockResolvedValue(null);
   });
 
   it("loads goals and preferences before opening setup so neither races", async () => {
@@ -99,7 +113,22 @@ describe("useOnboardingPrompt", () => {
       expect(mockRetrySync).toHaveBeenCalledTimes(1);
       expect(router.push).toHaveBeenCalledTimes(1);
     } finally {
-      spy.mockRestore();
+      spy.mockImplementation(() => ({ remove: jest.fn() }));
     }
+  });
+
+  it("reads quick start dismissal and syncs an earlier local dismissal to the server", async () => {
+    jest.mocked(getOnboardingState).mockResolvedValue({ step: "complete", currency: "PHP" });
+    jest.mocked(getQuickStartState).mockResolvedValue({ dismissed: false });
+    jest
+      .mocked(SecureStore.getItemAsync)
+      .mockImplementation(async (key) =>
+        key === quickStartDismissStorageKey("user-1") ? "true" : null,
+      );
+
+    await render(<Probe />);
+
+    await waitFor(() => expect(dismissQuickStart).toHaveBeenCalledTimes(1));
+    expect(useOnboardingStore.getState().quickStartDismissed).toBe(true);
   });
 });

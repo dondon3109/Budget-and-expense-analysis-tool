@@ -1,11 +1,13 @@
 import { router } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
 import { getGoalsProfile, getMoneyPreferences } from "@/api/goal-profile";
-import { getOnboardingState } from "@/api/onboarding";
+import { dismissQuickStart, getOnboardingState, getQuickStartState } from "@/api/onboarding";
 import { useSessionSnapshot } from "@/auth/session-state";
 import { isDummyDevelopmentSubject } from "@/db/demo-seed";
+import { quickStartDismissStorageKey } from "@/features/dashboard/QuickStartGuideCard";
 import { useGoalProfileStore } from "@/stores/goal-profile-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useWorkspaceCurrencyStore } from "@/stores/workspace-currency-store";
@@ -14,7 +16,8 @@ import { useSyncState } from "@/sync/sync-state";
 /**
  * Opens first-run setup once per launch while the Worker says it is unfinished. Fetches the goal
  * profile and money preferences alongside onboarding state before pushing the modal so setup never
- * freezes `askGoals` / `askPreferences` to false on a startup race.
+ * freezes `askGoals` / `askPreferences` to false on a startup race. Also reads Quick start guide
+ * state once per launch so dismissed or aged-out accounts never flash the tutorial card.
  */
 export function useOnboardingPrompt(): void {
   const { subject, status, getAccessToken } = useSessionSnapshot();
@@ -29,8 +32,29 @@ export function useOnboardingPrompt(): void {
       try {
         const accessToken = await getAccessToken(false);
         const api = { accessToken, signal: controller.signal };
-        const state = await getOnboardingState(api);
+        const [onboardingResult, quickStartResult] = await Promise.allSettled([
+          getOnboardingState(api),
+          getQuickStartState(api),
+        ]);
         if (controller.signal.aborted) return;
+        if (quickStartResult.status === "fulfilled") {
+          if (quickStartResult.value.dismissed) {
+            useOnboardingStore.getState().setQuickStartDismissed(true);
+          } else {
+            const localDismissed = await SecureStore.getItemAsync(
+              quickStartDismissStorageKey(subject),
+            ).catch(() => null);
+            if (controller.signal.aborted) return;
+            if (localDismissed === "true") {
+              useOnboardingStore.getState().setQuickStartDismissed(true);
+              void dismissQuickStart(api).catch(() => undefined);
+            } else {
+              useOnboardingStore.getState().setQuickStartDismissed(false);
+            }
+          }
+        }
+        if (onboardingResult.status !== "fulfilled") return;
+        const state = onboardingResult.value;
         useOnboardingStore.getState().setState(state);
         if (state.step === "complete") return;
 

@@ -550,3 +550,81 @@ describe("0068_onboarding_step backfill", () => {
     ]);
   });
 });
+
+describe("quick start guide state and 0093_quick_start_dismissed backfill", () => {
+  it("persists quick start dismissal per tenant and ages out accounts older than 7 days", async () => {
+    const { call, database } = createHarness();
+
+    expect(await json(await call("/api/app/onboarding/quick-start", ALICE))).toEqual({
+      dismissed: false,
+    });
+    expect(await json(await call("/api/app/onboarding/quick-start", BOB))).toEqual({
+      dismissed: false,
+    });
+
+    const dismissed = await call("/api/app/onboarding/quick-start/dismiss", ALICE, "POST");
+    expect(dismissed.status).toBe(200);
+    expect(await json(dismissed)).toEqual({ dismissed: true });
+    expect(await json(await call("/api/app/onboarding/quick-start", ALICE))).toEqual({
+      dismissed: true,
+    });
+    expect(await json(await call("/api/app/onboarding/quick-start", BOB))).toEqual({
+      dismissed: false,
+    });
+
+    database.exec(
+      "UPDATE tenants SET created_at = datetime('now', '-8 days') WHERE id = 'user:bob'",
+    );
+    expect(await json(await call("/api/app/onboarding/quick-start", BOB))).toEqual({
+      dismissed: true,
+    });
+  });
+
+  it("backfills older and established workspaces on 0093_quick_start_dismissed while leaving fresh ones open", () => {
+    const { database } = createD1TestDatabase({
+      beforeMigration({ database: migrating, name }) {
+        if (name !== "0093_quick_start_dismissed.sql") return;
+        migrating.exec(`
+          INSERT INTO tenants (id, kind, name, created_at) VALUES
+            ('old-sparse', 'user', 'Old', datetime('now', '-10 days')),
+            ('with-budget', 'user', 'Budgeted', datetime('now')),
+            ('with-custom-account', 'user', 'Custom', datetime('now')),
+            ('with-five-tx', 'user', 'Active', datetime('now')),
+            ('brand-new', 'user', 'Fresh', datetime('now'));
+          INSERT INTO categories (id, tenant_id, name, kind, color, system_key, required_plan) VALUES
+            ('cat-b', 'with-budget', 'Food', 'expense', '#111111', NULL, 'free'),
+            ('cat-a', 'with-five-tx', 'Food', 'expense', '#111111', NULL, 'free'),
+            ('cat-f', 'brand-new', 'Food', 'expense', '#111111', NULL, 'free'),
+            ('cat-open', 'brand-new', 'Opening balance', 'income', '#6b7280', 'opening:income', 'free');
+          INSERT INTO accounts (id, tenant_id, name, type, currency, system_key) VALUES
+            ('acc-c-custom', 'with-custom-account', 'Wallet', 'cash', 'PHP', NULL),
+            ('acc-a', 'with-five-tx', 'Cash', 'cash', 'PHP', 'account:cash'),
+            ('acc-f', 'brand-new', 'Cash', 'cash', 'PHP', 'account:cash');
+          INSERT INTO budgets (id, tenant_id, category_id, month, limit_minor) VALUES
+            ('b-1', 'with-budget', 'cat-b', '2026-11-01', 10000);
+          INSERT INTO transactions (id, tenant_id, account_id, category_id, date, description, amount_minor, currency, kind) VALUES
+            ('t-1', 'with-five-tx', 'acc-a', 'cat-a', '2026-11-20', '1', -100, 'PHP', 'expense'),
+            ('t-2', 'with-five-tx', 'acc-a', 'cat-a', '2026-11-20', '2', -100, 'PHP', 'expense'),
+            ('t-3', 'with-five-tx', 'acc-a', 'cat-a', '2026-11-20', '3', -100, 'PHP', 'expense'),
+            ('t-4', 'with-five-tx', 'acc-a', 'cat-a', '2026-11-20', '4', -100, 'PHP', 'expense'),
+            ('t-5', 'with-five-tx', 'acc-a', 'cat-a', '2026-11-20', '5', -100, 'PHP', 'expense'),
+            ('f-open', 'brand-new', 'acc-f', 'cat-open', '2026-11-24', 'Opening', 5000, 'PHP', 'income'),
+            ('f-1', 'brand-new', 'acc-f', 'cat-f', '2026-11-24', 'Coffee', -100, 'PHP', 'expense');
+        `);
+      },
+    });
+    databases.push(database);
+
+    expect(
+      database
+        .prepare("SELECT id, quick_start_dismissed AS dismissed FROM tenants ORDER BY id")
+        .all(),
+    ).toEqual([
+      { id: "brand-new", dismissed: 0 },
+      { id: "old-sparse", dismissed: 1 },
+      { id: "with-budget", dismissed: 1 },
+      { id: "with-custom-account", dismissed: 1 },
+      { id: "with-five-tx", dismissed: 1 },
+    ]);
+  });
+});

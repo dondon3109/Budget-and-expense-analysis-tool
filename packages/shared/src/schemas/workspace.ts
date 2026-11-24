@@ -59,3 +59,8 @@ export const onboardingCashSchema = z
   .strict();
 
 export type OnboardingCashInput = z.infer<typeof onboardingCashSchema>;
+
+/** Whether the personal workspace's Quick start guide has been dismissed or aged out. */
+export const quickStartStateSchema = z.object({ dismissed: z.boolean() }).strict();
+
+export type QuickStartState = z.infer<typeof quickStartStateSchema>;

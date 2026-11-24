@@ -24,6 +24,8 @@ const apiMocks = vi.hoisted(() => ({
   getAccounts: vi.fn(),
   getDebts: vi.fn(),
   getSubscriptions: vi.fn(),
+  getQuickStartState: vi.fn(),
+  dismissQuickStart: vi.fn(),
 }));
 const dashboardExperienceState = vi.hoisted(() => ({
   hasCompletedInitialDashboardExperience: true,
@@ -204,6 +206,7 @@ describe("Dashboard loading", () => {
       totalMonthlyCostMinor: 0,
       items: [],
     });
+    apiMocks.getQuickStartState.mockReset().mockResolvedValue({ dismissed: true });
   });
 
   afterEach(() => {
@@ -259,6 +262,7 @@ describe("Dashboard checkout intent", () => {
       totalMonthlyCostMinor: 0,
       items: [],
     });
+    apiMocks.getQuickStartState.mockReset().mockResolvedValue({ dismissed: true });
   });
 
   afterEach(cleanup);
@@ -322,6 +326,8 @@ describe("Profile dashboard account management", () => {
     apiMocks.getCategories.mockReset().mockResolvedValue([]);
     apiMocks.getAccounts.mockReset().mockResolvedValue([]);
     apiMocks.getDebts.mockReset().mockResolvedValue({ items: [] });
+    apiMocks.getQuickStartState.mockReset().mockResolvedValue({ dismissed: true });
+    apiMocks.dismissQuickStart.mockReset().mockResolvedValue({ dismissed: true });
   });
 
   afterEach(() => {
@@ -794,5 +800,24 @@ describe("Profile dashboard account management", () => {
     expect(
       await screen.findByRole("dialog", { name: "Adjust current balance" }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the quick start tutorial when the server says it is active and persists dismissal", async () => {
+    apiMocks.getQuickStartState.mockResolvedValue({ dismissed: false });
+    apiMocks.getTransactions.mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 8,
+      total: 1,
+      totalPages: 1,
+    });
+    renderPage();
+
+    expect(await screen.findByTestId("quick-start-tutorial")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss Quick Start Tutorial" }));
+
+    expect(screen.queryByTestId("quick-start-tutorial")).not.toBeInTheDocument();
+    await waitFor(() => expect(apiMocks.dismissQuickStart).toHaveBeenCalledTimes(1));
   });
 });

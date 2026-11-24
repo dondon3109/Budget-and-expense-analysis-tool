@@ -1,7 +1,13 @@
-import type { OnboardingState } from "@zoption/shared";
+import type { OnboardingState, QuickStartState } from "@zoption/shared";
 import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { getOnboardingState, saveOnboardingCashBalance, saveOnboardingCurrency } from "../lib/api";
+import {
+  dismissQuickStart,
+  getOnboardingState,
+  getQuickStartState,
+  saveOnboardingCashBalance,
+  saveOnboardingCurrency,
+} from "../lib/api";
 import { queryKeys } from "../lib/queryKeys";
 import type { AuthenticatedWorkspace } from "../lib/workspace";
 import { rememberWorkspaceCurrency } from "../lib/workspaceCurrency";
@@ -53,4 +59,32 @@ export function useSaveOnboardingCurrency(workspace: AuthenticatedWorkspace) {
 
 export function useSaveOnboardingCashBalance(workspace: AuthenticatedWorkspace) {
   return useOnboardingWrite(workspace, saveOnboardingCashBalance);
+}
+
+export function quickStartQueryOptions(workspace: AuthenticatedWorkspace) {
+  return queryOptions({
+    queryKey: queryKeys.quickStart(workspace),
+    queryFn: () => getQuickStartState(workspace),
+    staleTime: Infinity,
+    retry: false,
+  });
+}
+
+export function useQuickStartState(workspace: AuthenticatedWorkspace, enabled = true) {
+  return useQuery({ ...quickStartQueryOptions(workspace), enabled });
+}
+
+export function useDismissQuickStart(workspace: AuthenticatedWorkspace) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => dismissQuickStart(workspace),
+    onMutate: () => {
+      queryClient.setQueryData<QuickStartState>(queryKeys.quickStart(workspace), {
+        dismissed: true,
+      });
+    },
+    onSuccess: (result) => {
+      queryClient.setQueryData(queryKeys.quickStart(workspace), result);
+    },
+  });
 }

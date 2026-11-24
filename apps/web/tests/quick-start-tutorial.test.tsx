@@ -53,9 +53,10 @@ describe("QuickStartTutorial", () => {
   });
 
   it("disappears when dismissed with the close button and persists dismissed state", () => {
+    const onDismiss = vi.fn();
     const { unmount } = render(
       <MemoryRouter>
-        <QuickStartTutorial />
+        <QuickStartTutorial onDismiss={onDismiss} />
       </MemoryRouter>,
     );
 
@@ -67,6 +68,7 @@ describe("QuickStartTutorial", () => {
     expect(screen.queryByRole("heading", { name: /Quick Start Guide/i })).not.toBeInTheDocument();
     expect(screen.queryByTestId("quick-start-tutorial")).not.toBeInTheDocument();
     expect(localStorage.getItem("zoption:quick-start-tutorial-state")).toBe("dismissed");
+    expect(onDismiss).toHaveBeenCalledTimes(1);
 
     unmount();
 

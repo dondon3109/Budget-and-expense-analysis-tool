@@ -1,9 +1,11 @@
 import {
   onboardingCashResultSchema,
   onboardingStateSchema,
+  quickStartStateSchema,
   type OnboardingCashInput,
   type OnboardingCashResult,
   type OnboardingState,
+  type QuickStartState,
   type WorkspaceSettings,
 } from "@zoption/shared";
 
@@ -36,6 +38,24 @@ export async function saveOnboardingCashBalance(
     await requestJson(workspace, "/api/app/onboarding/cash-balance", {
       method: "POST",
       body: JSON.stringify(input),
+    }),
+  );
+}
+
+export async function getQuickStartState(
+  workspace: AuthenticatedWorkspace,
+): Promise<QuickStartState> {
+  return quickStartStateSchema.parse(
+    await requestJson(workspace, "/api/app/onboarding/quick-start"),
+  );
+}
+
+export async function dismissQuickStart(
+  workspace: AuthenticatedWorkspace,
+): Promise<QuickStartState> {
+  return quickStartStateSchema.parse(
+    await requestJson(workspace, "/api/app/onboarding/quick-start/dismiss", {
+      method: "POST",
     }),
   );
 }

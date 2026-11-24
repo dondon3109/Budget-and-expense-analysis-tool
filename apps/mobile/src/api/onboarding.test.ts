@@ -2,7 +2,13 @@ jest.mock("@/config/public-config", () => ({
   publicConfig: { apiUrl: "https://api.zoption.test" },
 }));
 
-import { getOnboardingState, saveOnboardingCash, saveOnboardingCurrency } from "./onboarding";
+import {
+  dismissQuickStart,
+  getOnboardingState,
+  getQuickStartState,
+  saveOnboardingCash,
+  saveOnboardingCurrency,
+} from "./onboarding";
 
 function jsonResponse(value: unknown, status = 200): Response {
   return new Response(JSON.stringify(value), {
@@ -47,6 +53,29 @@ describe("onboarding api", () => {
     ).resolves.toMatchObject({ step: "complete", openingBalanceBooked: true });
     expect(fetchImpl).toHaveBeenLastCalledWith(
       "https://api.zoption.test/api/app/onboarding/cash-balance",
+      expect.objectContaining({ method: "POST" }),
+    );
+  });
+
+  it("reads and dismisses quick start state", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ dismissed: false }))
+      .mockResolvedValueOnce(jsonResponse({ dismissed: true }));
+
+    await expect(getQuickStartState({ accessToken: "token", fetchImpl })).resolves.toEqual({
+      dismissed: false,
+    });
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      "https://api.zoption.test/api/app/onboarding/quick-start",
+      expect.objectContaining({ method: "GET" }),
+    );
+
+    await expect(dismissQuickStart({ accessToken: "token", fetchImpl })).resolves.toEqual({
+      dismissed: true,
+    });
+    expect(fetchImpl).toHaveBeenLastCalledWith(
+      "https://api.zoption.test/api/app/onboarding/quick-start/dismiss",
       expect.objectContaining({ method: "POST" }),
     );
   });
