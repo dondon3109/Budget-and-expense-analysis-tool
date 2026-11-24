@@ -60,7 +60,7 @@ This compiles the native debug build (`site.zoption.android.dev` with standard A
 
 - Adding, removing, or updating native npm dependencies
 - Changing native configuration in `app.config.ts` or config plugins
-- Editing custom native modules (`modules/zoption-local-data-security`, `modules/zoption-share-intake`)
+- Editing custom native modules (`modules/zoption-local-data-security`, `modules/zoption-play-updates`, `modules/zoption-share-intake`)
 - Modifying Android Gradle files or properties (`android/app/build.gradle`, `gradle.properties`)
 
 Normal JS/TS/UI/styles changes do **not** require rebuilding.

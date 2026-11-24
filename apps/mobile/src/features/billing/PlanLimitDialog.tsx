@@ -26,6 +26,11 @@ export function reportPlanLimit(message: string): void {
   publish(message);
 }
 
+/** Whether the plan-limit dialog is open, so other startup modals wait for it. */
+export function usePlanLimitOpen(): boolean {
+  return useSyncExternalStore(subscribe, () => currentMessage) !== null;
+}
+
 /** Mounted once in the authenticated gate so every screen shares one dialog. */
 export function PlanLimitHost() {
   const router = useRouter();

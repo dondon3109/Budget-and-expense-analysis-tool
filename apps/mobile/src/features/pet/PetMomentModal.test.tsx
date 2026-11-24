@@ -2,10 +2,17 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import type * as React from "react";
+import { Platform } from "react-native";
 
 import { petLocalDate } from "@zoption/shared";
 
+import { checkForPlayUpdate } from "@/features/updates/play-store";
+import type * as PlayStoreModule from "@/features/updates/play-store";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import {
+  PlayUpdatePromptHost,
+  resetPlayUpdatePromptStateForTests,
+} from "@/features/updates/PlayUpdatePromptHost";
 import {
   chooseAccountLink,
   resetAccountLinkForTests,
@@ -48,6 +55,15 @@ jest.mock("@/telemetry/telemetry", () => ({
   telemetry: { identify: jest.fn(), reset: jest.fn(async () => undefined) },
 }));
 
+jest.mock("@/features/updates/play-store", () => {
+  const actual = jest.requireActual<typeof PlayStoreModule>("@/features/updates/play-store");
+  return {
+    ...actual,
+    checkForPlayUpdate: jest.fn(async () => null),
+    openPlayListing: jest.fn(async () => undefined),
+  };
+});
+
 const seenBaby = { species: "panda", stage: "baby", unwell: false, ready: false, diedAt: null };
 const remember = (date: string) =>
   mockStorage.set("zoption-mobile-pet-seen-v1", JSON.stringify({ ...seenBaby, date }));
@@ -60,6 +76,31 @@ describe("PetMomentModal", () => {
     useOnboardingStore.setState({ state: { step: "complete" } as never });
     mockFocus.focused = true;
     resetAccountLinkForTests();
+    resetPlayUpdatePromptStateForTests();
+  });
+
+  it("waits for the Play Store update dialog before opening", async () => {
+    const originalOS = Platform.OS;
+    Object.defineProperty(Platform, "OS", { configurable: true, get: () => "android" });
+    jest.mocked(checkForPlayUpdate).mockResolvedValueOnce({ availableVersionCode: 20370 });
+
+    try {
+      usePetStore.setState({ pet: babyPet });
+      await render(
+        <>
+          <PetMomentModal />
+          <PlayUpdatePromptHost />
+        </>,
+      );
+
+      expect(await screen.findByText("Update available")).toBeTruthy();
+      expect(screen.queryByText("Bao · Baby")).toBeNull();
+
+      await fireEvent.press(screen.getByRole("button", { name: "Not now" }));
+      expect(await screen.findByText("Bao · Baby")).toBeTruthy();
+    } finally {
+      Object.defineProperty(Platform, "OS", { configurable: true, get: () => originalOS });
+    }
   });
 
   it("waits for the usage-analytics choice so the two dialogs never trade places", async () => {

@@ -59,7 +59,7 @@ import {
 } from "@/auth/app-lock";
 import { UnsyncedChangesError } from "@/auth/sign-out-policy";
 
-import { AppLockGate, MAX_ATTEMPTS, RELOCK_AFTER_MS } from "./AppLockGate";
+import { AppLockGate, MAX_ATTEMPTS, RELOCK_AFTER_MS, useAppLockUnlocked } from "./AppLockGate";
 
 const subject = "08060c19-8a55-4046-a2e7-7384808dd81c";
 
@@ -285,5 +285,25 @@ describe("app lock", () => {
 
     await fireEvent.press(await screen.findByText("Delete unsynced changes and sign out"));
     expect(mockSignOut).toHaveBeenLastCalledWith({ discardUnsyncedChanges: true });
+  });
+
+  it("reports unlocked state to children only once the lock screen clears", async () => {
+    await setAppLock(subject, "482913");
+    let unlocked = true;
+    function Probe() {
+      unlocked = useAppLockUnlocked();
+      return <Text>{unlocked ? "Unlocked" : "Locked"}</Text>;
+    }
+    await act(async () => {
+      render(
+        <AppLockGate subject={subject}>
+          <Probe />
+        </AppLockGate>,
+      );
+    });
+
+    expect(unlocked).toBe(false);
+    await enterPin("482913");
+    await waitFor(() => expect(unlocked).toBe(true));
   });
 });

@@ -1,5 +1,12 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { useEffect, useRef, useState, type PropsWithChildren } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type PropsWithChildren,
+} from "react";
 import { AppState, Modal, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -29,6 +36,14 @@ export const ATTEMPT_COOLDOWN_MS = 30_000;
 export const COOLDOWN_MESSAGE = `Too many attempts. Try again in ${ATTEMPT_COOLDOWN_MS / 1000} seconds.`;
 
 type LockState = "checking" | "unlocked" | AppLockKind;
+
+// Defaults to true when AppLockGate is not mounted (guest sessions or isolated tests).
+const AppLockUnlockedContext = createContext(true);
+
+/** Whether the workspace is unlocked; other startup modals wait while the lock screen covers it. */
+export function useAppLockUnlocked(): boolean {
+  return useContext(AppLockUnlockedContext);
+}
 
 /** Counts wrong entries in a row and pauses entry for ATTEMPT_COOLDOWN_MS after MAX_ATTEMPTS. */
 export function useAttemptLimit() {
@@ -114,7 +129,7 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
   }
   const locked = lockState === "pin" || lockState === "password";
   return (
-    <>
+    <AppLockUnlockedContext.Provider value={lockState === "unlocked"}>
       {children}
       <Modal
         animationType="none"
@@ -131,7 +146,7 @@ export function AppLockGate({ subject, children }: PropsWithChildren<{ subject: 
           />
         ) : null}
       </Modal>
-    </>
+    </AppLockUnlockedContext.Provider>
   );
 }
 
