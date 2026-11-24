@@ -2,11 +2,11 @@ import { useNetInfo } from "@react-native-community/netinfo";
 import { MOBILE_SYNC_PROTOCOL_VERSION, type MobileSyncPullResponse } from "@zoption/shared";
 import { act, render, waitFor } from "@testing-library/react-native";
 
-import { acknowledgeMobileSync, pullMobileSync } from "@/api/mobile-sync";
+import { acknowledgeMobileSync, MobileSyncTransportError, pullMobileSync } from "@/api/mobile-sync";
 import { useSessionSnapshot, type SessionContextValue } from "@/auth/session-state";
 import { useLocalWorkspace } from "@/db/local-workspace-state";
 import { LocalSyncApplyError } from "@/db/sync-repository";
-import type { LocalWorkspace } from "@/db/workspace";
+import { recoverLocalWorkspace, type LocalWorkspace } from "@/db/workspace";
 import { useActiveWorkspace } from "@/features/family/active-workspace";
 
 import { SyncProvider, useSyncState } from "./sync-state";
@@ -22,6 +22,10 @@ jest.mock("@/api/mobile-sync", () => ({
 }));
 jest.mock("@/auth/session-state", () => ({ useSessionSnapshot: jest.fn() }));
 jest.mock("@/db/local-workspace-state", () => ({ useLocalWorkspace: jest.fn() }));
+jest.mock("@/db/workspace", () => ({
+  recoverLocalWorkspace: jest.fn(async () => undefined),
+  withDetachedWorkspace: jest.fn(),
+}));
 jest.mock("@/features/family/active-workspace", () => ({ useActiveWorkspace: jest.fn() }));
 jest.mock("@/features/subscriptions/subscription-usage-upload", () => ({
   uploadSubscriptionUsage: jest.fn(async () => undefined),
@@ -222,5 +226,102 @@ describe("SyncProvider initial sync state", () => {
 
     expect(latest.hasSynced).toBe(true);
     expect(latest.offline).toBe(true);
+  });
+
+  it("does not restart an in-flight sync when useSessionSnapshot returns a new object with the same fields", async () => {
+    const workspace = makeWorkspace(false);
+    const getAccessToken = jest.fn(async () => "token");
+    const signOut = jest.fn(async () => undefined);
+    jest.mocked(useSessionSnapshot).mockImplementation(
+      () =>
+        ({
+          status: "signed-in",
+          subject: "user-1",
+          getAccessToken,
+          signOut,
+        }) as unknown as SessionContextValue,
+    );
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      status: "ready",
+      workspace,
+      message: null,
+      retry: jest.fn(),
+      reopen: jest.fn(),
+    });
+    const firstPull = deferred<MobileSyncPullResponse>();
+    jest.mocked(pullMobileSync).mockReturnValueOnce(firstPull.promise);
+    jest.mocked(acknowledgeMobileSync).mockResolvedValue({
+      protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+      acknowledgedCursor: "v1.1",
+      retentionFloorCursor: "v1.0",
+    });
+
+    const view = await render(
+      <SyncProvider enabled={true}>
+        <Probe />
+      </SyncProvider>,
+    );
+    await waitFor(() => expect(pullMobileSync).toHaveBeenCalledTimes(1));
+
+    await view.rerender(
+      <SyncProvider enabled={true}>
+        <Probe />
+      </SyncProvider>,
+    );
+    expect(pullMobileSync).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      firstPull.resolve({
+        protocolVersion: MOBILE_SYNC_PROTOCOL_VERSION,
+        changes: [],
+        nextCursor: "v1.1",
+        hasMore: false,
+      });
+    });
+    await waitFor(() => expect(latest.status).toBe("synced"));
+    expect(pullMobileSync).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips recoverLocalWorkspace if the run becomes stale while refreshing the recovery token", async () => {
+    const workspace = makeWorkspace(false);
+    const reopen = jest.fn();
+    const refreshToken = deferred<string>();
+    const getAccessToken = jest
+      .fn()
+      .mockResolvedValueOnce("initial-token")
+      .mockReturnValueOnce(refreshToken.promise);
+    jest.mocked(useSessionSnapshot).mockReturnValue({
+      status: "signed-in",
+      subject: "user-1",
+      getAccessToken,
+      signOut: jest.fn(async () => undefined),
+    } as unknown as SessionContextValue);
+    jest.mocked(useLocalWorkspace).mockReturnValue({
+      status: "ready",
+      workspace,
+      message: null,
+      retry: jest.fn(),
+      reopen,
+    });
+    jest
+      .mocked(pullMobileSync)
+      .mockRejectedValueOnce(
+        new MobileSyncTransportError("stale cursor", "full_resync_required", 409),
+      );
+
+    const view = await render(
+      <SyncProvider enabled={true}>
+        <Probe />
+      </SyncProvider>,
+    );
+    await waitFor(() => expect(getAccessToken).toHaveBeenCalledWith(true));
+
+    await view.unmount();
+    await act(async () => {
+      refreshToken.resolve("fresh-token");
+    });
+
+    expect(recoverLocalWorkspace).not.toHaveBeenCalled();
+    expect(reopen).not.toHaveBeenCalled();
   });
 });

@@ -103,4 +103,55 @@ describe("LocalWorkspaceProvider", () => {
     await act(async () => next.resolve(rebuilt));
     expect(observed.at(-1)).toEqual({ status: "ready", workspace: rebuilt });
   });
+
+  it("passes distinct leases for overlapping mounts and releases only the unmounting lease", async () => {
+    jest.mocked(openLocalWorkspace).mockResolvedValue(first);
+
+    const firstMount = await render(
+      <LocalWorkspaceProvider subject="user-1">
+        <Probe />
+      </LocalWorkspaceProvider>,
+    );
+    const secondMount = await render(
+      <LocalWorkspaceProvider subject="user-1">
+        <Probe />
+      </LocalWorkspaceProvider>,
+    );
+
+    const [firstCall, secondCall] = jest.mocked(openLocalWorkspace).mock.calls;
+    expect(typeof firstCall?.[1]).toBe("symbol");
+    expect(typeof secondCall?.[1]).toBe("symbol");
+    expect(firstCall?.[1]).not.toBe(secondCall?.[1]);
+
+    await firstMount.unmount();
+    expect(closeLocalWorkspace).toHaveBeenCalledWith("user-1", firstCall?.[1]);
+    expect(closeLocalWorkspace).not.toHaveBeenCalledWith("user-1", secondCall?.[1]);
+
+    await secondMount.unmount();
+    expect(closeLocalWorkspace).toHaveBeenCalledWith("user-1", secondCall?.[1]);
+  });
+
+  it("ignores duplicate reopen calls while a reopen for the same subject is already pending", async () => {
+    const reopened = deferred<LocalWorkspace>();
+    jest
+      .mocked(openLocalWorkspace)
+      .mockResolvedValueOnce(first)
+      .mockReturnValueOnce(reopened.promise);
+
+    await render(
+      <LocalWorkspaceProvider subject="user-1">
+        <Probe />
+      </LocalWorkspaceProvider>,
+    );
+    expect(openLocalWorkspace).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      latest.reopen();
+      latest.reopen();
+    });
+    expect(openLocalWorkspace).toHaveBeenCalledTimes(2);
+
+    await act(async () => reopened.resolve(rebuilt));
+    expect(latest).toMatchObject({ status: "ready", workspace: rebuilt });
+  });
 });

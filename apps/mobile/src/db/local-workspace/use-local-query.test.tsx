@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { act, renderHook } from "@testing-library/react-native";
 
+import { telemetry } from "@/telemetry/telemetry";
+
 import type { LocalWorkspace } from "../workspace";
 import { subscribeToLocalChanges } from "./change-stream";
 import { LocalQueryActivity, useLocalQuery, type LocalQueryOptions } from "./use-local-query";
@@ -181,5 +183,64 @@ describe("useLocalQuery", () => {
     await rerender({});
     expect(read).toHaveBeenCalledTimes(2);
     expect(result.current.data).toEqual(["updated"]);
+  });
+
+  it("asks to reopen once when a read fails on a closed workspace and recovers on the new handle", async () => {
+    const closedWorkspace = { databaseName: "workspace-a.db", closed: true } as LocalWorkspace;
+    const freshWorkspace = { databaseName: "workspace-a.db", closed: false } as LocalWorkspace;
+    const onClosedWorkspace = jest.fn();
+    const captureSpy = jest.spyOn(telemetry, "captureException").mockResolvedValue(undefined);
+    const read = jest.fn(async (current: LocalWorkspace) => {
+      if (current.closed) throw new Error("Access to closed resource");
+      return ["fresh"];
+    });
+
+    const { result, rerender } = await renderHook(
+      ({ current }: { current: LocalWorkspace }) =>
+        useLocalQuery(current, options(read, { onClosedWorkspace })),
+      { initialProps: { current: closedWorkspace } },
+    );
+
+    expect(onClosedWorkspace).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toBeNull();
+    expect(captureSpy).not.toHaveBeenCalled();
+
+    await rerender({ current: freshWorkspace });
+    expect(result.current.data).toEqual(["fresh"]);
+    expect(result.current.error).toBeNull();
+    captureSpy.mockRestore();
+  });
+
+  it("triggers onClosedWorkspace when retrying on a closed handle and reports non-closed failures", async () => {
+    const nativeClosed = { databaseName: "workspace-a.db", closed: false } as LocalWorkspace;
+    const onClosedWorkspace = jest.fn();
+    const captureSpy = jest.spyOn(telemetry, "captureException").mockResolvedValue(undefined);
+    const closedRead = jest.fn(async (): Promise<string[]> => {
+      throw new Error(
+        "Call to function 'NativeStatement.runAsync' failed: Access to closed resource",
+      );
+    });
+
+    const closedHook = await renderHook(() =>
+      useLocalQuery(nativeClosed, options(closedRead, { onClosedWorkspace })),
+    );
+    expect(nativeClosed.closed).toBe(true);
+    expect(onClosedWorkspace).toHaveBeenCalledTimes(1);
+
+    await act(async () => closedHook.result.current.retry());
+    expect(onClosedWorkspace).toHaveBeenCalledTimes(2);
+    expect(closedHook.result.current.error).toBe("Goals could not be read.");
+
+    const readError = new Error("SQLITE_IOERR");
+    const brokenRead = jest.fn(async (): Promise<string[]> => {
+      throw readError;
+    });
+    const brokenWorkspace = { databaseName: "workspace-b.db", closed: false } as LocalWorkspace;
+    await renderHook(() =>
+      useLocalQuery(brokenWorkspace, options(brokenRead, { onClosedWorkspace })),
+    );
+
+    expect(captureSpy).toHaveBeenCalledWith(readError, "local-query");
+    captureSpy.mockRestore();
   });
 });

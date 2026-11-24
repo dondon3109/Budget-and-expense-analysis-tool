@@ -14,7 +14,11 @@ import type { AccountRecord, BudgetQuery, SubscriptionUsageList } from "@zoption
 import { markStartupPhase } from "@/diagnostics/startup-timing";
 import { useWorkspaceCurrency } from "@/stores/workspace-currency-store";
 
-import { LocalQueryActivity, useLocalQuery } from "./local-workspace/use-local-query";
+import {
+  LocalQueryActivity,
+  useLocalQuery,
+  type LocalQueryOptions,
+} from "./local-workspace/use-local-query";
 export { LocalQueryActivity };
 import type { LocalRemittance, LocalRemittanceOverview } from "./remittance-queries";
 import {
@@ -76,33 +80,41 @@ export function LocalWorkspaceProvider({
   });
   const requestRef = useRef(0);
   const readySubjectRef = useRef<string | null>(null);
+  const subjectRef = useRef(subject);
+  subjectRef.current = subject;
+  const openingSubjectRef = useRef<string | null>(null);
 
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     if (!subject) {
       readySubjectRef.current = null;
+      openingSubjectRef.current = null;
       setSnapshot({ subject: null, status: "opening", workspace: null, message: null });
       return;
     }
     // Reopening the file already shown (sync rebuilt it from the server) keeps the last workspace
     // until the new one is open. Going back to "opening" would make the authenticated gate swap
     // every screen for the full-screen loader and remount navigation on Home, dropping the form
-    // the user was in. Reads in that short gap fail and keep their last value.
+    // the user was in. Reads in that short gap trigger a reopen or wait for the new handle.
     if (readySubjectRef.current !== subject) {
       setSnapshot({ subject, status: "opening", workspace: null, message: null });
     }
-    void openLocalWorkspace(subject)
+    openingSubjectRef.current = subject;
+    const lease = Symbol("local-workspace");
+    void openLocalWorkspace(subject, lease)
       .then((workspace) => {
         if (requestRef.current === requestId) {
           markStartupPhase("workspace:ready");
           readySubjectRef.current = subject;
+          openingSubjectRef.current = null;
           setSnapshot({ subject, status: "ready", workspace, message: null });
         }
       })
       .catch((error: unknown) => {
         if (requestRef.current === requestId) {
           readySubjectRef.current = null;
+          openingSubjectRef.current = null;
           setSnapshot({
             subject,
             status: "error",
@@ -114,12 +126,17 @@ export function LocalWorkspaceProvider({
 
     return () => {
       requestRef.current += 1;
-      void closeLocalWorkspace(subject);
+      if (openingSubjectRef.current === subject) openingSubjectRef.current = null;
+      void closeLocalWorkspace(subject, lease);
     };
   }, [attempt, subject]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
-  const reopen = useCallback(() => setAttempt((value) => value + 1), []);
+  const reopen = useCallback(() => {
+    if (!subjectRef.current || openingSubjectRef.current === subjectRef.current) return;
+    openingSubjectRef.current = subjectRef.current;
+    setAttempt((value) => value + 1);
+  }, []);
   const value = useMemo(() => {
     // Switching subject (guest -> signed-in, or personal <-> family) hides the previous file on
     // the very render the subject changes so InitialSyncGate never sees a stale workspace.
@@ -143,11 +160,16 @@ export function useLocalWorkspace(): LocalWorkspaceSnapshot {
   return value;
 }
 
-// Every read hook below is a thin wrapper over useLocalQuery, which owns the read, the change
-// subscription, and retry. Each keeps its own return shape. Readers are memoized because a new
-// reader re-runs the query, and list hooks share NO_ROWS so a disabled query holds one stable
-// empty value.
+// Every read hook below is a thin wrapper over useWorkspaceQuery -> useLocalQuery, which owns the
+// read, the change subscription, closed-handle recovery, and retry. Each keeps its own return
+// shape. Readers are memoized because a new reader re-runs the query, and list hooks share NO_ROWS
+// so a disabled query holds one stable empty value.
 const NO_ROWS: never[] = [];
+
+function useWorkspaceQuery<T>(options: Omit<LocalQueryOptions<T>, "onClosedWorkspace">) {
+  const { workspace, reopen } = useLocalWorkspace();
+  return useLocalQuery(workspace, { ...options, onClosedWorkspace: reopen });
+}
 
 const readStats = (workspace: LocalWorkspace) => workspace.repository.getStats();
 
@@ -159,8 +181,7 @@ export function useLocalWorkspaceStats(): {
   stats: LocalWorkspaceStats | null;
   error: string | null;
 } {
-  const { workspace } = useLocalWorkspace();
-  const { data, error } = useLocalQuery(workspace, {
+  const { data, error } = useWorkspaceQuery({
     read: readStats,
     tables: ["accounts", "categories", "transactions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -180,7 +201,6 @@ export function useDashboardData(anchorDate: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   // A local day rollover moves the dashboard window, so the reader depends on it.
   const read = useCallback(
     async (current: LocalWorkspace) => {
@@ -190,7 +210,7 @@ export function useDashboardData(anchorDate: string): {
     },
     [anchorDate],
   );
-  const { data, error, retry } = useLocalQuery(workspace, {
+  const { data, error, retry } = useWorkspaceQuery({
     read,
     tables: ["accounts", "budgets", "categories", "transactions"],
     empty: null,
@@ -208,8 +228,7 @@ export function useAccountBalances(): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
-  const { data, error, retry } = useLocalQuery<AccountRecord[]>(workspace, {
+  const { data, error, retry } = useWorkspaceQuery<AccountRecord[]>({
     read: readAccountBalances,
     tables: ["accounts", "transactions"],
     empty: NO_ROWS,
@@ -223,7 +242,6 @@ export function useBudgetPlan(period: BudgetQuery): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const currency = useWorkspaceCurrency();
   // Key the reader on the period's fields: a new object each render would re-run the query.
   const { scope } = period;
@@ -241,7 +259,7 @@ export function useBudgetPlan(period: BudgetQuery): {
       ),
     [scope, month, eventId, currency],
   );
-  const { data, error, retry } = useLocalQuery(workspace, {
+  const { data, error, retry } = useWorkspaceQuery({
     read,
     tables: ["budgets", "categories", "transactions", "calendar_events"],
     empty: null,
@@ -256,13 +274,12 @@ export function useBudgetOccasions(month: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const currency = useWorkspaceCurrency();
   const read = useCallback(
     (current: LocalWorkspace) => current.repository.getBudgetOccasions(month, currency),
     [month, currency],
   );
-  const { data, error, retry } = useLocalQuery<LocalBudgetOccasion[]>(workspace, {
+  const { data, error, retry } = useWorkspaceQuery<LocalBudgetOccasion[]>({
     read,
     tables: ["budgets", "calendar_events", "transactions"],
     empty: NO_ROWS,
@@ -277,13 +294,12 @@ export function useRemittanceOverview(month: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const currency = useWorkspaceCurrency();
   const read = useCallback(
     (current: LocalWorkspace) => current.repository.getRemittanceOverview(month, currency),
     [month, currency],
   );
-  const { data, error, retry } = useLocalQuery<LocalRemittanceOverview | null>(workspace, {
+  const { data, error, retry } = useWorkspaceQuery<LocalRemittanceOverview | null>({
     read,
     tables: ["remittances", "transactions", "accounts"],
     empty: null,
@@ -298,12 +314,11 @@ export function useRemittance(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.repository.getRemittance(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["remittances", "transactions"],
     empty: null,
@@ -321,8 +336,7 @@ export function useGoals(): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
-  const { data, loading, error, retry } = useLocalQuery<LocalGoalItem[]>(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery<LocalGoalItem[]>({
     read: readGoals,
     tables: ["financial_goals", "sync_outbox", "sync_conflicts"],
     empty: NO_ROWS,
@@ -338,12 +352,11 @@ export function useGoal(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.repository.getGoal(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["financial_goals", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -359,13 +372,12 @@ export function useBudgetConflict(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () =>
       id ? (current: LocalWorkspace) => current.transactionMutations.getBudgetConflict(id) : null,
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["budgets", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -381,13 +393,12 @@ export function useGoalConflict(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () =>
       id ? (current: LocalWorkspace) => current.transactionMutations.getGoalConflict(id) : null,
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["financial_goals", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -405,8 +416,7 @@ export function useDebts(): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
-  const { data, loading, error, retry } = useLocalQuery<LocalDebtItem[]>(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery<LocalDebtItem[]>({
     read: readDebts,
     // A payment waiting to sync lowers the shown balance, so a ledger change re-reads it.
     tables: ["debts", "transactions", "sync_outbox", "sync_conflicts"],
@@ -423,12 +433,11 @@ export function useDebt(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.repository.getDebt(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["debts", "transactions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -444,13 +453,12 @@ export function useDebtConflict(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () =>
       id ? (current: LocalWorkspace) => current.transactionMutations.getDebtConflict(id) : null,
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["debts", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -468,8 +476,7 @@ export function useSubscriptions(): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
-  const { data, loading, error, retry } = useLocalQuery<LocalSubscriptionItem[]>(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery<LocalSubscriptionItem[]>({
     read: readSubscriptions,
     tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
     empty: NO_ROWS,
@@ -485,8 +492,7 @@ const NO_SUBSCRIPTION_USAGE: SubscriptionUsageList = { usage: [], tracking: [] }
 
 /** Subscription ROI check-ins and Track usage choices, this phone's queued taps included. */
 export function useSubscriptionUsage(): { usage: SubscriptionUsageList; error: string | null } {
-  const { workspace } = useLocalWorkspace();
-  const { data, error } = useLocalQuery(workspace, {
+  const { data, error } = useWorkspaceQuery({
     read: readSubscriptionUsage,
     tables: ["subscription_usage", "subscription_usage_tracking"],
     empty: NO_SUBSCRIPTION_USAGE,
@@ -501,12 +507,11 @@ export function useSubscription(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.repository.getSubscription(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -522,7 +527,6 @@ export function useSubscriptionConflict(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () =>
       id
@@ -530,7 +534,7 @@ export function useSubscriptionConflict(id?: string): {
         : null,
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["subscriptions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -546,12 +550,11 @@ export function useCalendarEvents(month: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useCallback(
     (current: LocalWorkspace) => current.repository.getCalendarEvents(month),
     [month],
   );
-  const { data, loading, error, retry } = useLocalQuery<LocalEventItem[]>(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery<LocalEventItem[]>({
     read,
     tables: ["calendar_events", "sync_outbox", "sync_conflicts"],
     empty: NO_ROWS,
@@ -567,12 +570,11 @@ export function useCalendarEvent(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.repository.getCalendarEvent(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["calendar_events", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -588,13 +590,12 @@ export function useEventConflict(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () =>
       id ? (current: LocalWorkspace) => current.transactionMutations.getEventConflict(id) : null,
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["calendar_events", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -610,12 +611,11 @@ export function useAccountModeling(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.repository.getAccountModeling(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["accounts", "transactions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -631,12 +631,11 @@ export function useCalendarMonth(month: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useCallback(
     (current: LocalWorkspace) => current.repository.getCalendarMonth(month),
     [month],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["calendar_events", "subscriptions", "transactions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -655,7 +654,6 @@ export function useLocalTransactions(
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useCallback(
     (current: LocalWorkspace) =>
       current.repository.queryTransactions({
@@ -665,7 +663,7 @@ export function useLocalTransactions(
       }),
     [search, kind, month],
   );
-  const { data, error, retry } = useLocalQuery(workspace, {
+  const { data, error, retry } = useWorkspaceQuery({
     read,
     tables: ["accounts", "categories", "transactions"],
     empty: null,
@@ -681,8 +679,7 @@ export function useLocalReferenceData(): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
-  const { data, error, retry } = useLocalQuery(workspace, {
+  const { data, error, retry } = useWorkspaceQuery({
     read: readReferenceData,
     tables: ["accounts", "categories", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -697,12 +694,11 @@ export function useTransactionFormData(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useCallback(
     (current: LocalWorkspace) => current.repository.getTransactionFormData(id),
     [id],
   );
-  const { data, error, retry } = useLocalQuery(workspace, {
+  const { data, error, retry } = useWorkspaceQuery({
     read,
     tables: ["accounts", "categories", "transactions", "sync_outbox"],
     empty: null,
@@ -713,13 +709,12 @@ export function useTransactionFormData(id?: string): {
 
 /** The device-only picture attached to a transaction, as a data URI, or null. */
 export function useTransactionPhoto(id?: string): { photo: string | null } {
-  const { workspace } = useLocalWorkspace();
   const read = useCallback(
     (current: LocalWorkspace) =>
       id ? current.transactionMutations.getTransactionPhoto(id) : Promise.resolve(null),
     [id],
   );
-  const { data } = useLocalQuery(workspace, {
+  const { data } = useWorkspaceQuery({
     read,
     tables: ["transaction_photos"],
     empty: undefined,
@@ -734,12 +729,11 @@ export function useTransactionConflict(id?: string): {
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () => (id ? (current: LocalWorkspace) => current.transactionMutations.getConflict(id) : null),
     [id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: ["transactions", "sync_outbox", "sync_conflicts"],
     empty: null,
@@ -758,7 +752,6 @@ export function useReferenceConflict(
   error: string | null;
   retry: () => void;
 } {
-  const { workspace } = useLocalWorkspace();
   const read = useMemo(
     () =>
       entityType && id
@@ -767,7 +760,7 @@ export function useReferenceConflict(
         : null,
     [entityType, id],
   );
-  const { data, loading, error, retry } = useLocalQuery(workspace, {
+  const { data, loading, error, retry } = useWorkspaceQuery({
     read,
     tables: [entityType === "account" ? "accounts" : "categories", "sync_outbox", "sync_conflicts"],
     empty: null,
