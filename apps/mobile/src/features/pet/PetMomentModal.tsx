@@ -5,6 +5,7 @@ import { petMomentCopy, petMood } from "@zoption/shared";
 
 import { withTapSound } from "@/features/sounds/sound-effects";
 import { useThankYouOpen } from "@/features/thank-you/ThankYouHost";
+import { usePlayUpdatePromptPending } from "@/features/updates/PlayUpdatePromptHost";
 import { useAccountLink } from "@/telemetry/account-link";
 import { Button } from "@/ui/components";
 import { useZoptionTheme } from "@/ui/theme-provider";
@@ -24,7 +25,8 @@ export function PetMomentModal() {
   const { shown, close } = usePetMoment();
   const analyticsPending = useAccountLink().pending;
   const thankYouOpen = useThankYouOpen();
-  if (!shown || analyticsPending || thankYouOpen) return null;
+  const playUpdatePending = usePlayUpdatePromptPending();
+  if (!shown || analyticsPending || thankYouOpen || playUpdatePending) return null;
 
   const { pet } = shown;
   const copy = petMomentCopy(shown.moment, pet);

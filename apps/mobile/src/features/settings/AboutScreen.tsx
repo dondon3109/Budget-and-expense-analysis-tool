@@ -1,25 +1,13 @@
 import { Linking, Platform, StyleSheet, Text, View } from "react-native";
 
 import { appVersionInfo } from "@/config/app-version";
+import { openPlayListing } from "@/features/updates/play-store";
 import { Card, MenuGroup, MenuRow } from "@/ui/components";
 import { Screen } from "@/ui/screen";
 import { useZoptionTheme } from "@/ui/theme-provider";
 import { spacing, typography } from "@/ui/tokens";
 
 const CHANGELOG_URL = "https://zoption.site/changelog";
-const PLAY_PACKAGE = "site.zoption.android";
-
-/**
- * Android installs update through the Play Store, so its listing is the update check.
- * `market://` opens the Play Store app; the web listing covers a phone without it.
- */
-async function openPlayListing(): Promise<void> {
-  try {
-    await Linking.openURL(`market://details?id=${PLAY_PACKAGE}`);
-  } catch {
-    await Linking.openURL(`https://play.google.com/store/apps/details?id=${PLAY_PACKAGE}`);
-  }
-}
 
 /** Which build is installed, plus an update check on Android through the Play listing. */
 export function AboutScreen() {

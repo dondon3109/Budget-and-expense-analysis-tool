@@ -6,6 +6,7 @@ All notable product changes are documented here.
 
 ### Added
 
+- Android: Zoption checks Google Play for newer releases and pops up an update modal with Update (opening the Play listing) or Not now.
 - Android: create a Zoption account with your email and a password from the sign-in screen, with a confirmation email when one is needed.
 - On Android, tapping Not now during setup leaves a Resume setup card on Home until your currency and starting cash are saved.
 - Receipt scanning on Android has an editable Receipt total on itemized receipts, so a misread total no longer blocks saving.

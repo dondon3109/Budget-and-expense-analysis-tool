@@ -35,7 +35,10 @@ jest.mock("@/features/subscriptions/subscription-push-tap", () => ({
   SubscriptionPushTapHandler: () => null,
 }));
 jest.mock("@/features/receipts/SharedReceiptHandoff", () => ({ SharedReceiptHandoff: () => null }));
-jest.mock("@/features/billing/PlanLimitDialog", () => ({ PlanLimitHost: () => null }));
+jest.mock("@/features/billing/PlanLimitDialog", () => ({
+  PlanLimitHost: () => null,
+  usePlanLimitOpen: () => false,
+}));
 jest.mock("@/telemetry/screen-viewed", () => ({ ScreenViewedTracker: () => null }));
 jest.mock("@/sync/sync-state", () => ({
   SyncProvider: ({ children }: { children: React.ReactNode }) => children,
