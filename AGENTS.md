@@ -1,14 +1,14 @@
 # Agent guidance
 
-Zoption is a budget and expense tracker: a public Astro site at `zoption.site`, a React web app at `app.zoption.site`, an Expo Android/iOS app, and a Cloudflare Worker API that owns all financial data. Don prefers complex systems implemented as simply as possible.
+Zoption is a budget and expense tracker: a public Astro site at `zoption.site`, a React web app at `app.zoption.site`, an Expo Android/iOS app, and a Cloudflare Worker API that owns all financial data.
 
 ## Working style
 
 - A question is a read-only request. Answer it, then offer to implement.
-- Keep changes scoped, type-safe, and covered by focused tests, not broad regression suites.
 - Be cautious with destructive actions. Look before deleting or overwriting.
+- "Mobile" means the Expo Android/iOS app unless Don explicitly says web on mobile. Make mobile changes in `apps/mobile`.
 - Run `pnpm verify` before reporting done and report its result. A green scoped typecheck or test file does not prove the tree is green.
-- When I say mobile what I mean is the Android/iOS app unless I explicitly say web on mobile, always make changes on the Android/iOS app.
+- Start long reports with a TL;DR. Skip it for short answers and small changes.
 
 ## Invariants
 
@@ -41,7 +41,7 @@ Never trade these for shorter code (details in `docs/maintainability.md`):
 - Never edit the web/product version by hand. semantic-release tags `main` after CI.
 - Never deploy production manually. Merging an ordinary change does not release. Merging a release-prep commit (an `android.versionCode` bump) dispatches the `Production Release` workflow once its CI passes (`release-dispatch.yml`), which runs D1 migrations, the Worker and Pages deploys, smoke checks, semantic-release, and then the Google Play bundle build; approving its `production` environment gate is the deploy. Manual commands are emergency recovery only and never run alongside it.
 - Before a release, update the in-app patch notes so they match what ships: `packages/web-common/src/releases/currentRelease.ts` (the "What's new" list and `releaseHistory`).
-- Every release is a new web **and** mobile version. Bump `apps/mobile/package.json` `version` and `android.versionCode` in `apps/mobile/app.config.ts` (`0.2.34-beta` → `20334`), and freeze that version's sync contract (`node scripts/freeze-mobile-sync-contract.mjs <version>`, `docs/mobile/sync-protocol.md`). `Production Release` refuses to start without the bump and builds the Play bundle through `Android Play Bundle` only after production is live; upload it in Play Console by hand (`docs/mobile/build-instructions.md`). Google Play is the only Android distribution: no sideloaded APK.
+- Every release is a new web **and** mobile version. Bump `apps/mobile/package.json` `version` and `android.versionCode` in `apps/mobile/app.config.ts` (`0.2.34-beta` → `20334`), and freeze that version's sync contract (`node scripts/freeze-mobile-sync-contract.mjs <version>`, `docs/mobile/sync-protocol.md`). `Production Release` refuses to start without the bump; upload the Play bundle it builds in Play Console by hand (`docs/mobile/build-instructions.md`). Google Play is the only Android distribution: no sideloaded APK.
 - `CHANGELOG.md`: add notable user-facing changes under `Unreleased`. After semantic-release succeeds, move them under the exact released version and date in a follow-up `docs:` commit. Never guess a version or mark a failed release as published.
 
 ## Stack
@@ -56,7 +56,7 @@ Start from the first file listed, then read the package guide for that area. Eve
 | Task                             | Start here                                                                                                                                                                                   |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | API endpoint                     | `apps/api/src/routes/<surface>.ts` (`createXRoutes`), wired and mounted in `apps/api/src/app.ts`                                                                                             |
-| Tenant data and SQL              | `apps/api/src/db/<entity>.ts`; a schema change is a new `db/migrations/NNNN_*.sql` plus `db/schema.ts`                                                                                       |
+| Tenant data and SQL              | `apps/api/src/db/<entity>.ts`; a schema change is a new hand-written root `db/migrations/NNNN_*.sql` plus root `db/schema.ts`                                                                |
 | Request, response, or enum shape | `packages/shared/src/schemas/<domain>.ts` and the `as const` enums in `packages/shared/src/types.ts`                                                                                         |
 | Money parsing, caps, and display | `packages/shared/src/money.ts`, caps in `limits.ts`; web `apps/web/src/lib/formatters.ts`; mobile `apps/mobile/src/ui/components/MoneyValue.tsx`                                             |
 | Dashboard, budget, and plan math | `packages/shared/src/calculations.ts`, `planning.ts`, `cashflowForecast.ts`, `safeToSpend.ts`                                                                                                |
@@ -76,24 +76,24 @@ Start from the first file listed, then read the package guide for that area. Eve
 | Promo video                      | `promo/README.md`; the cut and every timing live in `promo/src/timing.ts`                                                                                                                    |
 | Deployed dashboards and secrets  | `docs/deployment.md`                                                                                                                                                                         |
 
-Pick the narrowest verify while iterating: `pnpm verify:changed` works it out from the diff. Finish with `pnpm verify`.
-
 `docs/archive/` holds point-in-time reviews, audits, and plans. Read them for history, never as current fact.
 
 ## Commands
 
 ```bash
-pnpm install
+pnpm install         # install workspace dependencies
 pnpm verify          # workspace links, structure check, typecheck, lint, format check, Vitest, mobile Jest; run before reporting done
 pnpm verify:changed  # inner loop: only the scoped checks the current diff needs (--dry-run prints the plan)
 pnpm verify:api      # also verify:web, verify:site, verify:mobile, verify:shared, verify:scripts
 pnpm dev             # api, web, and mobile together
-pnpm test            # Vitest projects: api, web, shared, scripts
-pnpm vitest run --project api tests/goals   # one project, filtered by path
+pnpm test            # Vitest projects: api, web, shared, web-common, site, scripts
+pnpm vitest run --project api tests/goal-profile   # one project, filtered by path
 pnpm test:mobile     # colocated mobile Jest suites; pass a path to filter
 pnpm test:e2e        # Playwright; applies local D1 migrations first
 pnpm format          # prettier --write
 ```
+
+Pick the narrowest verify while iterating: `pnpm verify:changed` works it out from the diff. Finish with `pnpm verify`.
 
 Always run Vitest from the repo root (or through a package `test` script, which points at the root config). `node scripts/check-structure.mjs` enforces a 1000 line limit per file and one-line mobile route files; split a file rather than raising its ceiling. [`scripts/README.md`](scripts/README.md) lists every script.
 
