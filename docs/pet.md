@@ -148,6 +148,12 @@ the figure, or the tombstone.
   settle) while its ground shadow shrinks and fades under it, and blinks (closed eyes for about
   130ms every 3.4s). A sick pet shivers and a fading one barely breathes. A tap's reaction plays on
   top. Reduced motion stills all of it.
+- Prototype, web only: a healthy Baby pig draws as a live 3D figure instead
+  (`components/pet/PetFigure3D.tsx`, scene in `pet3d/pigScene.ts`, three.js). It is built from
+  rounded primitives with a soft clay material, studio lights, glossy bead eyes, and a contact
+  shadow; it hops with squash and stretch, tilts its head, flops its ears, and blinks. three.js
+  loads lazily only for that pet, reduced motion renders one still frame, and a browser without
+  WebGL2 keeps the SVG figure.
 - The figure is returned in parts (`shadow`, `body`, `eyes`, `blink`) so the shadow stays on the
   ground while the body moves and the eyes can swap for a blink.
 
